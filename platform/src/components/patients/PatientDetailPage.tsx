@@ -45,6 +45,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
+import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
 import BillingTab from '@/components/patients/BillingTab';
@@ -71,6 +72,7 @@ import type {
   PatientDoc,
   PrescriptionDoc,
   ProblemDoc,
+  TriageDoc,
 } from '@/lib/db-types';
 import { isValidPhone, normalizePhone, formatPhoneDisplay } from '@/lib/field-formats';
 import { useAuth } from '@/lib/context';
@@ -180,10 +182,7 @@ const DEFAULT_FACESHEET_PANELS = FACESHEET_PANEL_OPTIONS.map(panel => panel.id);
 /** Primary write-action per facesheet card, keyed by panel id. An entry is
  *  omitted when the current role can't perform it, in which case no action
  *  button renders for that card. */
-// 'allergies' is not its own facesheet panel (it's the second list inside the
-// 'problems' Safety alerts card) but still needs its own add action, so the
-// lookup key set is widened by one rather than by a whole new panel.
-type FacesheetActions = Partial<Record<FacesheetPanelId | 'allergies', {
+type FacesheetActions = Partial<Record<FacesheetPanelId, {
   label: string;
   onClick: () => void;
   /** Defaults to a "+" — override for actions that aren't additive (Edit, Review). */
@@ -338,6 +337,7 @@ export default function PatientDetailPage() {
 
   // OpenMRS-style client-side pagination for the Appointments tab (Stage 3).
   const [apptPage, setApptPage] = useState(1);
+  const [apptSearch, setApptSearch] = useState('');
   const APPT_PAGE_SIZE = 8;
   const toggleFacesheetPanel = (panelId: FacesheetPanelId) => {
     setFacesheetPanels(prev => {
@@ -428,6 +428,10 @@ export default function PatientDetailPage() {
   // loading/not-found early return below, alongside the other data hooks —
   // no hook in this component is called after that return.
   const vitalsTimeline = useMemo(() => mergeVitalsTimeline(records, patientTriages), [records, patientTriages]);
+  const latestPatientTriage = useMemo(
+    () => [...patientTriages].sort((a, b) => (b.triagedAt || b.createdAt || '').localeCompare(a.triagedAt || a.createdAt || ''))[0],
+    [patientTriages],
+  );
   const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients } = usePermissions();
   const canAssignPatients = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
 
@@ -543,16 +547,15 @@ export default function PatientDetailPage() {
   // Facesheet card actions. Each one performs the real write action the card
   // represents, reusing the flows the header/tabs already use: the prescribe
   // and lab-order modals, the visit-note drawer, the consultation vitals form,
-  // and the Conditions/Allergies tabs' own "Add" modals (opened via
+  // and the Conditions tab's own "Add" modal (opened via
   // sectionAddRequest so the card's action lands directly in the add form).
-  const openSectionAdd = (section: 'problems' | 'allergies') => {
+  const openSectionAdd = (section: 'problems') => {
     selectTab(section);
     setSectionAddRequest(section);
   };
   const facesheetActions: FacesheetActions = {
     ...(canPrescribe ? { medications: { label: 'Prescribe', onClick: () => setShowPrescribeModal(true) } } : {}),
     ...(canConsult ? { problems: { label: 'Add', onClick: () => openSectionAdd('problems') } } : {}),
-    ...(canConsult ? { allergies: { label: 'Add', onClick: () => openSectionAdd('allergies') } } : {}),
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
     // alike — a full /consultation redirect was the wrong weight for "record
     // a set of numbers" and orphaned the visit from the chart tab it was on.
@@ -1520,6 +1523,7 @@ export default function PatientDetailPage() {
             <PatientFacesheetView
               patient={patient}
               latestVitals={latestVitals}
+              latestTriage={latestPatientTriage}
               problems={patientProblems}
               prescriptions={(allPrescriptions || []).filter(rx => rx.patientId === patient._id)}
               labResults={(allLabResults || []).filter(lab => lab.patientId === patient._id)}
@@ -1537,14 +1541,18 @@ export default function PatientDetailPage() {
 
           {activeTab === 'appointments' && patient && (() => {
             const sortedAppts = [...patientAppointments].sort((a, b) => apptTs(b) - apptTs(a));
-            const apptPageRows = sortedAppts.slice((apptPage - 1) * APPT_PAGE_SIZE, apptPage * APPT_PAGE_SIZE);
+            const query = apptSearch.trim().toLowerCase();
+            const filteredAppts = query ? sortedAppts.filter(appt => `${appt.reason || ''} ${appt.department || ''} ${appt.providerName || ''} ${appt.status} ${appt.appointmentDate}`.toLowerCase().includes(query)) : sortedAppts;
+            const apptPageRows = filteredAppts.slice((apptPage - 1) * APPT_PAGE_SIZE, apptPage * APPT_PAGE_SIZE);
             return (
               <div className="space-y-2">
                 <ChartSection
                   title="Appointments"
                   addLabel="New appointment"
                   onAdd={canBookAppointments ? () => router.push(`/appointments?new=1&patientId=${patient._id}`) : undefined}
-                  pagination={{ page: apptPage, pageSize: APPT_PAGE_SIZE, total: sortedAppts.length, onPageChange: setApptPage }}
+                  searchValue={apptSearch}
+                  onSearchChange={value => { setApptSearch(value); setApptPage(1); }}
+                  pagination={{ page: apptPage, pageSize: APPT_PAGE_SIZE, total: filteredAppts.length, onPageChange: setApptPage }}
                 >
                   {sortedAppts.length === 0 ? (
                     <OmrsEmptyState
@@ -1554,7 +1562,10 @@ export default function PatientDetailPage() {
                       disabledReason={canBookAppointments ? undefined : 'Requires scheduling permission'}
                     />
                   ) : (
-                    <table className="omrs-table">
+                    <table className="omrs-table omrs-table--fixed">
+                      <colgroup>
+                        <col /><col /><col /><col /><col />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th>Date</th>
@@ -1589,7 +1600,7 @@ export default function PatientDetailPage() {
                                 <span>{[appt.department, appt.room].filter(Boolean).join(' · ') || 'Appointment'}</span>
                               </div>
                             </td>
-                            <td><span className="badge badge-normal text-[10px]">{humanizeStatus(appt.status)}</span></td>
+                            <td><span className="badge badge-normal clinical-status-pill">{humanizeStatus(appt.status)}</span></td>
                           </tr>
                         ))}
                       </tbody>
@@ -2304,6 +2315,7 @@ function FacesheetPanelHead({
 function PatientFacesheetView({
   patient,
   latestVitals,
+  latestTriage,
   problems,
   prescriptions,
   labResults,
@@ -2319,6 +2331,7 @@ function PatientFacesheetView({
 }: {
   patient: PatientDoc;
   latestVitals?: ChartVitalsLike;
+  latestTriage?: TriageDoc;
   problems: ProblemDoc[];
   prescriptions: PrescriptionDoc[];
   labResults: LabResultDoc[];
@@ -2335,11 +2348,6 @@ function PatientFacesheetView({
   onResetPanels: () => void;
 }) {
   const activeProblems = problems.filter(problem => problem.status === 'active' || problem.status === 'chronic');
-  const activeAllergies = patient.structuredAllergies !== undefined
-    ? patient.structuredAllergies.filter(a => a.status === 'active').map(a => ({ name: a.substance, detail: a.reaction || a.criticality }))
-    : (patient.allergies || [])
-        .filter(a => a && a.toLowerCase() !== 'none known' && a.toLowerCase() !== 'none')
-        .map(a => ({ name: a, detail: undefined as string | undefined }));
   // "Current" = anything not stopped. A dispensed medicine is the one the
   // patient is actually taking — excluding it (the old filter) made the panel
   // read "(None documented)" for fully-dispensed patients.
@@ -2415,7 +2423,7 @@ function PatientFacesheetView({
       {showPanel('problems') && (
       <section className="tebra-panel" {...clickable(() => onOpenTab('problems'), { label: 'Open safety alerts' })}>
         <FacesheetPanelHead icon={ShieldAlert} title="Safety alerts" action={actions.problems} />
-        {activeProblems.length || activeAllergies.length ? (
+        {activeProblems.length ? (
           <div className="tebra-list">
             {activeProblems.slice(0, 4).map(problem => (
               <div key={problem._id} className="tebra-list-row">
@@ -2426,31 +2434,8 @@ function PatientFacesheetView({
                 </span>
               </div>
             ))}
-            {activeAllergies.slice(0, 4).map((allergy, index) => (
-              <div
-                key={`${allergy.name}-${index}`}
-                className="tebra-list-row tebra-list-row--alert"
-                // Allergies live on their own tab, not Conditions — without
-                // this an allergy row opened the Conditions tab instead.
-                {...clickable(event => { event.stopPropagation(); onOpenTab('allergies'); },
-                  { label: `Open allergies — ${allergy.name}` })}
-              >
-                <strong>Allergy: {allergy.name}</strong>
-                <span>{allergy.detail || 'Active'}</span>
-              </div>
-            ))}
           </div>
-        ) : <p className="tebra-none">No active problems or allergies documented.</p>}
-        {actions.allergies && (
-          <button
-            type="button"
-            className="tebra-panel-action"
-            style={{ marginTop: 8 }}
-            onClick={event => { event.stopPropagation(); actions.allergies!.onClick(); }}
-          >
-            <Plus aria-hidden /> {actions.allergies.label} allergy
-          </button>
-        )}
+        ) : <p className="tebra-none">No active problems documented.</p>}
       </section>
       )}
 
@@ -2461,6 +2446,28 @@ function PatientFacesheetView({
         return (
       <section className="tebra-panel tebra-panel--highlight" {...clickable(() => onOpenTab('vitals'), { label: 'Open latest observations' })}>
         <FacesheetPanelHead icon={Activity} title="Latest observations" action={actions.vitals} />
+        {latestTriage && (
+          <div className="tebra-triage-snapshot">
+            <div
+              className="tebra-triage-snapshot__priority"
+              style={{ color: priorityBadge(latestTriage.priority).color, background: priorityBadge(latestTriage.priority).bg }}
+            >
+              <strong>{priorityLabel(latestTriage.priority)}</strong>
+              <span>{latestTriage.chiefComplaint || 'Triage assessment'} · {formatDateTime(latestTriage.triagedAt)}</span>
+            </div>
+            <div className="tebra-triage-snapshot__abcc" aria-label="Latest triage assessment">
+              <span data-tone={latestTriage.airway === 'clear' ? 'normal' : latestTriage.airway === 'not_assessed' ? 'muted' : 'danger'}><small>Airway</small><strong>{latestTriage.airway.replace('_', ' ')}</strong></span>
+              <span data-tone={latestTriage.breathing === 'normal' ? 'normal' : latestTriage.breathing === 'not_assessed' ? 'muted' : latestTriage.breathing === 'distressed' ? 'warning' : 'danger'}><small>Breathing</small><strong>{latestTriage.breathing.replace('_', ' ')}</strong></span>
+              <span data-tone={latestTriage.circulation === 'normal' ? 'normal' : latestTriage.circulation === 'not_assessed' ? 'muted' : latestTriage.circulation === 'impaired' ? 'warning' : 'danger'}><small>Circulation</small><strong>{latestTriage.circulation.replace('_', ' ')}</strong></span>
+              <span data-tone={latestTriage.consciousness === 'alert' ? 'normal' : latestTriage.consciousness === 'not_assessed' ? 'muted' : latestTriage.consciousness === 'verbal' ? 'warning' : 'danger'}><small>Consciousness</small><strong>{latestTriage.consciousness.replace('_', ' ')}</strong></span>
+            </div>
+            {(latestTriage.destinationClinic || latestTriage.assignedProviderName || latestTriage.handoffNote) && (
+              <p className="tebra-triage-snapshot__route">
+                {[latestTriage.destinationClinic, latestTriage.assignedProviderName, latestTriage.handoffNote].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+        )}
         {latestVitals ? (
           <div className="tebra-vitals">
             <span className={bpElevated ? 'is-out-of-range' : ''}>BP <strong>{latestVitals.systolic && latestVitals.diastolic ? `${latestVitals.systolic}/${latestVitals.diastolic}` : '-'}</strong></span>

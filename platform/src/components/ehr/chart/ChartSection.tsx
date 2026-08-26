@@ -14,7 +14,7 @@
  * chrome and the pager controls.
  */
 
-import { Plus, ChevronLeft, ChevronRight, ClipboardList } from '@/components/icons/lucide';
+import { Plus, ChevronLeft, ChevronRight, ClipboardList, Search } from '@/components/icons/lucide';
 
 export interface ChartSectionPagination {
   page: number;
@@ -33,13 +33,17 @@ interface ChartSectionProps {
   onAdd?: () => void;
   filterSlot?: React.ReactNode;
   toggleSlot?: React.ReactNode;
+  searchValue?: string;
+  searchPlaceholder?: string;
+  onSearchChange?: (value: string) => void;
   pagination?: ChartSectionPagination;
   className?: string;
   children: React.ReactNode;
 }
 
 export default function ChartSection({
-  title, addLabel = 'Add', addIcon, onAdd, filterSlot, toggleSlot, pagination, className, children,
+  title, addLabel = 'Add', addIcon, onAdd, filterSlot, toggleSlot,
+  searchValue = '', searchPlaceholder, onSearchChange, pagination, className, children,
 }: ChartSectionProps) {
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize)) : 1;
   const shown = pagination
@@ -63,6 +67,17 @@ export default function ChartSection({
           )}
         </div>
       </header>
+      {onSearchChange && (
+        <label className="omrs-section-search" aria-label={`Search ${title}`}>
+          <Search aria-hidden />
+          <input
+            type="search"
+            value={searchValue}
+            onChange={event => onSearchChange(event.target.value)}
+            placeholder={searchPlaceholder || `Search ${title.toLowerCase()}…`}
+          />
+        </label>
+      )}
       <div className="omrs-section-body">{children}</div>
       {pagination && pagination.total > 0 && (
         <footer className="omrs-section-footer">

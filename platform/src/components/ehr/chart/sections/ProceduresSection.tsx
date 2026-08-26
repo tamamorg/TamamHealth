@@ -56,6 +56,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   const [correctionReason, setCorrectionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [advancing, setAdvancing] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const visibleProcedures = procedures.filter(procedure => `${procedure.name} ${procedure.code || ''} ${procedure.status || ''} ${procedure.performedByName || ''} ${procedure.outcome || ''}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   /**
    * Move one procedure to its next Stage 7 state. The picker only ever offers
@@ -152,7 +154,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
 
   return (
     <>
-      <ChartSection title="Procedures" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined}>
+      <ChartSection title="Procedures" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         {procedures.length === 0 ? (
           <OmrsEmptyState
             itemLabel="procedures"
@@ -161,19 +163,22 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
             disabledReason={canConsult ? undefined : 'Requires consultation permission'}
           />
         ) : (
-          <table className="omrs-table">
+          <table className="omrs-table omrs-table--fixed">
+            <colgroup>
+              <col /><col /><col /><col /><col /><col />
+            </colgroup>
             <thead>
               <tr>
                 <th>Procedure</th>
                 <th>Date</th>
-                <th>Status</th>
                 <th>Performed by</th>
                 <th>Outcome</th>
                 <th>{t('chart.actions')}</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {procedures.map(p => (
+              {visibleProcedures.map(p => (
                 <tr key={p._id} style={p.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
                   <td style={{ fontWeight: 600 }}>
                     {p.name}
@@ -181,12 +186,18 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                     {p.bodySite ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400, fontSize: 12 }}>{p.bodySite}</div> : null}
                   </td>
                   <td>{formatDate(p.date)}</td>
+                  <td>{p.performedByName || '—'}</td>
                   <td>
-                    {/* A statusless row is a record of something already done —
-                        every procedure written before the lifecycle existed.
-                        It reads "Recorded" rather than being forced into a
-                        state nobody put it in, and can still be picked up. */}
-                    <span style={{ fontWeight: 600 }}>
+                    {p.outcome || '—'}
+                    {p.notes ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>{p.notes}</div> : null}
+                  </td>
+                  <td>
+                    {p.recordStatus === 'entered_in_error' ? (
+                      <span title={p.statusReason}>{t('chart.enteredInError')}</span>
+                    ) : canConsult ? <button type="button" className="btn btn-xs btn-secondary" onClick={() => startCorrection(p)}>{t('chart.correct')}</button> : '—'}
+                  </td>
+                  <td>
+                    <span className="clinical-status-pill">
                       {p.recordStatus === 'entered_in_error' ? t('chart.enteredInError') : p.status ? PROCEDURE_STATUS_LABELS[p.status] : 'Recorded'}
                     </span>
                     {p.status === 'aborted' && p.abortedReason ? (
@@ -198,11 +209,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                         value=""
                         disabled={advancing === p._id}
                         onChange={e => { if (e.target.value) advanceTo(p._id, e.target.value as ProcedureStatus); }}
-                        style={{
-                          display: 'block', marginTop: 4, fontSize: 12, padding: '2px 4px',
-                          border: '1px solid var(--border-light)', borderRadius: 6,
-                          background: 'var(--bg-card-solid)', color: 'var(--text-primary)',
-                        }}
+                        className="clinical-table-control"
                       >
                         <option value="">{advancing === p._id ? 'Saving…' : 'Advance to…'}</option>
                         {procedureLifecycle.next(p.status || 'ordered').map(next => (
@@ -210,16 +217,6 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                         ))}
                       </select>
                     )}
-                  </td>
-                  <td>{p.performedByName || '—'}</td>
-                  <td>
-                    {p.outcome || '—'}
-                    {p.notes ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>{p.notes}</div> : null}
-                  </td>
-                  <td>
-                    {p.recordStatus === 'entered_in_error' ? (
-                      <span title={p.statusReason}>{t('chart.enteredInError')}</span>
-                    ) : canConsult ? <button type="button" className="btn btn-xs btn-secondary" onClick={() => startCorrection(p)}>{t('chart.correct')}</button> : '—'}
                   </td>
                 </tr>
               ))}

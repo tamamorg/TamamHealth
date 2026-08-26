@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ChevronDown } from '@/components/icons/lucide';
 
 import type {
   MedicalRecordDoc, LabResultDoc, PrescriptionDoc, ImmunizationDoc,
@@ -14,7 +13,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { priorityBadge } from '@/lib/clinical/triage-display';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
-import { stopsClickPropagation } from '@/lib/a11y';
+import { clickable, stopsClickPropagation } from '@/lib/a11y';
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -258,6 +257,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
   const { t } = useTranslation();
   const events = buildEvents(props, t);
   const [filter, setFilter] = useState<'all' | TimelineEvent['category']>('all');
+  const [search, setSearch] = useState('');
   // Rows expanded to show their subtitle/meta. Kept as a set so several can be
   // open at once — comparing two events is the common reason to expand.
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -284,7 +284,11 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     return () => cancelAnimationFrame(raf);
   }, [focusedRowId]);
 
-  const visibleEvents = filter === 'all' ? events : events.filter(event => event.category === filter);
+  const categoryEvents = filter === 'all' ? events : events.filter(event => event.category === filter);
+  const searchQuery = search.trim().toLowerCase();
+  const visibleEvents = searchQuery
+    ? categoryEvents.filter(event => `${event.title} ${event.subtitle || ''} ${event.meta || ''} ${event.badge?.label || ''}`.toLowerCase().includes(searchQuery))
+    : categoryEvents;
   const categoryOptions: Array<{ id: 'all' | TimelineEvent['category']; label: string }> = [
     { id: 'all', label: 'All activity' },
     { id: 'consultation', label: 'Consultations' },
@@ -324,6 +328,8 @@ export default function PatientTimeline(props: PatientTimelineProps) {
           ))}
         </div>
       )}
+      searchValue={search}
+      onSearchChange={setSearch}
     >
       <div className="tamam-activity-summary">
         <span><strong>{visibleEvents.length}</strong> {filter === 'all' ? 'events' : 'matching events'}</span>
@@ -337,14 +343,16 @@ export default function PatientTimeline(props: PatientTimelineProps) {
          in order", which the date column already says. Detail that used to
          sit under every title now lives behind a per-row disclosure, so the
          table stays scannable and only the row you ask about expands. */
-      <table className="omrs-table tamam-activity-table">
+      <table className="omrs-table omrs-table--fixed tamam-activity-table">
+        <colgroup>
+          <col /><col /><col /><col />
+        </colgroup>
         <thead>
           <tr>
             <th scope="col">Date</th>
             <th scope="col">Type</th>
             <th scope="col">Event</th>
             <th scope="col">Status</th>
-            <th scope="col"><span className="tamam-visually-hidden">Details</span></th>
           </tr>
         </thead>
         <tbody>
@@ -380,7 +388,8 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                   id={`timeline-row-${e.id}`}
                   className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${hasDetail ? ' has-detail' : ''}${isOpen ? ' is-open' : ''}`}
                   style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
-                  onClick={hasDetail ? () => toggleDetail(e.id) : undefined}
+                  {...(hasDetail ? clickable(() => toggleDetail(e.id), { label: `${isOpen ? 'Hide' : 'Show'} details for ${e.title}` }) : {})}
+                  aria-expanded={hasDetail ? isOpen : undefined}
                 >
                   <td className="tamam-activity-date"><time dateTime={e.date}>{dateLabel}</time></td>
                   <td>
@@ -393,21 +402,8 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                     {e.badge?.dot
                       ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title="Priority indicator" />
                       : e.badge?.label
-                        ? <em className="tamam-activity-badge" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
+                        ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
                         : <span className="tamam-activity-dash">—</span>}
-                  </td>
-                  <td className="tamam-activity-toggle-cell">
-                    {hasDetail && (
-                      <button
-                        type="button"
-                        className="tamam-activity-toggle"
-                        aria-expanded={isOpen}
-                        aria-label={isOpen ? `Hide details for ${e.title}` : `Show details for ${e.title}`}
-                        onClick={event => { event.stopPropagation(); toggleDetail(e.id); }}
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </td>
                 </tr>
                 {isOpen && (
@@ -415,7 +411,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                     {/* The detail cell stops click propagation: the parent row
                         toggles the disclosure, and a click on Sign inside it
                         would otherwise collapse the panel it was aimed at. */}
-                    <td colSpan={5} {...stopsClickPropagation}>
+                    <td colSpan={4} {...stopsClickPropagation}>
                       {e.subtitle && <p>{e.subtitle}</p>}
                       {e.meta && <small>{e.meta}</small>}
                       {signatureSlot && <div style={{ marginTop: 10 }}>{signatureSlot}</div>}

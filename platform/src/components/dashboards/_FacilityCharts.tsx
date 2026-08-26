@@ -31,7 +31,7 @@ export interface CashSlice {
 export function CashFlowDonut({ data }: { data: CashSlice[] }) {
   const slices = data.length ? data : [{ name: 'None', value: 1, color: 'var(--border-light)' }];
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
       <PieChart>
         <Pie
           data={slices}
@@ -99,7 +99,7 @@ export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityC
 
   if (chartType === 'area') {
     return (
-      <ResponsiveContainer width="100%" height={208}>
+      <ResponsiveContainer width="100%" height={208} minWidth={0}>
         <AreaChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
           <AreaGradients />
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
@@ -117,7 +117,7 @@ export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityC
 
   if (chartType === 'line') {
     return (
-      <ResponsiveContainer width="100%" height={208}>
+      <ResponsiveContainer width="100%" height={208} minWidth={0}>
         <LineChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
           <XAxis dataKey="day" tickLine={false} axisLine={false} tick={axisTick} />
@@ -136,7 +136,7 @@ export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityC
   // composition by segment. Grouped bars read poorly at these narrow widths.
   const axisFormat = series.find(s => s.axisFormat)?.axisFormat;
   return (
-    <ResponsiveContainer width="100%" height={208}>
+    <ResponsiveContainer width="100%" height={208} minWidth={0}>
       <BarChart data={data} barCategoryGap="32%" margin={axisFormat ? { top: 5, right: 5, left: -2, bottom: 0 } : undefined}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
         <XAxis dataKey="day" tickLine={false} axisLine={false} tick={axisTick} />

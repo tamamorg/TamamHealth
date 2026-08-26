@@ -63,6 +63,7 @@ export default function ConditionsSection({
   /** The row mid-save, so a slow write can't be fired twice. */
   const [savingStatus, setSavingStatus] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [tableSearch, setTableSearch] = useState('');
   const [pickedCode, setPickedCode] = useState<{ code: string; title: string; chapter: string } | null>(null);
   const [onsetDate, setOnsetDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +85,10 @@ export default function ConditionsSection({
       openFirst(a.status) - openFirst(b.status) ||
       (b.onsetDate || '').localeCompare(a.onsetDate || ''));
   }, [problems]);
+  const visibleConditions = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase();
+    return query ? ordered.filter(problem => `${problem.name} ${problem.icd11Code || ''} ${problem.status} ${problem.onsetDate || ''}`.toLowerCase().includes(query)) : ordered;
+  }, [ordered, tableSearch]);
 
   const handleStatusChange = async (id: string, status: ProblemStatus) => {
     setSavingStatus(id);
@@ -129,7 +134,7 @@ export default function ConditionsSection({
 
   return (
     <>
-      <ChartSection title="Conditions" addLabel="Add" onAdd={canEditClinical ? () => setAdding(true) : undefined}>
+      <ChartSection title="Conditions" addLabel="Add" onAdd={canEditClinical ? () => setAdding(true) : undefined} searchValue={tableSearch} onSearchChange={setTableSearch}>
         {/* Attested at a problem review in a note: an empty list means nobody
             has asked, this means someone asked and the answer was none. */}
         {(reconciledAt || (ordered.length === 0 && noKnownProblems)) && (
@@ -152,9 +157,7 @@ export default function ConditionsSection({
                 content, which left the condition name hard against a date and
                 the status stranded off at the right edge. */}
             <colgroup>
-              <col style={{ width: '50%' }} />
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '25%' }} />
+              <col /><col /><col />
             </colgroup>
             <thead>
               <tr>
@@ -164,7 +167,7 @@ export default function ConditionsSection({
               </tr>
             </thead>
             <tbody>
-              {ordered.map(p => (
+            {visibleConditions.map(p => (
                 <tr key={p._id}>
                   <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
                   <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>

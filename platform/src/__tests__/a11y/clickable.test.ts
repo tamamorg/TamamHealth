@@ -6,7 +6,7 @@
  * An audit on 2026-08-24 found 129 click handlers on plain `<div>`s and
  * `<section>`s across 43 files, none reachable from the keyboard. The worst
  * concentration was the patient chart, where the facesheet panels —
- * Medications, Allergies, Safety alerts, Latest observations — are each a
+ * Medications, Safety alerts, and Latest observations — are each a
  * whole card you click to open its tab. Clinicians work keyboard-first when
  * they are fast, which on a shared ward workstation is most of the time.
  *

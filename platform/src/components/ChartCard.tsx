@@ -16,6 +16,24 @@ import Select from '@/components/Select';
 export type ChartType = 'line' | 'area' | 'bar';
 export type ChartPeriod = 'week' | 'month' | 'quarter' | 'year';
 
+/** Visible loading state for dynamically imported charts. A fixed empty div
+ *  looked like a broken card on slower phones until the Recharts chunk
+ *  arrived; these quiet bars preserve the plot's geometry and explain the
+ *  temporary state to assistive technology. */
+export function ChartLoadingState({ height = 208, fill = false }: { height?: number; fill?: boolean }) {
+  return (
+    <div
+      className="chart-loading-state"
+      style={fill ? { height: '100%', minHeight: height } : { height }}
+      role="status"
+      aria-label="Loading chart"
+    >
+      <span /><span /><span /><span /><span />
+      <small>Loading chart…</small>
+    </div>
+  );
+}
+
 interface ChartCardProps {
   title: string;
   subtitle?: string;

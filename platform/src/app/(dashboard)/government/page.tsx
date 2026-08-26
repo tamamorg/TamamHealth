@@ -32,17 +32,18 @@ import { getImmunizationStats } from '@/lib/services/immunization-service';
 import { isoWeek } from '@/lib/format-utils';
 import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
 import { toIsoDate } from '@/lib/date-utils';
+import { ChartLoadingState } from '@/components/ChartCard';
 
 // recharts (~80-100KB) is deferred behind dynamic boundaries so it's fetched
 // only when a chart actually renders — same pattern as
 // FacilityManagementDashboard/_FacilityCharts.
 const FacilityTypeDonut = dynamic(
   () => import('./_GovernmentCharts').then(m => m.FacilityTypeDonut),
-  { ssr: false, loading: () => <div style={{ width: '100%', height: '100%' }} /> },
+  { ssr: false, loading: () => <ChartLoadingState height={140} fill /> },
 );
 const WeeklyCasesChart = dynamic(
   () => import('./_GovernmentCharts').then(m => m.WeeklyCasesChart),
-  { ssr: false, loading: () => <div style={{ width: '100%', height: '100%' }} /> },
+  { ssr: false, loading: () => <ChartLoadingState height={180} fill /> },
 );
 
 /* Two jobs, two forms — they were one set of constants doing both, which is

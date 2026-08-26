@@ -19,13 +19,14 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useEpidemicIntelligence } from '@/lib/hooks/useEpidemicIntelligence';
 import { Activity, MapPin, ChevronDown, ChevronRight } from '@/components/icons/lucide';
 import { CHART_SERIES, DISEASE_COLOR } from '@/lib/chart-colors';
+import { ChartLoadingState } from '@/components/ChartCard';
 
 // recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
 // only when this chart renders — same pattern as
 // FacilityManagementDashboard/_FacilityCharts.
 const EpidemicCurveChart = dynamic(
   () => import('./_EpidemicCharts').then(m => m.EpidemicCurveChart),
-  { ssr: false, loading: () => <div style={{ height: 260 }} /> },
+  { ssr: false, loading: () => <ChartLoadingState height={260} /> },
 );
 
 type TabView = 'overview' | 'curves' | 'syndromic' | 'geographic' | 'idsr' | 'alerts';

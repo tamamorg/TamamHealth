@@ -13588,19 +13588,22 @@ span:has(> svg:only-child) {
   }
 
   .ehr-top-brand {
-    width: 144px;
-    height: 38px;
-    padding: 0 8px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
     justify-content: center;
+    overflow: visible;
   }
 
   .ehr-top-brand-logo-full {
-    display: block;
-    width: 124px;
+    display: none;
   }
 
   .ehr-top-brand-logo-icon {
-    display: none;
+    display: block;
+    width: 28px;
+    height: 28px;
+    max-width: none;
   }
 
   .ehr-top-modules,
@@ -14322,7 +14325,30 @@ span:has(> svg:only-child) {
   }
 
   .ehr-top-rail {
-    grid-template-columns: 30px 34px minmax(0, 1fr) 28px auto;
+    grid-template-columns: 96px 34px minmax(0, 1fr) 28px 32px;
+  }
+
+  /* Use the supplied horizontal white wordmark at a size that actually fits
+     its mobile grid track. The previous 170px desktop logo was clipped to the
+     first 30px, which looked like a broken image even though the asset was
+     correct. */
+  .ehr-top-brand {
+    width: 96px;
+    height: 30px;
+    padding: 0;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  .ehr-top-brand .ehr-top-brand-logo-full {
+    display: block;
+    width: 88px;
+    height: auto;
+    max-width: 100%;
+  }
+
+  .ehr-top-brand .ehr-top-brand-logo-icon {
+    display: none;
   }
 
   .ehr-top-calendar-button {
@@ -16631,9 +16657,29 @@ textarea.ehr-handoff-input {
 /* Below tablet width there isn't room to keep the greeting and its actions
    on one line without clipping — fall back to wrapping there only. */
 @media (max-width: 639px) {
-  .dashboard-greeting-header,
+  .dashboard-greeting-header {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 8px 10px 12px;
+  }
+
   .dashboard-greeting-actions {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .dashboard-greeting-actions > * {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    white-space: normal;
+  }
+
+  .dashboard-greeting-actions > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -26963,17 +27009,30 @@ table.patient-data-table.patient-data-table {
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* Header: 72px minimum per review (the design preview's taller bar), still
-   free to grow when the row wraps. 44px controls and 22px glyphs to scale. */
-.ehr-top-rail {
-  height: auto !important;
-  min-height: var(--app-top-rail-height, 72px);
-  padding: 12px 20px !important;
-  gap: 12px 16px !important;
+   free to grow when the row wraps. 44px controls and 22px glyphs to scale.
+
+   Desktop-only by design. This block used to override the mobile rail rules
+   later in the cascade with `height:auto !important` and the root's 112px
+   breakpoint value. The content frame still cleared only 44px, so the first
+   68px of every page sat underneath the header and the 170px wordmark was
+   forced into a 30px grid track. */
+@media (min-width: 640px) {
+  .ehr-top-rail {
+    height: auto !important;
+    min-height: var(--app-top-rail-height, 72px);
+    padding: 12px 20px !important;
+    gap: 12px 16px !important;
+  }
+  .ehr-top-rail .ehr-top-brand-logo-full {
+    width: 170px;
+    height: auto;
+    max-width: none;
+    flex: none;
+  }
+  /* The brand slot is a flex child too — capped, it clipped the 150px logo
+     back to its own 138px box through the img's `max-width: 100%`. */
+  .ehr-top-rail .ehr-top-brand { flex: none; max-width: none; }
 }
-.ehr-top-rail .ehr-top-brand-logo-full { width: 170px; height: auto; max-width: none; }
-/* The brand slot is a flex child too — capped, it clipped the 150px logo back to
-   its own 138px box through the img's `max-width: 100%`. */
-.ehr-top-rail .ehr-top-brand { flex: none; max-width: none; }
 
 /* The module trigger carries the design's tinted disc; the rest stay quiet
    until hovered, which is what marks it as the way back to everything. */
@@ -26988,10 +27047,8 @@ table.patient-data-table.patient-data-table {
 .ehr-workspace-grid.is-dashboard,
 .ehr-workspace-grid.is-calendar { gap: 18px; }
 
-/* The logo is a flex child in a row that now carries a search: without
-   `flex: none` it shrank to 138px as the row filled, which is why setting a
-   width alone did not hold it at the design's 150. */
-.ehr-top-rail .ehr-top-brand-logo-full { flex: none; }
+/* The desktop logo's flex sizing is kept with the desktop-only header block
+   above so it cannot override the compact mobile brand mark. */
 .ehr-left-rail { gap: 14px; }
 .ehr-right-rail, .ehr-side-rail { gap: 16px; }
 
@@ -32496,6 +32553,71 @@ button.sadb-signal { cursor: pointer; }
 .fmcash-signals .sadb-signal { padding: 10px 12px; }
 .fmcash-signals .sadb-signal b { font-size: 15px; line-height: 1.2; }
 .fmcash-signals .sadb-signal span { font-size: 11px; margin-top: 1px; }
+
+.chart-loading-state {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(8px, 4vw, 18px);
+  min-width: 0;
+  padding: 26px 16px 30px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 43px, var(--border-light) 44px 45px),
+    var(--bg-card-solid);
+}
+.chart-loading-state > span {
+  width: clamp(12px, 6%, 24px);
+  height: var(--chart-loading-height, 45%);
+  border-radius: 4px 4px 0 0;
+  background: var(--overlay-light);
+  animation: chart-loading-pulse 1.2s ease-in-out infinite alternate;
+}
+.chart-loading-state > span:nth-child(2) { --chart-loading-height: 72%; animation-delay: 90ms; }
+.chart-loading-state > span:nth-child(3) { --chart-loading-height: 54%; animation-delay: 180ms; }
+.chart-loading-state > span:nth-child(4) { --chart-loading-height: 82%; animation-delay: 270ms; }
+.chart-loading-state > span:nth-child(5) { --chart-loading-height: 62%; animation-delay: 360ms; }
+.chart-loading-state small {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+@keyframes chart-loading-pulse {
+  from { opacity: 0.45; }
+  to { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-loading-state > span { animation: none; }
+}
+
+/* On a phone the desktop side-by-side ring and amounts require more width
+   than the card owns. Stack them and keep the decision figures in a compact
+   two-column row so neither is clipped behind the bottom navigation. */
+@media (max-width: 639px) {
+  .fmcash-body {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .fmcash-ring {
+    width: 132px;
+    height: 132px;
+  }
+
+  .fmcash-signals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-width: none;
+    gap: 8px;
+  }
+}
 
 /* ── Ward board list + discharge dialog (wards-list-surface, wdis-*) ───────
    The admissions board reads as the patient registry: same

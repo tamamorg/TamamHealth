@@ -32,7 +32,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { downloadJson, safeFilenamePart } from '@/lib/export-file';
-import { type ChartType } from '@/components/ChartCard';
+import { ChartLoadingState, type ChartType } from '@/components/ChartCard';
 
 /** How many weekly buckets the trend chart shows: six weeks, a quarter, a year. */
 type TrendWindow = 6 | 13 | 52;
@@ -50,7 +50,7 @@ import { stopsClickPropagation } from '@/lib/a11y';
 // FacilityManagementDashboard/_FacilityCharts.
 const WeeklyDiseaseTrendsChart = dynamic(
   () => import('./_SurveillanceCharts').then(m => m.WeeklyDiseaseTrendsChart),
-  { ssr: false, loading: () => <div style={{ height: 300 }} /> },
+  { ssr: false, loading: () => <ChartLoadingState height={300} /> },
 );
 
 // Alert level ordering for severity sorting

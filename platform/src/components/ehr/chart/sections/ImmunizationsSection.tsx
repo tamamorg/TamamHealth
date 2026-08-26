@@ -64,6 +64,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
   const [adverseReaction, setAdverseReaction] = useState(false);
   const [adverseDetails, setAdverseDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
 
   const rows = useMemo(
     () => [...immunizations].sort(
@@ -71,6 +72,10 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
     ),
     [immunizations],
   );
+  const visibleRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return query ? rows.filter(im => `${im.vaccine} ${im.status} ${im.site || ''} ${im.batchNumber || ''} ${im.dateGiven || ''}`.toLowerCase().includes(query)) : rows;
+  }, [rows, search]);
 
   const resetForm = () => {
     setVaccine(VACCINE_NAMES[0]);
@@ -163,7 +168,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
   return (
     <>
-      <ChartSection title="Immunizations" addLabel="Add" onAdd={canRecord ? () => setAdding(true) : undefined}>
+      <ChartSection title="Immunizations" addLabel="Add" onAdd={canRecord ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         {rows.length === 0 ? (
           <OmrsEmptyState
             itemLabel="immunizations"
@@ -173,17 +178,21 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
           />
         ) : (
           <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <table className="omrs-table" style={{ minWidth: 840 }}>
+            <table className="omrs-table omrs-table--fixed" style={{ minWidth: 840 }}>
+              <colgroup>
+                <col /><col /><col /><col /><col /><col /><col /><col />
+              </colgroup>
               <thead>
                 <tr>
-                  {['Vaccine', 'Dose', 'Date given', 'Next due', 'Site', 'Batch', 'Status'].map(h => (
+                  {['Vaccine', 'Dose', 'Date given', 'Next due', 'Site', 'Batch'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                   <th>{t('chart.actions')}</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map(im => {
+                {visibleRows.map(im => {
                   const s = STATUS_STYLE[im.status] || STATUS_STYLE.scheduled;
                   return (
                     <tr key={im._id} style={im.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
@@ -201,11 +210,6 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                       <td style={{ textTransform: 'capitalize' }}>{im.site || '—'}</td>
                       <td className="font-mono">{im.batchNumber || '—'}</td>
                       <td>
-                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.color }}>
-                          {humanizeStatus(im.status)}
-                        </span>
-                      </td>
-                      <td>
                         {im.recordStatus === 'entered_in_error' ? (
                           <span title={im.statusReason}>{t('chart.enteredInError')}</span>
                         ) : canRecord ? (
@@ -214,6 +218,11 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                             <button type="button" className="btn btn-xs btn-secondary" onClick={() => setErrorTarget(im)}>{t('chart.markError')}</button>
                           </div>
                         ) : '—'}
+                      </td>
+                      <td>
+                        <span className="clinical-status-pill" style={{ background: s.bg, color: s.color }}>
+                          {humanizeStatus(im.status)}
+                        </span>
                       </td>
                     </tr>
                   );

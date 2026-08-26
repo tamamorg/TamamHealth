@@ -23,6 +23,7 @@
 
 import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { ChartLoadingState } from '@/components/ChartCard';
 
 // recharts is ~80–100 KB and only ~half of patient charts show a trend line
 // (a metric needs >= 2 readings). Deferring it keeps that weight off the
@@ -30,7 +31,7 @@ import dynamic from 'next/dynamic';
 // measures the DOM to size itself and cannot render on the server.
 const VitalsSparkline = dynamic(() => import('./_VitalsSparkline'), {
   ssr: false,
-  loading: () => <div style={{ width: '100%', height: 80 }} />,
+  loading: () => <ChartLoadingState height={80} />,
 });
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Activity } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';

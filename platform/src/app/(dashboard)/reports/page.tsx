@@ -29,6 +29,7 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
+import { ChartLoadingState } from '@/components/ChartCard';
 
 /* ── Charts ────────────────────────────────────────────────────────
  * recharts (~80-100 KB) sits behind a dynamic boundary so the catalogue —
@@ -36,7 +37,7 @@ import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
  * `loading` heights stop the page reflowing as each chart arrives. */
 const ReportChart = dynamic(
   () => import('./_ReportCharts').then(m => m.ReportChart),
-  { ssr: false, loading: () => <div style={{ height: '100%' }} /> },
+  { ssr: false, loading: () => <ChartLoadingState height={320} fill /> },
 );
 
 /** The forms on offer, in the order their buttons appear — standing columns

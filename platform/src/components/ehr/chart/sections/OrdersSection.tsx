@@ -10,7 +10,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
-import { Search, Pill, FlaskConical } from '@/components/icons/lucide';
+import { Pill, FlaskConical } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { formatDate , formatRxSig , humanizeStatus } from '@/lib/format-utils';
@@ -138,6 +138,8 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
       addLabel="Add"
       onAdd={canAdd ? () => setAddMenuOpen(v => !v) : undefined}
       filterSlot={filterSlot}
+      searchValue={search}
+      onSearchChange={value => { setSearch(value); setPage(1); }}
       pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
     >
       {canAdd && addMenuOpen && (
@@ -153,19 +155,6 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         </div>
       )}
 
-      {rows.length > 0 && (
-        <div className="omrs-panel-search-wrap" style={{ marginBottom: 12 }}>
-          <Search />
-          <input
-            type="text"
-            className="omrs-panel-search"
-            placeholder="Search orders…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-          />
-        </div>
-      )}
-
       {filtered.length === 0 ? (
         <OmrsEmptyState
           itemLabel="orders"
@@ -174,7 +163,10 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
           disabledReason={canAdd ? undefined : 'Requires prescribing or lab-ordering permission'}
         />
       ) : (
-        <table className="omrs-table">
+        <table className="omrs-table omrs-table--fixed">
+          <colgroup>
+            <col /><col /><col /><col /><col /><col /><col />
+          </colgroup>
           <thead>
             <tr>
               <th>Order number</th>

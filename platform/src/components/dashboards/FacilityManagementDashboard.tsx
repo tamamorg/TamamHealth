@@ -57,11 +57,12 @@ import { censusFor } from '@/lib/services/facility-census';
 import Modal from '@/components/Modal';
 import {
   SadbPage, SadbCard, SadbKpiTile, SadbKvRow,
-  SadbGridList, SadbGridRow, SadbHeadLink,
+  SadbGridList, SadbGridRow, SadbHeadLink, SadbSearch, SadbChip,
 } from '@/components/admin/sadb-ui';
 import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
 import { addDaysIso } from '@/lib/date-utils';
 import { formatMoney, titleCase } from '@/lib/format-utils';
+import { ChartLoadingState } from '@/components/ChartCard';
 import { jubaDate, jubaDateRangeUtc, jubaTime, jubaWeekStart } from '@/lib/time-juba';
 import { usersHrefForRole } from '@/lib/people-nav';
 import { summariseEnquiries, getPatientEnquiries } from '@/lib/services/enquiry-service';
@@ -78,11 +79,11 @@ import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 // the DOM to size itself.
 const WeeklyActivityChart = dynamic(() => import('./_FacilityCharts').then(m => m.WeeklyActivityChart), {
   ssr: false,
-  loading: () => <div style={{ width: '100%', height: 208 }} />,
+  loading: () => <ChartLoadingState height={208} />,
 });
 const CashFlowDonut = dynamic(() => import('./_FacilityCharts').then(m => m.CashFlowDonut), {
   ssr: false,
-  loading: () => <div style={{ width: '100%', height: '100%' }} />,
+  loading: () => <ChartLoadingState height={132} fill />,
 });
 
 // The billing workspace's own cash ring draws these two, so received/pending
@@ -289,13 +290,10 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
 
 type ExtraKey = 'billing' | 'flow' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
 
-/* Facility matrix columns: Facility · Type · Patients · Today's visits.
-   Four equal shares, not a weighted name column: the row reads as a table,
-   and a table whose first column takes half the width makes its figures look
-   like a footnote to the name. Beds left on 2026-08-24 — `totalBeds` is the
-   registry's capacity figure, not occupancy, so it answered a question about
-   the record rather than about the facility. */
-const FAC_GRID = 'repeat(4, minmax(140px, 1fr))';
+/* The facility matrix uses equal tracks from the first field through Status.
+   A horizontal scroll is preferable to squeezing six operational fields
+   into unreadable slivers on a narrow viewport. */
+const FAC_GRID = 'repeat(6, minmax(140px, 1fr))';
 
 /** Facility tier → its own hue, so the column is scannable rather than a
  *  stack of identical blue pills. Tinted `fmfac-tier-*` chips (globals.css)
@@ -326,6 +324,7 @@ export default function FacilityManagementDashboard() {
   const { census: facilityCensus } = useFacilityCensus();
 
   const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: 'SSP', days: [] });
+  const [facilitySearch, setFacilitySearch] = useState('');
   const [flow, setFlow] = useState<DailyFlow[]>([]);
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
   const [availableProviderIds, setAvailableProviderIds] = useState<Set<string>>(new Set());
@@ -575,8 +574,29 @@ export default function FacilityManagementDashboard() {
   const pendingLeaveCount = metricByKey('leave-pending')?.value ?? 0;
 
   // Written-out facility tier ("National Referral", "Phcc" stays "PHCC").
-  const facilityLabel = (ft: string) =>
-    ft === 'phcc' || ft === 'phcu' ? ft.toUpperCase() : titleCase(ft.replace(/_/g, ' '));
+  const facilityLabel = useCallback((ft: string) =>
+    ft === 'phcc' || ft === 'phcu' ? ft.toUpperCase() : titleCase(ft.replace(/_/g, ' ')), []);
+
+  const facilityStatus = useCallback((hospital: HospitalDoc) => hospital.isActive === false
+    ? 'Retired'
+    : titleCase((hospital.operationalStatus ?? 'functional').replace(/_/g, ' ')), []);
+
+  const visibleFacilities = useMemo(() => {
+    const terms = facilitySearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return hospitals;
+    return hospitals.filter(hospital => {
+      const haystack = [
+        hospital.name,
+        facilityLabel(hospital.facilityType),
+        hospital.town,
+        hospital.county,
+        hospital.state,
+        hospital.totalBeds,
+        facilityStatus(hospital),
+      ].filter(value => value !== undefined && value !== null).join(' ').toLowerCase();
+      return terms.every(term => haystack.includes(term));
+    });
+  }, [facilityLabel, facilitySearch, facilityStatus, hospitals]);
 
   if (!currentUser) return null;
 
@@ -699,13 +719,23 @@ export default function FacilityManagementDashboard() {
             meta={`${hospitals.length}`}
             action={<SadbHeadLink onClick={() => router.push('/facility-management/queue')}>Work queue</SadbHeadLink>}
           >
+            <div className="sadb-search-row sadb-search-row--table-aligned">
+              <SadbSearch
+                value={facilitySearch}
+                onChange={setFacilitySearch}
+                placeholder="Search facility, type, location, or status…"
+                ariaLabel="Search facilities"
+              />
+            </div>
             <div className="sadb-card-scroll">
               <SadbGridList
                 template={FAC_GRID}
-                minWidth={640}
-                head={['Facility', 'Type', 'Patients', "Today's visits"]}
+                minWidth={840}
+                head={['Facility', 'Type', 'Location', 'Beds', 'Patients', 'Status']}
+                alignEndLast
+                empty={facilitySearch ? 'No facilities match this search.' : 'No facilities available.'}
               >
-                {hospitals.map((h: HospitalDoc) => (
+                {visibleFacilities.map((h: HospitalDoc) => (
                   <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>
                     <span className="min-w-0">
                       <span className="sadb-tenant-name truncate">{h.name}</span>
@@ -715,8 +745,16 @@ export default function FacilityManagementDashboard() {
                         {facilityLabel(h.facilityType)}
                       </span>
                     </span>
+                    <span className="truncate">{[h.town, h.county, h.state].filter(Boolean).join(', ') || '—'}</span>
+                    <span className="sadb-tenant-num">{h.totalBeds ?? 0}</span>
                     <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).patients : '…'}</span>
-                    <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).todayVisits : '…'}</span>
+                    <span style={{ textAlign: 'end' }}>
+                      <SadbChip tone={h.isActive === false || ['non_functional', 'closed'].includes(h.operationalStatus ?? '')
+                        ? 'red'
+                        : h.operationalStatus === 'partially_functional' ? 'yellow' : 'green'}>
+                        {facilityStatus(h)}
+                      </SadbChip>
+                    </span>
                   </SadbGridRow>
                 ))}
               </SadbGridList>

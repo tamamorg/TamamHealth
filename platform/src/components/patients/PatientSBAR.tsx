@@ -28,7 +28,8 @@ import type {
 } from '@/lib/db-types';
 import { formatDateTime , formatRxSig } from '@/lib/format-utils';
 import { patientAge, patientFullName } from '@/lib/patient-utils';
-import { priorityColor } from '@/lib/clinical/triage-display';
+import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
+import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import type { PatientShiftHandoff } from '@/lib/hooks/usePatientHandoff';
 
@@ -72,18 +73,79 @@ function Tile({ label, value }: { label: string; value: string }) {
   );
 }
 
+const ABCC_LABELS = {
+  airway: { clear: 'Clear', obstructed: 'Obstructed', not_assessed: 'Not assessed' },
+  breathing: { normal: 'Normal', distressed: 'Distressed', absent: 'Absent', not_assessed: 'Not assessed' },
+  circulation: { normal: 'Normal', impaired: 'Impaired', absent: 'Absent', not_assessed: 'Not assessed' },
+  consciousness: { alert: 'Alert', verbal: 'Responds to voice', pain: 'Responds to pain', unresponsive: 'Unresponsive', not_assessed: 'Not assessed' },
+} as const;
+
+function abccTone(value: string): 'normal' | 'warning' | 'danger' | 'muted' {
+  if (value === 'clear' || value === 'normal' || value === 'alert') return 'normal';
+  if (value === 'not_assessed') return 'muted';
+  if (value === 'impaired' || value === 'distressed' || value === 'verbal') return 'warning';
+  return 'danger';
+}
+
+function TriageAssessment({ triage }: { triage: TriageDoc }) {
+  const items = [
+    ['Airway', ABCC_LABELS.airway[triage.airway], triage.airway],
+    ['Breathing', ABCC_LABELS.breathing[triage.breathing], triage.breathing],
+    ['Circulation', ABCC_LABELS.circulation[triage.circulation], triage.circulation],
+    ['Consciousness', ABCC_LABELS.consciousness[triage.consciousness], triage.consciousness],
+  ] as const;
+
+  return (
+    <div className="sbar-triage-grid" aria-label="Latest triage ABCC assessment">
+      {items.map(([label, value, raw]) => (
+        <div key={label} className="sbar-triage-card" data-tone={abccTone(raw)}>
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function displayVital(value: string | number | undefined, suffix = ''): string {
+  return value === undefined || value === '' ? '—' : `${value}${suffix}`;
+}
+
+function TriageField({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="sbar-triage-field">
+      <span>{label}</span>
+      <strong>{value || '—'}</strong>
+    </div>
+  );
+}
+
 export default function PatientSBAR({
   patient, records, labs, prescriptions, triages, problems, latestShiftHandoff,
 }: PatientSBARProps) {
   const { t } = useTranslation();
   const age = patientAge(patient);
   const fullName = patientFullName(patient);
-  const allergies = (patient.allergies || []).filter(a => a && a.toLowerCase() !== 'none known' && a.toLowerCase() !== 'none');
+  const recordedAllergies = (patient.structuredAllergies ?? (patient.allergies || []).map((substance, index) => ({ id: `${index}`, substance, status: 'active' as const })))
+    .filter(a => a.status === 'active' && a.substance && a.substance.toLowerCase() !== 'none known' && a.substance.toLowerCase() !== 'none')
+    .map(a => a.substance);
   const chronic = (patient.chronicConditions || []).filter(c => c && c.toLowerCase() !== 'none');
 
-  const latestTriage = triages[0];
-  const latestRecord = records[0];
-  const latestVitals = latestRecord?.vitalSigns;
+  const latestTriage = useMemo(
+    () => [...triages].sort((a, b) => (b.triagedAt || b.createdAt || '').localeCompare(a.triagedAt || a.createdAt || ''))[0],
+    [triages],
+  );
+  const latestRecord = useMemo(
+    () => [...records].sort((a, b) => (b.consultedAt || b.visitDate || b.createdAt || '').localeCompare(a.consultedAt || a.visitDate || a.createdAt || ''))[0],
+    [records],
+  );
+  const latestVitals = useMemo(() => mergeVitalsTimeline(records, triages)[0], [records, triages]);
+  const allergies = recordedAllergies.length > 0
+    ? recordedAllergies
+    : (latestTriage?.knownAllergies || '')
+        .split(/[,;]/)
+        .map(value => value.trim())
+        .filter(value => value && !/^none( known)?$/i.test(value));
   const activeProblems = useMemo(
     () => problems.filter(p => p.status === 'active' || p.status === 'chronic'),
     [problems],
@@ -107,6 +169,30 @@ export default function PatientSBAR({
 
   return (
     <div className="sbar-doc space-y-2">
+      {latestTriage && (
+        <section className="sbar-triage-header" aria-label="Completed triage handoff">
+          <div className="sbar-triage-header__top">
+            <div>
+              <span className="sbar-triage-kicker">Completed ETAT triage</span>
+              <h2>SBAR handoff</h2>
+            </div>
+            <button type="button" className="omrs-section-add" onClick={handlePrint}><Printer /> {t('action.print')}</button>
+          </div>
+          <div
+            className="sbar-triage-priority"
+            style={{ color: priorityBadge(latestTriage.priority).color, background: priorityBadge(latestTriage.priority).bg }}
+          >
+            <strong>{priorityLabel(latestTriage.priority)}</strong>
+            <span>{latestTriage.priority} priority · {latestTriage.status}</span>
+          </div>
+          <div className="sbar-triage-meta">
+            <TriageField label="Triaged by" value={latestTriage.triagedByName || 'Unknown clinician'} />
+            <TriageField label="Date and time" value={formatDateTime(latestTriage.triagedAt)} />
+            <TriageField label="Facility" value={latestTriage.facilityName || patient.registrationHospital} />
+            <TriageField label="Assessment source" value={latestTriage.assessmentSource === 'clerical_checkin' ? 'Clerical check-in' : 'Clinician ETAT'} />
+          </div>
+        </section>
+      )}
       {/* Allergies lead the handoff. They are the one line here that changes
           what is safe to give, and SBAR convention puts them before the S. */}
       <div className={allergies.length ? 'sbar-allergies is-alert' : 'sbar-allergies'}>
@@ -158,9 +244,10 @@ export default function PatientSBAR({
           of its own — the same place every other chart section puts its verb. */}
       <ChartSection
         title={t('sbar.situationTitle')}
-        addLabel={t('action.print')}
-        addIcon={<Printer />}
-        onAdd={handlePrint}
+        className="sbar-triage-section"
+        addLabel={latestTriage ? undefined : t('action.print')}
+        addIcon={latestTriage ? undefined : <Printer />}
+        onAdd={latestTriage ? undefined : handlePrint}
       >
         <p className="sbar-lede">
           {/* The name stays in the sentence — it is the clinical statement a
@@ -170,20 +257,14 @@ export default function PatientSBAR({
           {patient.hospitalNumber && <span className="sbar-muted"> · {patient.hospitalNumber}</span>}
         </p>
         {latestTriage ? (
-          <p className="sbar-para">
-            {t('sbar.currentlyTriaged')}{' '}
-            <strong style={{ color: priorityColor(latestTriage.priority) }}>
-              {latestTriage.priority === 'RED'
-                ? t('nurse.priorityRedLabel')
-                : latestTriage.priority === 'YELLOW'
-                ? t('nurse.priorityYellowLabel')
-                : t('nurse.priorityGreenLabel')}
-            </strong>{' '}
-            ({formatDateTime(latestTriage.triagedAt)}). {t('sbar.statusLabel')} {latestTriage.status}.
-            {latestTriage.chiefComplaint && (
-              <> {t('sbar.chiefComplaintLabel')} <em>{latestTriage.chiefComplaint}</em>.</>
-            )}
-          </p>
+          <>
+            <div className="sbar-triage-fields">
+              <TriageField label="Chief complaint" value={latestTriage.chiefComplaint} />
+              <TriageField label="Symptom duration" value={latestTriage.symptomDuration} />
+              <TriageField label="Mode of arrival" value={latestTriage.modeOfArrival?.replace('-', ' ')} />
+              <TriageField label="Referral source" value={latestTriage.referralSource} />
+            </div>
+          </>
         ) : latestRecord?.chiefComplaint ? (
           <p className="sbar-para">
             {t('sbar.lastConsult')} ({formatDateTime(latestRecord.consultedAt || latestRecord.visitDate)}):{' '}
@@ -194,7 +275,7 @@ export default function PatientSBAR({
         )}
       </ChartSection>
 
-      <ChartSection title={t('sbar.backgroundTitle')}>
+      <ChartSection title={t('sbar.backgroundTitle')} className="sbar-triage-section">
         <Fact label={t('patient.bloodType')}>
           <strong>{patient.bloodType || t('consultation.unknown')}</strong>
         </Fact>
@@ -232,19 +313,29 @@ export default function PatientSBAR({
         )}
       </ChartSection>
 
-      <ChartSection title={t('sbar.assessmentTitle')}>
+      <ChartSection title={t('sbar.assessmentTitle')} className="sbar-triage-section">
+        {latestTriage && (
+          <div className="sbar-block">
+            <SubHead>Latest triage assessment</SubHead>
+            <TriageAssessment triage={latestTriage} />
+            {latestTriage.notes && <p className="sbar-para"><strong>Clinical notes:</strong> {latestTriage.notes}</p>}
+          </div>
+        )}
+
         {latestVitals ? (
           <div className="sbar-block">
             <SubHead icon={<Heart className="w-3.5 h-3.5" />}>
-              {t('sbar.latestVitals')} · {formatDateTime(latestVitals.recordedAt)}
+              {t('sbar.latestVitals')} · {latestVitals.source} · {formatDateTime(latestVitals.at)}
             </SubHead>
             <div className="sbar-tiles">
-              <Tile label={t('sbar.vitalTemp')} value={`${latestVitals.temperature}°C`} />
-              <Tile label={t('sbar.vitalBp')} value={`${latestVitals.systolic}/${latestVitals.diastolic}`} />
-              <Tile label={t('sbar.vitalPulse')} value={`${latestVitals.pulse}`} />
-              <Tile label={t('sbar.vitalRr')} value={`${latestVitals.respiratoryRate}`} />
-              <Tile label={t('sbar.vitalSpo2')} value={`${latestVitals.oxygenSaturation}%`} />
-              <Tile label={t('sbar.vitalWt')} value={`${latestVitals.weight} kg`} />
+              <Tile label={t('sbar.vitalTemp')} value={displayVital(latestVitals.temperature, '°C')} />
+              <Tile label={t('sbar.vitalBp')} value={latestVitals.systolic !== undefined && latestVitals.diastolic !== undefined ? `${latestVitals.systolic}/${latestVitals.diastolic}` : '—'} />
+              <Tile label={t('sbar.vitalPulse')} value={displayVital(latestVitals.pulse)} />
+              <Tile label={t('sbar.vitalRr')} value={displayVital(latestVitals.respiratoryRate)} />
+              <Tile label={t('sbar.vitalSpo2')} value={displayVital(latestVitals.oxygenSaturation, '%')} />
+              <Tile label={t('sbar.vitalWt')} value={displayVital(latestVitals.weight, ' kg')} />
+              {latestVitals.source === 'Triage' && latestTriage?.painScore && <Tile label="Pain" value={`${latestTriage.painScore}/10`} />}
+              {latestVitals.source === 'Triage' && latestTriage?.gcs && <Tile label="GCS" value={latestTriage.gcs} />}
             </div>
           </div>
         ) : (
@@ -285,7 +376,17 @@ export default function PatientSBAR({
         )}
       </ChartSection>
 
-      <ChartSection title={t('sbar.recommendationTitle')}>
+      <ChartSection title={t('sbar.recommendationTitle')} className="sbar-triage-section">
+        {latestTriage && (
+          <div className="sbar-triage-fields sbar-triage-fields--handoff">
+            <TriageField label="Destination" value={latestTriage.disposition?.replace(/_/g, ' ')} />
+            <TriageField label="Clinic or service" value={latestTriage.destinationClinic} />
+            <TriageField label="Receiving provider" value={latestTriage.assignedProviderName || 'Assign provider later'} />
+            <TriageField label="Handoff status" value={latestTriage.handoffStatus?.replace(/_/g, ' ')} />
+            <TriageField label="Handoff note" value={latestTriage.handoffNote} />
+            <TriageField label="Triage notes" value={latestTriage.notes} />
+          </div>
+        )}
         {pendingLabs.length > 0 && (
           <Fact label={t('sbar.pendingLabsFollowUp')}>{pendingLabs.map(l => l.testName).join(', ')}</Fact>
         )}
@@ -307,7 +408,7 @@ export default function PatientSBAR({
         {latestRecord?.treatmentPlan && (
           <Fact label={t('sbar.activePlan')}>{latestRecord.treatmentPlan}</Fact>
         )}
-        {pendingLabs.length === 0 && !latestRecord?.followUp?.date && activeRx.length === 0 && !latestRecord?.treatmentPlan && (
+        {pendingLabs.length === 0 && !latestRecord?.followUp?.date && activeRx.length === 0 && !latestRecord?.treatmentPlan && !latestTriage?.disposition && !latestTriage?.assignedProviderName && !latestTriage?.handoffNote && (
           <p className="sbar-para sbar-muted">{t('sbar.noOutstandingActions')}</p>
         )}
       </ChartSection>

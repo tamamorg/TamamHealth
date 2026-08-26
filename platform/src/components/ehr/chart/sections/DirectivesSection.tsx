@@ -17,16 +17,17 @@
 import { useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
-import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
-import { Edit3, Trash2, Lock, Pencil, X } from '@/components/icons/lucide';
+import { Lock, X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate, formatDateTime } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
-import type { DirectiveType } from '@/data/mock';
+import type { DirectiveEntry, DirectiveType } from '@/data/mock';
 import type { DirectiveSignatory } from '@/lib/types/patient-clinical';
+import { clickable } from '@/lib/a11y';
 
 const TYPE_LABELS: Record<DirectiveType, string> = {
   informed_consent: 'Informed consent',
@@ -72,11 +73,17 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
   const [revoking, setRevoking] = useState<{ id: string; type: DirectiveType } | null>(null);
   const [revokeReason, setRevokeReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [selectedDirective, setSelectedDirective] = useState<DirectiveEntry | null>(null);
+  const [search, setSearch] = useState('');
 
   const entries = patient.directives ?? [];
   const active = entries.filter(d => d.status === 'active');
-  const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
   const typeLabel = (t: DirectiveType) => TYPE_LABELS[t] || t;
+  const query = search.trim().toLowerCase();
+  const visibleEntries = query
+    ? active.filter(d => `${typeLabel(d.type)} ${d.description} ${d.startDate || ''} ${d.signature ? 'signed' : 'unsigned'}`.toLowerCase().includes(query))
+    : active;
+  const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
 
   const run = async (fn: () => Promise<unknown>, done: () => void, ok: string) => {
     setBusy(true);
@@ -91,34 +98,14 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
     }
   };
 
-  const rowActions = (d: typeof active[number]): RowAction[] => {
-    const actions: RowAction[] = [];
-    if (!d.signature) {
-      actions.push({
-        key: 'sign', label: 'Take signature', icon: <Pencil className="w-3.5 h-3.5" />, disabled: busy,
-        onClick: () => { setSigning({ id: d.id, type: d.type, description: d.description }); setSignForm(EMPTY_SIGN); },
-      });
-      actions.push({
-        key: 'edit', label: 'Edit', icon: <Edit3 className="w-3.5 h-3.5" />, disabled: busy,
-        onClick: () => {
-          setEditing({ id: d.id, type: d.type, description: d.description, startDate: d.startDate });
-          setEditForm({ type: d.type, description: d.description, startDate: d.startDate ?? '' });
-        },
-      });
-    }
-    actions.push({
-      key: 'revoke', label: 'Revoke', tone: 'danger', icon: <Trash2 className="w-3.5 h-3.5" />, disabled: busy,
-      onClick: () => { setRevoking({ id: d.id, type: d.type }); setRevokeReason(''); },
-    });
-    return actions;
-  };
-
   return (
     <>
       <ChartSection
         title="Directives &amp; consent"
         addLabel="Add"
         onAdd={canManage ? () => { setAddForm(EMPTY_FORM); setAdding(true); } : undefined}
+        searchValue={search}
+        onSearchChange={setSearch}
       >
         {active.length === 0 ? (
           <OmrsEmptyState
@@ -128,13 +115,9 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
             disabledReason={canManage ? undefined : 'Requires clinical or registration permission'}
           />
         ) : (
-          <table className="omrs-table omrs-table--directives">
+          <table className="omrs-table omrs-table--fixed omrs-table--interactive omrs-table--directives">
             <colgroup>
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '34%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '23%' }} />
-              {canManage && <col style={{ width: '7%' }} />}
+              <col /><col /><col /><col />
             </colgroup>
             <thead>
               <tr>
@@ -142,12 +125,15 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 <th>Detail</th>
                 <th>Effective</th>
                 <th>Status</th>
-                {canManage && <th aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
-              {active.map(d => (
-                <tr key={d.id}>
+              {visibleEntries.map(d => (
+                <tr
+                  key={d.id}
+                  {...clickable(() => setSelectedDirective(d), { label: `Open directive — ${typeLabel(d.type)}` })}
+                  className="omrs-clickable-row"
+                >
                   <td className="omrs-cell-strong">{typeLabel(d.type)}</td>
                   <td>{d.description || '—'}</td>
                   <td>{d.startDate ? formatDate(d.startDate) : '—'}</td>
@@ -170,17 +156,43 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                       </>
                     )}
                   </td>
-                  {canManage && (
-                    <td className="omrs-cell-actions">
-                      <RowActionsMenu ariaLabel={`Actions for ${typeLabel(d.type)}`} actions={rowActions(d)} />
-                    </td>
-                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </ChartSection>
+
+      {selectedDirective && (
+        <Modal onClose={() => !busy && setSelectedDirective(null)} width={620} labelledBy="directive-row-title">
+          <div className="modal-panel p-6 space-y-5">
+            <PopupHeader
+              title={typeLabel(selectedDirective.type)}
+              titleId="directive-row-title"
+              subtitle={selectedDirective.signature ? 'Signed directive' : 'Recorded, not yet attested'}
+              onClose={() => setSelectedDirective(null)}
+              surface="panel"
+            />
+            <div className="clinical-row-dialog__facts">
+              <div className="clinical-row-dialog__fact--wide"><span>Detail</span><strong>{selectedDirective.description || 'Not documented'}</strong></div>
+              <div><span>Effective</span><strong>{selectedDirective.startDate ? formatDate(selectedDirective.startDate) : 'Not documented'}</strong></div>
+              <div><span>Status</span><strong>{selectedDirective.signature ? 'Signed' : 'Unsigned'}</strong></div>
+              {selectedDirective.signature && <div className="clinical-row-dialog__fact--wide"><span>Signature</span><strong>{selectedDirective.signature.name} · {formatDateTime(selectedDirective.signature.signedAt)}</strong></div>}
+            </div>
+            {canManage && (
+              <div className="clinical-row-dialog__actions">
+                {!selectedDirective.signature && (
+                  <>
+                    <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => { const d = selectedDirective; setSelectedDirective(null); setSigning({ id: d.id, type: d.type, description: d.description }); setSignForm(EMPTY_SIGN); }}>Take signature</button>
+                    <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { const d = selectedDirective; setSelectedDirective(null); setEditing({ id: d.id, type: d.type, description: d.description, startDate: d.startDate }); setEditForm({ type: d.type, description: d.description, startDate: d.startDate ?? '' }); }}>Edit directive</button>
+                  </>
+                )}
+                <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { const d = selectedDirective; setSelectedDirective(null); setRevoking({ id: d.id, type: d.type }); setRevokeReason(''); }}>Revoke directive</button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* ── Add ── */}
       {adding && (

@@ -19,6 +19,7 @@ import { formatDate , humanizeStatus } from '@/lib/format-utils';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
 import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { clickable } from '@/lib/a11y';
 
 const PAGE_SIZE = 8;
 
@@ -50,6 +51,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
   const { results } = useLabResults(patientId);
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
 
   const patientLabs = useMemo(
     () => (results || [])
@@ -57,6 +59,10 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
       .sort((a, b) => ts(b.orderedAt || b.createdAt) - ts(a.orderedAt || a.createdAt)),
     [results, patientId],
   );
+  const filteredLabs = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return query ? patientLabs.filter(l => `${l.testName} ${l.result || ''} ${l.referenceRange || ''} ${l.status}`.toLowerCase().includes(query)) : patientLabs;
+  }, [patientLabs, search]);
 
   // Deep-link focus: jump to the page holding the focused result once the data
   // loads, then scroll it into view and let the highlight draw attention.
@@ -73,7 +79,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusId, page]);
 
-  const pageRows = patientLabs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageRows = filteredLabs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <ChartSection
@@ -84,20 +90,25 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
       addLabel="Order labs"
       addIcon={<DuotoneIcon name="flask" size={15} />}
       onAdd={canOrderLabs ? onAdd : undefined}
-      pagination={{ page, pageSize: PAGE_SIZE, total: patientLabs.length, onPageChange: setPage }}
+      searchValue={search}
+      onSearchChange={value => { setSearch(value); setPage(1); }}
+      pagination={{ page, pageSize: PAGE_SIZE, total: filteredLabs.length, onPageChange: setPage }}
     >
       {patientLabs.length === 0 ? (
         <OmrsEmptyState itemLabel="results" actionLabel="Record results" onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
       ) : (
-        <table className="omrs-table">
+        <table className="omrs-table omrs-table--fixed omrs-table--interactive">
+          <colgroup>
+            <col /><col /><col /><col /><col /><col />
+          </colgroup>
           <thead>
             <tr>
               <th>Test</th>
               <th>Result</th>
               <th>Reference range</th>
-              <th>Status</th>
               <th>Next step</th>
               <th>Date</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -105,9 +116,9 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
               <tr
                 key={l._id}
                 id={`lab-row-${l._id}`}
-                onClick={onSelect ? () => onSelect(l._id) : undefined}
+                {...(onSelect ? clickable(() => onSelect(l._id), { label: `Open result — ${l.testName}` }) : {})}
+                className={onSelect ? 'omrs-clickable-row' : undefined}
                 style={{
-                  cursor: onSelect ? 'pointer' : undefined,
                   ...(l._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : {}),
                 }}
               >
@@ -116,9 +127,9 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                   {l.result || '—'}{l.unit ? ` ${l.unit}` : ''}
                 </td>
                 <td>{l.referenceRange || '—'}</td>
-                <td><span className={STATUS_BADGE[l.status] || 'omrs-panel-badge omrs-panel-badge--pending'}>{humanizeStatus(l.status)}</span></td>
                 <td>{t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))])}</td>
                 <td>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
+                <td><span className={STATUS_BADGE[l.status] || 'omrs-panel-badge omrs-panel-badge--pending'}>{humanizeStatus(l.status)}</span></td>
               </tr>
             ))}
           </tbody>

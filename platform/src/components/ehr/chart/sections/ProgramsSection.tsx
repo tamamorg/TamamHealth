@@ -67,6 +67,8 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [statusBusy, setStatusBusy] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const visibleEnrollments = enrollments.filter(entry => `${entry.programName} ${entry.status} ${entry.notes || ''} ${entry.enrollmentDate}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   const resetForm = () => {
     setProgramKey('art_hiv_care');
@@ -121,7 +123,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
 
   return (
     <>
-      <ChartSection title="Programs" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined}>
+      <ChartSection title="Programs" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         {enrollments.length === 0 ? (
           <OmrsEmptyState
             itemLabel="program enrollments"
@@ -130,17 +132,18 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
             disabledReason={canConsult ? undefined : 'Requires consultation permission'}
           />
         ) : (
-          <table className="omrs-table">
+          <table className="omrs-table omrs-table--fixed">
+            <colgroup><col /><col /><col /><col /></colgroup>
             <thead>
               <tr>
                 <th>Program</th>
                 <th>Enrolled</th>
-                <th>Status</th>
                 <th>Update</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {enrollments.map(e => (
+              {visibleEnrollments.map(e => (
                 <tr key={e._id}>
                   <td style={{ fontWeight: 600 }}>
                     {e.programName}
@@ -150,7 +153,6 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                     {formatDate(e.enrollmentDate)}
                     {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
                   </td>
-                  <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
                   <td>
                     {canConsult ? (
                       <Select
@@ -167,6 +169,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                       </Select>
                     ) : '—'}
                   </td>
+                  <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
                 </tr>
               ))}
             </tbody>

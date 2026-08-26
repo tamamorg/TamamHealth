@@ -16,13 +16,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
-import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
+import Modal from '@/components/Modal';
+import PopupHeader from '@/components/PopupHeader';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
 import { RefreshCw, Ban } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
-import { stopsClickPropagation } from '@/lib/a11y';
+import { clickable } from '@/lib/a11y';
 
 const PAGE_SIZE = 8;
 
@@ -71,7 +72,11 @@ export default function MedicationsSection({
   const { prescriptions } = usePrescriptions(patientId);
   const { showToast } = useToast();
   const [page, setPage] = useState(1);
+  const [tableSearch, setTableSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedRx, setSelectedRx] = useState<PrescriptionDoc | null>(null);
+  const [showStopReason, setShowStopReason] = useState(false);
+  const [stopReason, setStopReason] = useState('');
 
   const patientRx = useMemo(
     () => (prescriptions || [])
@@ -79,6 +84,10 @@ export default function MedicationsSection({
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
     [prescriptions, patientId],
   );
+  const filteredRx = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase();
+    return query ? patientRx.filter(rx => `${rx.medication} ${formatRxSig(rx)} ${rx.status}`.toLowerCase().includes(query)) : patientRx;
+  }, [patientRx, tableSearch]);
 
   // Deep-link focus: jump to the page holding the focused prescription once
   // the data loads, then scroll it into view and let the highlight draw
@@ -96,11 +105,10 @@ export default function MedicationsSection({
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusId, page]);
 
-  const pageRows = patientRx.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageRows = filteredRx.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
 
-  const handleDiscontinue = async (rx: PrescriptionDoc) => {
-    const reason = window.prompt(`Reason for discontinuing ${rx.medication} (optional):`) ?? '';
+  const handleDiscontinue = async (rx: PrescriptionDoc, reason: string) => {
     setBusyId(rx._id);
     try {
       const { updatePrescription } = await import('@/lib/services/prescription-service');
@@ -113,6 +121,9 @@ export default function MedicationsSection({
         stoppedReason: reason.trim() || 'Discontinued from the Medications tab',
       });
       showToast(`${rx.medication} discontinued.`, 'success');
+      setSelectedRx(null);
+      setShowStopReason(false);
+      setStopReason('');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not discontinue this medication.', 'error');
     } finally {
@@ -153,6 +164,7 @@ export default function MedicationsSection({
       } else {
         showToast(`${rx.medication} renewed.`, 'success');
       }
+      setSelectedRx(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not renew this medication.', 'error');
     } finally {
@@ -160,20 +172,15 @@ export default function MedicationsSection({
     }
   };
 
-  const rowActions = (rx: PrescriptionDoc): RowAction[] => [
-    { key: 'renew', label: 'Renew', icon: <RefreshCw className="w-3.5 h-3.5" />, disabled: busyId === rx._id, onClick: () => void handleRenew(rx) },
-    {
-      key: 'discontinue', label: 'Discontinue', tone: 'danger', icon: <Ban className="w-3.5 h-3.5" />,
-      disabled: busyId === rx._id || rx.status === 'discontinued', onClick: () => void handleDiscontinue(rx),
-    },
-  ];
-
   return (
+    <>
     <ChartSection
       title="Medications"
       addLabel="Add"
       onAdd={canPrescribe ? onAdd : undefined}
-      pagination={{ page, pageSize: PAGE_SIZE, total: patientRx.length, onPageChange: setPage }}
+      searchValue={tableSearch}
+      onSearchChange={value => { setTableSearch(value); setPage(1); }}
+      pagination={{ page, pageSize: PAGE_SIZE, total: filteredRx.length, onPageChange: setPage }}
     >
       {/* What the medication review concluded, when it concluded something.
           Without this the chart cannot tell "nobody has asked" from "asked,
@@ -190,14 +197,16 @@ export default function MedicationsSection({
       {patientRx.length === 0 && !noKnownMedications ? (
         <OmrsEmptyState itemLabel="medications" actionLabel="Record medications" onAction={canPrescribe ? onAdd : undefined} disabledReason={canPrescribe ? undefined : 'Requires prescribing permission'} />
       ) : patientRx.length === 0 ? null : (
-        <table className="omrs-table">
+        <table className="omrs-table omrs-table--interactive omrs-table--medications">
+          <colgroup>
+            <col /><col /><col /><col />
+          </colgroup>
           <thead>
             <tr>
               <th>Medication</th>
               <th>Dosage instructions</th>
-              <th>Status</th>
               <th>Start date</th>
-              {canPrescribe && <th aria-label="Actions" />}
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -205,29 +214,83 @@ export default function MedicationsSection({
               <tr
                 key={rx._id}
                 id={`rx-row-${rx._id}`}
-                // Picking a row opens the counter workflow for that script,
-                // the same way a result row opens the bench workflow. The
-                // actions menu stops the click so its own items still work.
-                onClick={onSelect ? () => onSelect(rx._id) : undefined}
+                {...clickable(() => {
+                  setSelectedRx(rx);
+                  setShowStopReason(false);
+                  setStopReason('');
+                }, { label: `Open medication — ${rx.medication}` })}
+                className="omrs-clickable-row"
                 style={{
-                  cursor: onSelect ? 'pointer' : undefined,
                   ...(rx._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : {}),
                 }}
               >
                 <td style={{ fontWeight: 600 }}>{rx.medication}</td>
                 <td>{formatRxSig(rx)}</td>
-                <td><span className={STATUS_BADGE[rx.status] || 'omrs-panel-badge omrs-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
                 <td>{formatDate(rx.createdAt)}</td>
-                {canPrescribe && (
-                  <td {...stopsClickPropagation}>
-                    <RowActionsMenu ariaLabel={`Actions for ${rx.medication}`} actions={rowActions(rx)} />
-                  </td>
-                )}
+                <td><span className={STATUS_BADGE[rx.status] || 'omrs-panel-badge omrs-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
     </ChartSection>
+    {selectedRx && (
+      <Modal onClose={() => busyId !== selectedRx._id && setSelectedRx(null)} width={620} labelledBy="medication-row-title">
+        <div className="modal-panel p-6 space-y-5">
+          <PopupHeader
+            title={selectedRx.medication}
+            titleId="medication-row-title"
+            subtitle={`${formatRxSig(selectedRx)} · ${RX_STATUS_LABEL[selectedRx.status] || selectedRx.status}`}
+            onClose={() => setSelectedRx(null)}
+            surface="panel"
+          />
+          <div className="clinical-row-dialog__facts">
+            <div><span>Medication</span><strong>{selectedRx.medication}</strong></div>
+            <div><span>Dosage instructions</span><strong>{formatRxSig(selectedRx)}</strong></div>
+            <div><span>Status</span><strong>{RX_STATUS_LABEL[selectedRx.status] || selectedRx.status}</strong></div>
+            <div><span>Start date</span><strong>{formatDate(selectedRx.createdAt)}</strong></div>
+          </div>
+          {showStopReason && (
+            <label className="clinical-row-dialog__field" htmlFor="medication-stop-reason">
+              <span>Reason for discontinuing</span>
+              <textarea
+                id="medication-stop-reason"
+                value={stopReason}
+                onChange={event => setStopReason(event.target.value)}
+                rows={3}
+                placeholder="Document why this medication is being stopped"
+                autoFocus
+              />
+            </label>
+          )}
+          <div className="clinical-row-dialog__actions">
+            {onSelect && !showStopReason && (
+              <button className="btn btn-sm btn-primary" onClick={() => { const id = selectedRx._id; setSelectedRx(null); onSelect(id); }}>
+                Open medication workflow
+              </button>
+            )}
+            {canPrescribe && !showStopReason && (
+              <>
+                <button className="btn btn-sm btn-secondary" disabled={busyId === selectedRx._id} onClick={() => void handleRenew(selectedRx)}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Renew
+                </button>
+                <button className="btn btn-sm btn-secondary" disabled={busyId === selectedRx._id || selectedRx.status === 'discontinued'} onClick={() => setShowStopReason(true)}>
+                  <Ban className="w-3.5 h-3.5" /> Discontinue
+                </button>
+              </>
+            )}
+            {showStopReason && (
+              <>
+                <button className="btn btn-sm btn-secondary" disabled={busyId === selectedRx._id} onClick={() => { setShowStopReason(false); setStopReason(''); }}>Back</button>
+                <button className="btn btn-sm btn-primary" disabled={busyId === selectedRx._id || !stopReason.trim()} onClick={() => void handleDiscontinue(selectedRx, stopReason)}>
+                  {busyId === selectedRx._id ? 'Saving…' : 'Discontinue medication'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </Modal>
+    )}
+    </>
   );
 }

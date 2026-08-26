@@ -23,9 +23,9 @@ import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Modal from '@/components/Modal';
-import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
+import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
-import { Edit3, Trash2, RotateCcw, X } from '@/components/icons/lucide';
+import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { useAuth } from '@/lib/context';
@@ -33,6 +33,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
+import { clickable } from '@/lib/a11y';
 
 const SEVERITY_LABEL: Record<string, string> = {
   severe: 'Severe', moderate: 'Moderate', mild: 'Mild', unknown: 'Unknown',
@@ -103,6 +104,8 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const [retireReason, setRetireReason] = useState('');
   const [retireStatus, setRetireStatus] = useState<'inactive' | 'resolved' | 'entered_in_error'>('inactive');
   const [busy, setBusy] = useState(false);
+  const [selectedAllergy, setSelectedAllergy] = useState<AllergyEntry | null>(null);
+  const [tableSearch, setTableSearch] = useState('');
 
   useEffect(() => {
     if (autoOpenAdd) {
@@ -120,7 +123,11 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
 
   const active = entries.filter(e => e.status === 'active');
   const inactive = entries.filter(e => e.status !== 'active');
-  const rows = showInactive ? [...active, ...inactive] : active;
+  const visibleByStatus = showInactive ? [...active, ...inactive] : active;
+  const query = tableSearch.trim().toLowerCase();
+  const rows = query
+    ? visibleByStatus.filter(a => `${a.substance} ${a.reaction || ''} ${a.classification || ''} ${a.criticality || ''} ${a.status}`.toLowerCase().includes(query))
+    : visibleByStatus;
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
 
   /** Legacy string-list entries have no stable id to write against — each id is
@@ -130,6 +137,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const rowsAreEditable = patient.structuredAllergies !== undefined;
 
   const openEdit = (a: AllergyEntry) => {
+    setSelectedAllergy(null);
     setEditing(a);
     setEditForm({
       substance: a.substance,
@@ -185,17 +193,6 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     }
   };
 
-  const rowActions = (a: AllergyEntry): RowAction[] => (
-    a.status === 'active'
-      ? [
-          { key: 'edit', label: 'Edit', icon: <Edit3 className="w-3.5 h-3.5" />, disabled: busy, onClick: () => openEdit(a) },
-          { key: 'retire', label: 'Retire', tone: 'danger', icon: <Trash2 className="w-3.5 h-3.5" />, disabled: busy, onClick: () => { setRetiring(a); setRetireReason(''); setRetireStatus('inactive'); } },
-        ]
-      : [
-          { key: 'reactivate', label: 'Reinstate', icon: <RotateCcw className="w-3.5 h-3.5" />, disabled: busy, onClick: () => void reactivate(a) },
-        ]
-  );
-
   const filterSlot = inactive.length > 0 ? (
     <label className="omrs-section-filter">
       <input
@@ -214,6 +211,8 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
         addLabel="Add"
         onAdd={canEditClinical ? () => setAdding(true) : undefined}
         filterSlot={filterSlot}
+        searchValue={tableSearch}
+        onSearchChange={setTableSearch}
       >
         {active.length === 0 && !showInactive && patient.noKnownDrugAllergies ? (
           // An empty list and a recorded "none" are not the same fact. Empty
@@ -231,30 +230,28 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
             disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
           />
         ) : (
-          <table className="omrs-table omrs-table--allergies">
+          <table className="omrs-table omrs-table--fixed omrs-table--interactive omrs-table--allergies">
             <colgroup>
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '20%' }} />
-              {canEditClinical && <col style={{ width: '7%' }} />}
+              <col /><col /><col /><col /><col />
             </colgroup>
             <thead>
               <tr>
                 <th>Allergen</th>
                 <th>Severity</th>
                 <th>Reaction</th>
-                <th>Status</th>
                 <th>Comments</th>
-                {canEditClinical && <th aria-label="Actions" />}
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(a => {
                 const severity = a.criticality || 'unknown';
                 return (
-                  <tr key={a.id} className={a.status === 'active' ? undefined : 'is-retired'}>
+                  <tr
+                    key={a.id}
+                    {...clickable(() => setSelectedAllergy(a), { label: `Open allergy — ${a.substance}` })}
+                    className={`omrs-clickable-row${a.status === 'active' ? '' : ' is-retired'}`}
+                  >
                     <td className="omrs-cell-strong">{a.substance}</td>
                     <td>
                       <span className={SEVERITY_BADGE[severity] || SEVERITY_BADGE.unknown}>
@@ -263,14 +260,6 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     </td>
                     <td>{a.reaction || '—'}</td>
                     <td>
-                      {/* Status is its own column now. As an inline badge after
-                          the allergen it was easy to miss the one thing that
-                          decides whether the row still applies to the patient. */}
-                      <span className={STATUS_BADGE[a.status] || STATUS_BADGE.inactive}>
-                        {STATUS_LABEL[a.status] || a.status.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td>
                       <span className="omrs-cell-cap">
                         {a.status !== 'active' && a.removalReason
                           ? <span className="omrs-cell-note">Retired: {a.removalReason}</span>
@@ -278,13 +267,11 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                       </span>
                       {a.onsetDate && <div className="omrs-cell-sub">Onset {formatDate(a.onsetDate)}</div>}
                     </td>
-                    {canEditClinical && (
-                      <td className="omrs-cell-actions">
-                        {rowsAreEditable && (
-                          <RowActionsMenu ariaLabel={`Actions for ${a.substance}`} actions={rowActions(a)} />
-                        )}
-                      </td>
-                    )}
+                    <td>
+                      <span className={STATUS_BADGE[a.status] || STATUS_BADGE.inactive}>
+                        {STATUS_LABEL[a.status] || a.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
@@ -292,6 +279,40 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
           </table>
         )}
       </ChartSection>
+
+      {selectedAllergy && (
+        <Modal onClose={() => !busy && setSelectedAllergy(null)} width={600} labelledBy="allergy-row-title">
+          <div className="modal-panel p-6 space-y-5">
+            <PopupHeader
+              title={selectedAllergy.substance}
+              titleId="allergy-row-title"
+              subtitle={`${SEVERITY_LABEL[selectedAllergy.criticality || 'unknown']} allergy · ${STATUS_LABEL[selectedAllergy.status] || selectedAllergy.status}`}
+              onClose={() => setSelectedAllergy(null)}
+              surface="panel"
+            />
+            <div className="clinical-row-dialog__facts">
+              <div><span>Allergen</span><strong>{selectedAllergy.substance}</strong></div>
+              <div><span>Severity</span><strong>{SEVERITY_LABEL[selectedAllergy.criticality || 'unknown']}</strong></div>
+              <div><span>Reaction</span><strong>{selectedAllergy.reaction || 'Not documented'}</strong></div>
+              <div><span>Classification</span><strong className="capitalize">{selectedAllergy.classification || 'Not documented'}</strong></div>
+              <div><span>Status</span><strong>{STATUS_LABEL[selectedAllergy.status] || selectedAllergy.status}</strong></div>
+              <div><span>Onset</span><strong>{selectedAllergy.onsetDate ? formatDate(selectedAllergy.onsetDate) : 'Not documented'}</strong></div>
+            </div>
+            {canEditClinical && rowsAreEditable && (
+              <div className="clinical-row-dialog__actions">
+                {selectedAllergy.status === 'active' ? (
+                  <>
+                    <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => openEdit(selectedAllergy)}>Edit allergy</button>
+                    <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { setRetiring(selectedAllergy); setSelectedAllergy(null); setRetireReason(''); setRetireStatus('inactive'); }}>Retire allergy</button>
+                  </>
+                ) : (
+                  <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => { const allergy = selectedAllergy; setSelectedAllergy(null); void reactivate(allergy); }}>Reinstate allergy</button>
+                )}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {adding && (
         <AddAllergyModal
