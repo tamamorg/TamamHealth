@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import EligibilityBadge from './EligibilityBadge';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 interface InsuranceSnapshotProps {
   patientId: string;
@@ -31,6 +32,7 @@ interface Policy {
 export default function InsuranceSnapshot({ patientId, editable, onAddInsurance, onEditInsurance }: InsuranceSnapshotProps) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [eligStatus, setEligStatus] = useState<'verified' | 'unverified' | 'expired' | 'denied' | 'cached' | 'none'>('none');
@@ -38,17 +40,18 @@ export default function InsuranceSnapshot({ patientId, editable, onAddInsurance,
   const [verifying, setVerifying] = useState(false);
 
   const load = useCallback(async () => {
+    if (!scope) { setPolicies([]); setLoading(false); return; }
     try {
       const { getPatientInsurancePolicies, getLatestEligibility } = await import('@/lib/services/payment-service');
       const [pols, elig] = await Promise.all([
-        getPatientInsurancePolicies(patientId),
-        getLatestEligibility(patientId),
+        getPatientInsurancePolicies(patientId, scope),
+        getLatestEligibility(patientId, scope),
       ]);
       setPolicies(pols);
       setEligStatus(elig?.status || 'none');
     } catch { /* offline */ }
     setLoading(false);
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => { load(); }, [load]);
 

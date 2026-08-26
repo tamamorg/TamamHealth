@@ -20,6 +20,7 @@ export function usePhoneNotesInbox() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!scope) { setNotes([]); setLoading(false); return; }
     if (!userId) { setNotes([]); setLoading(false); return; }
     try {
       const { getOpenPhoneNotesForUser } = await import('../services/phone-note-service');

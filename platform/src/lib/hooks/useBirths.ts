@@ -14,6 +14,7 @@ export function useBirths() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setBirths([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllBirths, getBirthStats } = await import('../services/birth-service');

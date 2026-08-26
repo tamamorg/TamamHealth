@@ -269,7 +269,7 @@ export const APPOINTMENT_STATUS_GROUPS: AppointmentStatusGroup[] = ['scheduled',
 
 export const APPOINTMENT_STATUS_GROUP_LABELS: Record<AppointmentStatusGroup, string> = {
   scheduled: 'Upcoming',
-  in_office: 'Checked In',
+  in_office: 'In Facility',
   finished: 'Completed',
 };
 

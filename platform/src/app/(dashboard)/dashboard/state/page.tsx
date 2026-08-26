@@ -221,7 +221,7 @@ export default function StateDashboardPage() {
                 : undefined,
               date: c.lastReportAt ? c.lastReportAt.slice(0, 10) : undefined,
               timeSecondary: c.lastReportAt ? c.lastReportAt.slice(0, 10) : 'No report',
-              detailHref: `/admin/organizations?state=${encodeURIComponent(stateName)}&county=${encodeURIComponent(c.county)}&returnTo=${encodeURIComponent('/dashboard/state')}`,
+              detailHref: `/manage?q=${encodeURIComponent(c.county)}&returnTo=${encodeURIComponent('/dashboard/state')}`,
               detailLabel: t('referrals.viewDetails'),
               popupDetail: renderCountyDetail(c),
             };

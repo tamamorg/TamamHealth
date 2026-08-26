@@ -9,6 +9,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
@@ -16,7 +17,6 @@ import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } 
 import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
 import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
 import { comparePharmacyPriority, isTier1 } from '@/lib/clinical-flow/medication-tiers';
-import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import EhrCareDashboard, {
@@ -300,6 +300,7 @@ export default function PharmacyDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { canDispense, canAccess } = usePermissions();
   const { showToast } = useToast();
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date()), []);
@@ -316,9 +317,8 @@ export default function PharmacyDashboardPage() {
   // Receive stock modal (record purchased drugs arriving)
   const [showReceiveStock, setShowReceiveStock] = useState(false);
   const [receivingStock, setReceivingStock] = useState(false);
-  // Prescription queue lane filter — the shared three-lane vocabulary every
-  // role dashboard shows: Upcoming = ordered/awaiting pickup by the workflow,
-  // Checked In = actively being worked (review → cleared/held), Completed =
+  // Prescription queue lane filter: Queued = ordered/awaiting pickup by the
+  // workflow, In Progress = actively being worked (review → cleared/held), Completed =
   // dispensed/counseled/complete.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   // Which stat panel (header toggles) occupies the center instead of the Rx
@@ -352,6 +352,10 @@ export default function PharmacyDashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!scope) {
+      setBalanceByPatient(new Map());
+      return;
+    }
     const patientIds = Array.from(new Set(rxQueue.map(rx => rx.patientId).filter(Boolean)));
     if (patientIds.length === 0) {
       setBalanceByPatient(new Map());
@@ -371,7 +375,7 @@ export default function PharmacyDashboardPage() {
       // hiccup doesn't wipe out every other patient's already-known balance —
       // the previous all-or-nothing fetch reset the whole map to empty (and
       // every balance to the "cleared" 0 default) on any single failure.
-      const results = await Promise.allSettled(patientIds.map(id => getPatientBalance(id)));
+      const results = await Promise.allSettled(patientIds.map(id => getPatientBalance(id, scope)));
       if (cancelled) return;
       setBalanceByPatient(prev => {
         const next = new Map(prev);
@@ -384,7 +388,7 @@ export default function PharmacyDashboardPage() {
       });
     })();
     return () => { cancelled = true; };
-  }, [rxQueue]);
+  }, [rxQueue, scope]);
 
   const patientBalanceFor = useCallback((rx: PrescriptionDoc) =>
     rx.patientId ? balanceByPatient.get(rx.patientId)?.balance ?? 0 : 0,
@@ -693,7 +697,8 @@ export default function PharmacyDashboardPage() {
         let liveBalance: number;
         try {
           const { getPatientBalance } = await import('@/lib/services/ledger-service');
-          liveBalance = await getPatientBalance(patientId);
+          if (!scope) throw new Error('Patient data scope unavailable');
+          liveBalance = await getPatientBalance(patientId, scope);
         } catch {
           setBalanceByPatient(prev => new Map(prev).set(patientId, { balance: prev.get(patientId)?.balance ?? 0, status: 'error' }));
           showToast(`Could not confirm ${rx.patientName}'s balance — balance unavailable. Dispense cancelled.`, 'error');
@@ -895,9 +900,9 @@ export default function PharmacyDashboardPage() {
           // undispensed belongs in today's queue, not off the end of it.
           filterRowsByDate={false}
           tabs={[
-            { key: 'scheduled', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: scheduledLaneCount },
-            { key: 'in_office', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: inOfficeLaneCount },
-            { key: 'finished', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: dispensedCount },
+            { key: 'scheduled', label: t('workQueue.queued'), count: scheduledLaneCount },
+            { key: 'in_office', label: t('workQueue.inProgress'), count: inOfficeLaneCount },
+            { key: 'finished', label: t('workQueue.completed'), count: dispensedCount },
           ]}
           activeTab={queueFilter}
           onTabChange={(k) => setQueueFilter(k as typeof queueFilter)}

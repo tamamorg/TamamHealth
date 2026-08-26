@@ -15,6 +15,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { Plus, Save } from '@/components/icons/lucide';
 import {
@@ -49,6 +50,7 @@ const FEE_GRID = 'minmax(200px, 1.6fr) minmax(110px, 0.8fr) minmax(130px, 1fr) m
 
 export default function ServicePricingPage() {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const [fees, setFees] = useState<FeeScheduleDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,10 +64,6 @@ export default function ServicePricingPage() {
   const [removingFee, setRemovingFee] = useState<FeeScheduleDoc | null>(null);
 
   const actor = { id: currentUser?._id, name: currentUser?.name };
-  const scope = currentUser
-    ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
-    : undefined;
-
   const load = useCallback(async () => {
     setLoading(true);
     try {

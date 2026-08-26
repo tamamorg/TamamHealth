@@ -85,7 +85,7 @@ describe('who may register a facility', () => {
       const entry = buildAddMenuEntries({ role, allowedRoutes: allowedFor(role) })
         .find(e => e.key === 'facility');
       expect(entry).toBeDefined();
-      expect(entry!.href).toBe('/manage?view=facilities&new=1');
+      expect(entry!.href).toBe('/manage?new=facility');
     }
   });
 
@@ -100,7 +100,7 @@ describe('who may register a facility', () => {
 
 describe('the pages that host the create dialog', () => {
   test.each([
-    'components/facilities/FacilityNetworkView.tsx',
+    'modules/tenancy/components/OrganizationDetail.tsx',
     'modules/tenancy/components/ManagementWorkspace.tsx',
     'components/admin/UserForm.tsx',
   ])('%s opens the shared dialog rather than its own copy', file => {
@@ -120,23 +120,20 @@ describe('the pages that host the create dialog', () => {
   });
 
   test.each([
-    ['components/facilities/FacilityNetworkView.tsx', "searchParams.get('new')"],
-    ['modules/tenancy/components/ManagementWorkspace.tsx', "params.has('new')"],
-  ])('%s honours the ?new=1 deep link the Add menu emits', (file, marker) => {
+    ['modules/tenancy/components/ManagementWorkspace.tsx', "params.get('new')"],
+    ['modules/tenancy/components/OrganizationDetail.tsx', "params.get('new')"],
+  ])('%s honours the ?new= deep link the Add menu emits', (file, marker) => {
     expect(source(file)).toContain(marker);
   });
 
-  test('the Add button on the facility network paints its glyph', () => {
+  test('the Add facility button paints its glyph', () => {
     // globals.css repaints any lucide glyph with no INLINE colour to
     // --icon-color, the same brand blue as a primary button's fill — a plus
     // that inherits it is a blank blue circle. Two ways out: an inline
-    // `color` prop, which `EhrListHeaderButton primary` needs because nothing
-    // else paints it, or `.btn-primary`, which globals.css DOES paint
-    // (`.btn-primary svg.lucide`). The facility registry moved to the second
-    // when it took the organizations registry's search row (2026-08-23), so
-    // the assertion is that it uses one of them — not that it still uses the
-    // component it no longer renders.
-    const view = source('components/facilities/FacilityNetworkView.tsx');
+    // `color` prop, or `.btn-primary`, which globals.css DOES paint
+    // (`.btn-primary svg.lucide`). The button lives on the organization page
+    // now, in the head of the facilities list it adds a row to.
+    const view = source('modules/tenancy/components/OrganizationDetail.tsx');
     const addButton = view.split('addFacility')[1] ?? '';
     expect(
       addButton.includes('color="#fff"') || view.includes('btn btn-primary btn-sm'),
@@ -178,11 +175,16 @@ describe('the pages that host the create dialog', () => {
   });
 
   test('facility creation continues into an explicitly scoped first account', () => {
-    const workspace = source('modules/tenancy/components/ManagementWorkspace.tsx');
+    // A facility has no implicit human owner, so creating one lands ON the new
+    // site's page with the account form open — the roster is that page, and
+    // `lockFacility` means the operator cannot provision the account anywhere
+    // else by accident.
+    const organization = source('modules/tenancy/components/OrganizationDetail.tsx');
+    const facility = source('components/facilities/FacilityProfile.tsx');
     const modal = source('modules/identity/components/CreateUserModal.tsx');
-    expect(workspace).toContain('await reloadAssignableFacilities()');
-    expect(workspace).toContain('setShowUserEditor(true)');
-    expect(workspace).toContain('presetOrgId={orgId || undefined}');
+    expect(organization).toContain('new=user');
+    expect(facility).toContain('presetHospitalId={hospital._id}');
+    expect(facility).toContain('lockFacility');
     expect(modal).toContain('presetOrgId={presetOrgId || preset?.orgId}');
   });
 });
@@ -275,8 +277,8 @@ describe('the scope a staff account must carry', () => {
     // Pages that delegate must not quietly grow their own list back.
     for (const file of [
       'modules/identity/components/CreateUserModal.tsx',
-      'modules/tenancy/components/ManagementWorkspace.tsx',
-      'components/facilities/FacilityManageTabs.tsx',
+      'modules/tenancy/components/OrganizationDetail.tsx',
+      'components/facilities/FacilityProfile.tsx',
     ]) {
       const text = source(file);
       expect(text).not.toMatch(/ROLES_WITHOUT_HOSPITAL\s*:\s*UserRole\[\]\s*=/);

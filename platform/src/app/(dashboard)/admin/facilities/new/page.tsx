@@ -24,13 +24,13 @@ export default function AdminFacilityCreatePage() {
   const { currentUser } = useAuth();
   const { organizations } = useOrganizations();
   const [orgId, setOrgId] = useState('');
-  const [returnTo, setReturnTo] = useState('/manage?view=facilities');
+  const [returnTo, setReturnTo] = useState('/manage');
 
   useEffect(() => {
     const search = window.location.search;
     const params = new URLSearchParams(search);
     setOrgId(params.get('org') ?? '');
-    setReturnTo(returnToFromSearch(search, '/manage?view=facilities'));
+    setReturnTo(returnToFromSearch(search, '/manage'));
   }, []);
 
   const goBack = () => router.push(returnTo);

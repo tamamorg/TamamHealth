@@ -11,6 +11,7 @@ export function useEpidemicIntelligence() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setData(null); setLoading(false); return; }
     try {
       setError(null);
       const { getEpidemicIntelligence } = await import('../services/epidemic-intelligence-service');

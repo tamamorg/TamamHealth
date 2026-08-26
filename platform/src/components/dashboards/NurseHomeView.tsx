@@ -13,12 +13,15 @@ import { useWards } from '@/lib/hooks/useWards';
 import { useRooming } from '@/lib/hooks/useRooming';
 import { useHandoffs } from '@/lib/hooks/useHandoffs';
 import { useFollowUpsDue } from '@/lib/hooks/useFollowUpsDue';
+import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useMarEntries, type MAREntry } from '@/components/nurse/shared';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
-import type { PatientDoc, TriageDoc, FollowUpDoc, ShiftHandoffDoc } from '@/lib/db-types';
+import type { AppointmentDoc, PatientDoc, TriageDoc, FollowUpDoc, ShiftHandoffDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
 import { toIsoDate } from '@/lib/date-utils';
+import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
+import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 
 // Same due-window as the doctor worklist's "Follow-ups due" rail (see
 // DoctorDashboardPage.tsx) — a community-health follow-up counts as "due" here
@@ -55,6 +58,7 @@ export interface NurseWorklistInput {
   /** `useHandoffs().handoffs` — every handoff visible to this user, newest first. */
   handoffs: ShiftHandoffDoc[];
   followUpsDue: FollowUpDoc[];
+  appointments: AppointmentDoc[];
   /** Injectable so callers (tests) get a deterministic "today" instead of the
    *  real wall clock. Defaults to `new Date()`. */
   now?: Date;
@@ -91,7 +95,7 @@ function shortDate(iso?: string): string {
 export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistResult {
   const {
     currentUser, patients, admissions, triages, roomingEntries,
-    marEntries, handoffs, followUpsDue,
+    marEntries, handoffs, followUpsDue, appointments,
   } = input;
   const now = input.now ?? new Date();
   const nowMs = now.getTime();
@@ -179,6 +183,57 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
       doctor: '',
       nurse: '',
       triagePriority: triagePriorityByPatient[patientId],
+    });
+  }
+
+  // Compatibility bridge for assignments made before visit-level encounter
+  // assignment fields existed. This makes a newly assigned patient visible to
+  // the nurse immediately, while future visits use appointment.staffId and
+  // encounter.assignedNurseId as their durable source of truth.
+  const assignedRows: WorklistPatient[] = [];
+  for (const patient of patients) {
+    if (patient.assignedNurse !== currentUser._id || seenPatientIds.has(patient._id)) continue;
+    seenPatientIds.add(patient._id);
+    assignedRows.push({
+      _id: patient._id,
+      photoUrl: patient.photoUrl,
+      name: patientDisplayName(patient),
+      age: patientAge(patient),
+      gender: patient.gender?.[0] || '',
+      id: patient.hospitalNumber,
+      ward: 'Assigned care',
+      division: 'Assigned care',
+      doctor: patient.assignedDoctorName || '',
+      assignedDoctor: patient.assignedDoctor,
+      assignedDoctorName: patient.assignedDoctorName,
+      nurse: patient.assignedNurseName || currentUser.name || '',
+      triagePriority: triagePriorityByPatient[patient._id],
+    });
+  }
+  for (const appointment of appointments) {
+    if (
+      appointment.staffId !== currentUser._id ||
+      appointment.appointmentDate !== todayIso ||
+      APPOINTMENT_CLOSED_STATUSES.includes(appointment.status) ||
+      seenPatientIds.has(appointment.patientId)
+    ) continue;
+    const patient = patientById.get(appointment.patientId);
+    if (!patient) continue;
+    seenPatientIds.add(patient._id);
+    assignedRows.push({
+      _id: patient._id,
+      photoUrl: patient.photoUrl,
+      name: patientDisplayName(patient),
+      age: patientAge(patient),
+      gender: patient.gender?.[0] || '',
+      id: patient.hospitalNumber,
+      ward: appointment.department || 'Scheduled care',
+      division: appointment.department || 'Scheduled care',
+      doctor: appointment.providerName || patient.assignedDoctorName || '',
+      assignedDoctor: appointment.providerId || patient.assignedDoctor,
+      assignedDoctorName: appointment.providerName || patient.assignedDoctorName,
+      nurse: appointment.staffName || patient.assignedNurseName || currentUser.name || '',
+      triagePriority: triagePriorityByPatient[patient._id],
     });
   }
 
@@ -298,7 +353,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   ];
 
   return {
-    patients: [...wardRows, ...roomingRows],
+    patients: [...wardRows, ...roomingRows, ...assignedRows],
     outstanding: outstandingItems,
     activity: assembleNurseWeekActivity(admissions, triages),
   };
@@ -349,6 +404,7 @@ export default function NurseHomeView() {
   const { marEntries } = useMarEntries();
   const { handoffs } = useHandoffs();
   const { followUpsDue } = useFollowUpsDue();
+  const { appointments } = useAppointments();
 
   // DashboardPage only renders this view once currentUser is loaded and its
   // role has been checked — this guard is purely for TypeScript's benefit.
@@ -356,8 +412,9 @@ export default function NurseHomeView() {
 
   const worklist = assembleNurseWorklist({
     currentUser, patients, admissions: activeAdmissions, triages,
-    roomingEntries, marEntries, handoffs, followUpsDue,
+    roomingEntries, marEntries, handoffs, followUpsDue, appointments,
   });
+  const myAppointments = appointmentsVisibleToUser(appointments, currentUser);
 
   return (
     <main className="page-container page-enter">
@@ -367,7 +424,7 @@ export default function NurseHomeView() {
         // Scoped by useAppointments. This restores ANC and general nursing
         // schedules that were visible to the retired specialist roles but
         // absent from the shared nurse dashboard.
-        appointments={null}
+        appointments={myAppointments}
         outstanding={worklist.outstanding}
         activityItems={worklist.activity}
         activitySeriesNames={['Admitted', 'Arrivals']}

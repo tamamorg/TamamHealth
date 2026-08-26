@@ -17,6 +17,11 @@ export function useFacilityCensus(): { census: Map<string, FacilityCensusEntry> 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!scope) {
+      setCensus(null);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {

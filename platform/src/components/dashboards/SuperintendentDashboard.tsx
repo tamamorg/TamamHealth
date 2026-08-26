@@ -24,6 +24,7 @@ import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
 import { userWorksAtFacility } from '@/modules/tenancy/client';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 
 interface SuperintendentPreview {
@@ -77,6 +78,7 @@ export default function SuperintendentDashboard() {
   const searchParams = useSearchParams();
   const previewOpenedHere = useRef(false);
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { users } = useUsers();
   const { referrals } = useReferrals();
   const { alerts: diseaseAlerts } = useSurveillance();
@@ -91,16 +93,20 @@ export default function SuperintendentDashboard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (!scope) {
+        setLeave([]);
+        return;
+      }
       try {
         const { getAllLeaveRequests } = await import('@/lib/services/leave-service');
-        const l = await getAllLeaveRequests();
+        const l = await getAllLeaveRequests(scope);
         if (!cancelled) setLeave(l);
       } catch {
         // Leave service is optional context here — fail soft to an empty queue.
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [scope]);
 
   const facilityUsers = useMemo(
     () => (facilityId ? users.filter(u => userWorksAtFacility(u, facilityId)) : users),

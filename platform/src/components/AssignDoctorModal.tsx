@@ -21,6 +21,8 @@ export interface AssignDoctorTarget {
   hospitalNumber?: string;
   /** Triage record to stamp with the handoff, if this came from triage. */
   triageId?: string;
+  appointmentId?: string;
+  encounterId?: string;
   /** Currently assigned doctor id, to pre-select / show as current. */
   currentDoctorId?: string;
 }
@@ -97,6 +99,8 @@ export default function AssignDoctorModal({
         hospitalName: currentUser?.hospital?.name || currentUser?.hospitalName,
         orgId: currentUser?.orgId,
         triageId: target.triageId,
+        appointmentId: target.appointmentId,
+        encounterId: target.encounterId,
         note,
       });
 

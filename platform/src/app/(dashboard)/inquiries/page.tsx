@@ -20,6 +20,7 @@ import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/componen
 import RowStatusSelect, { type RowStatusOption } from '@/components/ehr/RowStatusSelect';
 import { MessageSquarePlus } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { avatarTint, initials } from '@/lib/patient-utils';
 import { formatCompactDateTime } from '@/lib/format-utils';
@@ -103,6 +104,7 @@ export default function InquiriesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { users } = useUsers();
   const { showToast } = useToast();
 
@@ -169,12 +171,10 @@ export default function InquiriesPage() {
   }, [searchParams, newParamHandled, router]);
 
   const loadEnquiries = useCallback(async () => {
+    if (!scope) { setMessages([]); setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
-      const scope = currentUser
-        ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
-        : undefined;
       const data = await getPatientEnquiries(scope);
       setMessages(data);
     } catch (err) {
@@ -183,7 +183,7 @@ export default function InquiriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [scope]);
 
   useEffect(() => { loadEnquiries(); }, [loadEnquiries]);
 

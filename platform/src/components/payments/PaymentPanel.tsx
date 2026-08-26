@@ -13,6 +13,7 @@ import type { PaymentDoc } from '@/lib/db-types-payments';
 import type { FeeScheduleDoc } from '@/lib/db-types-billing';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 interface PaymentPanelProps {
   patientId: string;
@@ -41,6 +42,7 @@ export default function PaymentPanel({
   patientId, patientName, encounterId, amountDue, currency = 'SSP', onSuccess, onCancel
 }: PaymentPanelProps) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { t } = useTranslation();
   const settings = useSettings();
   // Opens on the desk's own "Default payment method" (`pay.method`) — the most
@@ -50,32 +52,29 @@ export default function PaymentPanel({
 
   // Self-load balance if amountDue wasn't provided
   useEffect(() => {
-    if (amountDue > 0) return;
+    if (amountDue > 0 || !scope) return;
     (async () => {
       try {
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const bal = await getPatientBalance(patientId);
+        const bal = await getPatientBalance(patientId, scope);
         if (bal > 0) setAmount(bal.toString());
       } catch { /* offline fallback */ }
     })();
-  }, [patientId, amountDue]);
+  }, [patientId, amountDue, scope]);
 
   // Service price catalog — lets the cashier pick a catalogued service to
   // populate the amount, so charges reflect real pricing instead of 0.
   const [fees, setFees] = useState<FeeScheduleDoc[]>([]);
   const [selectedFeeId, setSelectedFeeId] = useState('');
   useEffect(() => {
+    if (!scope) { setFees([]); return; }
     (async () => {
       try {
         const { getActiveFees } = await import('@/lib/services/fee-schedule-service');
-        const scope = currentUser
-          ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
-          : undefined;
         setFees(await getActiveFees(scope));
       } catch { /* offline — catalog optional */ }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  }, [scope]);
 
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);

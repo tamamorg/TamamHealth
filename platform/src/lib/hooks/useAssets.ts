@@ -14,6 +14,7 @@ export function useAssets() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setAssets([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllAssets, getAssetSummary } = await import('../services/asset-service');

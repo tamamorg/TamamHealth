@@ -22,6 +22,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
 import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -35,6 +36,7 @@ export default function PatientsPage() {
   const { globalSearch } = useUi();
   const { patients } = usePatients();
   const { canRegisterPatients, isMedicalBiller, isCashier } = usePermissions();
+  const scope = useDataScope();
   // Billing-desk roles see money (outstanding balance) instead of clinical detail.
   const isBilling = isMedicalBiller || isCashier;
   // Structured filters — a single "Filters" dropdown panel (replaces the old
@@ -71,12 +73,15 @@ export default function PatientsPage() {
   // from open bills (same rule the billing dashboard uses) in one pass.
   const [balanceByPatient, setBalanceByPatient] = useState<Map<string, number>>(new Map());
   useEffect(() => {
-    if (!isBilling) return;
+    if (!isBilling || !scope) {
+      setBalanceByPatient(new Map());
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
         const { getAllBills } = await import('@/lib/services/billing-service');
-        const bills = await getAllBills();
+        const bills = await getAllBills(scope);
         const m = new Map<string, number>();
         for (const b of bills) {
           if ((b.balanceDue ?? 0) > 0 && b.status !== 'waived' && b.status !== 'cancelled') {
@@ -89,7 +94,7 @@ export default function PatientsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [isBilling]);
+  }, [isBilling, scope]);
   const [showFindPatient, setShowFindPatient] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showFingerprintIdentify, setShowFingerprintIdentify] = useState(false);
@@ -213,7 +218,7 @@ export default function PatientsPage() {
       patientAgeLabel(p),
       [p.county, p.state].filter(Boolean).join(', '),
       p.assignedDoctorName || '',
-      p.assignedByName || '',
+      p.assignedNurseName || '',
     ]);
     const csv = [header, ...rows]
       .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -413,7 +418,7 @@ export default function PatientsPage() {
 
                       <div className="appointment-card-provider">
                         <strong>{patient.assignedDoctorName || 'Doctor unassigned'}</strong>
-                        <span>{patient.assignedByName || 'Nurse unassigned'}</span>
+                        <span>{patient.assignedNurseName || 'Nurse unassigned'}</span>
                       </div>
 
                       <div className="appointment-card-provider">

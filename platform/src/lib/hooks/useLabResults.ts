@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { LabResultDoc } from '../db-types';
 import { labResultsDB } from '../db';
 import { makeCoalescer } from './live-reload';
-import { useAuth } from '../context';
+import { useDataScope } from './useDataScope';
 
 export function useLabResults(patientId?: string) {
   const [results, setResults] = useState<LabResultDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadResults = useCallback(async () => {
+    if (!scope) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllLabResults, getLabResultsByPatient } = await import('../services/lab-service');

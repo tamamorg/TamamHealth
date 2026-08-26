@@ -35,19 +35,20 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
   {
     id: 'orgs',
     route: '/manage',
-    target: '[data-tour="manage-tab-organizations"]',
-    title: 'Organizations & subscriptions',
-    body: 'Create tenants, edit branding, plans, and seat limits, and deactivate accounts — every organization’s data stays fully isolated from every other. The subscription vitals ride the KPI strip above the list, and each tenant’s own billing facts live on its page.',
+    target: '[data-tour="manage-organizations-list"]',
+    title: 'Every organization on the platform',
+    body: 'The top of the tree, and the way into everything below it: each row says how many facilities and accounts the tenant holds, and opens that tenant’s own page. Create tenants, edit branding, plans and seat limits, and deactivate accounts — every organization’s data stays fully isolated from every other.',
     placement: 'top',
   },
   {
     id: 'users',
     route: '/manage',
-    preClickSelector: '[data-tour="manage-tab-people"]',
-    target: '[data-tour="org-users-list"]',
-    title: 'Cross-tenant users',
-    body: 'Add users, change roles, reset passwords, deactivate — across every tenant. Only you can grant platform-level or national roles.',
-    placement: 'top',
+    // Not anchored: accounts are two rungs down (organization → facility →
+    // person), so there is no element on this page to point at. The card
+    // explains where they are instead of aiming at a tab that no longer exists.
+    target: '',
+    title: 'Where the accounts are',
+    body: 'Open a tenant and its People section lists every account in it; open one of its facilities and you get that site’s staff alone. Add users, change roles, reset passwords and deactivate from either. Only you can grant platform-level or national roles.',
   },
   {
     id: 'config',

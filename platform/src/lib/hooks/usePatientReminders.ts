@@ -14,6 +14,7 @@ export function usePatientReminders(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setReminders([]); setLoading(false); return; }
     if (!patientId) { setReminders([]); setLoading(false); return; }
     try {
       const { getRemindersByPatient } = await import('../services/patient-reminder-service');

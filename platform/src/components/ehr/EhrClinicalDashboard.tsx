@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { AppointmentDoc, AppointmentStatus, FollowUpDoc } from '@/lib/db-types';
+import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc } from '@/lib/db-types';
 import {
   Calendar,
   Check,
@@ -31,6 +31,9 @@ import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
+import { useEncounters } from '@/lib/hooks/useEncounters';
+import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
+import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import Modal from '@/components/Modal';
 import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
@@ -432,7 +435,11 @@ export function computeRowQueueColumns(
    * callers and tests keep the behaviour they had.
    */
   waitHighlight: { enabled: boolean; targetMinutes: number } = { enabled: true, targetMinutes: 30 },
+  encounter?: Pick<EncounterDoc, 'status'> | null,
 ): RowQueueColumns {
+  const operationalState = encounter
+    ? resolveOperationalVisitState(row.appointment ?? { status: row.status }, encounter)
+    : null;
   const inService = triage?.handoffStatus === 'in_consultation' || Boolean(triage?.handoffTo) || row.status === 'in_progress';
   const appointmentAt = row.appointment?.appointmentTime
     ? new Date(`${row.appointment.appointmentDate}T${row.appointment.appointmentTime}:00`)
@@ -458,14 +465,14 @@ export function computeRowQueueColumns(
       : row.appointment ? 'Appointment' : 'Registry',
     careTeamPrimary: row.provider || entry?.assignedToName || 'Doctor unassigned',
     careTeamSecondary: row.patient?.nurse || entry?.assignedToName || 'Nurse unassigned',
-    statusText: triage?.handoffStatus === 'acknowledged'
+    statusText: operationalState?.label || (triage?.handoffStatus === 'acknowledged'
       ? 'Acknowledged'
       : triage?.assignedProviderId && triage.handoffStatus === 'assigned'
         ? 'Assigned'
         : inService
       ? 'In service'
-      : entry ? 'Waiting' : assignmentLabel || statusLabel(row.status),
-    queueText: entry ? STAGE_LABELS[entry.stage] : typeLabel(row.department),
+      : entry ? 'Waiting' : assignmentLabel || statusLabel(row.status)),
+    queueText: operationalState?.label || (entry ? STAGE_LABELS[entry.stage] : typeLabel(row.department)),
     waitText: entry ? formatClockTime(entry.enteredStageAt) : row.appointment?.appointmentTime ? formatClockTime(row.appointment.appointmentTime) : '—',
     waitSubtext: entry
       ? waitLabel(entry.minutesWaiting)
@@ -559,10 +566,9 @@ export default function EhrClinicalDashboard({
 }: {
   clinicianName: string;
   patients: WorklistPatient[];
-  /** Null means use the already-scoped live appointment set loaded inside this
-   * dashboard. This avoids a second database query/subscription for roles such
-   * as nurse that need the full facility schedule. */
-  appointments: AppointmentDoc[] | null;
+  /** Explicit role-filtered appointments. An empty array intentionally means
+   * the signed-in clinician has no assigned schedule. */
+  appointments: AppointmentDoc[];
   outstanding: OutstandingItem[];
   /**
    * Week bars for the day-activity chart, when the role's week isn't made of
@@ -621,7 +627,6 @@ export default function EhrClinicalDashboard({
   // board stays the parent's decision.
   const { appointments: liveAppointments, updateStatus: updateAppointmentStatus } = useAppointments();
   const appointments = useMemo(() => {
-    if (propAppointments === null) return liveAppointments;
     if (liveAppointments.length === 0) return propAppointments;
     const liveById = new Map(liveAppointments.map(a => [a._id, a]));
     return propAppointments.map(a => liveById.get(a._id) || a);
@@ -926,6 +931,35 @@ export default function EhrClinicalDashboard({
   // deduped to the newest record per patient.
   const { currentUser } = useAuth();
   const { triages, update: updateTriageDoc } = useTriage();
+  const { encounters } = useEncounters();
+  const encounterByPatient = useMemo(() => {
+    const map = new Map<string, EncounterDoc>();
+    for (const encounter of encounters) {
+      if (isTerminal(encounter.status)) continue;
+      const held = map.get(encounter.patientId);
+      if (!held || (encounter.updatedAt || encounter.createdAt || '').localeCompare(held.updatedAt || held.createdAt || '') > 0) {
+        map.set(encounter.patientId, encounter);
+      }
+    }
+    return map;
+  }, [encounters]);
+  const encounterByAppointment = useMemo(() => {
+    const map = new Map<string, EncounterDoc>();
+    for (const encounter of encounters) {
+      if (!encounter.appointmentId) continue;
+      const held = map.get(encounter.appointmentId);
+      if (!held || (encounter.updatedAt || encounter.createdAt || '').localeCompare(held.updatedAt || held.createdAt || '') > 0) {
+        map.set(encounter.appointmentId, encounter);
+      }
+    }
+    return map;
+  }, [encounters]);
+  const encounterForRow = (row: UnifiedPatientRow) => row.appointment
+    ? encounterByAppointment.get(row.appointment._id) ?? null
+    : row.patientId ? encounterByPatient.get(row.patientId) ?? null : null;
+  const openAppointmentState = openAppointment
+    ? resolveOperationalVisitState(openAppointment, encounterByAppointment.get(openAppointment._id))
+    : null;
   // Same gate the chart's forms panel uses: triage capture is a route grant,
   // not a permission flag — doctors and the whole nurse family hold /triage.
   const canTriage = isPathAllowed(currentUser?.role || '', '/triage');
@@ -988,6 +1022,7 @@ export default function EhrClinicalDashboard({
     row.patientId ? activeTriageByPatient.get(row.patientId) ?? null : null,
     queueNowMs,
     { enabled: queueOverTarget, targetMinutes: facilitySettings.clinicalPolicy.doorToClinicianMinutes },
+    encounterForRow(row),
   );
 
   // Daybar filter pills — the shared three-lane vocabulary every role
@@ -1125,13 +1160,22 @@ export default function EhrClinicalDashboard({
   // row flips to "In service" for every station) and open the consultation.
   const callPatient = async (row: UnifiedPatientRow) => {
     if (!row.patientId) return;
-    const patientAssignment = row.patient;
-    try {
-      const { updatePatient } = await import('@/lib/services/patient-service');
-      await updatePatient(row.patientId, buildClaimUpdate(patientAssignment, currentUser));
-    } catch {
-      // The queue handoff and consultation can still proceed if the patient
-      // cache is temporarily unavailable; the event is retried by sync.
+    const activeEncounter = encounterForRow(row);
+    if (currentUser) {
+      const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
+      await assignProviderToPatient({
+        patientId: row.patientId,
+        patientName: row.name,
+        provider: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
+        actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
+        hospitalId: currentUser.hospitalId,
+        hospitalName: currentUser.hospital?.name || currentUser.hospitalName,
+        orgId: currentUser.orgId,
+        triageId: queueEntryByPatient.get(row.patientId)?.triageId,
+        appointmentId: row.appointment?._id,
+        encounterId: activeEncounter?._id,
+        note: 'Patient called for consultation',
+      });
     }
     const entry = queueEntryByPatient.get(row.patientId);
     if (entry && currentUser && (!entry.assignedToId || entry.assignedToId === currentUser._id)) {
@@ -1154,6 +1198,7 @@ export default function EhrClinicalDashboard({
         hospitalId: currentUser?.hospitalId || '',
         hospitalName: currentUser?.hospital?.name || currentUser?.hospitalName || '',
         orgId: currentUser?.orgId,
+        encounterId: activeEncounter?._id,
         appointmentId: row.appointment?._id,
         actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
       });
@@ -1189,7 +1234,7 @@ export default function EhrClinicalDashboard({
     try {
       const { findOpenEncounterForPatient, advanceEncounterToClinician } =
         await import('@/lib/services/encounter-service');
-      const open = await findOpenEncounterForPatient(row.patientId, currentUser?.hospitalId || '');
+      const open = activeEncounter ?? await findOpenEncounterForPatient(row.patientId, currentUser?.hospitalId || '');
       if (open) {
         await advanceEncounterToClinician(open._id, {
           clinicianId: currentUser?._id,
@@ -1270,7 +1315,7 @@ export default function EhrClinicalDashboard({
 
       <div className="appointment-detail-modal__body" role="tabpanel">
         <EhrWorkItemProgress
-          status={statusLabel(openAppointment.status)}
+          status={openAppointmentState?.label || statusLabel(openAppointment.status)}
           owner={openAppointment.providerName || clinicianName || 'Unassigned'}
           waiting={appointmentTimeRange(openAppointment)}
           timeLabel="Visit time"

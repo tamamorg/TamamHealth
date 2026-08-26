@@ -12,6 +12,7 @@ export function useMedicalRecords(patientId?: string) {
   const scope = useDataScope();
 
   const loadRecords = useCallback(async () => {
+    if (!scope) { setRecords([]); setLoading(false); return; }
     if (!patientId) {
       setRecords([]);
       setLoading(false);

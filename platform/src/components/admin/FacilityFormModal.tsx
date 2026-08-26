@@ -28,7 +28,8 @@ import { FACILITY_TYPES, type FacilityType } from '@/lib/facility-types';
 import {
   BED_FIELDS, STAFF_FIELDS, INFRASTRUCTURE_FIELDS, ALL_SERVICES,
   emptyFacilityForm, facilityFormFrom, validateFacilityForm, normaliseFacilityForm,
-  type FacilityFormValues, type FacilityFormError,
+  OPERATIONAL_STATUSES,
+  type FacilityFormValues, type FacilityFormError, type OperationalStatus,
 } from '@/lib/facility-form';
 import type { HospitalDoc, OrganizationDoc } from '@/lib/db-types';
 
@@ -47,11 +48,20 @@ export interface FacilityFormModalProps {
   presentation?: 'modal' | 'page';
 }
 
+const OPERATIONAL_STATUS_LABEL_KEYS: Record<OperationalStatus, string> = {
+  functional: 'hospitals.statusFunctional',
+  partially_functional: 'hospitals.statusPartiallyFunctional',
+  non_functional: 'hospitals.statusNonFunctional',
+  closed: 'hospitals.statusClosed',
+};
+
 const ERROR_KEY: Record<FacilityFormError, string> = {
   'required': 'orgHospitals.errRequiredFields',
   'beds-negative': 'orgHospitals.errInvalidBeds',
   'beds-breakdown-exceeds-total': 'orgHospitals.errBedBreakdown',
   'coordinates': 'orgHospitals.errCoordinates',
+  'phone': 'orgHospitals.errPhone',
+  'email': 'orgHospitals.errEmail',
 };
 
 export default function FacilityFormModal({
@@ -283,6 +293,46 @@ export default function FacilityFormModal({
 
           {showDetails && (
             <div className="space-y-3 pt-1">
+              {/* Contact and operating status — the four fields the facility
+                  page's Settings tab used to own. That tab is gone (the
+                  facility page is its roster), so without these the Edit
+                  dialog would be the only editor a facility has and would
+                  silently be unable to change its phone number. */}
+              {groupHeading(t('orgHospitals.groupContact'))}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  {label(t('hospitals.fieldPhone'))}
+                  <input
+                    type="tel" style={inputStyle} data-field="facility-phone"
+                    value={form.phone}
+                    onChange={e => set('phone', e.target.value)}
+                  />
+                </div>
+                <div>
+                  {label(t('hospitals.fieldEmail'))}
+                  <input
+                    type="email" style={inputStyle} data-field="facility-email"
+                    value={form.email}
+                    onChange={e => set('email', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                {label(t('hospitals.operatingStatus'))}
+                <div className="relative">
+                  <Select
+                    value={form.operationalStatus}
+                    onChange={e => set('operationalStatus', e.target.value as OperationalStatus)}
+                    style={selectStyle} data-field="facility-operational-status"
+                  >
+                    {OPERATIONAL_STATUSES.map(status => (
+                      <option key={status} value={status}>{t(OPERATIONAL_STATUS_LABEL_KEYS[status])}</option>
+                    ))}
+                  </Select>
+                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                </div>
+              </div>
+
               {groupHeading(t('orgHospitals.groupCapacity'))}
               <div className="grid grid-cols-3 gap-2">
                 {BED_FIELDS.filter(f => f.key !== 'totalBeds').map(f => numberField(f.key, f.label))}

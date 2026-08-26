@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { DiseaseAlertDoc } from '../db-types';
 import { diseaseAlertsDB } from '../db';
-import { useAuth } from '../context';
+import { useDataScope } from './useDataScope';
 
 export function useSurveillance() {
   const [alerts, setAlerts] = useState<DiseaseAlertDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadAlerts = useCallback(async () => {
+    if (!scope) {
+      setAlerts([]);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllAlerts } = await import('../services/surveillance-service');

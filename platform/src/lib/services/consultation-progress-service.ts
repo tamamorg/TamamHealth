@@ -122,11 +122,20 @@ export async function ensureConsultationProgress(input: {
   appointmentId?: string;
   actor?: ProgressActor;
 }): Promise<ConsultationProgressDoc> {
-  const existing = await getConsultationProgressByPatient(input.patientId, input.orgId || input.hospitalId ? {
+  const scope = input.orgId || input.hospitalId ? {
     orgId: input.orgId,
     hospitalId: input.hospitalId,
     role: input.actor?.role || 'doctor',
-  } : undefined);
+  } as DataScope : undefined;
+  const candidates = (await getAllConsultationProgress(scope))
+    .filter(progress => progress.patientId === input.patientId);
+  // A tracker belongs to one visit. Reusing a completed tracker from a prior
+  // encounter made a new arrival appear completed to every station.
+  const existing = input.encounterId
+    ? candidates.find(progress => progress.encounterId === input.encounterId)
+    : input.appointmentId
+      ? candidates.find(progress => progress.appointmentId === input.appointmentId)
+      : candidates.find(progress => !progress.encounterId && !progress.appointmentId);
   if (existing) {
     const changed = (!existing.encounterId && input.encounterId) || (!existing.appointmentId && input.appointmentId);
     return changed
@@ -136,7 +145,7 @@ export async function ensureConsultationProgress(input: {
 
   const now = new Date().toISOString();
   const doc: ConsultationProgressDoc = {
-    _id: `progress-${input.encounterId || input.patientId}`,
+    _id: `progress-${input.encounterId || input.appointmentId || input.patientId}`,
     type: 'consultation_progress',
     patientId: input.patientId,
     patientName: input.patientName,

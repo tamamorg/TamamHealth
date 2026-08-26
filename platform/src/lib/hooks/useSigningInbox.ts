@@ -46,6 +46,14 @@ export function useSigningInbox(): SigningInboxState {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!scope) {
+      setUnsignedDrafts([]);
+      setAwaitingCosign([]);
+      setHeldAssessments([]);
+      setUnsignedNotes([]);
+      setLoading(false);
+      return;
+    }
     try {
       const [{ getSigningInbox }, { getHeldAssessments }, { getUnsignedNotes }] = await Promise.all([
         import('../services/medical-record-service'),

@@ -165,6 +165,28 @@ describe('BUG 1 — /api/referrals accept / update_status scope guard', () => {
 });
 
 describe('BUG 2 — /api/appointments update_status / reschedule scope guard', () => {
+  test('status updates ignore spoofed actor fields and use the authenticated assignee', async () => {
+    const appt = await createAppointment({
+      patientId: 'pat-owned', patientName: 'Owned Patient',
+      providerId: 'doctor-a', providerName: 'Dr Test',
+      facilityId: HOSP_A, facilityName: 'Hospital A', facilityLevel: 'payam',
+      appointmentDate: futureDateString(20), appointmentTime: '09:00', duration: 30,
+      appointmentType: 'general', priority: 'routine', department: 'OPD',
+      status: 'scheduled', reason: 'Review', reminderSent: false, isRecurring: false,
+      bookedBy: 'desk-a', bookedByName: 'Desk A', state: 'Central Equatoria', orgId: ORG_A,
+    } as Parameters<typeof createAppointment>[0]);
+    mockGetAuth.mockResolvedValue(authFor(ORG_A, HOSP_A, 'doctor-a'));
+
+    const result = await appointmentsPOST(postRequest('http://test/api/appointments', {
+      action: 'update_status', appointmentId: appt._id, status: 'checked_in',
+      extra: { actorId: 'spoofed-user', actorName: 'Spoofed User', actorRole: 'super_admin' },
+    }));
+
+    expect(result.status).toBe(200);
+    const persisted = await getAppointmentById(appt._id);
+    expect(persisted?.statusHistory?.at(-1)).toMatchObject({ by: 'doctor-a', byName: 'Dr Test' });
+  });
+
   test('a doctor cannot update_status or reschedule an appointment belonging to another org', async () => {
     const appt = await createAppointment({
       patientId: 'pat-3', patientName: 'Appt Patient',

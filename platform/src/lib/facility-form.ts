@@ -11,6 +11,7 @@
  */
 import type { HospitalDoc } from './db-types';
 import { DEFAULT_FACILITY_TYPE, type FacilityType } from './facility-types';
+import { isValidPhone, isValidEmail, normalizePhone, normalizeEmail } from './field-formats';
 
 /** Capacity, by bed type. `totalBeds` drives every occupancy figure. */
 export const BED_FIELDS = [
@@ -69,7 +70,20 @@ export interface FacilityFormValues {
   services: string[];
   lat: number;
   lng: number;
+  /* Contact and operating status. These lived ONLY on the facility page's
+     Settings tab, which is gone (2026-08-26) — the facility page is its
+     roster now. Without them here the Edit dialog would be the only editor a
+     facility has and would silently be unable to change its phone number. */
+  phone: string;
+  email: string;
+  operationalStatus: OperationalStatus;
 }
+
+/** The four states `HospitalDoc.operationalStatus` accepts. */
+export const OPERATIONAL_STATUSES = [
+  'functional', 'partially_functional', 'non_functional', 'closed',
+] as const;
+export type OperationalStatus = (typeof OPERATIONAL_STATUSES)[number];
 
 export const emptyFacilityForm: FacilityFormValues = {
   name: '', state: '', town: '', facilityType: DEFAULT_FACILITY_TYPE,
@@ -78,6 +92,7 @@ export const emptyFacilityForm: FacilityFormValues = {
   hasElectricity: false, electricityHours: 0, hasGenerator: false, hasSolar: false,
   hasInternet: false, internetType: 'none', hasAmbulance: false, emergency24hr: false,
   services: [], lat: 0, lng: 0,
+  phone: '', email: '', operationalStatus: 'functional',
 };
 
 /** Load an existing facility into the form. */
@@ -108,6 +123,11 @@ export function facilityFormFrom(hospital: HospitalDoc): FacilityFormValues {
     services: [...(hospital.services ?? [])],
     lat: hospital.lat ?? 0,
     lng: hospital.lng ?? 0,
+    phone: (hospital as { phone?: string }).phone ?? '',
+    email: (hospital as { email?: string }).email ?? '',
+    operationalStatus: (OPERATIONAL_STATUSES as readonly string[]).includes(hospital.operationalStatus ?? '')
+      ? hospital.operationalStatus as OperationalStatus
+      : 'functional',
   };
 }
 
@@ -115,7 +135,9 @@ export type FacilityFormError =
   | 'required'
   | 'beds-negative'
   | 'beds-breakdown-exceeds-total'
-  | 'coordinates';
+  | 'coordinates'
+  | 'phone'
+  | 'email';
 
 /**
  * Validate before writing. Returns an error code (the caller maps it to copy),
@@ -133,6 +155,10 @@ export function validateFacilityForm(form: FacilityFormValues): FacilityFormErro
     return 'beds-breakdown-exceeds-total';
   }
   if (Math.abs(form.lat) > 90 || Math.abs(form.lng) > 180) return 'coordinates';
+  // Same two checks the Settings tab ran before it was deleted, so a facility
+  // cannot pick up an unreachable contact by moving editor.
+  if (form.phone.trim() && !isValidPhone(form.phone)) return 'phone';
+  if (form.email.trim() && !isValidEmail(form.email)) return 'email';
   return null;
 }
 
@@ -144,5 +170,7 @@ export function normaliseFacilityForm(form: FacilityFormValues): FacilityFormVal
     town: form.town.trim(),
     internetType: form.hasInternet ? (form.internetType.trim() || 'unknown') : 'none',
     electricityHours: form.hasElectricity ? form.electricityHours : 0,
+    phone: (form.phone.trim() && normalizePhone(form.phone)) || '',
+    email: form.email.trim() ? (normalizeEmail(form.email) ?? '') : '',
   };
 }

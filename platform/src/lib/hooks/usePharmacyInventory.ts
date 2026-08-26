@@ -13,6 +13,7 @@ export function usePharmacyInventory() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setItems([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllInventory } = await import('../services/pharmacy-inventory-service');

@@ -6,7 +6,6 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { addPatientDocument } from '@/lib/services/patient-document-service';
-import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import {
   Upload, CheckCircle2, FileText, BarChart3, TrendingUp, Play, RotateCcw,
 } from '@/components/icons/lucide';
@@ -488,14 +487,13 @@ export default function RadiologyDashboard() {
         title={t('radiology.title')}
         greetingName={currentUser?.name}
         dateLabel={dateLabel}
-        // The shared three-lane tabs every role dashboard shows, keyed by the
-        // study's own status values so the worklist filter needs no mapping:
-        // Upcoming = ordered/pending, Checked In = being imaged, Completed =
+        // Station work-queue tabs, keyed by the study's own status values:
+        // Queued = ordered/pending, In Progress = being imaged, Completed =
         // reported. The stat tiles below keep an All escape hatch.
         tabs={[
-          { key: 'pending', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: stats.pending },
-          { key: 'in_progress', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: stats.inProgress },
-          { key: 'completed', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: stats.completed },
+          { key: 'pending', label: t('workQueue.queued'), count: stats.pending },
+          { key: 'in_progress', label: t('workQueue.inProgress'), count: stats.inProgress },
+          { key: 'completed', label: t('workQueue.completed'), count: stats.completed },
         ]}
         activeTab={filterStatus}
         onTabChange={setFilterStatus}
@@ -508,9 +506,9 @@ export default function RadiologyDashboard() {
         filterRowsByDate={false}
         filters={[
           { label: t('radiology.filter_all'), value: stats.total, active: filterStatus === 'all', onClick: () => setFilterStatus('all') },
-          { label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, value: stats.pending, active: filterStatus === 'pending', onClick: () => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending') },
-          { label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, value: stats.inProgress, active: filterStatus === 'in_progress', onClick: () => setFilterStatus(filterStatus === 'in_progress' ? 'all' : 'in_progress') },
-          { label: APPOINTMENT_STATUS_GROUP_LABELS.finished, value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
+          { label: t('workQueue.queued'), value: stats.pending, active: filterStatus === 'pending', onClick: () => setFilterStatus(filterStatus === 'pending' ? 'all' : 'pending') },
+          { label: t('workQueue.inProgress'), value: stats.inProgress, active: filterStatus === 'in_progress', onClick: () => setFilterStatus(filterStatus === 'in_progress' ? 'all' : 'in_progress') },
+          { label: t('workQueue.completed'), value: stats.completed, active: filterStatus === 'completed', onClick: () => setFilterStatus(filterStatus === 'completed' ? 'all' : 'completed') },
         ]}
         actions={[
           // tourTarget: the guided tour opens this panel via preClickSelector

@@ -35,7 +35,7 @@ export interface BaseDoc {
 /** Durable marker for a multi-document workflow that may need repair offline. */
 export interface WorkflowRepairDoc extends BaseDoc {
   type: 'workflow_repair';
-  workflow: 'appointment_check_in' | 'walk_in_check_in' | 'discharge';
+  workflow: 'appointment_check_in' | 'walk_in_check_in' | 'discharge' | 'encounter_projection' | 'care_assignment';
   status: 'open' | 'resolved';
   patientId: string;
   patientName?: string;
@@ -1513,6 +1513,15 @@ export interface EncounterDoc extends BaseDoc {
   hospitalNumber?: string;
   clinicianId: string;
   clinicianName: string;
+  /** Responsible clinician before (and during) consultation. */
+  assignedClinicianId?: string;
+  assignedClinicianName?: string;
+  /** Nurse responsible for this visit; distinct from the nurse who roomed it. */
+  assignedNurseId?: string;
+  assignedNurseName?: string;
+  assignedAt?: string;
+  assignedBy?: string;
+  assignedByName?: string;
   hospitalId: string;
   hospitalName?: string;
   /** Canonical encounter status (see ENCOUNTER_TRANSITIONS). */

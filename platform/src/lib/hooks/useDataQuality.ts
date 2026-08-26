@@ -11,6 +11,7 @@ export function useDataQuality() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setData(null); setLoading(false); return; }
     try {
       setError(null);
       const { getNationalDataQuality } = await import('../services/data-quality-service');

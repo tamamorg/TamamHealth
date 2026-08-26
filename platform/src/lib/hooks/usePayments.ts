@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { PaymentDoc, InsurancePolicyDoc, ClaimDoc, PaymentPlanDoc, LedgerEntryDoc, PatientFinancialSummary } from '../db-types-payments';
 import { paymentsDB, insurancePoliciesDB, claimsDB, paymentPlansDB, ledgerDB } from '../db';
-import { useAuth } from '../context';
+import { useDataScope } from './useDataScope';
 
 export function usePayments() {
   const [payments, setPayments] = useState<PaymentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadPayments = useCallback(async () => {
+    if (!scope) {
+      setPayments([]);
+      setLoading(false);
+      return;
+    }
     try {
       const { getAllPayments } = await import('../services/payment-service');
       const data = await getAllPayments(scope);
@@ -59,9 +60,13 @@ export function usePatientPayments(patientId?: string) {
   const [summary, setSummary] = useState<PatientFinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scope = useDataScope();
 
   const loadPatientPayments = useCallback(async () => {
-    if (!patientId) {
+    if (!patientId || !scope) {
+      setPayments([]);
+      setPolicies([]);
+      setSummary(null);
       setLoading(false);
       return;
     }
@@ -70,10 +75,10 @@ export function usePatientPayments(patientId?: string) {
       const { getPatientBalance } = await import('../services/ledger-service');
 
       const [paymentsData, policiesData, balanceData, summaryData] = await Promise.all([
-        getPaymentsByPatient(patientId),
-        getPatientInsurancePolicies(patientId),
-        getPatientBalance(patientId),
-        getPatientFinancialSummary(patientId)
+        getPaymentsByPatient(patientId, scope),
+        getPatientInsurancePolicies(patientId, scope),
+        getPatientBalance(patientId, scope),
+        getPatientFinancialSummary(patientId, scope)
       ]);
 
       setPayments(paymentsData);
@@ -87,7 +92,7 @@ export function usePatientPayments(patientId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => {
     loadPatientPayments();
@@ -129,15 +134,17 @@ export function useInsurancePolicies(patientId?: string) {
   const [policies, setPolicies] = useState<InsurancePolicyDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scope = useDataScope();
 
   const loadInsurancePolicies = useCallback(async () => {
-    if (!patientId) {
+    if (!patientId || !scope) {
+      setPolicies([]);
       setLoading(false);
       return;
     }
     try {
       const { getPatientInsurancePolicies } = await import('../services/payment-service');
-      const data = await getPatientInsurancePolicies(patientId);
+      const data = await getPatientInsurancePolicies(patientId, scope);
       setPolicies(data);
       setError(null);
     } catch (err) {
@@ -146,7 +153,7 @@ export function useInsurancePolicies(patientId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => {
     loadInsurancePolicies();
@@ -174,13 +181,18 @@ export function useInsurancePolicies(patientId?: string) {
  *  Insured / Not insured badge on appointment lists without per-row queries. */
 export function useInsuredPatientIds(): Set<string> {
   const [insuredIds, setInsuredIds] = useState<Set<string>>(new Set());
+  const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) {
+      setInsuredIds(new Set());
+      return;
+    }
     try {
       const { getInsuredPatientIds } = await import('../services/payment-service');
-      setInsuredIds(await getInsuredPatientIds());
+      setInsuredIds(await getInsuredPatientIds(scope));
     } catch { /* leave empty — rows fall back to Not insured */ }
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     load();
@@ -207,13 +219,14 @@ export function useClaims() {
   const [claims, setClaims] = useState<ClaimDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadClaims = useCallback(async () => {
+    if (!scope) {
+      setClaims([]);
+      setLoading(false);
+      return;
+    }
     try {
       const { getAllClaims } = await import('../services/payment-service');
       const data = await getAllClaims(scope);
@@ -252,13 +265,14 @@ export function usePaymentPlans() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlanDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadPaymentPlans = useCallback(async () => {
+    if (!scope) {
+      setPaymentPlans([]);
+      setLoading(false);
+      return;
+    }
     try {
       const { getAllPaymentPlans } = await import('../services/payment-service');
       const data = await getAllPaymentPlans(scope);
@@ -297,16 +311,17 @@ export function useLedger(patientId?: string) {
   const [ledger, setLedger] = useState<LedgerEntryDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadLedger = useCallback(async () => {
+    if (!scope) {
+      setLedger([]);
+      setLoading(false);
+      return;
+    }
     try {
       const { getPatientLedger, getAllLedgerEntries } = await import('../services/ledger-service');
-      const data = patientId ? await getPatientLedger(patientId) : await getAllLedgerEntries(scope);
+      const data = patientId ? await getPatientLedger(patientId, undefined, scope) : await getAllLedgerEntries(scope);
       setLedger(data);
       setError(null);
     } catch (err) {

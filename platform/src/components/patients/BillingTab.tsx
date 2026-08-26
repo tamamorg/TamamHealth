@@ -25,6 +25,7 @@ import type {
 } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
@@ -214,6 +215,7 @@ export default function BillingTab({
 }: BillingTabProps) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const [data, setData] = useState<FinancialOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -407,6 +409,11 @@ export default function BillingTab({
   };
 
   const loadAll = useCallback(async () => {
+    if (!scope) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     try {
       const [paymentSvc, ledgerSvc] = await Promise.all([
         import('@/lib/services/payment-service'),
@@ -414,12 +421,12 @@ export default function BillingTab({
       ]);
 
       const [payments, charges, plans, policies, refunds, ledgerEntries] = await Promise.all([
-        paymentSvc.getPaymentsByPatient(patient._id),
-        paymentSvc.getChargesByPatient(patient._id).catch(() => [] as ChargeDoc[]),
-        paymentSvc.getPaymentPlansByPatient(patient._id),
-        paymentSvc.getPatientInsurancePolicies(patient._id),
-        paymentSvc.getRefundsByPatient(patient._id).catch(() => [] as RefundDoc[]),
-        ledgerSvc.getPatientLedger(patient._id).catch(() => [] as LedgerEntryDoc[]),
+        paymentSvc.getPaymentsByPatient(patient._id, scope),
+        paymentSvc.getChargesByPatient(patient._id, scope).catch(() => [] as ChargeDoc[]),
+        paymentSvc.getPaymentPlansByPatient(patient._id, scope),
+        paymentSvc.getPatientInsurancePolicies(patient._id, scope),
+        paymentSvc.getRefundsByPatient(patient._id, scope).catch(() => [] as RefundDoc[]),
+        ledgerSvc.getPatientLedger(patient._id, undefined, scope).catch(() => [] as LedgerEntryDoc[]),
       ]);
 
       const totalCharged = charges.reduce((s: number, c: ChargeDoc) => s + c.billedAmount, 0);
@@ -461,7 +468,7 @@ export default function BillingTab({
       });
     }
     setLoading(false);
-  }, [patient._id]);
+  }, [patient._id, scope]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 

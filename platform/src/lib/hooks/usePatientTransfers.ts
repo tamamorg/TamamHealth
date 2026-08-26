@@ -20,6 +20,7 @@ import type {
 import { patientTransfersDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useAuth } from '../context';
+import { useDataScope } from './useDataScope';
 import {
   canCancelTransfer,
   canContributeTransfer,
@@ -77,14 +78,10 @@ export function usePatientTransfers(patientId?: string) {
   const [loading, setLoading] = useState(Boolean(patientId));
   const [error, setError] = useState<string | null>(null);
 
-  const scope = useMemo(() => (currentUser ? {
-    orgId: currentUser.orgId,
-    hospitalId: currentUser.hospitalId,
-    role: currentUser.role,
-  } : undefined), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const load = useCallback(async () => {
-    if (!patientId) { setTransfers([]); setLoading(false); return; }
+    if (!patientId || !scope) { setTransfers([]); setLoading(false); return; }
     setLoading(true);
     try {
       const { getTransfersByPatient } = await import('../services/patient-transfer-service');

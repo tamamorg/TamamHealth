@@ -79,7 +79,7 @@ describe('status vocabulary is self-consistent', () => {
     for (const s of ALL) {
       const laneLabel = APPOINTMENT_STATUS_GROUP_LABELS[appointmentStatusGroup(s)];
       if (APPOINTMENT_STATUS_LABELS[s] === 'Checked In') {
-        expect(laneLabel).toBe('Checked In');
+        expect(laneLabel).toBe('In Facility');
       }
     }
     expect(APPOINTMENT_STATUS_LABELS.arrived).toBe('Arrived');

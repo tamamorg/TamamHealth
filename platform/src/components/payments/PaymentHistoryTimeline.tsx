@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import '@/components/billing/billing.css';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 interface PaymentHistoryTimelineProps {
   patientId: string;
@@ -23,19 +24,21 @@ interface LedgerEntry {
 
 export default function PaymentHistoryTimeline({ patientId, limit = 20 }: PaymentHistoryTimelineProps) {
   const { t } = useTranslation();
+  const scope = useDataScope();
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!scope) { setEntries([]); setLoading(false); return; }
     (async () => {
       try {
         const { getPatientLedger } = await import('@/lib/services/ledger-service');
-        const data = await getPatientLedger(patientId, limit);
+        const data = await getPatientLedger(patientId, limit, scope);
         setEntries(data);
       } catch { /* offline */ }
       setLoading(false);
     })();
-  }, [patientId, limit]);
+  }, [patientId, limit, scope]);
 
   // Restyled onto the billing module's bl-table — this timeline only ever
   // renders inside BillingTab's "Transaction Ledger" bl-card, so it should

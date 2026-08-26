@@ -32,11 +32,13 @@ const CREATION_SURFACES = [
   'components/admin/OrganizationForm.tsx',
 ];
 
-/** Pages whose "create user" action must route through the shared dialog. */
+/** Pages whose "create user" action must route through the shared dialog.
+ *  An account is provisioned against a facility, so these are the facility
+ *  surfaces — the console root above them creates tenants and sites, never
+ *  people. */
 const DELEGATING_SURFACES = [
   'modules/identity/components/CreateUserModal.tsx',
-  'modules/tenancy/components/ManagementWorkspace.tsx',
-  'components/facilities/FacilityManageTabs.tsx',
+  'components/facilities/FacilityProfile.tsx',
 ];
 
 /** Pages whose organization create/edit must route through the shared form —
@@ -44,6 +46,7 @@ const DELEGATING_SURFACES = [
  *  two user-creation surfaces, so the org form gets the same guard. */
 const ORG_FORM_HOSTS = [
   'modules/tenancy/components/ManagementWorkspace.tsx',
+  'modules/tenancy/components/OrganizationDetail.tsx',
   'app/(dashboard)/admin/organizations/new/page.tsx',
 ];
 
@@ -62,8 +65,13 @@ describe('every creation surface reports the invitation', () => {
   test.each(ORG_FORM_HOSTS)('%s hosts the shared organization form', file => {
     expect(source(file)).toContain('OrganizationForm');
     expect(source(file)).not.toContain('createUserWithInvitation');
-    // Both hosts must show the one-time credential panel the form hands up.
-    expect(source(file)).toContain('CredentialHandoffModal');
+  });
+
+  test('the organization form shows its one-time credential panel where it can create an admin', () => {
+    // `/admin/organizations/new` provisions the tenant's first administrator,
+    // so it must surface the password exactly once. The two in-console hosts
+    // open the SAME form and inherit the panel from it.
+    expect(source('app/(dashboard)/admin/organizations/new/page.tsx')).toContain('CredentialHandoffModal');
   });
 
   test.each(CREATION_SURFACES)('%s carries it into the hand-off', file => {
@@ -85,7 +93,7 @@ describe('every creation surface reports the invitation', () => {
     // renders the shared CredentialHandoffModal (like /admin/users), which is
     // where the one copy chain lives.
     expect(source('modules/identity/components/CredentialHandoffModal.tsx')).toContain('describeInvitationOutcome');
-    expect(source('modules/tenancy/components/ManagementWorkspace.tsx')).toContain('CredentialHandoffModal');
+    expect(source('components/facilities/FacilityProfile.tsx')).toContain('CredentialHandoffModal');
   });
 });
 

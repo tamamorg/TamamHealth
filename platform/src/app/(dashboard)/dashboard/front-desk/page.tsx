@@ -8,6 +8,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useTriage } from '@/lib/hooks/useTriage';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
   APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
@@ -53,6 +54,7 @@ import {
 import { RowAppointmentEditor } from '@/components/front-desk/RowAppointmentEditor';
 import { FrontDeskDetailActions, FrontDeskDetailFacts } from '@/components/front-desk/DetailPanel';
 import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/front-desk/AssignmentControls';
+import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import CheckoutModal from '@/components/front-desk/CheckoutModal';
 import CheckInModal from '@/components/front-desk/CheckInModal';
 import {
@@ -71,13 +73,13 @@ import {
 export default function FrontDeskDashboardPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { canConsult, canManageAppointmentSchedule, canCheckInAppointments } = usePermissions();
+  const scope = useDataScope();
+  const { canConsult, canManageAppointmentSchedule, canCheckInAppointments, canAssignCareTeam } = usePermissions();
   // Reception schedules and checks in; a role that can do neither may look at
   // the ladder but not move a booking along it.
   const canSetAppointmentStatus = canManageAppointmentSchedule || canCheckInAppointments;
   // Same roles the chart's Assign-provider action uses, so routing a patient
   // means the same thing wherever it is done from.
-  const canAssignCareTeam = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
   const { patients } = usePatients();
   const { users } = useUsers();
   const { appointments, updateStatus: updateAppointmentStatus, reschedule: rescheduleAppointment } = useAppointments();
@@ -258,6 +260,9 @@ export default function FrontDeskDashboardPage() {
     stage?: QueueStage;
     /** Stage-based label from patient-queue-service (triage-sourced entries only). */
     stageLabel?: string;
+    /** Precise live state projected from the linked encounter. */
+    operationalLabel?: string;
+    operationalI18nKey?: string;
     /** Set when the slot closed WITHOUT the patient being seen (cancelled /
      *  rescheduled / no-show). The row files under Finished wearing this
      *  status's own pill, and never offers Checkout. */
@@ -310,11 +315,16 @@ export default function FrontDeskDashboardPage() {
     // day the calendar is showing — an empty map on other days keeps them out
     // of both the encounter rows below and the appointment rows' checkout state.
     const checkoutEncounterByPatient = new Map<string, EncounterDoc>();
+    const encounterByPatient = new Map<string, EncounterDoc>();
     if (viewingToday) {
       for (const enc of encounters) {
-        if (!checkoutStatuses.has(enc.status)) continue;
-        const dateKey = isoDateKey(enc.updatedAt || enc.closedAt || enc.startedAt || enc.createdAt);
+        const dateKey = isoDateKey(enc.startedAt || enc.createdAt);
         if (dateKey !== today) continue;
+        const held = encounterByPatient.get(enc.patientId);
+        if (!held || (enc.updatedAt || enc.createdAt || '').localeCompare(held.updatedAt || held.createdAt || '') > 0) {
+          encounterByPatient.set(enc.patientId, enc);
+        }
+        if (!checkoutStatuses.has(enc.status)) continue;
         const current = checkoutEncounterByPatient.get(enc.patientId);
         if (!current || (enc.updatedAt || enc.createdAt || '').localeCompare(current.updatedAt || current.createdAt || '') > 0) {
           checkoutEncounterByPatient.set(enc.patientId, enc);
@@ -362,6 +372,7 @@ export default function FrontDeskDashboardPage() {
       // actually is; the triage record only proves an assessment exists, which
       // is why "has a triage" was the wrong test for "is in the building".
       const linkedAppointment = todaysAppointments.find(a => a.patientId === entry.patientId);
+      const activeEncounter = encounterByPatient.get(entry.patientId);
       const triageVisitStatus: AppointmentStatus =
         linkedAppointment?.status
         ?? triageDoc?.visitStatus
@@ -385,11 +396,17 @@ export default function FrontDeskDashboardPage() {
         status: isCheckout ? 'DONE' : inConsult ? 'IN CONSULT' : 'WAITING',
         stage: entry.stage,
         stageLabel: isCheckout ? 'Ready for checkout' : STAGE_LABELS[entry.stage],
+        ...(() => {
+          const state = linkedAppointment
+            ? resolveOperationalVisitState(linkedAppointment, activeEncounter)
+            : activeEncounter ? resolveOperationalVisitState({ status: triageVisitStatus }, activeEncounter) : null;
+          return state ? { operationalLabel: state.label, operationalI18nKey: state.i18nKey } : {};
+        })(),
         waitMinutes: entry.minutesWaiting,
         overTarget: entry.flaggedForReassessment,
         score: entry.score,
         sourceId: entry.triageId,
-        encounterId: checkoutEncounter?._id,
+        encounterId: activeEncounter?._id,
         assignedRoom: room,
         assignedDoctorName: doctorOf(entry.patientId),
         assignedNurseName: nurseOf(entry.patientId),
@@ -414,6 +431,7 @@ export default function FrontDeskDashboardPage() {
       if (triagedPatientIds.has(a.patientId)) continue;
       if (!ARRIVED.has(a.status) && !CLOSED_UNSEEN.has(a.status)) continue; // not checked in yet → not in the queue
       const checkoutEncounter = checkoutEncounterByPatient.get(a.patientId);
+      const activeEncounter = encounterByPatient.get(a.patientId);
       const status = CLOSED_UNSEEN.has(a.status) ? 'DONE' :
                      checkoutEncounter ? 'DONE' :
                      a.status === 'completed' ? 'DONE' :
@@ -441,9 +459,11 @@ export default function FrontDeskDashboardPage() {
         ...(CLOSED_UNSEEN.has(a.status)
           ? { closedStatus: a.status, stageLabel: appointmentStatusLabel(a.status) }
           : {}),
+        operationalLabel: resolveOperationalVisitState(a, activeEncounter).label,
+        operationalI18nKey: resolveOperationalVisitState(a, activeEncounter).i18nKey,
         score: APPT_SCORE[a.priority ?? ''] ?? 1,
         sourceId: a._id,
-        encounterId: checkoutEncounter?._id,
+        encounterId: activeEncounter?._id,
         assignedDoctorName: a.providerName || doctorOf(a.patientId),
         assignedNurseName: nurseOf(a.patientId),
         location: a.department || a.facilityName || locationOf(a.patientId),
@@ -588,7 +608,7 @@ export default function FrontDeskDashboardPage() {
       && (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentUser?.hospitalId]);
 
-  const handleAssignDoctor = useCallback(async (patient: PatientDoc, doctorId: string, triageId?: string) => {
+  const handleAssignDoctor = useCallback(async (patient: PatientDoc, doctorId: string, visit?: { triageId?: string; appointmentId?: string; encounterId?: string }) => {
     const doctor = assignableDoctors.find(d => d._id === doctorId);
     if (!doctor) { showToast('Select a doctor to assign', 'error'); return; }
     try {
@@ -601,7 +621,9 @@ export default function FrontDeskDashboardPage() {
         hospitalId: currentUser?.hospitalId,
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
-        triageId,
+        triageId: visit?.triageId,
+        appointmentId: visit?.appointmentId,
+        encounterId: visit?.encounterId,
       });
       showToast(`Assigned to ${doctor.name || doctor.username}`, 'success');
     } catch {
@@ -609,7 +631,7 @@ export default function FrontDeskDashboardPage() {
     }
   }, [assignableDoctors, currentUser, showToast]);
 
-  const handleAssignNurse = useCallback(async (patient: PatientDoc, nurseId: string) => {
+  const handleAssignNurse = useCallback(async (patient: PatientDoc, nurseId: string, visit?: { appointmentId?: string; encounterId?: string }) => {
     const nurse = nurseId ? assignableNurses.find(n => n._id === nurseId) : null;
     if (nurseId && !nurse) { showToast('Select a nurse to assign', 'error'); return; }
     try {
@@ -618,6 +640,10 @@ export default function FrontDeskDashboardPage() {
         patientId: patient._id,
         nurse: nurse ? { id: nurse._id, name: nurse.name || nurse.username || 'Nurse' } : null,
         actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
+        hospitalId: currentUser?.hospitalId,
+        orgId: currentUser?.orgId,
+        appointmentId: visit?.appointmentId,
+        encounterId: visit?.encounterId,
       });
       showToast(nurse ? `Nurse set to ${nurse.name || nurse.username}` : 'Nurse cleared', 'success');
     } catch {
@@ -657,7 +683,7 @@ export default function FrontDeskDashboardPage() {
           : await getOpenEncounterForPatient(target.patientId);
         if (enc) {
           const { evaluateCheckoutGate } = await import('@/lib/services/checkout-gate-service');
-          const evaluation = await evaluateCheckoutGate(target.patientId, enc as never);
+          const evaluation = await evaluateCheckoutGate(target.patientId, enc as never, scope);
 
           if (!evaluation.canDischarge && !override) {
             showToast(
@@ -709,7 +735,7 @@ export default function FrontDeskDashboardPage() {
     } catch {
       showToast('Failed to complete checkout', 'error');
     }
-  }, [updateAppointmentStatus, updateTriage, showToast, currentUser]);
+  }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope]);
 
   // ── Appointment check-in: mark the patient as arrived → joins the queue ──
   // Also creates/joins the visit encounter (arrivalChannel: 'appointment',
@@ -1037,7 +1063,7 @@ export default function FrontDeskDashboardPage() {
         timeSecondary: isoDateKey(appointment.appointmentDate),
         timeAt: appointmentMoment(appointment.appointmentDate, appointment.appointmentTime),
         careTeam: appointment.providerName || patient?.assignedDoctorName || 'Doctor unassigned',
-        careTeamSecondary: patient?.assignedByName || 'Nurse unassigned',
+        careTeamSecondary: patient?.assignedNurseName || 'Nurse unassigned',
         careTeamLabel: 'Care team',
         location: appointment.department || appointment.facilityName || patientFacilityName(patient, currentUser?.hospitalName || 'Facility'),
         locationSecondary: appointment.department ? patientFacilityName(patient, currentUser?.hospitalName || 'Facility') : 'Location',
@@ -1213,7 +1239,9 @@ export default function FrontDeskDashboardPage() {
         timeSecondary: entry.waitMinutes != null ? waitLabel(entry.waitMinutes) : entry.calendarDate,
         timeAt: entry.timeAt,
         status: entry.status.toLowerCase(),
-        statusLabel: ladderStatus ? appointmentStatusLabel(ladderStatus) : statusLabel,
+        statusLabel: entry.operationalI18nKey
+          ? t(entry.operationalI18nKey)
+          : entry.operationalLabel || (ladderStatus ? appointmentStatusLabel(ladderStatus) : statusLabel),
         statusSecondary: statusContext,
         statusTone: ladderStatus ? APPOINTMENT_STATUS_TONES[ladderStatus] : statusTone,
         // A queue row is movable too — advancing a checked-in patient to
@@ -1302,7 +1330,10 @@ export default function FrontDeskDashboardPage() {
                   currentId={patient.assignedDoctor}
                   currentName={patient.assignedDoctorName}
                   emptyLabel="Unassigned"
-                  onSave={doctorId => handleAssignDoctor(patient, doctorId, entry.id.startsWith('triage-') ? entry.sourceId : undefined)}
+                  onSave={doctorId => handleAssignDoctor(patient, doctorId, {
+                    triageId: entry.id.startsWith('triage-') ? entry.sourceId : undefined,
+                    encounterId: entry.encounterId,
+                  })}
                 />
                 <StaffAssignmentControl
                   icon={ClipboardCheck}
@@ -1311,7 +1342,9 @@ export default function FrontDeskDashboardPage() {
                   currentId={patient.assignedNurse}
                   currentName={patient.assignedNurseName}
                   emptyLabel="Unassigned"
-                  onSave={nurseId => handleAssignNurse(patient, nurseId)}
+                  onSave={nurseId => handleAssignNurse(patient, nurseId, {
+                    encounterId: entry.encounterId,
+                  })}
                 />
               </>
             )}
@@ -1334,7 +1367,7 @@ export default function FrontDeskDashboardPage() {
         timeSecondary: registered.date,
         timeAt: registered.time ? patientRegisteredAt(patient) : undefined,
         careTeam: patient.assignedDoctorName || 'Doctor unassigned',
-        careTeamSecondary: patient.assignedByName || 'Nurse unassigned',
+        careTeamSecondary: patient.assignedNurseName || 'Nurse unassigned',
         careTeamLabel: 'Care team',
         location: patientFacilityName(patient, currentUser?.hospitalName || 'Registration'),
         locationSecondary: [patient.county, patient.state].filter(Boolean).join(', ') || 'Location',

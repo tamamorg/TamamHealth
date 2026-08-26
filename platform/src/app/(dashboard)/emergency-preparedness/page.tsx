@@ -22,6 +22,7 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
   { value: 'disease_outbreak', label: 'Disease outbreak' },
@@ -84,6 +85,7 @@ const EMPTY_FORM = {
 export default function EmergencyPreparednessPage() {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const scope = useDataScope();
 
   const [plans, setPlans] = useState<EmergencyPlanDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,9 +98,14 @@ export default function EmergencyPreparednessPage() {
   const facilityState = currentUser?.hospital?.state || '';
 
   const load = useCallback(async () => {
+    if (!scope) {
+      setPlans([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const result = await getAllPlans();
+      const result = await getAllPlans(scope);
       setPlans(result);
     } catch (err) {
       console.error(err);
@@ -106,7 +113,7 @@ export default function EmergencyPreparednessPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [scope, showToast]);
 
   useEffect(() => {
     load();
@@ -172,10 +179,10 @@ export default function EmergencyPreparednessPage() {
     const actor = currentUser?.name || currentUser?.username || 'unknown';
     try {
       if (plan.phase === 'response') {
-        await deactivatePlan(plan._id, actor);
+        await deactivatePlan(plan._id, actor, scope);
         showToast(`${plan.planName} moved to recovery`, 'success');
       } else {
-        await activatePlan(plan._id, actor);
+        await activatePlan(plan._id, actor, undefined, scope);
         showToast(`${plan.planName} activated`, 'success');
       }
       await load();

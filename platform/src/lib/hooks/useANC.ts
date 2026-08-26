@@ -14,6 +14,7 @@ export function useANC() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setVisits([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllANCVisits, getANCStats } = await import('../services/anc-service');

@@ -121,7 +121,7 @@ export default function PrescribeModal({
       } catch { /* Cautions says "not stocked" */ }
       try {
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const value = await getPatientBalance(patientId);
+        const value = await getPatientBalance(patientId, scope);
         if (!cancelled) setBalance(value);
       } catch { if (!cancelled) setBalance(0); }
       try {

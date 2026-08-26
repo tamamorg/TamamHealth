@@ -14,6 +14,7 @@ export function useNutritionScreenings() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setScreenings([]); setLoading(false); return; }
     try {
       const { getAllNutritionScreenings } = await import('../services/nutrition-screening-service');
       setScreenings(await getAllNutritionScreenings(scope));

@@ -17,6 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import { formatDateTime } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const SCHEDULES: ControlledSubstanceLogDoc['schedule'][] = ['I', 'II', 'III', 'IV', 'V'];
 const MOVEMENTS: ControlledSubstanceLogDoc['movement'][] = ['intake', 'dispense', 'waste', 'reconciliation', 'transfer'];
@@ -59,6 +60,7 @@ const blankForm = {
 export default function ControlledSubstancesPage() {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const scope = useDataScope();
 
   const [movements, setMovements] = useState<ControlledSubstanceLogDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,9 +69,14 @@ export default function ControlledSubstancesPage() {
   const [form, setForm] = useState({ ...blankForm });
 
   const load = useCallback(async () => {
+    if (!scope) {
+      setMovements([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const rows = await getAllMovements();
+      const rows = await getAllMovements(scope);
       setMovements(rows);
     } catch (err) {
       console.error(err);
@@ -77,7 +84,7 @@ export default function ControlledSubstancesPage() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [scope, showToast]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -130,6 +137,7 @@ export default function ControlledSubstancesPage() {
       patientName: form.patientName.trim() || undefined,
       facilityId,
       facilityName,
+      orgId: currentUser.orgId,
     };
 
     setSaving(true);

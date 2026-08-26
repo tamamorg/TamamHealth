@@ -8,6 +8,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -27,6 +28,7 @@ export default function DeathsPage() {
   const { hospitals } = useHospitals();
   const { patients } = usePatients();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { canRecordVitalEvents } = usePermissions();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
@@ -151,9 +153,7 @@ export default function DeathsPage() {
     if (encounterId && linkedPatientId) {
       try {
         const { resolvePatientEncounter } = await import('@/lib/services/encounter-service');
-        const enc = await resolvePatientEncounter(encounterId, linkedPatientId, currentUser
-          ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
-          : undefined);
+        const enc = await resolvePatientEncounter(encounterId, linkedPatientId, scope);
         verifiedEncounterId = enc?._id;
       } catch { /* unverifiable → treated as absent */ }
     }

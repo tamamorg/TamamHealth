@@ -27,8 +27,8 @@ export const FRONT_DESK_STEPS: TourStep[] = [
     route: '/dashboard/front-desk',
     target: '[data-tour="station-tabs"]',
     placement: 'bottom',
-    title: 'Upcoming, Checked In, Completed',
-    body: 'Every visit files into one of three lanes: Upcoming (booked, not here yet), Checked In (in the building — triaged, roomed, or with the clinician), Completed (checked out, cancelled, no-show, or rescheduled). Each tab’s count always matches the rows under it.',
+    title: 'Upcoming, In Facility, Completed',
+    body: 'Every visit files into one of three lanes: Upcoming (booked, not here yet), In Facility (arrived, in triage, rooming, awaiting consultation, or with the clinician), Completed (checked out, cancelled, no-show, or rescheduled). Each row shows the precise live stage, and each tab’s count matches the rows under it.',
   },
   {
     id: 'register',

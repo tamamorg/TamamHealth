@@ -165,7 +165,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     doctor: currentUser.name || '',
     assignedDoctor: p.assignedDoctor,
     assignedDoctorName: p.assignedDoctorName,
-    nurse: p.assignedByName || '',
+    nurse: p.assignedNurseName || '',
     division: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] : '',
     triagePriority: triagePriorityByPatient[p._id],
   }));

@@ -102,8 +102,8 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
 
 // ═══ Balance Queries ═══════════════════════════════════════════════
 
-export async function getPatientBalance(patientId: string): Promise<number> {
-  const entries = await getPatientLedger(patientId);
+export async function getPatientBalance(patientId: string, scope?: DataScope): Promise<number> {
+  const entries = await getPatientLedger(patientId, undefined, scope);
   if (entries.length === 0) return 0;
   // Sum all entry amounts (debits positive, credits negative). This is robust
   // to entries that share a createdAt timestamp — e.g. a bill that posts a
@@ -118,11 +118,12 @@ export async function getEncounterBalance(encounterId: string): Promise<number> 
   return entries.reduce((sum, e) => sum + e.amount, 0);
 }
 
-export async function getPatientLedger(patientId: string, limit?: number): Promise<LedgerEntryDoc[]> {
+export async function getPatientLedger(patientId: string, limit?: number, scope?: DataScope): Promise<LedgerEntryDoc[]> {
   const db = ledgerDB();
   const entries = await findByType<LedgerEntryDoc>(db, 'ledger_entry', { patientId }, { indexFields: ['type', 'patientId'] });
-  entries.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return limit ? entries.slice(0, limit) : entries;
+  const visible = scope ? filterByScope(entries, scope) : entries;
+  visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return limit ? visible.slice(0, limit) : visible;
 }
 
 export async function getEncounterLedger(encounterId: string): Promise<LedgerEntryDoc[]> {

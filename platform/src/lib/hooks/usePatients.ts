@@ -1,23 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { PatientDoc } from '../db-types';
 import { patientsDB } from '../db';
 import { makeCoalescer } from './live-reload';
-import { useAuth } from '../context';
+import { useDataScope } from './useDataScope';
 
 export function usePatients(enabled = true) {
   const [patients, setPatients] = useState<PatientDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadPatients = useCallback(async () => {
-    if (!enabled) {
+    if (!enabled || !scope) {
       setPatients([]);
       setError(null);
       setLoading(false);
@@ -57,6 +53,10 @@ export function usePatients(enabled = true) {
   }, [enabled, loadPatients]);
 
   const search = useCallback(async (query: string) => {
+    if (!scope) {
+      setPatients([]);
+      return;
+    }
     if (!query) {
       await loadPatients();
       return;
@@ -67,6 +67,7 @@ export function usePatients(enabled = true) {
   }, [loadPatients, scope]);
 
   const create = useCallback(async (data: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
+    if (!scope) throw new Error('Your patient data scope is unavailable');
     const { createPatient } = await import('../services/patient-service');
     // Scope so duplicate-detection and geocode assignment don't read/disclose
     // across tenant boundaries (see createPatient's own docs).

@@ -17,6 +17,7 @@ export function usePatientHandoff(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setLatest(null); return; }
     if (!patientId) {
       setLatest(null);
       return;

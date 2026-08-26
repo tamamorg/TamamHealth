@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { HospitalDoc } from '../db-types';
-import { useAuth } from '../context';
+import { useDataScope } from './useDataScope';
 import { makeCoalescer } from './live-reload';
 import { hospitalsDB } from '../db';
 
@@ -10,13 +10,14 @@ export function useHospitals() {
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadHospitals = useCallback(async () => {
+    if (!scope) {
+      setHospitals([]);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllHospitals } = await import('../services/hospital-service');

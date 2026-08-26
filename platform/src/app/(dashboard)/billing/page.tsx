@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Receipt, Search, ChevronLeft, ChevronRight, Activity } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import { formatBillDate, STATUS_CHIP } from '@/components/billing/billing-utils';
@@ -35,6 +36,7 @@ const PER_PAGE_OPTIONS = [10, 20, 30, 50];
 
 export default function BillingHomePage() {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const [bills, setBills] = useState<BillingDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,10 +44,6 @@ export default function BillingHomePage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  ), [currentUser]);
 
   const loadBills = useCallback(async () => {
     if (!scope) return;

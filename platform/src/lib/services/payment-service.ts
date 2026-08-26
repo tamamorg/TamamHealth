@@ -233,9 +233,9 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
   return doc;
 }
 
-export async function getPaymentsByPatient(patientId: string): Promise<PaymentDoc[]> {
+export async function getPaymentsByPatient(patientId: string, scope?: DataScope): Promise<PaymentDoc[]> {
   const rows = await findByType<PaymentDoc>(paymentsDB(), 'payment', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows
+  return (scope ? filterByScope(rows, scope) : rows)
     .sort((a, b) => (b.processedAt || '').localeCompare(a.processedAt || ''));
 }
 
@@ -863,19 +863,20 @@ export async function createInsurancePolicy(input: CreateInsurancePolicyInput): 
   return doc;
 }
 
-export async function getPatientInsurancePolicies(patientId: string): Promise<InsurancePolicyDoc[]> {
+export async function getPatientInsurancePolicies(patientId: string, scope?: DataScope): Promise<InsurancePolicyDoc[]> {
   const db = insurancePoliciesDB();
   const rows = await findByType<InsurancePolicyDoc>(db, 'insurance_policy', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows
+  return (scope ? filterByScope(rows, scope) : rows)
     .filter(d => d && d.isActive)
     .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
 }
 
 /** Patient ids holding at least one active insurance policy — one bulk query
  *  so list views can badge every row without a per-patient lookup. */
-export async function getInsuredPatientIds(): Promise<Set<string>> {
+export async function getInsuredPatientIds(scope?: DataScope): Promise<Set<string>> {
   const rows = await findByType<InsurancePolicyDoc>(insurancePoliciesDB(), 'insurance_policy');
-  return new Set(rows.filter(d => d && d.isActive).map(d => d.patientId));
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return new Set(visible.filter(d => d && d.isActive).map(d => d.patientId));
 }
 
 export async function getPrimaryPolicy(patientId: string): Promise<InsurancePolicyDoc | null> {
@@ -990,9 +991,10 @@ export async function checkEligibility(input: CheckEligibilityInput): Promise<El
   return doc;
 }
 
-export async function getLatestEligibility(patientId: string): Promise<EligibilityCheckDoc | null> {
+export async function getLatestEligibility(patientId: string, scope?: DataScope): Promise<EligibilityCheckDoc | null> {
   const db = eligibilityChecksDB();
-  const checks = (await findByType<EligibilityCheckDoc>(db, 'eligibility_check', { patientId }, { indexFields: ['type', 'patientId'] }))
+  const rows = await findByType<EligibilityCheckDoc>(db, 'eligibility_check', { patientId }, { indexFields: ['type', 'patientId'] });
+  const checks = (scope ? filterByScope(rows, scope) : rows)
     .sort((a, b) => (b.checkDate || '').localeCompare(a.checkDate || ''));
   return checks[0] || null;
 }
@@ -1083,9 +1085,9 @@ export async function getChargesByEncounter(encounterId: string): Promise<Charge
   return findByType<ChargeDoc>(db, 'charge', { encounterId }, { indexFields: ['type', 'encounterId'] });
 }
 
-export async function getChargesByPatient(patientId: string): Promise<ChargeDoc[]> {
+export async function getChargesByPatient(patientId: string, scope?: DataScope): Promise<ChargeDoc[]> {
   const rows = await findByType<ChargeDoc>(chargesDB(), 'charge', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows
+  return (scope ? filterByScope(rows, scope) : rows)
     .sort((a, b) => (b.serviceDate || '').localeCompare(a.serviceDate || ''));
 }
 
@@ -1551,9 +1553,9 @@ export async function issueRefund(input: {
   return doc;
 }
 
-export async function getRefundsByPatient(patientId: string): Promise<RefundDoc[]> {
+export async function getRefundsByPatient(patientId: string, scope?: DataScope): Promise<RefundDoc[]> {
   const rows = await findByType<RefundDoc>(refundsDB(), 'refund', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows;
+  return scope ? filterByScope(rows, scope) : rows;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1647,9 +1649,9 @@ export async function createPaymentPlan(input: {
   return doc;
 }
 
-export async function getPaymentPlansByPatient(patientId: string): Promise<PaymentPlanDoc[]> {
+export async function getPaymentPlansByPatient(patientId: string, scope?: DataScope): Promise<PaymentPlanDoc[]> {
   const rows = await findByType<PaymentPlanDoc>(paymentPlansDB(), 'payment_plan', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows
+  return (scope ? filterByScope(rows, scope) : rows)
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
@@ -1793,9 +1795,9 @@ export async function generateInvoice(input: {
   return doc;
 }
 
-export async function getInvoicesByPatient(patientId: string): Promise<InvoiceDoc[]> {
+export async function getInvoicesByPatient(patientId: string, scope?: DataScope): Promise<InvoiceDoc[]> {
   const rows = await findByType<InvoiceDoc>(invoicesDB(), 'invoice', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows
+  return (scope ? filterByScope(rows, scope) : rows)
     .sort((a, b) => (b.issuedDate || '').localeCompare(a.issuedDate || ''));
 }
 
@@ -1868,9 +1870,9 @@ export async function savePaymentMethod(input: {
   return doc;
 }
 
-export async function getPatientPaymentMethods(patientId: string): Promise<SavedPaymentMethodDoc[]> {
+export async function getPatientPaymentMethods(patientId: string, scope?: DataScope): Promise<SavedPaymentMethodDoc[]> {
   const rows = await findByType<SavedPaymentMethodDoc>(savedPaymentMethodsDB(), 'saved_payment_method', { patientId }, { indexFields: ['type', 'patientId'] });
-  return rows;
+  return scope ? filterByScope(rows, scope) : rows;
 }
 
 /** Remove a saved payment method (patient-managed convenience record). */
@@ -1890,20 +1892,20 @@ export async function deletePaymentMethod(id: string): Promise<boolean> {
 // PATIENT FINANCIAL SUMMARY (Computed)
 // ═══════════════════════════════════════════════════════════════════
 
-export async function getPatientFinancialSummary(patientId: string): Promise<PatientFinancialSummary> {
+export async function getPatientFinancialSummary(patientId: string, scope?: DataScope): Promise<PatientFinancialSummary> {
   const [balance, policies, eligibility, payments, plans, methods] = await Promise.all([
-    getPatientBalance(patientId),
-    getPatientInsurancePolicies(patientId),
-    getLatestEligibility(patientId),
-    getPaymentsByPatient(patientId),
-    getPaymentPlansByPatient(patientId),
-    getPatientPaymentMethods(patientId),
+    getPatientBalance(patientId, scope),
+    getPatientInsurancePolicies(patientId, scope),
+    getLatestEligibility(patientId, scope),
+    getPaymentsByPatient(patientId, scope),
+    getPaymentPlansByPatient(patientId, scope),
+    getPatientPaymentMethods(patientId, scope),
   ]);
 
   const activePlans = plans.filter(p => p.status === 'active');
   const activePlanBalance = activePlans.reduce((s, p) => s + p.remainingBalance, 0);
   const today = jubaDate();
-  const invoices = await getInvoicesByPatient(patientId);
+  const invoices = await getInvoicesByPatient(patientId, scope);
   const overdueInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.dueDate < today);
   const overdueBalance = overdueInvoices.reduce((s, i) => s + i.totalDue, 0);
 

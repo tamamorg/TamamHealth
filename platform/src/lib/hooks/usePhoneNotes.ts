@@ -13,6 +13,7 @@ export function usePhoneNotes(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setNotes([]); setLoading(false); return; }
     if (!patientId) { setNotes([]); setLoading(false); return; }
     try {
       const { getPhoneNotesByPatient } = await import('../services/phone-note-service');

@@ -561,6 +561,10 @@ export async function rescheduleAppointment(
 // Appointment statistics for dashboards
 export async function getAppointmentStats(scope?: DataScope) {
   const all = await getAllAppointments(scope);
+  return appointmentStatsFrom(all);
+}
+
+export function appointmentStatsFrom(all: AppointmentDoc[]) {
   const today = jubaDate();
   const todayAppts = all.filter(a => a.appointmentDate === today);
   const upcoming = all.filter(a => a.appointmentDate > today && a.status !== 'cancelled');

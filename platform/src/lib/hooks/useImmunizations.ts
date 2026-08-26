@@ -15,6 +15,7 @@ export function useImmunizations(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setImmunizations([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllImmunizations, getImmunizationStats, getVaccineCoverage, getByPatient } = await import('../services/immunization-service');

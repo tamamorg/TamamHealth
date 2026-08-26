@@ -1,3 +1,13 @@
+/**
+ * The tenant registry lives at `/manage`. This stub stays for old links and
+ * bookmarks, and for the two hand-offs the tenant page used to make.
+ *
+ * `?org=<id>` now resolves to that organization's OWN page rather than to a
+ * list of every other one: `?edit=1` and `?deactivate=1` are handled there,
+ * beside the record they act on, instead of bouncing an operator out of the
+ * tenant they were reading and back again.
+ */
+
 import { redirect } from 'next/navigation';
 
 export default async function OrganizationsRedirect({
@@ -6,14 +16,26 @@ export default async function OrganizationsRedirect({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const next = new URLSearchParams({ view: params.view === 'facilities' ? 'facilities' : 'organizations' });
-  /* Carry the deep-link through. This used to forward `view` and `new` only,
-     so the tenant page's "Edit organization" and "Deactivate" — both of which
-     hand off as ?org=<id>&edit=1 / &deactivate=1 — landed on an unscoped
-     /manage with no dialog open, and the operator's action just vanished. */
-  for (const key of ['new', 'org', 'facility', 'edit', 'deactivate', 'q'] as const) {
-    const value = params[key];
-    if (typeof value === 'string') next.set(key, value);
+  const org = typeof params.org === 'string' ? params.org : null;
+
+  if (org) {
+    const next = new URLSearchParams();
+    for (const key of ['edit', 'deactivate', 'facility', 'q'] as const) {
+      const value = params[key];
+      if (typeof value === 'string') next.set(key, value);
+    }
+    const query = next.toString();
+    redirect(`/admin/organizations/${encodeURIComponent(org)}${query ? `?${query}` : ''}`);
   }
-  redirect(`/manage?${next.toString()}`);
+
+  const next = new URLSearchParams();
+  if (typeof params.q === 'string') next.set('q', params.q);
+  /* `?new=1` meant "the thing this view creates", and the view it named is
+     gone. At the console root that thing is an organization; `?view=facilities`
+     still asks for a facility, which the root's dialog can also open. */
+  if (typeof params.new === 'string') {
+    next.set('new', params.view === 'facilities' ? 'facility' : 'organization');
+  }
+  const query = next.toString();
+  redirect(query ? `/manage?${query}` : '/manage');
 }

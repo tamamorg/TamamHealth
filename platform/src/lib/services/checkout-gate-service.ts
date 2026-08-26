@@ -31,6 +31,7 @@
  */
 
 import type { EncounterDoc } from '../db-types';
+import type { DataScope } from './data-scope';
 import { FACILITY_CHECKOUT_GATE } from '../clinical-flow/encounter-journey';
 import type { EncounterStatus } from '../clinical-flow/encounter-journey';
 import type { TransitionActor, TransitionResult } from '../clinical-flow/encounter-engine';
@@ -90,6 +91,7 @@ const RESOLVED_RX_STATUSES = new Set(['dispensed', 'discontinued']);
 export async function evaluateCheckoutGate(
   patientId: string,
   encounter?: EncounterDoc,
+  scope?: DataScope,
 ): Promise<CheckoutGateEvaluation> {
   const results: GateConditionResult[] = [];
 
@@ -117,7 +119,7 @@ export async function evaluateCheckoutGate(
   // ── Prescriptions dispensed ───────────────────────────────────────────
   try {
     const { getPrescriptionsByPatient } = await import('./prescription-service');
-    const rxs = await getPrescriptionsByPatient(patientId);
+    const rxs = await getPrescriptionsByPatient(patientId, scope);
     const outstanding = rxs.filter((r) => !RESOLVED_RX_STATUSES.has(r.status));
     // Life-sustaining orders among them, for the separate safety signal above.
     const { isTier1 } = await import('../clinical-flow/medication-tiers');
@@ -139,7 +141,7 @@ export async function evaluateCheckoutGate(
   // ── Critical labs reviewed ────────────────────────────────────────────
   try {
     const { getLabResultsByPatient, effectiveOrderStatus } = await import('./lab-service');
-    const labs = await getLabResultsByPatient(patientId);
+    const labs = await getLabResultsByPatient(patientId, scope);
     // A critical value that has come back but not been reviewed by a clinician
     // is the single most dangerous thing to discharge someone on.
     const unreviewed = labs.filter(
@@ -169,7 +171,7 @@ export async function evaluateCheckoutGate(
   try {
     const { getProceduresByPatient, isProcedureSettled } = await import('./procedure-service');
     const encId = encounter?._id;
-    const procedures = await getProceduresByPatient(patientId);
+    const procedures = await getProceduresByPatient(patientId, scope);
     // Only this visit's procedures. A procedure from an earlier encounter that
     // was left mid-lifecycle is somebody else's loop to close, not a reason to
     // hold this patient at the desk.
@@ -195,11 +197,11 @@ export async function evaluateCheckoutGate(
     const { getNotesByPatient } = await import('../clinical-notes/note-service');
     const encId = encounter?._id;
 
-    const records = await getRecordsByPatient(patientId);
+    const records = await getRecordsByPatient(patientId, scope);
     const recordsForVisit = encId ? records.filter((r) => r.encounterId === encId) : records;
     const signedRecords = recordsForVisit.filter((r) => !!(r as { signedAt?: string }).signedAt);
 
-    const notes = await getNotesByPatient(patientId).catch(() => []);
+    const notes = await getNotesByPatient(patientId, scope).catch(() => []);
     const notesForVisit = encId ? notes.filter((n) => n.encounterId === encId) : notes;
     // A visit with a clinician must leave a record behind. An unsigned draft
     // is not documentation — it is an intention.
@@ -218,7 +220,7 @@ export async function evaluateCheckoutGate(
   // ── Payment status determined (non-critical) ──────────────────────────
   try {
     const { getPatientBalance } = await import('./ledger-service');
-    const balance = await getPatientBalance(patientId);
+    const balance = await getPatientBalance(patientId, scope);
     // Non-critical by design: an outstanding balance is flagged, not a reason
     // to detain a patient. Withholding discharge over money is not something
     // this system should make easy.

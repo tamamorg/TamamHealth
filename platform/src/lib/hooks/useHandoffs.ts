@@ -20,6 +20,7 @@ export function useHandoffs() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setHandoffs([]); setLoading(false); return; }
     try {
       const svc = await import('../services/handoff-service');
       const list = await svc.listHandoffs(scope);

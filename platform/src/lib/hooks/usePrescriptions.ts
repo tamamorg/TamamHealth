@@ -18,6 +18,7 @@ export function usePrescriptions(patientId?: string) {
   const { currentUser } = useAuth();
 
   const loadPrescriptions = useCallback(async () => {
+    if (!scope) { setPrescriptions([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllPrescriptions, getPrescriptionsByPatient } = await import('../services/prescription-service');

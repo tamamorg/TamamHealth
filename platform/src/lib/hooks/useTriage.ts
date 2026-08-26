@@ -20,6 +20,7 @@ export function useTriage(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setTriages([]); setLoading(false); return; }
     try {
       setError(null);
       const svc = await import('../services/triage-service');

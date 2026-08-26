@@ -30,6 +30,7 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
   const seedAttempted = useRef(false);
 
   const load = useCallback(async () => {
+    if (!scope) { setItems([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllSupplies } = await import('../services/nutrition-supply-service');
@@ -37,7 +38,7 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
       if (data.length === 0 && demoSeed && demoSeed.length > 0 && !seedAttempted.current) {
         seedAttempted.current = true;
         const { seedSuppliesIfEmpty } = await import('../services/nutrition-supply-service');
-        await seedSuppliesIfEmpty(demoSeed, { hospitalId: scope?.hospitalId, orgId: scope?.orgId });
+        await seedSuppliesIfEmpty(demoSeed, { hospitalId: scope.hospitalId, orgId: scope.orgId });
         const seeded = await getAllSupplies(scope);
         setItems(seeded);
         return;

@@ -9,7 +9,6 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
 import Modal from '@/components/Modal';
-import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
   Microscope,
@@ -197,9 +196,8 @@ export default function LabDashboardPage() {
   const results = useMemo(() => allResults.filter(r => !isImagingStudy(r)), [allResults]);
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date()), []);
   // Work-queue status filter (shell tabs) + inline search bound to the shell's
-  // left rail. The tabs use the shared three-lane vocabulary every role
-  // dashboard shows: Upcoming = ordered/pending, Checked In = on the bench
-  // (in progress), Completed = resulted.
+  // left rail. Station work queues use their own vocabulary: Queued =
+  // ordered/pending, In Progress = on the bench, Completed = resulted.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   const [queueSearch, setQueueSearch] = useState('');
 
@@ -373,9 +371,9 @@ export default function LabDashboardPage() {
           greetingName={currentUser?.name}
           dateLabel={dateLabel}
           tabs={[
-            { key: 'scheduled', label: APPOINTMENT_STATUS_GROUP_LABELS.scheduled, count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'in_office', label: APPOINTMENT_STATUS_GROUP_LABELS.in_office, count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'finished', label: APPOINTMENT_STATUS_GROUP_LABELS.finished, count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'scheduled', label: t('workQueue.queued'), count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'in_office', label: t('workQueue.inProgress'), count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'finished', label: t('workQueue.completed'), count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
           ]}
           activeTab={queueFilter}
           onTabChange={(k) => setQueueFilter(k as typeof queueFilter)}

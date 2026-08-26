@@ -6,6 +6,7 @@ import Modal from '@/components/Modal';
 import { LogOut, X, Wallet, CheckCircle } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import type { CheckoutTarget } from '@/lib/front-desk-utils';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 // ── Final-checkout modal: confirm balance settled, mark the visit complete ──
 export default function CheckoutModal({
@@ -25,6 +26,7 @@ export default function CheckoutModal({
   canCollectPayment: boolean;
   onCollectPayment: (patientId: string) => void;
 }) {
+  const scope = useDataScope();
   const [balance, setBalance] = useState<number | null>(null);
   const [charges, setCharges] = useState<{ description: string; amount: number }[]>([]);
   const [completing, setCompleting] = useState(false);
@@ -39,14 +41,19 @@ export default function CheckoutModal({
   const [disposition, setDisposition] = useState<import('@/lib/services/encounter-service').DischargeDisposition>('discharged');
 
   useEffect(() => {
+    if (!scope) {
+      setBalance(null);
+      setGate(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const b = await getPatientBalance(target.patientId);
+        const b = await getPatientBalance(target.patientId, scope);
         if (!cancelled) setBalance(b);
       } catch {
-        if (!cancelled) setBalance(0);
+        if (!cancelled) setBalance(null);
       }
       // Itemized fee ticket for this visit so the desk sees what was billed.
       try {
@@ -62,12 +69,12 @@ export default function CheckoutModal({
         // The same evaluation the discharge handler runs, shown up front so
         // the desk can resolve conditions before pressing the button.
         const { evaluateCheckoutGate } = await import('@/lib/services/checkout-gate-service');
-        const evaluation = await evaluateCheckoutGate(target.patientId, (enc ?? undefined) as never);
+        const evaluation = await evaluateCheckoutGate(target.patientId, (enc ?? undefined) as never, scope);
         if (!cancelled) setGate(evaluation);
       } catch { /* non-fatal — balance still shows */ }
     })();
     return () => { cancelled = true; };
-  }, [target.encounterId, target.patientId]);
+  }, [scope, target.encounterId, target.patientId]);
 
   const owes = (balance ?? 0) > 0;
 
@@ -225,7 +232,7 @@ export default function CheckoutModal({
           </button>
           {(() => {
             const blocked = !!gate && gate.blocking.length > 0;
-            const canSubmit = !completing
+            const canSubmit = balance !== null && !completing
               && (!blocked || (overrideReason.trim().length > 0 && overrideAuthorizedBy.trim().length > 0));
             return (
               <button

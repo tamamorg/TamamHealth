@@ -22,6 +22,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
+import { appointmentStatusForEncounter, nonRegressingAppointmentStatus } from '../clinical-flow/visit-state';
 
 /** Statuses where the clinician has handed off and is waiting on a parallel order. */
 export const RESUMABLE_STATUSES: EncounterStatus[] = [
@@ -286,6 +287,39 @@ export async function transitionEncounter(
   updated._rev = resp.rev;
   await logAuditSafe('TRANSITION_ENCOUNTER', opts?.actorId ?? existing.clinicianId, undefined, `Encounter ${id}: ${existing.status} → ${to}`);
   emitSyncEvent({ resourceType: 'clinical_encounter', resourceId: id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.hospitalId });
+  if (updated.appointmentId) {
+    const repairId = `repair-encounter-projection-${updated._id}`;
+    try {
+      const { getAppointmentById, updateAppointmentStatus } = await import('./appointment-service');
+      const appointment = await getAppointmentById(updated.appointmentId);
+      const projectedStatus = appointment
+        ? nonRegressingAppointmentStatus(appointment.status, appointmentStatusForEncounter(updated.status))
+        : appointmentStatusForEncounter(updated.status);
+      if (appointment && appointment.status !== projectedStatus) {
+        const projected = await updateAppointmentStatus(appointment._id, projectedStatus, {
+          actorId: opts?.actorId,
+          actorRole: opts?.actorRole,
+          note: `Projected from encounter stage ${updated.status}`,
+        });
+        if (!projected) throw new Error('Appointment projection write failed');
+      }
+      const { resolveWorkflowRepair } = await import('./workflow-repair-service');
+      await resolveWorkflowRepair(repairId).catch(() => undefined);
+    } catch (error) {
+      const { upsertWorkflowRepair } = await import('./workflow-repair-service');
+      await upsertWorkflowRepair(repairId, {
+        workflow: 'encounter_projection',
+        patientId: updated.patientId,
+        appointmentId: updated.appointmentId,
+        encounterId: updated._id,
+        hospitalId: updated.hospitalId,
+        orgId: updated.orgId,
+        status: 'open',
+        currentStep: 'appointment_status',
+        lastError: error instanceof Error ? error.message : 'Appointment projection failed',
+      }).catch(() => undefined);
+    }
+  }
   return updated;
 }
 
@@ -403,12 +437,20 @@ export interface CreateArrivalEncounterInput {
 export async function createArrivalEncounter(input: CreateArrivalEncounterInput): Promise<EncounterDoc> {
   const now = new Date().toISOString();
   const initialStatus: EncounterStatus = input.arrivalChannel === 'appointment' ? 'registered' : 'arrived_at_facility';
+  const linkedAppointment = input.appointmentId
+    ? await import('./appointment-service').then(module => module.getAppointmentById(input.appointmentId!))
+    : null;
   let enc = await createEncounter({
     patientId: input.patientId,
     patientName: input.patientName,
     hospitalNumber: input.hospitalNumber,
     clinicianId: '',
     clinicianName: '',
+    assignedClinicianId: linkedAppointment?.providerId || undefined,
+    assignedClinicianName: linkedAppointment?.providerName || undefined,
+    assignedNurseId: linkedAppointment?.staffId,
+    assignedNurseName: linkedAppointment?.staffName,
+    assignedAt: linkedAppointment?.providerId || linkedAppointment?.staffId ? now : undefined,
     // Who opened the visit. An arrival has no clinician yet, so without this
     // the very first entry in the trail — the moment the patient was admitted
     // at the front desk — was the one hop with nobody's name against it, while
@@ -492,6 +534,8 @@ export async function advanceEncounterToClinician(
     enc = await updateEncounter(id, {
       clinicianId: opts.clinicianId ?? enc.clinicianId,
       clinicianName: opts.clinicianName ?? enc.clinicianName,
+      assignedClinicianId: opts.clinicianId ?? enc.assignedClinicianId,
+      assignedClinicianName: opts.clinicianName ?? enc.assignedClinicianName,
       snapshot: opts.snapshot ?? enc.snapshot,
       triageId: opts.triageId ?? enc.triageId,
     }) ?? enc;

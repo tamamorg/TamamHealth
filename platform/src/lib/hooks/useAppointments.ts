@@ -16,6 +16,11 @@ export function useAppointments() {
   const { currentUser } = useAuth();
 
   const load = useCallback(async () => {
+    if (!scope) {
+      setAppointments([]);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllAppointments } = await import('../services/appointment-service');
@@ -90,7 +95,7 @@ export function usePatientAppointments(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
-    if (!patientId) { setAppointments([]); setLoading(false); return; }
+    if (!patientId || !scope) { setAppointments([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAppointmentsByPatient } = await import('../services/appointment-service');
@@ -115,6 +120,7 @@ export function useAppointmentStats() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setStats(null); setLoading(false); return; }
     try {
       const { getAppointmentStats } = await import('../services/appointment-service');
       const data = await getAppointmentStats(scope);

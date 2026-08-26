@@ -1,24 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { ReferralDoc } from '../db-types';
 import type { Attachment, ReferralOutcome } from '@/data/mock';
 import { referralsDB } from '../db';
-import { useAuth } from '../context';
 import { useDataScope } from './useDataScope';
 
 export function useReferrals() {
   const [referrals, setReferrals] = useState<ReferralDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  const scope = useDataScope();
 
   const loadReferrals = useCallback(async () => {
+    if (!scope) {
+      setReferrals([]);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllReferrals } = await import('../services/referral-service');
@@ -103,7 +103,7 @@ export function usePatientReferrals(patientId?: string) {
   const scope = useDataScope();
 
   const loadReferrals = useCallback(async () => {
-    if (!patientId) {
+    if (!patientId || !scope) {
       setReferrals([]);
       setLoading(false);
       return;

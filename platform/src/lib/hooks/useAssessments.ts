@@ -13,6 +13,7 @@ export function useAssessments(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setAssessments([]); setLoading(false); return; }
     if (!patientId) { setAssessments([]); setLoading(false); return; }
     try {
       const { getAssessmentsByPatient } = await import('../services/assessment-service');

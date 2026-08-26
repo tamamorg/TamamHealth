@@ -14,6 +14,7 @@ export function useProcedures(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setAllProcedures([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllProcedures } = await import('../services/procedure-service');

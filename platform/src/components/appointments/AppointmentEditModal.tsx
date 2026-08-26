@@ -183,7 +183,7 @@ export default function AppointmentEditModal({
     setSaving(true);
     try {
       const { updateAppointment, updateAppointmentStatus } = await import('@/lib/services/appointment-service');
-      await updateAppointment(appointment._id, {
+      const updated = await updateAppointment(appointment._id, {
         appointmentDate: date, appointmentTime: time, duration,
         appointmentType: type, priority, department,
         providerId, providerName: provider, reason, notes,
@@ -193,6 +193,39 @@ export default function AppointmentEditModal({
         isRecurring: Boolean(detail.recurrence),
         recurrencePattern: detail.recurrence || undefined,
       });
+      if (!updated) throw new Error('The appointment could not be updated');
+
+      // Provider/staff are visit assignments, not merely calendar decoration.
+      // Mirror changes into the encounter and patient compatibility fields so
+      // the assignee's worklist updates on every device.
+      const providerChanged = providerId !== (appointment.providerId || '');
+      const nurseChanged = detail.staffId !== (appointment.staffId || '');
+      if (providerChanged && providerId) {
+        const selected = providerOptions.find(option => option._id === providerId);
+        const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
+        await assignProviderToPatient({
+          patientId: appointment.patientId,
+          patientName: appointment.patientName,
+          provider: { id: providerId, name: provider, role: selected?.role },
+          actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
+          hospitalId: appointment.facilityId || currentUser?.hospitalId,
+          hospitalName: appointment.facilityName || currentUser?.hospitalName,
+          orgId: appointment.orgId || currentUser?.orgId,
+          appointmentId: appointment._id,
+        });
+      }
+      if (nurseChanged) {
+        const selected = users.find(option => option._id === detail.staffId);
+        const { assignNurseToPatient } = await import('@/lib/services/patient-assignment-service');
+        await assignNurseToPatient({
+          patientId: appointment.patientId,
+          nurse: detail.staffId ? { id: detail.staffId, name: detail.staffName || selected?.name || 'Nurse' } : null,
+          actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
+          hospitalId: appointment.facilityId || currentUser?.hospitalId,
+          orgId: appointment.orgId || currentUser?.orgId,
+          appointmentId: appointment._id,
+        });
+      }
       if (status !== appointment.status) {
         if (status === 'checked_in') {
           // Checking in is the one rung that is more than a status: it opens

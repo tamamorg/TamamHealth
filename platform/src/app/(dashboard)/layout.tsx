@@ -23,6 +23,7 @@ import MobileAppShell from '@/components/mobile/MobileAppShell';
 import UsageTracker from '@/components/UsageTracker';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
+import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider } from '@/modules/communication/client';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -76,6 +77,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <MessagingDockProvider>
     <TourProvider>
     <ConfirmProvider>
+    {/* The record-aware breadcrumb. Wraps BOTH the bar and the pages, so a
+        page deep in the organization → facility → person chain can publish a
+        trail the shared bar above it renders. */}
+    <ConsoleTrailProvider>
     <div className="flex h-screen overflow-hidden tamam-solid-bg tamam-ehr-app">
       {isLocked && currentUser && (
         <LockScreen
@@ -119,6 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {!useShell && <MessagingDock />}
       <UsageTracker />
     </div>
+    </ConsoleTrailProvider>
     </ConfirmProvider>
     </TourProvider>
     </MessagingDockProvider>

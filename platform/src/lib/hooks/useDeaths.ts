@@ -14,6 +14,7 @@ export function useDeaths() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setDeaths([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllDeaths, getDeathStats } = await import('../services/death-service');

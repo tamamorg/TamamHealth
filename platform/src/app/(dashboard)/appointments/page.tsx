@@ -45,6 +45,7 @@ import dynamic from 'next/dynamic';
 import PortalModal from '@/components/Modal';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import Select from '@/components/Select';
+import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -108,6 +109,10 @@ export default function AppointmentsPage() {
   const { t } = useTranslation();
   const { departments: facilityDepartments } = useSettings();
   const departments = facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
+  const visibleAppointments = useMemo(
+    () => appointmentsVisibleToUser(appointments, currentUser),
+    [appointments, currentUser],
+  );
 
   // Translated label lookups for module-level config (which can't call t()).
   const statusLabelKey = APPOINTMENT_STATUS_I18N_KEYS;
@@ -180,19 +185,19 @@ export default function AppointmentsPage() {
     const params = new URLSearchParams(window.location.search);
     const appointmentId = params.get('appointment');
     if (!appointmentId) return;
-    const match = appointments.find(a => a._id === appointmentId);
+    const match = visibleAppointments.find(a => a._id === appointmentId);
     if (!match) return;
     appointmentParamRef.current = true;
     setEventApt(match);
     params.delete('appointment');
     const qs = params.toString();
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
-  }, [appointments]);
+  }, [visibleAppointments]);
 
   // Keyboard ← → to step through appointments while the detail modal is open.
   useEffect(() => {
     if (!eventApt) return;
-    const sorted = [...appointments].sort((a, b) =>
+    const sorted = [...visibleAppointments].sort((a, b) =>
       `${a.appointmentDate}${a.appointmentTime}`.localeCompare(`${b.appointmentDate}${b.appointmentTime}`)
     );
     const idx = sorted.findIndex(a => a._id === eventApt._id);
@@ -202,7 +207,7 @@ export default function AppointmentsPage() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [eventApt, appointments]);
+  }, [eventApt, visibleAppointments]);
 
   // The day the grid is centred on. With nothing picked it is "today" in
   // Africa/Juba, so the initial focus matches the facility's timezone rather
@@ -273,7 +278,7 @@ export default function AppointmentsPage() {
    * month instead of two days), never the contents.
    */
   const calendarEvents = useMemo(() => {
-    let list = appointments;
+    let list = visibleAppointments;
     if (filterStatus === 'pending_approval') {
       list = list.filter(a => a.status === 'scheduled' && a.appointmentDate >= today);
     } else if (filterStatus !== 'all') {
@@ -297,7 +302,7 @@ export default function AppointmentsPage() {
         resource: a,
       };
     });
-  }, [appointments, filterStatus, search, globalSearch, today]);
+  }, [visibleAppointments, filterStatus, search, globalSearch, today]);
 
   // The day bar's own number. `calendarEvents` is every appointment matching
   // the filter, across every month — printing that beside "Aug 20 – 21" put a
@@ -343,7 +348,7 @@ export default function AppointmentsPage() {
     const { start, end } = calendarPeriodRange(calView, calDate);
     const fromDate = toIsoDate(start);
     const untilDate = toIsoDate(end);
-    let list = appointments.filter(a => a.appointmentDate >= fromDate && a.appointmentDate < untilDate);
+    let list = visibleAppointments.filter(a => a.appointmentDate >= fromDate && a.appointmentDate < untilDate);
     const q = `${search} ${globalSearch}`.toLowerCase().trim();
     if (q) list = list.filter(a =>
       a.patientName.toLowerCase().includes(q) ||
@@ -352,7 +357,7 @@ export default function AppointmentsPage() {
       a.reason.toLowerCase().includes(q)
     );
     return list;
-  }, [appointments, search, globalSearch, calView, calDate]);
+  }, [visibleAppointments, search, globalSearch, calView, calDate]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: statusBaseList.length };
@@ -376,7 +381,7 @@ export default function AppointmentsPage() {
   }, [statusCounts, filterStatus, t, statusLabelKey]);
 
   // Pending approvals
-  const pendingApprovals = useMemo(() => appointments.filter(a => a.status === 'scheduled' && a.appointmentDate >= today), [appointments, today]);
+  const pendingApprovals = useMemo(() => visibleAppointments.filter(a => a.status === 'scheduled' && a.appointmentDate >= today), [visibleAppointments, today]);
 
   /**
    * Dismissing the dialog also drops the "came from registration" hand-off:
@@ -512,7 +517,7 @@ export default function AppointmentsPage() {
     <AppointmentEditModal
       inline
       appointment={apt}
-      appointments={appointments}
+      appointments={visibleAppointments}
       patient={patientById.get(apt.patientId)}
       onClose={onDone}
     />
@@ -743,7 +748,7 @@ export default function AppointmentsPage() {
         {/* Appointment detail — opens when an event on the calendar is clicked.
             Sorted list enables prev/next navigation without closing the modal. */}
         {eventApt && (() => {
-          const sorted = [...appointments].sort((a, b) =>
+          const sorted = [...visibleAppointments].sort((a, b) =>
             `${a.appointmentDate}${a.appointmentTime}`.localeCompare(`${b.appointmentDate}${b.appointmentTime}`)
           );
           const idx = sorted.findIndex(a => a._id === eventApt._id);

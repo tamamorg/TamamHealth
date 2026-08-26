@@ -18,12 +18,14 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useReturnTo } from '@/lib/navigation/expand-to-page';
 import { getPatientInsurancePolicies } from '@/lib/services/payment-service';
 import type { InsurancePolicyDoc } from '@/lib/db-types-payments';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 export default function NewInsurancePolicyPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const patientId = params?.id ?? '';
   const chart = `/patients/${encodeURIComponent(patientId)}?tab=billing`;
   const returnTo = useReturnTo(chart);
@@ -34,10 +36,10 @@ export default function NewInsurancePolicyPage() {
   useEffect(() => {
     let cancelled = false;
     const policyId = new URLSearchParams(window.location.search).get('policy');
-    if (!policyId || !patientId) { setLoading(false); return; }
+    if (!policyId || !patientId || !scope) { setLoading(false); return; }
     (async () => {
       try {
-        const policies = await getPatientInsurancePolicies(patientId);
+        const policies = await getPatientInsurancePolicies(patientId, scope);
         if (!cancelled) setPolicy(policies.find(p => p._id === policyId) ?? null);
       } catch (err) {
         console.error('[insurance] could not load the policy being edited:', err);
@@ -46,7 +48,7 @@ export default function NewInsurancePolicyPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [patientId]);
+  }, [patientId, scope]);
 
   // The form seeds its fields from `policy` on first render, so it must not
   // mount until that lookup has settled — otherwise an edit opens empty.

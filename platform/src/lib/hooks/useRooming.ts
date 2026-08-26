@@ -21,6 +21,7 @@ export function useRooming() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setEntries([]); setLoading(false); return; }
     try {
       setError(null);
       const svc = await import('../services/rooming-service');

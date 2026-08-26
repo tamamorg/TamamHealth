@@ -42,6 +42,7 @@ function baseInput(overrides: Partial<NurseWorklistInput> = {}): NurseWorklistIn
     marEntries: [],
     handoffs: [],
     followUpsDue: [],
+    appointments: [],
     now: NOW,
     ...overrides,
   };
@@ -52,6 +53,18 @@ beforeEach(() => {
 });
 
 describe('assembleNurseWorklist — ward roster rows', () => {
+  test('a patient assigned to the signed-in nurse appears without an admission or rooming record', () => {
+    const patient = makePatient({
+      _id: 'p-assigned',
+      assignedNurse: 'nurse-1',
+      assignedNurseName: 'Nurse Stella',
+    });
+
+    const result = assembleNurseWorklist(baseInput({ patients: [patient] }));
+
+    expect(result.patients.find(row => row._id === patient._id)?.ward).toBe('Assigned care');
+  });
+
   test('an active admission produces a row joined to the patient doc, with real ward/bed, doctor and nurse', () => {
     const patient = makePatient({ _id: 'p1', firstName: 'Akol', surname: 'Deng', gender: 'Female' });
     const admission = makeAdmission({

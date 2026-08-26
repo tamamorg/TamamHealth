@@ -8,15 +8,22 @@ import { useAppointments } from '@/lib/hooks/useAppointments';
 import { patientInitials, avatarTint } from '@/lib/patient-utils';
 import { useMobileShellState } from '@/lib/mobile-shell/use-mobile-shell-state';
 import MobileWeekStrip from './MobileWeekStrip';
+import { useAuth } from '@/lib/context';
+import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 
 export default function MobileCalendarView() {
   const { appointments, loading } = useAppointments();
+  const { currentUser } = useAuth();
   const shell = useMobileShellState();
+  const visibleAppointments = useMemo(
+    () => appointmentsVisibleToUser(appointments, currentUser),
+    [appointments, currentUser],
+  );
 
-  const daysWithAppointments = useMemo(() => new Set(appointments.map((a) => a.appointmentDate)), [appointments]);
+  const daysWithAppointments = useMemo(() => new Set(visibleAppointments.map((a) => a.appointmentDate)), [visibleAppointments]);
   const dayAppointments = useMemo(
-    () => appointments.filter((a) => a.appointmentDate === shell.day).sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)),
-    [appointments, shell.day]
+    () => visibleAppointments.filter((a) => a.appointmentDate === shell.day).sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)),
+    [visibleAppointments, shell.day]
   );
 
   if (loading) {

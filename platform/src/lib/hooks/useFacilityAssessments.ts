@@ -14,6 +14,7 @@ export function useFacilityAssessments() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setAssessments([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllAssessments, getAssessmentSummary } = await import('../services/facility-assessment-service');

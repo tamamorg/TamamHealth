@@ -13,6 +13,7 @@ export function useProblems(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setProblems([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllProblems, getProblemsByPatient } = await import('../services/problem-service');

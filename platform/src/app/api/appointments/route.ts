@@ -9,11 +9,13 @@ import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
-  'midwife', 'front_desk', 'cashier', 'medical_superintendent',
+  'midwife', 'front_desk', 'cashier', 'medical_superintendent', 'hospital_manager',
+  'central_registration_clerk', 'clinic_clerk', 'triage_nurse', 'rooming_nurse', 'clinician',
 ];
 const CREATE_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
-  'midwife', 'front_desk', 'medical_superintendent',
+  'midwife', 'front_desk', 'medical_superintendent', 'central_registration_clerk',
+  'clinic_clerk', 'triage_nurse', 'rooming_nurse', 'clinician',
 ];
 
 /**
@@ -54,9 +56,14 @@ export async function GET(request: NextRequest) {
     const {
       getAllAppointments, getAppointmentsByDate, getAppointmentsByPatient,
       getAppointmentsByProvider, getTodaysAppointments, getUpcomingAppointments,
-      getAppointmentStats,
+      appointmentStatsFrom,
     } = await import('@/lib/services/appointment-service');
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const { appointmentsVisibleToUser } = await import('@/lib/appointment-visibility');
+    const visible = (rows: import('@/lib/db-types').AppointmentDoc[]) => appointmentsVisibleToUser(
+      rows,
+      { _id: auth.sub, role: auth.role as UserRole },
+    );
     const url = new URL(request.url);
     const date = url.searchParams.get('date');
     const patientId = url.searchParams.get('patientId');
@@ -64,17 +71,17 @@ export async function GET(request: NextRequest) {
     const view = url.searchParams.get('view'); // 'today', 'upcoming', 'stats'
     if (view === 'stats') {
       const scope = buildScopeFromAuth(auth);
-      const stats = await getAppointmentStats(scope);
+      const stats = appointmentStatsFrom(visible(await getAllAppointments(scope)));
       return NextResponse.json(stats);
     }
     if (view === 'today') {
       const scope = buildScopeFromAuth(auth);
-      const appointments = await getTodaysAppointments(scope);
+      const appointments = visible(await getTodaysAppointments(scope));
       return NextResponse.json({ appointments, total: appointments.length });
     }
     if (view === 'upcoming') {
       const scope = buildScopeFromAuth(auth);
-      const appointments = await getUpcomingAppointments(scope);
+      const appointments = visible(await getUpcomingAppointments(scope));
       return NextResponse.json({ appointments, total: appointments.length });
     }
     let appointments;
@@ -91,6 +98,7 @@ export async function GET(request: NextRequest) {
       const scope = buildScopeFromAuth(auth);
       appointments = await getAllAppointments(scope);
     }
+    appointments = visible(appointments);
     return NextResponse.json({ appointments, total: appointments.length });
   } catch (err) {
     logApiError('[API /appointments GET]', err);
@@ -127,10 +135,23 @@ async function postHandler(request: NextRequest) {
       if (!existingForStatus || filterByScope([existingForStatus], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       }
+      const { canViewAppointment } = await import('@/lib/appointment-visibility');
+      if (!canViewAppointment(existingForStatus, { _id: auth.sub, role: auth.role as UserRole })) {
+        return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+      }
+      const requestedExtra = body.extra && typeof body.extra === 'object'
+        ? body.extra as Record<string, unknown>
+        : {};
       const result = await updateAppointmentStatus(
         body.appointmentId as string,
         body.status as Parameters<typeof updateAppointmentStatus>[1],
-        body.extra as Parameters<typeof updateAppointmentStatus>[2],
+        {
+          cancelledReason: typeof requestedExtra.cancelledReason === 'string' ? requestedExtra.cancelledReason : undefined,
+          note: typeof requestedExtra.note === 'string' ? requestedExtra.note : undefined,
+          actorId: auth.sub,
+          actorName: auth.name,
+          actorRole: auth.role as UserRole,
+        },
       );
       if (!result) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       return NextResponse.json({ appointment: result });
@@ -150,6 +171,8 @@ async function postHandler(request: NextRequest) {
       if (!existingForReschedule || filterByScope([existingForReschedule], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       }
+      const { APPOINTMENT_SCHEDULING_ROLES } = await import('@/lib/appointment-status');
+      if (!APPOINTMENT_SCHEDULING_ROLES.includes(auth.role as UserRole)) return forbidden();
       const newDateErr = validateFutureDate(body.newDate as string, body.newTime as string);
       if (newDateErr) return NextResponse.json({ error: newDateErr }, { status: 400 });
       const { rescheduleAppointment } = await import('@/lib/services/appointment-service');

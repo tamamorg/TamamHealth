@@ -144,7 +144,7 @@ describe('buildAddMenuEntries', () => {
   test('org_admin can add a facility, staff, inquiries, shifts, leave and payroll', () => {
     const entries = buildAddMenuEntries({ role: 'org_admin', allowedRoutes: allowedFor('org_admin') });
     expect(entries.map(e => e.key)).toEqual(['facility', 'staff', 'inquiry', 'shift', 'leave', 'payroll']);
-    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?view=people&new=1');
+    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?new=user');
   });
 
   test('"Add facility" comes before "Add staff member" — a facility role cannot be saved without one', () => {
@@ -157,19 +157,19 @@ describe('buildAddMenuEntries', () => {
     }
   });
 
-  test('super_admin adds staff through the platform accounts page', () => {
+  test('super_admin adds staff through the console root', () => {
     const entries = buildAddMenuEntries({ role: 'super_admin', allowedRoutes: allowedFor('super_admin') });
-    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?view=people&new=1');
+    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?new=user');
   });
 
   test('there is no separate "create user account" action — staff and login are one record', () => {
     const entries = buildAddMenuEntries({ role: 'super_admin', allowedRoutes: allowedFor('super_admin') });
     expect(entries.map(e => e.label.toLowerCase()).filter(l => l.includes('user account'))).toHaveLength(0);
     // The single staff entry IS the account-creating one — it points at the
-    // users console's create form. (This used to also assert a "Creates their
+    // console root's create form. (This used to also assert a "Creates their
     // login too" subline; the menu no longer renders per-item clarifiers, so
     // the rule is pinned to the destination instead of to copy.)
-    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?view=people&new=1');
+    expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?new=user');
   });
 
   test('a role that cannot administer accounts keeps the entries it can use', () => {
@@ -184,25 +184,31 @@ describe('buildAddMenuEntries', () => {
     }
   });
 
-  test('every Add destination is openable by that role and carries the ?new flag', () => {
+  test('every Add destination is openable by that role and names what it creates', () => {
+    // `?new=1` used to be enough because the console root had a tab per kind,
+    // so "the thing this view creates" was unambiguous. There are no tabs —
+    // one root, three creatable things — so the entry has to say which.
     for (const role of ALL_ROLES) {
       for (const entry of buildAddMenuEntries({ role, allowedRoutes: allowedFor(role) })) {
         expect(isPathAllowed(role, entry.href.split('?')[0])).toBe(true);
-        expect(entry.href).toContain('new=1');
+        expect(entry.href).toMatch(/new=(1|facility|user)/);
       }
     }
   });
 });
 
 describe('usersHrefForRole', () => {
-  test('each admin role points at the shared people workspace', () => {
-    expect(usersHrefForRole('super_admin')).toBe('/manage?view=people');
-    expect(usersHrefForRole('org_admin')).toBe('/manage?view=people');
+  test('each admin role points at the console root', () => {
+    // There is no standalone people roster to point at any more: an account
+    // belongs to a facility, so the roster is the facility's page. The root is
+    // where the drill-down that reaches it starts.
+    expect(usersHrefForRole('super_admin')).toBe('/manage');
+    expect(usersHrefForRole('org_admin')).toBe('/manage');
   });
 
-  test('the facility roles read the staff list on the org-scoped accounts page', () => {
-    expect(usersHrefForRole('hospital_manager')).toBe('/manage?view=people');
-    expect(usersHrefForRole('medical_superintendent')).toBe('/manage?view=people');
+  test('the facility roles reach the staff list through the same root', () => {
+    expect(usersHrefForRole('hospital_manager')).toBe('/manage');
+    expect(usersHrefForRole('medical_superintendent')).toBe('/manage');
   });
 
   test('clinical roles get nothing', () => {

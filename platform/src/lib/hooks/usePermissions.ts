@@ -70,6 +70,8 @@ export function usePermissions() {
   const canCheckInAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
   const canAdvanceAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isMedSupt || isSuperAdmin;
   const canExportAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || role === 'hrio' || isRecordsHmis || isHospitalManager || isMedSupt || isOrgAdmin || isSuperAdmin;
+  const canAssignCareTeam = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isHospitalManager || isOrgAdmin || isSuperAdmin;
+  const canViewFacilityCalendar = canAssignCareTeam;
 
   // Messages — any clinical/CHW role can send (view is broader via nav config)
   const canSendMessages = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || isRecordsHmis || role === 'front_desk' || isCashier || role === 'pharmacist' || role === 'lab_tech' || isCountyDirector || role === 'hrio' || role === 'nutritionist' || role === 'radiologist' || isMedSupt || isOrgAdmin || isSuperAdmin;
@@ -135,6 +137,8 @@ export function usePermissions() {
     canCheckInAppointments,
     canAdvanceAppointments,
     canExportAppointments,
+    canAssignCareTeam,
+    canViewFacilityCalendar,
     canSendMessages,
     canAssessFacility,
     canViewEpidemicIntel,

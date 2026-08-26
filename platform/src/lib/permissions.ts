@@ -101,7 +101,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/admin', label: 'Platform Dashboard', icon: Gauge, section: 'COMMAND' },
       { href: '/admin/risk', label: 'Risk Center', icon: ShieldAlert, section: 'COMMAND' },
       { href: '/admin/audit', label: 'Audit Logs', icon: FileText, section: 'COMMAND' },
-      { href: '/manage', label: 'Facilities & People', icon: Building2, section: 'TENANTS' },
+      { href: '/manage', label: 'Organizations', icon: Building2, section: 'TENANTS' },
       // Account administration is listed once, under PEOPLE & HR below —
       // it was also here under TENANTS, giving one page two nav homes.
       { href: '/admin/announcements', label: 'Announcements', icon: Megaphone, section: 'TENANTS' },
@@ -422,7 +422,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // Epidemic Intelligence has six tabs and the sidebar surfaced exactly one
       // of them, which read as a separate destination rather than as the tab it
       // is — reach it from the page's own tab strip.
-      { href: '/manage', label: 'Organizations & Facilities', icon: HospitalIcon, section: 'HEALTH SYSTEM PERFORMANCE' },
+      { href: '/manage', label: 'Organizations', icon: HospitalIcon, section: 'HEALTH SYSTEM PERFORMANCE' },
       { href: '/facility-assessments', label: 'Assessments & Readiness', icon: ClipboardCheck, section: 'HEALTH SYSTEM PERFORMANCE' },
       // Equity is a health-system-performance question, so it sits with the
       // other two rather than carrying a section of its own. Its 'High Burden'
@@ -461,7 +461,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     navItems: [
       { href: '/dashboard/state', label: 'County Overview', icon: LayoutDashboard },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/manage', label: 'Organizations & Facilities', icon: HospitalIcon, section: 'OVERSIGHT' },
+      { href: '/manage', label: 'Facilities', icon: HospitalIcon, section: 'OVERSIGHT' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'OVERSIGHT' },
       { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
       { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
@@ -582,7 +582,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/births', label: 'Births', icon: Baby, section: 'VITAL EVENTS' },
       { href: '/deaths', label: 'Deaths', icon: UserX, section: 'VITAL EVENTS' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'GOVERNANCE' },
-      { href: '/manage', label: 'Organizations & Facilities', icon: Building2, section: 'GOVERNANCE' },
+      { href: '/manage', label: 'Facilities', icon: Building2, section: 'GOVERNANCE' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'GOVERNANCE' },
     ],
     color: BRAND_PRIMARY,
@@ -805,7 +805,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/deaths', label: 'Deaths', icon: UserX, section: 'VITAL EVENTS' },
       { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'GOVERNANCE' },
       { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'GOVERNANCE' },
-      { href: '/manage', label: 'Organizations & Facilities', icon: HospitalIcon, section: 'GOVERNANCE' },
+      { href: '/manage', label: 'Facilities', icon: HospitalIcon, section: 'GOVERNANCE' },
     ],
     color: BRAND_PRIMARY, gradientFrom: BRAND_SECONDARY, gradientTo: BRAND_PRIMARY, badgeLabel: 'HMIS Off.',
   },

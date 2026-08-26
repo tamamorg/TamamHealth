@@ -11,6 +11,7 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
 import { appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
+import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 
 function todayIso(): string {
   // Local calendar date, not UTC — see identical helper + rationale in
@@ -100,8 +101,8 @@ export function useClinicalDashboardData(): MobileDashboardData {
   const today = todayIso();
 
   const lanes = useMemo<MobileLane<AppointmentDoc>[]>(
-    () => computeClinicalLanes(appointments, today),
-    [appointments, today],
+    () => computeClinicalLanes(appointmentsVisibleToUser(appointments, currentUser), today),
+    [appointments, currentUser, today],
   );
 
   const outstanding = useMemo<MobileOutstandingItem[]>(() => computeClinicalOutstanding({

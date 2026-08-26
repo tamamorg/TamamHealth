@@ -42,7 +42,7 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     route: '/manage',
     target: '[data-tour="org-hospitals-table"]',
     title: 'Your facilities',
-    body: 'Every hospital, clinic, and health post in your organization, with beds and today’s visits at a glance.',
+    body: 'Every hospital, clinic, and health post in your organization, with the number of staff attached to each. Open one for its record and the sections you actually work in — staff, wards, equipment, inventory, schedules, performance and settings.',
     placement: 'bottom',
   },
   {
@@ -56,7 +56,6 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
   {
     id: 'users',
     route: '/manage',
-    preClickSelector: '[data-tour="manage-tab-people"]',
     target: '[data-tour="org-users-list"]',
     title: 'Staff accounts',
     body: 'Every account in the organization: create staff, reset passwords, deactivate. New accounts are provisioned centrally with a temporary password the user must change at first login — so they can sign in on any device.',
@@ -65,7 +64,6 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
   {
     id: 'users-create',
     route: '/manage',
-    preClickSelector: '[data-tour="manage-tab-people"]',
     target: '[data-tour="org-users-create-btn"]',
     title: 'Add a staff member',
     body: 'Set their name, role, and hospital — the temporary password shown after creating is theirs to change at first login. The same dialog opens from a facility\u2019s Staff tab with that facility already filled in, which is the shorter route when you are hiring into one site.',

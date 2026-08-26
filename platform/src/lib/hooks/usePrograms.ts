@@ -13,6 +13,7 @@ export function usePrograms(patientId?: string) {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setEnrollments([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllProgramEnrollments } = await import('../services/program-service');

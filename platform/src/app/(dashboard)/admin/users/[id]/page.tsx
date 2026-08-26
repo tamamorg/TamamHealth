@@ -27,6 +27,8 @@ import {
 import {
   SadbPage, SadbCard, SadbKvRow, SadbConfirmModal, SadbGridList, SadbGridRow, SadbChip,
 } from '@/components/admin/sadb-ui';
+import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
+import { safeReturnTo } from '@/lib/navigation/return-to';
 
 /* When · Action · Detail — the three columns an access review reads. */
 const ACTIVITY_GRID = 'minmax(150px, 0.9fr) minmax(140px, 0.8fr) minmax(200px, 1.6fr)';
@@ -115,7 +117,37 @@ export default function AdminUserDetailPage() {
     return organizations.find(o => o._id === user.orgId)?.name ?? user.orgId;
   }, [organizations, user]);
 
-  const backToRoster = () => router.push('/admin/users');
+  /**
+   * Where "back" goes — the level this account was opened FROM.
+   *
+   * It used to be `/admin/users` unconditionally, which redirected to a flat
+   * platform roster: drilling organization → facility → person and pressing
+   * Back left you looking at every account on the platform, three clicks from
+   * the facility you were staffing. `?returnTo=` is what the two lists above
+   * hand down; without one, the person's own facility (then their tenant) is
+   * the truthful parent, and only an account attached to neither falls back to
+   * the console root.
+   */
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get('returnTo');
+    setReturnTo(value ? safeReturnTo(value, '/manage') : null);
+  }, []);
+
+  const facilityHref = user?.hospitalId
+    ? `/admin/facilities/${encodeURIComponent(user.hospitalId)}`
+    : null;
+  const orgHref = user?.orgId ? `/admin/organizations/${encodeURIComponent(user.orgId)}` : null;
+  const parentHref = returnTo ?? facilityHref ?? orgHref ?? '/manage';
+  const backToRoster = () => router.push(parentHref);
+
+  /* … › <tenant> › <facility> › <person>. Each rung is the page that lists
+     the one after it, so the trail is also the way back up. */
+  useConsoleTrail('user-detail', user ? [
+    ...(orgName && orgHref ? [{ label: orgName, href: orgHref }] : []),
+    ...(user.hospitalName && facilityHref ? [{ label: user.hospitalName, href: facilityHref }] : []),
+    { label: user.name },
+  ] : null);
 
   const run = async (fn: () => Promise<void>, done: string) => {
     if (!currentUser) return;

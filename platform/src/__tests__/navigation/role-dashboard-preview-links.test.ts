@@ -31,7 +31,10 @@ describe('role dashboard preview links', () => {
     // 2026-08-24; the deep links moved with it.
     ['app/(dashboard)/facility-management/queue/page.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
     ['app/(dashboard)/facility-management/queue/page.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
-    ['app/(dashboard)/dashboard/state/page.tsx', 'county=', 'components/facilities/FacilityNetworkView.tsx', "get('county')"],
+    // The county drill-down's old consumer was the national facility list at
+    // /hospitals, deleted with that route. It lands on the console root as a
+    // facility search now, and `q` is matched against county there.
+    ['app/(dashboard)/dashboard/state/page.tsx', 'q=', 'modules/tenancy/components/OrganizationDetail.tsx', "params.get('q')"],
   ])('pairs the %s deep link with a consuming target', (producer, emittedParam, consumer, consumedParam) => {
     expect(source(producer)).toContain(emittedParam);
     expect(source(consumer)).toContain(consumedParam);
@@ -66,28 +69,31 @@ describe('role dashboard preview links', () => {
     expect(dashboard).toContain('router.push(`/admin/organizations/${org._id}`)');
   });
 
-  it('registry rows open the record itself — no menu in the way', () => {
+  it('every row opens the rung beneath it — no menu in the way', () => {
     // 2026-08-24: the row click was briefly a menu at the pointer (edit, drill
     // down, deactivate, open full page). It is the record's own page again,
     // because that page already carries every one of those actions — and a
     // click that has already named a record should not then ask which of five
     // things it meant.
     //
-    // Nothing is stranded by that: a facility is retired on the facility page,
-    // a person is deactivated on theirs, the tenant page still hands its
-    // Deactivate back here as ?deactivate=1, and a deactivated tenant is
-    // restored from the Trash panel — which is the only list that holds one.
+    // 2026-08-26: and the pages are a chain rather than three flat lists, so
+    // this asserts each level opens the next rather than all three opening
+    // from one registry.
     const registry = source('modules/tenancy/components/ManagementWorkspace.tsx');
-    expect(registry).not.toContain('TenantCard');
-    expect(registry).not.toContain('RowActionsPopup');
-    expect(registry).not.toContain('rowActionsAt');
-    expect(registry).toContain('openRecord(organizationHref(org))');
-    expect(registry).toContain('openRecord(facilityHref(facility))');
-    expect(registry).toContain('openRecord(personHref(user._id))');
-    // A role whose allow-list has no such page gets an inert row rather than a
-    // link the Edge proxy bounces back to its dashboard.
-    expect(registry).toContain("opensRecord('/admin/users')");
-    expect(registry).toContain("params.has('deactivate')");
+    const organization = source('modules/tenancy/components/OrganizationDetail.tsx');
+    const facility = source('components/facilities/FacilityProfile.tsx');
+    for (const trace of ['TenantCard', 'RowActionsPopup', 'rowActionsAt']) {
+      expect(registry).not.toContain(trace);
+    }
+    expect(registry).toContain('router.push(organizationHref(org))');
+    expect(organization).toContain('router.push(facilityHref(facility))');
+    expect(facility).toContain('/admin/users/');
+    // A role whose allow-list has no tenant page gets an inert row rather than
+    // a link the Edge proxy bounces back to its dashboard.
+    expect(registry).toContain("isPathAllowed(currentUser.role, '/admin/organizations')");
+    // Deactivating a tenant happens on the tenant, not on a list of every
+    // other one — the bounce to ?deactivate=1 is gone.
+    expect(organization).toContain('setConfirmDeactivate(true)');
     expect(source('components/settings/TrashPanel.tsx')).toContain('restore(');
   });
 

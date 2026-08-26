@@ -15,6 +15,7 @@ import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import type { LeaveRequestDoc, LeaveStatus } from '@/lib/db-types-hr';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
   HrPageShell, LEAVE_STATUSES, STATUS_TOKENS, StaffIdentity, formatHrDate,
   parseLeaveStatusFromParams, statusPillStyle, useHrContext, useUrlParams,
@@ -30,6 +31,7 @@ export default function HrLeavePage() {
   const { t, currentUser, isApprover, showToast } = useHrContext();
   const searchParams = useSearchParams();
   const updateUrlParams = useUrlParams('/hr/leave');
+  const scope = useDataScope();
 
   const [leave, setLeave] = useState<LeaveRequestDoc[]>([]);
   const [search, setSearch] = useState('');
@@ -40,9 +42,13 @@ export default function HrLeavePage() {
   const focusedRequestId = searchParams?.get('request') || null;
 
   const reload = useCallback(async () => {
+    if (!scope) {
+      setLeave([]);
+      return;
+    }
     const { getAllLeaveRequests } = await import('@/lib/services/leave-service');
-    setLeave(await getAllLeaveRequests());
-  }, []);
+    setLeave(await getAllLeaveRequests(scope));
+  }, [scope]);
   useEffect(() => { reload(); }, [reload]);
 
   // URL is the source of truth for the status filter.

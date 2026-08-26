@@ -47,7 +47,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     route: '/dashboard',
     target: '.ehr-appointment-list',
     title: 'Your schedule',
-    body: 'Everyone booked with you, split into Upcoming, Checked In, and Completed. Click a row to open that patient’s chart.',
+    body: 'Everyone booked with you, split into Upcoming, In Facility, and Completed. The live status shows whether they are awaiting triage, in triage, rooming, or consultation. Click a row to open that patient’s chart.',
     placement: 'top',
   },
   {

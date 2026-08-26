@@ -30,6 +30,7 @@ export function useFollowUpsDue() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setFollowUpsDue([]); setLoading(false); return; }
     try {
       setError(null);
       const { getPendingFollowUps } = await import('../services/follow-up-service');

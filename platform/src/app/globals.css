@@ -839,8 +839,14 @@ svg.lucide:not([style*="color"]) {
   color: var(--color-white) !important;
   stroke: currentColor !important;
 }
-/* White icons inside primary-colored buttons/elements */
+/* White icons inside primary-colored buttons/elements.
+   `.sadb-btn-danger` belongs here for the same reason: it is a solid dark-red
+   fill, and without the rule its glyph took --icon-color (brand blue) for the
+   fill and the presentation attribute's dark blue for the stroke — invisible.
+   It went unnoticed because the only danger button that existed (the tenant
+   page's Deactivate) carries no icon. */
 .btn-primary svg.lucide,
+.sadb-btn-danger svg.lucide,
 .pp-btn-primary svg.lucide {
   color: var(--color-white) !important;
   stroke: currentColor !important;

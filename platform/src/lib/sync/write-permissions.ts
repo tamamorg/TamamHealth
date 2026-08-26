@@ -199,10 +199,16 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   appointment: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
   availability: [...ADMIN, ...CLINICIANS],
   assessment: NURSING_AND_CLINICIANS,
-  clinical_encounter: NURSING_AND_CLINICIANS,
-  encounter: NURSING_AND_CLINICIANS,
+  // Registration opens the visit and performs facility checkout; clinical
+  // stations advance it. Excluding registration here made front-desk check-in
+  // succeed locally and then fail replication, leaving the patient invisible
+  // to the nurse/doctor on other devices.
+  clinical_encounter: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  encounter: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
   workflow_repair: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
-  consultation_progress: NURSING_AND_CLINICIANS,
+  // Reception creates/assigns the operational tracker during the handoff;
+  // clinical staff own its later stages.
+  consultation_progress: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
   shift_handoff: NURSING_AND_CLINICIANS,
   follow_up: NURSING_AND_CLINICIANS,
   problem: CLINICIANS,

@@ -24,6 +24,7 @@ import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { computeAdjudicatedStatus } from '@/lib/services/payment-service';
 import type { ClaimDoc, ClaimStatus, InsurancePolicyDoc } from '@/lib/db-types-payments';
@@ -93,6 +94,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { patients } = usePatients();
+  const scope = useDataScope();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adjForm, setAdjForm] = useState<AdjudicationForm | null>(null);
@@ -117,17 +119,10 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   const [patientBills, setPatientBills] = useState<BillingDoc[]>([]);
   const [submittingClaim, setSubmittingClaim] = useState(false);
 
-  const scope = useMemo(
-    () => (currentUser
-      ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
-      : undefined),
-    [currentUser],
-  );
-
   // When a patient is picked in the New-claim modal, load their insurance
   // policies and open bills so the claim can be raised against real data.
   useEffect(() => {
-    if (!newClaim.patientId) { setPatientPolicies([]); setPatientBills([]); return; }
+    if (!newClaim.patientId || !scope) { setPatientPolicies([]); setPatientBills([]); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -136,7 +131,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
           import('@/lib/services/billing-service'),
         ]);
         const [policies, bills] = await Promise.all([
-          getPatientInsurancePolicies(newClaim.patientId),
+          getPatientInsurancePolicies(newClaim.patientId, scope),
           getAllBills(scope),
         ]);
         if (cancelled) return;

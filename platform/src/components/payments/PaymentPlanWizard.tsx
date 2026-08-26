@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 interface PaymentPlanWizardProps {
   patientId: string;
@@ -22,6 +23,7 @@ export default function PaymentPlanWizard({
   patientId, patientName, balance: balanceProp, encounterIds, currency = 'SSP', onComplete, onCancel
 }: PaymentPlanWizardProps) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [termMonths, setTermMonths] = useState(3);
@@ -31,15 +33,15 @@ export default function PaymentPlanWizard({
 
   // Self-load balance if not provided
   useEffect(() => {
-    if (balanceProp > 0) return;
+    if (balanceProp > 0 || !scope) return;
     (async () => {
       try {
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const bal = await getPatientBalance(patientId);
+        const bal = await getPatientBalance(patientId, scope);
         if (bal > 0) setBalance(bal);
       } catch { /* offline fallback */ }
     })();
-  }, [patientId, balanceProp]);
+  }, [patientId, balanceProp, scope]);
 
   const monthlyAmount = Math.ceil((balance / termMonths) * 100) / 100;
   const terms = [3, 6, 9, 12];

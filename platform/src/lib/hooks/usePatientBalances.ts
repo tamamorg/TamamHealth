@@ -21,6 +21,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isFinanciallyCleared } from '../pharmacy-workflow';
+import { useDataScope } from './useDataScope';
 
 export type PatientBalanceStatus = 'unknown' | 'loading' | 'ready' | 'error';
 
@@ -72,6 +73,7 @@ const SEPARATOR = String.fromCharCode(32);
  */
 export function usePatientBalances(patientIds: Array<string | undefined | null>): UsePatientBalancesResult {
   const [balances, setBalances] = useState<Map<string, PatientBalanceState>>(new Map());
+  const scope = useDataScope();
 
   // Stable across renders that pass a new-array-same-contents `patientIds` -
   // the effect below must only re-run when the actual set of ids changes,
@@ -83,7 +85,10 @@ export function usePatientBalances(patientIds: Array<string | undefined | null>)
 
   useEffect(() => {
     const ids = idsKey ? idsKey.split(SEPARATOR) : [];
-    if (ids.length === 0) return;
+    if (ids.length === 0 || !scope) {
+      setBalances(new Map());
+      return;
+    }
     let cancelled = false;
 
     // Mark every id 'loading' up front (keeping any previously-known balance
@@ -105,7 +110,7 @@ export function usePatientBalances(patientIds: Array<string | undefined | null>)
         const { getPatientBalance } = await import('../services/ledger-service');
         // Settled per patient (not one Promise.all) so one patient's ledger
         // hiccup can't wipe out every other patient's already-known balance.
-        const results = await Promise.allSettled(ids.map(id => getPatientBalance(id)));
+        const results = await Promise.allSettled(ids.map(id => getPatientBalance(id, scope)));
         if (cancelled) return;
         setBalances(prev => {
           const next = new Map(prev);
@@ -127,7 +132,7 @@ export function usePatientBalances(patientIds: Array<string | undefined | null>)
     })();
 
     return () => { cancelled = true; };
-  }, [idsKey]);
+  }, [idsKey, scope]);
 
   const stateFor = useCallback(
     (patientId: string | undefined | null): PatientBalanceState =>
@@ -152,10 +157,10 @@ export function usePatientBalances(patientIds: Array<string | undefined | null>)
   );
 
   const confirmCleared = useCallback(async (patientId: string): Promise<ConfirmClearedResult> => {
-    if (!patientId) return { cleared: false, reason: 'unavailable' };
+    if (!patientId || !scope) return { cleared: false, reason: 'unavailable' };
     try {
       const { getPatientBalance } = await import('../services/ledger-service');
-      const balance = await getPatientBalance(patientId);
+      const balance = await getPatientBalance(patientId, scope);
       setBalances(prev => {
         const next = new Map(prev);
         next.set(patientId, { balance, status: 'ready' });
@@ -169,7 +174,7 @@ export function usePatientBalances(patientIds: Array<string | undefined | null>)
       // clobbering a good cached read with a transient failure.
       return { cleared: false, reason: 'unavailable' };
     }
-  }, []);
+  }, [scope]);
 
   return { balanceFor, stateFor, isKnownFor, isClearedFor, confirmCleared };
 }

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import Modal from '@/components/Modal';
@@ -41,6 +42,7 @@ export default function BillDetailPage() {
   const billId = params?.id;
   const router = useRouter();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const { canCollectPayments } = usePermissions();
 
@@ -81,10 +83,6 @@ export default function BillDetailPage() {
 
   const actorId = currentUser?._id || 'system';
   const actorName = currentUser?.name || 'System';
-
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  ), [currentUser]);
 
   const loadBill = useCallback(async () => {
     if (!billId || !scope) return;

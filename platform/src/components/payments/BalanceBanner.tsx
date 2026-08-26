@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, AlertTriangle, Calendar, CreditCard } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 interface BalanceBannerProps {
   patientId: string;
@@ -21,17 +22,19 @@ interface Summary {
 
 export default function BalanceBanner({ patientId, compact, onPayClick }: BalanceBannerProps) {
   const { t } = useTranslation();
+  const scope = useDataScope();
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
+    if (!scope) { setSummary(null); return; }
     (async () => {
       try {
         const { getPatientFinancialSummary } = await import('@/lib/services/payment-service');
-        const data = await getPatientFinancialSummary(patientId);
+        const data = await getPatientFinancialSummary(patientId, scope);
         setSummary(data);
       } catch { /* offline fallback */ }
     })();
-  }, [patientId]);
+  }, [patientId, scope]);
 
   if (!summary || summary.totalBalance === 0) return null;
 

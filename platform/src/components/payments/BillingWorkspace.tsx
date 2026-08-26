@@ -27,6 +27,7 @@ import {
   RotateCcw, Ban, AlertTriangle, Search, Users,
 } from '@/components/icons/lucide';
 import { useAuth, useUi } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SearchInput, FilterTabs, type FilterOption } from '@/components/filters';
@@ -130,6 +131,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { globalSearch, setGlobalSearch } = useUi();
   const [data, setData] = useState<PaymentsData>({ payments: [], claims: [], plans: [], bills: [], encounters: [] });
   const [loading, setLoading] = useState(true);
@@ -168,10 +170,6 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   const [reverseFor, setReverseFor] = useState<{ payment: PaymentDoc; mode: 'void' | 'refund' } | null>(null);
   const [reverseReason, setReverseReason] = useState('');
   const [reversing, setReversing] = useState(false);
-
-  const scope = useMemo(() => (
-    currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
-  ), [currentUser]);
 
   const loadData = useCallback(async () => {
     if (!scope) return;

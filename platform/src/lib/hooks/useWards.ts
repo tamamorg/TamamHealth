@@ -15,6 +15,7 @@ export function useWards() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
+    if (!scope) { setWards([]); setBeds([]); setAdmissions([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllWards, getAllAdmissions, getAllBeds } = await import('../services/ward-service');
