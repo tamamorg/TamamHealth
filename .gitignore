@@ -74,3 +74,50 @@ backup-privkey*
 *.privkey
 *-private.gpg
 secring.*
+
+# ── Dotfiles: deny by default ────────────────────────────────────────
+# Everything beginning with a dot is ignored, and the handful this repo
+# genuinely needs is re-admitted by name below.
+#
+# The inversion is deliberate. A dotfile is where a secret lands by default —
+# .env, .env.local, .npmrc with a token, a stray .pem — and the previous
+# approach was a list of the ones we had thought of. That list is only ever as
+# good as the last person's memory, and it is one `git add -A` away from being
+# wrong; the empty `backup-privkey.asc` sitting tracked in this repo is what
+# that looks like when it nearly happens. Deny-by-default fails the other way:
+# a new dotfile is invisible until someone deliberately un-ignores it.
+#
+# ORDER MATTERS. `.*` sits above every negation because git takes the LAST
+# matching pattern, so anything re-admitted must appear after it — including
+# the `!.env.example` further up this file, which is repeated below for
+# exactly that reason.
+#
+# This does NOT un-publish anything. .gitignore governs untracked files only;
+# a file already committed stays tracked and stays on GitHub until it is
+# explicitly removed with `git rm --cached`.
+.*
+
+# Repository infrastructure — CI, hooks, toolchain pins.
+!.gitignore
+!.gitkeep
+!.github/
+!.husky/
+!.nvmrc
+!.lintstagedrc.mjs
+!.dockerignore
+!.vercelignore
+!.eslintrc.js
+!.terraform.lock.hcl
+
+# Env TEMPLATES only. A real .env stays ignored by the rule above — these are
+# the documented shape of one, with no values in them.
+!.env.example
+!.env.production.example
+
+# The agent configuration that ships with the repo (agents, skills, launch
+# config), minus the parts that are machine-local. Those two were only ever
+# ignored by this developer's global gitignore and .git/info/exclude, neither
+# of which travels with a clone.
+!.claude/
+.claude/settings.local.json
+.claude/worktrees/
