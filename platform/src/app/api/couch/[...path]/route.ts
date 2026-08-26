@@ -8,6 +8,9 @@ import {
   validateGatewayWriteBody,
 } from '@/lib/sync/sync-gateway';
 import { logAuditSafe } from '@/lib/services/audit-service';
+import type { PatientDoc, PatientTransferDoc } from '@/lib/db-types';
+import { tenantDatabaseName } from '@/lib/sync/tenant-database';
+import { authorizeReplicatedTransfer } from '@/lib/sync/transfer-gateway-authorization';
 
 export const dynamic = 'force-dynamic';
 const MAX_PROXY_BODY_BYTES = 25 * 1024 * 1024;
@@ -91,6 +94,17 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
         const status = body && body.byteLength > 0 && !isJsonRequest(request) ? 415 : 400;
         return NextResponse.json({ error: validationError }, { status });
       }
+      if (config.localName === 'tamamhealth_patient_transfers'
+          && process.env.OFFLINE_GATEWAY_RELATIONSHIP_AUTHORIZATION !== 'false') {
+        const transferError = await validateTransferRelationships(
+          parsed,
+          auth,
+          base,
+          database,
+          headers.get('authorization') || '',
+        );
+        if (transferError) return forbidden(transferError);
+      }
     }
     const response = await fetch(upstream, {
       method: request.method,
@@ -152,4 +166,47 @@ export const DELETE = handler;
 function isJsonRequest(request: NextRequest): boolean {
   const contentType = request.headers.get('content-type') || '';
   return contentType.includes('application/json');
+}
+
+async function readCouchDocument<T>(url: string, authorization: string): Promise<T | null> {
+  const response = await fetch(url, {
+    headers: { authorization, accept: 'application/json' },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Related CouchDB document lookup failed (${response.status})`);
+  return response.json() as Promise<T>;
+}
+
+async function validateTransferRelationships(
+  body: unknown,
+  auth: NonNullable<Awaited<ReturnType<typeof getAuthPayload>>>,
+  couchBase: string,
+  transferDatabase: string,
+  authorization: string,
+): Promise<string | null> {
+  const values = Array.isArray((body as { docs?: unknown } | null)?.docs)
+    ? (body as { docs: unknown[] }).docs
+    : [body];
+  for (const value of values) {
+    if (!value || typeof value !== 'object') continue;
+    const next = value as PatientTransferDoc;
+    if ((next as PatientTransferDoc & { _deleted?: boolean })._deleted) return 'Patient transfers cannot be deleted.';
+    if (!next._id || !next.patientId) return 'A patient transfer requires document and patient identifiers.';
+    const previous = await readCouchDocument<PatientTransferDoc>(
+      `${couchBase}/${encodeURIComponent(transferDatabase)}/${encodeURIComponent(next._id)}`,
+      authorization,
+    );
+    if (!auth.orgId) return 'An organization-scoped session is required for patient transfers.';
+    const patientDatabase = tenantDatabaseName('tamamhealth_patients', auth.orgId);
+    const patient = await readCouchDocument<PatientDoc>(
+      `${couchBase}/${encodeURIComponent(patientDatabase)}/${encodeURIComponent(next.patientId)}`,
+      authorization,
+    );
+    if (!patient) return 'The related patient is unavailable or outside your organization.';
+    const error = authorizeReplicatedTransfer(auth, next, previous, patient);
+    if (error) return error;
+  }
+  return null;
 }

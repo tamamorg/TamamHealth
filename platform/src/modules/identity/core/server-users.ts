@@ -11,6 +11,7 @@
 import bcrypt from 'bcryptjs';
 import { hashPassword } from '@/modules/identity/core/auth';
 import { DEMO_USER_PROFILES, getOrCreateSeedCredentials } from '@/modules/identity/core/seed-credentials';
+import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
 
 export interface ServerUser {
   _id: string;
@@ -64,6 +65,25 @@ export class UsersDbUnavailableError extends Error {
   }
 }
 
+/** The stored document as a session user — the one shape every path returns. */
+function serverUserFromDoc(doc: import('@/lib/db-types').UserDoc): ServerUser {
+  return {
+    _id: doc._id,
+    username: doc.username,
+    passwordHash: doc.passwordHash,
+    name: doc.name,
+    role: canonicalizeUserRole(doc.role),
+    hospitalId: doc.hospitalId,
+    hospitalName: doc.hospitalName,
+    facilityIds: doc.facilityIds,
+    orgId: doc.orgId,
+    orgName: doc.orgName,
+    isActive: doc.isActive,
+    mustChangePassword: doc.mustChangePassword,
+    passwordUpdatedAt: doc.passwordUpdatedAt,
+  };
+}
+
 async function authenticateFromUsersDb(
   username: string,
   password: string,
@@ -77,21 +97,24 @@ async function authenticateFromUsersDb(
     }
     const valid = await bcrypt.compare(password, doc.passwordHash);
     if (!valid || doc.isActive === false) return { user: null, exists: true };
-    return { user: {
-      _id: doc._id,
-      username: doc.username,
-      passwordHash: doc.passwordHash,
-      name: doc.name,
-      role: doc.role,
-      hospitalId: doc.hospitalId,
-      hospitalName: doc.hospitalName,
-      facilityIds: doc.facilityIds,
-      orgId: doc.orgId,
-      orgName: doc.orgName,
-      isActive: doc.isActive,
-      mustChangePassword: doc.mustChangePassword,
-      passwordUpdatedAt: doc.passwordUpdatedAt,
-    }, exists: true };
+    // Migrate only the account document, after successful authentication.
+    // Clinical records keep their historical author labels and IDs.
+    if (isLegacyNursingRole(doc.role)) {
+      const migrated = {
+        ...doc,
+        role: 'nurse' as const,
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        const response = await db.put(migrated);
+        migrated._rev = response.rev;
+        return { user: serverUserFromDoc(migrated), exists: true };
+      } catch {
+        // A concurrent admin edit must not lock the nurse out. The returned
+        // session is canonical even if persistence retries on a later login.
+      }
+    }
+    return { user: serverUserFromDoc(doc), exists: true };
   } catch (err) {
     // A 404 is a real answer: there is no such account. Anything else — the
     // database missing, CouchDB refusing the connection, a network fault — is
@@ -319,6 +342,71 @@ async function authenticateStandaloneDemoUser(
   };
 }
 
+
+/**
+ * Break-glass sign-in: the platform operator's own password opens any account.
+ *
+ * This is a WALKTHROUGH tool. Twenty-five seeded staff accounts each have
+ * their own password, and stepping through a patient journey means signing in
+ * as six of them in a row; this lets one password do it.
+ *
+ * It is also, unavoidably, a master key — so it is gated the way this module
+ * learned to gate things the hard way (see the note in `authenticateUser`
+ * about the demo branch that failed OPEN and was deleted). Two conditions,
+ * both required, both fail-closed:
+ *
+ *   1. `NODE_ENV !== 'production'` — a built server can never take this path,
+ *      whatever the environment says.
+ *   2. `SUPERADMIN_MASTER_PASSWORD === 'true'` — exact string, so an unset,
+ *      empty, or misspelled variable leaves it off rather than on.
+ *
+ * `validateProductionConfig` refuses to boot if the flag is set in production,
+ * so the two cannot drift apart. There is no new secret: the password compared
+ * is the one already stored on `user-superadmin`, so rotating that account
+ * rotates this, and revoking it revokes this.
+ */
+function masterPasswordEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production'
+    && process.env.SUPERADMIN_MASTER_PASSWORD === 'true';
+}
+
+async function authenticateWithMasterPassword(
+  username: string,
+  password: string,
+): Promise<ServerUser | null> {
+  if (!masterPasswordEnabled()) return null;
+
+  try {
+    const { usersDB } = await import('@/lib/db');
+    const db = usersDB();
+    const [operator, target] = await Promise.all([
+      db.get('user-superadmin') as Promise<import('@/lib/db-types').UserDoc>,
+      db.get(`user-${username}`) as Promise<import('@/lib/db-types').UserDoc>,
+    ]);
+
+    if (typeof operator?.passwordHash !== 'string') return null;
+    if (!target || target.type !== 'user') return null;
+    // A disabled account stays disabled. The master key is a shortcut past
+    // the password, not past the account's own state.
+    if (target.isActive === false) return null;
+
+    const matches = await bcrypt.compare(password, operator.passwordHash);
+    if (!matches) return null;
+
+    // Loud on purpose: a sign-in that did not use the account's own password
+    // should never be indistinguishable from one that did, even in dev.
+    console.warn(
+      `[auth] master password used to sign in as "${username}" (${target.role}). ` +
+      'Dev-only — SUPERADMIN_MASTER_PASSWORD is set.',
+    );
+    return serverUserFromDoc(target);
+  } catch {
+    // A missing operator account or an unreachable database is simply "no
+    // master key today" — the caller falls through to the normal refusal.
+    return null;
+  }
+}
+
 /**
  * Look up a user by username and verify the password — server-safe.
  */
@@ -356,7 +444,11 @@ export async function authenticateUser(
   // An existing document is authoritative. Its bcrypt comparison above is
   // already the constant-work password check; do not query CouchDB again or
   // add a second cost-12 hash for a simple wrong password.
-  if (lookup.exists) return null;
+  //
+  // The one thing that may still open it is the dev walkthrough key, and only
+  // for an account that already exists — attempting it before this point
+  // spent two extra reads on every unknown username.
+  if (lookup.exists) return authenticateWithMasterPassword(username, password);
 
   // First-login provisioning for the platform operator accounts, so a fresh
   // deployment is reachable at all. Narrow and create-if-absent — see

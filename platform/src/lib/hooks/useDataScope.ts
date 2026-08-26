@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import type { DataScope } from '../services/data-scope';
 
 /**
@@ -13,7 +13,7 @@ import type { DataScope } from '../services/data-scope';
  * don't churn their own callbacks/effects on unrelated context changes.
  */
 export function useDataScope(): DataScope | undefined {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   return useMemo(
     () =>
       currentUser

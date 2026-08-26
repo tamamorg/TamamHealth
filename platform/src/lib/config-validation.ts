@@ -6,6 +6,8 @@
  * to boot rather than silently ship a known-bad / missing credential.
  */
 
+import { facilityEdgeConfigurationProblems } from './offline-deployment-config';
+
 const PLACEHOLDER = /REPLACE|CHANGE|PLACEHOLDER|ChangeMe/i;
 const JWT_PLACEHOLDER = /REPLACE|CHANGE|PLACEHOLDER|default|example|tamamhealth-south-sudan/i;
 
@@ -19,6 +21,12 @@ export interface ConfigEnv {
  */
 export function validateProductionConfig(env: ConfigEnv): string[] {
   const errors: string[] = [];
+
+  // A facility-edge profile is a guarantee, not a cosmetic label.
+  const edgeProblems = facilityEdgeConfigurationProblems(env);
+  if (edgeProblems.length > 0) {
+    errors.push(`Facility-edge offline mode is incomplete: ${edgeProblems.join('; ')}.`);
+  }
 
   // --- Bootstrap admin password -------------------------------------------
   const adminPass = env.ADMIN_INITIAL_PASSWORD || '';
@@ -91,6 +99,13 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
   }
   if (!isDemo && env.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE === 'true') {
     errors.push('NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE must be false in production — destructive cleanup is an operator-only migration.');
+  }
+  // The dev walkthrough's break-glass key (see `authenticateWithMasterPassword`)
+  // lets the operator's password open any account. `NODE_ENV` already blocks it
+  // in a built server; this is the second lock, so a production .env carrying
+  // the flag stops the boot rather than being quietly ignored.
+  if (env.SUPERADMIN_MASTER_PASSWORD === 'true') {
+    errors.push('SUPERADMIN_MASTER_PASSWORD=true is a development-only master key — remove it before running in production.');
   }
   const diskEncryption = env.PHI_AT_REST_STRATEGY === 'disk-encryption';
   const fieldEncryption = env.PHI_ENCRYPTION_ENABLED === 'true';

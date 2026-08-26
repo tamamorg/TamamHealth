@@ -156,9 +156,8 @@ export default function TransferPatientModal({
   const selectedFacility = hospitals.find(h => h._id === facilityId);
   const destinationOrgId = selectedFacility?.orgId;
 
-  // Mirror the server's rule rather than approximating it: this is the same
-  // function `/api/patient-transfers` runs, so the form never offers a Send
-  // that the API would reject.
+  // Mirror the authoritative rule rather than approximating it: both the
+  // local offline path and integration API use this capability function.
   const permission = useMemo(() => {
     if (!currentUser) return { allowed: false, reason: 'Not signed in.' };
     return canRequestTransfer(

@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import type { OrganizationDoc } from '../db-types';
 import { makeCoalescer } from './live-reload';
 import { organizationsDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 
 export function useOrganizations(enabled = true) {
   const [organizations, setOrganizations] = useState<OrganizationDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const role = currentUser?.role;
   const orgId = currentUser?.orgId;
 

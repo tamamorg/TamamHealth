@@ -7,6 +7,7 @@ const READY: OfflineReadinessSignals = {
   secureContext: true,
   serviceWorkerActive: true,
   appShellCached: true,
+  offlinePackReady: true,
   localDatabaseAvailable: true,
   offlineSignInAvailable: true,
   durableStorage: true,
@@ -27,6 +28,7 @@ describe('offline readiness', () => {
     'secureContext',
     'serviceWorkerActive',
     'appShellCached',
+    'offlinePackReady',
     'localDatabaseAvailable',
     'offlineSignInAvailable',
   ] as const)('refuses readiness when %s is missing', signal => {
@@ -41,6 +43,20 @@ describe('offline readiness', () => {
     expect(report.canColdStartOffline).toBe(true);
     expect(report.checks.find(check => check.id === 'durable-storage')).toMatchObject({
       required: false,
+      passed: false,
+    });
+  });
+
+  it('fails closed when the deployment requires persistent browser storage', () => {
+    const report = buildOfflineReadinessReport({
+      ...READY,
+      durableStorage: false,
+      durableStorageRequired: true,
+    });
+    expect(report.state).toBe('not-ready');
+    expect(report.canColdStartOffline).toBe(false);
+    expect(report.checks.find(check => check.id === 'durable-storage')).toMatchObject({
+      required: true,
       passed: false,
     });
   });

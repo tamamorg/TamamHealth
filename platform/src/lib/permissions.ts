@@ -301,6 +301,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/wards/handoff', label: 'Shift Handoff', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'CLINICAL' },
       { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'CARE PROGRAMS' },
       { href: '/anc', label: 'Antenatal Care', icon: HeartPulse, section: 'CARE PROGRAMS' },
@@ -866,9 +867,9 @@ export const CONFLICT_RESOLUTION_ROLES: UserRole[] = [
   'hrio',
 ];
 
-const WORKFLOW_ROLES: UserRole[] = ['central_registration_clerk', 'clinic_clerk', 'triage_nurse', 'rooming_nurse', 'clinician', 'records_hmis_officer'];
-const PRIVATE_SECTOR_ROLES: UserRole[] = ['org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller', ...WORKFLOW_ROLES];
-const ALL_ROLES: UserRole[] = ['super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'government', 'county_health_director', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller', ...WORKFLOW_ROLES];
+const WORKFLOW_ROLES: UserRole[] = ['central_registration_clerk', 'clinic_clerk', 'clinician', 'records_hmis_officer'];
+const PRIVATE_SECTOR_ROLES: UserRole[] = ['org_admin', 'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller', ...WORKFLOW_ROLES];
+const ALL_ROLES: UserRole[] = ['super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'government', 'county_health_director', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller', ...WORKFLOW_ROLES];
 
 export function getAvailableRoles(orgType: 'public' | 'private', isSuperAdmin = false): UserRole[] {
   if (isSuperAdmin) return ALL_ROLES;

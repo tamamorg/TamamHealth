@@ -22,7 +22,8 @@
     "db:audit:demo-artifacts": "node scripts/audit-production-demo-artifacts.mjs",
     "db:strip-totp": "node --import tsx scripts/strip-totp-fields.mjs",
     "docs:api": "typedoc",
-    "i18n:check": "node scripts/check-i18n.mjs"
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "config:check:offline": "node --import tsx scripts/check-offline-deployment.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",

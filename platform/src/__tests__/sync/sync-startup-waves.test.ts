@@ -8,7 +8,12 @@
  * on an explicit syncNow(). These tests pin the partition, not the timing.
  */
 
-import { PRIORITY_SYNC_DATABASES, SECOND_WAVE_DELAY_MS } from '@/lib/sync/sync-manager';
+import {
+  AUDIT_PRUNE_MIN_INTERVAL_MS,
+  CLEAN_POINT_MIN_INTERVAL_MS,
+  PRIORITY_SYNC_DATABASES,
+  SECOND_WAVE_DELAY_MS,
+} from '@/lib/sync/sync-manager';
 import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -42,6 +47,11 @@ describe('the delay', () => {
   it('is long enough to clear first paint and short enough to go unnoticed', () => {
     expect(SECOND_WAVE_DELAY_MS).toBeGreaterThanOrEqual(5_000);
     expect(SECOND_WAVE_DELAY_MS).toBeLessThanOrEqual(60_000);
+  });
+
+  it('throttles whole-database clean-point and retention bookkeeping', () => {
+    expect(CLEAN_POINT_MIN_INTERVAL_MS).toBeGreaterThanOrEqual(60_000);
+    expect(AUDIT_PRUNE_MIN_INTERVAL_MS).toBeGreaterThanOrEqual(24 * 60 * 60 * 1000);
   });
 });
 

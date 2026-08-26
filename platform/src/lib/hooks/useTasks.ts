@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { ClinicianTaskDoc } from '../db-types';
 import { clinicianTasksDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import type { CreateTaskInput } from '../services/clinician-task-service';
 
 /**
@@ -12,7 +12,7 @@ import type { CreateTaskInput } from '../services/clinician-task-service';
  * completed splits and the create/complete/reschedule/delete actions.
  */
 export function useTasks() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const userId = currentUser?._id;
   const [tasks, setTasks] = useState<ClinicianTaskDoc[]>([]);
   const [loading, setLoading] = useState(true);

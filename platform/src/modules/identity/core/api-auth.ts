@@ -8,6 +8,7 @@ import { verifyToken } from '@/modules/identity/core/auth-token';
 import { isTokenRevoked } from '@/modules/identity/core/token-blacklist';
 import { captureException } from '@/lib/observability';
 import type { UserRole } from '@/lib/db-types';
+import { canonicalizeUserRole } from '@/lib/user-role';
 
 export interface AuthPayload {
   sub: string;
@@ -54,7 +55,14 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
 
   const payload = await verifyToken(token);
   if (!payload) return null;
-  const auth = payload as unknown as AuthPayload;
+  const rawAuth = payload as unknown as AuthPayload;
+  // Existing unexpired tokens may predate the nursing-role consolidation.
+  // Normalize them immediately so every API permission sees one nurse role.
+  const auth: AuthPayload = {
+    ...rawAuth,
+    role: canonicalizeUserRole(rawAuth.role),
+    actualRole: rawAuth.actualRole ? canonicalizeUserRole(rawAuth.actualRole) : undefined,
+  };
   const isProduction = process.env.NODE_ENV === 'production';
   // Demo deployments run without a server-side user store (no CouchDB; the
   // roster lives in each browser's PouchDB), so "user not found" there means

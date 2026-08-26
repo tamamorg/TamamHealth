@@ -168,9 +168,9 @@ describe('facility -> staff accounts', () => {
 
   test.each<[UserRole]>([
     ['doctor'], ['nurse'], ['front_desk'], ['lab_tech'], ['pharmacist'],
-    ['cashier'], ['midwife'], ['data_entry_clerk'], ['medical_superintendent'],
+    ['cashier'], ['data_entry_clerk'], ['medical_superintendent'],
     ['hospital_manager'], ['hrio'], ['radiologist'], ['nutritionist'],
-    ['medical_biller'], ['clinical_officer'], ['triage_nurse'], ['clinic_clerk'],
+    ['medical_biller'], ['clinical_officer'], ['clinic_clerk'],
   ])('%s can be created once a facility exists', async role => {
     const { org, facility } = await tenant();
     expect(roleNeedsFacility(role)).toBe(true);
@@ -187,6 +187,22 @@ describe('facility -> staff accounts', () => {
     expect(user.role).toBe(role);
     expect(user.hospitalId).toBe(facility._id);
   });
+
+  test.each(['midwife', 'triage_nurse', 'rooming_nurse'] as const)(
+    'retired %s accounts cannot be created',
+    async role => {
+      const { org, facility } = await tenant();
+      await expect(createUser({
+        name: `Test ${role}`,
+        username: `test.retired.${role.replace(/_/g, '')}`,
+        password: 'Str0ngTempPass!',
+        role,
+        orgId: org._id,
+        hospitalId: facility._id,
+        hospitalName: facility.name,
+      })).rejects.toThrow(/Invalid role/);
+    },
+  );
 
   test('staff land in the roster their own org admin reads', async () => {
     const { org, facility } = await tenant();

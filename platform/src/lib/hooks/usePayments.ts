@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { PaymentDoc, InsurancePolicyDoc, ClaimDoc, PaymentPlanDoc, LedgerEntryDoc, PatientFinancialSummary } from '../db-types-payments';
 import { paymentsDB, insurancePoliciesDB, claimsDB, paymentPlansDB, ledgerDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 
 export function usePayments() {
   const [payments, setPayments] = useState<PaymentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,7 +207,7 @@ export function useClaims() {
   const [claims, setClaims] = useState<ClaimDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,7 +252,7 @@ export function usePaymentPlans() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlanDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -297,7 +297,7 @@ export function useLedger(patientId?: string) {
   const [ledger, setLedger] = useState<LedgerEntryDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps

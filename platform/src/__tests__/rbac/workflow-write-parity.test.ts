@@ -48,7 +48,7 @@ const WORKFLOWS: WorkflowCapability[] = [
     flag: 'canRegisterPatients',
     docTypes: ['patient'],
     roles: [
-      'doctor', 'clinical_officer', 'midwife', 'clinician', 'triage_nurse',
+      'doctor', 'clinical_officer', 'nurse', 'midwife', 'clinician', 'triage_nurse',
       'rooming_nurse', 'central_registration_clerk', 'clinic_clerk', 'front_desk',
       'hrio', 'medical_superintendent',
     ],
@@ -57,7 +57,7 @@ const WORKFLOWS: WorkflowCapability[] = [
     flag: 'canManageReferrals',
     docTypes: ['referral'],
     roles: [
-      'doctor', 'clinical_officer', 'clinician', 'midwife',
+      'doctor', 'clinical_officer', 'nurse', 'clinician', 'midwife',
       'central_registration_clerk', 'front_desk', 'super_admin',
     ],
   },

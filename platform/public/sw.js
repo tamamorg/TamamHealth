@@ -11,36 +11,17 @@ const BUILD_VERSION = (() => {
 const CACHE_NAME = `tamamhealth-${BUILD_VERSION}`;
 const CACHE_PREFIX = 'tamamhealth-';
 const MAX_APP_CACHES = 2;
+const OFFLINE_MANIFEST_URL = '/__tamamhealth_offline_manifest__';
+// Installation must stay tiny. Role routes and patient workspaces are prepared
+// explicitly from Settings after sign-in; fetching them here competes with the
+// visible login screen and, for protected routes, only downloads redirects.
 const STATIC_ASSETS = [
-  '/',
   '/login',
   '/manifest.json',
   '/assets/tamam-favicon.svg',
   '/icons/icon-192.svg',
   '/icons/icon-512.svg',
   '/icons/icon-maskable-512.svg',
-  '/patient-portal',
-  '/dashboard',
-  '/patients',
-  '/consultation',
-  '/referrals',
-  '/lab',
-  '/pharmacy',
-  '/surveillance',
-  '/reports',
-  '/government',
-  '/appointments',
-  '/immunizations',
-  '/births',
-  '/deaths',
-  '/anc',
-  '/messages',
-  '/settings',
-  '/epidemic-intelligence',
-  '/data-quality',
-  '/vital-statistics',
-  '/mch-analytics',
-  '/facility-assessments',
 ];
 
 /**
@@ -52,18 +33,22 @@ const STATIC_ASSETS = [
  * the current page has already loaded, so relying only on the runtime fetch
  * handler leaves a first-time installation with HTML but no executable app.
  */
-async function precacheUrl(cache, path) {
+async function precacheUrl(cache, path, assetPromises = new Map()) {
   try {
     const request = new Request(path, { credentials: 'same-origin' });
     const response = await fetch(request);
     // A protected route may redirect to /login while the worker installs.
     // Never store that login response under the protected route's cache key.
-    if (!response.ok || response.redirected) return;
+    if (!response.ok || response.redirected) {
+      return { path, cached: false, executable: false };
+    }
 
     await cache.put(request, response.clone());
 
     const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('text/html')) return;
+    if (!contentType.includes('text/html')) {
+      return { path, cached: true, executable: true };
+    }
 
     const html = await response.text();
     const assetPaths = new Set();
@@ -84,116 +69,83 @@ async function precacheUrl(cache, path) {
       }
     }
 
-    await Promise.allSettled([...assetPaths].map(async (assetPath) => {
-      const assetRequest = new Request(assetPath, { credentials: 'same-origin' });
-      const assetResponse = await fetch(assetRequest);
-      if (assetResponse.ok && !assetResponse.redirected) {
-        await cache.put(assetRequest, assetResponse);
+    // Most Next.js routes reference the same runtime chunks. An offline pack
+    // can contain hundreds of patient paths; without this shared promise map
+    // every page re-fetched and re-wrote the same chunks into CacheStorage.
+    const assetResults = await Promise.all([...assetPaths].map((assetPath) => {
+      let pending = assetPromises.get(assetPath);
+      if (!pending) {
+        pending = (async () => {
+          try {
+            const assetRequest = new Request(assetPath, { credentials: 'same-origin' });
+            const cached = await cache.match(assetRequest);
+            if (cached) return true;
+            const assetResponse = await fetch(assetRequest);
+            if (!assetResponse.ok || assetResponse.redirected) return false;
+            await cache.put(assetRequest, assetResponse);
+            return true;
+          } catch {
+            return false;
+          }
+        })();
+        assetPromises.set(assetPath, pending);
       }
+      return pending;
     }));
+    return {
+      path,
+      cached: true,
+      // HTML without every referenced executable asset is not an offline app.
+      executable: assetPaths.size > 0 && assetResults.every(Boolean),
+    };
   } catch {
     // Optional route unavailable during deploy; every other entry still gets
     // its own attempt and an older complete cache remains available.
+    return { path, cached: false, executable: false };
   }
 }
 
-const ONLINE_REQUIRED_API_PREFIXES = [
-  '/api/auth',
-  // PouchDB already owns the durable local write and retry lifecycle. Queuing
-  // its replication protocol a second time here would replay stale CouchDB
-  // requests (including old revisions) after SyncManager has already retried
-  // them, creating avoidable conflicts and an extra PHI-bearing outbox.
-  '/api/couch',
-  '/api/users',
-  '/api/admin',
-  '/api/receipts',
-  '/api/payment-link',
-  '/api/checkout',
-  '/api/patient-portal/login',
-];
-
-function isOnlineRequiredApi(pathname) {
-  return ONLINE_REQUIRED_API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
-
-// Background sync queue stored in IndexedDB
-const SYNC_DB_NAME = 'tamamhealth-sync-queue';
-const SYNC_STORE = 'pending-requests';
-
-function openSyncDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(SYNC_DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(SYNC_STORE)) {
-        db.createObjectStore(SYNC_STORE, { keyPath: 'id', autoIncrement: true });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function queueRequest(url, options) {
+async function readOfflineManifest(cache) {
   try {
-    const db = await openSyncDB();
-    const tx = db.transaction(SYNC_STORE, 'readwrite');
-    tx.objectStore(SYNC_STORE).add({
-      url,
-      method: options.method || 'POST',
-      headers: options.headers || {},
-      body: options.body || null,
-      idempotencyKey: options.idempotencyKey || null,
-      timestamp: Date.now(),
-    });
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = reject;
-    });
+    const response = await cache.match(OFFLINE_MANIFEST_URL);
+    return response ? await response.json() : null;
   } catch {
-    // IndexedDB not available
+    return null;
   }
 }
 
-async function flushSyncQueue() {
-  try {
-    const db = await openSyncDB();
-    const tx = db.transaction(SYNC_STORE, 'readonly');
-    const store = tx.objectStore(SYNC_STORE);
-    const all = await new Promise((resolve, reject) => {
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+async function writeOfflineManifest(cache, value) {
+  await cache.put(OFFLINE_MANIFEST_URL, new Response(JSON.stringify({
+    buildVersion: BUILD_VERSION,
+    checkedAt: new Date().toISOString(),
+    ...value,
+  }), { headers: { 'Content-Type': 'application/json' } }));
+}
 
-    for (const entry of all) {
-      try {
-        const response = await fetch(entry.url, {
-          method: entry.method,
-          headers: entry.headers,
-          body: entry.body,
-        });
-        if (!response.ok) {
-          break;
-        }
-        // Remove from queue on success
-        const delTx = db.transaction(SYNC_STORE, 'readwrite');
-        delTx.objectStore(SYNC_STORE).delete(entry.id);
-      } catch {
-        // Still offline, keep in queue
-        break;
-      }
-    }
-  } catch {
-    // IndexedDB not available
+async function precachePaths(cache, paths, concurrency = 6) {
+  const results = [];
+  const assetPromises = new Map();
+  for (let index = 0; index < paths.length; index += concurrency) {
+    results.push(...await Promise.all(
+      paths.slice(index, index + concurrency).map(path => precacheUrl(cache, path, assetPromises))
+    ));
   }
+  return results;
 }
 
 // Install: cache app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => Promise.allSettled(STATIC_ASSETS.map((path) => precacheUrl(cache, path))))
+      .then(async (cache) => {
+        const results = await precachePaths(cache, STATIC_ASSETS);
+        const login = results.find(result => result.path === '/login');
+        await writeOfflineManifest(cache, {
+          shellReady: Boolean(login?.cached && login?.executable),
+          provisionedPaths: [],
+          failedPaths: login?.cached && login?.executable ? [] : ['/login'],
+        });
+      })
     // Precaching is an optimisation, not a precondition. A previously loaded
     // build can still be used and runtime caching can fill this cache later.
     .catch(() => { /* no offline shell this time; the app still works online */ })
@@ -218,7 +170,6 @@ self.addEventListener('activate', (event) => {
         );
       })
       .catch(() => [])
-      .then(() => flushSyncQueue())
   );
   self.clients.claim();
 });
@@ -257,51 +208,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For other API POST/PUT/DELETE: try network, queue if offline
+  // UI clinical writes belong in PouchDB and replicate from there. A generic
+  // service-worker outbox cannot enforce domain validation, user ownership or
+  // conflict policy, so every API mutation is explicitly online-only.
   if (request.method !== 'GET') {
     if (url.origin !== self.location.origin || !url.pathname.startsWith('/api/')) {
       return;
     }
-    if (url.pathname.startsWith('/api/') && isOnlineRequiredApi(url.pathname)) {
-      event.respondWith(
-        fetch(request).catch(() => new Response(JSON.stringify({
-          offline: true,
-          queued: false,
-          error: 'This action requires a connection.',
-        }), {
+    event.respondWith(
+      fetch(request).catch(() => new Response(JSON.stringify({
+        offline: true,
+        queued: false,
+        error: 'This server action requires a connection.',
+      }), {
           status: 503,
           headers: {
             'Content-Type': 'application/json',
             'X-TamamHealth-Offline': 'required-online',
           },
         }))
-      );
-      return;
-    }
-    event.respondWith(
-      fetch(request).catch(async () => {
-        // Queue the request for background sync
-        const body = await request.clone().text();
-        const idempotencyKey = request.headers.get('X-Idempotency-Key') ||
-          (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
-        await queueRequest(request.url, {
-          method: request.method,
-          headers: {
-            ...Object.fromEntries(request.headers.entries()),
-            'X-Idempotency-Key': idempotencyKey,
-          },
-          body,
-          idempotencyKey,
-        });
-        return new Response(JSON.stringify({ queued: true, offline: true }), {
-          status: 202,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-TamamHealth-Offline': 'queued',
-            'X-Idempotency-Key': idempotencyKey,
-          },
-        });
-      })
     );
     return;
   }
@@ -352,9 +277,12 @@ self.addEventListener('fetch', (event) => {
           // It can verify the device credential locally; the public landing
           // page cannot open an authenticated offline session.
           if (request.mode === 'navigate') {
-            return matchQuietly('/login').then((loginShell) => {
-              if (loginShell) return loginShell;
-              return matchQuietly('/').then((shell) => shell || new Response('Offline', { status: 503 }));
+            return matchQuietly(url.pathname).then((routeShell) => {
+              if (routeShell) return routeShell;
+              return matchQuietly('/login').then((loginShell) => {
+                if (loginShell) return loginShell;
+                return matchQuietly('/').then((shell) => shell || new Response('Offline', { status: 503 }));
+              });
             });
           }
           return new Response('Offline', { status: 503 });
@@ -363,9 +291,47 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listen for online event to flush sync queue
+// Provision the signed-in role's offline application pack. The page supplies
+// only same-origin route paths; the worker fetches them with the current
+// server session and records an atomic, build-specific result for Settings.
 self.addEventListener('message', (event) => {
-  if (event.data === 'ONLINE') {
-    flushSyncQueue();
-  }
+  if (event.data?.type !== 'PREPARE_OFFLINE') return;
+  const reply = event.ports?.[0];
+  const paths = [...new Set(Array.isArray(event.data.paths) ? event.data.paths : [])]
+    // Role packs may include hundreds of patient workspaces. Keep a hard
+    // ceiling against abusive messages while allowing the configured maximum
+    // (2,000 patient charts plus role routes) to be prepared deliberately.
+    .slice(0, 2500)
+    .flatMap(path => {
+      if (typeof path !== 'string' || path.length > 512) return [];
+      try {
+        const url = new URL(path, self.location.origin);
+        if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return [];
+        return [`${url.pathname}${url.search}`];
+      } catch {
+        return [];
+      }
+    });
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const previous = await readOfflineManifest(cache);
+    const results = await precachePaths(cache, paths);
+    const successful = results.filter(result => result.cached && result.executable).map(result => result.path);
+    const failed = results.filter(result => !result.cached || !result.executable).map(result => result.path);
+    const provisionedPaths = [...new Set([...(previous?.provisionedPaths || []), ...successful])];
+    await writeOfflineManifest(cache, {
+      shellReady: previous?.shellReady === true,
+      provisionedPaths,
+      failedPaths: failed,
+    });
+    reply?.postMessage({
+      type: 'OFFLINE_PACK_RESULT',
+      ok: failed.length === 0,
+      provisionedPaths,
+      failedPaths: failed,
+      buildVersion: BUILD_VERSION,
+    });
+  })().catch(() => {
+    reply?.postMessage({ type: 'OFFLINE_PACK_RESULT', ok: false, provisionedPaths: [], failedPaths: paths });
+  }));
 });

@@ -8,11 +8,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import type { PatientClass, VisitReasonDoc } from '../db-types-booking';
 
 export function useVisitReasons(facilityIdOverride?: string) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const facilityId = facilityIdOverride ?? currentUser?.hospitalId;
   const orgId = currentUser?.orgId;
 

@@ -364,11 +364,10 @@ export default function NurseHomeView() {
       <EhrClinicalDashboard
         clinicianName={currentUser.name || 'nurse'}
         patients={worklist.patients}
-        // No appointment board of this view's own yet — midwife ANC visits
-        // are the one nurse-family appointment type, and nothing here surfaces
-        // them trivially yet. An empty schedule is acceptable for now; the
-        // worklist table and outstanding rail carry the actual work.
-        appointments={[]}
+        // Scoped by useAppointments. This restores ANC and general nursing
+        // schedules that were visible to the retired specialist roles but
+        // absent from the shared nurse dashboard.
+        appointments={null}
         outstanding={worklist.outstanding}
         activityItems={worklist.activity}
         activitySeriesNames={['Admitted', 'Arrivals']}

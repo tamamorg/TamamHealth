@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { EncounterDoc, LabResultDoc } from '../db-types';
 import { encountersDB, labResultsDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 
 export interface ResumableEncounter extends EncounterDoc {
   /** How many of the ordered investigations have come back resulted. */
@@ -21,7 +21,7 @@ export interface ResumableEncounter extends EncounterDoc {
  * dashboard "Awaiting results" worklist and the Resume action.
  */
 export function useResumableEncounters() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const clinicianId = currentUser?._id;
   const [encounters, setEncounters] = useState<ResumableEncounter[]>([]);
   const [loading, setLoading] = useState(true);

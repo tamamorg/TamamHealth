@@ -20,7 +20,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Corners, loginStyles } from '@/components/login/login-chrome';
+import { Corners } from '@/components/login/login-chrome';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function ForgotPasswordPage() {
@@ -113,7 +113,6 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
 
-      {loginStyles}
     </div>
   );
 }

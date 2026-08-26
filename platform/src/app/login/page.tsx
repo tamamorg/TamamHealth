@@ -22,7 +22,7 @@ import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { getRoleConfig } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { Corners, loginStyles } from '@/components/login/login-chrome';
+import { Corners } from '@/components/login/login-chrome';
 import { portalFromParam, shotForPortal, DEFAULT_PORTAL, type LoginPortal } from '@/components/login/portal-imagery';
 
 // Role picker options — every role in the platform, labeled like the rest of
@@ -98,7 +98,7 @@ function demoGroupName(account: DemoAccount): string {
 export default function LoginPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { login, logout, lastLoginFailure, isAuthenticated, currentUser, dbReady } = useAuth();
+  const { login, logout, lastLoginFailure, isAuthenticated, currentUser, sessionMode, dbReady } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -226,8 +226,17 @@ export default function LoginPage() {
      login you had just started. */
   useEffect(() => {
     if (loading || switching) return;
-    if (isAuthenticated && currentUser) router.push(resolveLandingPage(currentUser.role));
-  }, [isAuthenticated, currentUser, router, loading, switching]);
+    if (!isAuthenticated || !currentUser) return;
+    const landing = resolveLandingPage(currentUser.role);
+    if (sessionMode === 'offline') {
+      // A document navigation lets the service worker serve the verified HTML
+      // route. A Next soft navigation needs an RSC network response and can
+      // otherwise strand a successful offline sign-in on this page.
+      window.location.assign(landing);
+    } else {
+      router.push(landing);
+    }
+  }, [isAuthenticated, currentUser, sessionMode, router, loading, switching]);
 
   /**
    * Name the actual refusal. Every failed sign-in used to read "Invalid
@@ -277,7 +286,7 @@ export default function LoginPage() {
       // session first, so the new credentials are the only ones in play.
       if (isAuthenticated) logout();
       const result = await login(account.username, account.password);
-      if (result) router.push(resolveLandingPage(result));
+      if (result) return;
       else { setError(describeLoginFailure('That demo account could not sign in.')); setLoading(false); }
     } catch { setError('Login failed. Please try again.'); setLoading(false); }
   };
@@ -289,7 +298,7 @@ export default function LoginPage() {
     try {
       if (isAuthenticated) logout();
       const result = await login(username, password, undefined, roleChoice || undefined);
-      if (result) { router.push(resolveLandingPage(result)); return; }
+      if (result) return;
 
       setError(describeLoginFailure(t('login.errorInvalidCredentials')));
       setLoading(false);
@@ -314,7 +323,6 @@ export default function LoginPage() {
         >
           {t('login.useDifferentAccount')}
         </button>
-        {loginStyles}
       </div>
     );
   }
@@ -564,7 +572,6 @@ export default function LoginPage() {
         <a href="https://tamamhealth.org">{t('login.backToSite')}</a>
       </footer>
 
-      {loginStyles}
     </div>
   );
 }

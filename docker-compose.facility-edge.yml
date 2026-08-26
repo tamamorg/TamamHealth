@@ -1,0 +1,55 @@
+# Facility LAN override. Keeps the application server and CouchDB together on
+# site so loss of the external internet does not stop multi-device clinical
+# work. CouchDB remains private; browsers replicate through the authenticated,
+# relationship-aware same-origin gateway at /api/couch.
+services:
+  facility-gateway:
+    image: caddy:2-alpine
+    container_name: tamamhealth-facility-gateway
+    environment:
+      FACILITY_HOSTNAME: ${FACILITY_HOSTNAME:?FACILITY_HOSTNAME must be set}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.facility-edge:/etc/caddy/Caddyfile:ro
+      - facility_caddy_data:/data
+      - facility_caddy_config:/config
+    depends_on:
+      platform:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-net
+
+  platform:
+    build:
+      args:
+        NEXT_PUBLIC_SYNC_ENABLED: "true"
+        NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED: "true"
+        NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: "true"
+        NEXT_PUBLIC_COUCHDB_URL: ${FACILITY_APP_URL:?FACILITY_APP_URL must be set}/api/couch
+        NEXT_PUBLIC_APP_URL: ${FACILITY_APP_URL:?FACILITY_APP_URL must be set}
+        NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE: facility-edge
+        NEXT_PUBLIC_OFFLINE_CACHE_PATIENT_ROUTES: "true"
+        NEXT_PUBLIC_OFFLINE_PATIENT_ROUTE_LIMIT: ${NEXT_PUBLIC_OFFLINE_PATIENT_ROUTE_LIMIT:-500}
+        NEXT_PUBLIC_OFFLINE_REQUIRE_PERSISTENT_STORAGE: "true"
+    environment:
+      NEXT_PUBLIC_SYNC_ENABLED: "true"
+      NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED: "true"
+      NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: "true"
+      NEXT_PUBLIC_COUCHDB_URL: ${FACILITY_APP_URL:?FACILITY_APP_URL must be set}/api/couch
+      NEXT_PUBLIC_APP_URL: ${FACILITY_APP_URL:?FACILITY_APP_URL must be set}
+      NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE: facility-edge
+      NEXT_PUBLIC_OFFLINE_CACHE_PATIENT_ROUTES: "true"
+      NEXT_PUBLIC_OFFLINE_PATIENT_ROUTE_LIMIT: ${NEXT_PUBLIC_OFFLINE_PATIENT_ROUTE_LIMIT:-500}
+      NEXT_PUBLIC_OFFLINE_REQUIRE_PERSISTENT_STORAGE: "true"
+      OFFLINE_GATEWAY_RELATIONSHIP_AUTHORIZATION: "true"
+      PHI_AT_REST_STRATEGY: disk-encryption
+      PHI_ENCRYPTION_ENABLED: "false"
+      COUCHDB_GATEWAY_SECRET: ${COUCHDB_GATEWAY_SECRET:?COUCHDB_GATEWAY_SECRET must be set}
+      COUCHDB_WEBHOOK_SECRET: ${COUCHDB_WEBHOOK_SECRET:?COUCHDB_WEBHOOK_SECRET must be set}
+
+volumes:
+  facility_caddy_data:
+  facility_caddy_config:

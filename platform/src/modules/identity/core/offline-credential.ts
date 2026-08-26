@@ -59,10 +59,17 @@ export interface OfflineCredentialClaims {
   username: string;
   name: string;
   role: UserRole;
+  actualRole?: UserRole;
   hospitalId?: string;
   hospitalName?: string;
   facilityIds?: string[];
   orgId?: string;
+  department?: string;
+  countryId?: string;
+  payam?: string;
+  county?: string;
+  state?: string;
+  mustChangePassword?: boolean;
 }
 
 interface StoredCredential {

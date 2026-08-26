@@ -1,9 +1,9 @@
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { isRouteAllowed, getRoleConfig } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
 
 export function usePermissions() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const role = currentUser?.role as UserRole | undefined;
 
   const isSuperAdmin = role === 'super_admin';
@@ -46,18 +46,17 @@ export function usePermissions() {
   const canPrescribe = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   const canOrderLabs = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
 
-  // Patient registration — clinical + front desk + BHW + midwife + workflow clerks/nurses
-  // Nurses do not register patients — registration is a clerical/front-desk and
-  // prescriber task. Triage/rooming nurses are workflow-station roles, distinct
-  // from the bedside `nurse` role, and keep registration for their stations.
-  const canRegisterPatients = role === 'doctor' || role === 'clinical_officer' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || role === 'hrio' || isMedSupt;
+  // Registration is needed at triage/rooming in small facilities. Those are
+  // now nurse assignments rather than separate account roles, so the shared
+  // nurse role keeps the union of the retired roles' capabilities.
+  const canRegisterPatients = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || role === 'hrio' || isMedSupt;
 
   // Specialized roles
   const canDispense = role === 'pharmacist';
   const canEnterLabResults = role === 'lab_tech';
 
   // Referrals — clinical staff + front desk + supervisors + midwife (obstetric)
-  const canManageReferrals = role === 'doctor' || role === 'clinical_officer' || isClinician || isMidwife || isRegistrationClerk || role === 'front_desk' || isSuperAdmin;
+  const canManageReferrals = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isClinician || isMidwife || isRegistrationClerk || role === 'front_desk' || isSuperAdmin;
 
   // Appointments — route visibility is broad, but workflow actions are split
   // by duty: reception schedules/checks in, clinicians advance visits, HMIS

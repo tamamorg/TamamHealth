@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { LabResultDoc } from '../db-types';
 import { labResultsDB } from '../db';
 import { makeCoalescer } from './live-reload';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 
 export function useLabResults(patientId?: string) {
   const [results, setResults] = useState<LabResultDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps

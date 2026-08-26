@@ -229,14 +229,25 @@ export default function MessagingDock() {
         ? window.prompt('Reason for rejecting this transfer')?.trim()
         : undefined;
       if (decision === 'reject' && !notes) return;
-      const response = await fetch('/api/patient-transfers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: decision, transferId: id, notes }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Transfer decision failed');
+      const [svc, perms] = await Promise.all([
+        import('@/lib/services/patient-transfer-service'),
+        import('@/lib/services/patient-transfer-permissions'),
+      ]);
+      const transfer = await svc.getTransferById(id);
+      if (!transfer) throw new Error('Transfer not found');
+      const auth = {
+        sub: currentUser._id,
+        username: currentUser.username,
+        role: currentUser.role,
+        name: currentUser.name || currentUser.username,
+        hospitalId: currentUser.hospitalId,
+        orgId: currentUser.orgId,
+      };
+      const permission = perms.canDecideTransfer(auth, transfer);
+      if (!permission.allowed) throw new Error(permission.reason || 'Transfer decision not permitted');
+      const actor = { id: auth.sub, name: auth.name, role: auth.role };
+      if (decision === 'accept') await svc.acceptTransfer(id, actor);
+      else await svc.rejectTransfer(id, actor, notes);
     } catch (err) {
       console.warn('[dock] transfer decision failed', err);
     } finally {

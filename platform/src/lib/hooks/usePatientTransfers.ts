@@ -5,9 +5,9 @@
  *
  * Reads go straight to the local PouchDB replica so the transfer history and
  * the pending-request banner work offline like the rest of the chart. Writes go
- * through the service layer too — the permission checks that matter are
- * re-enforced server-side on `/api/patient-transfers`, and enforcing them here
- * as well is what keeps the UI from offering a button that will 403.
+ * through the same local service layer and are marked pending for replication;
+ * local capability checks keep the UI honest, while CouchDB validation remains
+ * the authoritative boundary when those revisions reach the server.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
@@ -19,7 +19,34 @@ import type {
 } from '../db-types';
 import { patientTransfersDB } from '../db';
 import { makeCoalescer } from './live-reload';
-import { useApp } from '../context';
+import { useAuth } from '../context';
+import {
+  canCancelTransfer,
+  canContributeTransfer,
+  canDecideTransfer,
+  canRequestTransfer,
+} from '../services/patient-transfer-permissions';
+import { filterByScope } from '../services/data-scope';
+
+type CurrentUser = NonNullable<ReturnType<typeof useAuth>['currentUser']>;
+
+function transferAuth(user: CurrentUser) {
+  return {
+    sub: user._id,
+    username: user.username,
+    role: user.role,
+    actualRole: user.actualRole,
+    name: user.name || user.username,
+    hospitalId: user.hospitalId,
+    hospitalName: user.hospitalName,
+    facilityIds: user.facilityIds,
+    orgId: user.orgId,
+  };
+}
+
+function permissionError(reason?: string): Error {
+  return new Error(reason || 'This transfer action is not permitted.');
+}
 
 export interface TransferDraftInput {
   to: {
@@ -45,7 +72,7 @@ export interface TransferDraftInput {
 }
 
 export function usePatientTransfers(patientId?: string) {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [transfers, setTransfers] = useState<PatientTransferDoc[]>([]);
   const [loading, setLoading] = useState(Boolean(patientId));
   const [error, setError] = useState<string | null>(null);
@@ -117,48 +144,132 @@ export function usePatientTransfers(patientId?: string) {
     }
   }, [load]);
 
-  const apiMutation = useCallback(async <T,>(body: Record<string, unknown>): Promise<T> => {
-    const response = await fetch('/api/patient-transfers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || 'Transfer action failed');
-    return payload.transfer as T;
-  }, []);
-
   const request = useCallback(async (patient: PatientDoc, input: TransferDraftInput) => {
-    return run(() => apiMutation({ action: input.asDraft ? 'request' : 'request', patientId: patient._id, ...input }));
-  }, [run, apiMutation]);
+    return run(async () => {
+      if (!currentUser) throw new Error('Not signed in.');
+      const auth = transferAuth(currentUser);
+      const crossOrg = Boolean(input.to.orgId && auth.orgId && input.to.orgId !== auth.orgId);
+      if (!crossOrg && input.to.facilityId && auth.hospitalId && input.to.facilityId !== auth.hospitalId) {
+        throw new Error('Internal transfers must stay within the current facility.');
+      }
+      const permission = canRequestTransfer(auth, patient, { crossOrg });
+      if (!permission.allowed) throw permissionError(permission.reason);
+      const svc = await import('../services/patient-transfer-service');
+      return svc.createTransferRequest({
+        patientId: patient._id,
+        patientName: [patient.firstName, patient.surname].filter(Boolean).join(' '),
+        hospitalNumber: patient.hospitalNumber,
+        transferType: input.transferType,
+        urgency: input.urgency,
+        from: {
+          providerId: patient.assignedDoctor,
+          providerName: patient.assignedDoctorName,
+          department: patient.assignedDepartment,
+          facilityId: patient.registrationHospital,
+          orgId: patient.orgId,
+        },
+        to: input.to,
+        reason: input.reason,
+        handoffNotes: input.handoffNotes,
+        checklist: input.checklist,
+        effectiveAt: input.effectiveAt,
+        expiresAt: input.expiresAt,
+        destination: input.destination,
+        transport: input.transport,
+        clinicalReadiness: input.clinicalReadiness,
+        communication: input.communication,
+        asDraft: input.asDraft,
+        hospitalId: auth.hospitalId,
+        orgId: auth.orgId,
+        actor: { id: auth.sub, name: auth.name, role: auth.role },
+      });
+    });
+  }, [run, currentUser]);
+
+  const loadActionTarget = useCallback(async (id: string) => {
+    if (!currentUser || !scope) throw new Error('Not signed in.');
+    const svc = await import('../services/patient-transfer-service');
+    const transfer = await svc.getTransferById(id);
+    if (!transfer || filterByScope([transfer], scope).length === 0) {
+      throw new Error('Transfer not found.');
+    }
+    return { svc, transfer, auth: transferAuth(currentUser) };
+  }, [currentUser, scope]);
 
   const accept = useCallback(async (id: string, notes?: string) => {
-    return run(() => apiMutation({ action: 'accept', transferId: id, notes }));
-  }, [run, apiMutation]);
+    return run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canDecideTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.acceptTransfer(id, { id: auth.sub, name: auth.name, role: auth.role }, notes);
+    });
+  }, [run, loadActionTarget]);
 
   const reject = useCallback(async (id: string, notes: string) => {
-    return run(() => apiMutation({ action: 'reject', transferId: id, notes }));
-  }, [run, apiMutation]);
+    return run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canDecideTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.rejectTransfer(id, { id: auth.sub, name: auth.name, role: auth.role }, notes);
+    });
+  }, [run, loadActionTarget]);
 
   const cancel = useCallback(async (id: string, reason?: string) => {
-    return run(() => apiMutation({ action: 'cancel', transferId: id, reason }));
-  }, [run, apiMutation]);
+    return run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canCancelTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.cancelTransfer(id, { id: auth.sub, name: auth.name, role: auth.role }, reason);
+    });
+  }, [run, loadActionTarget]);
 
   const complete = useCallback(async (id: string) => {
-    return run(() => apiMutation({ action: 'complete', transferId: id }));
-  }, [run, apiMutation]);
+    return run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canDecideTransfer(auth, { ...transfer, status: 'requested' });
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.completeTransfer(id, { id: auth.sub, name: auth.name, role: auth.role });
+    });
+  }, [run, loadActionTarget]);
 
   const addNote = useCallback(async (id: string, note: string) => {
-    return run(() => apiMutation({ action: 'note', transferId: id, notes: note }));
-  }, [run, apiMutation]);
+    return run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canContributeTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.addTransferNote(id, note, { id: auth.sub, name: auth.name, role: auth.role });
+    });
+  }, [run, loadActionTarget]);
 
   const updateLogistics = useCallback(async (id: string, patch: Record<string, unknown>) =>
-    run(() => apiMutation({ action: 'logistics', transferId: id, ...patch })), [run, apiMutation]);
+    run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canContributeTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.updateTransferLogistics(
+        id,
+        patch as Parameters<typeof svc.updateTransferLogistics>[1],
+        { id: auth.sub, name: auth.name, role: auth.role },
+      );
+    }), [run, loadActionTarget]);
   const arrive = useCallback(async (id: string, assessment?: Record<string, unknown>) =>
-    run(() => apiMutation({ action: 'arrive', transferId: id, assessment })), [run, apiMutation]);
+    run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canContributeTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.markTransferArrived(
+        id,
+        { id: auth.sub, name: auth.name, role: auth.role },
+        assessment as Parameters<typeof svc.markTransferArrived>[2],
+      );
+    }), [run, loadActionTarget]);
   const close = useCallback(async (id: string) =>
-    run(() => apiMutation({ action: 'close', transferId: id })), [run, apiMutation]);
+    run(async () => {
+      const { svc, transfer, auth } = await loadActionTarget(id);
+      const permission = canContributeTransfer(auth, transfer);
+      if (!permission.allowed) throw permissionError(permission.reason);
+      return svc.closeTransfer(id, { id: auth.sub, name: auth.name, role: auth.role });
+    }), [run, loadActionTarget]);
 
   return {
     transfers,
@@ -189,7 +300,7 @@ export function usePatientTransfers(patientId?: string) {
  * open a chart that isn't theirs yet.
  */
 export function useTransferQueue() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [incoming, setIncoming] = useState<PatientTransferDoc[]>([]);
   const [outgoing, setOutgoing] = useState<PatientTransferDoc[]>([]);
   const [loading, setLoading] = useState(true);

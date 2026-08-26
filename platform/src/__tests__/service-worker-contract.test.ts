@@ -15,7 +15,8 @@ const source = fs.readFileSync(path.join(process.cwd(), 'public', 'sw.js'), 'utf
 
 describe('service worker offline shell', () => {
   it('precaches entries independently instead of using atomic cache.addAll', () => {
-    expect(source).toContain('Promise.allSettled(STATIC_ASSETS.map');
+    expect(source).toContain('precachePaths(cache, STATIC_ASSETS)');
+    expect(source).toContain('return { path, cached: false, executable: false }');
     expect(source).not.toContain('cache.addAll(STATIC_ASSETS)');
   });
 
@@ -29,12 +30,38 @@ describe('service worker offline shell', () => {
     expect(source).toContain("'X-TamamHealth-Offline': 'network-only'");
   });
 
-  it('does not duplicate PouchDB replication writes in the generic request queue', () => {
-    expect(source).toMatch(/ONLINE_REQUIRED_API_PREFIXES[\s\S]*'\/api\/couch'/);
+  it('never reports an API mutation as queued by a generic worker outbox', () => {
+    expect(source).not.toContain('queueRequest(');
+    expect(source).not.toContain('pending-requests');
+    expect(source).toContain('queued: false');
+    expect(source).toContain("'X-TamamHealth-Offline': 'required-online'");
   });
 
   it('has a cached offline sign-in entry point', () => {
     expect(source).toContain("'/login'");
     expect(source).toContain("matchQuietly('/login')");
+  });
+
+  it('records readiness only in the current build cache after executable assets succeed', () => {
+    expect(source).toContain("OFFLINE_MANIFEST_URL = '/__tamamhealth_offline_manifest__'");
+    expect(source).toContain('buildVersion: BUILD_VERSION');
+    expect(source).toContain('login?.cached && login?.executable');
+  });
+
+  it('supports explicit role-workspace provisioning', () => {
+    expect(source).toContain("event.data?.type !== 'PREPARE_OFFLINE'");
+    expect(source).toContain("type: 'OFFLINE_PACK_RESULT'");
+    expect(source).toContain('provisionedPaths');
+    expect(source).toContain('url.origin !== self.location.origin');
+    expect(source).toContain('.slice(0, 2500)');
+  });
+
+  it('keeps install-time work to the login shell and deduplicates shared chunks', () => {
+    const staticAssets = source.match(/const STATIC_ASSETS = \[([\s\S]*?)\n\];/)?.[1] ?? '';
+    expect(staticAssets).toContain("'/login'");
+    expect(staticAssets).not.toContain("'/dashboard'");
+    expect(staticAssets).not.toContain("'/patients'");
+    expect(source).toContain('const assetPromises = new Map()');
+    expect(source).toContain('await cache.match(assetRequest)');
   });
 });

@@ -24,19 +24,21 @@
  * rather than as a zero that reads like a measurement.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Database, HardDrive, Archive, RefreshCw, ShieldCheck, AlertTriangle, Loader2, ChevronRight,
 } from '@/components/icons/lucide';
-import { useApp } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import { useRouter } from 'next/navigation';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
-import { isPathAllowed } from '@/lib/role-routes';
+import { isPathAllowed, ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { LOCAL_AUDIT_RETENTION_DAYS } from '@/lib/services/audit-retention';
 import {
   assessOfflineReadiness,
+  collectPatientWorkspacePaths,
+  provisionOfflinePack,
   type OfflineReadinessCheckId,
   type OfflineReadinessReport,
 } from '@/lib/offline-readiness';
@@ -53,6 +55,21 @@ interface DeviceData {
   /** Whether the browser has promised not to evict this data. */
   durable: 'persisted' | 'evictable' | 'unknown';
 }
+
+interface DeploymentCapabilities {
+  mode: 'device' | 'facility-edge';
+  facilityEdgeReady: boolean;
+  databaseReachable: boolean;
+  tenantIsolation: boolean;
+  sameOriginGateway: boolean;
+  relationshipAuthorization: boolean;
+  atRestProtection: boolean;
+  cachePatientWorkspaces: boolean;
+  patientRouteLimit: number;
+  problems: string[];
+}
+
+const CAPABILITIES_CACHE_KEY = 'tamamhealth-deployment-capabilities-v1';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return '—';
@@ -82,16 +99,42 @@ function readableDatabase(name: string): string {
  */
 const isViewIndex = (name: string) => name.includes('-mrview-');
 
+// Compatibility routes that immediately redirect to a canonical screen.
+// They are useful for old bookmarks but are not independent offline modules;
+// requiring them would leave a correctly prepared device permanently red.
+const OFFLINE_REDIRECT_STUBS = new Set([
+  '/settings/manage', '/org-admin/users', '/org-admin/hospitals', '/org-admin/settings',
+  '/dashboard/nurse', '/system-admin', '/admin/control', '/admin/billing',
+  '/admin/organizations', '/admin/users',
+]);
+
 export default function DataManagementPanel() {
   const { t } = useTranslation();
-  const { currentUser } = useApp();
+  const { currentUser, sessionMode, requiresOnlineReauth } = useAuth();
+  const { isNetworkUp } = useSync();
   const { showToast } = useToast();
   const router = useRouter();
   const backup = useBackupStatus();
 
   const [device, setDevice] = useState<DeviceData | null>(null);
   const [offlineReadiness, setOfflineReadiness] = useState<OfflineReadinessReport | null>(null);
+  const [provisioning, setProvisioning] = useState(false);
   const [pruning, setPruning] = useState(false);
+  const [deployment, setDeployment] = useState<DeploymentCapabilities | null>(null);
+
+  const [patientWorkspacePaths, setPatientWorkspacePaths] = useState<string[]>([]);
+
+  const baseOfflinePackPaths = useMemo(() => {
+    if (!currentUser) return ['/login'];
+    const config = ROLE_ROUTE_TABLE[currentUser.role];
+    return [...new Set(['/login', config.defaultDashboard, ...config.allowed])]
+      .filter(path => !OFFLINE_REDIRECT_STUBS.has(path));
+  }, [currentUser]);
+
+  const offlinePackPaths = useMemo(
+    () => [...new Set([...baseOfflinePackPaths, ...patientWorkspacePaths])],
+    [baseOfflinePackPaths, patientWorkspacePaths],
+  );
 
   const measure = useCallback(async () => {
     const [{ getDirtyDatabases, listLocalDatabases }, { getDB }] = await Promise.all([
@@ -135,10 +178,62 @@ export default function DataManagementPanel() {
     }
 
     setDevice({ unsynced, documents: readAny ? documents : null, usageBytes, quotaBytes, durable });
-    setOfflineReadiness(await assessOfflineReadiness(currentUser?.username));
-  }, [currentUser?.username]);
+    try {
+      const response = await fetch('/api/deployment-capabilities', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (response.ok) {
+        const capabilities = await response.json() as DeploymentCapabilities;
+        setDeployment(capabilities);
+        sessionStorage.setItem(CAPABILITIES_CACHE_KEY, JSON.stringify(capabilities));
+      }
+    } catch {
+      try {
+        const cached = sessionStorage.getItem(CAPABILITIES_CACHE_KEY);
+        if (cached) setDeployment(JSON.parse(cached) as DeploymentCapabilities);
+      } catch { /* An unavailable attestation stays unknown. */ }
+    }
+    setOfflineReadiness(await assessOfflineReadiness(currentUser?.username, offlinePackPaths));
+  }, [currentUser?.username, offlinePackPaths]);
 
   useEffect(() => { measure(); }, [measure]);
+
+  const handleProvisionOffline = async () => {
+    setProvisioning(true);
+    try {
+      // Patient routes are the expensive part: collecting them reads the local
+      // patient store. Do it only when the user explicitly prepares this
+      // device, never during every Settings render.
+      const patientPaths = currentUser
+        ? await collectPatientWorkspacePaths({
+          role: currentUser.role,
+          userId: currentUser._id,
+          orgId: currentUser.orgId,
+          hospitalId: currentUser.hospitalId,
+          facilityIds: currentUser.facilityIds,
+          payam: currentUser.payam,
+          county: currentUser.county,
+          state: currentUser.state,
+        })
+        : [];
+      setPatientWorkspacePaths(patientPaths);
+      const paths = [...new Set([...baseOfflinePackPaths, ...patientPaths])];
+      const result = await provisionOfflinePack(paths);
+      showToast(
+        result.ok
+          ? t('offlineReady.provisioned', { count: result.provisionedPaths.length })
+          : t('offlineReady.provisionFailed', { count: result.failedPaths.length }),
+        result.ok ? 'success' : 'error',
+      );
+      setOfflineReadiness(await assessOfflineReadiness(currentUser?.username, paths));
+    } catch {
+      showToast(t('offlineReady.provisionFailed', { count: offlinePackPaths.length }), 'error');
+    } finally {
+      setProvisioning(false);
+    }
+  };
 
   const handlePrune = async () => {
     setPruning(true);
@@ -214,6 +309,26 @@ export default function DataManagementPanel() {
               ))}
             </div>
           )}
+          {offlineReadiness && (
+            <small>
+              {t('offlineReady.packCoverage', {
+                ready: offlineReadiness.pack.provisionedPaths,
+                total: offlinePackPaths.length,
+              })}
+            </small>
+          )}
+          <small>{t('offlineReady.scopeNote')}</small>
+          <div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleProvisionOffline}
+              disabled={provisioning || !isNetworkUp || sessionMode !== 'online'}
+            >
+              {provisioning ? <Loader2 className="animate-spin w-4 h-4" /> : <Archive className="w-4 h-4" />}
+              {provisioning ? t('offlineReady.preparing') : t('offlineReady.prepare')}
+            </button>
+          </div>
         </div>
         <span className={`dm-state ${offlineReadiness?.state === 'ready' ? 'is-ok' : offlineReadiness ? 'is-warn' : ''}`}>
           {offlineReadiness === null
@@ -226,6 +341,65 @@ export default function DataManagementPanel() {
               : offlineReadiness.state === 'warning'
                 ? t('offlineReady.warning')
                 : t('offlineReady.notReady')}
+        </span>
+      </div>
+
+      <div className="ehr-set-row dm-row">
+        <div className="ehr-set-row-label">
+          <b>{t('offlineReady.deploymentTitle')}</b>
+          <span>
+            {deployment?.mode === 'facility-edge'
+              ? deployment.facilityEdgeReady
+                ? t('offlineReady.deploymentEdgeReady')
+                : t('offlineReady.deploymentEdgeIncomplete')
+              : t('offlineReady.deploymentDevice')}
+          </span>
+          {deployment && (
+            <div className="dm-chips">
+              {([
+                ['databaseReachable', 'offlineReady.capability.edgeDatabase'],
+                ['tenantIsolation', 'offlineReady.capability.tenantIsolation'],
+                ['sameOriginGateway', 'offlineReady.capability.gateway'],
+                ['relationshipAuthorization', 'offlineReady.capability.relationships'],
+                ['atRestProtection', 'offlineReady.capability.atRest'],
+                ['cachePatientWorkspaces', 'offlineReady.capability.patientRoutes'],
+              ] as const).map(([key, label]) => (
+                <em key={key} className={`dm-chip ${deployment[key] ? 'dm-chip--ok' : 'dm-chip--warn'}`}>
+                  {deployment[key] ? '✓' : '×'} {t(label)}
+                </em>
+              ))}
+            </div>
+          )}
+        </div>
+        <span className={`dm-state ${deployment?.facilityEdgeReady ? 'is-ok' : 'is-warn'}`}>
+          {deployment?.facilityEdgeReady ? <ShieldCheck /> : <AlertTriangle />}
+          {deployment?.mode === 'facility-edge'
+            ? deployment.facilityEdgeReady
+              ? t('offlineReady.facilityReady')
+              : t('offlineReady.facilityIncomplete')
+            : t('offlineReady.deviceOnly')}
+        </span>
+      </div>
+
+      {/* A local session unlocks local work only; it never impersonates a server JWT. */}
+      <div className="ehr-set-row dm-row">
+        <div className="ehr-set-row-label">
+          <b>{t('offlineReady.sessionTitle')}</b>
+          <span>
+            {sessionMode === 'online'
+              ? t('offlineReady.sessionOnlineBody')
+              : requiresOnlineReauth
+                ? t('offlineReady.sessionReauthBody')
+                : t('offlineReady.sessionOfflineBody')}
+          </span>
+        </div>
+        <span className={`dm-state ${sessionMode === 'online' ? 'is-ok' : 'is-warn'}`}>
+          {sessionMode === 'online' ? <ShieldCheck /> : <AlertTriangle />}
+          {sessionMode === 'online'
+            ? t('offlineReady.sessionOnline')
+            : requiresOnlineReauth
+              ? t('offlineReady.sessionReauth')
+              : t('offlineReady.sessionOffline')}
         </span>
       </div>
 

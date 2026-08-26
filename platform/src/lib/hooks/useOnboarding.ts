@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import { getOnboardingPlan, allStepIds, type OnboardingPlan } from '../onboarding/steps';
 import { loadOnboardingState, saveOnboardingState } from '../onboarding/store';
 import type { OnboardingState } from '../db-types';
@@ -33,7 +33,7 @@ export interface UseOnboarding {
 }
 
 export function useOnboarding(): UseOnboarding {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const userId = currentUser?._id ?? null;
   const role = currentUser?.role ?? null;
 

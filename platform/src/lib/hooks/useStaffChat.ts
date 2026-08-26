@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { makeCoalescer } from './live-reload';
 import { conversationsDB, messagesDB } from '../db';
 import type { ConversationDoc, MessageDoc } from '../db-types';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 
 interface Participant { id: string; name: string }
 
@@ -14,7 +14,7 @@ interface Participant { id: string; name: string }
  * is open. Patient communication is intentionally NOT handled here.
  */
 export function useStaffChat() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [conversations, setConversations] = useState<ConversationDoc[]>([]);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);

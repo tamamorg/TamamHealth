@@ -21,7 +21,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
-import { useTransferQueue } from '@/lib/hooks/usePatientTransfers';
+import { usePatientTransfers, useTransferQueue } from '@/lib/hooks/usePatientTransfers';
 import {
   describeAssignment, isTransferOverdue,
 } from '@/lib/services/patient-transfer-service';
@@ -58,6 +58,7 @@ export default function TransfersPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const { incoming, outgoing, loading, reload } = useTransferQueue();
+  const { accept: acceptLocal } = usePatientTransfers();
   const [tab, setTab] = useState<Tab>('incoming');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -76,14 +77,7 @@ export default function TransfersPage() {
     setBusyId(t._id);
     setError(null);
     try {
-      const response = await fetch('/api/patient-transfers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'accept', transferId: t._id }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Could not accept the transfer');
+      await acceptLocal(t._id);
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not accept the transfer');

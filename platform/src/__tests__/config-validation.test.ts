@@ -38,6 +38,19 @@ describe('production configuration validation', () => {
     expect(validateProductionConfig(validEnvironment())).toEqual([]);
   });
 
+  it('fails closed when facility-edge mode is only partially configured', () => {
+    const env = validEnvironment();
+    env.NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE = 'facility-edge';
+    expect(validateProductionConfig(env).join('\n')).toMatch(/disk\/volume encryption/);
+
+    env.PHI_AT_REST_STRATEGY = 'disk-encryption';
+    env.PHI_ENCRYPTION_ENABLED = 'false';
+    delete env.PHI_ENCRYPTION_KEY;
+    env.NEXT_PUBLIC_OFFLINE_CACHE_PATIENT_ROUTES = 'true';
+    env.OFFLINE_GATEWAY_RELATIONSHIP_AUTHORIZATION = 'true';
+    expect(validateProductionConfig(env)).toEqual([]);
+  });
+
   it('accepts disk-encryption as the declared at-rest strategy (offline-first)', () => {
     const env = validEnvironment();
     // Option A: full-disk/volume encryption, no field-level key on the app.
@@ -75,6 +88,22 @@ describe('production configuration validation', () => {
     const weak = validEnvironment();
     weak.SUPERADMIN_INITIAL_PASSWORD = 'short';
     expect(validateProductionConfig(weak).join('\n')).toMatch(/at least 16 characters/);
+  });
+
+  it('refuses to boot with the dev master-password flag set', () => {
+    // `NODE_ENV` already blocks the branch itself in a built server; this is
+    // the second lock, so a production .env carrying the flag is a loud boot
+    // failure rather than a quietly ignored line.
+    const env = validEnvironment();
+    env.SUPERADMIN_MASTER_PASSWORD = 'true';
+    expect(validateProductionConfig(env).join('\n')).toMatch(/development-only master key/);
+
+    // Anything that is not exactly 'true' is off, and passes.
+    for (const value of ['false', 'TRUE', '1', '']) {
+      const off = validEnvironment();
+      off.SUPERADMIN_MASTER_PASSWORD = value;
+      expect(validateProductionConfig(off)).toEqual([]);
+    }
   });
 
   it('requires tenant databases and a same-origin browser gateway', () => {

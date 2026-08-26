@@ -16,7 +16,7 @@ import { useState } from 'react';
 import type { PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { IS_DEMO, writePatientPortalSession } from '@/lib/patient-portal-session';
-import { Corners, loginStyles } from '@/components/login/login-chrome';
+import { Corners } from '@/components/login/login-chrome';
 
 /* ═════════════════════════════════════════
    PATIENT LOGIN SCREEN
@@ -275,7 +275,6 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
         <a href="https://tamamhealth.org">Back to tamamhealth.org</a>
       </footer>
 
-      {loginStyles}
     </div>
   );
 }

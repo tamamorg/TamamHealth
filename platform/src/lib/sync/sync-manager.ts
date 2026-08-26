@@ -48,6 +48,15 @@ export const PRIORITY_SYNC_DATABASES: ReadonlySet<string> = new Set([
 /** How long the reference/history tail waits behind the clinical core. */
 export const SECOND_WAVE_DELAY_MS = 20_000;
 
+/**
+ * Local wipe bookkeeping reads every browser database. Pull cycles finish
+ * several times per second across a large profile, so a clean point is a
+ * periodic checkpoint, not work to repeat after every individual poll.
+ */
+export const CLEAN_POINT_MIN_INTERVAL_MS = 60_000;
+export const AUDIT_PRUNE_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const AUDIT_PRUNE_AT_KEY = 'tamamhealth.audit.last-prune.v1';
+
 export type AggregateState =
   | 'disabled'
   | 'idle'
@@ -129,6 +138,8 @@ export class SyncManager {
   private _startSecondWave: (() => void) | null = null;
   /** lastSync value of the most recent clean settle, to debounce the mark. */
   private _lastCleanPoint: string | null = null;
+  private _lastCleanPointAt = 0;
+  private _cleanPointPromise: Promise<void> | null = null;
   /** Resolved once we want to release the lock (on stopAll or destroy). */
   private _lockReleaser: (() => void) | null = null;
   /** Coalesce repeated Sync Now clicks into one all-database operation. */
@@ -441,20 +452,30 @@ export class SyncManager {
     if (status.state !== 'synced') return;
     if (status.activeDatabases > 0 || status.errorDatabases > 0) return;
     if (status.lastSync === this._lastCleanPoint) return;
+    const now = Date.now();
+    if (this._cleanPointPromise || now - this._lastCleanPointAt < CLEAN_POINT_MIN_INTERVAL_MS) return;
     this._lastCleanPoint = status.lastSync;
-    void import('../security/local-wipe')
+    this._lastCleanPointAt = now;
+    this._cleanPointPromise = import('../security/local-wipe')
       .then(({ recordSyncedSequences }) => recordSyncedSequences())
       .then(() => {
-        // A clean point is the only moment retention pruning can run: it is
-        // exactly when every local audit entry is known to be upstream. The
-        // push-only trails are never pulled back, so without this a tablet
-        // that stays signed in grows without bound.
+        // Retention is daily housekeeping, not replication-cycle work. The
+        // timestamp is local-only; losing it merely causes an earlier safe run.
+        let lastPrune = 0;
+        try { lastPrune = Number(window.localStorage.getItem(AUDIT_PRUNE_AT_KEY)) || 0; } catch { /* blocked storage */ }
+        if (Date.now() - lastPrune < AUDIT_PRUNE_MIN_INTERVAL_MS) return undefined;
         return import('../services/audit-retention')
-          .then(({ pruneLocalAuditTrails }) => pruneLocalAuditTrails());
+          .then(({ pruneLocalAuditTrails }) => pruneLocalAuditTrails())
+          .then(() => {
+            try { window.localStorage.setItem(AUDIT_PRUNE_AT_KEY, String(Date.now())); } catch { /* best effort */ }
+          });
       })
       .catch(() => {
         // Bookkeeping only. Failing here leaves databases looking dirty,
         // which keeps data rather than losing it.
+      })
+      .finally(() => {
+        this._cleanPointPromise = null;
       });
   }
 }

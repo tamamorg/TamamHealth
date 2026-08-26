@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { HospitalDoc } from '../db-types';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import { makeCoalescer } from './live-reload';
 import { hospitalsDB } from '../db';
 
@@ -10,7 +10,7 @@ export function useHospitals() {
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps

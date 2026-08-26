@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AppointmentDoc, AppointmentStatus } from '../db-types';
 import { appointmentsDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import { makeCoalescer } from './live-reload';
 import { useDataScope } from './useDataScope';
 import type { AppointmentStatusUpdateExtra } from '../services/appointment-service';
@@ -13,7 +13,7 @@ export function useAppointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scope = useDataScope();
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
 
   const load = useCallback(async () => {
     try {

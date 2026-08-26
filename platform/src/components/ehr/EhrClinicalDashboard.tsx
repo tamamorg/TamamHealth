@@ -559,7 +559,10 @@ export default function EhrClinicalDashboard({
 }: {
   clinicianName: string;
   patients: WorklistPatient[];
-  appointments: AppointmentDoc[];
+  /** Null means use the already-scoped live appointment set loaded inside this
+   * dashboard. This avoids a second database query/subscription for roles such
+   * as nurse that need the full facility schedule. */
+  appointments: AppointmentDoc[] | null;
   outstanding: OutstandingItem[];
   /**
    * Week bars for the day-activity chart, when the role's week isn't made of
@@ -618,6 +621,7 @@ export default function EhrClinicalDashboard({
   // board stays the parent's decision.
   const { appointments: liveAppointments, updateStatus: updateAppointmentStatus } = useAppointments();
   const appointments = useMemo(() => {
+    if (propAppointments === null) return liveAppointments;
     if (liveAppointments.length === 0) return propAppointments;
     const liveById = new Map(liveAppointments.map(a => [a._id, a]));
     return propAppointments.map(a => liveById.get(a._id) || a);

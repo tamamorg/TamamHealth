@@ -1,8 +1,5 @@
 import bcrypt from 'bcryptjs';
 
-// Re-export token functions so existing imports still work
-export { createToken, verifyToken } from '@/modules/identity/core/auth-token';
-
 /**
  * bcrypt work factor.
  *

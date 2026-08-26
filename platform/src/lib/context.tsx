@@ -10,10 +10,14 @@ import type { AggregateStatus } from './sync/sync-manager';
 // a separate webpack chunk that could 404 if the browser tab outlived a dev
 // rebuild ("Loading chunk _app-pages-browser_src_lib_auth_ts-*.js failed").
 import { usersDB } from './db';
-import { CSRF_COOKIE_NAME, createToken, verifyPassword } from '@/modules/identity/client';
+import {
+  CSRF_COOKIE_NAME, clearOfflineSession, readOfflineSession,
+  startOfflineSession, verifyPassword,
+} from '@/modules/identity/client';
 
 import { logAudit } from './services/audit-service';
 import { captureException } from './observability';
+import { canonicalizeUserRole } from './user-role';
 
 /** True when an error came from a failed dynamic-chunk fetch (stale tab after
  *  a hot-reload, network blip, etc.). The recovery for these is always a
@@ -81,6 +85,7 @@ async function hydrateAppUser(raw: {
   hospitalId?: string; orgId?: string; orgName?: string;
   [key: string]: unknown;
 }): Promise<AppUser> {
+  const role = canonicalizeUserRole(raw.role);
   let hospital: HospitalDoc | undefined;
   if (raw.hospitalId) {
     try {
@@ -120,13 +125,17 @@ async function hydrateAppUser(raw: {
   // which is before the dashboard shell (and PreferenceEffects) has mounted.
   try {
     const { initRoleSettings } = await import('./settings/role-settings-store');
-    initRoleSettings(raw._id, raw.role);
+    initRoleSettings(raw._id, role);
   } catch {
     // Defaults stand.
   }
 
   return {
     ...(raw as unknown as AppUser),
+    role,
+    actualRole: raw.actualRole
+      ? canonicalizeUserRole(raw.actualRole as UserRole)
+      : undefined,
     hospital,
     organization,
     orgName: organization?.name ?? raw.orgName,
@@ -182,6 +191,10 @@ export interface LoginFailure {
 interface AppState {
   isAuthenticated: boolean;
   currentUser: AppUser | null;
+  /** Whether this browser currently has a server-authoritative or local-only session. */
+  sessionMode: 'online' | 'offline' | null;
+  /** The network returned, but the server session must be renewed before replication can resume. */
+  requiresOnlineReauth: boolean;
   /** Effective online status: user-preference AND OS-level navigator.onLine */
   isOnline: boolean;
   /** True when the OS reports the network is up (independent of user preference) */
@@ -239,6 +252,8 @@ const AppContext = createContext<AppState | undefined>(undefined);
 interface AuthSlice {
   isAuthenticated: boolean;
   currentUser: AppUser | null;
+  sessionMode: AppState['sessionMode'];
+  requiresOnlineReauth: boolean;
   dbReady: boolean;
   login: AppState['login'];
   lastLoginFailure: AppState['lastLoginFailure'];
@@ -275,6 +290,8 @@ const UiContext = createContext<UiSlice | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [sessionMode, setSessionMode] = useState<AppState['sessionMode']>(null);
+  const [requiresOnlineReauth, setRequiresOnlineReauth] = useState(false);
   // User-preference: do they want sync running? Persisted in localStorage.
   const [wantsOnline, setWantsOnline] = useState<boolean>(true);
   // OS-level: is the network actually up?
@@ -302,16 +319,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         && window.location.pathname.startsWith('/book');
       if (isPublicBooking) return;
 
-      // Before anything reads or re-seeds the local record: settle what the
-      // last session left behind. Two cases, both of them a device holding
-      // charts that nobody is signed in to read.
-      //
-      //   1. A logout whose wipe could not finish (IndexedDB still had the
-      //      database open). It was recorded; complete it now.
-      //   2. No session cookie at all — expired, cleared, or a tablet that
-      //      was simply put down. The data outlived the session it belonged
-      //      to, so it goes, except for anything still holding unsynced
-      //      writes (local-wipe.ts explains why those are kept).
+      // Before anything reads or re-seeds the local record, finish a wipe that
+      // an explicit security action (logout/device handover) already decided.
+      // Missing cookies alone are NOT proof of revocation: during a long
+      // outage the browser may have expired them while the device's offline
+      // credential is still valid. In that case data stays locked behind the
+      // local sign-in instead of being silently deleted.
       //
       // Demo builds are exempt: the seeded dataset is the product there, it
       // contains no real patient, and wiping it on every visit would leave
@@ -332,9 +345,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       if (!isDemoBuild) {
         try {
-          const { completePendingWipe, wipeLocalData } = await import('./security/local-wipe');
+          const { completePendingWipe } = await import('./security/local-wipe');
           await completePendingWipe();
-          if (!hasSessionCookie) await wipeLocalData('session-expired');
         } catch {
           // Never block boot on the wipe; the pending flag survives for the
           // next attempt and the route guards still require a login.
@@ -369,13 +381,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Check for existing session via cookie (skip API call if no cookie).
+      // Check for an existing server session via cookie. If the server cannot
+      // be reached, a short-lived browser-only session may restore the UI, but
+      // it never authorises APIs or replication.
       // `tamamhealth-token` is httpOnly on the server-issued (online) login
       // path, so it's invisible to document.cookie — check the readable
       // CSRF cookie (set alongside it) too, or this always misses online
       // sessions and force-logs-out the user on every hard refresh. The
-      // offline/PouchDB fallback login sets `tamamhealth-token` itself
-      // (non-httpOnly), so that name still needs checking directly.
+      // Development deployments may still expose the token cookie, so both
+      // names remain accepted as evidence that a server session may exist.
+      let serverSessionRestored = false;
       if (hasSessionCookie) {
         try {
           const res = await fetch('/api/auth/me');
@@ -385,6 +400,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
               setCurrentUser(await hydrateAppUser(data.user));
               setPlatformPolicy(data.platform ?? {});
               setIsAuthenticated(true);
+              setSessionMode('online');
+              setRequiresOnlineReauth(false);
+              serverSessionRestored = true;
+              startOfflineSession({
+                _id: data.user._id,
+                username: data.user.username,
+                name: data.user.name,
+                role: data.user.role,
+                actualRole: data.user.actualRole,
+                hospitalId: data.user.hospitalId,
+                hospitalName: data.user.hospitalName,
+                facilityIds: data.user.facilityIds,
+                orgId: data.user.orgId,
+                department: data.user.department,
+                countryId: data.user.countryId,
+                payam: data.user.payam,
+                county: data.user.county,
+                state: data.user.state,
+                mustChangePassword: data.user.mustChangePassword,
+              });
 
               // The platform session was restored from cookies, but the
               // CouchDB AuthSession cookie may be gone (host-scoped, shorter
@@ -402,9 +437,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
               }
             }
+          } else if (res.status === 401 || res.status === 403) {
+            // This is a server-confirmed invalid session, unlike a missing
+            // cookie or a network failure. Apply the security wipe now.
+            clearOfflineSession();
+            try {
+              const { wipeLocalData } = await import('./security/local-wipe');
+              await wipeLocalData('session-expired');
+            } catch { /* pending-wipe recovery handles a later retry */ }
           }
         } catch {
           // Offline - OK
+        }
+      }
+
+      if (!serverSessionRestored) {
+        const local = readOfflineSession();
+        if (local) {
+          try {
+            const { hasOfflineCredential } = await import('@/modules/identity/core/offline-credential');
+            if (hasOfflineCredential(local.username)) {
+              setCurrentUser(await hydrateAppUser({ ...local, role: local.role }));
+              setIsAuthenticated(true);
+              setSessionMode('offline');
+              setRequiresOnlineReauth(false);
+            } else {
+              clearOfflineSession();
+            }
+          } catch {
+            clearOfflineSession();
+          }
         }
       }
 
@@ -468,10 +530,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // dedicated effect that watches wantsOnline + isNetworkUp.
     const handleOnline = () => {
       setIsNetworkUp(true);
-      // Notify service worker to flush sync queue
-      if (navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.controller.postMessage('ONLINE');
-      }
     };
     const handleOffline = () => setIsNetworkUp(false);
 
@@ -527,7 +585,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let aborted = false;
 
-    if (!isAuthenticated || !currentUser) {
+    if (!isAuthenticated || !currentUser || sessionMode !== 'online') {
       // Tear down sync when logged out
       if (syncManagerRef.current) {
         import('./sync/sync-manager').then(({ destroySyncManager }) => {
@@ -593,6 +651,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     currentUser?.hospitalId,
     currentUser?.facilityIds,
     currentUser?.role,
+    sessionMode,
   ]);  
 
   // --- Sync gating: the manager runs only when the user wants to be online
@@ -606,7 +665,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // a follower with no SyncService running at all). The manager's onChange
   // callback now drives lastSync from real per-DB status updates.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || sessionMode !== 'online') return;
     const manager = syncManagerRef.current;
     if (!manager) return;
 
@@ -619,7 +678,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
         manager.stopAll();
       }
     }
-  }, [isOnline, isAuthenticated, managerEpoch]);
+  }, [isOnline, isAuthenticated, sessionMode, managerEpoch]);
+
+  // A local-only session must never silently become a syncing session. Probe
+  // the authoritative session after connectivity returns; promote only when
+  // /api/auth/me confirms it. A 401 leaves local work available and tells the
+  // UI that an online sign-in is required before replication can resume.
+  useEffect(() => {
+    if (!isAuthenticated || sessionMode !== 'offline' || !isNetworkUp) return;
+    let cancelled = false;
+    const revalidate = async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (!data?.user) return;
+          setCurrentUser(await hydrateAppUser(data.user));
+          setPlatformPolicy(data.platform ?? {});
+          setSessionMode('online');
+          setRequiresOnlineReauth(false);
+          if (
+            syncFlagAllowsSync()
+            && process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true'
+          ) {
+            void import('./sync/couch-client-auth')
+              .then(({ refreshCouchSessionFromServer }) => refreshCouchSessionFromServer({
+                force: true,
+                expectedUsername: data.user.username,
+              }))
+              .catch(() => false);
+          }
+        } else if (res.status === 401 || res.status === 403) {
+          setRequiresOnlineReauth(true);
+        }
+      } catch {
+        // Still unreachable. The local session and unsynced work remain usable.
+      }
+    };
+    void revalidate();
+    const timer = window.setInterval(revalidate, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isAuthenticated, sessionMode, isNetworkUp]);
+
+  // Next App Router soft navigations fetch an RSC payload. After a cold
+  // offline start that payload may not exist even though the worker has a
+  // verified HTML route. Turn ordinary same-origin links into document
+  // navigations only for local-only sessions so the cached route can boot.
+  useEffect(() => {
+    if (sessionMode !== 'offline') return;
+    const navigateFromCache = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (!(target instanceof HTMLAnchorElement) || target.target || target.hasAttribute('download')) return;
+      const url = new URL(target.href, window.location.href);
+      if (url.origin !== window.location.origin || url.href === window.location.href) return;
+      event.preventDefault();
+      window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+    };
+    document.addEventListener('click', navigateFromCache, true);
+    return () => document.removeEventListener('click', navigateFromCache, true);
+  }, [sessionMode]);
 
   const syncNow = useCallback(async () => {
     if (syncManagerRef.current) {
@@ -692,6 +818,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             actualRole: body.user.actualRole,
             hospitalId: body.user.hospitalId,
             hospitalName: body.user.hospitalName,
+            department: body.user.department,
             orgId: body.user.orgId,
             isActive: true,
             passwordHash: '',
@@ -716,10 +843,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               username: signedIn.username,
               name: signedIn.name,
               role: signedIn.role,
+              actualRole: signedIn.actualRole,
               hospitalId: signedIn.hospitalId,
               hospitalName: signedIn.hospitalName,
               facilityIds: signedIn.facilityIds,
               orgId: signedIn.orgId,
+              department: signedIn.department,
+              mustChangePassword: signedIn.mustChangePassword,
             });
           } catch {
             // Offline sign-in stays unavailable until the next online one.
@@ -837,25 +967,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // A cached credential already encodes the facility and role the
           // server issued, so the role-picker and hospital checks below —
           // which exist to re-derive them — have nothing left to decide.
-          const token = await createToken({
-            _id: cached._id,
-            username: cached.username,
-            role: cached.role,
-            name: cached.name,
-            hospitalId: cached.hospitalId,
-            facilityIds: cached.facilityIds,
-            orgId: cached.orgId,
-          });
-          document.cookie = `tamamhealth-token=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`;
           user = {
             _id: cached._id,
             username: cached.username,
             name: cached.name,
             role: cached.role,
+            actualRole: cached.actualRole,
             hospitalId: cached.hospitalId,
             hospitalName: cached.hospitalName,
             facilityIds: cached.facilityIds,
             orgId: cached.orgId,
+            department: cached.department,
+            mustChangePassword: cached.mustChangePassword,
             isActive: true,
             passwordHash: '',
           };
@@ -909,18 +1032,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             orgId: localUser.orgId ?? 'org-moh-ss',
           };
         }
-
-        // Mint a local token + set cookie ourselves since no server call happened.
-        const token = await createToken({
-          _id: effective._id,
-          username: effective.username,
-          role: effective.role,
-          actualRole: effective.actualRole,
-          name: effective.name,
-          hospitalId: effective.hospitalId,
-          orgId: effective.orgId,
-        });
-        document.cookie = `tamamhealth-token=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax${window.location.protocol === 'https:' ? '; secure' : ''}`;
 
         user = effective;
       }
@@ -997,7 +1108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const geo = user as unknown as {
         payam?: string; county?: string; state?: string; mustChangePassword?: boolean; orgName?: string;
       };
-      setCurrentUser({
+      const appUser: AppUser = {
         _id: user._id,
         username: user.username,
         name: user.name,
@@ -1015,6 +1126,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state: geo.state,
         mustChangePassword: geo.mustChangePassword,
         branding,
+      };
+      setCurrentUser(appUser);
+      startOfflineSession({
+        _id: appUser._id,
+        username: appUser.username,
+        name: appUser.name,
+        role: appUser.role,
+        actualRole: appUser.actualRole,
+        hospitalId: appUser.hospitalId,
+        hospitalName: appUser.hospitalName,
+        facilityIds: appUser.facilityIds,
+        orgId: appUser.orgId,
+        department: appUser.department,
+        payam: appUser.payam,
+        county: appUser.county,
+        state: appUser.state,
+        mustChangePassword: appUser.mustChangePassword,
       });
       // Same as the restore path: the login redirect reads the user's
       // "Start-up screen" as soon as this returns.
@@ -1025,6 +1153,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Defaults stand.
       }
       setIsAuthenticated(true);
+      setSessionMode(usedApi ? 'online' : 'offline');
+      setRequiresOnlineReauth(false);
       return user.role as UserRole;
     } catch (err) {
       console.error('Login error:', err);
@@ -1069,6 +1199,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!data?.user) return;
       setCurrentUser(await hydrateAppUser(data.user));
       setPlatformPolicy(data.platform ?? {});
+      setSessionMode('online');
+      setRequiresOnlineReauth(false);
     } catch {
       // Offline or unreachable — keep the identity we already have.
     }
@@ -1081,11 +1213,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const loggingOutUser = currentUser;
     setIsAuthenticated(false);
     setCurrentUser(null);
+    setSessionMode(null);
+    setRequiresOnlineReauth(false);
     setSyncStatus(null);
+    clearOfflineSession();
 
     // Clear cookies that are readable by JavaScript immediately. The server
-    // request below clears the httpOnly session cookie; this fallback covers
-    // offline/demo sessions that minted the token client-side.
+    // request below clears the httpOnly session cookie.
     if (typeof document !== 'undefined') {
       document.cookie = 'tamamhealth-token=; Max-Age=0; Path=/; SameSite=Lax';
       document.cookie = `${CSRF_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Strict`;
@@ -1188,10 +1322,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // these values actually changes. setState setters and the useCallback'd
   // actions are stable, so they don't need to be in the dependency list.
   const authValue = useMemo<AuthSlice>(() => ({
-    isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout, refreshCurrentUser,
+    isAuthenticated, currentUser, sessionMode, requiresOnlineReauth,
+    dbReady, login, lastLoginFailure, logout, refreshCurrentUser,
     platformPolicy,
-  }), [isAuthenticated, currentUser, dbReady, login, lastLoginFailure, logout, refreshCurrentUser,
-    platformPolicy]);
+  }), [isAuthenticated, currentUser, sessionMode, requiresOnlineReauth,
+    dbReady, login, lastLoginFailure, logout, refreshCurrentUser, platformPolicy]);
 
   const syncValue = useMemo<SyncSlice>(() => ({
     isOnline, isNetworkUp, syncPaused, lastSync, syncStatus, syncNow, toggleOnline,

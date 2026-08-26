@@ -5,14 +5,14 @@ import { makeCoalescer } from './live-reload';
 import type { ReferralDoc } from '../db-types';
 import type { Attachment, ReferralOutcome } from '@/data/mock';
 import { referralsDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import { useDataScope } from './useDataScope';
 
 export function useReferrals() {
   const [referrals, setReferrals] = useState<ReferralDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useMemo(() => (
     currentUser ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role } : undefined
   // eslint-disable-next-line react-hooks/exhaustive-deps

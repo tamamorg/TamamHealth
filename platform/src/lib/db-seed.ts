@@ -143,14 +143,14 @@ const defaultUsers: SeedUserProfile[] = [
   { username: 'hrio.dut', name: 'Dut Machar Kuol', role: 'hrio', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'nutr.nyabol', name: 'Nyabol Koang Jal', role: 'nutritionist', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'rad.tamamhealth', name: 'TamamHealth Ladu Soro', role: 'radiologist', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
-  { username: 'midwife.nyakong', name: 'Midwife Nyakong Gatkuoth', role: 'midwife', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
+  { username: 'midwife.nyakong', name: 'Midwife Nyakong Gatkuoth', role: 'nurse', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'cashier.deng', name: 'Deng Akec Ring', role: 'cashier', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'county.lopez', name: 'Dr. Lopez Lokai Modi', role: 'county_health_director', orgId: PUBLIC_ORG_ID },
   // Clinical-flow workflow stations (EHR Clinical Flow doc §4)
   { username: 'reg.clerk', name: 'Grace Poni Lukudu', role: 'central_registration_clerk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'clinic.clerk', name: 'Joseph Taban Lado', role: 'clinic_clerk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
-  { username: 'triage.mary', name: 'Mary Nyaruai Gai', role: 'triage_nurse', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
-  { username: 'rooming.sara', name: 'Sara Aluel Bol', role: 'rooming_nurse', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
+  { username: 'triage.mary', name: 'Mary Nyaruai Gai', role: 'nurse', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
+  { username: 'rooming.sara', name: 'Sara Aluel Bol', role: 'nurse', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'clinician.peter', name: 'Dr. Peter Garang Deng', role: 'clinician', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'hmis.john', name: 'John Majok Chol', role: 'records_hmis_officer', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   // Private org admin (Mercy Hospital Group)
@@ -1934,6 +1934,14 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
   await meta.put({ _id: 'seeded-clinical-data-cleared', version: 1, clearedAt: new Date().toISOString() });
 }
 
+/**
+ * How long to queue behind another tab's seed before giving up on the lock.
+ *
+ * A real first seed measures ~15s, so this is comfortably longer than the
+ * thing it waits for while still being a bound. See `seedDatabase`.
+ */
+const SEED_LOCK_WAIT_MS = 30_000;
+
 export async function seedDatabase(): Promise<void> {
   // Serialize seeding across tabs. Two tabs seeding concurrently is how the
   // demo DB gets corrupted: one tab's resetAllDatabases() destroys IndexedDB
@@ -1942,8 +1950,41 @@ export async function seedDatabase(): Promise<void> {
   // left with partial data. Under the lock, the second tab waits and then sees
   // isSeeded() === true and returns without touching anything. Same Web Locks
   // pattern the sync manager uses for its leader election.
+  //
+  // BOUNDED, because `context.tsx` awaits this before it flips `dbReady`, and
+  // `dbReady` is what enables the sign-in button. An unbounded
+  // `locks.request` meant one tab that never released — a frozen tab, a tab
+  // left open across a dev-server restart holding stale code, a background tab
+  // the browser suspended mid-seed — parked every other tab on
+  // "Initializing offline database…" with a disabled Log in button, forever,
+  // with nothing on screen to say what it was waiting for.
+  //
+  // Timing out is safe: the lock exists to stop two tabs seeding AT ONCE, and
+  // whoever holds it is doing that work. Skipping our own run leaves the
+  // database to them; screens render and stream data in through their changes
+  // feeds, which is exactly what the already-seeded demo path does anyway.
   if (typeof navigator !== 'undefined' && navigator.locks?.request) {
-    return navigator.locks.request('tamamhealth-seed', () => seedDatabaseExclusive());
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SEED_LOCK_WAIT_MS);
+    try {
+      return await navigator.locks.request(
+        'tamamhealth-seed',
+        { signal: controller.signal },
+        () => seedDatabaseExclusive(),
+      );
+    } catch (err) {
+      // `signal` only aborts a request still QUEUED — once our callback is
+      // running the abort is a no-op — so an AbortError here always means
+      // "someone else still holds it", never "our seed was cut in half".
+      if ((err as { name?: string })?.name !== 'AbortError') throw err;
+      console.warn(
+        `[db-seed] another tab has held the seed lock for ${SEED_LOCK_WAIT_MS / 1000}s — ` +
+        'continuing without seeding in this tab. Close the other tab if data looks incomplete.',
+      );
+      return;
+    } finally {
+      clearTimeout(timer);
+    }
   }
   return seedDatabaseExclusive();
 }
@@ -2001,6 +2042,9 @@ async function migrateOrgBrandingColors(): Promise<void> {
  * their slot and are never deleted or counted as blockers.
  */
 async function migrateRemoveOverlappingAppointments(): Promise<void> {
+  // This is cleanup for generated demo fixtures. Production bookings are
+  // protected at write time and must never be scanned/deleted on every boot.
+  if (!IS_DEMO) return;
   try {
     const { isTimeOverlap } = await import('./appointment-time');
     const { APPOINTMENT_SLOT_RELEASED_STATUSES } = await import('./appointment-status');

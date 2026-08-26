@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useSigningInbox } from '@/lib/hooks/useSigningInbox';
 import { computeSignCount, type SigningInboxCounts } from '@/lib/hooks/signing-inbox-math';
@@ -90,7 +90,7 @@ export function computeClinicalOutstanding(input: ClinicalOutstandingInput): Mob
  * plans/fancy-snacking-noodle.md.
  */
 export function useClinicalDashboardData(): MobileDashboardData {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const { appointments, loading: apptLoading } = useAppointments();
   const { unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, loading: signLoading } = useSigningInbox();
   const { notes: phoneNotes, loading: phoneLoading } = usePhoneNotesInbox();

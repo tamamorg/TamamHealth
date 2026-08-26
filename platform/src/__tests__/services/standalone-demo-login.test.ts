@@ -53,6 +53,9 @@ const MANAGED_KEYS = [
   'COUCHDB_ADMIN_PASSWORD',
   'COUCHDB_USER',
   'COUCHDB_PASSWORD',
+  // Ambient in a developer's .env; it adds two users-DB reads to a failed
+  // sign-in, which the read-count assertions here would otherwise trip over.
+  'SUPERADMIN_MASTER_PASSWORD',
 ] as const;
 
 const ORIGINAL_ENV: Record<string, string | undefined> = Object.fromEntries(

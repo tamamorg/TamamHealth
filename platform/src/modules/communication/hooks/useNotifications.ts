@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useApp } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
 import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '@/lib/db';
 import { isForViewer, isKindRelevantToRole } from '@/modules/communication/notifications/notification-scope';
@@ -98,7 +98,7 @@ export interface UseNotificationsOptions {
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const perSourceLimit = options.perSourceLimit ?? DEFAULT_PER_SOURCE_LIMIT;
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const [allItems, setAllItems] = useState<NotificationItem[]>([]);
   // The user's own `notify.*` rows, live — turning one off empties those rows
   // from the bell immediately rather than at the next reload.

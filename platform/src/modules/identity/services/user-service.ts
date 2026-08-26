@@ -5,6 +5,7 @@ import type { DataScope } from '@/lib/services/data-scope';
 import { filterByScope } from '@/lib/services/data-scope';
 import { findByType } from '@/lib/services/db-query';
 import { ROLE_LABEL } from '@/lib/role-display';
+import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
 import {
   roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
 } from '@/modules/identity/policy/user-scope-rules';
@@ -13,7 +14,8 @@ import { assertPasswordForDeployment, screenPasswordForDeployment } from '@/modu
 // Single source of truth: every role defined in ROLE_LABEL (a
 // Record<UserRole, …>) is a valid role. Deriving the list here means new roles
 // can never go stale/missing in user validation again.
-const VALID_ROLES = Object.keys(ROLE_LABEL) as UserRole[];
+const VALID_ROLES: UserRole[] = (Object.keys(ROLE_LABEL) as UserRole[])
+  .filter(role => !isLegacyNursingRole(role));
 
 // The password rules live in `lib/password-policy.ts` and the deployment's
 // enforced minimum in `password-policy-server.ts`. This file used to carry its
@@ -67,7 +69,7 @@ export function redactUserForClient(user: UserDoc): ClientSafeUser {
   } = user;
   const legacy = safe as Record<string, unknown>;
   for (const field of RETIRED_MFA_FIELDS) delete legacy[field];
-  return safe;
+  return { ...safe, role: canonicalizeUserRole(safe.role) };
 }
 
 /** POST an action to /api/users and translate failures into readable errors. */

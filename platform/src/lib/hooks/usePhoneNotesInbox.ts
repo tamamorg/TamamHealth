@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { makeCoalescer } from './live-reload';
 import type { PhoneNoteDoc } from '../db-types';
 import { phoneNotesDB } from '../db';
-import { useApp } from '../context';
+import { useAuth } from '../context';
 import { useDataScope } from './useDataScope';
 
 /**
@@ -13,7 +13,7 @@ import { useDataScope } from './useDataScope';
  * created or answered.
  */
 export function usePhoneNotesInbox() {
-  const { currentUser } = useApp();
+  const { currentUser } = useAuth();
   const scope = useDataScope();
   const userId = currentUser?._id;
   const [notes, setNotes] = useState<PhoneNoteDoc[]>([]);

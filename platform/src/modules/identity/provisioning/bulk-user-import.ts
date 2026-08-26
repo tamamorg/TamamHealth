@@ -20,6 +20,7 @@
 
 import type { UserRole } from '@/lib/db-types';
 import { ROLE_LABEL } from '@/lib/role-display';
+import { canonicalizeUserRole } from '@/lib/user-role';
 import { roleNeedsFacility, roleNeedsOrganization, isPlatformOnlyRole } from '@/modules/identity/policy/user-scope-rules';
 
 /** Refused outright — a bad paste should not become a thousand accounts. */
@@ -82,9 +83,10 @@ function alias(key: string, role: UserRole): void {
 }
 
 for (const [role, label] of Object.entries(ROLE_LABEL)) {
-  alias(role, role as UserRole);
-  alias(role.replace(/_/g, ' '), role as UserRole);
-  alias(label, role as UserRole);
+  const canonicalRole = canonicalizeUserRole(role as UserRole);
+  alias(role, canonicalRole);
+  alias(role.replace(/_/g, ' '), canonicalRole);
+  alias(label, canonicalRole);
 }
 // The handful people actually type that match no label.
 alias('receptionist', 'front_desk');

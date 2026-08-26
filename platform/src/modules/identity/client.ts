@@ -77,10 +77,10 @@ export {
 
 // ── Session primitives that genuinely work in a browser ─────────────────────
 //
-// `jose` and `bcryptjs` both run client-side, and the offline sign-in path
-// needs them there: with no network, the browser verifies a cached credential
-// and mints its own short-lived token. That is a deliberate capability of an
-// offline-first platform, not a leak.
+// bcryptjs runs client-side so the offline sign-in path can verify the
+// credential provisioned by a previous online login. The browser never mints
+// an authoritative JWT: server tokens stay server-only, and the local session
+// below is explicitly scoped to browser UI state.
 //
 // What must NEVER appear here is anything that reads the filesystem or the
 // database. `seed-credentials.ts` uses `node:fs`, so it is reachable only from
@@ -88,12 +88,14 @@ export {
 // from that barrel instead, the root page's client bundle tried to resolve
 // `node:fs` and the build failed. This section exists so the browser can have
 // the two primitives it legitimately needs without that.
-export { createToken, verifyToken, pwdAtClaim, type VerifiedTokenPayload } from './core/auth-token';
 export { hashPassword, verifyPassword } from './core/auth';
 export { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from './core/csrf';
 export {
   cacheOfflineCredential, verifyOfflineCredential, clearOfflineCredential,
 } from './core/offline-credential';
+export {
+  startOfflineSession, readOfflineSession, clearOfflineSession,
+} from './core/offline-session';
 
 // ── Hooks ───────────────────────────────────────────────────────────────────
 export { usePasswordPolicy } from './hooks/usePasswordPolicy';

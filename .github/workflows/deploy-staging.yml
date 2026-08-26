@@ -93,7 +93,11 @@ jobs:
             NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${{ vars.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED || 'true' }}
             NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || 'https://app.tamamhealth.org' }}
             NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=${{ vars.NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE || 'false' }}
-            NEXT_PUBLIC_BUILD_ID=${{ steps.meta.outputs.sha }}
+                NEXT_PUBLIC_BUILD_ID=${{ steps.meta.outputs.sha }}
+                NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE=${{ vars.NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE || 'device' }}
+                NEXT_PUBLIC_OFFLINE_CACHE_PATIENT_ROUTES=${{ vars.NEXT_PUBLIC_OFFLINE_CACHE_PATIENT_ROUTES || 'true' }}
+                NEXT_PUBLIC_OFFLINE_PATIENT_ROUTE_LIMIT=${{ vars.NEXT_PUBLIC_OFFLINE_PATIENT_ROUTE_LIMIT || '500' }}
+                NEXT_PUBLIC_OFFLINE_REQUIRE_PERSISTENT_STORAGE=${{ vars.NEXT_PUBLIC_OFFLINE_REQUIRE_PERSISTENT_STORAGE || 'false' }}
           cache-from: type=gha,scope=platform
           cache-to: type=gha,mode=max,scope=platform
 

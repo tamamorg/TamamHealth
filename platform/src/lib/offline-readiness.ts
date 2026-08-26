@@ -1,5 +1,8 @@
 'use client';
 
+import type { DataScope } from './services/data-scope';
+import { readOfflineDeploymentConfig } from './offline-deployment-config';
+
 /**
  * A measurable answer to "can this device cold-start with no internet?"
  *
@@ -13,6 +16,7 @@ export type OfflineReadinessCheckId =
   | 'secure-context'
   | 'service-worker'
   | 'app-shell'
+  | 'offline-pack'
   | 'local-database'
   | 'offline-sign-in'
   | 'durable-storage';
@@ -30,32 +34,41 @@ export interface OfflineReadinessReport {
   canColdStartOffline: boolean;
   checks: OfflineReadinessCheck[];
   checkedAt: string;
+  pack: {
+    buildVersion: string | null;
+    provisionedPaths: number;
+    failedPaths: string[];
+  };
 }
 
 export interface OfflineReadinessSignals {
   secureContext: boolean;
   serviceWorkerActive: boolean;
   appShellCached: boolean;
+  offlinePackReady: boolean;
   localDatabaseAvailable: boolean;
   offlineSignInAvailable: boolean;
   durableStorage: boolean;
+  durableStorageRequired?: boolean;
 }
 
 /** Pure report builder, separated from browser APIs for regression tests. */
 export function buildOfflineReadinessReport(
   signals: OfflineReadinessSignals,
   checkedAt = new Date().toISOString(),
+  pack: OfflineReadinessReport['pack'] = { buildVersion: null, provisionedPaths: 0, failedPaths: [] },
 ): OfflineReadinessReport {
   const checks: OfflineReadinessCheck[] = [
     { id: 'secure-context', required: true, passed: signals.secureContext },
     { id: 'service-worker', required: true, passed: signals.serviceWorkerActive },
     { id: 'app-shell', required: true, passed: signals.appShellCached },
+    { id: 'offline-pack', required: true, passed: signals.offlinePackReady },
     { id: 'local-database', required: true, passed: signals.localDatabaseAvailable },
     { id: 'offline-sign-in', required: true, passed: signals.offlineSignInAvailable },
     // A browser may refuse persistence even when every other prerequisite is
     // healthy. The device can work offline, but unsynced work remains at risk
     // of automatic eviction under storage pressure, hence warning not failure.
-    { id: 'durable-storage', required: false, passed: signals.durableStorage },
+    { id: 'durable-storage', required: signals.durableStorageRequired === true, passed: signals.durableStorage },
   ];
   const requiredReady = checks.filter(check => check.required).every(check => check.passed);
   const allReady = checks.every(check => check.passed);
@@ -64,31 +77,30 @@ export function buildOfflineReadinessReport(
     canColdStartOffline: requiredReady,
     checks,
     checkedAt,
+    pack,
   };
 }
 
-async function hasCachedApplicationShell(): Promise<boolean> {
-  if (typeof caches === 'undefined') return false;
-  try {
-    const login = await caches.match('/login');
-    if (!login) return false;
+interface OfflineManifest {
+  buildVersion?: string;
+  shellReady?: boolean;
+  provisionedPaths?: string[];
+  failedPaths?: string[];
+}
 
-    // HTML without its hashed JS/CSS only produces a non-interactive page.
-    // Require at least one Next bootstrap asset as proof that installation
-    // cached an executable shell, not just markup.
-    const cacheNames = await caches.keys();
-    for (const cacheName of cacheNames) {
-      if (!cacheName.startsWith('tamamhealth-')) continue;
-      const cache = await caches.open(cacheName);
-      const requests = await cache.keys();
-      if (requests.some(request => {
-        const pathname = new URL(request.url).pathname;
-        return pathname.startsWith('/_next/static/') && /\.(?:js|css)$/.test(pathname);
-      })) return true;
-    }
-    return false;
+const OFFLINE_MANIFEST_URL = '/__tamamhealth_offline_manifest__';
+
+async function readCurrentOfflineManifest(): Promise<OfflineManifest | null> {
+  if (typeof caches === 'undefined') return null;
+  try {
+    const buildId = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
+    const cache = await caches.open(`tamamhealth-${buildId}`);
+    const response = await cache.match(OFFLINE_MANIFEST_URL);
+    if (!response) return null;
+    const manifest = await response.json() as OfflineManifest;
+    return manifest.buildVersion === buildId ? manifest : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -134,22 +146,103 @@ async function hasProvisionedOfflineSignIn(username?: string): Promise<boolean> 
  * Inspect the current browser without changing data. Safe to run repeatedly
  * from Settings after deployment or before a field device goes offline.
  */
-export async function assessOfflineReadiness(username?: string): Promise<OfflineReadinessReport> {
-  const [serviceWorkerActive, appShellCached, localDatabaseAvailable, offlineSignInAvailable, durableStorage] =
+export async function assessOfflineReadiness(
+  username?: string,
+  requiredPaths: readonly string[] = [],
+): Promise<OfflineReadinessReport> {
+  const deployment = readOfflineDeploymentConfig();
+  const [serviceWorkerActive, manifest, localDatabaseAvailable, offlineSignInAvailable, durableStorage] =
     await Promise.all([
       hasActiveServiceWorker(),
-      hasCachedApplicationShell(),
+      readCurrentOfflineManifest(),
       hasLocalClinicalDatabase(),
       hasProvisionedOfflineSignIn(username),
       hasDurableStorage(),
     ]);
 
+  const provisioned = new Set(manifest?.provisionedPaths ?? []);
+  const provisionedRequiredPaths = requiredPaths.filter(path => provisioned.has(path));
+  const offlinePackReady = requiredPaths.length > 0
+    && requiredPaths.every(path => provisioned.has(path));
+
   return buildOfflineReadinessReport({
     secureContext: typeof window !== 'undefined' && window.isSecureContext,
     serviceWorkerActive,
-    appShellCached,
+    appShellCached: manifest?.shellReady === true,
+    offlinePackReady,
     localDatabaseAvailable,
     offlineSignInAvailable,
     durableStorage,
+    durableStorageRequired: deployment.requirePersistentStorage,
+  }, undefined, {
+    buildVersion: manifest?.buildVersion ?? null,
+    provisionedPaths: provisionedRequiredPaths.length,
+    failedPaths: manifest?.failedPaths ?? [],
+  });
+}
+
+export interface OfflinePackResult {
+  ok: boolean;
+  provisionedPaths: string[];
+  failedPaths: string[];
+  buildVersion?: string;
+}
+
+/**
+ * Add exact dynamic chart documents for patients already authorized and
+ * replicated to this device. Next.js dynamic navigations cannot safely reuse a
+ * different patient's HTML shell, so the service worker caches each pathname.
+ */
+export async function collectPatientWorkspacePaths(scope: DataScope): Promise<string[]> {
+  const config = readOfflineDeploymentConfig();
+  if (!config.cachePatientWorkspaces) return [];
+  try {
+    const { getAllPatients } = await import('./services/patient-service');
+    const patients = await getAllPatients(scope);
+    return patients
+      .slice()
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+      .slice(0, config.patientRouteLimit)
+      .map(patient => `/patients/${encodeURIComponent(patient._id)}`);
+  } catch {
+    return [];
+  }
+}
+
+/** Ask the active worker to cache and verify the signed-in role's routes. */
+export async function provisionOfflinePack(paths: readonly string[]): Promise<OfflinePackResult> {
+  const deployment = readOfflineDeploymentConfig();
+  if (deployment.requirePersistentStorage && typeof navigator !== 'undefined' && navigator.storage?.persist) {
+    // Browsers may require this call from a user gesture. Provisioning is
+    // initiated by the Settings button, so this is the correct moment to ask.
+    await navigator.storage.persist().catch(() => false);
+  }
+  if (typeof navigator === 'undefined' || !navigator.serviceWorker) {
+    return { ok: false, provisionedPaths: [], failedPaths: [...paths] };
+  }
+  const registration = await navigator.serviceWorker.getRegistration('/').catch(() => undefined);
+  const worker = navigator.serviceWorker.controller || registration?.active;
+  if (!worker) return { ok: false, provisionedPaths: [], failedPaths: [...paths] };
+  return new Promise(resolve => {
+    const channel = new MessageChannel();
+    const timeout = window.setTimeout(() => {
+      channel.port1.close();
+      resolve({ ok: false, provisionedPaths: [], failedPaths: [...paths] });
+    }, 120_000);
+    channel.port1.onmessage = event => {
+      window.clearTimeout(timeout);
+      channel.port1.close();
+      const result = event.data as Partial<OfflinePackResult>;
+      resolve({
+        ok: result.ok === true,
+        provisionedPaths: Array.isArray(result.provisionedPaths) ? result.provisionedPaths : [],
+        failedPaths: Array.isArray(result.failedPaths) ? result.failedPaths : [...paths],
+        buildVersion: result.buildVersion,
+      });
+    };
+    worker.postMessage(
+      { type: 'PREPARE_OFFLINE', paths: [...new Set(paths)] },
+      [channel.port2],
+    );
   });
 }

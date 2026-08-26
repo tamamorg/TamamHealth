@@ -14,7 +14,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Corners, loginStyles } from '@/components/login/login-chrome';
+import { Corners } from '@/components/login/login-chrome';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 import { PORTAL_MIN_PASSWORD_LENGTH as MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
@@ -162,7 +162,6 @@ export default function PatientPortalActivatePage() {
         </div>
       </div>
 
-      {loginStyles}
     </div>
   );
 }
