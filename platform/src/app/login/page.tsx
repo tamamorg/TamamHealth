@@ -18,6 +18,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
+import { canRedirectAfterSignIn } from '@/lib/navigation/login-redirect';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { ROLE_LABEL } from '@/lib/role-display';
 import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
@@ -106,6 +107,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  /** The sign-in RESOLVED. Distinct from `loading`, which stays true through
+   *  the redirect so the button never flashes back to "Log in". */
+  const [signedIn, setSignedIn] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   // '' = sign in as the account's own role; a value = requested role
   // (honoured by the server only for the super-admin).
@@ -225,11 +229,21 @@ export default function LoginPage() {
      sign-in is in flight, and not once the visitor has said they want a
      different account. Both exceptions are the same bug: this effect fired on
      the OLD identity and pushed you into the old workspace, cancelling the
-     login you had just started. */
+     login you had just started.
+
+     `signedIn` is what ends the first exception. `loading` alone used to gate
+     it, and `loading` is never cleared on a SUCCESSFUL sign-in — the handler
+     returns early and lets this effect do the navigating — so the guard it
+     was waiting on could never lift. The form sat on "Signing in…" forever
+     with a live session behind it, and only a manual refresh (a fresh mount,
+     `loading` back to false) ever reached the dashboard. The guard's real
+     subject was never "is a request in flight" but "is `currentUser` still
+     the OLD identity", and once the sign-in has RESOLVED it is not. */
   useEffect(() => {
-    if (loading || switching) return;
-    if (!isAuthenticated || !currentUser) return;
-    const landing = resolveLandingPage(currentUser.role);
+    if (!canRedirectAfterSignIn({
+      loading, signedIn, switching, isAuthenticated, hasUser: !!currentUser,
+    })) return;
+    const landing = resolveLandingPage(currentUser!.role);
     if (sessionMode === 'offline') {
       // A document navigation lets the service worker serve the verified HTML
       // route. A Next soft navigation needs an RSC network response and can
@@ -238,7 +252,7 @@ export default function LoginPage() {
     } else {
       router.push(landing);
     }
-  }, [isAuthenticated, currentUser, sessionMode, router, loading, switching]);
+  }, [isAuthenticated, currentUser, sessionMode, router, loading, signedIn, switching]);
 
   /**
    * Name the actual refusal. Every failed sign-in used to read "Invalid
@@ -288,7 +302,7 @@ export default function LoginPage() {
       // session first, so the new credentials are the only ones in play.
       if (isAuthenticated) logout();
       const result = await login(account.username, account.password);
-      if (result) return;
+      if (result) { setSignedIn(true); return; }
       else { setError(describeLoginFailure('That demo account could not sign in.')); setLoading(false); }
     } catch { setError('Login failed. Please try again.'); setLoading(false); }
   };
@@ -300,7 +314,7 @@ export default function LoginPage() {
     try {
       if (isAuthenticated) logout();
       const result = await login(username, password, undefined, roleChoice || undefined);
-      if (result) return;
+      if (result) { setSignedIn(true); return; }
 
       setError(describeLoginFailure(t('login.errorInvalidCredentials')));
       setLoading(false);
