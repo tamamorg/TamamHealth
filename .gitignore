@@ -114,10 +114,8 @@ secring.*
 !.env.example
 !.env.production.example
 
-# The agent configuration that ships with the repo (agents, skills, launch
-# config), minus the parts that are machine-local. Those two were only ever
-# ignored by this developer's global gitignore and .git/info/exclude, neither
-# of which travels with a clone.
-!.claude/
-.claude/settings.local.json
-.claude/worktrees/
+# `.claude/` is NOT re-admitted. Agent definitions, skills and launch config
+# are local tooling, not part of the product, and they were the only tracked
+# dotfolder that could be untracked without breaking something: `.github/`
+# carries every CI and deploy pipeline, `.husky/` the pre-commit hook. Removed
+# from the index on 2026-08-26; the files stay on disk.
