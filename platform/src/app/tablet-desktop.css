@@ -1,0 +1,424 @@
+/*
+ * Tablet compact-desktop contract
+ * --------------------------------
+ * Phones (<= 639px) keep the purpose-built mobile shell. From 640px through
+ * 1180px the product is the desktop application at a denser scale: the same
+ * navigation, rails, panels, table columns, and controls remain available.
+ *
+ * Keep tablet boundary corrections here, after globals.css, instead of adding
+ * another max-width rule inside individual modules. This file is the final
+ * authority when an older responsive rule tries to hide desktop information.
+ */
+
+@media (min-width: 640px) and (max-width: 1180px) {
+  :root {
+    --app-top-rail-height: 60px;
+    --container-padding: 12px;
+    --section-spacing: 18px;
+  }
+
+  html { font-size: 14px; }
+
+  .tamam-ehr-app {
+    --ehr-top-rail-height: var(--app-top-rail-height);
+    --ehr-page-inset: 10px;
+    --tablet-rail: clamp(138px, 20vw, 196px);
+    --tablet-gap: clamp(8px, 1.2vw, 14px);
+  }
+
+  .tamam-ehr-content-frame { padding-top: var(--ehr-top-rail-height); }
+
+  .route-context-bar {
+    min-height: 34px;
+    flex-basis: 34px;
+    gap: 8px;
+    padding-inline: 12px;
+    font-size: 11px;
+  }
+
+  .tamam-ehr-app .page-container,
+  .ehr-care-dashboard.ehr-schedule-shell,
+  .page-container:has(.ehr-workspace-grid),
+  .tamam-ehr-app main.page-container.gov-dash {
+    padding: 10px 12px 12px;
+  }
+
+  /* Keep utility grids at their desktop column counts. Individual panels may
+     scroll internally; they do not silently lose or stack data on tablets. */
+  .tamam-ehr-app .grid-cols-8 { grid-template-columns: repeat(8, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app .grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app .col-span-2 { grid-column: span 2 / span 2 !important; }
+
+  /* Tailwind's lg/xl variants normally wait for a laptop-wide viewport. In
+     compact-desktop mode they describe the intended desktop composition, so
+     activate the common layout variants without changing the component JSX. */
+  .tamam-ehr-app [class~="lg:grid-cols-2"],
+  .tamam-ehr-app [class~="xl:grid-cols-2"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app [class~="lg:grid-cols-3"],
+  .tamam-ehr-app [class~="xl:grid-cols-3"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app [class~="lg:grid-cols-4"],
+  .tamam-ehr-app [class~="xl:grid-cols-4"] { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app [class~="lg:grid-cols-5"],
+  .tamam-ehr-app [class~="xl:grid-cols-5"] { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app [class~="lg:grid-cols-6"],
+  .tamam-ehr-app [class~="xl:grid-cols-6"] { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .tamam-ehr-app [class~="lg:col-span-2"],
+  .tamam-ehr-app [class~="xl:col-span-2"] { grid-column: span 2 / span 2 !important; }
+  .tamam-ehr-app [class~="lg:col-span-3"],
+  .tamam-ehr-app [class~="xl:col-span-3"] { grid-column: span 3 / span 3 !important; }
+  .tamam-ehr-app [class~="lg:flex-row"],
+  .tamam-ehr-app [class~="xl:flex-row"] { flex-direction: row !important; }
+
+  /* Desktop top rail, compressed into one row. Every rendered shortcut stays
+     reachable; labels truncate rather than making the rail two rows high. */
+  .ehr-top-rail {
+    height: var(--ehr-top-rail-height) !important;
+    min-height: var(--ehr-top-rail-height) !important;
+    grid-template-columns: 116px max-content minmax(118px, 1fr) auto !important;
+    grid-auto-rows: 1fr !important;
+    gap: 6px !important;
+    padding: 7px 10px !important;
+    align-items: center !important;
+  }
+
+  .ehr-top-brand {
+    width: 112px !important;
+    height: 38px !important;
+    max-width: 112px !important;
+    padding: 0 !important;
+    justify-content: flex-start;
+  }
+
+  .ehr-top-rail .ehr-top-brand-logo-full,
+  .ehr-top-brand img {
+    display: block !important;
+    width: 108px !important;
+    max-width: 108px !important;
+  }
+
+  .ehr-top-brand-logo-icon { display: none !important; }
+
+  .ehr-top-modules,
+  .ehr-top-actions {
+    display: flex !important;
+    gap: 2px !important;
+    min-width: 0;
+  }
+
+  .ehr-top-modules button,
+  .ehr-top-actions button,
+  .ehr-top-navlinks button {
+    display: inline-flex !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px;
+  }
+
+  .ehr-module-trigger { width: 36px !important; }
+  .ehr-top-navlinks { display: flex !important; }
+  .ehr-top-calendar-button { display: none !important; }
+
+  .ehr-top-modules button svg.lucide:not(.ehr-module-chevron),
+  .ehr-top-actions button svg.lucide,
+  .ehr-top-navlinks button svg.lucide,
+  .ehr-top-calendar-button svg.lucide,
+  .ehr-top-search > svg.lucide {
+    width: 18px;
+    height: 18px;
+  }
+
+  .ehr-top-search {
+    display: grid !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    width: clamp(132px, 19vw, 210px) !important;
+    height: 36px !important;
+    padding-inline: 10px 7px;
+    justify-self: end;
+  }
+
+  .ehr-top-search input { font-size: 12px; }
+  .ehr-top-search-spacer { display: block !important; }
+
+  .ehr-top-rail .ehr-top-center,
+  .ehr-top-rail .ehr-top-facility {
+    display: inline-flex !important;
+  }
+
+  .ehr-top-facility {
+    max-width: clamp(90px, 15vw, 180px);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    line-height: 1.05;
+  }
+
+  .ehr-top-facility-org { font-size: 8px; letter-spacing: 0.08em; }
+  .ehr-avatar { min-width: 36px !important; width: 36px !important; height: 36px !important; }
+  .ehr-avatar-mark { width: 29px; height: 29px; font-size: 11px; }
+
+  /* Preserve the desktop three-panel clinical station. Rails become narrower,
+     but remain in-flow and visible in both portrait and landscape. */
+  .th-grid,
+  .ehr-workspace-grid,
+  .ehr-workspace-grid.is-dashboard,
+  .ehr-care-dashboard .ehr-workspace-grid,
+  .ehr-care-dashboard .ehr-workspace-grid.is-dashboard {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) var(--tablet-rail) !important;
+    grid-template-areas: "rail queue right" !important;
+    gap: var(--tablet-gap) !important;
+  }
+
+  .ehr-workspace-grid.is-calendar,
+  .ehr-care-dashboard .ehr-workspace-grid.is-calendar {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important;
+  }
+
+  .tamam-ehr-app .page-container:has(> .ehr-schedule-shell),
+  .ehr-schedule-shell,
+  .ehr-workspace-grid,
+  .ehr-workspace-grid.is-dashboard,
+  .ehr-workspace-grid.is-calendar,
+  .ehr-left-rail,
+  .ehr-center-panel,
+  .ehr-right-rail {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none;
+  }
+
+  .tamam-ehr-app .page-container:has(> .ehr-schedule-shell),
+  .ehr-schedule-shell { overflow: hidden !important; }
+
+  .ehr-left-rail {
+    display: flex !important;
+    overflow-y: auto !important;
+  }
+
+  .ehr-right-rail,
+  .ehr-care-dashboard .ehr-right-rail {
+    display: flex !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+    transform: none !important;
+    border-inline-start: 0 !important;
+  }
+
+  .ehr-rail-toggle,
+  .ehr-rail-backdrop,
+  .ehr-rail-close { display: none !important; }
+
+  .ehr-schedule-header {
+    grid-template-columns: auto minmax(140px, 1fr) auto !important;
+    gap: 8px;
+  }
+
+  .ehr-clinical-dashboard-header { grid-template-columns: minmax(0, 1fr) auto !important; }
+  .ehr-clinical-dashboard-header-main { flex-direction: row !important; align-items: center !important; }
+  .ehr-clinical-dashboard-header .ehr-schedule-actions { display: flex !important; }
+  .ehr-center-panel > .ehr-clinical-strip { display: grid !important; }
+
+  .ehr-care-dashboard .ehr-appointment-main p,
+  .patient-table .hide-mobile { display: revert !important; }
+
+  .ehr-care-dashboard .ehr-care-badges,
+  .ehr-care-row-status { display: flex !important; }
+  .ehr-care-dashboard .ehr-care-status { display: inline-flex !important; }
+
+  .patient-table {
+    min-width: 600px;
+    table-layout: fixed;
+  }
+  .patient-table .col-patient { width: 28%; }
+  .patient-table .col-hospital { width: 14%; }
+  .patient-table .col-age { width: 12%; }
+  .patient-table .col-state { width: 16%; }
+  .patient-table .col-arrow { width: 36px; }
+
+  .ehr-worklist-head > span:nth-child(n + 6),
+  .ehr-worklist-row > span:nth-child(n + 6) { display: block !important; }
+
+  .ehr-care-dashboard .ehr-row-compact-time { display: none !important; }
+
+  /* Dense tables retain their desktop schema. The table itself may be wider
+     than its centre panel, so the panel scrolls instead of deleting columns. */
+  .ehr-appointment-list,
+  .ehr-care-list,
+  .ehr-worklist-table,
+  .recently-registered-tablewrap,
+  .patient-data-scroll,
+  .ehr-list-scroll,
+  .rpt-table-scroll {
+    overflow: auto !important;
+    max-height: none !important;
+  }
+
+  .appointment-card-head { display: grid !important; min-width: 760px; }
+  .appointment-card-row.ehr-appointment-row {
+    grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(96px, max-content) !important;
+    min-width: 760px;
+  }
+
+  .appointment-card-row .ehr-appointment-identity,
+  .appointment-card-row .ehr-appointment-time,
+  .appointment-card-status,
+  .appointment-card-provider,
+  .appointment-card-row .ehr-appointment-department {
+    grid-column: auto !important;
+    justify-self: auto;
+    padding-inline-start: 0;
+  }
+
+  .ehr-care-dashboard .ehr-appointment-row { min-width: 720px; }
+  .ehr-worklist-head,
+  .ehr-worklist-row { min-width: 720px; }
+
+  /* Patient chart and clinical documentation keep their desktop side rails. */
+  .ehr-chart-layout {
+    display: grid !important;
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: start;
+  }
+
+  .ehr-chart-nav {
+    grid-column: 1 !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    max-height: calc(100vh - var(--ehr-top-rail-height) - 56px) !important;
+    margin: 0 !important;
+    padding: 6px 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .ehr-chart-nav button {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: flex-start !important;
+    padding-inline: 10px !important;
+    text-align: start;
+    white-space: normal;
+  }
+
+  .ehr-chart-content { grid-column: 2 !important; padding-inline: 10px !important; }
+
+  .cn-body { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  .cn-sidebar { display: block !important; padding-inline: 8px; }
+
+  .omrs-rail-col { flex-basis: var(--tablet-rail) !important; width: var(--tablet-rail) !important; }
+  .omrs-rail-label { display: inline !important; }
+  .omrs-rail-item { justify-content: flex-start !important; padding: 9px 10px !important; }
+  .omrs-drawer { width: min(720px, 92vw) !important; }
+
+  .ehr-consult-workspace { flex-direction: row !important; overflow: hidden !important; }
+  .ehr-consult-workspace > .ehr-consult-sidecar { width: clamp(210px, 28vw, 320px) !important; }
+  .ehr-consult-meta-strip { grid-template-columns: 1fr 1fr auto !important; }
+  .ehr-consult-history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+  /* Settings, administration, facility, reports, portal, lab, and billing all
+     retain their desktop navigator/detail relationships. */
+  .ehr-set-grid { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  .ehr-set-overview { grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr) !important; }
+  .ehr-set-scope-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) !important; }
+  .ehr-set-shortcuts { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .ehr-set-scope-note { display: block !important; }
+
+  .fs-shell { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  .fs-shell--nonav { grid-template-columns: minmax(0, 1fr) !important; }
+  .fs-nav { position: sticky !important; flex-direction: column !important; }
+  .fs-nav-group { display: flex !important; }
+
+  .sadb-shell { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  .sadb-regpage { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  .sadb-regpage-rail { position: sticky !important; }
+  .sadb-row-2 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .sadb-row-2 > :last-child { grid-column: auto !important; }
+
+  .rpt-workspace {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) clamp(190px, 24vw, 250px) !important;
+  }
+  .rpt-rail { display: flex !important; }
+  .rpt-bar .rpt-nav-select { display: none !important; }
+  .rpt-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+
+  .pp-body { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  .pp-side { display: flex !important; }
+  .pp-side-title,
+  .pp-side-foot,
+  .pp-top-facility { display: block !important; }
+
+  .labord-rail {
+    display: block !important;
+    flex-basis: var(--tablet-rail) !important;
+    width: var(--tablet-rail) !important;
+    padding-inline: 10px;
+  }
+
+  .bl-pay-layout { grid-template-columns: minmax(0, 1fr) clamp(220px, 29vw, 300px) !important; }
+  .bl-pay-aside { border-left: 1px solid var(--ehr-border, #E2E6EB) !important; border-top: 0 !important; }
+
+  .gov-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .gov-span-4 { grid-column: span 4 !important; }
+  .gov-span-2 { grid-column: span 2 !important; }
+  .gov-map-body { grid-template-columns: minmax(0, 1fr) 190px !important; }
+
+  .registration-option-grid,
+  .registration-field-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+  /* Modals remain desktop dialogs on a tablet, just bounded to the viewport. */
+  .modal-panel,
+  .card-elevated[role="dialog"] {
+    width: min(var(--modal-width, 760px), calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+  }
+}
+
+/* Portrait 7–8 inch tablets have room for the desktop controls, but not for a
+   full centre label between both action clusters. Keep the label present and
+   tooltip-complete, with a tighter visual abbreviation and smaller chrome. */
+@media (min-width: 640px) and (max-width: 839px) {
+  .ehr-top-rail {
+    grid-template-columns: 100px max-content minmax(104px, 1fr) auto !important;
+    gap: 4px !important;
+    padding-inline: 8px !important;
+  }
+
+  .ehr-top-brand {
+    width: 96px !important;
+    max-width: 96px !important;
+  }
+
+  .ehr-top-rail .ehr-top-brand-logo-full,
+  .ehr-top-brand img {
+    width: 94px !important;
+    max-width: 94px !important;
+  }
+
+  .ehr-top-modules button,
+  .ehr-top-actions button,
+  .ehr-top-navlinks button {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px;
+  }
+
+  .ehr-module-trigger { width: 32px !important; }
+  .ehr-avatar { min-width: 32px !important; width: 32px !important; height: 32px !important; }
+  .ehr-avatar-mark { width: 27px; height: 27px; }
+  .ehr-top-search { width: clamp(108px, 17vw, 136px) !important; height: 32px !important; }
+  .ehr-top-search input { font-size: 11px; }
+  .ehr-top-rail .ehr-top-facility { max-width: 48px; font-size: 9px; }
+  .ehr-top-facility-org { display: none; }
+}
+
+@media (min-width: 640px) and (max-width: 679px) {
+  .ehr-top-rail .ehr-top-center { left: calc(50% - 22px); }
+  .ehr-top-rail .ehr-top-facility { max-width: 28px; }
+}
