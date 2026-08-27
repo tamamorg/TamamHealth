@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc } from '@/lib/db-types';
 import {
@@ -1032,20 +1033,58 @@ export default function EhrClinicalDashboard({
 
   /* The More menu's open state, and the outside-click that closes it. */
   const [moreOpen, setMoreOpen] = useState(false);
+  const [moreMenuPosition, setMoreMenuPosition] = useState<{
+    top: number;
+    left: number;
+    maxHeight: number;
+  } | null>(null);
   const moreRef = useRef<HTMLDivElement>(null);
+  const headerMoreMenuRef = useRef<HTMLDivElement>(null);
+  const placeMoreMenu = useCallback(() => {
+    const rect = moreRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const viewportMargin = 8;
+    const menuWidth = window.matchMedia('(min-width: 640px) and (max-width: 1279px)').matches
+      ? 176
+      : 190;
+    setMoreMenuPosition({
+      top: rect.bottom + 6,
+      left: Math.max(
+        viewportMargin,
+        Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportMargin),
+      ),
+      maxHeight: Math.max(120, window.innerHeight - rect.bottom - 14),
+    });
+  }, []);
+
+  // The schedule shell must clip its three scrolling panels on tablet. Measure
+  // the trigger and portal the menu to <body>, so that necessary clipping can
+  // never cut the menu off behind the Outstanding Items rail.
+  useLayoutEffect(() => {
+    if (!moreOpen) return;
+    placeMoreMenu();
+  }, [moreOpen, placeMoreMenu]);
+
   useEffect(() => {
     if (!moreOpen) return;
     const onDown = (event: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(event.target as Node)) setMoreOpen(false);
+      const target = event.target as Node;
+      if (moreRef.current?.contains(target) || headerMoreMenuRef.current?.contains(target)) return;
+      setMoreOpen(false);
     };
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false); };
+    const onViewportChange = () => placeMoreMenu();
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
     };
-  }, [moreOpen]);
+  }, [moreOpen, placeMoreMenu]);
 
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider and date the note header needs.
@@ -1542,8 +1581,13 @@ export default function EhrClinicalDashboard({
               >
                 <MoreVertical className="w-4 h-4" /> More
               </button>
-              {moreOpen && (
-                <div className="ehr-header-more-menu" role="menu">
+              {moreOpen && moreMenuPosition && typeof document !== 'undefined' && createPortal(
+                <div
+                  ref={headerMoreMenuRef}
+                  className="ehr-header-more-menu"
+                  role="menu"
+                  style={moreMenuPosition}
+                >
                   {headerActions.slice(INLINE_HEADER_ACTIONS).map(action => {
                     const ActionIcon = action.icon;
                     return (
@@ -1557,7 +1601,8 @@ export default function EhrClinicalDashboard({
                       </button>
                     );
                   })}
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
           )}

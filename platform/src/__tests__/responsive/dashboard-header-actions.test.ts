@@ -55,6 +55,19 @@ describe('the greeting row shows two actions and hides the rest', () => {
     expect(dashboard).toContain("event.key === 'Escape'");
   });
 
+  test('the More menu escapes the clipped tablet schedule shell', () => {
+    const globalsCss = source('app/globals.css');
+    const tabletCss = source('app/tablet-desktop.css');
+    expect(dashboard).toContain("import { createPortal } from 'react-dom';");
+    expect(dashboard).toContain('moreRef.current?.getBoundingClientRect()');
+    expect(dashboard).toContain('headerMoreMenuRef.current?.contains(target)');
+    expect(dashboard).toContain('document.body');
+    expect(globalsCss).toMatch(/\.ehr-header-more-menu\s*\{[\s\S]*?position:\s*fixed;/);
+    expect(globalsCss).toMatch(/\.ehr-header-more-menu\s*\{[\s\S]*?z-index:\s*1500;/);
+    expect(tabletCss).toMatch(/\.ehr-header-more-menu button\s*\{[\s\S]*?font-size:\s*12px;/);
+    expect(tabletCss).toMatch(/\.ehr-header-more-menu button svg[\s\S]*?width:\s*15px;/);
+  });
+
   test('the menu announces itself as a menu', () => {
     expect(dashboard).toContain('aria-haspopup="menu"');
     expect(dashboard).toContain('role="menuitem"');

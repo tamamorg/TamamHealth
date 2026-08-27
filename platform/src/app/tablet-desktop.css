@@ -278,6 +278,32 @@
   .ehr-clinical-dashboard-header .ehr-schedule-actions { display: flex !important; }
   .ehr-center-panel > .ehr-clinical-strip { display: grid !important; }
 
+  /* The portalled header menu keeps the complete desktop action rows on a
+     tablet. Only its density changes: labels remain visible, icons keep their
+     own column, and every row aligns to the same leading edge. */
+  .ehr-header-more-menu {
+    width: 176px;
+    min-width: 176px;
+    padding: 5px;
+    gap: 1px;
+  }
+
+  .ehr-header-more-menu button {
+    min-height: 30px;
+    justify-content: flex-start;
+    gap: 7px;
+    padding-inline: 8px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .ehr-header-more-menu button svg,
+  .ehr-header-more-menu button svg.lucide {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+  }
+
   .ehr-care-dashboard .ehr-appointment-main p,
   .patient-table .hide-mobile { display: revert !important; }
 
