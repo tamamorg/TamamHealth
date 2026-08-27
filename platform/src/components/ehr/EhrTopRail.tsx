@@ -324,10 +324,13 @@ export default function EhrTopRail() {
         aria-label="Go to your dashboard"
         data-track="nav.home"
       >
+        {/* One mark, every width. There used to be a second `<img>` — the
+            bare dot icon — swapped in for the wordmark under 768px and hidden
+            by five separate rules everywhere else. Five hide-rules and one
+            show-rule for one element is a coin toss the cascade keeps losing:
+            it is what put a second logo on the rail. The full mark scales. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="ehr-top-brand-logo-full" src="/assets/tamamhealth-logo-full-white.svg" alt="Tamam Healthcare System" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="ehr-top-brand-logo-icon" src="/assets/tamamhealth-logo-icon-white.svg" alt="" aria-hidden="true" />
       </div>
 
       <nav className="ehr-top-modules" aria-label="Primary EHR modules" ref={moduleRef}>

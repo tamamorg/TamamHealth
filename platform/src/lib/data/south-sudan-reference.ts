@@ -16,9 +16,24 @@ export const statesAndCounties: Record<string, string[]> = Object.fromEntries(
   southSudanLocations.map(state => [state.name, state.counties.map(county => county.name)]),
 );
 
-// Key order is load-bearing: the demo-roster generator draws a state by index
-// from this array, and SEED_VERSION (lib/db.ts) locks that draw.
 export const states = Object.keys(statesAndCounties);
+
+/** Canonical values stay clean; source spelling variants remain searchable. */
+const locationAliases: Readonly<Record<string, string>> = {
+  Alal: 'Allal',
+  Allal: 'Alal',
+  'Rum Amer': 'Rumamer',
+  Rumamer: 'Rum Amer',
+  'Abyei Town': 'Abyei',
+  Todac: 'Tordaj',
+  'Todac II': 'Tordaj II',
+  'Taj-allei': 'Tajalei',
+};
+
+export function locationLabel(name: string): string {
+  const alias = locationAliases[name];
+  return alias ? `${name} (${alias})` : name;
+}
 
 export function countiesFor(stateName: string): string[] {
   return statesAndCounties[stateName] || [];

@@ -67,6 +67,7 @@ import { toIsoDate, todayIso as isoToday } from '@/lib/date-utils';
 import {
   bomasFor,
   countiesFor,
+  locationLabel,
   payamsFor,
   states as SOUTH_SUDAN_STATES,
   tribes,
@@ -2266,7 +2267,7 @@ export default function PatientDetailPage() {
                     {editForm.state && !SOUTH_SUDAN_STATES.includes(editForm.state) && (
                       <option value={editForm.state}>{editForm.state} (on record)</option>
                     )}
-                    {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
                   </Select>
                 </div>
                 <div>
@@ -2283,7 +2284,7 @@ export default function PatientDetailPage() {
                     {editForm.county && !editCounties.includes(editForm.county) && (
                       <option value={editForm.county}>{editForm.county} (on record)</option>
                     )}
-                    {editCounties.map(c => <option key={c} value={c}>{c}</option>)}
+                    {editCounties.map(c => <option key={c} value={c}>{locationLabel(c)}</option>)}
                   </Select>
                 </div>
               </div>
@@ -2297,7 +2298,7 @@ export default function PatientDetailPage() {
                     {editForm.payam && !editPayams.includes(editForm.payam) && (
                       <option value={editForm.payam}>{editForm.payam}</option>
                     )}
-                    {editPayams.map(payam => <option key={payam} value={payam}>{payam}</option>)}
+                    {editPayams.map(payam => <option key={payam} value={payam}>{locationLabel(payam)}</option>)}
                   </Select>
                 </div>
                 <div>
@@ -2309,7 +2310,7 @@ export default function PatientDetailPage() {
                     {editForm.boma && !editBomas.includes(editForm.boma) && (
                       <option value={editForm.boma}>{editForm.boma}</option>
                     )}
-                    {editBomas.map(boma => <option key={boma} value={boma}>{boma}</option>)}
+                    {editBomas.map(boma => <option key={boma} value={boma}>{locationLabel(boma)}</option>)}
                   </Select>
                 </div>
               </div>

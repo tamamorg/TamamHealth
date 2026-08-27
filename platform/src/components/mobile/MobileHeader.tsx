@@ -30,8 +30,10 @@ export default function MobileHeader({ onOpenModules }: { onOpenModules: () => v
 
   return (
     <header className="mobile-shell-header">
+      {/* The full mark, as everywhere else. The bare dot icon this used is no
+          longer in the product — one logo, every surface and every width. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/assets/tamamhealth-logo-icon-white.svg" alt="" className="mobile-shell-header-logo" />
+      <img src="/assets/tamamhealth-logo-full-white.svg" alt="Tamam Healthcare System" className="mobile-shell-header-logo" />
       <div className="mobile-shell-header-text">
         <p className="mobile-shell-header-greeting">Welcome, {currentUser?.name || 'there'}</p>
         <p className="mobile-shell-header-facility">{currentUser?.hospitalName || currentUser?.hospital?.name || ''}</p>

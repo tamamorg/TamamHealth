@@ -35,10 +35,26 @@ export type {
   CareAlertCategory, CareAlertEntry, ScreeningEntry,
 } from '@/lib/types/patient-clinical';
 
-// The roster generator draws from these; the re-export further down is a
-// separate statement and creates no local binding.
-import { states, statesAndCounties, bloodTypes } from '@/lib/data/south-sudan-reference';
+import { bloodTypes } from '@/lib/data/south-sudan-reference';
 import { toIsoDate } from '@/lib/date-utils';
+
+// The seeded roster's random draw order is a persisted contract. Keep its
+// original ten-state arrays local to demo data: the live reference hierarchy
+// can add Abyei or revise county spellings without silently relocating every
+// existing seeded patient while SEED_VERSION remains unchanged.
+const demoStatesAndCounties: Record<string, string[]> = {
+  'Central Equatoria': ['Juba', 'Kajo-keji', 'Lainya', 'Morobo', 'Terekeka', 'Yei'],
+  'Eastern Equatoria': ['Torit', 'Budi', 'Ikotos', 'Kapoeta East', 'Kapoeta North', 'Kapoeta South', 'Lafon', 'Magwi'],
+  'Jonglei': ['Bor South', 'Akobo', 'Ayod', 'Duk', 'Fangak', 'Nyirol', 'Pibor', 'Pochalla', 'Twic East', 'Uror'],
+  'Lakes': ['Rumbek Centre', 'Rumbek East', 'Rumbek North', 'Awerial', 'Cueibet', 'Wulu', 'Yirol East', 'Yirol West'],
+  'Northern Bahr el Ghazal': ['Aweil Centre', 'Aweil East', 'Aweil North', 'Aweil South', 'Aweil West'],
+  Unity: ['Rubkona', 'Abiemnhom', 'Guit', 'Koch', 'Leer', 'Mayendit', 'Mayom', 'Panyijiar', 'Pariang'],
+  'Upper Nile': ['Malakal', 'Baliet', 'Fashoda', 'Longochuk', 'Maban', 'Manyo', 'Melut', 'Panyikang', 'Renk', 'Ulang'],
+  Warrap: ['Kuajok', 'Gogrial East', 'Gogrial West', 'Tonj East', 'Tonj North', 'Tonj South', 'Twic'],
+  'Western Bahr el Ghazal': ['Wau', 'Jur River', 'Raja'],
+  'Western Equatoria': ['Yambio', 'Ezo', 'Ibba', 'Maridi', 'Mundri East', 'Mundri West', 'Mvolo', 'Nagero', 'Nzara', 'Tambura'],
+};
+const demoStates = Object.keys(demoStatesAndCounties);
 
 export interface Hospital {
   id: string;
@@ -1886,8 +1902,8 @@ function generatePatient(index: number): Patient {
   }
 
   const dob = generateDOB();
-  const state = randomFrom(states);
-  const counties = statesAndCounties[state];
+  const state = randomFrom(demoStates);
+  const counties = demoStatesAndCounties[state];
   // Place each patient at one of the STAFFED hospitals (round-robin by index),
   // not a random one of all facilities. Only these hospitals have seeded user
   // accounts, so a patient registered at an unstaffed facility would be visible

@@ -10,7 +10,7 @@ import { ScanLine, Hash, X, ArrowRight, Download, UserPlus } from '@/components/
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import { states } from '@/lib/data/south-sudan-reference';
+import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 import dynamic from 'next/dynamic';
 // Lazy-loaded: html5-qrcode is heavy and only needed when the scanner opens,
 // so it stays out of the patients-route bundle until used.
@@ -303,7 +303,7 @@ export default function PatientsPage() {
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patient.location')}</span>
                       <Select value={filters.state} onChange={e => setF('state', e.target.value)} searchThreshold={0} className="w-full text-sm py-2 px-3" style={fieldStyle}>
                         <option value="">{t('patients.all')}</option>
-                        {states.map(s => <option key={s} value={s}>{s}</option>)}
+                        {states.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
                       </Select>
                     </label>
                     <label className="flex flex-col gap-1">

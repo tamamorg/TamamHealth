@@ -153,17 +153,25 @@ for (const state of states.values()) {
 // containing the majority of those points, which is resilient to one bad GPS
 // row near a boundary.
 const bomaVotes = new Map();
+const settlementNamesByPayam = new Map();
 for (const row of settlementRows) {
   const bomaName = displayName(row.H);
+  const settlementName = displayName(row.A);
   const x = Number(row.W);
   const y = Number(row.X);
-  if (!bomaName || !Number.isFinite(x) || !Number.isFinite(y)) continue;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
   const boundary = payamBoundaries.find(candidate => {
     const [minX, minY, maxX, maxY] = candidate.bbox;
     return x >= minX && x <= maxX && y >= minY && y <= maxY
       && geometryContains(candidate.geometry, x, y);
   });
   if (!boundary) continue;
+  if (settlementName) {
+    const names = settlementNamesByPayam.get(boundary.pcode) || new Map();
+    if (!names.has(key(settlementName))) names.set(key(settlementName), settlementName);
+    settlementNamesByPayam.set(boundary.pcode, names);
+  }
+  if (!bomaName) continue;
   const oldPath = [stateAlias(row.N), row.L, row.J, bomaName].map(key).join('|');
   const boma = bomaVotes.get(oldPath) || { name: bomaName, votes: new Map() };
   boma.votes.set(boundary.pcode, (boma.votes.get(boundary.pcode) || 0) + 1);
@@ -181,6 +189,43 @@ for (const boma of bomaVotes.values()) {
   if (!payam.bomas.has(key(boma.name))) payam.bomas.set(key(boma.name), boma.name);
 }
 
+// Some current payams have no Admin-4 value in the older gazetteer. The
+// product calls the lowest address tier "Boma / Village", so keep those
+// dropdowns usable with spatially verified populated-place names, but only
+// where no source boma exists; never mix settlements into a real boma list.
+let settlementFallbackPayams = 0;
+let settlementFallbackOptions = 0;
+for (const [payamCode, payam] of payamsByCode) {
+  if (payam.bomas.size > 0) continue;
+  const settlements = settlementNamesByPayam.get(payamCode);
+  if (!settlements?.size) continue;
+  payam.bomas = settlements;
+  settlementFallbackPayams += 1;
+  settlementFallbackOptions += settlements.size;
+}
+
+// Four current COD payam polygons contain neither a usable Admin-4 row nor a
+// populated-place point in the older gazetteer. Fill only those holes from the
+// National Bureau of Statistics' 2008 boma population tables. The COD spelling
+// "Manjonga" corresponds to NBS "Manjoga"; COD "Panyang 2" corresponds to
+// the Panyang/Awila unit shown by both NBS and UNICEF's county social map.
+// Sources:
+//   https://nbs.gov.ss/wp-content/uploads/2021/05/Boma-populations-Southern-Sudan.pdf
+//   https://www.unicef.org/southsudan/media/751/file/Abiemnhom-County-social-map.pdf
+const verifiedBomaSupplements = [
+  { state: 'Jonglei', county: 'Akobo', payam: 'Alali', bomas: ['Abuk', 'Alali', 'Aparawanga', 'Ojoky'] },
+  { state: 'Unity', county: 'Abiemnhom', payam: 'Manjonga', bomas: ['Lorpiny'] },
+  { state: 'Unity', county: 'Abiemnhom', payam: 'Panyang 2', bomas: ['Awila'] },
+  { state: 'Unity', county: 'Mayom', payam: 'Wangbuor I', bomas: ['Madul'] },
+];
+for (const supplement of verifiedBomaSupplements) {
+  const payam = states.get(key(supplement.state))
+    ?.counties.get(key(supplement.county))
+    ?.payams.get(key(supplement.payam));
+  if (!payam || payam.bomas.size > 0) continue;
+  payam.bomas = new Map(supplement.bomas.map(boma => [key(boma), boma]));
+}
+
 // COD-AB intentionally aggregates disputed Abyei into one county and one
 // payam. That is useful for boundary exchange, but not for a patient address.
 // The Abyei government currently identifies four counties plus Abyei
@@ -193,26 +238,24 @@ for (const boma of bomaVotes.values()) {
 const abyei = states.get(key('Abyei Region'));
 if (abyei) {
   const abyeiUnits = [
-    ['Alal (Allal)', 'SS00-ALAL', ['Akec-nhial', 'Awolnhom', 'Maker', 'Noong', 'Noong II']],
-    ['Ameth-Aguok', 'SS00-AMETH', ['Dungop', 'Todac (Tordaj)', 'Todac II']],
-    ['Mijak', 'SS00-MIJAK', ['Leu', 'Taj-allei']],
-    ['Rum Amer (Rumamer)', 'SS00-RUMAMER', ['Mabok', 'Marial']],
-    ['Abyei Municipality', 'SS00-ABYEI', ['Abyei Thony', 'Gongbial', 'Mulmul', 'Wunruok']],
+    { county: 'Alal', payam: 'Allal', code: 'SS00-ALAL', bomas: ['Akec-nhial', 'Awolnhom', 'Maker', 'Noong', 'Noong II'] },
+    { county: 'Ameth-Aguok', payam: 'Ameth-Aguok', code: 'SS00-AMETH', bomas: ['Dungop', 'Todac', 'Todac II'] },
+    { county: 'Mijak', payam: 'Mijak', code: 'SS00-MIJAK', bomas: ['Leu', 'Taj-allei'] },
+    { county: 'Rum Amer', payam: 'Rumamer', code: 'SS00-RUMAMER', bomas: ['Mabok', 'Marial'] },
+    { county: 'Abyei Municipality', payam: 'Abyei Town', code: 'SS00-ABYEI', bomas: ['Abyei Thony', 'Gongbial', 'Mulmul', 'Wunruok'] },
   ];
-  abyei.counties = new Map(abyeiUnits.map(([name, code, bomas]) => [key(name), {
-    name,
-    code,
-    payams: new Map([[key(name), {
-      name,
-      code: `${code}-P`,
-      bomas: new Map(bomas.map(boma => [key(boma), boma])),
+  abyei.counties = new Map(abyeiUnits.map(unit => [key(unit.county), {
+    name: unit.county,
+    code: unit.code,
+    payams: new Map([[key(unit.payam), {
+      name: unit.payam,
+      code: `${unit.code}-P`,
+      bomas: new Map(unit.bomas.map(boma => [key(boma), boma])),
     }]]),
   }]));
 }
 
-// Preserve the COD workbook's established state order. Demo-data generation
-// selects states by array index, so alphabetically moving Abyei to the front
-// would unnecessarily reshuffle otherwise stable seeded records.
+// Preserve the COD workbook's established state order for stable UI ordering.
 const hierarchy = [...states.values()].map(state => ({
   name: state.name,
   code: state.code,
@@ -251,4 +294,9 @@ const output = `// GENERATED by scripts/generate-south-sudan-locations.mjs. Do n
 
 writeFileSync(OUTPUT, output);
 console.log(`Wrote ${OUTPUT}`);
-console.log({ ...counts, rejectedBomaRows: rejectedBomaPaths });
+console.log({
+  ...counts,
+  rejectedBomaRows: rejectedBomaPaths,
+  settlementFallbackPayams,
+  settlementFallbackOptions,
+});

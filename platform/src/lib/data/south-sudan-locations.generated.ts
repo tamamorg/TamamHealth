@@ -94,17 +94,100 @@ export const southSudanLocations = [
           {
             "name": "Lirya",
             "code": "SS010107",
-            "bomas": []
+            "bomas": [
+              "Buripiong",
+              "Ilangari",
+              "Itchire",
+              "Kobogi",
+              "Langabu",
+              "Liria",
+              "Ngangala",
+              "Nyake"
+            ]
           },
           {
             "name": "Lobonok",
             "code": "SS010109",
-            "bomas": []
+            "bomas": [
+              "Attigu",
+              "Baden",
+              "Bari",
+              "Bedden Rapids",
+              "Beyli",
+              "Chilikwa",
+              "Duro",
+              "Fagar",
+              "Girn",
+              "Gopur",
+              "Juboli",
+              "Kainye",
+              "Kamuri",
+              "Karpeto",
+              "Kay",
+              "Kibo",
+              "Kit",
+              "Kogi",
+              "Koropa",
+              "Kuba",
+              "Kuja",
+              "Kwarijik",
+              "Labizuzo",
+              "Lagogolo",
+              "Lagora",
+              "Lakki",
+              "Lobonok",
+              "Loga",
+              "Lopi",
+              "Lukala",
+              "Maerok",
+              "Meregim",
+              "Mimakimi",
+              "Moeru",
+              "Monji",
+              "Nyaing",
+              "Nyarajar",
+              "Pego",
+              "Peki",
+              "River Liro",
+              "River Manya",
+              "Rogala",
+              "Samba",
+              "Sindiru",
+              "Teteramon",
+              "Tukala",
+              "Tumbur",
+              "Umo",
+              "Wontambi",
+              "Yaffa",
+              "Yokwai"
+            ]
           },
           {
             "name": "Lokiliri",
             "code": "SS010108",
-            "bomas": []
+            "bomas": [
+              "Aru",
+              "Duduru",
+              "Edemo",
+              "Fedde",
+              "Fidiya",
+              "Gerenya",
+              "Irido",
+              "Kaboshi",
+              "Koturomi",
+              "Kuiaji",
+              "Lagere",
+              "Lakoleri",
+              "Lokiliri",
+              "Lomer",
+              "Lomiyega",
+              "Lorono",
+              "Luluba",
+              "Nesitu",
+              "Ngulere",
+              "Sirsiri",
+              "Tengworo"
+            ]
           },
           {
             "name": "Mangala North",
@@ -1182,7 +1265,12 @@ export const southSudanLocations = [
           {
             "name": "Alali",
             "code": "SS030101",
-            "bomas": []
+            "bomas": [
+              "Abuk",
+              "Alali",
+              "Aparawanga",
+              "Ojoky"
+            ]
           },
           {
             "name": "Barmach",
@@ -1449,12 +1537,22 @@ export const southSudanLocations = [
           {
             "name": "Belewach",
             "code": "SS030403",
-            "bomas": []
+            "bomas": [
+              "Akoc",
+              "Chuei",
+              "Sholayik"
+            ]
           },
           {
             "name": "Kaldak",
             "code": "SS030404",
-            "bomas": []
+            "bomas": [
+              "Abujon",
+              "Againg",
+              "Anialbong",
+              "Canal",
+              "Kaldak"
+            ]
           },
           {
             "name": "Korwach",
@@ -1468,7 +1566,33 @@ export const southSudanLocations = [
           {
             "name": "Mareng",
             "code": "SS030406",
-            "bomas": []
+            "bomas": [
+              "Abwong",
+              "Angnor",
+              "Anyal Chol",
+              "Ayiot",
+              "Baar",
+              "Bungfiort",
+              "Chatokbai",
+              "Chuei",
+              "Dulareng",
+              "Gobjak",
+              "Jungyang",
+              "Kamel",
+              "Maling",
+              "Neinjang",
+              "Shol Ajok",
+              "Tarom",
+              "Thanilak",
+              "Wunajok",
+              "Wunakir",
+              "Wunalong",
+              "Wunanyak",
+              "Wunlam",
+              "Wuriyang",
+              "Wuthol",
+              "Yenanoi"
+            ]
           },
           {
             "name": "Nyainthokmalual",
@@ -1480,7 +1604,22 @@ export const southSudanLocations = [
           {
             "name": "Wunlem",
             "code": "SS030408",
-            "bomas": []
+            "bomas": [
+              "Dhiak Kuei",
+              "Fajur",
+              "Gwung Tur",
+              "Kan",
+              "Kolarel",
+              "Kuey",
+              "Lang Nyok",
+              "Mulgak",
+              "Nyinabot",
+              "Shwai",
+              "Tur Machar",
+              "Wunakei",
+              "Wunalam",
+              "Wunrok"
+            ]
           }
         ]
       },
@@ -1808,7 +1947,14 @@ export const southSudanLocations = [
           {
             "name": "Akiela",
             "code": "SS030902",
-            "bomas": []
+            "bomas": [
+              "Adangol",
+              "Kuac",
+              "Layr",
+              "Lieg",
+              "Pentin",
+              "Uphal"
+            ]
           },
           {
             "name": "Burator",
@@ -1820,7 +1966,13 @@ export const southSudanLocations = [
           {
             "name": "Omiela",
             "code": "SS030904",
-            "bomas": []
+            "bomas": [
+              "Bor",
+              "Nyakwach",
+              "Omila",
+              "Umberi",
+              "Ushini"
+            ]
           },
           {
             "name": "Pochalla",
@@ -2951,7 +3103,11 @@ export const southSudanLocations = [
           {
             "name": "Aweil Town",
             "code": "SS050502",
-            "bomas": []
+            "bomas": [
+              "Aweil",
+              "Ayong",
+              "Thiek Thou"
+            ]
           },
           {
             "name": "Ayat Centre",
@@ -3055,17 +3211,25 @@ export const southSudanLocations = [
           {
             "name": "Aworpiny",
             "code": "SS060102",
-            "bomas": []
+            "bomas": [
+              "Bil",
+              "Hamir",
+              "Rakayan"
+            ]
           },
           {
             "name": "Manjonga",
             "code": "SS060103",
-            "bomas": []
+            "bomas": [
+              "Lorpiny"
+            ]
           },
           {
             "name": "Panyang 2",
             "code": "SS060104",
-            "bomas": []
+            "bomas": [
+              "Awila"
+            ]
           }
         ]
       },
@@ -3537,7 +3701,10 @@ export const southSudanLocations = [
           {
             "name": "Riak",
             "code": "SS060607",
-            "bomas": []
+            "bomas": [
+              "Rier",
+              "Toic"
+            ]
           },
           {
             "name": "Ruathnyibuol",
@@ -3551,7 +3718,9 @@ export const southSudanLocations = [
           {
             "name": "Wangbuor I",
             "code": "SS060610",
-            "bomas": []
+            "bomas": [
+              "Madul"
+            ]
           },
           {
             "name": "Wangbuor II",
@@ -3755,7 +3924,12 @@ export const southSudanLocations = [
           {
             "name": "Wunkur",
             "code": "SS060807",
-            "bomas": []
+            "bomas": [
+              "Popuoch",
+              "Tallodi",
+              "Wunamith",
+              "Wunkur"
+            ]
           }
         ]
       },
@@ -3912,7 +4086,26 @@ export const southSudanLocations = [
           {
             "name": "Abwong",
             "code": "SS070101",
-            "bomas": []
+            "bomas": [
+              "Abwong",
+              "Akai",
+              "Amou",
+              "Atoing",
+              "Aweng",
+              "Biar",
+              "Dormong",
+              "Fankur",
+              "Kir",
+              "Lajak",
+              "Magang",
+              "Majok",
+              "Nakhr",
+              "Pakor",
+              "Qwe",
+              "Rub Duwang",
+              "Rultom",
+              "Wunkir"
+            ]
           },
           {
             "name": "Adong",
@@ -3932,12 +4125,51 @@ export const southSudanLocations = [
           {
             "name": "Akotweng",
             "code": "SS070104",
-            "bomas": []
+            "bomas": [
+              "Agok",
+              "Aiyung",
+              "Ajak Kuoc",
+              "Akoraweng",
+              "Atietit",
+              "Awan",
+              "Beneshowa",
+              "Bir Raba",
+              "Chang",
+              "Dawir",
+              "Ditchin",
+              "Fan Num Dit",
+              "Gogvir",
+              "Gok Machar",
+              "Gwatan",
+              "Jogiel",
+              "Joteng",
+              "Jotoich",
+              "Kajbai",
+              "Likchuk",
+              "Loye",
+              "Luil",
+              "Lwakchuk",
+              "Malwel",
+              "Nyaitok",
+              "Nyilwak",
+              "Pamir",
+              "Pan Iyik",
+              "Panenul",
+              "Wijur",
+              "Wutau",
+              "Yinkusa"
+            ]
           },
           {
             "name": "Gel Achiel",
             "code": "SS070105",
-            "bomas": []
+            "bomas": [
+              "Akwot",
+              "Ashel",
+              "Bilaiwal",
+              "Deni",
+              "Gel Achel"
+            ]
           },
           {
             "name": "Nyongkuach",
@@ -4068,7 +4300,13 @@ export const southSudanLocations = [
           {
             "name": "Malual",
             "code": "SS070304",
-            "bomas": []
+            "bomas": [
+              "Boriak",
+              "Majok",
+              "Mathiang",
+              "Tuel Pathayi",
+              "Yaiwal"
+            ]
           },
           {
             "name": "Pamach",
@@ -4183,17 +4421,66 @@ export const southSudanLocations = [
           {
             "name": "Banashowa",
             "code": "SS070501",
-            "bomas": []
+            "bomas": [
+              "Abmju",
+              "Bella",
+              "Beneshowa",
+              "Chidu",
+              "Dangaji",
+              "Deingo",
+              "Ghanga",
+              "Keiwa",
+              "Liang",
+              "Liti",
+              "Maundi",
+              "Moibar Swamp",
+              "Sonca",
+              "Tungyu",
+              "Yaa"
+            ]
           },
           {
             "name": "Boung",
             "code": "SS070502",
-            "bomas": []
+            "bomas": [
+              "Agyagya",
+              "Allah Jabu",
+              "Bang",
+              "Boac",
+              "Boing",
+              "Bugaya",
+              "Bunj",
+              "Bunj/Maban",
+              "Chotbora",
+              "Dima",
+              "Dinga",
+              "Doro/Maban",
+              "Gumma Khadiga",
+              "Kannah",
+              "Marinja",
+              "Qadiga",
+              "Tumma"
+            ]
           },
           {
             "name": "Jinkuata",
             "code": "SS070503",
-            "bomas": []
+            "bomas": [
+              "Ballah",
+              "Feika",
+              "Gendrassa",
+              "Junquator Byam",
+              "Kanje",
+              "Kaya",
+              "Kongo",
+              "Nyang",
+              "Nyanya",
+              "Offra",
+              "Sheikh Bade",
+              "Tagga",
+              "Yelqu",
+              "Yusuf Batil"
+            ]
           },
           {
             "name": "Jinmakda",
@@ -4206,7 +4493,23 @@ export const southSudanLocations = [
           {
             "name": "Khor El Amer",
             "code": "SS070505",
-            "bomas": []
+            "bomas": [
+              "Ballah",
+              "Bumma",
+              "Danga",
+              "Dido",
+              "Dirdimma",
+              "Dzhantoqa",
+              "Faraj Allah A",
+              "Feyqa",
+              "Ghambi `Atrash",
+              "Guffa",
+              "Kagyana",
+              "Khawr Tunbak",
+              "Nila",
+              "Nurah",
+              "Tuyo Quffah"
+            ]
           }
         ]
       },
@@ -4236,7 +4539,16 @@ export const southSudanLocations = [
           {
             "name": "Kigila",
             "code": "SS070603",
-            "bomas": []
+            "bomas": [
+              "Baw",
+              "Fami",
+              "Gassar",
+              "Pagak",
+              "Paten",
+              "Shengya",
+              "Wadisa",
+              "Waka"
+            ]
           },
           {
             "name": "Maiwut",
@@ -4462,12 +4774,38 @@ export const southSudanLocations = [
           {
             "name": "Anakdiar",
             "code": "SS071007",
-            "bomas": []
+            "bomas": [
+              "Abujop",
+              "Fanei",
+              "Fanie",
+              "Gutur",
+              "Nagdiar",
+              "Nijok",
+              "Odwar",
+              "Olam"
+            ]
           },
           {
             "name": "Dheteim",
             "code": "SS071001",
-            "bomas": []
+            "bomas": [
+              "Adado",
+              "Alel",
+              "Athakong",
+              "Awaw",
+              "Dedigo",
+              "Dot",
+              "Dur",
+              "Edu Island",
+              "Malakal",
+              "Malakal PoC",
+              "Owachi",
+              "Patugo",
+              "Taufikia",
+              "Tawfiqiyya",
+              "Tworo",
+              "Wit Dokott"
+            ]
           },
           {
             "name": "Kuel",
@@ -4481,12 +4819,37 @@ export const southSudanLocations = [
           {
             "name": "Pakang",
             "code": "SS071003",
-            "bomas": []
+            "bomas": [
+              "Abujop",
+              "Adwojo",
+              "Agugo",
+              "Ajaugo",
+              "Dur",
+              "Pakang",
+              "Tworo"
+            ]
           },
           {
             "name": "Panyidwoi",
             "code": "SS071004",
-            "bomas": []
+            "bomas": [
+              "Adidiang",
+              "Adidiang Paych",
+              "Akid Island",
+              "Doleib",
+              "Doleib Hill",
+              "Fakoi",
+              "Falo",
+              "Fanidway Payc",
+              "Fatworo",
+              "Nahr Sobat",
+              "Obai Dego",
+              "Ofyu",
+              "Pakoi",
+              "Panidway",
+              "Qanat Junqali",
+              "Shwal"
+            ]
           },
           {
             "name": "Panyikang",
@@ -4590,7 +4953,13 @@ export const southSudanLocations = [
           {
             "name": "South Renk",
             "code": "SS071105",
-            "bomas": []
+            "bomas": [
+              "Chakgula",
+              "Gaikwach",
+              "Matdakon(A)",
+              "Payuer",
+              "Qoweng"
+            ]
           }
         ]
       },
@@ -4791,7 +5160,17 @@ export const southSudanLocations = [
           {
             "name": "Ananatak",
             "code": "SS080301",
-            "bomas": []
+            "bomas": [
+              "Akok",
+              "Dal Madol",
+              "Faier",
+              "Faiwal",
+              "Lolakweir",
+              "Mecharr",
+              "Vudif-Diong",
+              "Wun Kote",
+              "Wun-Kot"
+            ]
           },
           {
             "name": "Makuac",
@@ -4803,47 +5182,104 @@ export const southSudanLocations = [
           {
             "name": "Malualcum",
             "code": "SS080303",
-            "bomas": []
+            "bomas": [
+              "Abiyei",
+              "Dan Ageir",
+              "Fabor",
+              "Kashwal",
+              "Kogjak",
+              "Ngabagok",
+              "War Gel",
+              "Wun",
+              "Wun Amet"
+            ]
           },
           {
             "name": "Maparah",
             "code": "SS080304",
-            "bomas": []
+            "bomas": [
+              "Mapura",
+              "Meding",
+              "Owat",
+              "Pan Rup"
+            ]
           },
           {
             "name": "Mayen 2",
             "code": "SS080305",
-            "bomas": []
+            "bomas": [
+              "Fanombiul",
+              "Kongor",
+              "Mayendor",
+              "Tau"
+            ]
           },
           {
             "name": "Pagor 2",
             "code": "SS080306",
-            "bomas": []
+            "bomas": [
+              "Kwoh",
+              "Labwod",
+              "War Bok"
+            ]
           },
           {
             "name": "Palal",
             "code": "SS080307",
-            "bomas": []
+            "bomas": [
+              "Akiar",
+              "Faiwal",
+              "Falal",
+              "Lolawol",
+              "Mayan Abun",
+              "Palwal",
+              "Shom",
+              "Wath",
+              "Wun-Keig"
+            ]
           },
           {
             "name": "Paliang",
             "code": "SS080308",
-            "bomas": []
+            "bomas": [
+              "Fagirtir",
+              "Paliang",
+              "Romich",
+              "Wun-Chuei"
+            ]
           },
           {
             "name": "Pannhial",
             "code": "SS080309",
-            "bomas": []
+            "bomas": [
+              "Amunguk",
+              "Fulbar"
+            ]
           },
           {
             "name": "Paweng",
             "code": "SS080310",
-            "bomas": []
+            "bomas": [
+              "Abvong",
+              "Arol",
+              "Falons",
+              "Fanok",
+              "Mabruk",
+              "Pagor"
+            ]
           },
           {
             "name": "Wun-liit",
             "code": "SS080311",
-            "bomas": []
+            "bomas": [
+              "Jiu",
+              "Madeir",
+              "Magur",
+              "Medar",
+              "Meir",
+              "Waat",
+              "Wir Liet"
+            ]
           }
         ]
       },
@@ -4964,27 +5400,114 @@ export const southSudanLocations = [
           {
             "name": "Jak",
             "code": "SS080501",
-            "bomas": []
+            "bomas": [
+              "Abyor",
+              "Ajako",
+              "Angwi",
+              "Asor",
+              "Morchol"
+            ]
           },
           {
             "name": "Manyang-ngok",
             "code": "SS080502",
-            "bomas": []
+            "bomas": [
+              "Adidur",
+              "Akon",
+              "Aliab",
+              "Aliyab",
+              "Atong",
+              "Ayugok",
+              "Dirdi",
+              "Fankot",
+              "Mainyel",
+              "Raab",
+              "Sanyot",
+              "Shum",
+              "Tid",
+              "Wath"
+            ]
           },
           {
             "name": "Thiet",
             "code": "SS080503",
-            "bomas": []
+            "bomas": [
+              "Abi",
+              "Angol",
+              "Babul",
+              "Bir Di",
+              "Fan Anab",
+              "Jui",
+              "Miyom",
+              "Niang Nier",
+              "Thiet",
+              "Wanh Alel"
+            ]
           },
           {
             "name": "Tonj",
             "code": "SS080504",
-            "bomas": []
+            "bomas": [
+              "Abd Allah",
+              "Abd Et Tam",
+              "Abelek",
+              "Agago",
+              "Aguka",
+              "Aidu",
+              "Akwir",
+              "Amett",
+              "Apurin",
+              "Bi'r Gorr",
+              "Bongo",
+              "Da",
+              "Delingei",
+              "Dishol",
+              "Duhi",
+              "Dulbah",
+              "Fatina",
+              "Fiki",
+              "Gau",
+              "Gaw",
+              "Genanyuon/Kombania",
+              "Higoli",
+              "Iniviru",
+              "Kair Yair",
+              "Kombania",
+              "Kunga",
+              "Madol",
+              "Majok",
+              "Mapeir",
+              "Materr",
+              "Matong",
+              "Miniogbolo",
+              "Mondi",
+              "Mungara",
+              "Piok Koi",
+              "Regeb",
+              "River Ibba",
+              "Ruku",
+              "Surur Bol",
+              "Tonj",
+              "Umbabatu",
+              "Wango",
+              "Waratit",
+              "Warcuei",
+              "Wun Shol",
+              "Zungumbia"
+            ]
           },
           {
             "name": "Wath-alel",
             "code": "SS080505",
-            "bomas": []
+            "bomas": [
+              "Abar",
+              "Dilkwoi",
+              "Giu",
+              "Mabior Yar",
+              "Maloing",
+              "Pankeir",
+              "Wanh Alet"
+            ]
           }
         ]
       },
@@ -5378,7 +5901,21 @@ export const southSudanLocations = [
           {
             "name": "Ibba Centre",
             "code": "SS100201",
-            "bomas": []
+            "bomas": [
+              "Amalakpa",
+              "Araki",
+              "Basakumbo",
+              "Duru",
+              "Embe",
+              "Ibba",
+              "Inn",
+              "Kuyango",
+              "Murgak",
+              "Namarabia",
+              "Ngutwa",
+              "River Issu",
+              "Wowo"
+            ]
           },
           {
             "name": "Madebe",
@@ -5848,7 +6385,7 @@ export const southSudanLocations = [
         "code": "SS00-ABYEI",
         "payams": [
           {
-            "name": "Abyei Municipality",
+            "name": "Abyei Town",
             "code": "SS00-ABYEI-P",
             "bomas": [
               "Abyei Thony",
@@ -5860,11 +6397,11 @@ export const southSudanLocations = [
         ]
       },
       {
-        "name": "Alal (Allal)",
+        "name": "Alal",
         "code": "SS00-ALAL",
         "payams": [
           {
-            "name": "Alal (Allal)",
+            "name": "Allal",
             "code": "SS00-ALAL-P",
             "bomas": [
               "Akec-nhial",
@@ -5885,7 +6422,7 @@ export const southSudanLocations = [
             "code": "SS00-AMETH-P",
             "bomas": [
               "Dungop",
-              "Todac (Tordaj)",
+              "Todac",
               "Todac II"
             ]
           }
@@ -5906,11 +6443,11 @@ export const southSudanLocations = [
         ]
       },
       {
-        "name": "Rum Amer (Rumamer)",
+        "name": "Rum Amer",
         "code": "SS00-RUMAMER",
         "payams": [
           {
-            "name": "Rum Amer (Rumamer)",
+            "name": "Rumamer",
             "code": "SS00-RUMAMER-P",
             "bomas": [
               "Mabok",
@@ -5923,4 +6460,4 @@ export const southSudanLocations = [
   }
 ] as const satisfies readonly SouthSudanState[];
 
-export const southSudanLocationCounts = {"states":11,"counties":83,"payams":516,"bomas":2287} as const;
+export const southSudanLocationCounts = {"states":11,"counties":83,"payams":516,"bomas":2777} as const;

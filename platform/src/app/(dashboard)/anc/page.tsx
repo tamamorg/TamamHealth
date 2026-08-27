@@ -564,7 +564,7 @@ export default function ANCPage() {
                   <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>Mother Information</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-2">
-                      <label>Mother Name</label>
+                      <label className="field-required">Mother Name</label>
                       <input type="text" required value={form.motherName} onChange={e => setForm({ ...form, motherName: e.target.value })} placeholder="Full name" />
                     </div>
                     <div>
@@ -727,7 +727,7 @@ export default function ANCPage() {
                 {/* Dates & Notes */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label>Visit Date</label>
+                    <label className="field-required">Visit Date</label>
                     <input type="date" required value={form.visitDate} onChange={e => setForm({ ...form, visitDate: e.target.value })} />
                   </div>
                   <div>

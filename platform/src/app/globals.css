@@ -2851,9 +2851,13 @@ html:has(.ehr-top-rail) {
   color: #fff;
 }
 
+/* The wordmark, not a 28px square — it carries the product name, so it needs
+   its own aspect ratio rather than the icon box it inherited. */
 .mobile-shell-header-logo {
-  width: 28px;
-  height: 28px;
+  width: auto;
+  height: 22px;
+  max-width: 108px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
@@ -3810,9 +3814,6 @@ html:has(.ehr-top-rail) {
   filter: none;
 }
 
-.ehr-top-brand-logo-icon {
-  display: none;
-}
 
 .ehr-top-modules,
 .ehr-top-actions {
@@ -7523,9 +7524,6 @@ button.ward-stat-chip:focus:not(:focus-visible) {
     width: 124px;
   }
 
-  .ehr-top-brand-logo-icon {
-    display: none;
-  }
 
   .ehr-top-search {
     grid-column: 1 / -1;
@@ -12888,9 +12886,6 @@ span:has(> svg:only-child) {
     width: 124px;
   }
 
-  .ehr-top-brand-logo-icon {
-    display: none;
-  }
 
   .ehr-top-modules button,
   .ehr-top-actions button {
@@ -13602,22 +13597,21 @@ span:has(> svg:only-child) {
   }
 
   .ehr-top-brand {
-    width: 30px;
+    width: 104px;
     height: 30px;
     padding: 0;
-    justify-content: center;
+    justify-content: flex-start;
     overflow: visible;
   }
 
+  /* The wordmark SHRINKS here; it is no longer swapped for a bare dot icon.
+     That swap was the only rule in the file that showed the second logo, and
+     five other rules existed solely to hide it again at every other width. */
   .ehr-top-brand-logo-full {
-    display: none;
-  }
-
-  .ehr-top-brand-logo-icon {
     display: block;
-    width: 28px;
-    height: 28px;
-    max-width: none;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
   }
 
   .ehr-top-modules,
@@ -14361,9 +14355,6 @@ span:has(> svg:only-child) {
     max-width: 100%;
   }
 
-  .ehr-top-brand .ehr-top-brand-logo-icon {
-    display: none;
-  }
 
   .ehr-top-calendar-button {
     display: inline-flex;

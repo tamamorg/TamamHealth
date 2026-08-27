@@ -73,7 +73,10 @@ export default function BirthsPage() {
   }, [births, thisMonthPrefix]);
 
   const handleSubmit = async () => {
-    if (!form.childFirstName || !form.motherName) return;
+    if (!form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth) {
+      showToast(t('patientNew.toastFillRequired'), 'error');
+      return;
+    }
     const facilityMatch = hospitals.find(h => h._id === (form.facilityId || currentUser?.hospitalId));
     try {
       await register({
@@ -240,19 +243,19 @@ export default function BirthsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child First Name</label>
-                    <input type="text" value={form.childFirstName} onChange={e => setForm({ ...form, childFirstName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
+                    <input type="text" required value={form.childFirstName} onChange={e => setForm({ ...form, childFirstName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
                     <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child Surname</label>
-                    <input type="text" value={form.childSurname} onChange={e => setForm({ ...form, childSurname: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
+                    <input type="text" required value={form.childSurname} onChange={e => setForm({ ...form, childSurname: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Gender</label>
                     <PopupSelect label="Gender" value={form.childGender} onChange={value => setForm({ ...form, childGender: value as 'Male' | 'Female' })} options={['Male', 'Female']} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Date of Birth</label>
-                    <input type="date" value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Date of Birth</label>
+                    <input type="date" required value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                 </div>
 
@@ -284,7 +287,7 @@ export default function BirthsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Name</label>
-                    <input type="text" value={form.motherName} onChange={e => setForm({ ...form, motherName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
+                    <input type="text" required value={form.motherName} onChange={e => setForm({ ...form, motherName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Age</label>
@@ -311,7 +314,7 @@ export default function BirthsPage() {
               </div>
               <div className="flex justify-end gap-3 p-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
                 <button onClick={() => setShowForm(false)} className="btn btn-secondary btn-sm">Cancel</button>
-                <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.childFirstName || !form.motherName ? 0.5 : 1 }}>Register Birth</button>
+                <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>Register Birth</button>
               </div>
             </div>
           </div>

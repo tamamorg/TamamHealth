@@ -2,7 +2,7 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { bomasFor, countiesFor, payamsFor, states } from '@/lib/data/south-sudan-reference';
+import { bomasFor, countiesFor, locationLabel, payamsFor, states } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 
@@ -110,7 +110,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
                   update('boma', '');
                 }}>
                 <option value="">{t('patientNew.selectState')}</option>
-                {states.map(s => <option key={s} value={s}>{s}</option>)}
+                {states.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
               </Select>
             )}
           </RegistrationField>
@@ -124,7 +124,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
                   update('boma', '');
                 }}>
                 <option value="">{form.state ? t('patientNew.selectCounty') : t('patientNew.selectStateFirst')}</option>
-                {counties.map(c => <option key={c} value={c}>{c}</option>)}
+                {counties.map(c => <option key={c} value={c}>{locationLabel(c)}</option>)}
               </Select>
             )}
           </RegistrationField>
@@ -137,7 +137,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
                   update('boma', '');
                 }}>
                 <option value="">{form.county ? t('patientNew.selectPayam') : t('patientNew.selectCountyFirst')}</option>
-                {payams.map(p => <option key={p} value={p}>{p}</option>)}
+                {payams.map(p => <option key={p} value={p}>{locationLabel(p)}</option>)}
               </Select>
             )}
           </RegistrationField>
@@ -147,7 +147,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
                 searchPlaceholder={t('patientNew.searchLocations')}
                 onChange={e => update('boma', e.target.value)}>
                 <option value="">{form.payam ? t('patientNew.selectBoma') : t('patientNew.selectPayamFirst')}</option>
-                {bomas.map(b => <option key={b} value={b}>{b}</option>)}
+                {bomas.map(b => <option key={b} value={b}>{locationLabel(b)}</option>)}
               </Select>
             )}
           </RegistrationField>

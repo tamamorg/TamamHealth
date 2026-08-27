@@ -929,7 +929,7 @@ export default function ImmunizationsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label>{t('immun.childName')}</label>
+                    <label className="field-required">{t('immun.childName')}</label>
                     <input type="text" required value={form.patientName} onChange={e => setForm({ ...form, patientName: e.target.value })} placeholder={t('immun.fullName')} />
                   </div>
                   <div>
@@ -942,7 +942,7 @@ export default function ImmunizationsPage() {
                 </div>
 
                 <div>
-                  <label>{t('immun.dateOfBirth')}</label>
+                  <label className="field-required">{t('immun.dateOfBirth')}</label>
                   <input type="date" required value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} />
                 </div>
 
@@ -961,7 +961,7 @@ export default function ImmunizationsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label>{t('immun.dateGiven')}</label>
+                    <label className="field-required">{t('immun.dateGiven')}</label>
                     <input type="date" required value={form.dateGiven} onChange={e => setForm({ ...form, dateGiven: e.target.value })} />
                   </div>
                   <div>

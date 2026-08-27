@@ -23,7 +23,7 @@ import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { states as SOUTH_SUDAN_STATES } from '@/lib/data/south-sudan-reference';
+import { locationLabel, states as SOUTH_SUDAN_STATES } from '@/lib/data/south-sudan-reference';
 import { FACILITY_TYPES, type FacilityType } from '@/lib/facility-types';
 import {
   BED_FIELDS, STAFF_FIELDS, INFRASTRUCTURE_FIELDS, ALL_SERVICES,
@@ -245,7 +245,7 @@ export default function FacilityFormModal({
             <div className="relative">
               <Select value={form.state} onChange={e => set('state', e.target.value)} searchThreshold={0} style={selectStyle} data-field="facility-state">
                 <option value="">{t('orgHospitals.selectState')}</option>
-                {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
               </Select>
               <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
             </div>

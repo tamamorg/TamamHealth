@@ -20,7 +20,7 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import { formatDate, isoWeek } from '@/lib/format-utils';
 // `states` is the real ADM1 state list — a leaf reference module with no
 // mock.ts generator behind it — used to populate the state dropdown.
-import { countiesFor, states } from '@/lib/data/south-sudan-reference';
+import { countiesFor, locationLabel, states } from '@/lib/data/south-sudan-reference';
 import { SOUTH_SUDAN_STATES, WHITE_NILE } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
@@ -825,7 +825,7 @@ export default function SurveillancePage() {
                     <Select value={alertForm.state} searchThreshold={0}
                       onChange={e => setAlertForm({ ...alertForm, state: e.target.value, county: '' })}>
                       <option value="">{t('surveillance.selectGeneric')}</option>
-                      {states.map(s => <option key={s} value={s}>{s}</option>)}
+                      {states.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
                     </Select>
                   </div>
                   <div>
@@ -833,7 +833,7 @@ export default function SurveillancePage() {
                     <Select value={alertForm.county} disabled={!alertForm.state} searchThreshold={0}
                       onChange={e => setAlertForm({ ...alertForm, county: e.target.value })}>
                       <option value="">{alertForm.state ? t('patientNew.selectCounty') : t('patientNew.selectStateFirst')}</option>
-                      {countiesFor(alertForm.state).map(county => <option key={county} value={county}>{county}</option>)}
+                      {countiesFor(alertForm.state).map(county => <option key={county} value={county}>{locationLabel(county)}</option>)}
                     </Select>
                   </div>
                 </div>

@@ -110,7 +110,6 @@
     max-width: 108px !important;
   }
 
-  .ehr-top-brand-logo-icon { display: none !important; }
 
   .ehr-top-modules,
   .ehr-top-actions {
@@ -231,12 +230,36 @@
   .ehr-rail-backdrop,
   .ehr-rail-close { display: none !important; }
 
-  .ehr-schedule-header {
-    grid-template-columns: auto minmax(140px, 1fr) auto !important;
-    gap: 8px;
+  /* The same three-column composition the desktop header has, at tablet
+     scale, and on the SAME column as the workspace grid below it.
+
+     The first column was `auto`, which sizes to content — and the content is
+     the primary action, whose label ("Book appointment") stretched it to
+     1013px in a 1194px viewport. Measured against desktop at 1440px, where
+     the columns are 260 / centre / actions on one line, the tablet header
+     came out with the page title squeezed into a 149px strip on the right and
+     the action buttons wrapped onto a second row. `var(--tablet-rail)` is the
+     same track the rail below uses, so the header lines up with it. */
+  .ehr-schedule-header,
+  .ehr-schedule-shell .ehr-schedule-header {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) auto !important;
+    gap: var(--tablet-gap) !important;
   }
 
-  .ehr-clinical-dashboard-header { grid-template-columns: minmax(0, 1fr) auto !important; }
+  /* Actions stay on one line and compress; wrapping is what put Download and
+     Clinic hours on a row of their own, out of line with the title. */
+  .ehr-schedule-header .ehr-schedule-actions,
+  .ehr-clinical-dashboard-header .ehr-schedule-actions {
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    min-width: 0;
+  }
+  .ehr-schedule-actions button { flex-shrink: 1; min-width: 0; }
+
+  .ehr-clinical-dashboard-header {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) auto !important;
+    gap: var(--tablet-gap) !important;
+  }
   .ehr-clinical-dashboard-header-main { flex-direction: row !important; align-items: center !important; }
   .ehr-clinical-dashboard-header .ehr-schedule-actions { display: flex !important; }
   .ehr-center-panel > .ehr-clinical-strip { display: grid !important; }

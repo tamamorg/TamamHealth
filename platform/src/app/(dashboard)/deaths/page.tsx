@@ -142,7 +142,10 @@ export default function DeathsPage() {
   const deathColTotal = deathCols.reduce((sum, c) => sum + c.width, 0);
 
   const handleSubmit = async () => {
-    if (!form.deceasedFirstName || !form.immediateCause) return;
+    if (!form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim()) {
+      showToast(t('patientNew.toastFillRequired'), 'error');
+      return;
+    }
     const fac = hospitals.find(h => h._id === (form.facilityId || currentUser?.hospitalId));
     // An encounter id is a URL-borne claim, not a fact: verify it belongs to
     // the patient this death is being registered FOR (and to this org/
@@ -429,10 +432,10 @@ export default function DeathsPage() {
                 <hr className="section-divider" />
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('deaths.deceasedInfo')}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div><label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.firstNameRequired')}</label><input type="text" value={form.deceasedFirstName} onChange={e => setForm({ ...form, deceasedFirstName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
-                  <div><label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.surname')}</label><input type="text" value={form.deceasedSurname} onChange={e => setForm({ ...form, deceasedSurname: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
+                  <div><label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.firstNameRequired')}</label><input type="text" required value={form.deceasedFirstName} onChange={e => setForm({ ...form, deceasedFirstName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
+                  <div><label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.surname')}</label><input type="text" required value={form.deceasedSurname} onChange={e => setForm({ ...form, deceasedSurname: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
                   <div><label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.gender')}</label><Select value={form.deceasedGender} onChange={e => setForm({ ...form, deceasedGender: e.target.value as 'Male' | 'Female' })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}><option value="Male">{t('deaths.male')}</option><option value="Female">{t('deaths.female')}</option></Select></div>
-                  <div><label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.colDateOfDeath')}</label><input type="date" value={form.dateOfDeath} onChange={e => setForm({ ...form, dateOfDeath: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
+                  <div><label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.colDateOfDeath')}</label><input type="date" required value={form.dateOfDeath} onChange={e => setForm({ ...form, dateOfDeath: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
                   <div><label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.ageAtDeath')}</label><input type="number" value={form.ageAtDeath} onChange={e => setForm({ ...form, ageAtDeath: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} /></div>
                   <div><label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.mannerOfDeath')}</label><Select value={form.mannerOfDeath} onChange={e => setForm({ ...form, mannerOfDeath: e.target.value as typeof form.mannerOfDeath })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}><option value="natural">{t('deaths.mannerNatural')}</option><option value="accident">{t('deaths.mannerAccident')}</option><option value="intentional_self_harm">{t('deaths.mannerSelfHarm')}</option><option value="assault">{t('deaths.mannerAssault')}</option><option value="pending_investigation">{t('deaths.mannerPending')}</option><option value="unknown">{t('deaths.mannerUnknown')}</option></Select></div>
                 </div>
@@ -441,7 +444,7 @@ export default function DeathsPage() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('deaths.causeChainWhoFormat')}</h3>
                 <div data-tour="death-cause-chain" className="p-3 rounded-lg space-y-3" style={{ background: 'rgba(224, 49, 39,0.05)', border: '1px solid rgba(224, 49, 39,0.15)' }}>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-required text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.lineAImmediate')}</label><input type="text" value={form.immediateCause} onChange={e => setForm({ ...form, immediateCause: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} placeholder={t('deaths.lineAImmediatePlaceholder')} /></div>
+                    <div><label className="field-required text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.lineAImmediate')}</label><input type="text" required value={form.immediateCause} onChange={e => setForm({ ...form, immediateCause: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} placeholder={t('deaths.lineAImmediatePlaceholder')} /></div>
                     <ICD11Select value={form.immediateICD11} onChange={v => setForm({ ...form, immediateICD11: v })} label={t('deaths.icd11LineA')} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -471,7 +474,7 @@ export default function DeathsPage() {
               </div>
               <div className="flex justify-end gap-3 p-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
                 <button onClick={() => setShowForm(false)} className="btn btn-secondary btn-sm">{t('action.cancel')}</button>
-                <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.deceasedFirstName || !form.immediateCause ? 0.5 : 1 }}>{t('deaths.registerDeath')}</button>
+                <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim() ? 0.5 : 1 }}>{t('deaths.registerDeath')}</button>
               </div>
             </div>
           </div>

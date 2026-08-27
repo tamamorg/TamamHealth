@@ -23,7 +23,7 @@ import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
-import { states } from '@/lib/data/south-sudan-reference';
+import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 
 const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
   { value: 'disease_outbreak', label: 'Disease outbreak' },
@@ -358,7 +358,7 @@ export default function EmergencyPreparednessPage() {
                     <Select value={form.state} searchThreshold={0}
                       onChange={e => setForm({ ...form, state: e.target.value })}>
                       <option value="">State / region</option>
-                      {states.map(state => <option key={state} value={state}>{state}</option>)}
+                      {states.map(state => <option key={state} value={state}>{locationLabel(state)}</option>)}
                     </Select>
                   </div>
                 </div>
