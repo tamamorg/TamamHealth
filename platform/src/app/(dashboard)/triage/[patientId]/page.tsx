@@ -115,7 +115,11 @@ export default function PatientTriagePage() {
       </button>
 
       <div className="triage-patient-workspace">
-        <TriageWorkflow lockedPatientId={patient._id} lockedPatient={patient} />
+        <TriageWorkflow
+          lockedPatientId={patient._id}
+          lockedPatient={patient}
+          onSaved={() => router.replace(returnToFromSearch(window.location.search, backTarget))}
+        />
       </div>
     </main>
   );

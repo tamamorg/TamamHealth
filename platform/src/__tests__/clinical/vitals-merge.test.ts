@@ -103,10 +103,13 @@ describe('mergeVitalsTimeline', () => {
         systolic: '130',
         diastolic: '85',
         pulse: '90',
+        weight: '65',
+        height: '170',
+        bmi: '22.5',
       }),
     ]);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ id: 't1', source: 'Triage', temperature: 38.5, systolic: 130, diastolic: 85, pulse: 90 });
+    expect(rows[0]).toMatchObject({ id: 't1', source: 'Triage', temperature: 38.5, systolic: 130, diastolic: 85, pulse: 90, weight: 65, height: 170, bmi: 22.5 });
     // Confirms actual numeric type, not just loose equality against a string.
     expect(typeof rows[0].temperature).toBe('number');
   });

@@ -32,6 +32,7 @@ describe('triage persistence safety', () => {
   test('the service refuses impossible vitals even when the UI is bypassed', async () => {
     await expect(createTriage(triageInput({ pulse: 'abc' }))).rejects.toThrow('Pulse must be a number');
     await expect(createTriage(triageInput({ oxygenSaturation: '999' }))).rejects.toThrow('Oxygen saturation must be between');
+    await expect(createTriage(triageInput({ height: '999' }))).rejects.toThrow('Height must be between');
   });
 
   test('saving below the recommendation is refused without a recorded reason', async () => {

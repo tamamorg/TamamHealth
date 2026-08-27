@@ -1936,6 +1936,8 @@ export interface TriageDoc extends BaseDoc {
   diastolic?: string;
   oxygenSaturation?: string;
   weight?: string;
+  height?: string;          // centimetres
+  bmi?: string;             // calculated kg/m² snapshot from weight + height
   painScore?: string;       // 0–10 numeric rating scale
   bloodGlucose?: string;    // mmol/L
   gcs?: string;             // Glasgow Coma Scale 3–15
@@ -1960,6 +1962,18 @@ export interface TriageDoc extends BaseDoc {
   symptomDuration?: string;   // free text, e.g. "2 days"
   referralSource?: string;    // referring facility / person
   knownAllergies?: string;    // free text; "" / "None known" when none
+  /** WHO/ICRC/MSF IITT presentation and danger-sign screen. */
+  presentationCategory?: 'medical' | 'trauma' | 'obstetric' | 'mental_health' | 'other';
+  redCriteria?: string[];
+  yellowCriteria?: string[];
+  capillaryRefillSeconds?: string;
+  pregnancyStatus?: 'not_pregnant' | 'pregnant' | 'postpartum' | 'unknown' | 'not_applicable';
+  gestationalAgeWeeks?: string;
+  injuryMechanism?: string;
+  infectionRiskSigns?: string[];
+  isolationRequired?: boolean;
+  preArrivalCare?: string;
+  immediateInterventions?: string;
   /** Clinical destination selected by the triage nurse. */
   disposition?: TriageDisposition;
   destinationClinic?: string;

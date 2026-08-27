@@ -19,6 +19,7 @@ function assertTriageVitalSafety(doc: Partial<TriageDoc>): void {
     systolic: doc.systolic,
     diastolic: doc.diastolic,
     weight: doc.weight,
+    height: doc.height,
     painScore: doc.painScore,
     bloodGlucose: doc.bloodGlucose,
     gcs: doc.gcs,

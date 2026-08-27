@@ -15,8 +15,10 @@ import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
 import { patientAge, patientFullName, patientGenderAge, initials, shortenPersonName } from '@/lib/patient-utils';
 import {
+  calculateBmi,
   getTriageVitalWarnings,
   isLowerTriagePriority,
+  parseStrictVitalNumber,
   recommendTriagePriority,
   validateTriageVitals,
   type TriageVitalField,
@@ -35,6 +37,38 @@ import ListSearch from './ListSearch';
 import RowActionsMenu, { type RowAction } from '@/components/referrals/RowActionsMenu';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+
+const IITT_RED_CRITERIA = [
+  ['unresponsive_convulsions', 'Unresponsive or active convulsions'],
+  ['airway_breathing', 'Stridor, respiratory distress or central cyanosis'],
+  ['shock_bleeding', 'Capillary refill >3 seconds, weak/fast pulse or heavy bleeding'],
+  ['high_risk_trauma', 'High-risk trauma, major burn or threatened limb'],
+  ['toxin_bite', 'Poisoning, dangerous exposure or snake bite'],
+  ['pregnancy_emergency', 'Pregnancy: bleeding, severe pain, seizure, severe headache/vision change, severe BP, labour or trauma'],
+  ['neurologic_infection', 'Altered mental status with stiff neck, fever/hypothermia or headache'],
+  ['hypoglycaemia', 'Known hypoglycaemia'],
+  ['young_infant_emergency', 'Infant under 8 days, or under 2 months with temperature <36°C or >39°C'],
+] as const;
+
+const IITT_YELLOW_CRITERIA = [
+  ['airway_warning', 'Mouth/throat/neck swelling or wheeze without red signs'],
+  ['feeding_fluid_loss', 'Unable to feed/drink, vomiting everything, diarrhoea or dehydration'],
+  ['pallor_bleeding_fainting', 'Severe pallor, ongoing bleeding or recent fainting'],
+  ['trauma_burn', 'Trauma, burn, deformity, open fracture or suspected dislocation without red signs'],
+  ['urgent_exposure_surgery', 'Urgent surgical condition or exposure needing time-sensitive prophylaxis'],
+  ['urogenital_assault', 'Sexual assault, acute scrotal pain/priapism or unable to pass urine'],
+  ['neurologic_pain', 'Altered mental state, weakness, focal neurology, visual disturbance or severe pain'],
+  ['rash_malnutrition', 'Rapidly worsening/peeling rash or severe wasting/bilateral foot oedema'],
+  ['pregnancy_complication', 'Pregnancy referred for complication without red signs'],
+] as const;
+
+const INFECTION_RISK_SIGNS = [
+  ['fever_rash', 'Fever with rash'],
+  ['acute_watery_diarrhoea', 'Acute watery diarrhoea or repeated vomiting'],
+  ['respiratory_exposure', 'Respiratory symptoms with outbreak/contact risk'],
+  ['haemorrhagic_signs', 'Unexplained bleeding or haemorrhagic signs'],
+  ['known_outbreak_contact', 'Known outbreak exposure or travel from an affected area'],
+] as const;
 
 function VitalInputField({
   field,
@@ -109,6 +143,7 @@ export default function TriageWorkflow({
   initialPatientId,
   lockedPatientId,
   lockedPatient,
+  onSaved,
 }: {
   initialPatientId?: string;
   /**
@@ -121,6 +156,8 @@ export default function TriageWorkflow({
   lockedPatientId?: string;
   /** Resolved patient from the focused page, including cross-facility referrals. */
   lockedPatient?: PatientDoc | null;
+  /** Focused pages close after a successful save; embedded stations may reset. */
+  onSaved?: () => void;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -161,7 +198,7 @@ export default function TriageWorkflow({
   const [nowMs] = useState(() => Date.now());
   const [triageVitals, setTriageVitals] = useState({
     temperature: '', pulse: '', respiratoryRate: '', systolic: '', diastolic: '',
-    oxygenSaturation: '', weight: '', painScore: '', bloodGlucose: '', gcs: '', muac: '',
+    oxygenSaturation: '', weight: '', height: '', painScore: '', bloodGlucose: '', gcs: '', muac: '',
   });
   const [triageContext, setTriageContext] = useState<{
     modeOfArrival: 'walk-in' | 'ambulance' | 'referral' | 'police' | 'other' | '';
@@ -173,6 +210,17 @@ export default function TriageWorkflow({
   });
   const [triageComplaint, setTriageComplaint] = useState('');
   const [triageNotes, setTriageNotes] = useState('');
+  const [presentationCategory, setPresentationCategory] = useState<'medical' | 'trauma' | 'obstetric' | 'mental_health' | 'other'>('medical');
+  const [redCriteria, setRedCriteria] = useState<string[]>([]);
+  const [yellowCriteria, setYellowCriteria] = useState<string[]>([]);
+  const [capillaryRefillSeconds, setCapillaryRefillSeconds] = useState('');
+  const [pregnancyStatus, setPregnancyStatus] = useState<'not_pregnant' | 'pregnant' | 'postpartum' | 'unknown' | 'not_applicable'>('unknown');
+  const [gestationalAgeWeeks, setGestationalAgeWeeks] = useState('');
+  const [injuryMechanism, setInjuryMechanism] = useState('');
+  const [infectionRiskSigns, setInfectionRiskSigns] = useState<string[]>([]);
+  const [isolationRequired, setIsolationRequired] = useState(false);
+  const [preArrivalCare, setPreArrivalCare] = useState('');
+  const [immediateInterventions, setImmediateInterventions] = useState('');
   const [triageDisposition, setTriageDisposition] = useState<TriageDisposition>('general_clinic');
   const [destinationClinic, setDestinationClinic] = useState('');
   const [assignedProviderId, setAssignedProviderId] = useState('');
@@ -229,11 +277,23 @@ export default function TriageWorkflow({
     }
     return result;
   }, [vitalWarnings]);
-  const recommendedPriority = recommendTriagePriority(triageData.priority, vitalWarnings);
+  const calculatedBmi = useMemo(
+    () => calculateBmi(triageVitals.weight, triageVitals.height),
+    [triageVitals.height, triageVitals.weight],
+  );
+  const vitalRecommendedPriority = recommendTriagePriority(triageData.priority, vitalWarnings);
+  const recommendedPriority = redCriteria.length > 0
+    ? 'RED'
+    : yellowCriteria.length > 0 && isLowerTriagePriority(vitalRecommendedPriority, 'YELLOW')
+      ? 'YELLOW'
+      : vitalRecommendedPriority;
   const recommendationRaisesPriority = isLowerTriagePriority(triageData.priority, recommendedPriority);
   const effectivePriority = recommendationRaisesPriority && !overrideVitalUrgency
     ? recommendedPriority
     : triageData.priority;
+  const recordedPregnancyStatus = pregnancyStatus === 'unknown' && isSelectedPatientPregnant
+    ? 'pregnant'
+    : pregnancyStatus;
   const availableProviders = useMemo(() => users.filter(user =>
     user.isActive !== false &&
     ['doctor', 'clinical_officer', 'clinician', 'medical_superintendent'].includes(user.role) &&
@@ -271,6 +331,7 @@ export default function TriageWorkflow({
       diastolic: ti.diastolic || '',
       oxygenSaturation: ti.oxygenSaturation || '',
       weight: ti.weight || '',
+      height: ti.height || '',
       painScore: ti.painScore || '',
       bloodGlucose: ti.bloodGlucose || '',
       gcs: ti.gcs || '',
@@ -284,6 +345,17 @@ export default function TriageWorkflow({
     });
     setTriageComplaint(ti.chiefComplaint || '');
     setTriageNotes(ti.notes || '');
+    setPresentationCategory(ti.presentationCategory || 'medical');
+    setRedCriteria(ti.redCriteria || []);
+    setYellowCriteria(ti.yellowCriteria || []);
+    setCapillaryRefillSeconds(ti.capillaryRefillSeconds || '');
+    setPregnancyStatus(ti.pregnancyStatus || 'unknown');
+    setGestationalAgeWeeks(ti.gestationalAgeWeeks || '');
+    setInjuryMechanism(ti.injuryMechanism || '');
+    setInfectionRiskSigns(ti.infectionRiskSigns || []);
+    setIsolationRequired(Boolean(ti.isolationRequired));
+    setPreArrivalCare(ti.preArrivalCare || '');
+    setImmediateInterventions(ti.immediateInterventions || '');
     setTriageDisposition(ti.disposition || 'general_clinic');
     setDestinationClinic(ti.destinationClinic || '');
     setAssignedProviderId(ti.assignedProviderId || '');
@@ -377,10 +449,21 @@ export default function TriageWorkflow({
     setTriageData({ airway: '', breathing: '', circulation: '', consciousness: '', priority: '' });
     setTriagePatientId(lockedPatientId ?? '');
     setTriagePatientSearch('');
-    setTriageVitals({ temperature: '', pulse: '', respiratoryRate: '', systolic: '', diastolic: '', oxygenSaturation: '', weight: '', painScore: '', bloodGlucose: '', gcs: '', muac: '' });
+    setTriageVitals({ temperature: '', pulse: '', respiratoryRate: '', systolic: '', diastolic: '', oxygenSaturation: '', weight: '', height: '', painScore: '', bloodGlucose: '', gcs: '', muac: '' });
     setTriageContext({ modeOfArrival: '', symptomDuration: '', referralSource: '', knownAllergies: '' });
     setTriageComplaint('');
     setTriageNotes('');
+    setPresentationCategory('medical');
+    setRedCriteria([]);
+    setYellowCriteria([]);
+    setCapillaryRefillSeconds('');
+    setPregnancyStatus('unknown');
+    setGestationalAgeWeeks('');
+    setInjuryMechanism('');
+    setInfectionRiskSigns([]);
+    setIsolationRequired(false);
+    setPreArrivalCare('');
+    setImmediateInterventions('');
     setTriageDisposition('general_clinic');
     setDestinationClinic('');
     setAssignedProviderId('');
@@ -420,6 +503,16 @@ export default function TriageWorkflow({
       document.getElementById('triage-vital-safety-summary')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    const capillaryRefill = parseStrictVitalNumber(capillaryRefillSeconds);
+    if (capillaryRefillSeconds.trim() && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
+      showToast('Capillary refill must be between 0 and 10 seconds.', 'error');
+      return;
+    }
+    const gestationalAge = parseStrictVitalNumber(gestationalAgeWeeks);
+    if (gestationalAgeWeeks.trim() && (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)) {
+      showToast('Gestational age must be a whole number from 0 to 45 weeks.', 'error');
+      return;
+    }
     if (recommendationRaisesPriority && overrideVitalUrgency && !vitalUrgencyOverrideReason.trim()) {
       showToast('Record a clinical reason before overriding the recommended urgency.', 'error');
       document.getElementById('triage-vital-override-reason')?.focus();
@@ -445,11 +538,13 @@ export default function TriageWorkflow({
         diastolic: triageVitals.diastolic || undefined,
         oxygenSaturation: triageVitals.oxygenSaturation || undefined,
         weight: triageVitals.weight || undefined,
+        height: triageVitals.height || undefined,
+        bmi: calculatedBmi || undefined,
         painScore: triageVitals.painScore || undefined,
         bloodGlucose: triageVitals.bloodGlucose || undefined,
         gcs: triageVitals.gcs || undefined,
         muac: triageVitals.muac || undefined,
-        vitalUrgencyRecommendation: vitalWarnings.length > 0
+        vitalUrgencyRecommendation: recommendationRaisesPriority
           ? recommendedPriority as 'RED' | 'YELLOW' | 'GREEN'
           : undefined,
         vitalUrgencyWarnings: vitalWarnings.length > 0 ? vitalWarnings : undefined,
@@ -461,6 +556,21 @@ export default function TriageWorkflow({
         symptomDuration: triageContext.symptomDuration || undefined,
         referralSource: triageContext.referralSource || undefined,
         knownAllergies: triageContext.knownAllergies || undefined,
+        presentationCategory,
+        redCriteria,
+        yellowCriteria,
+        capillaryRefillSeconds: capillaryRefillSeconds || undefined,
+        pregnancyStatus: recordedPregnancyStatus,
+        gestationalAgeWeeks: recordedPregnancyStatus === 'pregnant' && gestationalAgeWeeks
+          ? gestationalAgeWeeks
+          : undefined,
+        injuryMechanism: presentationCategory === 'trauma' && injuryMechanism
+          ? injuryMechanism
+          : undefined,
+        infectionRiskSigns,
+        isolationRequired,
+        preArrivalCare: preArrivalCare || undefined,
+        immediateInterventions: immediateInterventions || undefined,
         chiefComplaint: triageComplaint || undefined,
         notes: triageNotes || undefined,
         disposition: triageDisposition,
@@ -539,8 +649,11 @@ export default function TriageWorkflow({
         orgId: currentUser?.orgId,
       });
       showToast(t('nurse.triageSaved', { priority: effectivePriority, name: patientFullName(selectedTriagePatient) }), 'success');
-      // Reset form only on success
-      clearForm();
+      // A focused patient assessment is complete: close its page and return
+      // to the queue that launched it. Embedded stations remain ready for the
+      // next patient instead.
+      if (onSaved) onSaved();
+      else clearForm();
     } catch (err) {
       console.error(err);
       // Keep form data intact so the nurse can retry
@@ -563,6 +676,7 @@ export default function TriageWorkflow({
   const triageSections = [
     { id: 'patient', label: 'Patient & complaint', icon: ClipboardList, detail: selectedTriagePatient ? 'Identity confirmed' : 'Select patient' },
     { id: 'assessment', label: 'ABCC assessment', icon: AlertTriangle, detail: triageData.priority ? 'Assessment complete' : 'Required' },
+    { id: 'danger', label: 'IITT danger signs', icon: AlertTriangle, detail: redCriteria.length ? `${redCriteria.length} red` : yellowCriteria.length ? `${yellowCriteria.length} yellow` : 'Screen all signs' },
     { id: 'vitals', label: 'Vitals', icon: Activity, detail: 'Record observations' },
     { id: 'context', label: 'Visit context', icon: Clock, detail: 'Arrival & history' },
     { id: 'handoff', label: 'Provider handoff', icon: Send, detail: assignedProviderId ? 'Provider selected' : 'Assign later' },
@@ -922,6 +1036,109 @@ export default function TriageWorkflow({
             </div>
           </div>
 
+          {/* WHO/ICRC/MSF Interagency Integrated Triage Tool. ABCC alone does
+              not capture trauma, obstetric, exposure, infection or the full
+              adult/paediatric danger-sign screen used at first contact. */}
+          <div id="triage-section-danger" className="p-3 rounded-xl scroll-mt-3 space-y-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+              <div>
+                <span className="block text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>IITT danger-sign screen</span>
+                <span className="block text-[10px]" style={{ color: 'var(--text-muted)' }}>Use the age-appropriate adult or child criteria. Any red sign requires immediate high-acuity care.</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label htmlFor="triage-presentation-category" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Presentation</label>
+                <Select id="triage-presentation-category" value={presentationCategory} onChange={event => setPresentationCategory(event.target.value as typeof presentationCategory)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                  <option value="medical">Medical</option>
+                  <option value="trauma">Trauma / burn</option>
+                  <option value="obstetric">Obstetric</option>
+                  <option value="mental_health">Mental health / behavioural</option>
+                  <option value="other">Other</option>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor="triage-capillary-refill" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Capillary refill (seconds)</label>
+                <input id="triage-capillary-refill" type="text" inputMode="decimal" value={capillaryRefillSeconds} onChange={event => setCapillaryRefillSeconds(event.target.value)} placeholder="2" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+              </div>
+              <div>
+                <label htmlFor="triage-pregnancy-status" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Pregnancy status</label>
+                <Select id="triage-pregnancy-status" value={recordedPregnancyStatus} onChange={event => setPregnancyStatus(event.target.value as typeof pregnancyStatus)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                  <option value="unknown">Unknown</option>
+                  <option value="not_applicable">Not applicable</option>
+                  <option value="not_pregnant">Not pregnant</option>
+                  <option value="pregnant">Pregnant</option>
+                  <option value="postpartum">Postpartum</option>
+                </Select>
+              </div>
+              {recordedPregnancyStatus === 'pregnant' && (
+                <div>
+                  <label htmlFor="triage-gestational-age" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Gestational age (weeks)</label>
+                  <input id="triage-gestational-age" type="text" inputMode="numeric" value={gestationalAgeWeeks} onChange={event => setGestationalAgeWeeks(event.target.value)} placeholder="28" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+                </div>
+              )}
+              {presentationCategory === 'trauma' && (
+                <div className="sm:col-span-2">
+                  <label htmlFor="triage-injury-mechanism" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Injury mechanism</label>
+                  <input id="triage-injury-mechanism" type="text" value={injuryMechanism} onChange={event => setInjuryMechanism(event.target.value)} placeholder="Road traffic crash, fall, penetrating injury…" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+                </div>
+              )}
+            </div>
+
+            <fieldset className="rounded-lg p-2" style={{ border: '1px solid rgba(224,49,39,0.3)', background: 'var(--bg-card)' }}>
+              <legend className="px-1 text-[10px] font-bold" style={{ color: 'var(--color-danger)' }}>Red — immediate</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {IITT_RED_CRITERIA.map(([code, label]) => (
+                  <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
+                    <input type="checkbox" checked={redCriteria.includes(code)} onChange={event => setRedCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code))} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="rounded-lg p-2" style={{ border: '1px solid rgba(255,153,51,0.4)', background: 'var(--bg-card)' }}>
+              <legend className="px-1 text-[10px] font-bold" style={{ color: 'var(--color-warning)' }}>Yellow — urgent review</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {IITT_YELLOW_CRITERIA.map(([code, label]) => (
+                  <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
+                    <input type="checkbox" checked={yellowCriteria.includes(code)} onChange={event => setYellowCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code))} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="rounded-lg p-2" style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card)' }}>
+              <legend className="px-1 text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>Outbreak / infection screen</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {INFECTION_RISK_SIGNS.map(([code, label]) => (
+                  <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
+                    <input type="checkbox" checked={infectionRiskSigns.includes(code)} onChange={event => setInfectionRiskSigns(current => event.target.checked ? [...current, code] : current.filter(item => item !== code))} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+                <label className="flex items-start gap-2 text-[10px] font-semibold leading-tight" style={{ color: 'var(--color-danger)' }}>
+                  <input type="checkbox" checked={isolationRequired} onChange={event => setIsolationRequired(event.target.checked)} />
+                  <span>Separate immediately and apply facility isolation / IPC pathway</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="triage-pre-arrival-care" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Care before arrival</label>
+                <input id="triage-pre-arrival-care" type="text" value={preArrivalCare} onChange={event => setPreArrivalCare(event.target.value)} placeholder="First aid, medicines, fluids, referral treatment…" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+              </div>
+              <div>
+                <label htmlFor="triage-immediate-interventions" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Immediate interventions</label>
+                <input id="triage-immediate-interventions" type="text" value={immediateInterventions} onChange={event => setImmediateInterventions(event.target.value)} placeholder="Airway manoeuvre, oxygen, bleeding control, glucose…" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+              </div>
+            </div>
+          </div>
+
           {/* Triage Result */}
           {triageData.priority && effectivePriority && (
             <div
@@ -936,7 +1153,7 @@ export default function TriageWorkflow({
                 <p className="text-[10px] mt-1 font-semibold opacity-90">
                   {overrideVitalUrgency
                     ? `Override selected · recommended ${recommendedPriority}`
-                    : `Escalated from ABCC ${triageData.priority} by vital-sign warning`}
+                    : `Escalated from ABCC ${triageData.priority} by IITT danger signs or vital-sign warning`}
                 </p>
               )}
               {selectedTriagePatient && (
@@ -960,6 +1177,7 @@ export default function TriageWorkflow({
                 { field: 'systolic', label: t('nurse.sysBp'), placeholder: '120', inputMode: 'numeric' },
                 { field: 'diastolic', label: t('nurse.diaBp'), placeholder: '80', inputMode: 'numeric' },
                 { field: 'weight', label: t('nurse.weightKg'), placeholder: '65', inputMode: 'decimal' },
+                { field: 'height', label: `${t('vitals.height')} cm`, placeholder: '170', inputMode: 'decimal' },
                 { field: 'painScore', label: t('nurse.painScore'), placeholder: '0', inputMode: 'numeric' },
                 { field: 'bloodGlucose', label: t('nurse.bloodGlucose'), placeholder: '5.5', inputMode: 'decimal' },
                 { field: 'gcs', label: t('nurse.gcs'), placeholder: '15', inputMode: 'numeric' },
@@ -980,6 +1198,12 @@ export default function TriageWorkflow({
                   }}
                 />
               ))}
+              <div data-vital-field="bmi">
+                <label htmlFor="triage-bmi" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('vitals.bmi')} kg/m²</label>
+                <output id="triage-bmi" aria-live="polite" className="flex items-center" style={{ width: '100%', minHeight: 30, padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: calculatedBmi ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                  {calculatedBmi || 'Calculated from height and weight'}
+                </output>
+              </div>
             </div>
           </div>
 

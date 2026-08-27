@@ -24,6 +24,7 @@ export interface VitalsInput {
   pulse?: string;
   spo2?: string;
   weight?: string;
+  height?: string;
   respiratoryRate?: string;
   /** Pain score, 0–10 numeric rating scale. */
   painScore?: string;
@@ -40,7 +41,7 @@ export interface VitalsInput {
  * Physiologically plausible [min, max] bounds, used to reject garbage input
  * ("abc", "999") before persisting. Keys match VitalsInput numeric fields.
  */
-export const VITAL_RANGES: Record<'temperature' | 'pulse' | 'respiratoryRate' | 'systolic' | 'diastolic' | 'spo2' | 'weight' | 'painScore' | 'bloodGlucose' | 'gcs' | 'muac', [number, number]> = {
+export const VITAL_RANGES: Record<'temperature' | 'pulse' | 'respiratoryRate' | 'systolic' | 'diastolic' | 'spo2' | 'weight' | 'height' | 'painScore' | 'bloodGlucose' | 'gcs' | 'muac', [number, number]> = {
   temperature: [25, 45],
   pulse: [20, 250],
   respiratoryRate: [4, 80],
@@ -48,6 +49,7 @@ export const VITAL_RANGES: Record<'temperature' | 'pulse' | 'respiratoryRate' | 
   diastolic: [20, 200],
   spo2: [30, 100],
   weight: [0.5, 400],
+  height: [30, 250],
   painScore: [0, 10],
   bloodGlucose: [1, 40],
   gcs: [3, 15],
@@ -62,6 +64,7 @@ export type TriageVitalField =
   | 'systolic'
   | 'diastolic'
   | 'weight'
+  | 'height'
   | 'painScore'
   | 'bloodGlucose'
   | 'gcs'
@@ -77,6 +80,7 @@ const TRIAGE_RANGE_FIELD: Record<TriageVitalField, keyof typeof VITAL_RANGES> = 
   systolic: 'systolic',
   diastolic: 'diastolic',
   weight: 'weight',
+  height: 'height',
   painScore: 'painScore',
   bloodGlucose: 'bloodGlucose',
   gcs: 'gcs',
@@ -91,6 +95,7 @@ const TRIAGE_VITAL_LABEL: Record<TriageVitalField, string> = {
   systolic: 'Systolic blood pressure',
   diastolic: 'Diastolic blood pressure',
   weight: 'Weight',
+  height: 'Height',
   painScore: 'Pain score',
   bloodGlucose: 'Blood glucose',
   gcs: 'GCS',
@@ -105,6 +110,7 @@ const TRIAGE_VITAL_UNIT: Record<TriageVitalField, string> = {
   systolic: 'mmHg',
   diastolic: 'mmHg',
   weight: 'kg',
+  height: 'cm',
   painScore: '',
   bloodGlucose: 'mmol/L',
   gcs: '',
@@ -126,6 +132,18 @@ export function parseStrictVitalNumber(raw?: string | number): number | null {
   if (!value || !/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** BMI is derived, never typed independently, so the stored value cannot
+ * disagree with the height/weight captured at the same triage stop. */
+export function calculateBmi(weightRaw?: string | number, heightRaw?: string | number): string | null {
+  const weight = parseStrictVitalNumber(weightRaw);
+  const heightCm = parseStrictVitalNumber(heightRaw);
+  if (weight === null || heightCm === null) return null;
+  const [minWeight, maxWeight] = VITAL_RANGES.weight;
+  const [minHeight, maxHeight] = VITAL_RANGES.height;
+  if (weight < minWeight || weight > maxWeight || heightCm < minHeight || heightCm > maxHeight) return null;
+  return (weight / ((heightCm / 100) ** 2)).toFixed(1);
 }
 
 /** Field-level blocking errors for the nurse triage form. Empty fields remain optional. */
@@ -410,9 +428,9 @@ function numOrUndef(raw?: string | number): number | undefined {
 /** True once at least one measurement is present — filters out a record or
  *  triage stop that carries the vitals *shape* but no actual observation. */
 function hasAnyVital(e: Pick<VitalsTimelineEntry,
-  'temperature' | 'systolic' | 'diastolic' | 'pulse' | 'respiratoryRate' | 'oxygenSaturation' | 'weight' | 'muac' | 'bloodGlucose'
+  'temperature' | 'systolic' | 'diastolic' | 'pulse' | 'respiratoryRate' | 'oxygenSaturation' | 'weight' | 'height' | 'bmi' | 'muac' | 'bloodGlucose'
 >): boolean {
-  return [e.temperature, e.systolic, e.diastolic, e.pulse, e.respiratoryRate, e.oxygenSaturation, e.weight, e.muac, e.bloodGlucose]
+  return [e.temperature, e.systolic, e.diastolic, e.pulse, e.respiratoryRate, e.oxygenSaturation, e.weight, e.height, e.bmi, e.muac, e.bloodGlucose]
     .some(v => v !== undefined);
 }
 
@@ -468,6 +486,8 @@ export function mergeVitalsTimeline(records: MedicalRecordDoc[], triages: Triage
       respiratoryRate: numOrUndef(t.respiratoryRate),
       oxygenSaturation: numOrUndef(t.oxygenSaturation),
       weight: numOrUndef(t.weight),
+      height: numOrUndef(t.height),
+      bmi: numOrUndef(t.bmi),
       muac: numOrUndef(t.muac),
       bloodGlucose: numOrUndef(t.bloodGlucose),
       facility: t.facilityName,

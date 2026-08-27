@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, TriageDoc, TriagePriority } from '@/lib/db-types';
-import { isLowerTriagePriority, validateTriageVitals } from '@/lib/clinical/vitals';
+import { calculateBmi, isLowerTriagePriority, parseStrictVitalNumber, validateTriageVitals } from '@/lib/clinical/vitals';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'front_desk', 'medical_superintendent',
@@ -105,6 +105,7 @@ async function postHandler(request: NextRequest) {
       systolic: body.systolic as string | undefined,
       diastolic: body.diastolic as string | undefined,
       weight: body.weight as string | undefined,
+      height: body.height as string | undefined,
       painScore: body.painScore as string | undefined,
       bloodGlucose: body.bloodGlucose as string | undefined,
       gcs: body.gcs as string | undefined,
@@ -113,11 +114,35 @@ async function postHandler(request: NextRequest) {
     if (Object.keys(vitalErrors).length > 0) {
       return NextResponse.json({ error: 'Invalid vital signs', fields: vitalErrors }, { status: 400 });
     }
+    const capillaryRefill = parseStrictVitalNumber(body.capillaryRefillSeconds as string | undefined);
+    if (body.capillaryRefillSeconds && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
+      return NextResponse.json({ error: 'Capillary refill must be between 0 and 10 seconds.' }, { status: 400 });
+    }
+    const gestationalAge = parseStrictVitalNumber(body.gestationalAgeWeeks as string | undefined);
+    if (body.gestationalAgeWeeks && (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)) {
+      return NextResponse.json({ error: 'Gestational age must be a whole number from 0 to 45 weeks.' }, { status: 400 });
+    }
     // Auto-calculate priority if not explicitly set
     if (!body.priority) {
       body.priority = calculatePriority(body);
     }
-    const recommendation = body.vitalUrgencyRecommendation as TriagePriority | undefined;
+    const redCriteria = Array.isArray(body.redCriteria)
+      ? body.redCriteria.filter((item): item is string => typeof item === 'string')
+      : [];
+    const yellowCriteria = Array.isArray(body.yellowCriteria)
+      ? body.yellowCriteria.filter((item): item is string => typeof item === 'string')
+      : [];
+    const iittRecommendation: TriagePriority | undefined = redCriteria.length > 0
+      ? 'RED'
+      : yellowCriteria.length > 0
+        ? 'YELLOW'
+        : undefined;
+    const suppliedRecommendation = body.vitalUrgencyRecommendation as TriagePriority | undefined;
+    const recommendation = iittRecommendation === 'RED' || !suppliedRecommendation
+      ? iittRecommendation || suppliedRecommendation
+      : suppliedRecommendation === 'RED'
+        ? 'RED'
+        : iittRecommendation || suppliedRecommendation;
     const overrideReason = typeof body.vitalUrgencyOverrideReason === 'string'
       ? body.vitalUrgencyOverrideReason.trim()
       : '';
@@ -159,6 +184,8 @@ async function postHandler(request: NextRequest) {
       diastolic: vitalString(body.diastolic),
       oxygenSaturation: vitalString(body.oxygenSaturation),
       weight: vitalString(body.weight),
+      height: vitalString(body.height),
+      bmi: calculateBmi(body.weight as string | undefined, body.height as string | undefined) || undefined,
       painScore: vitalString(body.painScore),
       bloodGlucose: vitalString(body.bloodGlucose),
       gcs: vitalString(body.gcs),
@@ -169,6 +196,19 @@ async function postHandler(request: NextRequest) {
         : undefined,
       vitalUrgencyOverridden: body.vitalUrgencyOverridden === true,
       vitalUrgencyOverrideReason: overrideReason || undefined,
+      presentationCategory: body.presentationCategory as TriageDoc['presentationCategory'],
+      redCriteria,
+      yellowCriteria,
+      capillaryRefillSeconds: vitalString(body.capillaryRefillSeconds),
+      pregnancyStatus: body.pregnancyStatus as TriageDoc['pregnancyStatus'],
+      gestationalAgeWeeks: vitalString(body.gestationalAgeWeeks),
+      injuryMechanism: body.injuryMechanism as string | undefined,
+      infectionRiskSigns: Array.isArray(body.infectionRiskSigns)
+        ? body.infectionRiskSigns.filter((item): item is string => typeof item === 'string')
+        : [],
+      isolationRequired: body.isolationRequired === true,
+      preArrivalCare: body.preArrivalCare as string | undefined,
+      immediateInterventions: body.immediateInterventions as string | undefined,
       chiefComplaint: body.chiefComplaint as string | undefined,
       notes: body.notes as string | undefined,
       triagedBy: auth.sub,

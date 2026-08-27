@@ -1,4 +1,5 @@
 import {
+  calculateBmi,
   getTriageVitalWarnings,
   isLowerTriagePriority,
   isVitalInRange,
@@ -17,6 +18,7 @@ describe('triage vital-sign safety', () => {
     ['systolic blood pressure 0', { systolic: '0' }, 'systolic'],
     ['diastolic blood pressure 999', { diastolic: '999' }, 'diastolic'],
     ['weight -200', { weight: '-200' }, 'weight'],
+    ['height 999', { height: '999' }, 'height'],
     ['pain 20', { painScore: '20' }, 'painScore'],
     ['glucose xyz', { bloodGlucose: 'xyz' }, 'bloodGlucose'],
     ['GCS 100', { gcs: '100' }, 'gcs'],
@@ -34,8 +36,14 @@ describe('triage vital-sign safety', () => {
 
   test('keeps empty optional fields valid and accepts complete decimal values', () => {
     expect(validateTriageVitals({})).toEqual({});
-    expect(validateTriageVitals({ temperature: '37.2', bloodGlucose: '5.5', pulse: '80' })).toEqual({});
+    expect(validateTriageVitals({ temperature: '37.2', bloodGlucose: '5.5', pulse: '80', height: '170' })).toEqual({});
     expect(validateTriageVitals({ pulse: 80 })).toEqual({});
+  });
+
+  test('calculates BMI only from plausible captured height and weight', () => {
+    expect(calculateBmi('65', '170')).toBe('22.5');
+    expect(calculateBmi('', '170')).toBeNull();
+    expect(calculateBmi('65', '999')).toBeNull();
   });
 
   test('blocks an impossible blood-pressure relationship', () => {
