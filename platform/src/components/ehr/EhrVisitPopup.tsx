@@ -49,6 +49,10 @@ function triageVitals(triage: TriageDoc): VitalCell[] {
   if (rr !== null) cells.push({ label: 'R. rate', value: String(rr), unit: 'breaths/min', flag: rr > 24 ? 'high' : rr < 10 ? 'low' : undefined });
   const weight = num(triage.weight);
   if (weight !== null) cells.push({ label: 'Weight', value: String(weight), unit: 'kg' });
+  const height = num(triage.height);
+  if (height !== null) cells.push({ label: 'Height', value: String(height), unit: 'cm' });
+  const bmi = num(triage.bmi);
+  if (bmi !== null) cells.push({ label: 'BMI', value: String(bmi), unit: 'kg/m²' });
   const glucose = num(triage.bloodGlucose);
   if (glucose !== null) cells.push({ label: 'Glucose', value: String(glucose), unit: 'mmol/L', flag: glucose < 3.5 ? 'low' : glucose > 11 ? 'high' : undefined });
   const pain = num(triage.painScore);

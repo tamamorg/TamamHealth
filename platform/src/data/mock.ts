@@ -2245,6 +2245,7 @@ export interface MedicalRecord {
   triageVitals?: {
     temperature?: string; systolic?: string; diastolic?: string; pulse?: string;
     respiratoryRate?: string; oxygenSaturation?: string; weight?: string;
+    height?: string; bmi?: string;
     muac?: string; bloodGlucose?: string; capturedAt?: string; capturedBy?: string;
   };
   /** Physical examination findings by system, captured in the consultation

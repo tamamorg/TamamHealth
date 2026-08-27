@@ -1964,6 +1964,7 @@ export interface TriageDoc extends BaseDoc {
   knownAllergies?: string;    // free text; "" / "None known" when none
   /** WHO/ICRC/MSF IITT presentation and danger-sign screen. */
   presentationCategory?: 'medical' | 'trauma' | 'obstetric' | 'mental_health' | 'other';
+  triagePathway?: 'adult_12_plus' | 'pediatric_under_12';
   redCriteria?: string[];
   yellowCriteria?: string[];
   capillaryRefillSeconds?: string;

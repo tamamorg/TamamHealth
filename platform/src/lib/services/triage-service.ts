@@ -8,7 +8,8 @@ import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { jubaDate } from '../time-juba';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
-import { isLowerTriagePriority, validateTriageVitals } from '../clinical/vitals';
+import { isLowerTriagePriority, parseStrictVitalNumber, validateTriageVitals } from '../clinical/vitals';
+import { priorityFromIittCriteria } from '../clinical/iitt';
 
 function assertTriageVitalSafety(doc: Partial<TriageDoc>): void {
   const errors = validateTriageVitals({
@@ -27,6 +28,30 @@ function assertTriageVitalSafety(doc: Partial<TriageDoc>): void {
   });
   const firstError = Object.values(errors)[0];
   if (firstError) throw new Error(firstError);
+
+  const capillaryRefill = parseStrictVitalNumber(doc.capillaryRefillSeconds);
+  if (doc.capillaryRefillSeconds && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
+    throw new Error('Capillary refill must be between 0 and 10 seconds.');
+  }
+  const gestationalAge = parseStrictVitalNumber(doc.gestationalAgeWeeks);
+  if (
+    doc.gestationalAgeWeeks &&
+    (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)
+  ) {
+    throw new Error('Gestational age must be a whole number from 0 to 45 weeks.');
+  }
+
+  const iittRecommendation = priorityFromIittCriteria(
+    doc.redCriteria || [],
+    doc.yellowCriteria || [],
+    capillaryRefill,
+  );
+  if (doc.priority && iittRecommendation && isLowerTriagePriority(doc.priority, iittRecommendation)) {
+    const overrideReason = doc.vitalUrgencyOverrideReason?.trim();
+    if (!doc.vitalUrgencyOverridden || !overrideReason) {
+      throw new Error('Saving below the recommended triage urgency requires a recorded override reason.');
+    }
+  }
 
   const overrideReason = doc.vitalUrgencyOverrideReason?.trim();
   if (doc.vitalUrgencyOverridden && !overrideReason) {

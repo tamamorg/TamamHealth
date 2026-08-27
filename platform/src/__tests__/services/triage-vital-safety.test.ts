@@ -33,6 +33,8 @@ describe('triage persistence safety', () => {
     await expect(createTriage(triageInput({ pulse: 'abc' }))).rejects.toThrow('Pulse must be a number');
     await expect(createTriage(triageInput({ oxygenSaturation: '999' }))).rejects.toThrow('Oxygen saturation must be between');
     await expect(createTriage(triageInput({ height: '999' }))).rejects.toThrow('Height must be between');
+    await expect(createTriage(triageInput({ capillaryRefillSeconds: '11' }))).rejects.toThrow('Capillary refill must be between');
+    await expect(createTriage(triageInput({ gestationalAgeWeeks: '38.5' }))).rejects.toThrow('Gestational age must be a whole number');
   });
 
   test('saving below the recommendation is refused without a recorded reason', async () => {
@@ -43,6 +45,11 @@ describe('triage persistence safety', () => {
       vitalUrgencyOverridden: true,
       vitalUrgencyOverrideReason: '   ',
     }))).rejects.toThrow('reason is required');
+
+    await expect(createTriage(triageInput({
+      capillaryRefillSeconds: '4',
+      priority: 'GREEN',
+    }))).rejects.toThrow('Saving below the recommended triage urgency');
   });
 
   test('a reasoned override is persisted for the clinical record and audit trail', async () => {

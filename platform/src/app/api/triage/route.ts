@@ -8,13 +8,21 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, TriageDoc, TriagePriority } from '@/lib/db-types';
 import { calculateBmi, isLowerTriagePriority, parseStrictVitalNumber, validateTriageVitals } from '@/lib/clinical/vitals';
+import {
+  filterKnownIittCodes,
+  highestTriagePriority,
+  IITT_RED_CRITERIA,
+  IITT_YELLOW_CRITERIA,
+  INFECTION_RISK_SIGNS,
+  priorityFromIittCriteria,
+} from '@/lib/clinical/iitt';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
-  'front_desk', 'medical_superintendent',
+  'midwife', 'triage_nurse', 'front_desk', 'medical_superintendent',
 ];
 const CREATE_ROLES: UserRole[] = [
   'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'front_desk',
-  'medical_superintendent',
+  'midwife', 'triage_nurse', 'medical_superintendent',
 ];
 /**
  * Auto-calculate ETAT priority from ABCC assessment.
@@ -122,27 +130,19 @@ async function postHandler(request: NextRequest) {
     if (body.gestationalAgeWeeks && (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)) {
       return NextResponse.json({ error: 'Gestational age must be a whole number from 0 to 45 weeks.' }, { status: 400 });
     }
-    // Auto-calculate priority if not explicitly set
-    if (!body.priority) {
-      body.priority = calculatePriority(body);
-    }
-    const redCriteria = Array.isArray(body.redCriteria)
-      ? body.redCriteria.filter((item): item is string => typeof item === 'string')
-      : [];
-    const yellowCriteria = Array.isArray(body.yellowCriteria)
-      ? body.yellowCriteria.filter((item): item is string => typeof item === 'string')
-      : [];
-    const iittRecommendation: TriagePriority | undefined = redCriteria.length > 0
-      ? 'RED'
-      : yellowCriteria.length > 0
-        ? 'YELLOW'
-        : undefined;
-    const suppliedRecommendation = body.vitalUrgencyRecommendation as TriagePriority | undefined;
-    const recommendation = iittRecommendation === 'RED' || !suppliedRecommendation
-      ? iittRecommendation || suppliedRecommendation
-      : suppliedRecommendation === 'RED'
-        ? 'RED'
-        : iittRecommendation || suppliedRecommendation;
+    const requestedPriority = ['RED', 'YELLOW', 'GREEN'].includes(String(body.priority))
+      ? body.priority as TriagePriority
+      : undefined;
+    body.priority = requestedPriority || calculatePriority(body);
+    const redCriteria = filterKnownIittCodes(body.redCriteria, IITT_RED_CRITERIA);
+    const yellowCriteria = filterKnownIittCodes(body.yellowCriteria, IITT_YELLOW_CRITERIA);
+    const suppliedRecommendation = ['RED', 'YELLOW', 'GREEN'].includes(String(body.vitalUrgencyRecommendation))
+      ? body.vitalUrgencyRecommendation as TriagePriority
+      : undefined;
+    const recommendation = highestTriagePriority(
+      priorityFromIittCriteria(redCriteria, yellowCriteria, capillaryRefill),
+      suppliedRecommendation,
+    );
     const overrideReason = typeof body.vitalUrgencyOverrideReason === 'string'
       ? body.vitalUrgencyOverrideReason.trim()
       : '';
@@ -197,15 +197,14 @@ async function postHandler(request: NextRequest) {
       vitalUrgencyOverridden: body.vitalUrgencyOverridden === true,
       vitalUrgencyOverrideReason: overrideReason || undefined,
       presentationCategory: body.presentationCategory as TriageDoc['presentationCategory'],
+      triagePathway: body.triagePathway === 'pediatric_under_12' ? 'pediatric_under_12' : 'adult_12_plus',
       redCriteria,
       yellowCriteria,
       capillaryRefillSeconds: vitalString(body.capillaryRefillSeconds),
       pregnancyStatus: body.pregnancyStatus as TriageDoc['pregnancyStatus'],
-      gestationalAgeWeeks: vitalString(body.gestationalAgeWeeks),
-      injuryMechanism: body.injuryMechanism as string | undefined,
-      infectionRiskSigns: Array.isArray(body.infectionRiskSigns)
-        ? body.infectionRiskSigns.filter((item): item is string => typeof item === 'string')
-        : [],
+      gestationalAgeWeeks: body.pregnancyStatus === 'pregnant' ? vitalString(body.gestationalAgeWeeks) : undefined,
+      injuryMechanism: body.presentationCategory === 'trauma' ? body.injuryMechanism as string | undefined : undefined,
+      infectionRiskSigns: filterKnownIittCodes(body.infectionRiskSigns, INFECTION_RISK_SIGNS),
       isolationRequired: body.isolationRequired === true,
       preArrivalCare: body.preArrivalCare as string | undefined,
       immediateInterventions: body.immediateInterventions as string | undefined,

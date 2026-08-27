@@ -32,6 +32,8 @@ export function formatVitals(record: Partial<Pick<MedicalRecordDoc, 'vitalSigns'
   const resp = v?.respiratoryRate ?? (t?.respiratoryRate ? Number(t.respiratoryRate) : undefined);
   const spo2 = v?.oxygenSaturation ?? (t?.oxygenSaturation ? Number(t.oxygenSaturation) : undefined);
   const weight = v?.weight ?? (t?.weight ? Number(t.weight) : undefined);
+  const height = v?.height ?? (t?.height ? Number(t.height) : undefined);
+  const bmi = v?.bmi ?? (t?.bmi ? Number(t.bmi) : undefined);
 
   if (isNum(temperature)) parts.push(`Temp: ${temperature} °C`);
   if (isNum(systolic) && isNum(diastolic)) parts.push(`BP: ${systolic}/${diastolic} mmHg`);
@@ -39,8 +41,8 @@ export function formatVitals(record: Partial<Pick<MedicalRecordDoc, 'vitalSigns'
   if (isNum(resp)) parts.push(`RR: ${resp}/min`);
   if (isNum(spo2)) parts.push(`SpO₂: ${spo2}%`);
   if (isNum(weight)) parts.push(`Wt: ${weight} kg`);
-  if (isNum(v?.height)) parts.push(`Ht: ${v!.height} cm`);
-  if (isNum(v?.bmi)) parts.push(`BMI: ${v!.bmi}`);
+  if (isNum(height)) parts.push(`Ht: ${height} cm`);
+  if (isNum(bmi)) parts.push(`BMI: ${bmi}`);
 
   return parts.join('\n');
 }
@@ -212,7 +214,8 @@ async function newestVitals(
       triageVitals: {
         temperature: t.temperature, systolic: t.systolic, diastolic: t.diastolic,
         pulse: t.pulse, respiratoryRate: t.respiratoryRate, oxygenSaturation: t.oxygenSaturation,
-        weight: t.weight, muac: t.muac, bloodGlucose: t.bloodGlucose, capturedAt: t.triagedAt,
+        weight: t.weight, height: t.height, bmi: t.bmi,
+        muac: t.muac, bloodGlucose: t.bloodGlucose, capturedAt: t.triagedAt,
       },
     };
   }

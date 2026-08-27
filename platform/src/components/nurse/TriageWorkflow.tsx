@@ -37,38 +37,7 @@ import ListSearch from './ListSearch';
 import RowActionsMenu, { type RowAction } from '@/components/referrals/RowActionsMenu';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
-
-const IITT_RED_CRITERIA = [
-  ['unresponsive_convulsions', 'Unresponsive or active convulsions'],
-  ['airway_breathing', 'Stridor, respiratory distress or central cyanosis'],
-  ['shock_bleeding', 'Capillary refill >3 seconds, weak/fast pulse or heavy bleeding'],
-  ['high_risk_trauma', 'High-risk trauma, major burn or threatened limb'],
-  ['toxin_bite', 'Poisoning, dangerous exposure or snake bite'],
-  ['pregnancy_emergency', 'Pregnancy: bleeding, severe pain, seizure, severe headache/vision change, severe BP, labour or trauma'],
-  ['neurologic_infection', 'Altered mental status with stiff neck, fever/hypothermia or headache'],
-  ['hypoglycaemia', 'Known hypoglycaemia'],
-  ['young_infant_emergency', 'Infant under 8 days, or under 2 months with temperature <36°C or >39°C'],
-] as const;
-
-const IITT_YELLOW_CRITERIA = [
-  ['airway_warning', 'Mouth/throat/neck swelling or wheeze without red signs'],
-  ['feeding_fluid_loss', 'Unable to feed/drink, vomiting everything, diarrhoea or dehydration'],
-  ['pallor_bleeding_fainting', 'Severe pallor, ongoing bleeding or recent fainting'],
-  ['trauma_burn', 'Trauma, burn, deformity, open fracture or suspected dislocation without red signs'],
-  ['urgent_exposure_surgery', 'Urgent surgical condition or exposure needing time-sensitive prophylaxis'],
-  ['urogenital_assault', 'Sexual assault, acute scrotal pain/priapism or unable to pass urine'],
-  ['neurologic_pain', 'Altered mental state, weakness, focal neurology, visual disturbance or severe pain'],
-  ['rash_malnutrition', 'Rapidly worsening/peeling rash or severe wasting/bilateral foot oedema'],
-  ['pregnancy_complication', 'Pregnancy referred for complication without red signs'],
-] as const;
-
-const INFECTION_RISK_SIGNS = [
-  ['fever_rash', 'Fever with rash'],
-  ['acute_watery_diarrhoea', 'Acute watery diarrhoea or repeated vomiting'],
-  ['respiratory_exposure', 'Respiratory symptoms with outbreak/contact risk'],
-  ['haemorrhagic_signs', 'Unexplained bleeding or haemorrhagic signs'],
-  ['known_outbreak_contact', 'Known outbreak exposure or travel from an affected area'],
-] as const;
+import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
 
 function VitalInputField({
   field,
@@ -254,6 +223,9 @@ export default function TriageWorkflow({
     [lockedPatient, triagePatientId, patients]
   );
   const selectedPatientAge = selectedTriagePatient ? patientAge(selectedTriagePatient) ?? undefined : undefined;
+  const triagePathway = selectedPatientAge !== undefined && selectedPatientAge < 12
+    ? 'pediatric_under_12' as const
+    : 'adult_12_plus' as const;
   /**
    * Pregnant, by the same signal the chart header's pregnancy pill uses: an
    * ANC record that has not yet been linked to a birth. IITT's only numeric
@@ -265,9 +237,10 @@ export default function TriageWorkflow({
     return (ancVisits || []).some(visit => visit.patientId === selectedTriagePatient._id && !visit.linkedBirthId);
   }, [ancVisits, selectedTriagePatient]);
   const vitalErrors = useMemo(() => validateTriageVitals(triageVitals), [triageVitals]);
+  const isPregnantForVitals = isSelectedPatientPregnant || pregnancyStatus === 'pregnant';
   const vitalWarnings = useMemo(
-    () => getTriageVitalWarnings(triageVitals, selectedPatientAge, { isPregnant: isSelectedPatientPregnant }),
-    [triageVitals, selectedPatientAge, isSelectedPatientPregnant],
+    () => getTriageVitalWarnings(triageVitals, selectedPatientAge, { isPregnant: isPregnantForVitals }),
+    [triageVitals, selectedPatientAge, isPregnantForVitals],
   );
   const warningByVital = useMemo(() => {
     const result = new Map<TriageVitalField, TriageVitalWarning>();
@@ -282,7 +255,8 @@ export default function TriageWorkflow({
     [triageVitals.height, triageVitals.weight],
   );
   const vitalRecommendedPriority = recommendTriagePriority(triageData.priority, vitalWarnings);
-  const recommendedPriority = redCriteria.length > 0
+  const capillaryRefillValue = parseStrictVitalNumber(capillaryRefillSeconds);
+  const recommendedPriority = redCriteria.length > 0 || (capillaryRefillValue !== null && capillaryRefillValue > 3)
     ? 'RED'
     : yellowCriteria.length > 0 && isLowerTriagePriority(vitalRecommendedPriority, 'YELLOW')
       ? 'YELLOW'
@@ -557,6 +531,7 @@ export default function TriageWorkflow({
         referralSource: triageContext.referralSource || undefined,
         knownAllergies: triageContext.knownAllergies || undefined,
         presentationCategory,
+        triagePathway,
         redCriteria,
         yellowCriteria,
         capillaryRefillSeconds: capillaryRefillSeconds || undefined,
@@ -1044,7 +1019,9 @@ export default function TriageWorkflow({
               <AlertTriangle className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
               <div>
                 <span className="block text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>IITT danger-sign screen</span>
-                <span className="block text-[10px]" style={{ color: 'var(--text-muted)' }}>Use the age-appropriate adult or child criteria. Any red sign requires immediate high-acuity care.</span>
+                <span className="block text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  {triagePathway === 'pediatric_under_12' ? 'Pediatric pathway (under 12)' : 'Adult pathway (12+)'} · Any red sign requires immediate high-acuity care.
+                </span>
               </div>
             </div>
 
