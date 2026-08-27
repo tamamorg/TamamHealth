@@ -22,7 +22,7 @@ export default function PharmacyInfoSection({
   return (
     <div className="cn-rx-grid">
       <label className="cn-rx-field cn-rx-field--wide">
-        <span>Pharmacy *</span>
+        <span className="field-required">Pharmacy</span>
         <Select
           className="cn-select"
           value={pharmacy}

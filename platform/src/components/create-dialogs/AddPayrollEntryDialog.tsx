@@ -82,7 +82,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
     <>
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {facilityUsers.map(u => (
@@ -98,7 +98,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
             </Select>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
+            <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
             <input type="number" min={0} value={form.baseSalary || ''} onChange={e => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
           </div>
           <div>

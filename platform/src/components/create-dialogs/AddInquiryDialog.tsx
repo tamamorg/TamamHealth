@@ -80,7 +80,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
     <>
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient name*</label>
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient name</label>
           <input value={form.patientName} onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} placeholder="Full name" />
         </div>
         <div>
@@ -88,11 +88,11 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
           <input value={form.patientPhone} onChange={e => setForm(f => ({ ...f, patientPhone: e.target.value }))} placeholder="Optional" />
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Subject*</label>
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Subject</label>
           <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Prescription refill" />
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Message*</label>
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Message</label>
           <textarea rows={3} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="What the patient asked, in their own words" />
         </div>
         <div>

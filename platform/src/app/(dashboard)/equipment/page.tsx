@@ -245,11 +245,11 @@ export default function AssetsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelName')}</label>
+                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelName')}</label>
                   <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('equipment.placeholderName')} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelAssetTag')}</label>
+                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelAssetTag')}</label>
                   <input value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} placeholder="JTH-US-001" />
                 </div>
                 <div>
@@ -342,7 +342,7 @@ export default function AssetsPage() {
                   <input type="number" min={0} value={serviceForm.cost || ''} onChange={e => setServiceForm({ ...serviceForm, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceNotes')}</label>
+                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceNotes')}</label>
                   <textarea rows={3} value={serviceForm.notes} onChange={e => setServiceForm({ ...serviceForm, notes: e.target.value })} placeholder={t('equipment.placeholderServiceNotes')} />
                 </div>
               </div>

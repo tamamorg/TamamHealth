@@ -64,8 +64,6 @@ export interface RegistrationFieldProps {
  * two met, and leaked an asterisk into the review read-back — where nothing
  * is required and the mark means nothing.
  */
-const REQUIRED_MARK = ' *';
-
 export default function RegistrationField({
   name, label, error, required, className, children,
 }: RegistrationFieldProps) {
@@ -75,7 +73,7 @@ export default function RegistrationField({
   const errorId = `${id}-error`;
   return (
     <div className={className ? `registration-field ${className}` : 'registration-field'} data-field={name}>
-      <label htmlFor={id}>{required ? `${label}${REQUIRED_MARK}` : label}</label>
+      <label htmlFor={id} className={required ? 'field-required' : undefined}>{label}</label>
       {children({
         id,
         'aria-invalid': error ? true : undefined,

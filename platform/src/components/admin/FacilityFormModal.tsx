@@ -23,7 +23,7 @@ import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
+import { states as SOUTH_SUDAN_STATES } from '@/lib/data/south-sudan-reference';
 import { FACILITY_TYPES, type FacilityType } from '@/lib/facility-types';
 import {
   BED_FIELDS, STAFF_FIELDS, INFRASTRUCTURE_FIELDS, ALL_SERVICES,
@@ -154,8 +154,8 @@ export default function FacilityFormModal({
     color: 'var(--text-primary)',
   };
   const selectStyle: React.CSSProperties = { ...inputStyle, paddingInlineEnd: 32, appearance: 'none' };
-  const label = (text: string) => (
-    <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-muted)' }}>{text}</label>
+  const label = (text: string, required = false) => (
+    <label className={`${required ? 'field-required ' : ''}block text-xs font-semibold mb-1.5`} style={{ color: 'var(--text-muted)' }}>{text}</label>
   );
   const groupHeading = (text: string) => (
     <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2 mt-1" style={{ color: 'var(--accent-primary)' }}>{text}</h4>
@@ -210,7 +210,7 @@ export default function FacilityFormModal({
         <div className="space-y-3">
           {needsOrgChoice && (
             <div>
-              {label(t('orgHospitals.labelOrganization'))}
+              {label(t('orgHospitals.labelOrganization'), true)}
               <div className="relative">
                 <Select
                   value={selectedOrgId}
@@ -232,7 +232,7 @@ export default function FacilityFormModal({
           )}
 
           <div>
-            {label(t('orgHospitals.labelFacilityName'))}
+            {label(t('orgHospitals.labelFacilityName'), true)}
             <input
               type="text" style={inputStyle} data-field="facility-name" autoFocus
               value={form.name} onChange={e => set('name', e.target.value)}
@@ -241,9 +241,9 @@ export default function FacilityFormModal({
           </div>
 
           <div>
-            {label(t('orgHospitals.labelState'))}
+            {label(t('orgHospitals.labelState'), true)}
             <div className="relative">
-              <Select value={form.state} onChange={e => set('state', e.target.value)} style={selectStyle} data-field="facility-state">
+              <Select value={form.state} onChange={e => set('state', e.target.value)} searchThreshold={0} style={selectStyle} data-field="facility-state">
                 <option value="">{t('orgHospitals.selectState')}</option>
                 {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </Select>
@@ -252,7 +252,7 @@ export default function FacilityFormModal({
           </div>
 
           <div>
-            {label(t('orgHospitals.labelTown'))}
+            {label(t('orgHospitals.labelTown'), true)}
             <input
               type="text" style={inputStyle} data-field="facility-town"
               value={form.town} onChange={e => set('town', e.target.value)}
@@ -261,7 +261,7 @@ export default function FacilityFormModal({
           </div>
 
           <div>
-            {label(t('orgHospitals.labelFacilityType'))}
+            {label(t('orgHospitals.labelFacilityType'), true)}
             <div className="relative">
               <Select
                 value={form.facilityType}

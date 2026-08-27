@@ -40,7 +40,7 @@ import { activeFacilities } from '@/lib/services/hospital-service';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import {
-  SadbCard, SadbChip, SadbConfirmModal, SadbGridList, SadbGridRow, SadbKpiTile, SadbSearch,
+  SadbCard, SadbChip, SadbConfirmModal, SadbGridList, SadbGridRow, SadbSearch,
   effectiveOrgStatus, statusChip,
 } from '@/components/admin/sadb-ui';
 import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
@@ -236,83 +236,89 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
 
   return (
     <>
-      {/* ═══ Who this tenant is, and everything you can do TO it ═══ */}
-      <div className="sadb-card" style={{ gap: 12, padding: '14px 16px' }}>
-        <div className="flex items-center flex-wrap" style={{ gap: 12 }}>
-          <div className="min-w-0" style={{ flex: '1 1 320px' }}>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <h2 className="sadb-panel-title truncate">{org.name}</h2>
+      {/* ═══ The tenant — identity, actions and every figure, in ONE card ═══
+          This was two: a white header card whose "Billing & subscriptions"
+          strip read TOTAL LICENSED USERS 4/50 and MAX HOSPITALS 2/10, and a
+          KPI row directly beneath it repeating both as People 4/50 and
+          Facilities 2/10. Each figure appears once now, on one blue surface,
+          reading identity → actions → numbers. ═══ */}
+      <section className="orgh">
+        <div className="orgh-top">
+          <div className="orgh-id">
+            <div className="orgh-name">
+              <h2 title={org.name}>{org.name}</h2>
               <SadbChip tone={statusChip(status)}>{status}</SadbChip>
             </div>
-            <p className="sadb-panel-note" style={{ marginTop: 2 }}>
+            <p className="orgh-sub">
               {org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate')}
               {onboardedLabel ? ` · ${t('orgAdmin.onboarded', { date: onboardedLabel })}` : ''}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-            {/* Add facility is NOT here. It sits in the Facilities card head
-                below, beside the list it adds a row to — this line held a
-                second copy of the same button, two hand-spans away from it. */}
+          <div className="orgh-actions">
             {may('organization:edit') && (
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowOrgEditor(true)}>
+              <button type="button" className="orgh-btn" onClick={() => setShowOrgEditor(true)}>
                 {t('orgAdmin.editOrganization')}
               </button>
             )}
             {may('organization:edit') && org.isActive !== false && (
-              <button type="button" className="btn btn-sm sadb-btn-danger" onClick={() => setConfirmDeactivate(true)}>
+              <button
+                type="button"
+                className="orgh-btn orgh-btn--danger"
+                onClick={() => setConfirmDeactivate(true)}
+              >
                 {t('orgAdmin.deactivate')}
               </button>
             )}
           </div>
         </div>
-        <div className="flex items-center flex-wrap sadb-headfacts">
-          <span className="sadb-headfacts-title">{t('adminBilling.title')}</span>
-          <span className="sadb-headfacts-item">
-            <span className="sadb-headfacts-label">{t('adminBilling.colPlan')}</span>
-            <SadbChip tone={org.subscriptionPlan === 'basic' ? 'neutral' : 'blue'}>{org.subscriptionPlan}</SadbChip>
-          </span>
-          <span className="sadb-headfacts-item">
-            <span className="sadb-headfacts-label">{t('adminBilling.kpiTotalLicensedUsers')}</span>
-            <span
-              className="sadb-headfacts-value"
-              style={rollup && rollup.totalUsers >= org.maxUsers ? { color: 'var(--color-warning-700)' } : undefined}
-            >
-              {rollup ? `${rollup.totalUsers} / ${org.maxUsers}` : '…'}
-            </span>
-          </span>
-          <span className="sadb-headfacts-item">
-            <span className="sadb-headfacts-label">{t('adminBilling.colMaxHospitals')}</span>
-            <span
-              className="sadb-headfacts-value"
-              style={orgFacilities.length >= org.maxHospitals ? { color: 'var(--color-warning-700)' } : undefined}
-            >
-              {`${orgFacilities.length} / ${org.maxHospitals}`}
-            </span>
-          </span>
-        </div>
-      </div>
 
-      {/* ═══ Tenant vitals ═══ */}
-      <div className="sadb-kpi-row">
-        <SadbKpiTile
-          label={t('management.facilities')}
-          value={`${orgFacilities.length} / ${org.maxHospitals}`}
-          delta={perf.readiness === null
-            ? (orgFacilities.length ? t('orgAdmin.notYetAssessed') : undefined)
-            : t('orgAdmin.readinessSummary', { readiness: perf.readiness, functional: perf.pctFunctional ?? 0 })}
-          deltaTone={perf.readiness !== null && perf.readiness < 60 ? 'warn' : 'up'}
-        />
-        {may('person:view') && (
-          <SadbKpiTile
-            label={t('management.people')}
-            value={rollup ? `${rollup.totalUsers} / ${org.maxUsers}` : '…'}
-          />
-        )}
-        <SadbKpiTile
-          label={t('breadcrumb.patients')}
-          value={rollup ? rollup.totalPatients.toLocaleString() : '…'}
-        />
-      </div>
+        <div className="orgh-stats">
+          <div className="orgh-stat">
+            <span className="orgh-stat-label">{t('adminBilling.colPlan')}</span>
+            <SadbChip tone={org.subscriptionPlan === 'basic' ? 'neutral' : 'blue'}>
+              {org.subscriptionPlan}
+            </SadbChip>
+          </div>
+
+          <div className="orgh-stat">
+            <span className="orgh-stat-label">{t('management.facilities')}</span>
+            <span className="orgh-stat-value">
+              {orgFacilities.length}
+              <span className="orgh-stat-cap"> / {org.maxHospitals}</span>
+            </span>
+            <span className={`orgh-stat-note${orgFacilities.length >= org.maxHospitals ? ' orgh-stat-note--warn' : ''}`}>
+              {orgFacilities.length >= org.maxHospitals
+                ? t('orgAdmin.atFacilityLimit')
+                : perf.readiness === null
+                  ? (orgFacilities.length ? t('orgAdmin.notYetAssessed') : '—')
+                  : t('orgAdmin.readinessSummary', { readiness: perf.readiness, functional: perf.pctFunctional ?? 0 })}
+            </span>
+          </div>
+
+          {may('person:view') && (
+            <div className="orgh-stat">
+              <span className="orgh-stat-label">{t('management.people')}</span>
+              <span className="orgh-stat-value">
+                {rollup ? rollup.totalUsers : '…'}
+                <span className="orgh-stat-cap"> / {org.maxUsers}</span>
+              </span>
+              <span className={`orgh-stat-note${rollup && rollup.totalUsers >= org.maxUsers ? ' orgh-stat-note--warn' : ''}`}>
+                {rollup && rollup.totalUsers >= org.maxUsers
+                  ? t('orgAdmin.atSeatLimit')
+                  : t('orgAdmin.seatsLeft', { count: rollup ? org.maxUsers - rollup.totalUsers : 0 })}
+              </span>
+            </div>
+          )}
+
+          <div className="orgh-stat">
+            <span className="orgh-stat-label">{t('breadcrumb.patients')}</span>
+            <span className="orgh-stat-value">
+              {rollup ? rollup.totalPatients.toLocaleString() : '…'}
+            </span>
+            <span className="orgh-stat-note">{t('orgAdmin.acrossFacilities')}</span>
+          </div>
+        </div>
+      </section>
 
       {/* ═══ THE FACILITIES — the whole point of this page ═══ */}
       <SadbCard

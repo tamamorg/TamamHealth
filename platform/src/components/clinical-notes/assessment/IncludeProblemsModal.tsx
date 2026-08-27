@@ -310,7 +310,7 @@ export default function IncludeProblemsModal({
                 </div>
 
                 <label className="cn-inc-add-search">
-                  <span>ICD-11 *</span>
+                  <span className="field-required">ICD-11</span>
                   <input
                     className="cn-input"
                     placeholder="Search for problem or ICD-11 code"

@@ -527,7 +527,7 @@ export function PatientRegistrationForm({
         {/* Only where there is something to mark: Biometrics and Payment
             Coverage require nothing, so the note would point at asterisks that
             are not there. */}
-        {sectionProgress[index].total > 0 && <p>{t('patientNew.requiredFieldsNote')}</p>}
+        {sectionProgress[index].total > 0 && <p className="field-required">{t('patientNew.requiredFieldsNote')}</p>}
       </header>
       <div className="omrs-reg-fields">{children}</div>
     </section>
@@ -549,7 +549,7 @@ export function PatientRegistrationForm({
           <aside className="omrs-reg-rail" aria-label={t('patientNew.registrationProgressAriaLabel')}>
             <h1 className="omrs-reg-title">{t('patientNew.topBarTitle')}</h1>
             {/* Said once, here, instead of under every section heading. */}
-            <p className="omrs-reg-railnote">{t('patientNew.requiredFieldsNote')}</p>
+            <p className="omrs-reg-railnote field-required">{t('patientNew.requiredFieldsNote')}</p>
             <p className="omrs-reg-jump">{t('patientNew.jumpTo')}</p>
             <RegistrationJumpNav
               sectionLabels={sectionLabels}

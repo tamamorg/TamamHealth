@@ -2,7 +2,7 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { statesAndCounties, states } from '@/lib/data/south-sudan-reference';
+import { bomasFor, countiesFor, payamsFor, states } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 
@@ -16,7 +16,9 @@ export function geocodeIdFor(bomaCode: string, householdNumber: string): string 
 /** How to reach the patient, and where they live. */
 export default function ContactSection({ form, errors, update }: RegistrationSectionProps) {
   const { t } = useTranslation();
-  const counties = form.state ? statesAndCounties[form.state] || [] : [];
+  const counties = countiesFor(form.state);
+  const payams = payamsFor(form.state, form.county);
+  const bomas = bomasFor(form.state, form.county, form.payam);
   const geocodeId = geocodeIdFor(form.bomaCode, form.householdNumber);
 
   return (
@@ -99,8 +101,14 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
         <div className="registration-field-grid registration-field-grid--two">
           <RegistrationField name="state" label={t('patientNew.state')} error={errors.state} required>
             {field => (
-              <Select {...field} value={form.state}
-                onChange={e => { update('state', e.target.value); update('county', ''); }}>
+              <Select {...field} value={form.state} searchThreshold={0}
+                searchPlaceholder={t('patientNew.searchLocations')}
+                onChange={e => {
+                  update('state', e.target.value);
+                  update('county', '');
+                  update('payam', '');
+                  update('boma', '');
+                }}>
                 <option value="">{t('patientNew.selectState')}</option>
                 {states.map(s => <option key={s} value={s}>{s}</option>)}
               </Select>
@@ -108,25 +116,39 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
           </RegistrationField>
           <RegistrationField name="county" label={t('patientNew.county')} error={errors.county} required>
             {field => (
-              <Select {...field} value={form.county} disabled={!form.state}
-                onChange={e => update('county', e.target.value)}>
-                <option value="">{t('patientNew.selectCounty')}</option>
+              <Select {...field} value={form.county} disabled={!form.state} searchThreshold={0}
+                searchPlaceholder={t('patientNew.searchLocations')}
+                onChange={e => {
+                  update('county', e.target.value);
+                  update('payam', '');
+                  update('boma', '');
+                }}>
+                <option value="">{form.state ? t('patientNew.selectCounty') : t('patientNew.selectStateFirst')}</option>
                 {counties.map(c => <option key={c} value={c}>{c}</option>)}
               </Select>
             )}
           </RegistrationField>
-          {/* No placeholder: "Enter payam" under a label reading "Payam" is a
-              line of text that carries nothing. */}
           <RegistrationField name="payam" label={t('patientNew.payam')}>
             {field => (
-              <input {...field} type="text" value={form.payam}
-                onChange={e => update('payam', e.target.value)} />
+              <Select {...field} value={form.payam} disabled={!form.county} searchThreshold={0}
+                searchPlaceholder={t('patientNew.searchLocations')}
+                onChange={e => {
+                  update('payam', e.target.value);
+                  update('boma', '');
+                }}>
+                <option value="">{form.county ? t('patientNew.selectPayam') : t('patientNew.selectCountyFirst')}</option>
+                {payams.map(p => <option key={p} value={p}>{p}</option>)}
+              </Select>
             )}
           </RegistrationField>
           <RegistrationField name="boma" label={t('patientNew.boma')}>
             {field => (
-              <input {...field} type="text" value={form.boma}
-                onChange={e => update('boma', e.target.value)} />
+              <Select {...field} value={form.boma} disabled={!form.payam} searchThreshold={0}
+                searchPlaceholder={t('patientNew.searchLocations')}
+                onChange={e => update('boma', e.target.value)}>
+                <option value="">{form.payam ? t('patientNew.selectBoma') : t('patientNew.selectPayamFirst')}</option>
+                {bomas.map(b => <option key={b} value={b}>{b}</option>)}
+              </Select>
             )}
           </RegistrationField>
         </div>

@@ -64,7 +64,13 @@ const ReferModal = dynamic(() => import('@/components/patients/PatientActionModa
 import { toIsoDate, todayIso as isoToday } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
-import { states as SOUTH_SUDAN_STATES, statesAndCounties } from '@/lib/data/south-sudan-reference';
+import {
+  bomasFor,
+  countiesFor,
+  payamsFor,
+  states as SOUTH_SUDAN_STATES,
+  tribes,
+} from '@/lib/data/south-sudan-reference';
 import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
@@ -519,6 +525,9 @@ export default function PatientDetailPage() {
     phone: '',
     state: '',
     county: '',
+    payam: '',
+    boma: '',
+    tribe: '',
     dateOfBirth: '',
     gender: 'Male' as 'Male' | 'Female',
   });
@@ -526,8 +535,16 @@ export default function PatientDetailPage() {
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   /** Counties for the state currently picked in the edit form. */
   const editCounties = useMemo(
-    () => (editForm.state ? statesAndCounties[editForm.state] || [] : []),
+    () => countiesFor(editForm.state),
     [editForm.state],
+  );
+  const editPayams = useMemo(
+    () => payamsFor(editForm.state, editForm.county),
+    [editForm.state, editForm.county],
+  );
+  const editBomas = useMemo(
+    () => bomasFor(editForm.state, editForm.county, editForm.payam),
+    [editForm.state, editForm.county, editForm.payam],
   );
 
   const openEditModal = () => {
@@ -540,6 +557,9 @@ export default function PatientDetailPage() {
       phone: patient.phone || '',
       state: patient.state || '',
       county: patient.county || '',
+      payam: patient.payam || '',
+      boma: patient.boma || '',
+      tribe: patient.tribe || '',
       dateOfBirth: patient.dateOfBirth || '',
       gender: (patient.gender as 'Male' | 'Female') || 'Male',
     });
@@ -590,6 +610,9 @@ export default function PatientDetailPage() {
         phone: normPhone,
         state: editForm.state.trim(),
         county: editForm.county.trim(),
+        payam: editForm.payam.trim(),
+        boma: editForm.boma.trim(),
+        tribe: editForm.tribe.trim(),
         dateOfBirth: editForm.dateOfBirth,
         gender: editForm.gender,
       });
@@ -2204,10 +2227,24 @@ export default function PatientDetailPage() {
                   </Select>
                 </div>
               </div>
-              <div>
-                <label htmlFor="edit-phone" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Phone</label>
-                <input id="edit-phone" type="tel" value={editForm.phone} onChange={e => { setEditForm({ ...editForm, phone: e.target.value }); if (editErrors.phone) setEditErrors({}); }} aria-invalid={!!editErrors.phone} />
-                {editErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger-text)' }}>{editErrors.phone}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="edit-phone" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Phone</label>
+                  <input id="edit-phone" type="tel" value={editForm.phone} onChange={e => { setEditForm({ ...editForm, phone: e.target.value }); if (editErrors.phone) setEditErrors({}); }} aria-invalid={!!editErrors.phone} />
+                  {editErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger-text)' }}>{editErrors.phone}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-tribe" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('patientNew.tribe')}</label>
+                  <Select id="edit-tribe" value={editForm.tribe} searchThreshold={0}
+                    searchPlaceholder={t('patientNew.searchTribes')}
+                    onChange={e => setEditForm({ ...editForm, tribe: e.target.value })}>
+                    <option value="">{t('patientNew.selectTribe')}</option>
+                    {editForm.tribe && !tribes.some(option => option.value === editForm.tribe) && (
+                      <option value={editForm.tribe}>{editForm.tribe}</option>
+                    )}
+                    {tribes.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </Select>
+                </div>
               </div>
               {/* State/county are pick-lists, not free text: registration writes
                   from these same lists, and every geographic rollup (surveillance,
@@ -2221,7 +2258,9 @@ export default function PatientDetailPage() {
                   <Select
                     id="edit-state"
                     value={editForm.state}
-                    onChange={e => setEditForm({ ...editForm, state: e.target.value, county: '' })}
+                    searchThreshold={0}
+                    searchPlaceholder={t('patientNew.searchLocations')}
+                    onChange={e => setEditForm({ ...editForm, state: e.target.value, county: '', payam: '', boma: '' })}
                   >
                     <option value="">Select state…</option>
                     {editForm.state && !SOUTH_SUDAN_STATES.includes(editForm.state) && (
@@ -2235,7 +2274,9 @@ export default function PatientDetailPage() {
                   <Select
                     id="edit-county"
                     value={editForm.county}
-                    onChange={e => setEditForm({ ...editForm, county: e.target.value })}
+                    searchThreshold={0}
+                    searchPlaceholder={t('patientNew.searchLocations')}
+                    onChange={e => setEditForm({ ...editForm, county: e.target.value, payam: '', boma: '' })}
                     disabled={!editForm.state}
                   >
                     <option value="">{editForm.state ? 'Select county…' : 'Select a state first'}</option>
@@ -2243,6 +2284,32 @@ export default function PatientDetailPage() {
                       <option value={editForm.county}>{editForm.county} (on record)</option>
                     )}
                     {editCounties.map(c => <option key={c} value={c}>{c}</option>)}
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="edit-payam" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('patientNew.payam')}</label>
+                  <Select id="edit-payam" value={editForm.payam} disabled={!editForm.county}
+                    searchThreshold={0} searchPlaceholder={t('patientNew.searchLocations')}
+                    onChange={e => setEditForm({ ...editForm, payam: e.target.value, boma: '' })}>
+                    <option value="">{editForm.county ? t('patientNew.selectPayam') : t('patientNew.selectCountyFirst')}</option>
+                    {editForm.payam && !editPayams.includes(editForm.payam) && (
+                      <option value={editForm.payam}>{editForm.payam}</option>
+                    )}
+                    {editPayams.map(payam => <option key={payam} value={payam}>{payam}</option>)}
+                  </Select>
+                </div>
+                <div>
+                  <label htmlFor="edit-boma" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('patientNew.boma')}</label>
+                  <Select id="edit-boma" value={editForm.boma} disabled={!editForm.payam}
+                    searchThreshold={0} searchPlaceholder={t('patientNew.searchLocations')}
+                    onChange={e => setEditForm({ ...editForm, boma: e.target.value })}>
+                    <option value="">{editForm.payam ? t('patientNew.selectBoma') : t('patientNew.selectPayamFirst')}</option>
+                    {editForm.boma && !editBomas.includes(editForm.boma) && (
+                      <option value={editForm.boma}>{editForm.boma}</option>
+                    )}
+                    {editBomas.map(boma => <option key={boma} value={boma}>{boma}</option>)}
                   </Select>
                 </div>
               </div>

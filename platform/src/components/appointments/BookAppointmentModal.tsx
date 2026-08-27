@@ -645,7 +645,7 @@ export default function BookAppointmentModal({
               />
 
               <div>
-                <label>{t('appointments.labelPatient')}</label>
+                <label className="field-required">{t('appointments.labelPatient')}</label>
                 <Select value={patientId} onChange={e => setPatientId(e.target.value)}>
                   <option value="">{t('appointments.selectPatient')}</option>
                   {patients.map(p => (
@@ -656,7 +656,7 @@ export default function BookAppointmentModal({
                 </Select>
               </div>
 
-              <div><label>{t('appointments.labelReason')}</label><textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder={t('appointments.reasonPlaceholder')} /></div>
+              <div><label className="field-required">{t('appointments.labelReason')}</label><textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} placeholder={t('appointments.reasonPlaceholder')} /></div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', alignItems: 'stretch', gap: 12 }}>
                 <div><label>{t('appointments.labelType')}</label><Select value={type} onChange={e => setType(e.target.value as AppointmentType)}>{TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>)}</Select></div>
@@ -827,9 +827,9 @@ function ManualTimeFallback({
         {' '}and this step will show their real openings.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', alignItems: 'stretch', gap: 12 }}>
-        <div><label>{t('appointments.labelDate')}</label><input type="date" value={date} onChange={e => setDate(e.target.value)} min={today} /></div>
+        <div><label className="field-required">{t('appointments.labelDate')}</label><input type="date" value={date} onChange={e => setDate(e.target.value)} min={today} /></div>
         <div>
-          <label>{t('appointments.labelTime')}</label>
+          <label className="field-required">{t('appointments.labelTime')}</label>
           <Select value={time} onChange={e => setTime(e.target.value)}>
             <option value="">Select a time…</option>
             {TIME_SLOTS.map(ts => <option key={ts} value={ts}>{ts}</option>)}

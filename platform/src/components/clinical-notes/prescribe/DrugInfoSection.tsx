@@ -86,7 +86,7 @@ export default function DrugInfoSection({
     <>
       <div className="cn-rx-grid">
         <label className="cn-rx-field cn-rx-field--wide">
-          <span>Drug Name *</span>
+          <span className="field-required">Drug Name</span>
           <input
             className="cn-input"
             placeholder={advanced ? 'Name, class or ATC code…' : 'Search the formulary…'}
@@ -107,7 +107,7 @@ export default function DrugInfoSection({
         </label>
 
         <label className="cn-rx-field">
-          <span>Quantity *</span>
+          <span className="field-required">Quantity</span>
           <input
             className="cn-input"
             type="number"
@@ -233,7 +233,7 @@ export default function DrugInfoSection({
       </div>
 
       <label className="cn-rx-field cn-rx-field--wide">
-        <span>Patient Instructions *</span>
+        <span className="field-required">Patient Instructions</span>
         <textarea
           className="cn-textarea cn-rx-instructions"
           value={draft.instructions}

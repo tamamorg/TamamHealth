@@ -464,7 +464,19 @@ export function computeRowQueueColumns(
       ? (entry.stage === 'awaiting_triage' ? 'Registration' : 'Triage')
       : row.appointment ? 'Appointment' : 'Registry',
     careTeamPrimary: row.provider || entry?.assignedToName || 'Doctor unassigned',
-    careTeamSecondary: row.patient?.nurse || entry?.assignedToName || 'Nurse unassigned',
+    /* The NURSE covering this visit, which is a different person from the one
+       above and from the one who took the vitals.
+
+       Two bugs lived on this line. It fell back to `entry.assignedToName`,
+       which `patient-queue-service` fills from `triage.assignedProviderName`
+       — the PROVIDER — so an assigned doctor rendered as the nurse as well.
+       And an appointment-derived row carries `patient: null` by construction,
+       so `row.patient?.nurse` could never answer for the rows most likely to
+       have a nurse assigned from the appointment editor. That editor writes
+       `staffName` onto the appointment (and `assignedNurseName` onto the
+       patient), so the appointment is the field to read when there is no
+       patient record on the row. */
+    careTeamSecondary: row.patient?.nurse || row.appointment?.staffName || 'Nurse unassigned',
     statusText: operationalState?.label || (triage?.handoffStatus === 'acknowledged'
       ? 'Acknowledged'
       : triage?.assignedProviderId && triage.handoffStatus === 'assigned'

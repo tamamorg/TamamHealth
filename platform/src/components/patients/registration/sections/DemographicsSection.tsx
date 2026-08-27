@@ -114,9 +114,10 @@ export default function DemographicsSection({
         </RegistrationField>
         <RegistrationField name="tribe" label={t('patientNew.tribe')}>
           {field => (
-            <Select {...field} value={form.tribe} onChange={e => update('tribe', e.target.value)}>
+            <Select {...field} value={form.tribe} onChange={e => update('tribe', e.target.value)}
+              searchThreshold={0} searchPlaceholder={t('patientNew.searchTribes')}>
               <option value="">{t('patientNew.selectTribe')}</option>
-              {tribes.map(tribe => <option key={tribe} value={tribe}>{tribe}</option>)}
+              {tribes.map(tribe => <option key={tribe.value} value={tribe.value}>{tribe.label}</option>)}
             </Select>
           )}
         </RegistrationField>

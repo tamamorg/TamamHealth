@@ -4639,8 +4639,16 @@ html:has(.ehr-top-rail) {
 
 /* On the full three-column workspace the header shares the workspace grid:
    [rail-width] [queue] [actions] with the same 18px gutters, so "Welcome"
-   opens exactly over the queue card and the buttons close at the rail edge. */
-@media (min-width: 1181px) {
+   opens exactly over the queue card and the buttons close at the rail edge.
+
+   1280px, NOT 1181px. This is the paired half of `tablet-desktop.css`'s
+   compact-desktop range, and the two must name the same boundary. While this
+   said 1181 and that said 1180 they agreed; when the tablet ceiling moved to
+   1279 to take in landscape iPads (1194 CSS px), the two overlapped and both
+   applied at once — measured at 1194 the header came out three rows deep,
+   with "Book appointment" stretched to 1000px and the page title shoved into
+   the right-hand corner beside it. */
+@media (min-width: 1280px) {
   .ehr-schedule-shell .ehr-schedule-header {
     grid-template-columns: 260px minmax(0, 1fr) auto;
     gap: 18px;
@@ -23090,9 +23098,11 @@ table.patient-data-table.patient-data-table {
    right column stacks Facility types (intrinsic height) over Weekly cases
    (flexes to the leftover height). The map svg letterboxes into whatever
    height the panel has (preserveAspectRatio meet), so nothing overflows.
-   Below 1181px the grid stacks and the page scrolls normally — a phone
-   cannot fit a national dashboard in one screen and should not pretend to. */
-@media (min-width: 1181px) {
+   Below 1280px the grid stacks and the page scrolls normally — neither a
+   phone nor a tablet can fit a national dashboard in one screen and should
+   not pretend to. Paired with the compact-desktop ceiling in
+   `tablet-desktop.css`; the two boundaries move together or they overlap. */
+@media (min-width: 1280px) {
   .gov-dash {
     display: flex;
     flex-direction: column;
@@ -31954,6 +31964,153 @@ button.sadb-signal { cursor: pointer; }
   font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
+}
+
+/* ============ Organization hero (orgh-) ===============================
+   The tenant header on /manage and /admin/organizations/[id].
+
+   It was two cards saying the same thing. A white card carried the name, the
+   actions and a "Billing & subscriptions" strip reading TOTAL LICENSED USERS
+   4/50 and MAX HOSPITALS 2/10 — and immediately under it a KPI row repeated
+   both numbers as Facilities 2/10 and People 4/50. One card now, and each
+   figure appears once.
+
+   Deep blue, from the same --rail-bg the top rail uses: tenant-brandable
+   (branding moves the accent and this follows) rather than a hard-coded fill,
+   and dark enough for white text to clear 4.5:1. Its own namespace because
+   globals.css force-uppercases every bare `label` and repaints every
+   `svg.lucide` that carries no inline colour — both would land inside here. */
+.orgh {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 8px;
+  background: var(--rail-bg);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
+}
+
+.orgh-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.orgh-id { min-width: 0; flex: 1 1 320px; }
+
+.orgh-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.orgh-name h2 {
+  font-family: var(--font-condensed);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Chips are light pills built for a white card; on this fill they need their
+   own treatment or a pale-amber TRIAL disappears into the blue. */
+.orgh-name .sadb-chip {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.orgh-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.orgh-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+/* On a blue card the primary button cannot also be blue. White reads as the
+   affirmative action; the destructive one keeps its red. */
+.orgh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: #fff;
+  color: var(--tm-navy);
+  font-family: var(--font-condensed);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.orgh-btn:hover { background: rgba(255, 255, 255, 0.88); }
+.orgh-btn--ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #fff;
+}
+.orgh-btn--ghost:hover { background: rgba(255, 255, 255, 0.12); }
+.orgh-btn--danger {
+  background: var(--color-danger-800);
+  border-color: var(--color-danger-800);
+  color: #fff;
+}
+.orgh-btn--danger:hover { background: var(--color-danger-600); border-color: var(--color-danger-600); }
+.orgh-btn svg { width: 14px; height: 14px; color: currentColor !important; stroke: currentColor !important; }
+
+/* The figures, on one rule below the identity. Auto-fit rather than a fixed
+   column count: a tenant with no patient figure should not leave a hole. */
+.orgh-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 2px 0;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+.orgh-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-inline-end: 16px; }
+.orgh-stat-label {
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.64);
+  white-space: nowrap;
+}
+.orgh-stat-value {
+  font-family: var(--font-condensed);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  white-space: nowrap;
+}
+.orgh-stat-value .orgh-stat-cap { font-size: 13px; color: rgba(255, 255, 255, 0.6); font-weight: 600; }
+.orgh-stat-note { font-size: 11px; color: rgba(255, 255, 255, 0.66); }
+/* At the plan's ceiling the figure has to say so — it is the reason an
+   operator cannot add another site or account. */
+.orgh-stat-note--warn { color: var(--color-warning-300, #FDD95F); font-weight: 600; }
+.orgh-stat .sadb-chip {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .orgh { padding: 14px; }
+  .orgh-name h2 { font-size: 17px; }
+  .orgh-stat-value { font-size: 17px; }
 }
 
 /* ============ Trash (Settings) =========================================

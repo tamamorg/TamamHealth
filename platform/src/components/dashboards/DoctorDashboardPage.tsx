@@ -194,7 +194,12 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       admittedAt: tr?.triagedAt || p.registeredAt || p.registrationDate,
       ward: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] + '-' + (i + 1) : '',
       doctor: '',
-      nurse: tr?.triagedByName || '',
+      /* The nurse COVERING the patient first; the one who triaged them only
+         as a fallback. These are different people, and reading the triager as
+         "the nurse" is the same confusion `assignedNurseName` was added to
+         end — see its comment on the Patient type. The assigned row above
+         already read the right field; this one did not. */
+      nurse: p.assignedNurseName || tr?.triagedByName || '',
       division: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] : '',
       triagePriority: triagePriorityByPatient[p._id] || tr?.priority,
     };

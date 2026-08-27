@@ -436,7 +436,7 @@ export default function WardsPage() {
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.patientRequired')}</label>
+                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.patientRequired')}</label>
                   {/* Changing the patient drops the deep-linked visit — an
                       encounterId belongs to the patient it arrived with. */}
                   <Select value={admitForm.patientId} onChange={e => setAdmitForm({ ...admitForm, patientId: e.target.value, encounterId: '' })}>
@@ -447,7 +447,7 @@ export default function WardsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.admittingDiagnosisRequired')}</label>
+                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.admittingDiagnosisRequired')}</label>
                   <input type="text" value={admitForm.admittingDiagnosis} onChange={e => setAdmitForm({ ...admitForm, admittingDiagnosis: e.target.value })} placeholder={t('ward.admittingDiagnosisPlaceholder')} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -461,7 +461,7 @@ export default function WardsPage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.wardRequired')}</label>
+                    <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.wardRequired')}</label>
                     <Select value={admitForm.wardId} onChange={e => setAdmitForm({ ...admitForm, wardId: e.target.value, bedId: '' })}>
                       <option value="">{t('ward.selectWard')}</option>
                       {facilityWards.filter(w => w.availableBeds > 0).map(w => (
@@ -610,7 +610,7 @@ export default function WardsPage() {
                 </div>
 
                 <div className="wdis-field">
-                  <label htmlFor="ward-discharge-diagnosis">{t('ward.dischargeDiagnosis')}</label>
+                  <label className="field-required" htmlFor="ward-discharge-diagnosis">{t('ward.dischargeDiagnosis')}</label>
                   <input
                     id="ward-discharge-diagnosis"
                     value={dischargeForm.dischargeDiagnosis}
@@ -657,7 +657,7 @@ export default function WardsPage() {
                 {dischargeForm.followUpRequired && (
                   <div className="wdis-followup">
                     <div className="wdis-field">
-                      <label htmlFor="ward-follow-up-date">{t('ward.followUpDate')}</label>
+                      <label className="field-required" htmlFor="ward-follow-up-date">{t('ward.followUpDate')}</label>
                       <input
                         id="ward-follow-up-date"
                         type="date"
@@ -666,7 +666,7 @@ export default function WardsPage() {
                       />
                     </div>
                     <div className="wdis-field">
-                      <label htmlFor="ward-follow-up-instructions">{t('ward.followUpInstructions')}</label>
+                      <label className="field-required" htmlFor="ward-follow-up-instructions">{t('ward.followUpInstructions')}</label>
                       <textarea
                         id="ward-follow-up-instructions"
                         rows={2}

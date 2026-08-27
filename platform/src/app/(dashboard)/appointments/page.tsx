@@ -728,7 +728,7 @@ export default function AppointmentsPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label>{t('appointments.labelPatient')}</label>
+                <label className="field-required">{t('appointments.labelPatient')}</label>
                 <Select value={wiPatient} onChange={e => setWiPatient(e.target.value)}>
                   <option value="">{t('appointments.selectPatient')}</option>
                   {patients.map(p => <option key={p._id} value={p._id}>{p.firstName} {p.surname}</option>)}
@@ -738,7 +738,7 @@ export default function AppointmentsPage() {
                 <div><label>{t('appointments.labelDepartment')}</label><Select value={wiDepartment} onChange={e => setWiDepartment(e.target.value)}>{departments.map(d => <option key={d} value={d}>{d}</option>)}</Select></div>
                 <div><label>{t('appointments.labelPriority')}</label><Select value={wiPriority} onChange={e => setWiPriority(e.target.value as AppointmentPriority)}><option value="routine">{t('appointments.priorityRoutine')}</option><option value="urgent">{t('appointments.priorityUrgent')}</option><option value="emergency">{t('appointments.priorityEmergency')}</option></Select></div>
               </div>
-              <div><label>{t('appointments.labelReasonForVisit')}</label><textarea value={wiReason} onChange={e => setWiReason(e.target.value)} rows={2} placeholder={t('appointments.reasonForVisitPlaceholder')} /></div>
+              <div><label className="field-required">{t('appointments.labelReasonForVisit')}</label><textarea value={wiReason} onChange={e => setWiReason(e.target.value)} rows={2} placeholder={t('appointments.reasonForVisitPlaceholder')} /></div>
               <div><label>{t('appointments.labelNotes')}</label><textarea value={wiNotes} onChange={e => setWiNotes(e.target.value)} rows={2} placeholder={t('appointments.walkInNotesPlaceholder')} /></div>
               <ModalActions onCancel={closeWalkIn} onConfirm={handleWalkIn} confirmLabel={submitting ? t('appointments.registering') : t('appointments.registerWalkIn')} cancelLabel={t('action.cancel')} confirmColor="var(--accent-primary)" disabled={submitting} />
             </div>

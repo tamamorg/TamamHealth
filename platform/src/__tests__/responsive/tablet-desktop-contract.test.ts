@@ -12,8 +12,21 @@ describe('tablet compact-desktop contract', () => {
   });
 
   it('is isolated from the phone and full desktop layouts', () => {
-    expect(tabletCss).toContain('@media (min-width: 640px) and (max-width: 1180px)');
+    expect(tabletCss).toContain('@media (min-width: 640px) and (max-width: 1279px)');
     expect(tabletCss).toContain('--app-top-rail-height: 60px');
+  });
+
+  it('hands over to the desktop cascade at exactly one boundary', () => {
+    // The compact-desktop range and the "desktop starts here" rules in
+    // globals.css are two halves of one boundary. They were 1180/1181 — which
+    // agreed, but excluded a landscape iPad Pro 11" (1194 CSS px), so every
+    // iPad held sideways got the desktop cascade at a width it does not fit.
+    // Raising only the tablet half made the two OVERLAP, and both applied:
+    // the appointments header rendered three rows deep with the page title
+    // pushed into the corner. Whatever the number is, it has to be one number.
+    const globalsCss = fs.readFileSync(path.join(appDir, 'globals.css'), 'utf8');
+    expect(globalsCss).not.toContain('min-width: 1181px');
+    expect(globalsCss).toContain('@media (min-width: 1280px)');
   });
 
   it.each([

@@ -239,11 +239,11 @@ export default function BirthsPage() {
                 {/* Child Information */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child First Name *</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child First Name</label>
                     <input type="text" value={form.childFirstName} onChange={e => setForm({ ...form, childFirstName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child Surname *</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child Surname</label>
                     <input type="text" value={form.childSurname} onChange={e => setForm({ ...form, childSurname: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
@@ -283,7 +283,7 @@ export default function BirthsPage() {
                 {/* Parent Information */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Name *</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Name</label>
                     <input type="text" value={form.motherName} onChange={e => setForm({ ...form, motherName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>

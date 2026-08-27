@@ -249,7 +249,7 @@ export function UserForm({
             </Select>
           </div>
           <div className="uf-field">
-            <span className="uf-label">{t('adminUsers.colOrganization')}{needsOrg ? ' *' : ''}</span>
+            <span className={`uf-label${needsOrg ? ' field-required' : ''}`}>{t('adminUsers.colOrganization')}</span>
             <Select
               value={form.orgId} className="uf-input"
               disabled={lockOrganization}
@@ -269,7 +269,7 @@ export function UserForm({
               for them at all rather than shown and ignored. */}
           {needsFacility && (
             <div className="uf-field">
-              <span className="uf-label">{t('adminUsers.colHospital')} *</span>
+              <span className="uf-label field-required">{t('adminUsers.colHospital')}</span>
               {facilitiesLoading ? (
                 <div className="uf-nofacility" data-field="facilities-loading">
                   <p>{t('management.loadingAssignmentOptions')}</p>

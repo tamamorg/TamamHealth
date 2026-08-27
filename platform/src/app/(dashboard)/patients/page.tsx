@@ -301,7 +301,7 @@ export default function PatientsPage() {
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patient.location')}</span>
-                      <Select value={filters.state} onChange={e => setF('state', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
+                      <Select value={filters.state} onChange={e => setF('state', e.target.value)} searchThreshold={0} className="w-full text-sm py-2 px-3" style={fieldStyle}>
                         <option value="">{t('patients.all')}</option>
                         {states.map(s => <option key={s} value={s}>{s}</option>)}
                       </Select>

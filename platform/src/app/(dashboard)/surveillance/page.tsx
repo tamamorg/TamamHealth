@@ -20,7 +20,7 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import { formatDate, isoWeek } from '@/lib/format-utils';
 // `states` is the real ADM1 state list — a leaf reference module with no
 // mock.ts generator behind it — used to populate the state dropdown.
-import { states } from '@/lib/data/south-sudan-reference';
+import { countiesFor, states } from '@/lib/data/south-sudan-reference';
 import { SOUTH_SUDAN_STATES, WHITE_NILE } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
@@ -822,14 +822,19 @@ export default function SurveillancePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('surveillance.labelState')}</label>
-                    <Select value={alertForm.state} onChange={e => setAlertForm({ ...alertForm, state: e.target.value })}>
+                    <Select value={alertForm.state} searchThreshold={0}
+                      onChange={e => setAlertForm({ ...alertForm, state: e.target.value, county: '' })}>
                       <option value="">{t('surveillance.selectGeneric')}</option>
                       {states.map(s => <option key={s} value={s}>{s}</option>)}
                     </Select>
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('surveillance.labelCounty')}</label>
-                    <input type="text" value={alertForm.county} onChange={e => setAlertForm({ ...alertForm, county: e.target.value })} placeholder={t('surveillance.countyPlaceholder')} />
+                    <Select value={alertForm.county} disabled={!alertForm.state} searchThreshold={0}
+                      onChange={e => setAlertForm({ ...alertForm, county: e.target.value })}>
+                      <option value="">{alertForm.state ? t('patientNew.selectCounty') : t('patientNew.selectStateFirst')}</option>
+                      {countiesFor(alertForm.state).map(county => <option key={county} value={county}>{county}</option>)}
+                    </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
