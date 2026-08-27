@@ -339,10 +339,65 @@
     max-height: none !important;
   }
 
-  .appointment-card-head { display: grid !important; min-width: 760px; }
-  .appointment-card-row.ehr-appointment-row {
-    grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(96px, max-content) !important;
-    min-width: 760px;
+  /* The centre panel can be only ~330px wide in tablet portrait once both
+     desktop rails are present. Its former 760px floor pushed Context and
+     Status underneath the Outstanding Items rail. Keep the five desktop
+     columns, but let each one participate in the available-width grid. */
+  .appointment-card-head { display: grid !important; }
+  .ehr-care-list .appointment-card-flow,
+  .ehr-care-list .appointment-card-head,
+  .appointment-card-flow .appointment-card-row.ehr-appointment-row {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .appointment-card-flow .appointment-card-head,
+  .appointment-card-flow .appointment-card-row.ehr-appointment-row {
+    grid-template-columns:
+      minmax(0, 1.55fr)
+      minmax(0, 0.55fr)
+      minmax(0, 0.8fr)
+      minmax(0, 0.8fr)
+      minmax(72px, 0.9fr) !important;
+    column-gap: clamp(4px, 0.65vw, 8px) !important;
+  }
+
+  .ehr-care-list .ehr-queue-scroll { overflow-x: hidden !important; }
+
+  .appointment-card-head {
+    font-size: 8.5px;
+    letter-spacing: 0.07em;
+  }
+
+  .appointment-card-row .ehr-appointment-identity { gap: 6px; }
+  .appointment-card-row .ehr-patient-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+
+  .appointment-card-patient button,
+  .appointment-card-provider strong,
+  .appointment-card-row .ehr-appointment-department strong,
+  .appointment-card-row .ehr-appointment-time strong { font-size: 10.5px; }
+
+  .appointment-card-patient p,
+  .appointment-card-provider span,
+  .appointment-card-row .ehr-appointment-department span,
+  .appointment-card-row .ehr-appointment-time span,
+  .appointment-card-status small { font-size: 9px; }
+
+  .appointment-card-status small { padding-inline-end: 5px; }
+  .appointment-card-status .appointment-status-pill {
+    max-width: 100%;
+    min-height: 22px;
+    padding-inline: 5px;
+    font-size: 9.5px;
+    letter-spacing: 0.025em;
+    line-height: 1.05;
+    text-align: center;
+    white-space: normal;
   }
 
   .appointment-card-row .ehr-appointment-identity,
@@ -355,9 +410,33 @@
     padding-inline-start: 0;
   }
 
-  .ehr-care-dashboard .ehr-appointment-row { min-width: 720px; }
-  .ehr-worklist-head,
-  .ehr-worklist-row { min-width: 720px; }
+  .ehr-care-dashboard .ehr-appointment-row { min-width: 0 !important; }
+
+  /* The alternate five-column worklist uses the same fitted contract. This
+     overrides the old <=760px 820px scrolling floor so its Status cell is
+     visible without a sideways pan. */
+  .tamam-ehr-app .ehr-worklist-head,
+  .tamam-ehr-app .ehr-worklist-row {
+    grid-template-columns:
+      minmax(0, 1.5fr)
+      minmax(0, 0.6fr)
+      minmax(0, 0.8fr)
+      minmax(0, 0.8fr)
+      minmax(72px, 0.9fr) !important;
+    column-gap: clamp(4px, 0.65vw, 8px) !important;
+    min-width: 0 !important;
+    padding-inline: 6px !important;
+  }
+
+  .ehr-center-panel .ehr-worklist-status,
+  .ehr-center-panel .ehr-status-menu select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 10px;
+  }
+
+  .ehr-center-panel .ehr-worklist-status { white-space: normal; }
 
   /* Patient chart and clinical documentation keep their desktop side rails. */
   .ehr-chart-layout {

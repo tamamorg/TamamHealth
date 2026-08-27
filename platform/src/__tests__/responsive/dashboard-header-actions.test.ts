@@ -72,6 +72,15 @@ describe('the greeting row shows two actions and hides the rest', () => {
     expect(dashboard).toContain('aria-haspopup="menu"');
     expect(dashboard).toContain('role="menuitem"');
   });
+
+  test('tablet centre lists fit all five columns with Status still visible', () => {
+    const tabletCss = source('app/tablet-desktop.css');
+    expect(tabletCss).toMatch(/\.appointment-card-flow \.appointment-card-row\.ehr-appointment-row\s*\{[\s\S]*?min-width:\s*0\s*!important;/);
+    expect(tabletCss).toMatch(/\.appointment-card-flow \.appointment-card-head,[\s\S]*?minmax\(72px, 0\.9fr\)\s*!important;/);
+    expect(tabletCss).toContain('.ehr-care-list .ehr-queue-scroll { overflow-x: hidden !important; }');
+    expect(tabletCss).toMatch(/\.tamam-ehr-app \.ehr-worklist-head,[\s\S]*?min-width:\s*0\s*!important;/);
+    expect(tabletCss).toMatch(/\.ehr-center-panel \.ehr-worklist-status,[\s\S]*?max-width:\s*100%;/);
+  });
 });
 
 describe('the primary button shortens without changing its name', () => {

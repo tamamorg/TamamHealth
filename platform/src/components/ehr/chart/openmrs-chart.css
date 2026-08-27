@@ -1023,24 +1023,41 @@
 }
 
 .omrs-section-search svg { width: 15px; height: 15px; flex: 0 0 auto; }
-.omrs-root .omrs-section-search input[type='search'] {
+/* NOT scoped to `.omrs-root`.
+   The label above is the search bar: it draws the border, the radius and the
+   fill. globals.css gives every `input[type="search"]` its own border,
+   background and 10px/16px padding, so without this reset the input paints a
+   second bar inside the first — which is what the chart showed. The reset was
+   qualified with `.omrs-root`, and that class exists only on
+   `OpenmrsChartShell`; `ChartSection` is also rendered by PatientDetailPage,
+   PatientTimeline, DocumentsPanel and PatientSBAR, and every one of those got
+   the doubled bar. `.omrs-section-search input[type='search']` is (0,2,1)
+   against the global rule's (0,1,1), so it wins on its own. */
+.omrs-section-search input[type='search'] {
   width: 100%;
   min-width: 0;
   height: 100%;
   margin: 0;
   padding: 0;
-  border: 0;
+  /* `!important` on border and background for the same reason box-shadow
+     already carries it: `.ehr-chart-content input[type="search"]` in
+     globals.css sets `border-color` and `background: #ffffff` as !important,
+     which a plain reset cannot outrank at any specificity. That rule dresses
+     the chart's FORM fields; this input is not one — the label around it is
+     the bar, and letting the input keep a border painted a second bar inside
+     the first (label 38px, input 36px, nested). */
+  border: 0 !important;
   border-radius: 0;
   outline: 0;
   box-shadow: none !important;
   appearance: none;
-  background: transparent;
+  background: transparent !important;
   color: var(--ehr-text, #113055);
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
 }
-.omrs-root .omrs-section-search input[type='search']::placeholder { color: var(--ehr-muted, #5D728B); }
+.omrs-section-search input[type='search']::placeholder { color: var(--ehr-muted, #5D728B); }
 
 .omrs-section-footer {
   display: flex;
