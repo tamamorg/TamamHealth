@@ -21,6 +21,7 @@ import {
   type IdentifyMatch,
 } from '@/lib/services/fingerprint-service';
 import type { DataScope } from '@/lib/services/data-scope';
+import Modal from '@/components/Modal';
 
 interface FingerprintIdentifyModalProps {
   onSelect: (patientId: string) => void;
@@ -63,10 +64,10 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg, var(--bg-card))' }}>
+    <Modal onClose={onClose} width={448} labelledBy="fingerprint-identify-title">
+      <div className="modal-panel w-full overflow-hidden" style={{ background: 'var(--card-bg, var(--bg-card))' }}>
         <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 id="fingerprint-identify-title" className="text-sm font-semibold flex items-center gap-2">
             <ScanLine className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
             {t('fingerprint.identifyTitle')}
           </h3>
@@ -143,6 +144,6 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

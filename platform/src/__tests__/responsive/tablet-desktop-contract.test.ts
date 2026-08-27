@@ -14,6 +14,7 @@ describe('tablet compact-desktop contract', () => {
   it('is isolated from the phone and full desktop layouts', () => {
     expect(tabletCss).toContain('@media (min-width: 640px) and (max-width: 1279px)');
     expect(tabletCss).toContain('--app-top-rail-height: 60px');
+    expect(tabletCss).toContain('html { font-size: 13px; }');
   });
 
   it('hands over to the desktop cascade at exactly one boundary', () => {
@@ -51,5 +52,28 @@ describe('tablet compact-desktop contract', () => {
     expect(tabletCss).toContain('.ehr-worklist-head > span:nth-child(n + 6)');
     expect(tabletCss).toContain('overflow: auto !important');
     expect(tabletCss).toContain('.appointment-card-head { display: grid !important');
+  });
+
+  it('compacts queue tabs and lets the dashboard search consume its track', () => {
+    expect(tabletCss).toContain('.ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check)');
+    expect(tabletCss).toContain('padding-inline: clamp(7px, 0.9vw, 10px)');
+    expect(tabletCss).toContain('.ehr-center-panel .ehr-daybar > .ehr-queue-search');
+    expect(tabletCss).toContain('max-width: none');
+  });
+
+  it('keeps portalled popup surfaces aligned to their viewport-bounded dialog', () => {
+    expect(tabletCss).toContain('.modal-portal-dialog > *');
+    expect(tabletCss).toContain('margin-inline: auto !important');
+    expect(tabletCss).toContain('max-height: 100%');
+  });
+
+  it('reserves the flexible list-toolbar track for search', () => {
+    expect(tabletCss).toContain('.ehr-list-header-toolbar');
+    expect(tabletCss).toContain('grid-template-columns: minmax(220px, 1fr) max-content');
+    expect(tabletCss).toContain('.ehr-list-header-search > *');
+  });
+
+  it('shows one search affordance when the full tablet search field is present', () => {
+    expect(tabletCss).toContain('.ehr-top-actions .ehr-mobile-search-trigger { display: none !important; }');
   });
 });

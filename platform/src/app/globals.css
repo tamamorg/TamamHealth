@@ -5176,6 +5176,28 @@ html:has(.ehr-top-rail) {
   font-variant-numeric: tabular-nums;
 }
 
+/* Shared list-page toolbar: search owns the flexible track, while action
+   buttons keep their intrinsic width. Tablet-specific compaction lives in
+   tablet-desktop.css; this is the unchanged desktop baseline. */
+.ehr-list-header-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ehr-list-header-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ehr-list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 /* Narrow cards can't hold the field beside the title and the lanes, so the row
    stacks. Queried against `.ehr-center-panel`, the daybar's own parent — the
    `@media (max-width: 900px)` this replaces tested the VIEWPORT, which is not

@@ -35,8 +35,7 @@ import { todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import Select from '@/components/Select';
 import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
-import { stopsClickPropagation } from '@/lib/a11y';
-import { dismissBackdrop } from '@/lib/a11y';
+import Modal from '@/components/Modal';
 
 function todayISO(): string {
   return todayIso();
@@ -470,14 +469,9 @@ export default function MARPage() {
 
         {/* Record-administration modal */}
         {modalRx && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0, 29, 63,0.55)', backdropFilter: 'blur(2px)' }}
-            {...dismissBackdrop(closeModal)}
-          >
+          <Modal onClose={closeModal} width={448} labelledBy="mar-administration-title">
             <div
-              className="w-full max-w-md card-elevated overflow-hidden"
-              {...stopsClickPropagation}
+              className="modal-panel w-full card-elevated overflow-hidden"
               style={{ boxShadow: 'var(--card-shadow-xl)' }}
             >
               <header
@@ -492,7 +486,7 @@ export default function MARPage() {
                     <div className="text-[10.5px] font-bold uppercase" style={{
                       color: 'var(--text-muted)', letterSpacing: '0.06em',
                     }}>{t('mar.administer')}</div>
-                    <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
+                    <h3 id="mar-administration-title" className="text-base font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
                       {modalRx.medication}
                     </h3>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -603,7 +597,7 @@ export default function MARPage() {
                 </div>
               </footer>
             </div>
-          </div>
+          </Modal>
         )}
     </main>
   );

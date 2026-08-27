@@ -13,6 +13,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ANCVisitDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import Modal from '@/components/Modal';
 import {
   HeartPulse, Plus, X, Users,
   Calendar, ChevronRight, ExternalLink, Edit3,
@@ -495,10 +496,10 @@ export default function ANCPage() {
 
         {/* Registration Modal */}
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="card-elevated p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fadeIn" style={{ margin: '20px' }}>
+          <Modal onClose={() => setShowModal(false)} width={672} labelledBy="anc-registration-title">
+            <div className="modal-panel p-6 w-full overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Register ANC Visit</h3>
+                <h3 id="anc-registration-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Register ANC Visit</h3>
                 <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
                   <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                 </button>
@@ -749,15 +750,15 @@ export default function ANCPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </Modal>
         )}
 
         {/* Edit / Correct a saved ANC visit */}
         {editVisit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="card-elevated p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fadeIn" style={{ margin: '20px' }}>
+          <Modal onClose={() => setEditVisit(null)} width={512} labelledBy="anc-edit-title">
+            <div className="modal-panel p-6 w-full overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.edit')} · ANC {editVisit.visitNumber} · {editVisit.motherName}</h3>
+                <h3 id="anc-edit-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.edit')} · ANC {editVisit.visitNumber} · {editVisit.motherName}</h3>
                 <button onClick={() => setEditVisit(null)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
                   <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                 </button>
@@ -822,7 +823,7 @@ export default function ANCPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </Modal>
         )}
     </main>
   );

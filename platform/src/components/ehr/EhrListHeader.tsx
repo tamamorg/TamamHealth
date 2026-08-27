@@ -172,23 +172,25 @@ export default function EhrListHeader({
         </div>
       )}
       {hasSecondRow && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="ehr-list-header-toolbar">
           {search && (
-            <EhrSearchFilter
-              value={search.value}
-              onChange={search.onChange}
-              placeholder={search.placeholder}
-              ariaLabel={search.ariaLabel}
-              activeCount={search.filters?.activeCount ?? 0}
-              onClear={search.filters?.onClear}
-              label={search.filters?.label}
-              panelWidth={search.filters?.panelWidth ?? 'trigger'}
-              dataTour={search.filters?.dataTour}
-            >
-              {search.filters?.children}
-            </EhrSearchFilter>
+            <div className="ehr-list-header-search">
+              <EhrSearchFilter
+                value={search.value}
+                onChange={search.onChange}
+                placeholder={search.placeholder}
+                ariaLabel={search.ariaLabel}
+                activeCount={search.filters?.activeCount ?? 0}
+                onClear={search.filters?.onClear}
+                label={search.filters?.label}
+                panelWidth={search.filters?.panelWidth ?? 'trigger'}
+                dataTour={search.filters?.dataTour}
+              >
+                {search.filters?.children}
+              </EhrSearchFilter>
+            </div>
           )}
-          {actions}
+          {actions && <div className="ehr-list-header-actions">{actions}</div>}
         </div>
       )}
     </div>

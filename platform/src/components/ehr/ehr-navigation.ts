@@ -42,6 +42,10 @@ const PRIMARY_SHORTCUT_PRIORITY = [
   // button next to it. Its nav rows went with it (see permissions.ts).
   '/patients',
   '/appointments',
+  // Cross-facility handoff is a primary clinical workflow, not an overflow
+  // destination. Keeping it beside Patients and Appointments also makes it a
+  // stable top-rail shortcut on the constrained tablet header.
+  '/referrals',
   '/lab',
   '/reports',
   '/surveillance',

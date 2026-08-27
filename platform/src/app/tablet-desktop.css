@@ -27,7 +27,11 @@
     --section-spacing: 18px;
   }
 
-  html { font-size: 14px; }
+  /* A tablet is used at a shorter viewing distance than the desktop wall of
+     panels it preserves here. Scale the rem-based UI type consistently rather
+     than shrinking isolated labels until hierarchy becomes incoherent. User
+     zoom still enlarges this normally (including to WCAG's 200% test size). */
+  html { font-size: 13px; }
 
   .tamam-ehr-app {
     --ehr-top-rail-height: var(--app-top-rail-height);
@@ -152,6 +156,11 @@
 
   .ehr-top-search input { font-size: 12px; }
   .ehr-top-search-spacer { display: block !important; }
+
+  /* The full search field is already visible in compact-desktop mode. The
+     phone-only magnifier was being resurrected by the broad action-button
+     rule above, leaving two search icons in the same header. */
+  .ehr-top-actions .ehr-mobile-search-trigger { display: none !important; }
 
   .ehr-top-rail .ehr-top-center,
   .ehr-top-rail .ehr-top-facility {
@@ -423,7 +432,57 @@
   .registration-option-grid,
   .registration-field-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 
+  /* Queue lanes must leave the centre search field usable on tablets. The
+     desktop segmented control is deliberately roomier; compact-desktop keeps
+     the same labels and touch targets while trimming only horizontal chrome. */
+  .ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check) {
+    height: 32px;
+    padding-inline: clamp(7px, 0.9vw, 10px);
+    gap: 3px;
+    font-size: 11px;
+    letter-spacing: 0.035em;
+  }
+
+  .ehr-daybar .ehr-day-tab-count { min-width: 14px; }
+
+  .ehr-center-panel .ehr-daybar > .ehr-queue-search {
+    justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  /* Shared list dashboards keep the search as the flexible primary control;
+     action buttons occupy only their intrinsic width and never crush it. */
+  .ehr-list-header-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) max-content;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .ehr-list-header-search { min-width: 0; }
+  .ehr-list-header-search > * { width: 100% !important; max-width: none !important; }
+  .ehr-list-header-actions { display: flex; align-items: center; gap: 8px; }
+
   /* Modals remain desktop dialogs on a tablet, just bounded to the viewport. */
+  .modal-portal-dialog {
+    width: 100% !important;
+    min-width: 0;
+    margin-inline: auto !important;
+  }
+
+  .modal-portal-dialog > * {
+    width: 100% !important;
+    min-width: 0;
+    max-width: none !important;
+    max-height: 100%;
+    margin-inline: 0 !important;
+    box-sizing: border-box;
+  }
+
   .modal-panel,
   .card-elevated[role="dialog"] {
     width: min(var(--modal-width, 760px), calc(100vw - 32px));

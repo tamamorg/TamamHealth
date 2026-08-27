@@ -18,6 +18,7 @@ import { toCsvRows, downloadCsvText, safeFilenamePart } from '@/lib/export-file'
 import type { ImmunizationDefaulter } from '@/lib/services/immunization-service';
 import type { ImmunizationDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import Modal from '@/components/Modal';
 import {
   Syringe, Search, Plus, X, CheckCircle2, Clock, AlertTriangle,
   XCircle, ChevronDown, ChevronUp, Users, ExternalLink, Edit3, Download,
@@ -867,10 +868,10 @@ export default function ImmunizationsPage() {
 
         {/* Registration Modal */}
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="card-elevated p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fadeIn" style={{ margin: '20px' }}>
+          <Modal onClose={() => setShowModal(false)} width={512} labelledBy="immunization-registration-title">
+            <div className="modal-panel p-6 w-full overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('immun.recordVaccination')}</h3>
+                <h3 id="immunization-registration-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('immun.recordVaccination')}</h3>
                 <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
                   <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                 </button>
@@ -1007,15 +1008,15 @@ export default function ImmunizationsPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </Modal>
         )}
 
         {/* Edit / Correct a saved dose */}
         {editDose && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="card-elevated p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fadeIn" style={{ margin: '20px' }}>
+          <Modal onClose={() => setEditDose(null)} width={512} labelledBy="immunization-edit-title">
+            <div className="modal-panel p-6 w-full overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.edit')} · {editDose.patientName}</h3>
+                <h3 id="immunization-edit-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.edit')} · {editDose.patientName}</h3>
                 <button onClick={() => setEditDose(null)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
                   <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                 </button>
@@ -1067,7 +1068,7 @@ export default function ImmunizationsPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </Modal>
         )}
     </main>
   );

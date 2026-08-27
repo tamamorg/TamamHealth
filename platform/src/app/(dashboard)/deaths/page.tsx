@@ -15,6 +15,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import Modal from '@/components/Modal';
 
 // Shared control styling inside the header's Filters popover.
 const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
@@ -368,10 +369,10 @@ export default function DeathsPage() {
 
         {/* Death Registration Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+          <Modal onClose={() => setShowForm(false)} width={768} labelledBy="death-registration-title">
+            <div className="modal-panel w-full overflow-y-auto" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <div className="flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: 'var(--color-danger)' }} /><h2 className="font-semibold">{t('deaths.modalTitle')}</h2></div>
+                <div className="flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: 'var(--color-danger)' }} /><h2 id="death-registration-title" className="font-semibold">{t('deaths.modalTitle')}</h2></div>
                 <button onClick={() => setShowForm(false)}><X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} /></button>
               </div>
               <div className="p-4 space-y-4">
@@ -477,7 +478,7 @@ export default function DeathsPage() {
                 <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim() ? 0.5 : 1 }}>{t('deaths.registerDeath')}</button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
     </main>
   );

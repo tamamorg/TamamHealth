@@ -49,6 +49,11 @@ describe('top-rail shortcut order', () => {
     expect(railFor('pharmacist')).toContain('/messages');
   });
 
+  it('keeps Referrals in the front-desk header shortcut set', () => {
+    expect(railFor('front_desk')).toContain('/referrals');
+    expect(railFor('central_registration_clerk')).toContain('/referrals');
+  });
+
   it('never spends a slot on the dashboard the user is already on', () => {
     for (const role of Object.keys(ROLE_ROUTE_TABLE) as UserRole[]) {
       const home = getDefaultDashboard(role);

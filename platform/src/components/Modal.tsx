@@ -177,6 +177,7 @@ export default function Modal({
     >
       <div
         ref={dialogRef}
+        className="modal-portal-dialog"
         // Spread first: this element is a real dialog, so its own role and tab
         // behaviour must win over the helper's presentational defaults. All it
         // borrows is the refusal to forward a click to the backdrop.

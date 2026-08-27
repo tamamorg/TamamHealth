@@ -52,6 +52,15 @@ function channels(color: string): [number, number, number] {
 }
 
 describe('modal backdrop scrim', () => {
+  it('marks the viewport-bounded dialog for shared tablet alignment', () => {
+    const backdrop = renderModal();
+    const dialog = backdrop.querySelector<HTMLElement>('.modal-portal-dialog');
+
+    expect(dialog).not.toBeNull();
+    expect(dialog?.getAttribute('role')).toBe('dialog');
+    expect(dialog?.style.width).toBe('100%');
+  });
+
   it('dims with near-neutral ink rather than a brand hue', () => {
     const backdrop = renderModal();
     const [r, g, b] = channels(backdrop.style.background || backdrop.style.backgroundColor);

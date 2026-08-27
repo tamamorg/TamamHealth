@@ -23,6 +23,7 @@ import Select from '@/components/Select';
 import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import Modal from '@/components/Modal';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -459,10 +460,14 @@ export default function PatientsPage() {
 
       {/* Find Patient Modal — Hospital ID lookup + QR scan */}
       {showFindPatient && !showQRScanner && !showFingerprintIdentify && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg, var(--bg-card))' }}>
+        <Modal
+          onClose={() => { setShowFindPatient(false); setLookupId(''); setLookupError(''); }}
+          width={448}
+          labelledBy="find-patient-title"
+        >
+          <div className="modal-panel w-full overflow-hidden" style={{ background: 'var(--card-bg, var(--bg-card))' }}>
             <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-              <h3 className="text-sm font-semibold">{t('boma.findPatient')}</h3>
+              <h3 id="find-patient-title" className="text-sm font-semibold">{t('boma.findPatient')}</h3>
               <button onClick={() => { setShowFindPatient(false); setLookupId(''); setLookupError(''); }} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors">
                 <X className="w-4 h-4" />
               </button>
@@ -539,7 +544,7 @@ export default function PatientsPage() {
               )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {showFingerprintIdentify && (

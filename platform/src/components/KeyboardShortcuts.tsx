@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, Keyboard } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMessagingDock } from '@/modules/communication/client';
-import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
+import Modal from '@/components/Modal';
 
 const SHORTCUTS = [
   { keys: ['Alt', 'N'], altKeys: ['Ctrl', 'N'], descriptionKey: 'keyboardShortcuts.newPatient', action: '/patients/new' },
@@ -98,20 +98,15 @@ export default function KeyboardShortcuts() {
   if (!showHelp) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'rgba(0, 29, 63,0.6)' }}
-      {...dismissBackdrop(() => setShowHelp(false))}
-    >
+    <Modal onClose={() => setShowHelp(false)} width={448} labelledBy="keyboard-shortcuts-title">
       <div
-        className="w-full max-w-md mx-4 overflow-hidden"
+        className="modal-panel w-full overflow-hidden"
         style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border-panel)',
           borderRadius: 'var(--card-radius)',
           boxShadow: 'var(--card-shadow-xl)',
         }}
-        {...stopsClickPropagation}
       >
         {/* Header */}
         <div
@@ -120,9 +115,9 @@ export default function KeyboardShortcuts() {
         >
           <div className="flex items-center gap-2">
             <Keyboard className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <h2 id="keyboard-shortcuts-title" className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               {t('keyboardShortcuts.title')}
-            </span>
+            </h2>
           </div>
           <button
             onClick={() => setShowHelp(false)}
@@ -198,6 +193,6 @@ export default function KeyboardShortcuts() {
           </p>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

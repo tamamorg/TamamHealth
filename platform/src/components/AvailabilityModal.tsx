@@ -9,8 +9,8 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { Calendar, Clock, X, Loader2, Check, AlertCircle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
-import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 const SLOT_OPTIONS = [15, 20, 30, 45, 60];
 
@@ -68,16 +68,15 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }} {...dismissBackdrop(onClose)}>
+    <Modal onClose={onClose} width={448} labelledBy="availability-modal-title">
       <div
-        className="w-full max-w-md mx-4 rounded-xl shadow-2xl p-6"
+        className="modal-panel w-full p-6 overflow-y-auto"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-        {...stopsClickPropagation}
       >
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add availability</h2>
+            <h2 id="availability-modal-title" className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add availability</h2>
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:opacity-80"><X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} /></button>
         </div>
@@ -132,7 +131,7 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

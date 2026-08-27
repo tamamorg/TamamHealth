@@ -12,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import PopupSelect from '@/components/PopupSelect';
+import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import {
@@ -232,10 +233,10 @@ export default function BirthsPage() {
 
         {/* Registration Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+          <Modal onClose={() => setShowForm(false)} width={672} labelledBy="birth-registration-title">
+            <div className="modal-panel w-full overflow-y-auto" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <div className="flex items-center gap-2"><Baby className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} /><h2 className="font-semibold">Register New Birth</h2></div>
+                <div className="flex items-center gap-2"><Baby className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} /><h2 id="birth-registration-title" className="font-semibold">Register New Birth</h2></div>
                 <button onClick={() => setShowForm(false)}><X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} /></button>
               </div>
               <div className="p-4 space-y-4">
@@ -317,7 +318,7 @@ export default function BirthsPage() {
                 <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>Register Birth</button>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
     </main>
   );
