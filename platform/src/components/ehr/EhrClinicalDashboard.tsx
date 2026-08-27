@@ -62,6 +62,13 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
 import { stopsClickPropagation } from '@/lib/a11y';
 
+/**
+ * How many greeting-row actions are written out before the rest go behind
+ * "More". The row is a fixed ~195px column in the header grid, which is two
+ * labelled buttons wide.
+ */
+const INLINE_HEADER_ACTIONS = 2;
+
 export type WorklistPatient = {
   _id: string;
   /** Patient portrait; the avatar falls back to initials when absent. */
@@ -993,6 +1000,53 @@ export default function EhrClinicalDashboard({
     const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], roleConfig.allowedRoutes || []);
     return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
   }, [currentUser]);
+  /**
+   * The greeting row's actions, in priority order.
+   *
+   * Dispense and Print are the two this dashboard is opened to press; the
+   * role's nav shortcuts sit behind them. Assembled here rather than inline so
+   * the count is knowable — the row shows the first two and hands the rest to
+   * a More menu, and it cannot do that while the buttons are three separate
+   * JSX branches.
+   */
+  const headerActions = useMemo(() => [
+    ...(canDispense ? [{
+      key: 'dispense',
+      label: 'Dispense',
+      icon: Pill,
+      run: () => { setFindPatientQuery(''); setFindPatientOpen(true); },
+    }] : []),
+    {
+      key: 'print',
+      label: 'Print',
+      icon: Printer,
+      run: () => setPrintOpen(true),
+    },
+    ...quickNavItems.map(item => ({
+      key: item.href,
+      label: item.label,
+      icon: item.icon,
+      run: () => router.push(item.href),
+    })),
+  ], [canDispense, quickNavItems, router]);
+
+  /* The More menu's open state, and the outside-click that closes it. */
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) setMoreOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
+
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider and date the note header needs.
   const { createNote, creating: creatingNote } = useCreateNote(currentUser);
@@ -1429,8 +1483,15 @@ export default function EhrClinicalDashboard({
         <div className="ehr-clinical-dashboard-tabs">
           {canBookAppointments && (
             <div className="ehr-segmented ehr-segmented-single">
+              {/* "Book appointment" at desktop, "Appointment" once the first
+                  column narrows to the tablet rail — the long label is what
+                  made this button crowd its own column. Both are rendered and
+                  one is hidden by width, so the accessible name (aria-label)
+                  never changes with the viewport. */}
               <button type="button" className="active" aria-label="Book appointment" onClick={() => setBookingOpen(true)}>
-                <Plus className="w-4 h-4" /> Book appointment
+                <Plus className="w-4 h-4" />
+                <span className="ehr-label-full">Book appointment</span>
+                <span className="ehr-label-compact">Appointment</span>
               </button>
             </div>
           )}
@@ -1451,36 +1512,55 @@ export default function EhrClinicalDashboard({
             </div>
           </div>
         </div>
+        {/* Two actions written out, the rest behind More.
+
+            The row is a fixed ~195px column in this header's grid, and its
+            contents are role-derived: `quickNavItems` adds however many
+            shortcuts the signed-in role's nav yields on top of Dispense and
+            Print, so a doctor could put five labelled buttons in a column
+            sized for two. They compressed into each other rather than
+            wrapping (the row is nowrap, which is what keeps it on the
+            greeting's line). Two is what the column actually fits. */}
         <div className="ehr-schedule-actions">
-          {canDispense && (
-            <button
-              type="button"
-              aria-label="Dispense"
-              onClick={() => { setFindPatientQuery(''); setFindPatientOpen(true); }}
-            >
-              <Pill className="w-4 h-4" /> Dispense
-            </button>
-          )}
-          {quickNavItems.map(item => {
-            const ItemIcon = item.icon;
+          {headerActions.slice(0, INLINE_HEADER_ACTIONS).map(action => {
+            const ActionIcon = action.icon;
             return (
-              <button
-                key={item.href}
-                type="button"
-                aria-label={item.label}
-                onClick={() => router.push(item.href)}
-              >
-                <ItemIcon className="w-4 h-4" /> {item.label}
+              <button key={action.key} type="button" aria-label={action.label} onClick={action.run}>
+                <ActionIcon className="w-4 h-4" /> {action.label}
               </button>
             );
           })}
-          <button
-            type="button"
-            aria-label="Print worklist"
-            onClick={() => setPrintOpen(true)}
-          >
-            <Printer className="w-4 h-4" /> Print
-          </button>
+          {headerActions.length > INLINE_HEADER_ACTIONS && (
+            <div className="ehr-header-more" ref={moreRef}>
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+                aria-label={`More actions (${headerActions.length - INLINE_HEADER_ACTIONS})`}
+                onClick={() => setMoreOpen(open => !open)}
+                data-action="header-more"
+              >
+                <MoreVertical className="w-4 h-4" /> More
+              </button>
+              {moreOpen && (
+                <div className="ehr-header-more-menu" role="menu">
+                  {headerActions.slice(INLINE_HEADER_ACTIONS).map(action => {
+                    const ActionIcon = action.icon;
+                    return (
+                      <button
+                        key={action.key}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setMoreOpen(false); action.run(); }}
+                      >
+                        <ActionIcon className="w-4 h-4" /> {action.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

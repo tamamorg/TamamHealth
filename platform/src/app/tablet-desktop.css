@@ -260,6 +260,11 @@
     grid-template-columns: var(--tablet-rail) minmax(0, 1fr) auto !important;
     gap: var(--tablet-gap) !important;
   }
+
+  /* "Appointment", not "Book appointment": the long label is what made the
+     button crowd the rail column it shares a track with. */
+  .ehr-label-full { display: none !important; }
+  .ehr-label-compact { display: inline !important; }
   .ehr-clinical-dashboard-header-main { flex-direction: row !important; align-items: center !important; }
   .ehr-clinical-dashboard-header .ehr-schedule-actions { display: flex !important; }
   .ehr-center-panel > .ehr-clinical-strip { display: grid !important; }

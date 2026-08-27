@@ -4720,6 +4720,56 @@ html:has(.ehr-top-rail) {
   padding-top: 0;
 }
 
+/* ── Greeting-row overflow ("More") ───────────────────────────────────
+   The actions column is a fixed track, so its contents cannot be allowed to
+   grow with the signed-in role's shortcut count. Two are written out and the
+   remainder open from here. Anchored to the button, right-aligned, because
+   the column sits at the page's right edge. */
+.ehr-header-more { position: relative; display: inline-flex; }
+
+.ehr-header-more-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  inset-inline-end: 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+  border: 1px solid var(--ehr-border);
+  border-radius: 10px;
+  background: var(--ehr-panel);
+  box-shadow: 0 12px 28px rgba(17, 48, 85, 0.16);
+}
+
+/* Menu rows are rows, not the pill buttons the row above uses — inheriting
+   `.ehr-schedule-actions button` would put a bordered pill inside a bordered
+   menu, one per line. */
+.ehr-header-more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ehr-header-more-menu button:hover { background: var(--overlay-subtle); }
+
+/* One label for the wide column, a shorter one for the narrow one. Both are
+   in the DOM so the button's accessible name never changes with the viewport;
+   only which text is painted does. */
+.ehr-label-compact { display: none; }
+
 /* Greeting-row icons (New appointments, Dispense, Print) — 16px
    strokes inside the pills, per the design. */
 .ehr-clinical-dashboard-header .ehr-segmented button svg,
