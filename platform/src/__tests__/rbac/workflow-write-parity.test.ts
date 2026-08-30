@@ -59,6 +59,7 @@ const WORKFLOWS: WorkflowCapability[] = [
     roles: [
       'doctor', 'clinical_officer', 'nurse', 'clinician', 'midwife',
       'central_registration_clerk', 'front_desk', 'super_admin',
+      'medical_superintendent',
     ],
   },
   {

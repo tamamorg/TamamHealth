@@ -363,3 +363,44 @@ export function railCenterLabels(input: {
   const centerSubLabel = centerLabel !== secondLine ? secondLine : undefined;
   return { centerLabel, centerSubLabel };
 }
+
+export interface ImpersonationChipInfo {
+  /** The role the session is actually acting as right now. */
+  activeRoleLabel: string;
+  /** The real account behind the session — who to blame/credit, not who the
+   *  screen is currently dressed as. */
+  actualRoleLabel: string;
+}
+
+/**
+ * Whether the top rail's support-session chip should render, and the two
+ * role names it needs to say so.
+ *
+ * `actualRole` is minted into the JWT the moment a platform super-admin signs
+ * in AS another role (see `resolveEffectiveIdentity` in
+ * `modules/identity/core/login-session.ts`), round-tripped through
+ * `/api/auth/me`, and canonicalised onto `AppUser` in `context.tsx` — and
+ * until this existed, nothing on screen named it: a workspace impersonated by
+ * support looked byte-for-byte identical to that role's own ordinary session.
+ *
+ * Pure and exported so the "when does this show, and what does it say" rule
+ * is testable without EhrTopRail's dozen hook dependencies (useHospitals,
+ * usePatients, useOrganizations, useUsers, useNotifications, useAuth, ...) —
+ * the same reason `railCenterLabels` above is a plain function rather than
+ * inline JSX logic.
+ */
+export function impersonationChipInfo(input: {
+  role?: UserRole;
+  actualRole?: UserRole;
+  /** getRoleConfig(role).label for the ACTIVE role. */
+  roleLabel?: string;
+  /** getRoleConfig(actualRole).label for the REAL role. */
+  actualRoleLabel?: string;
+}): ImpersonationChipInfo | null {
+  const { role, actualRole, roleLabel, actualRoleLabel } = input;
+  if (!actualRole || actualRole === role) return null;
+  return {
+    activeRoleLabel: roleLabel || role || '',
+    actualRoleLabel: actualRoleLabel || actualRole,
+  };
+}

@@ -170,6 +170,12 @@ export async function GET(request: NextRequest) {
   const isDemoDeployment = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   const nowSec = Math.floor(Date.now() / 1000);
   const tokenAgeSec = typeof payload.iat === 'number' ? nowSec - payload.iat : 0;
+  // "Keep me signed in" (login/page.tsx), carried as a token claim so it
+  // survives a renewal. Absent on tokens minted before the claim existed —
+  // treat that the same as `true`, matching every session's behaviour before
+  // this existed, rather than silently downgrading it to a browser-session
+  // cookie on its first renewal.
+  const persist = payload.persist !== false;
   if (tokenAgeSec > SESSION_RENEW_AFTER_SEC && (liveUser || isDemoDeployment)) {
     try {
       const renewed = await createToken({
@@ -189,9 +195,14 @@ export async function GET(request: NextRequest) {
         passwordUpdatedAt: liveUser?.passwordUpdatedAt,
         // Demo deployments have no live record; carry the claim forward.
         pwdAt: liveUser ? undefined : payload.pwdAt,
+        // Preserve the ORIGINAL sign-in's choice — a renewal must not quietly
+        // upgrade a browser-session cookie into a persistent one, which is
+        // exactly what re-applying `applySessionCookies` at its old default
+        // would have done on every session's first renewal.
+        persist,
       });
       const csrf = await mintCsrfToken(payload.sub);
-      applySessionCookies(response.cookies, renewed, csrf);
+      applySessionCookies(response.cookies, renewed, csrf, persist);
       return response;
     } catch {
       // Renewal is best-effort — the current token is still valid, so fall
@@ -210,7 +221,10 @@ export async function GET(request: NextRequest) {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: SESSION_TTL_SEC,
+        // Mirrors the session cookie's own persistence character — a CSRF
+        // cookie that outlives a browser-session token cookie is a stray with
+        // nothing left to pair with once the browser closes.
+        ...(persist ? { maxAge: SESSION_TTL_SEC } : {}),
         path: '/',
       });
     } catch {

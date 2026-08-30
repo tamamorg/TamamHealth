@@ -23,42 +23,136 @@ const DEFAULT_TIMEOUT_MS = 600_000;
 
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'scroll'] as const;
 
-/** TEMPORARY TEST MODE: screen locking is disabled while the platform is being
- * tested. Restore the environment-based flag before production use. */
-const AUTO_LOCK_DISABLED = true;
-// const AUTO_LOCK_DISABLED = process.env.NEXT_PUBLIC_AUTO_LOCK_DISABLED === 'true';
+/**
+ * Screen locking is ON by default — a shared clinical device must lock
+ * unless an operator explicitly opts out (kiosk-mode hardware with its own
+ * physical security, or a controlled test environment). See .env.example.
+ *
+ * A function rather than a module-scope constant: `NEXT_PUBLIC_*` values are
+ * inlined at BUILD time regardless (Next.js's compiler replaces this exact
+ * expression with a literal wherever it textually appears), so there is no
+ * production difference — but reading it live, rather than once at import,
+ * is what lets a test flip the env var and exercise both branches of the
+ * SAME hook instance instead of needing a second module registry (which
+ * would load a second copy of React and break hooks entirely).
+ */
+function isAutoLockDisabled(): boolean {
+  return process.env.NEXT_PUBLIC_AUTO_LOCK_DISABLED === 'true';
+}
 
 /** Fired when the lock PIN is set/cleared so a mounted useAutoLock can update
  *  its `hasPin` state immediately (otherwise it'd be stale until remount). */
 export const PIN_CHANGED_EVENT = 'tamamhealth:pin-changed';
 
-async function hashPin(pin: string): Promise<string> {
-  const salted = pin + 'tamamhealth-salt-2026';
-  // Use crypto.subtle when available (HTTPS / localhost)
-  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(salted);
-    const buffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  // Fallback for non-secure contexts (HTTP on LAN) — simple hash
-  let hash = 0;
-  for (let i = 0; i < salted.length; i++) {
-    const char = salted.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit int
-  }
-  return 'fb-' + Math.abs(hash).toString(16).padStart(8, '0');
+/** PBKDF2-SHA256 iteration count. 100k is OWASP's current floor for PBKDF2 —
+ *  this runs once per unlock attempt on a local device, not per request, so
+ *  the cost is a non-issue against the security gain over a single SHA-256
+ *  round with a hardcoded, shared-across-every-install salt. */
+const PBKDF2_ITERATIONS = 100_000;
+const PIN_SALT_BYTES = 16;
+/** Version marker for the stored PIN hash shape. Bumped whenever the scheme
+ *  changes so an entry from an older build is recognised as such and
+ *  DISCARDED rather than verified against — the whole point of versioning
+ *  this is that the old single-round-SHA-256-with-a-static-global-salt
+ *  format (and the 32-bit toy hash before it) must never be trusted again,
+ *  even to read. A discarded entry just means the user re-registers their
+ *  PIN next time the device locks. */
+const PIN_HASH_VERSION = 2;
+
+interface StoredPinHash {
+  v: typeof PIN_HASH_VERSION;
+  /** Base64 of the random per-user salt (see PIN_SALT_BYTES). */
+  salt: string;
+  /** Base64 of the PBKDF2-derived key. */
+  hash: string;
+  iterations: number;
 }
 
-/** Whether a screen-lock PIN is currently set on this device. */
+/**
+ * Whether this context can hash a PIN at all. `crypto.subtle` requires a
+ * secure context (HTTPS or localhost) — on plain HTTP over a LAN (a phone
+ * hitting a facility server by IP) it is undefined.
+ *
+ * There is deliberately no fallback for the `false` case. The previous
+ * behaviour was a 32-bit non-cryptographic hash, which turns a PIN into
+ * something a spreadsheet macro can brute-force from the localStorage value
+ * alone. Exported so the lock screen can hide the PIN pad entirely and offer
+ * only full re-login instead.
+ */
+export function pinHashingSupported(): boolean {
+  return typeof globalThis.crypto !== 'undefined' && !!globalThis.crypto.subtle;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** Parses a stored PIN entry, returning `null` for anything that isn't the
+ *  CURRENT versioned shape — a legacy hash is malformed JSON (the old format
+ *  was a bare hex/`fb-...` string) or lacks the version marker, and either
+ *  way must read as "no usable PIN" rather than be handed to a comparison. */
+function parseStoredPin(raw: string): StoredPinHash | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredPinHash>;
+    if (
+      parsed && parsed.v === PIN_HASH_VERSION
+      && typeof parsed.salt === 'string' && typeof parsed.hash === 'string'
+      && typeof parsed.iterations === 'number' && parsed.iterations > 0
+    ) {
+      return parsed as StoredPinHash;
+    }
+  } catch {
+    // Legacy format wasn't JSON at all.
+  }
+  return null;
+}
+
+async function derivePinHash(pin: string, salt: Uint8Array, iterations: number): Promise<string> {
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  // `salt` (from `crypto.getRandomValues`/base64 decoding) types as
+  // `Uint8Array<ArrayBufferLike>`, which the DOM lib's `BufferSource` doesn't
+  // structurally accept (it wants a concrete `ArrayBuffer`, not the more
+  // general `ArrayBufferLike`) — a TS lib-typing mismatch, not a runtime one;
+  // WebCrypto accepts any typed array here.
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt as BufferSource, iterations, hash: 'SHA-256' }, keyMaterial, 256);
+  return bytesToBase64(new Uint8Array(bits));
+}
+
+/** Whether a screen-lock PIN is currently set on this device AND stored under
+ *  the current hashing scheme. A legacy entry is discarded here (rather than
+ *  merely ignored) so it can never be read again, by this or a future build. */
 export function hasLockPin(): boolean {
-  return typeof window !== 'undefined' && !!localStorage.getItem(PIN_HASH_KEY);
+  if (typeof window === 'undefined') return false;
+  const raw = localStorage.getItem(PIN_HASH_KEY);
+  if (!raw) return false;
+  if (parseStoredPin(raw)) return true;
+  localStorage.removeItem(PIN_HASH_KEY);
+  return false;
 }
 
-/** Set (or replace) the screen-lock PIN for this device. */
+/** Set (or replace) the screen-lock PIN for this device.
+ *
+ * Throws when this context cannot hash a PIN safely (see
+ * `pinHashingSupported`) — callers MUST check that first and not offer PIN
+ * setup at all when it is false, rather than catching this to fall back to
+ * anything weaker. */
 export async function setLockPin(pin: string): Promise<void> {
-  localStorage.setItem(PIN_HASH_KEY, await hashPin(pin));
+  if (!pinHashingSupported()) {
+    throw new Error('PIN unlock needs a secure connection (HTTPS or localhost) and is unavailable here.');
+  }
+  const salt = crypto.getRandomValues(new Uint8Array(PIN_SALT_BYTES));
+  const hash = await derivePinHash(pin, salt, PBKDF2_ITERATIONS);
+  const stored: StoredPinHash = { v: PIN_HASH_VERSION, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS };
+  localStorage.setItem(PIN_HASH_KEY, JSON.stringify(stored));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PIN_CHANGED_EVENT));
 }
 
@@ -172,7 +266,7 @@ export function useAutoLock(
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (!isAuthenticated || AUTO_LOCK_DISABLED) return;
+    if (!isAuthenticated || isAutoLockDisabled()) return;
 
     timerRef.current = setTimeout(() => {
       setIsLocked(true);
@@ -180,7 +274,7 @@ export function useAutoLock(
   }, [isAuthenticated, getTimeout]);
 
   const lock = useCallback(() => {
-    if (AUTO_LOCK_DISABLED) return;
+    if (isAutoLockDisabled()) return;
     setIsLocked(true);
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
@@ -190,18 +284,26 @@ export function useAutoLock(
     resetTimer();
   }, [resetTimer]);
 
-  /** Verify a PIN against the stored hash. Returns true if valid. */
+  /** Verify a PIN against the stored hash. Returns true if valid.
+   *
+   * Never falls back to the retired weak schemes: a legacy entry is not
+   * parseable by `parseStoredPin` and is treated the same as no PIN at all
+   * (`hasLockPin` has already discarded it by the time this can be called
+   * from `mode === 'unlock'`). On a context that cannot hash at all, this
+   * refuses rather than accepting or silently downgrading — the lock screen
+   * is expected to not offer PIN entry in that case in the first place. */
   const verifyPin = useCallback(async (pin: string): Promise<boolean> => {
-    const storedHash = localStorage.getItem(PIN_HASH_KEY);
-    if (!storedHash) return true; // No PIN set = accept any input
-    const inputHash = await hashPin(pin);
-    return inputHash === storedHash;
+    if (!hasLockPin()) return true; // No usable PIN set = accept any input
+    if (!pinHashingSupported()) return false;
+    const stored = parseStoredPin(localStorage.getItem(PIN_HASH_KEY)!)!;
+    const candidate = await derivePinHash(pin, base64ToBytes(stored.salt), stored.iterations);
+    return candidate === stored.hash;
   }, []);
 
-  /** Set (or update) the user's PIN */
+  /** Set (or update) the user's PIN. Throws on a context that cannot hash one
+   *  — see `setLockPin`; callers must gate PIN setup on `pinSupported`. */
   const setPin = useCallback(async (pin: string) => {
-    const hashed = await hashPin(pin);
-    localStorage.setItem(PIN_HASH_KEY, hashed);
+    await setLockPin(pin);
     setHasPin(true);
   }, []);
 
@@ -219,7 +321,7 @@ export function useAutoLock(
 
   // Activity listeners + visibility change
   useEffect(() => {
-    if (!isAuthenticated || AUTO_LOCK_DISABLED) {
+    if (!isAuthenticated || isAutoLockDisabled()) {
       setIsLocked(false);
       return;
     }
@@ -254,6 +356,10 @@ export function useAutoLock(
   return {
     isLocked,
     hasPin,
+    /** Whether this device can hash a PIN at all right now. The lock screen
+     *  uses this to decide whether to offer the PIN pad — false means "sign
+     *  in again" is the only way to unlock, never a weaker check. */
+    pinSupported: pinHashingSupported(),
     lock,
     unlock,
     verifyPin,

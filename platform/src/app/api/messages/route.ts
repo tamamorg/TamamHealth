@@ -7,17 +7,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+// hospital_manager and medical_biller both hold the /messages route in
+// role-routes.ts (and DOC_WRITE_ROLES.message is ALL_STAFF, which already
+// covers both) — this pair of lists had drifted behind that grant.
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife',
   'medical_superintendent', 'lab_tech', 'pharmacist', 'front_desk', 'cashier',
   'county_health_director',
   'data_entry_clerk', 'hrio', 'nutritionist', 'radiologist',
+  'hospital_manager', 'medical_biller',
 ];
 const WRITE_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'midwife',
   'medical_superintendent', 'lab_tech', 'pharmacist', 'front_desk', 'cashier',
   'county_health_director',
   'data_entry_clerk', 'hrio', 'nutritionist', 'radiologist',
+  'hospital_manager', 'medical_biller',
 ];
 export async function GET(request: NextRequest) {
   try {

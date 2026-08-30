@@ -10,12 +10,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized, validationError } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
-// Roles that may read patient lists
+// Roles that may read patient lists. lab_tech, pharmacist, hospital_manager
+// and medical_biller all hold the /patients route in role-routes.ts (a lab
+// tech/pharmacist opens the chart from their own worklist; a manager or
+// biller needs the roster for facility oversight/billing context) — this
+// list had drifted behind that grant.
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'midwife', 'front_desk', 'cashier', 'medical_superintendent', 'hrio',
   'data_entry_clerk',
   'nutritionist', 'radiologist', 'government',
+  'lab_tech', 'pharmacist', 'hospital_manager', 'medical_biller',
 ];
 // Roles that may create patients. data_entry_clerk keeps READ (patient lookup
 // while registering vital events) but not CREATE — the role has no /patients

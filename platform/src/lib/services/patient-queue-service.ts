@@ -57,8 +57,15 @@ export function stageForAppointmentStatus(status: string | undefined): QueueStag
   }
 }
 
-/** Default target wait time in minutes per stage */
-const TARGET_WAIT: Record<QueueStage, number> = {
+/**
+ * Default target wait time in minutes per stage.
+ *
+ * Exported so a caller that already knows a visit's stage — the front desk's
+ * appointment-sourced queue rows, which have no triage document for
+ * `buildQueueFromTriage` to read — can flag an over-target wait the same way
+ * this module does for its own entries, instead of a second copy of the table.
+ */
+export const TARGET_WAIT: Record<QueueStage, number> = {
   awaiting_triage: 10,
   awaiting_rooming: 15,
   awaiting_consultation: 30,
@@ -66,6 +73,29 @@ const TARGET_WAIT: Record<QueueStage, number> = {
   awaiting_pharmacy: 20,
   awaiting_checkout: 15,
 };
+
+/**
+ * Wait clock for a queue row derived straight from an appointment's own
+ * status/timestamp, for the front desk's checked-in appointment rows — which
+ * have no triage document for `buildQueueFromTriage` to read a wait off of,
+ * and so showed no wait clock at all. Mirrors the acuity-table math
+ * `buildQueueFromTriage` uses for its own entries (over target past 1.5× the
+ * stage's `TARGET_WAIT`), so a booked patient the desk checked in waits the
+ * same clock as a walk-in.
+ *
+ * Returns `overTarget: false` (and no `waitMinutes`) for a status with no
+ * stage (e.g. `completed`) or with no `checkedInAt` yet stamped.
+ */
+export function deriveAppointmentWait(
+  status: string | undefined,
+  checkedInAt: string | undefined,
+  nowMs: number,
+): { waitMinutes?: number; overTarget: boolean } {
+  const stage = stageForAppointmentStatus(status);
+  if (!stage || !checkedInAt) return { overTarget: false };
+  const waitMinutes = Math.floor((nowMs - new Date(checkedInAt).getTime()) / 60000);
+  return { waitMinutes, overTarget: waitMinutes > TARGET_WAIT[stage] * 1.5 };
+}
 
 const ACUITY_WEIGHT: Record<'RED' | 'YELLOW' | 'GREEN', number> = {
   RED: 3,

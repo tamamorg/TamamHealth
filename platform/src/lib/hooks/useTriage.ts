@@ -5,6 +5,7 @@ import { makeCoalescer } from './live-reload';
 import type { TriageDoc } from '../db-types';
 import { triageDB } from '../db';
 import { useDataScope } from './useDataScope';
+import type { CreateTriageOptions, TriageActor } from '../services/triage-service';
 
 /**
  * Triage queue hook for the nurse dashboard and the patient detail page.
@@ -59,17 +60,18 @@ export function useTriage(patientId?: string) {
   }, [load, patientId]);
 
   const create = useCallback(async (
-    data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
+    data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
+    options?: CreateTriageOptions,
   ) => {
     const { createTriage } = await import('../services/triage-service');
-    const doc = await createTriage(data);
+    const doc = await createTriage(data, options);
     await load();
     return doc;
   }, [load]);
 
-  const update = useCallback(async (id: string, updates: Partial<TriageDoc>) => {
+  const update = useCallback(async (id: string, updates: Partial<TriageDoc>, actor?: TriageActor) => {
     const { updateTriage } = await import('../services/triage-service');
-    const doc = await updateTriage(id, updates);
+    const doc = await updateTriage(id, updates, actor);
     await load();
     return doc;
   }, [load]);

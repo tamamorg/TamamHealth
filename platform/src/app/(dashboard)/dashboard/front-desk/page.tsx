@@ -11,14 +11,14 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
-  APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
+  APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_EXITS,
   appointmentStatusLabel, appointmentStatusGroup,
   APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { formatCompactDateTime, formatClockTime } from '@/lib/format-utils';
 import { patientRegisteredAt, patientFullName, patientGenderAge, patientAgeLabel } from '@/lib/patient-utils';
 import { PRIORITY_META, appointmentPriorityLabel, appointmentTriage, isTriagePriority, type TriagePriority } from '@/lib/clinical/triage-display';
-import { buildQueueFromTriage, STAGE_LABELS, type QueueStage } from '@/lib/services/patient-queue-service';
+import { buildQueueFromTriage, STAGE_LABELS, deriveAppointmentWait, type QueueStage } from '@/lib/services/patient-queue-service';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import Modal from '@/components/Modal';
@@ -29,6 +29,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleConfig } from '@/lib/permissions';
 import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
+import { worstOfflineSync, hasUnsyncedWrite } from '@/components/ehr/SyncStatusBadge';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
 import {
@@ -64,6 +65,39 @@ import {
 } from '@/lib/patient-registration-draft';
 
 /**
+ * The one appointment a patient's queue row is threaded onto today — never a
+ * slot the patient never kept. Two call sites used to pick the FIRST
+ * same-patient appointment of the day (`todaysAppointments.find(a =>
+ * a.patientId === …)`), cancelled/no-show/rescheduled included, so an active
+ * walk-in with an earlier cancelled booking that morning filed its status
+ * changes and checkout against the wrong, dead appointment while the live one
+ * sat untouched (docs/PATIENT-JOURNEY-GAP-AUDIT-2026-08.md).
+ *
+ * `encounterAppointmentId` — the visit's OWN encounter's `appointmentId`, when
+ * known — is checked first: the encounter is the actual visit thread, so its
+ * own link is authoritative over a guess by patient + time. `todaysAppointments`
+ * is expected pre-sorted by time (the board always builds it that way), so
+ * falling through to a plain `.find()` naturally picks the earliest ACTIVE
+ * booking.
+ *
+ * A module-level export (not a component-scoped closure) so it is directly
+ * unit-testable without rendering the whole dashboard — `front-desk-utils.ts`
+ * is this file's usual home for a pure helper like this one, but is out of
+ * scope for this pass.
+ */
+export function findActiveAppointmentForPatient(
+  todaysAppointments: AppointmentDoc[],
+  patientId: string,
+  encounterAppointmentId?: string,
+): AppointmentDoc | undefined {
+  if (encounterAppointmentId) {
+    const linked = todaysAppointments.find(a => a._id === encounterAppointmentId && a.patientId === patientId);
+    if (linked) return linked;
+  }
+  return todaysAppointments.find(a => a.patientId === patientId && !APPOINTMENT_STATUS_EXITS.includes(a.status));
+}
+
+/**
  * Front-desk operations workspace.
  *
  * Shows the live queue, today's appointments, and registry snapshots in one
@@ -80,10 +114,10 @@ export default function FrontDeskDashboardPage() {
   const canSetAppointmentStatus = canManageAppointmentSchedule || canCheckInAppointments;
   // Same roles the chart's Assign-provider action uses, so routing a patient
   // means the same thing wherever it is done from.
-  const { patients } = usePatients();
+  const { patients, loading: patientsLoading } = usePatients();
   const { users } = useUsers();
-  const { appointments, updateStatus: updateAppointmentStatus, reschedule: rescheduleAppointment } = useAppointments();
-  const { triages, update: updateTriage } = useTriage();
+  const { appointments, updateStatus: updateAppointmentStatus, reschedule: rescheduleAppointment, loading: appointmentsLoading } = useAppointments();
+  const { triages, update: updateTriage, loading: triagesLoading } = useTriage();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const { rooms } = useSettings();
@@ -208,6 +242,11 @@ export default function FrontDeskDashboardPage() {
       .sort((a, b) => (a.appointmentTime || '').localeCompare(b.appointmentTime || '')),
     [appointments, boardDate]
   );
+
+  // Encounter documents keyed by their own _id — the queue only carries an
+  // `encounterId`, so this is how a queue row recovers the encounter's own
+  // `appointmentId` (see `findActiveAppointmentForPatient` above).
+  const encounterById = useMemo(() => new Map(encounters.map(enc => [enc._id, enc])), [encounters]);
 
   // Work plotted on the "Day activity" week chart. Drawn from the whole booking
   // list rather than the day-scoped rows in the worklist, so all seven columns
@@ -371,8 +410,11 @@ export default function FrontDeskDashboardPage() {
       // for every arrival). Its rung is the authority on where the patient
       // actually is; the triage record only proves an assessment exists, which
       // is why "has a triage" was the wrong test for "is in the building".
-      const linkedAppointment = todaysAppointments.find(a => a.patientId === entry.patientId);
+      // Matched via the encounter's own `appointmentId` first, falling back to
+      // the earliest ACTIVE (non-cancelled/no-show/rescheduled) booking today —
+      // never the first same-patient row regardless of whether it is still live.
       const activeEncounter = encounterByPatient.get(entry.patientId);
+      const linkedAppointment = findActiveAppointmentForPatient(todaysAppointments, entry.patientId, activeEncounter?.appointmentId);
       const triageVisitStatus: AppointmentStatus =
         linkedAppointment?.status
         ?? triageDoc?.visitStatus
@@ -436,6 +478,11 @@ export default function FrontDeskDashboardPage() {
                      checkoutEncounter ? 'DONE' :
                      a.status === 'completed' ? 'DONE' :
                      a.status === 'in_progress' ? 'IN CONSULT' : 'WAITING';
+      // Wait clock: a booked patient the desk checked in waits the same clock
+      // as a walk-in. `checkedInAt` is stamped the moment that happened
+      // (updateAppointmentStatus) but neither field was ever read here
+      // before, so a checked-in appointment row showed no wait at all.
+      const { waitMinutes, overTarget } = deriveAppointmentWait(a.status, a.checkedInAt, queueNowMs);
       items.push({
         id: `appt-${a._id}`,
         visitStatus: a.status,
@@ -461,6 +508,8 @@ export default function FrontDeskDashboardPage() {
           : {}),
         operationalLabel: resolveOperationalVisitState(a, activeEncounter).label,
         operationalI18nKey: resolveOperationalVisitState(a, activeEncounter).i18nKey,
+        waitMinutes,
+        overTarget,
         score: APPT_SCORE[a.priority ?? ''] ?? 1,
         sourceId: a._id,
         encounterId: activeEncounter?._id,
@@ -1053,6 +1102,7 @@ export default function FrontDeskDashboardPage() {
       return {
         id: `pending-appt-${appointment._id}`,
         photoUrl: (patient as { photoUrl?: string } | undefined)?.photoUrl,
+        offlineSync: appointment.offlineSync,
         title: appointment.patientName,
         // The sub-line is the chief complaint alone — no demographics, no
         // department; those live in the row's other columns and the popup.
@@ -1172,8 +1222,13 @@ export default function FrontDeskDashboardPage() {
         ? todaysAppointments.find(a => a._id === entry.sourceId)
         // A triage-sourced row still belongs to a booking when the patient has
         // one today — check-in now creates one for every walk-in, so the row
-        // gets the same ladder and the same panel as anyone else.
-        : todaysAppointments.find(a => a.patientId === entry.patientId);
+        // gets the same ladder and the same panel as anyone else. Matched via
+        // the row's own encounter link first (never the first same-patient
+        // appointment of the day regardless of status — see
+        // `findActiveAppointmentForPatient`), which is what lets checkout
+        // below complete the SAME booking the row is actually about instead of
+        // an earlier cancelled one.
+        : findActiveAppointmentForPatient(todaysAppointments, entry.patientId, encounterById.get(entry.encounterId || '')?.appointmentId);
 
       // Icon actions for the row's inline panel. "Open chart" is always
       // offered; the primary desk action (Checkout/Assign) and the secondary
@@ -1231,6 +1286,11 @@ export default function FrontDeskDashboardPage() {
       return {
         id: entry.id,
         photoUrl: (patient as { photoUrl?: string } | undefined)?.photoUrl,
+        // Every walk-in now has its own check-in appointment, so the row can
+        // be backed by both a triage doc and an appointment doc — show
+        // whichever one's sync state needs more attention (see
+        // `worstOfflineSync`), never silently prefer one over the other.
+        offlineSync: worstOfflineSync(queueTriage?.offlineSync, queueAppointment?.offlineSync),
         title: entry.patientName,
         subtitle: entry.complaint,
         meta: `${entry.gender} · ${entry.age}${entry.assignedDoctorName ? ` · ${entry.assignedDoctorName}` : ''}`,
@@ -1359,6 +1419,7 @@ export default function FrontDeskDashboardPage() {
       return {
         id: `registered-${patient._id}`,
         photoUrl: (patient as { photoUrl?: string }).photoUrl,
+        offlineSync: patient.offlineSync,
         title: patientFullName(patient),
         subtitle: patient.hospitalNumber || patientGenderAge(patient),
         meta: `${patientGenderAge(patient)} · ${registered.date}${registered.time ? ` · ${registered.time}` : ''}`,
@@ -1424,6 +1485,7 @@ export default function FrontDeskDashboardPage() {
     canConsult,
     canSetAppointmentStatus,
     currentUser?.hospitalName,
+    encounterById,
     filteredQueue,
     filteredRegisteredPatients,
     handleAppointmentStatusChange,
@@ -1433,6 +1495,7 @@ export default function FrontDeskDashboardPage() {
     panelView,
     openReschedule,
     roomOptions,
+    todaysAppointments,
     router,
     t,
     visiblePendingAppointments,
@@ -1458,6 +1521,27 @@ export default function FrontDeskDashboardPage() {
    * description of RED/YELLOW/GREEN, so "Emergency" here is the same word and
    * the same red as on the clinician's worklist.
    */
+  // How many docs this device has written offline and not yet confirmed
+  // synced — across every patient, appointment and triage record it holds,
+  // not just today's board (a device that has been offline for days should
+  // say so, not just for its most recent visits). Deduped by _id since the
+  // same patient can't appear twice within one of these arrays. Feeds the
+  // Reception rail tile below; the per-row `SyncStatusBadge`s are the detail
+  // view, this is the "is anything unpushed at all" summary.
+  const pendingSyncCount = useMemo(() => {
+    const seen = new Set<string>();
+    let count = 0;
+    const consider = (doc: { _id?: string; offlineSync?: PatientDoc['offlineSync'] }) => {
+      if (!doc._id || seen.has(doc._id)) return;
+      seen.add(doc._id);
+      if (hasUnsyncedWrite(doc)) count++;
+    };
+    patients.forEach(consider);
+    appointments.forEach(consider);
+    triages.forEach(consider);
+    return count;
+  }, [patients, appointments, triages]);
+
   const metrics = useMemo<EhrCareDashboardMetric[]>(() => {
     const counts = new Map<TriagePriority, number>();
     for (const item of boardQueue) {
@@ -1469,7 +1553,7 @@ export default function FrontDeskDashboardPage() {
     const ACUITY_TONE: Record<TriagePriority, EhrCareDashboardMetric['tone']> = {
       RED: 'danger', YELLOW: 'warning', GREEN: 'success',
     };
-    return (['RED', 'YELLOW', 'GREEN'] as TriagePriority[]).map(code => {
+    const acuityMetrics = (['RED', 'YELLOW', 'GREEN'] as TriagePriority[]).map(code => {
       const count = counts.get(code) ?? 0;
       return {
         label: PRIORITY_META[code].label,
@@ -1479,12 +1563,29 @@ export default function FrontDeskDashboardPage() {
         tone: count === 0 ? ('neutral' as const) : ACUITY_TONE[code],
       };
     });
-  }, [boardQueue]);
+    // Only shown when there is something to say — a synced device adds no
+    // tile here, same rule the acuity rows follow for a quiet lane.
+    if (pendingSyncCount > 0) {
+      acuityMetrics.push({ label: t('sync.docPendingLabel'), value: pendingSyncCount, tone: 'neutral' });
+    }
+    return acuityMetrics;
+  }, [boardQueue, pendingSyncCount, t]);
 
   // No subtitle line under the board title: the lane tabs and the Reception
   // status panel already carry the counts, so the "24 patients scheduled"
   // sentence only restated them.
+  // True while any of the board's three sources — patients, appointments,
+  // triage — is still on its first load. Before this, an empty `rows` list
+  // (nothing has arrived from PouchDB yet) rendered the same "No appointments
+  // still expected" / "No patients in queue" empty state as a genuinely quiet
+  // day, so a clerk opening the board on a slow device saw it tell them there
+  // was nothing to do.
+  const boardLoading = patientsLoading || appointmentsLoading || triagesLoading;
+
   const centerCopy = useMemo(() => {
+    if (boardLoading) {
+      return { title: dateLabel, emptyTitle: 'Loading the front desk…', emptyActionLabel: '' };
+    }
     if (panelView === 'appointments') {
       return {
         title: "Today's appointments",
@@ -1520,7 +1621,7 @@ export default function FrontDeskDashboardPage() {
         : 'No finished visits yet',
       emptyActionLabel: 'Register patient',
     };
-  }, [dateLabel, panelView, queueFilter, t]);
+  }, [boardLoading, dateLabel, panelView, queueFilter, t]);
 
   if (!currentUser) return null;
 

@@ -114,11 +114,20 @@ string `"[redacted]"`:
    | `/email/i`        | `email`, `Email`, `emailSent`, `userEmail` |
    | `/phone/i`        | `phone`, `userPhone`, `phoneticName` |
    | `/dob/i`          | `dob`, `DOB`, `dobYear` |
+   | `/dateofbirth/i`  | `dateOfBirth` |
+   | `/birthdate/i`    | `birthDate`, `birthdate` |
    | `/password/i`     | `password`, `passwordHash`, `password_confirm`, `userPassword` |
    | `/passwordhash/i` | `passwordHash` (also covered by `/password/i` — kept explicit) |
    | `/nationalid/i`   | `nationalId`, `nationalID` |
    | `/national_id/i`  | `national_id` |
    | `/notes/i`        | `notes`, `clinicalNotes`, `nurse_notes` |
+   | `/patientname/i`  | `patientName` |
+   | `/hospitalnumber/i` | `hospitalNumber` |
+   | `/address/i`      | `address`, `homeAddress` |
+   | `/chiefcomplaint/i` | `chiefComplaint` |
+   | `/diagnos/i`      | `diagnosis`, `diagnoses`, `diagnosisCapability` |
+   | `/firstname/i`    | `firstName` |
+   | `/lastname/i`     | `lastName` |
 
    Recursion follows nested objects and arrays. Cyclic references are
    guarded with a `WeakSet`.

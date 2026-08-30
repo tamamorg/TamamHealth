@@ -26,6 +26,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
 import { apiFetch } from '@/lib/api-fetch';
@@ -97,6 +98,7 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { organizations } = useOrganizations();
   const { hospitals } = useHospitals();
   const { config } = usePlatformConfig();
@@ -135,7 +137,7 @@ export default function AdminDashboardPage() {
             import('@/lib/services/sync-event-service'),
           ]);
         const [allUsers, allPatients, allEncounters, logs, sync, resolutions] = await Promise.all([
-          getAllUsers(), getAllPatients(), getAllEncounters(), getRecentAuditLogs(500), getSyncEventStats(),
+          getAllUsers(), getAllPatients(), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(),
           getRiskResolutions(),
         ]);
         if (cancelled) return;
@@ -186,7 +188,7 @@ export default function AdminDashboardPage() {
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [scope]);
 
   /* ── Derived signals ─────────────────────────────────────────────── */
 

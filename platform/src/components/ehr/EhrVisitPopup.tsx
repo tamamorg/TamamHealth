@@ -11,6 +11,55 @@ import { initials, stateTint, shortenPersonName } from '@/lib/patient-utils';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import type { AppointmentDoc, TriageDoc } from '@/lib/db-types';
 import { todayIso as isoToday } from '@/lib/date-utils';
+import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA } from '@/lib/clinical/iitt';
+import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
+
+const IITT_RED_LABELS = new Map<string, string>(IITT_RED_CRITERIA);
+const IITT_YELLOW_LABELS = new Map<string, string>(IITT_YELLOW_CRITERIA);
+
+/**
+ * Compact "why this priority" summary for the worklist row popup — a doctor
+ * scanning the queue sees which structured danger signs, isolation flag, or
+ * nurse override actually produced a RED/YELLOW badge without opening the
+ * full chart. Mirrors the fuller `TriagePriorityExplain` block on the chart's
+ * own SBAR tab (`PatientSBAR.tsx`) at worklist-row scale.
+ */
+function TriageFindingsSummary({ triage }: { triage: TriageDoc }) {
+  const redLabels = (triage.redCriteria || []).map(code => IITT_RED_LABELS.get(code) || code);
+  const yellowLabels = (triage.yellowCriteria || []).map(code => IITT_YELLOW_LABELS.get(code) || code);
+  const manualRaise = extractManualPriorityRaise(triage.notes);
+  const hasContent = redLabels.length > 0 || yellowLabels.length > 0 || triage.isolationRequired
+    || triage.vitalUrgencyOverridden || manualRaise;
+  if (!hasContent) return null;
+
+  return (
+    <div className="ehr-visit-pop-row">
+      <span className="ehr-visit-pop-label">Triage findings</span>
+      <div>
+        {triage.isolationRequired && (
+          <p><strong style={{ color: 'var(--acuity-red)' }}>ISOLATION required</strong></p>
+        )}
+        {redLabels.length > 0 && (
+          <p><strong style={{ color: 'var(--acuity-red)' }}>Red:</strong> {redLabels.join('; ')}</p>
+        )}
+        {yellowLabels.length > 0 && (
+          <p><strong style={{ color: 'var(--acuity-yellow)' }}>Yellow:</strong> {yellowLabels.join('; ')}</p>
+        )}
+        {triage.vitalUrgencyOverridden && (
+          <p>
+            <strong style={{ color: 'var(--acuity-red)' }}>Saved below recommended {triage.vitalUrgencyRecommendation || 'urgency'}:</strong>{' '}
+            {triage.vitalUrgencyOverrideReason || 'no reason recorded'}
+          </p>
+        )}
+        {manualRaise && (
+          <p>
+            <strong style={{ color: 'var(--acuity-red)' }}>Raised to {manualRaise.priority} by nurse:</strong> {manualRaise.reason}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ─── Visit popup + move dialog (clinician worklist) ───
    Row click on "Patients assigned to you" opens this popup: the current
@@ -300,6 +349,8 @@ export default function EhrVisitPopup({
                 )}
               </div>
             </div>
+
+            {triage && <TriageFindingsSummary triage={triage} />}
 
             {triage && (triage.disposition || triage.destinationClinic || triage.assignedProviderName || triage.handoffNote) && (
               <div className="ehr-visit-pop-row">

@@ -11,6 +11,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { applySessionCookies, createToken, getAuthPayload, logApiError, mintCsrfToken, serverError, unauthorized } from '@/modules/identity';
+import { logAuditSafe } from '@/lib/services/audit-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +68,13 @@ export async function POST(request: NextRequest) {
       updatedUser = await changeOwnPassword(auth.sub, currentPassword, newPassword);
     } catch (err) {
       if (err instanceof Error && /current password is incorrect/i.test(err.message)) {
+        // Worth its own row for the same reason a failed login is: repeated
+        // wrong-current-password attempts against one account are exactly
+        // what an account-takeover attempt looks like. Fire-and-forget, like
+        // every other audit write — see auditLogin in the login route for
+        // why this uses a direct logAuditSafe call rather than
+        // `withAuditLog`: this body carries currentPassword/newPassword.
+        void logAuditSafe('password_change_failed', auth.sub, auth.username, 'Current password is incorrect', false);
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
       }
       const { PasswordPolicyError } = await import('@/modules/identity/policy/password-policy');
@@ -82,6 +90,12 @@ export async function POST(request: NextRequest) {
       }
       throw err;
     }
+
+    // The change succeeded — record it. Successful password changes are as
+    // auditable as failed ones: an admin resetting an account, or an account
+    // whose password was just changed by someone other than its owner, both
+    // need a row an access review can find.
+    void logAuditSafe('password_change_success', auth.sub, auth.username, 'Password changed', true);
 
     // Re-issue the session JWT without the forced-change flag so the gate
     // clears immediately, no re-login required. The fresh passwordUpdatedAt

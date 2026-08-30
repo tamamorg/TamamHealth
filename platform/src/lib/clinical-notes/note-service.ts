@@ -82,6 +82,135 @@ function noteId(): string {
   return `note-${Date.now().toString(36)}-${rand}`;
 }
 
+/**
+ * Whether an encounter parked on a parallel order loop still has real work
+ * outstanding. Read ONLY when the encounter is at `awaiting_pharmacy` /
+ * `awaiting_labs` / `awaiting_imaging` — a doctor signing the note while the
+ * visit is genuinely still waiting on a prescription or a result must not
+ * force the visit toward checkout. A lookup failure defaults to "still
+ * outstanding": the safe direction is to leave the visit parked, never to
+ * push it toward checkout on a guess.
+ */
+async function hasOutstandingParkedWork(
+  status: 'awaiting_pharmacy' | 'awaiting_labs' | 'awaiting_imaging',
+  encounterId: string,
+  patientId: string,
+): Promise<boolean> {
+  try {
+    if (status === 'awaiting_pharmacy') {
+      const { getPrescriptionsByPatient } = await import('../services/prescription-service');
+      const rxs = await getPrescriptionsByPatient(patientId);
+      return rxs.some(rx =>
+        rx.encounterId === encounterId && rx.status !== 'dispensed' && rx.status !== 'discontinued');
+    }
+    // awaiting_labs / awaiting_imaging: any test tied to this encounter that
+    // has not yet resulted still blocks the move.
+    const { getLabResultsByPatient } = await import('../services/lab-service');
+    const labs = await getLabResultsByPatient(patientId);
+    return labs.some(l => l.encounterId === encounterId && l.status !== 'completed');
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Raise a `disease_alert` for every notifiable diagnosis on a signed note
+ * (KAN-?? — surveillance never fired from the notes module). `validateDiagnosisCodes`
+ * was wired only into medical-record-service, a legacy consultation path no
+ * browser UI writes to any more, so a notifiable diagnosis recorded through
+ * the notes module — the path clinicians actually use — never reached
+ * surveillance at all. Mirrors medical-record-service's
+ * `raiseNotifiableDiseaseAlerts`; kept as its own copy here because the two
+ * document shapes (coded Assessment-section diagnoses vs. MedicalRecordDoc's
+ * flat `diagnoses`) differ and medical-record-service is a separate module
+ * this fix's scope did not extend to refactoring.
+ *
+ * Best-effort by design: runs AFTER the note is durably signed, and a failure
+ * here must never undo or fail the attestation.
+ */
+async function raiseNotifiableDiseaseAlertsFromNote(note: ClinicalNoteDoc): Promise<void> {
+  try {
+    const diagnoses = note.sections.flatMap(s => s.diagnoses ?? []);
+    if (diagnoses.length === 0) return;
+
+    const { validateDiagnosisCodes, lookupIcd11 } = await import('../clinical/diagnosis-validation');
+    const { notifiableCodes, freeTextNotifiableMatches } = validateDiagnosisCodes(diagnoses);
+    const codes = [...new Set([...notifiableCodes, ...freeTextNotifiableMatches.map(m => m.code)])];
+    if (codes.length === 0) return;
+
+    const { createAlert, getAlertsBySourceRecord } = await import('../services/surveillance-service');
+    // One case per (note, code) — ever. Signing never re-fires (a signed note
+    // is locked), but an addendum-driven re-check would land here too.
+    const alreadyRaised = new Set(
+      (await getAlertsBySourceRecord(note._id)).map(a => a.icd11Code || ''),
+    );
+
+    let state = '';
+    let county = '';
+    if (note.patientId) {
+      try {
+        const { getPatientById } = await import('../services/patient-service');
+        const patient = await getPatientById(note.patientId);
+        state = patient?.state || '';
+        county = patient?.county || '';
+      } catch { /* best-effort — try the facility next */ }
+    }
+    if (!state && note.hospitalId) {
+      try {
+        const { getHospitalById } = await import('../services/hospital-service');
+        const hospital = await getHospitalById(note.hospitalId);
+        state = hospital?.state || '';
+        county = county || hospital?.county || '';
+      } catch { /* best-effort — an alert without geography still counts nationally */ }
+    }
+
+    for (const code of codes) {
+      if (alreadyRaised.has(code)) continue;
+      const entry = lookupIcd11(code);
+      if (!entry) continue;
+      await createAlert({
+        disease: entry.title,
+        state,
+        county,
+        cases: 1,
+        deaths: 0,
+        alertLevel: 'watch',
+        reportDate: new Date().toISOString(),
+        trend: 'stable',
+        orgId: note.orgId,
+        hospitalId: note.hospitalId,
+        patientId: note.patientId,
+        icd11Code: entry.code,
+        sourceRecordId: note._id,
+      });
+      alreadyRaised.add(code);
+    }
+  } catch (err) {
+    console.warn('[clinical-notes] notifiable disease alert failed (note was signed):', err);
+  }
+}
+
+/**
+ * Clear the shared progress tracker for this visit (KAN-?? — "write-only
+ * progress tracker"). `consultation_signed` is the milestone the tracker's own
+ * catalog already defines as the completion trigger (`stageForMilestone`
+ * routes it to 'completed'); nothing ever called it, so a signed, fully
+ * closed-out consultation kept reading "in progress" in the notification feed
+ * indefinitely. Best-effort and scoped to this note's own visit — a stale
+ * tracker from an unrelated earlier episode must never be closed by this sign.
+ */
+async function closeConsultationProgressForNote(note: ClinicalNoteDoc, actorId?: string): Promise<void> {
+  try {
+    const { getAllConsultationProgress, updateProgressMilestone } = await import('../services/consultation-progress-service');
+    const trackers = (await getAllConsultationProgress()).filter(p => p.patientId === note.patientId);
+    const tracker = (note.encounterId && trackers.find(p => p.encounterId === note.encounterId)) || trackers[0];
+    if (!tracker || tracker.currentStage === 'completed' || tracker.currentStage === 'cancelled') return;
+    await updateProgressMilestone(tracker._id, 'consultation_signed', 'completed', { id: actorId });
+  } catch {
+    // A stale progress notification is a nuisance, not a safety issue.
+  }
+}
+
 /** Newest first, by date of service then last update. */
 function byServiceDate(a: ClinicalNoteDoc, b: ClinicalNoteDoc): number {
   const d = `${b.serviceDate}${b.serviceTime || ''}`.localeCompare(`${a.serviceDate}${a.serviceTime || ''}`);
@@ -433,10 +562,10 @@ export async function signClinicalNote(
   // clinic-checkout queue stayed empty, `dischargeEncounter` had no legal walk,
   // and the stale open visit absorbed the patient's next arrival.
   //
-  // Deliberately narrow. Only a note that names its encounter, only when that
-  // encounter is still `with_clinician`, and only for a full sign — a note
-  // parked in `awaiting_cosign` is not finished documentation. A nurse note or
-  // an addendum written alongside the visit therefore cannot close it.
+  // Deliberately narrow. Only a note that names its encounter, and only for a
+  // full sign — a note parked in `awaiting_cosign` is not finished
+  // documentation. A nurse note or an addendum written alongside the visit
+  // therefore cannot close it.
   //
   // Best-effort: the signature is the clinical act and must stand even if the
   // visit thread cannot be advanced.
@@ -448,10 +577,32 @@ export async function signClinicalNote(
         await transitionEncounter(existing.encounterId, 'ready_for_clinic_checkout', {
           actorId: input.signedBy,
         });
+      } else if (
+        encounter
+        && (encounter.status === 'awaiting_pharmacy' || encounter.status === 'awaiting_labs' || encounter.status === 'awaiting_imaging')
+        && !(await hasOutstandingParkedWork(encounter.status, existing.encounterId, existing.patientId))
+      ) {
+        // The clinician prescribed/ordered before signing, which already
+        // parked the visit away from `with_clinician` (see
+        // prescription-service.parkVisitAtPharmacy / ensureLabOrderEncounter) —
+        // so the branch above never fires for the commonest "prescribe then
+        // sign" sequence. Every one of these three statuses has a direct,
+        // legal edge to `ready_for_clinic_checkout` (encounter-journey.ts); it
+        // is only taken here once the parked work has actually resolved, so a
+        // genuinely outstanding prescription or result still leaves the visit
+        // parked exactly as the architecture document intends.
+        await transitionEncounter(existing.encounterId, 'ready_for_clinic_checkout', {
+          actorId: input.signedBy,
+        });
       }
     } catch {
       // Leave the visit where it is; the desk can move it by hand.
     }
+  }
+
+  if (!input.awaitingCosign) {
+    await raiseNotifiableDiseaseAlertsFromNote(updated);
+    await closeConsultationProgressForNote(updated, input.signedBy);
   }
 
   return { ...updated, _rev: resp.rev };

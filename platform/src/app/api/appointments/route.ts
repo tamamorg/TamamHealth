@@ -7,10 +7,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+// medical_biller holds the /appointments route in role-routes.ts (billing
+// context needs the appointment a charge/claim is tied to) — read-only,
+// since a biller does not schedule visits.
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'midwife', 'front_desk', 'cashier', 'medical_superintendent', 'hospital_manager',
   'central_registration_clerk', 'clinic_clerk', 'triage_nurse', 'rooming_nurse', 'clinician',
+  'medical_biller',
 ];
 const CREATE_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',

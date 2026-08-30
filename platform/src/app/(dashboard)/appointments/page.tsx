@@ -35,15 +35,15 @@ import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_cale
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { abbreviateProviderName, patientFullName } from '@/lib/patient-utils';
-import { useAuth, useUi } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import type { AppointmentType, AppointmentPriority, AppointmentStatus, FacilityLevel } from '@/lib/db-types';
+import type { AppointmentType, AppointmentPriority, AppointmentStatus } from '@/lib/db-types';
 import dynamic from 'next/dynamic';
 import PortalModal from '@/components/Modal';
-import { jubaDate, jubaTime } from '@/lib/time-juba';
+import { jubaDate } from '@/lib/time-juba';
 import Select from '@/components/Select';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 
@@ -98,12 +98,26 @@ const CAL_VIEW_TABS: { key: 'day' | 'week' | 'month'; label: string }[] = [
   { key: 'month', label: 'Month' },
 ];
 
+/**
+ * The desk-approval queue: a portal ask reception has not answered yet.
+ * `scheduled` is a booking the desk already made — counting it here (as this
+ * used to) treated the whole day's confirmed schedule as an approval queue,
+ * so the "Pending approval" chip and its filtered list both over-counted by
+ * every booking reception had already made itself.
+ *
+ * A module-level export (not inlined in the two `useMemo`s that use it) so
+ * the two call sites can never drift apart again, and so the rule is directly
+ * unit-testable without rendering the page.
+ */
+export function isPendingApproval(appointment: { status: AppointmentStatus; appointmentDate: string }, today: string): boolean {
+  return appointment.status === 'requested' && appointment.appointmentDate >= today;
+}
+
 /* ─── Page ─── */
 export default function AppointmentsPage() {
-  const { appointments, create } = useAppointments();
+  const { appointments, loading: appointmentsLoading } = useAppointments();
   const { patients } = usePatients();
   const { currentUser } = useAuth();
-  const { globalSearch } = useUi();
   const { canBookAppointments, canExportAppointments } = usePermissions();
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -280,11 +294,11 @@ export default function AppointmentsPage() {
   const calendarEvents = useMemo(() => {
     let list = visibleAppointments;
     if (filterStatus === 'pending_approval') {
-      list = list.filter(a => a.status === 'scheduled' && a.appointmentDate >= today);
+      list = list.filter(a => isPendingApproval(a, today));
     } else if (filterStatus !== 'all') {
       list = list.filter(a => appointmentMatchesStatusFilter(a.status, filterStatus));
     }
-    const q = `${search} ${globalSearch}`.toLowerCase().trim();
+    const q = search.toLowerCase().trim();
     if (q) list = list.filter(a =>
       a.patientName.toLowerCase().includes(q) ||
       a.providerName.toLowerCase().includes(q) ||
@@ -302,7 +316,7 @@ export default function AppointmentsPage() {
         resource: a,
       };
     });
-  }, [visibleAppointments, filterStatus, search, globalSearch, today]);
+  }, [visibleAppointments, filterStatus, search, today]);
 
   // The day bar's own number. `calendarEvents` is every appointment matching
   // the filter, across every month — printing that beside "Aug 20 – 21" put a
@@ -349,7 +363,7 @@ export default function AppointmentsPage() {
     const fromDate = toIsoDate(start);
     const untilDate = toIsoDate(end);
     let list = visibleAppointments.filter(a => a.appointmentDate >= fromDate && a.appointmentDate < untilDate);
-    const q = `${search} ${globalSearch}`.toLowerCase().trim();
+    const q = search.toLowerCase().trim();
     if (q) list = list.filter(a =>
       a.patientName.toLowerCase().includes(q) ||
       a.providerName.toLowerCase().includes(q) ||
@@ -357,7 +371,7 @@ export default function AppointmentsPage() {
       a.reason.toLowerCase().includes(q)
     );
     return list;
-  }, [visibleAppointments, search, globalSearch, calView, calDate]);
+  }, [visibleAppointments, search, calView, calDate]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: statusBaseList.length };
@@ -380,8 +394,8 @@ export default function AppointmentsPage() {
     return [...base, ...fromStatuses];
   }, [statusCounts, filterStatus, t, statusLabelKey]);
 
-  // Pending approvals
-  const pendingApprovals = useMemo(() => visibleAppointments.filter(a => a.status === 'scheduled' && a.appointmentDate >= today), [visibleAppointments, today]);
+  // Pending approvals — see `isPendingApproval`.
+  const pendingApprovals = useMemo(() => visibleAppointments.filter(a => isPendingApproval(a, today)), [visibleAppointments, today]);
 
   /**
    * Dismissing the dialog also drops the "came from registration" hand-off:
@@ -399,59 +413,60 @@ export default function AppointmentsPage() {
     if (!patient) { showToast(t('appointments.toastSelectValidPatientShort'), 'error'); return; }
     setSubmitting(true);
     try {
-      const created = await create({
-        patientId: patient._id, patientName: `${patient.firstName} ${patient.surname}`,
-        // The desk registering a walk-in is not their clinician; the queue
-        // assigns one. `bookedBy` below already records who took them in.
-        patientPhone: patient.phone || undefined, providerId: '',
-        providerName: '', facilityId: currentUser?.hospitalId || '',
-        facilityName: currentUser?.hospitalName || '', facilityLevel: 'payam' as FacilityLevel,
-        appointmentDate: today, appointmentTime: jubaTime(),
-        duration: 30, appointmentType: 'walk_in', priority: wiPriority,
-        department: wiDepartment, reason: wiReason, notes: wiNotes || undefined,
-        status: 'checked_in', reminderSent: false, isRecurring: false,
-        bookedBy: currentUser?._id || '', bookedByName: currentUser?.name || '', state: '',
-        orgId: currentUser?.orgId,
-      });
-      // A walk-in booking is written `checked_in` — the patient is already at
-      // the desk — so it has to open the visit thread too. Writing the status
-      // alone leaves them with no encounter for triage, rooming, the
-      // clinician's note or the checkout gate to join — the same gap
-      // `AppointmentEditModal` closes for a scheduled patient by routing
-      // Checked In through `checkInAppointment`. Best-effort: the booking is
-      // what puts them in the
-      // queue, so an encounter failure must not lose the registration.
+      // `checkInPatient` is the one walk-in path: it writes the booking (or
+      // checks an existing same-day one in instead — see below), opens the
+      // arrival encounter, and creates the pending triage row with
+      // `encounterId` linked and `not_assessed`/`clerical_checkin`
+      // provenance — the full sequence this dialog used to do by hand, minus
+      // the triage row it never wrote at all (KAN-118). `useAppointments`'s
+      // live PouchDB subscription picks up every one of these writes on its
+      // own, so there is nothing to refresh here.
+      const { checkInPatient } = await import('@/lib/services/check-in-service');
+      const { BookingConflictError } = await import('@/lib/services/appointment-service');
+      let result;
       try {
-        const { findOpenEncounterForPatient, createArrivalEncounter } = await import('@/lib/services/encounter-service');
-        const { deriveAttendanceType } = await import('@/lib/services/check-in-service');
-        const facilityId = currentUser?.hospitalId || '';
-        const existing = await findOpenEncounterForPatient(patient._id, facilityId);
-        if (!existing) {
-          await createArrivalEncounter({
-            patientId: patient._id,
-            patientName: `${patient.firstName} ${patient.surname}`,
-            hospitalNumber: patient.hospitalNumber,
-            hospitalId: facilityId,
-            hospitalName: currentUser?.hospitalName || '',
-            orgId: currentUser?.orgId,
-            arrivalChannel: 'walk_in',
-            appointmentId: created?._id,
-            attendanceType: await deriveAttendanceType(patient._id),
-            actorId: currentUser?._id,
+        result = await checkInPatient({
+          patientId: patient._id,
+          patientName: `${patient.firstName} ${patient.surname}`,
+          hospitalNumber: patient.hospitalNumber,
+          patientPhone: patient.phone || undefined,
+          facilityId: currentUser?.hospitalId || '',
+          facilityName: currentUser?.hospitalName || '',
+          orgId: currentUser?.orgId,
+          department: wiDepartment,
+          chiefComplaint: wiReason,
+          notes: wiNotes || undefined,
+          // The dialog's own Routine/Urgent/Emergency picker → the service's
+          // acuity vocabulary, which also sets the triage priority
+          // (GREEN/YELLOW/RED) the nurse re-triages against.
+          acuity: wiPriority === 'emergency' ? 'emergency' : wiPriority === 'urgent' ? 'priority' : 'routine',
+          checkedInById: currentUser?._id || '',
+          checkedInByName: currentUser?.name || '',
+        });
+      } catch (err) {
+        if (err instanceof BookingConflictError) {
+          // A same-day slot this desk cannot safely fold into (a different
+          // facility, or a stray non-open status) — point the clerk at the
+          // patient's existing booking instead of a dead-end error.
+          showToast(err.message, 'error', {
+            action: {
+              label: t('appointments.actionOpenSchedule'),
+              onClick: () => { closeWalkIn(); setSearch(patientFullName(patient)); },
+            },
           });
+          return;
         }
-      } catch (encErr) {
-        // The booking still stands — losing the registration because the visit
-        // thread failed would be worse. But this must not be silent: without
-        // the encounter the patient is CHECKED IN on the reception board and
-        // on no nursing worklist at all, their chart shows no visit, and the
-        // checkout gate has nothing to close. That failure was invisible to
-        // everybody, including the clerk who caused it, so it is logged and
-        // said out loud here.
-        console.error('[walk-in] arrival encounter was not opened', encErr);
-        showToast(t('appointments.toastWalkInNoVisit'), 'error');
+        throw err;
       }
-      showToast(t('appointments.toastWalkInRegistered'), 'success'); setShowWalkIn(false);
+      showToast(
+        // `appointmentCheckedIn` means the patient already had a booking today
+        // (including a portal `requested` ask) and that one was checked in —
+        // distinct from writing a brand-new walk-in slot, and worth saying so
+        // the desk isn't surprised to find only one appointment on the board.
+        result.appointmentCheckedIn ? t('appointments.toastWalkInCheckedInExisting') : t('appointments.toastWalkInRegistered'),
+        'success',
+      );
+      setShowWalkIn(false);
       setWiPatient(''); setWiReason(''); setWiNotes(''); setWiDepartment('Outpatient'); setWiPriority('routine');
       // Registration handed off here to finish the check-in; with the patient
       // now in the queue that errand is done, so hand the user back to their
@@ -559,6 +574,16 @@ export default function AppointmentsPage() {
           </div>
 
           <div className="ehr-schedule-actions">
+            {/* A walk-in opener for RETURNING patients. Registration's
+                "Register & check in" tail (?walkIn=<id>) was the dialog's only
+                opener, which left an already-registered patient standing at the
+                desk with no walk-in path at all — the clerk had to book a
+                normal appointment and then check it in. */}
+            {canBookAppointments && (
+              <button type="button" aria-label={t('appointments.registerWalkIn')} onClick={() => setShowWalkIn(true)}>
+                <UserPlus className="w-4 h-4" /> {t('appointments.registerWalkIn')}
+              </button>
+            )}
             {/* The one surface that writes availability — the windows the
                 booking wizard offers as slots. It had no home at all after the
                 top rail's quick-add menu went, so a provider could not publish
@@ -630,7 +655,7 @@ export default function AppointmentsPage() {
               <div>
                 <h2>{calendarPeriodLabel(calView, calDate)}</h2>
                 <p className="ehr-care-subtitle">
-                  {visibleCount === 1 ? '1 appointment' : `${visibleCount} appointments`}
+                  {appointmentsLoading ? 'Loading…' : (visibleCount === 1 ? '1 appointment' : `${visibleCount} appointments`)}
                 </p>
               </div>
 
@@ -674,6 +699,12 @@ export default function AppointmentsPage() {
               className={`rbc-tamam${calView === 'day' ? ' is-twoday' : ''}`}
               style={{ flex: 1, minHeight: 0, padding: '12px 14px 14px' }}
             >
+              {/* Appointments have not loaded yet — an empty grid here read as
+                  "nothing booked today" rather than "still loading", which is
+                  what the calendar was actually doing every cold render. */}
+              {appointmentsLoading ? (
+                <div className="appointment-card-empty">Loading appointments…</div>
+              ) : (
               <AppointmentsCalendar
                 events={calendarEvents}
                 calView={calView}
@@ -691,6 +722,7 @@ export default function AppointmentsPage() {
                   setShowNewForm(true);
                 }}
               />
+              )}
             </div>
           </section>
         </section>

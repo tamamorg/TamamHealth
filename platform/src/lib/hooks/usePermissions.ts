@@ -55,8 +55,13 @@ export function usePermissions() {
   const canDispense = role === 'pharmacist';
   const canEnterLabResults = role === 'lab_tech';
 
-  // Referrals — clinical staff + front desk + supervisors + midwife (obstetric)
-  const canManageReferrals = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isClinician || isMidwife || isRegistrationClerk || role === 'front_desk' || isSuperAdmin;
+  // Referrals — clinical staff + front desk + supervisors + midwife (obstetric).
+  // medical_superintendent added 2026-08 (KAN audit): DOC_WRITE_ROLES.referral,
+  // the /api/referrals CREATE_ROLES guard, and the /referrals route grant all
+  // already included it — this flag was the one layer that didn't, so the
+  // toolbar's "New referral" button and the empty-state CTA were both hidden
+  // from a role every other layer already let write one.
+  const canManageReferrals = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isClinician || isMidwife || isRegistrationClerk || role === 'front_desk' || isSuperAdmin || isMedSupt;
 
   // Appointments — route visibility is broad, but workflow actions are split
   // by duty: reception schedules/checks in, clinicians advance visits, HMIS

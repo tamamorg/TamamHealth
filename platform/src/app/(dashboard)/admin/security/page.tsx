@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
@@ -141,6 +142,7 @@ function renderField(f: SettingField, draft: Policy, onToggle: (key: keyof Polic
 export default function SecurityCompliancePage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const { config, update } = usePlatformConfig();
   const [backupAgeHours, setBackupAgeHours] = useState<number | null>(null);
@@ -162,7 +164,7 @@ export default function SecurityCompliancePage() {
     (async () => {
       try {
         const { getRecentAuditLogs } = await import('@/lib/services/audit-service');
-        const logs = await getRecentAuditLogs(500);
+        const logs = await getRecentAuditLogs(500, scope);
         if (mounted) setAuditLogs(logs);
       } catch (err) {
         console.error('Failed to load the security watchlist:', err);
@@ -171,7 +173,7 @@ export default function SecurityCompliancePage() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [scope]);
 
   /* Watchlist — medium risk and above, last 7 days, worst first. Same window
      and same classifier the Risk Center and Audit Logs use. */

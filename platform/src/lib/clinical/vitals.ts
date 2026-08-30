@@ -15,6 +15,9 @@
  */
 
 import type { MedicalRecordDoc, TriageDoc } from '../db-types';
+import { DEFAULT_TRIAGE_POLICY, MUAC_MODERATE_CM, type TriagePolicy } from './triage-policy';
+
+export { MUAC_MODERATE_CM, MUAC_SEVERE_CM } from './triage-policy';
 
 /** Free-text (string) vitals as captured by the nurse/triage forms. */
 export interface VitalsInput {
@@ -68,11 +71,23 @@ export type TriageVitalField =
   | 'painScore'
   | 'bloodGlucose'
   | 'gcs'
-  | 'muac';
+  | 'muac'
+  /**
+   * Not a captured vital — the WHO/ICRC/MSF IITT paediatric card's age-based
+   * criteria (any infant <8 days is RED; 8 days–6 months is YELLOW, IITT §
+   * paediatric RED/YELLOW) apply regardless of any measurement. Tagging their
+   * warnings with this pseudo-field lets them travel through the same
+   * `TriageVitalWarning` shape — and the same explainability banner — as
+   * every measured vital, without ever being validated as one: it is never a
+   * key in `TRIAGE_RANGE_FIELD`/`TRIAGE_VITAL_LABEL`/`TRIAGE_VITAL_UNIT`
+   * below (all `Partial`, precisely so this can be absent from them), and no
+   * form renders an input for it.
+   */
+  | 'patientAge';
 
 export type TriageVitalsInput = Partial<Record<TriageVitalField, string | number>>;
 
-const TRIAGE_RANGE_FIELD: Record<TriageVitalField, keyof typeof VITAL_RANGES> = {
+const TRIAGE_RANGE_FIELD: Partial<Record<TriageVitalField, keyof typeof VITAL_RANGES>> = {
   temperature: 'temperature',
   pulse: 'pulse',
   respiratoryRate: 'respiratoryRate',
@@ -87,7 +102,7 @@ const TRIAGE_RANGE_FIELD: Record<TriageVitalField, keyof typeof VITAL_RANGES> = 
   muac: 'muac',
 };
 
-const TRIAGE_VITAL_LABEL: Record<TriageVitalField, string> = {
+const TRIAGE_VITAL_LABEL: Partial<Record<TriageVitalField, string>> = {
   temperature: 'Temperature',
   pulse: 'Pulse',
   respiratoryRate: 'Respiratory rate',
@@ -102,7 +117,7 @@ const TRIAGE_VITAL_LABEL: Record<TriageVitalField, string> = {
   muac: 'MUAC',
 };
 
-const TRIAGE_VITAL_UNIT: Record<TriageVitalField, string> = {
+const TRIAGE_VITAL_UNIT: Partial<Record<TriageVitalField, string>> = {
   temperature: '°C',
   pulse: 'bpm',
   respiratoryRate: 'breaths/min',
@@ -150,12 +165,15 @@ export function calculateBmi(weightRaw?: string | number, heightRaw?: string | n
 export function validateTriageVitals(vitals: TriageVitalsInput): Partial<Record<TriageVitalField, string>> {
   const errors: Partial<Record<TriageVitalField, string>> = {};
 
+  // `TRIAGE_RANGE_FIELD` only ever holds keys for real, capturable vitals
+  // (it is `Partial` solely so the synthetic 'patientAge' warning tag can be
+  // absent from it) — every key this iterates has a range/label/unit entry.
   for (const field of Object.keys(TRIAGE_RANGE_FIELD) as TriageVitalField[]) {
     const supplied = vitals[field];
     const raw = supplied === undefined || supplied === null ? '' : String(supplied).trim();
     if (!raw) continue;
     const value = parseStrictVitalNumber(raw);
-    const [min, max] = VITAL_RANGES[TRIAGE_RANGE_FIELD[field]];
+    const [min, max] = VITAL_RANGES[TRIAGE_RANGE_FIELD[field]!];
     const unit = TRIAGE_VITAL_UNIT[field];
 
     if (value === null) {
@@ -203,7 +221,22 @@ function warning(
  * <11.5 cm severe acute malnutrition threshold for children 6–59 months.
  * NEWS2 supplies the adult low-systolic boundary and AHA/ACC guidance supplies
  * the severe-hypertension boundary because IITT does not define a general,
- * non-pregnancy numeric BP boundary.
+ * non-pregnancy numeric BP boundary. Every numeric boundary — including these
+ * — is now a `TriagePolicy` entry (`./triage-policy.ts`) with its own source
+ * citation; the literals above describe the DEFAULT policy, not something
+ * hardcoded in this function any more. Pass `options.policy` to override any
+ * subset of them (see `resolveTriagePolicy`).
+ *
+ * `patientAgeYears` must be FRACTIONAL (e.g. an 11-month-old is `0.917`, not
+ * `0`) — several bands compare against fractions of a year (the neonatal
+ * temperature cutoff is `2/12`, MUAC eligibility starts at `0.5`). Use
+ * `patientAgeYearsExact` (`lib/patient-utils.ts`), not `patientAge`, to
+ * derive it: `patientAge` rounds to whole years, which silently forced every
+ * infant under 12 months through the neonatal-emergency branch and never let
+ * any of them reach the MUAC screen. When age is `undefined` (patient record
+ * carries neither a birth date nor an estimate), adult bands apply and any
+ * warning that came from an adult-only band says so in its message — an
+ * assumption the nurse needs to see, not a silent default.
  *
  * `isPregnant` exists because IITT's one numeric BP rule is a pregnancy rule,
  * and it is a RED one: "PREGNANT WITH ANY OF … SBP ≥160 or DBP ≥110" sends the
@@ -216,8 +249,9 @@ function warning(
 export function getTriageVitalWarnings(
   vitals: TriageVitalsInput,
   patientAgeYears?: number,
-  options: { isPregnant?: boolean } = {},
+  options: { isPregnant?: boolean; policy?: TriagePolicy } = {},
 ): TriageVitalWarning[] {
+  const policy = options.policy ?? DEFAULT_TRIAGE_POLICY;
   const blockingErrors = validateTriageVitals(vitals);
   const value = (field: TriageVitalField) => blockingErrors[field]
     ? null
@@ -233,11 +267,39 @@ export function getTriageVitalWarnings(
   const gcs = value('gcs');
   const muac = value('muac');
   const warnings: TriageVitalWarning[] = [];
-  const isChild = patientAgeYears !== undefined && patientAgeYears < 12;
-  const isAdult = patientAgeYears === undefined || patientAgeYears >= 18;
+  const adultMinYears = policy.ageBands.adultMinYears.value;
+  const isChild = patientAgeYears !== undefined && patientAgeYears < adultMinYears;
+  const ageUnknown = patientAgeYears === undefined;
+  const isAdult = ageUnknown || patientAgeYears >= adultMinYears;
+  // Appended only to warnings produced by an adult-only band while age is
+  // unknown, so the nurse sees exactly which findings rest on that
+  // assumption rather than every warning on the record.
+  const withUnknownAgeCaveat = (message: string) =>
+    ageUnknown ? `${message} Age unknown — adult ranges applied.` : message;
 
-  if (temperature !== null && (temperature < 36 || temperature > 39)) {
-    const neonatalEmergency = patientAgeYears !== undefined && patientAgeYears < (2 / 12);
+  // IITT paediatric age-based criteria (§ RED/YELLOW): apply purely from age,
+  // independent of any vital sign. Checked before anything vitals-based so a
+  // silent newborn with normal-looking numbers still escalates.
+  if (patientAgeYears !== undefined) {
+    if (patientAgeYears < policy.infant.under8DaysRedMaxAgeYears.value) {
+      warnings.push(warning(
+        'patientAge',
+        'IITT_YOUNG_INFANT_UNDER_8_DAYS_RED',
+        'RED',
+        'Infant is under 8 days old, which meets IITT RED criteria regardless of vital signs; move to high-acuity care immediately.',
+      ));
+    } else if (patientAgeYears < policy.infant.eightDaysToSixMonthsYellowMaxAgeYears.value) {
+      warnings.push(warning(
+        'patientAge',
+        'IITT_YOUNG_INFANT_8_DAYS_TO_6_MONTHS_YELLOW',
+        'YELLOW',
+        'Infant is between 8 days and 6 months old, which meets IITT YELLOW criteria; up-triage for prompt clinician review.',
+      ));
+    }
+  }
+
+  if (temperature !== null && (temperature < policy.temperature.lowC.value || temperature > policy.temperature.highC.value)) {
+    const neonatalEmergency = patientAgeYears !== undefined && patientAgeYears < policy.infant.neonatalTemperatureRedMaxAgeYears.value;
     warnings.push(warning(
       'temperature',
       neonatalEmergency ? 'IITT_NEONATE_TEMPERATURE_RED' : 'IITT_HIGH_RISK_TEMPERATURE',
@@ -248,7 +310,7 @@ export function getTriageVitalWarnings(
     ));
   }
 
-  if (spo2 !== null && spo2 < 92) {
+  if (spo2 !== null && spo2 < policy.spo2.lowPercent.value) {
     warnings.push(warning(
       'oxygenSaturation',
       'IITT_HIGH_RISK_SPO2',
@@ -258,12 +320,14 @@ export function getTriageVitalWarnings(
   }
 
   if (pulse !== null) {
-    if (!isChild && (pulse < 50 || pulse > 150)) {
+    const { redLow, redHigh, yellowLow, yellowHigh } = policy.adult.pulse;
+    if (!isChild && (pulse < redLow.value || pulse > redHigh.value)) {
       warnings.push(warning('pulse', 'IITT_ADULT_PULSE_RED', 'RED', `Pulse ${pulse} bpm meets RED criteria; move to high-acuity care immediately.`));
-    } else if (!isChild && (pulse < 60 || pulse > 130)) {
-      warnings.push(warning('pulse', 'IITT_ADULT_HIGH_RISK_PULSE', 'YELLOW', `Pulse ${pulse} bpm is high risk; up-triage for immediate clinician review.`));
+    } else if (!isChild && (pulse < yellowLow.value || pulse > yellowHigh.value)) {
+      warnings.push(warning('pulse', 'IITT_ADULT_HIGH_RISK_PULSE', 'YELLOW', withUnknownAgeCaveat(`Pulse ${pulse} bpm is high risk; up-triage for immediate clinician review.`)));
     } else if (isChild) {
-      const [low, high] = patientAgeYears! < 1 ? [90, 180] : patientAgeYears! < 5 ? [80, 160] : [70, 140];
+      const { under1, age1to4, age5to12 } = policy.child.pulse;
+      const [low, high] = patientAgeYears! < 1 ? under1 : patientAgeYears! < 5 ? age1to4 : age5to12;
       if (pulse < low || pulse > high) {
         warnings.push(warning('pulse', 'IITT_CHILD_HIGH_RISK_PULSE', 'YELLOW', `Pulse ${pulse} bpm is high risk for this child's age; up-triage for immediate clinician review.`));
       }
@@ -271,10 +335,12 @@ export function getTriageVitalWarnings(
   }
 
   if (rr !== null) {
-    if (!isChild && (rr < 10 || rr > 30)) {
-      warnings.push(warning('respiratoryRate', 'IITT_ADULT_HIGH_RISK_RR', 'YELLOW', `Respiratory rate ${rr}/min is high risk; up-triage for immediate clinician review.`));
+    const { yellowLow, yellowHigh } = policy.adult.respiratoryRate;
+    if (!isChild && (rr < yellowLow.value || rr > yellowHigh.value)) {
+      warnings.push(warning('respiratoryRate', 'IITT_ADULT_HIGH_RISK_RR', 'YELLOW', withUnknownAgeCaveat(`Respiratory rate ${rr}/min is high risk; up-triage for immediate clinician review.`)));
     } else if (isChild) {
-      const [low, high] = patientAgeYears! < 1 ? [25, 50] : patientAgeYears! < 5 ? [20, 40] : [10, 30];
+      const { under1, age1to4, age5to12 } = policy.child.respiratoryRate;
+      const [low, high] = patientAgeYears! < 1 ? under1 : patientAgeYears! < 5 ? age1to4 : age5to12;
       if (rr < low || rr > high) {
         warnings.push(warning('respiratoryRate', 'IITT_CHILD_HIGH_RISK_RR', 'YELLOW', `Respiratory rate ${rr}/min is high risk for this child's age; up-triage for immediate clinician review.`));
       }
@@ -284,39 +350,48 @@ export function getTriageVitalWarnings(
   // Pregnancy first: its boundary is both lower and more urgent than the
   // general one, so checking the general rule first would let 165/112 through.
   const pregnancyHypertension = options.isPregnant
-    && ((systolic !== null && systolic >= 160) || (diastolic !== null && diastolic >= 110));
+    && ((systolic !== null && systolic >= policy.pregnancy.sbpRedMin.value) || (diastolic !== null && diastolic >= policy.pregnancy.dbpRedMin.value));
   if (pregnancyHypertension) {
     const reading = [systolic, diastolic].every(v => v !== null)
       ? `${systolic}/${diastolic} mmHg`
       : `${systolic !== null ? `systolic ${systolic}` : `diastolic ${diastolic}`} mmHg`;
     warnings.push(warning(
-      systolic !== null && systolic >= 160 ? 'systolic' : 'diastolic',
+      systolic !== null && systolic >= policy.pregnancy.sbpRedMin.value ? 'systolic' : 'diastolic',
       'IITT_PREGNANCY_HYPERTENSION_RED',
       'RED',
-      `Blood pressure ${reading} in pregnancy meets RED criteria (SBP ≥160 or DBP ≥110); move to high-acuity care immediately and assess for pre-eclampsia.`,
+      `Blood pressure ${reading} in pregnancy meets RED criteria (SBP ≥${policy.pregnancy.sbpRedMin.value} or DBP ≥${policy.pregnancy.dbpRedMin.value}); move to high-acuity care immediately and assess for pre-eclampsia.`,
     ));
   }
-  if (!pregnancyHypertension && isAdult && systolic !== null && (systolic <= 90 || systolic > 180)) {
-    warnings.push(warning('systolic', 'ADULT_HIGH_RISK_SYSTOLIC_BP', 'YELLOW', `Systolic blood pressure ${systolic} mmHg requires immediate clinician review and repeat measurement.`));
+  const { systolicLow, systolicHigh, diastolicLow, diastolicHigh } = policy.adult.bloodPressure;
+  if (!pregnancyHypertension && isAdult && systolic !== null && (systolic <= systolicLow.value || systolic > systolicHigh.value)) {
+    warnings.push(warning('systolic', 'ADULT_HIGH_RISK_SYSTOLIC_BP', 'YELLOW', withUnknownAgeCaveat(`Systolic blood pressure ${systolic} mmHg requires immediate clinician review and repeat measurement.`)));
   }
-  if (!pregnancyHypertension && isAdult && diastolic !== null && (diastolic <= 40 || diastolic > 120)) {
-    warnings.push(warning('diastolic', 'ADULT_HIGH_RISK_DIASTOLIC_BP', 'YELLOW', `Diastolic blood pressure ${diastolic} mmHg requires immediate clinician review and repeat measurement.`));
+  if (!pregnancyHypertension && isAdult && diastolic !== null && (diastolic <= diastolicLow.value || diastolic > diastolicHigh.value)) {
+    warnings.push(warning('diastolic', 'ADULT_HIGH_RISK_DIASTOLIC_BP', 'YELLOW', withUnknownAgeCaveat(`Diastolic blood pressure ${diastolic} mmHg requires immediate clinician review and repeat measurement.`)));
   }
 
-  if (pain !== null && pain >= 7) {
+  if (pain !== null && pain >= policy.pain.severeMin.value) {
     warnings.push(warning('painScore', 'IITT_SEVERE_PAIN', 'YELLOW', `Pain score ${pain}/10 is severe; up-triage for prompt assessment and analgesia.`));
   }
-  if (glucose !== null && glucose < 3) {
+  if (glucose !== null && glucose < policy.glucose.hypoRedMaxMmol.value) {
     warnings.push(warning('bloodGlucose', 'IITT_HYPOGLYCAEMIA_RED', 'RED', `Blood glucose ${glucose} mmol/L meets RED hypoglycaemia criteria; treat and move to high-acuity care immediately.`));
-  } else if (glucose !== null && glucose >= 25) {
+  } else if (glucose !== null && glucose >= policy.glucose.hyperYellowMinMmol.value) {
     warnings.push(warning('bloodGlucose', 'HIGH_RISK_HYPERGLYCAEMIA', 'YELLOW', `Blood glucose ${glucose} mmol/L is critically high; arrange immediate clinician review.`));
   }
-  if (gcs !== null && gcs <= 8) {
+  if (gcs !== null && gcs <= policy.gcs.severeMaxScore.value) {
     warnings.push(warning('gcs', 'SEVERE_IMPAIRED_CONSCIOUSNESS_RED', 'RED', `GCS ${gcs}/15 indicates severe impaired consciousness; move to high-acuity care immediately.`));
-  } else if (gcs !== null && gcs < 15) {
+  } else if (gcs !== null && gcs < policy.gcs.normalScore.value) {
     warnings.push(warning('gcs', 'ALTERED_CONSCIOUSNESS_HIGH_RISK', 'YELLOW', `GCS ${gcs}/15 indicates altered consciousness; up-triage for immediate clinician review.`));
   }
-  if (muac !== null && patientAgeYears !== undefined && patientAgeYears >= 0.5 && patientAgeYears < 5 && muac < 11.5) {
+  // Escalation stays keyed to the SEVERE threshold only — unifying it with
+  // the moderate-band constant `getVitalFlags` uses (below) must not change
+  // which finding drives triage priority. Moderate MUAC keeps its existing
+  // role: a ward-board highlight (`getVitalFlags`), not a priority escalator.
+  if (
+    muac !== null && patientAgeYears !== undefined &&
+    patientAgeYears >= policy.muac.eligibleMinAgeYears.value && patientAgeYears < policy.muac.eligibleMaxAgeYears.value &&
+    muac < policy.muac.severeMaxCm.value
+  ) {
     warnings.push(warning('muac', 'WHO_SEVERE_ACUTE_MALNUTRITION', 'YELLOW', `MUAC ${muac} cm indicates severe acute malnutrition for age 6–59 months; refer for full assessment.`));
   }
 
@@ -351,27 +426,37 @@ export function isLowerTriagePriority(
  */
 export function getVitalFlags(data: VitalsInput): Record<string, boolean> {
   const flags: Record<string, boolean> = {};
-  const temp = parseFloat(data.temperature ?? '');
-  const sys = parseInt(data.systolic ?? '');
-  const dia = parseInt(data.diastolic ?? '');
-  const spo2 = parseInt(data.spo2 ?? '');
-  const pulse = parseInt(data.pulse ?? '');
-  const rr = parseInt(data.respiratoryRate ?? '');
-  const pain = parseInt(data.painScore ?? '');
-  const glucose = parseFloat(data.bloodGlucose ?? '');
-  const gcs = parseInt(data.gcs ?? '');
-  const muac = parseFloat(data.muac ?? '');
+  // `parseInt`/`parseFloat` accept a numeric PREFIX ("999abc" → 999,
+  // "80abc" → 80), so garbage input that slipped past form validation still
+  // read as a plausible value here and could silently clear a red flag.
+  // `parseStrictVitalNumber` requires the whole string to be a complete
+  // decimal, matching the strictness `validateTriageVitals` already uses.
+  const temp = parseStrictVitalNumber(data.temperature);
+  const sys = parseStrictVitalNumber(data.systolic);
+  const dia = parseStrictVitalNumber(data.diastolic);
+  const spo2 = parseStrictVitalNumber(data.spo2);
+  const pulse = parseStrictVitalNumber(data.pulse);
+  const rr = parseStrictVitalNumber(data.respiratoryRate);
+  const pain = parseStrictVitalNumber(data.painScore);
+  const glucose = parseStrictVitalNumber(data.bloodGlucose);
+  const gcs = parseStrictVitalNumber(data.gcs);
+  const muac = parseStrictVitalNumber(data.muac);
 
-  if (!isNaN(temp) && temp > 38.5) flags.temperature = true;
-  if (!isNaN(sys) && (sys > 140 || sys < 90)) flags.systolic = true;
-  if (!isNaN(dia) && (dia > 90 || dia < 60)) flags.diastolic = true;
-  if (!isNaN(spo2) && spo2 < 95) flags.spo2 = true;
-  if (!isNaN(pulse) && (pulse > 100 || pulse < 50)) flags.pulse = true;
-  if (!isNaN(rr) && (rr > 24 || rr < 12)) flags.respiratoryRate = true;
-  if (!isNaN(pain) && pain >= 7) flags.painScore = true;
-  if (!isNaN(glucose) && (glucose < 3.9 || glucose > 11.1)) flags.bloodGlucose = true;
-  if (!isNaN(gcs) && gcs < 15) flags.gcs = true;
-  if (!isNaN(muac) && muac < 12.5) flags.muac = true; // < 12.5cm = acute malnutrition
+  if (temp !== null && temp > 38.5) flags.temperature = true;
+  if (sys !== null && (sys > 140 || sys < 90)) flags.systolic = true;
+  if (dia !== null && (dia > 90 || dia < 60)) flags.diastolic = true;
+  if (spo2 !== null && spo2 < 95) flags.spo2 = true;
+  if (pulse !== null && (pulse > 100 || pulse < 50)) flags.pulse = true;
+  if (rr !== null && (rr > 24 || rr < 12)) flags.respiratoryRate = true;
+  if (pain !== null && pain >= 7) flags.painScore = true;
+  if (glucose !== null && (glucose < 3.9 || glucose > 11.1)) flags.bloodGlucose = true;
+  if (gcs !== null && gcs < 15) flags.gcs = true;
+  // WHO moderate acute malnutrition band (ages 6–59 months): <12.5cm.
+  // `MUAC_MODERATE_CM` is the same shared constant `getTriageVitalWarnings`
+  // cites for its (distinct, severe-only <11.5cm) escalation — this is a
+  // board highlight, not a priority escalator, and stays that way (see the
+  // comment at the severe-band check in `getTriageVitalWarnings`).
+  if (muac !== null && muac < MUAC_MODERATE_CM) flags.muac = true;
 
   return flags;
 }

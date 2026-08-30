@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import type { AuditLogDoc, RiskResolutionDoc } from '@/lib/db-types';
@@ -47,6 +48,7 @@ function csvCell(v: string): string {
 export default function AuditLogsPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
   const { users } = useUsers();
@@ -79,7 +81,7 @@ export default function AuditLogsPage() {
     (async () => {
       try {
         const { getRecentAuditLogs } = await import('@/lib/services/audit-service');
-        const [data, saved] = await Promise.all([getRecentAuditLogs(1000), getRiskResolutions()]);
+        const [data, saved] = await Promise.all([getRecentAuditLogs(1000, scope), getRiskResolutions()]);
         if (mounted) { setLogs(data); setResolutions(saved); }
       } catch (err) {
         console.error('Failed to load audit logs:', err);
@@ -88,7 +90,7 @@ export default function AuditLogsPage() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     if (logs.length === 0 || focusHandledRef.current) return;

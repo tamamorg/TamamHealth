@@ -32,6 +32,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { Activity } from '@/components/icons/lucide';
@@ -87,6 +88,7 @@ interface UsageSummary {
 export default function AdminAnalyticsPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { organizations, getStats } = useOrganizations();
 
   const [orgData, setOrgData] = useState<OrgDataPoint[]>([]);
@@ -145,7 +147,7 @@ export default function AdminAnalyticsPage() {
           import('@/lib/services/encounter-service'),
           import('@/lib/services/audit-service'),
         ]);
-        const [encounters, logs] = await Promise.all([getAllEncounters(), getRecentAuditLogs(1000)]);
+        const [encounters, logs] = await Promise.all([getAllEncounters(), getRecentAuditLogs(1000, scope)]);
         if (cancelled) return;
         setActivity({
           encounters: encounters.map(e => e.createdAt || e.startedAt || '').filter(Boolean),
@@ -157,7 +159,7 @@ export default function AdminAnalyticsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [currentUser]);
+  }, [currentUser, scope]);
 
   const activityTrend = useMemo(() => {
     const enc = dailySeries(activity?.encounters || [], 14);

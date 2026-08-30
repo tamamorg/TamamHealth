@@ -43,6 +43,16 @@ export async function GET(
       return forbidden('Access denied to this patient record');
     }
 
+    // PHI read audit (KAN-97). Fire-and-forget: a failed audit write
+    // must never turn a FHIR consumer's read into an error.
+    import('@/lib/services/audit-service').then(({ logPhiRead }) =>
+      logPhiRead(
+        { userId: auth.sub, username: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId, route: '/api/fhir/Patient/:id' },
+        'Patient',
+        { patientId: id },
+      ),
+    ).catch(() => {});
+
     return NextResponse.json(toFhirPatient(patient), {
       headers: { 'Content-Type': 'application/fhir+json' },
     });

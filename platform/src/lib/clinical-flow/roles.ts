@@ -104,14 +104,26 @@ export const CLINICAL_FLOW_ROLES: Readonly<Record<ClinicalFlowRole, RoleDefiniti
     primaryFunction: 'Acuity assessment and routing for walk-ins and undifferentiated patients',
     capabilities: ['triage', 'vitals_capture', 'patient_routing'],
     clinicalVisibility: 'full_chart',
-    mapsToUserRoles: ['nurse', 'clinical_officer'],
+    // Platform role `triage_nurse` was missing from its own clinical-flow
+    // role's mapping — an account provisioned with that exact UserRole held
+    // ZERO clinical-flow capabilities. `midwife` performs the same acuity
+    // assessment for maternity presentations (role-routes.ts grants `/triage`);
+    // `super_admin` needs a real capability set here too, since `/dashboard`
+    // — the shared clinical workspace nurse-family roles land on — renders
+    // triage actions gated on this map, and a platform admin exercising that
+    // workspace directly (not via role impersonation) otherwise sees none of
+    // them hidden-not-greyed per Section 4's own behavior rule.
+    mapsToUserRoles: ['nurse', 'clinical_officer', 'triage_nurse', 'midwife', 'super_admin'],
   },
   rooming_nurse: {
     role: 'rooming_nurse', number: 4, label: 'Nurse / clinical officer assistant (rooming)',
     primaryFunction: 'Calls and rooms patients, takes vitals, captures clinic-specific history',
     capabilities: ['rooming', 'vitals_capture'],
     clinicalVisibility: 'full_chart',
-    mapsToUserRoles: ['nurse'],
+    // Same gap as triage_nurse above: the platform role `rooming_nurse` held
+    // none of its own capabilities, and super_admin needs the rooming set for
+    // the same shared-workspace reason.
+    mapsToUserRoles: ['nurse', 'rooming_nurse', 'super_admin'],
   },
   clinician: {
     role: 'clinician', number: 5, label: 'Doctor',

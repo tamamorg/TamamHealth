@@ -9,7 +9,7 @@
  */
 import type { AppointmentDoc, TriageDoc, TriagePriority, EncounterDoc } from '../db-types';
 import { createTriage, getTriageByEncounter } from './triage-service';
-import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus } from './appointment-service';
+import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus, BookingConflictError } from './appointment-service';
 import { jubaDate, jubaTime } from '../time-juba';
 import { APPOINTMENT_PENDING_STATUSES } from '../appointment-status';
 import { createArrivalEncounter, findOpenEncounterForPatient, hasClosedEncounterForPatient, PRE_CLINICIAN_STATUSES } from './encounter-service';
@@ -141,6 +141,7 @@ export interface CheckInInput {
   patientId: string;
   patientName: string;
   hospitalNumber?: string;
+  patientPhone?: string;
   facilityId?: string;
   facilityName?: string;
   orgId?: string;
@@ -153,6 +154,8 @@ export interface CheckInInput {
   acuity?: CheckInAcuity;
   vitals?: CheckInVitals;
   notes?: string;
+  /** The walk-in booking's department. Defaults to 'OPD' when omitted. */
+  department?: string;
   /**
    * New case vs re-attendance. When omitted, auto-derived via
    * `deriveAttendanceType` from the patient's history.
@@ -209,11 +212,15 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
     // it, and the walk-in booking branch below never fires.
     const appts = await getAppointmentsByPatient(input.patientId);
     // Any rung that still expects the patient: booked, reminded, confirmed, or
-    // marked arrived but not yet checked in at the desk.
+    // marked arrived but not yet checked in at the desk — plus a bare portal
+    // `requested` ask for today at THIS facility, which holds the slot the
+    // same way a scheduled booking does (KAN-118): without it, a patient who
+    // asked for today's slot through the portal got a second, walk-in booking
+    // instead of the desk answering the one they already made.
     const match = appts.find(
       (a) =>
         a.appointmentDate === today &&
-        (APPOINTMENT_PENDING_STATUSES.includes(a.status) || a.status === 'checked_in') &&
+        (APPOINTMENT_PENDING_STATUSES.includes(a.status) || a.status === 'checked_in' || a.status === 'requested') &&
         a.orgId === input.orgId &&
         a.facilityId === input.facilityId,
     );
@@ -256,6 +263,7 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
       const created = await createAppointment({
         patientId: input.patientId,
         patientName: input.patientName,
+        patientPhone: input.patientPhone,
         // The desk does not choose a clinician at check-in; the queue assigns
         // one. Left unassigned rather than guessed.
         providerId: '',
@@ -273,14 +281,23 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
         // patient is at the desk, not expected later.
         appointmentType: 'walk_in',
         status: 'checked_in',
-        priority: acuity === 'emergency' ? 'emergency' : 'routine',
-        department: 'OPD',
+        // 'priority' flags emergency at the front desk too; 'routine' collapsed
+        // both routine AND urgent walk-ins to the same word, so an urgent
+        // walk-in showed as plain Routine everywhere the appointment (not the
+        // triage record) is read from.
+        priority: acuity === 'emergency' ? 'emergency' : acuity === 'priority' ? 'urgent' : 'routine',
+        department: input.department || 'OPD',
         reason: input.chiefComplaint || 'Walk-in visit',
         orgId: input.orgId,
         createdBy: input.checkedInById,
       } as Omit<AppointmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
       walkInAppointmentId = created._id;
     } catch (error) {
+      // A booking conflict is not an infrastructure failure — it names a real
+      // clash (same-day open visit, room, provider) the caller can act on, so
+      // it is rethrown as-is rather than folded into the generic message
+      // below, which would have discarded the one detail worth showing.
+      if (error instanceof BookingConflictError) throw error;
       await upsertWorkflowRepair(repairId, {
         ...repairBase, status: 'open', currentStep: 'appointment',
         lastError: error instanceof Error ? error.message : 'Walk-in appointment could not be saved',

@@ -1,8 +1,14 @@
-import type { TriageDisposition, TriageHandoffStatus, UserRole } from '../db-types';
+import type { TriageDisposition, TriageDoc, TriageHandoffStatus, UserRole } from '../db-types';
 import { updateAppointmentStatus } from './appointment-service';
 import { getEncounter, findOpenEncounterForPatient, advanceEncounterAfterTriage, escalateEncounterToEmergency, transitionEncounter } from './encounter-service';
 import { updateTriage } from './triage-service';
 import { syncConsultationProgressStage } from './consultation-progress-service';
+import { triageDB } from '../db';
+
+/** Triage statuses with no further clinical transition (see
+ *  `VALID_TRANSITIONS` in triage-service.ts) — the visit's triage phase is
+ *  administratively closed. */
+const TERMINAL_TRIAGE_STATUSES = new Set<TriageDoc['status']>(['admitted', 'discharged', 'referred', 'lwbs']);
 
 export interface CompleteTriageHandoffInput {
   triageId: string;
@@ -32,6 +38,25 @@ export async function completeTriageHandoff(input: CompleteTriageHandoffInput) {
     ? 'completed'
     : input.assignedProviderId ? 'assigned' : 'awaiting_provider';
 
+  // Read the CURRENT status before writing: if this triage already reached a
+  // terminal outcome (admitted/discharged/referred/lwbs), `updateTriage`
+  // below must not attempt to move it to 'seen'/'discharged' again —
+  // `VALID_TRANSITIONS` has no path out of any of those four, so the write
+  // would throw AFTER already persisting the disposition/handoff fields
+  // (`db.put` inside `updateTriage` happens before the caller sees the
+  // status-transition error), leaving a triage doc whose content changed but
+  // whose downstream appointment/encounter walk never ran — a silent
+  // desync. A best-effort read failure here is not fatal: `updateTriage`'s
+  // own transition guard is still the authority and will surface a real
+  // error if the id is bad.
+  let alreadyTerminal = false;
+  try {
+    const current = await triageDB().get(input.triageId) as TriageDoc;
+    alreadyTerminal = TERMINAL_TRIAGE_STATUSES.has(current.status);
+  } catch {
+    alreadyTerminal = false;
+  }
+
   const triage = await updateTriage(input.triageId, {
     disposition: input.disposition,
     destinationClinic: input.destinationClinic,
@@ -39,9 +64,20 @@ export async function completeTriageHandoff(input: CompleteTriageHandoffInput) {
     assignedProviderName: input.assignedProviderName,
     handoffNote: input.handoffNote,
     handoffStatus,
-    status: input.disposition === 'home_care' ? 'discharged' : 'seen',
-  });
+    // Omitted entirely (not set to the existing value) when already
+    // terminal, so `updateTriage`'s `updates.status !== existing.status`
+    // check never fires and the transition guard is never consulted.
+    ...(alreadyTerminal ? {} : { status: input.disposition === 'home_care' ? 'discharged' as const : 'seen' as const }),
+  }, { userId: input.actorId, username: input.actorName });
   if (!triage) throw new Error('The triage record could not be updated.');
+
+  if (alreadyTerminal) {
+    // A content correction to an already-closed triage must persist without
+    // re-opening the encounter/appointment flow that already ran to
+    // completion for this visit — that flow is exactly what the rest of this
+    // function drives, so it stops here.
+    return triage;
+  }
 
   // Prefer the encounter already linked by reception check-in. Falling back
   // to a patient/facility lookup keeps older triage records working, but the

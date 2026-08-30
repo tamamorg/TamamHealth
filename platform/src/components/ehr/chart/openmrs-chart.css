@@ -2161,6 +2161,11 @@
   color: var(--ehr-text-body, #3C5574);
 }
 
+/* Danger-sign chips (IITT red/yellow criteria, "why this priority") — same
+   acuity tokens the triage priority pill and the ABCC cards above already use. */
+.sbar-chips li[data-tone='danger'] { background: var(--acuity-red-bg); border-color: color-mix(in srgb, var(--acuity-red) 32%, transparent); color: var(--acuity-red); }
+.sbar-chips li[data-tone='warning'] { background: var(--acuity-yellow-bg); border-color: color-mix(in srgb, var(--acuity-yellow) 32%, transparent); color: var(--acuity-yellow); }
+
 /* ── Two-part rows (medication, lab, diagnosis) ── */
 .sbar-rows { margin: 0; padding: 0; list-style: none; }
 

@@ -55,7 +55,7 @@ function auditLogin(
 export async function POST(request: NextRequest) {
   try {
     // Parse request body with explicit error handling
-    let body: { username?: string; password?: string; hospitalId?: string; role?: string };
+    let body: { username?: string; password?: string; hospitalId?: string; role?: string; keepSignedIn?: boolean };
     try {
       body = await request.json();
     } catch {
@@ -63,6 +63,11 @@ export async function POST(request: NextRequest) {
     }
 
     const { username, password, hospitalId, role: requestedRole } = body;
+    // "Keep me signed in" — defaults to true so any caller that doesn't send
+    // it (an older client build, a non-browser integration) keeps getting the
+    // persistent cookie the platform has always issued. Only an explicit
+    // `false` opts into a browser-session cookie.
+    const keepSignedIn = body.keepSignedIn !== false;
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
@@ -171,7 +176,7 @@ export async function POST(request: NextRequest) {
       request,
       user._id,
     );
-    return await issueSessionResponse(user, identity.effective);
+    return await issueSessionResponse(user, identity.effective, {}, keepSignedIn);
   } catch (err) {
     console.error('Login error:', err instanceof Error ? err.message : 'Unknown error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

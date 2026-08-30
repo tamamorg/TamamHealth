@@ -34,6 +34,16 @@ export async function GET(request: NextRequest) {
     const scope = buildScopeFromAuth(auth);
     const labs = (await getAllLabResults(scope) as LabResultDoc[]).filter((l) => l.patientId === patientId);
 
+    // PHI read audit (KAN-97). Fire-and-forget: a failed audit write
+    // must never turn a FHIR consumer's read into an error.
+    import('@/lib/services/audit-service').then(({ logPhiRead }) =>
+      logPhiRead(
+        { userId: auth.sub, username: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId, route: '/api/fhir/Observation' },
+        'Observation',
+        { patientId, resultCount: labs.length },
+      ),
+    ).catch(() => {});
+
     return NextResponse.json({
       resourceType: 'Bundle',
       type: 'searchset',

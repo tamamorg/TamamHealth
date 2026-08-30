@@ -189,6 +189,42 @@ export function patientAge(p: { estimatedAge?: number; dateOfBirth?: string }): 
   return age >= 0 ? age : null;
 }
 
+/**
+ * Patient age in fractional years, precise to the day.
+ *
+ * `patientAge` rounds down to whole years, which is right for display but
+ * wrong for the WHO/ICRC/MSF IITT triage vital-sign bands: an 11-month-old
+ * and a newborn both read as `patientAge() === 0`, so every infant under a
+ * year satisfied IITT's "age <2 months" RED temperature criterion (`< 2/12`
+ * years) regardless of whether they were 1 day or 11 months old, and none of
+ * them ever reached WHO's 6–59-month MUAC malnutrition screen (`>= 0.5`
+ * years). Any comparison against a fraction of a year — as
+ * `getTriageVitalWarnings` in `lib/clinical/vitals.ts` does — must use this,
+ * not `patientAge`.
+ *
+ * Falls back to `estimatedAge` — a whole-year clinical estimate ("looks about
+ * 30") — when there is no `dateOfBirth`. That estimate carries no sub-year
+ * precision to recover, so it is returned as-is (effectively a whole-number
+ * fractional year) rather than inventing finer detail; callers that need to
+ * know the age is imprecise can compare the result against `patientAge(p)`.
+ * Returns `null` when age is genuinely unknown, exactly like `patientAge`.
+ */
+export function patientAgeYearsExact(p: { estimatedAge?: number; dateOfBirth?: string }): number | null {
+  if (p.dateOfBirth) {
+    // Same UTC-midnight-vs-local-time correction `patientAge` applies: a
+    // date-only string must be parsed as a calendar day, not an instant.
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(p.dateOfBirth)
+      ? parseIsoDate(p.dateOfBirth)
+      : new Date(p.dateOfBirth);
+    if (!Number.isNaN(d.getTime())) {
+      const ageInDays = (Date.now() - d.getTime()) / (24 * 60 * 60 * 1000);
+      if (ageInDays >= 0) return ageInDays / 365.25;
+    }
+  }
+  if (typeof p.estimatedAge === 'number' && p.estimatedAge > 0) return p.estimatedAge;
+  return null;
+}
+
 /** Age label like "34y", or "—" when unknown. */
 export function patientAgeLabel(p: { estimatedAge?: number; dateOfBirth?: string }): string {
   const a = patientAge(p);

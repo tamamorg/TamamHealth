@@ -32,6 +32,16 @@ export async function GET(request: NextRequest) {
     const { toFhirEncounter } = await import('@/lib/fhir');
     const records = await getRecordsByPatient(patientId, buildScopeFromAuth(auth));
 
+    // PHI read audit (KAN-97). Fire-and-forget: a failed audit write
+    // must never turn a FHIR consumer's read into an error.
+    import('@/lib/services/audit-service').then(({ logPhiRead }) =>
+      logPhiRead(
+        { userId: auth.sub, username: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId, route: '/api/fhir/Encounter' },
+        'Encounter',
+        { patientId, resultCount: records.length },
+      ),
+    ).catch(() => {});
+
     return NextResponse.json({
       resourceType: 'Bundle',
       type: 'searchset',

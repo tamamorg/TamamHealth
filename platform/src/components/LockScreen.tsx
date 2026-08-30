@@ -7,13 +7,19 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 interface LockScreenProps {
   userName: string;
   hasPin: boolean;
+  /** Whether this device can hash a PIN at all right now (useAutoLock's
+   *  `pinSupported` — false on a non-secure context, e.g. plain HTTP on a
+   *  LAN). Defaults true so any other caller keeps today's behaviour. When
+   *  false, the PIN pad is never offered — signing in again is the only way
+   *  to unlock, rather than falling back to a weaker check. */
+  pinSupported?: boolean;
   onVerifyPin: (pin: string) => Promise<boolean>;
   onSetPin: (pin: string) => Promise<void>;
   onUnlock: () => void;
   onLogout: () => void;
 }
 
-export default function LockScreen({ userName, hasPin, onVerifyPin, onSetPin, onUnlock, onLogout }: LockScreenProps) {
+export default function LockScreen({ userName, hasPin, pinSupported = true, onVerifyPin, onSetPin, onUnlock, onLogout }: LockScreenProps) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [setupPin, setSetupPin] = useState(''); // stores first entry during setup
@@ -91,6 +97,42 @@ export default function LockScreen({ userName, hasPin, onVerifyPin, onSetPin, on
   const subtitle = mode === 'unlock' ? t('lock.enterYourPin')
     : mode === 'setup' ? t('lock.choosePin')
     : t('lock.enterSamePin');
+
+  // This device cannot hash a PIN safely right now (no secure context — see
+  // `useAutoLock.pinHashingSupported`). The lock still engages, but it offers
+  // only the sign-in path: no digit pad, and no "set up a PIN" prompt that
+  // would otherwise appear here in `mode === 'setup'` for anyone who has
+  // never registered one. Falling through to the pad instead would mean
+  // either verifying against nothing (any 4 digits "work") or silently
+  // reaching for a weaker hash — both are the exact regression this guards.
+  if (!pinSupported) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+        <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/tamamhealth-logo.svg" alt="TamamHealth" className="w-16 h-16" />
+          <div>
+            <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{userName}</p>
+            <div className="flex items-center gap-1.5 justify-center mt-1" style={{ color: 'var(--text-muted)' }}>
+              <Lock className="w-3.5 h-3.5" />
+              <span className="text-xs">{t('auth.sessionLocked')}</span>
+            </div>
+            <p className="text-[11px] mt-2 max-w-[240px]" style={{ color: 'var(--text-muted)' }}>
+              {t('lock.pinUnavailableInsecure')}
+            </p>
+          </div>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 text-xs font-bold mt-1 px-4 py-2.5 rounded-lg transition-colors"
+            style={{ color: 'var(--accent-on)', background: 'var(--tamamhealth-blue)' }}
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            {t('auth.switchUser')}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>

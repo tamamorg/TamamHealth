@@ -32,7 +32,7 @@
 
 import type { EncounterDoc } from '../db-types';
 import type { DataScope } from './data-scope';
-import { FACILITY_CHECKOUT_GATE } from '../clinical-flow/encounter-journey';
+import { FACILITY_CHECKOUT_GATE, isTerminal, stageOf } from '../clinical-flow/encounter-journey';
 import type { EncounterStatus } from '../clinical-flow/encounter-journey';
 import type { TransitionActor, TransitionResult } from '../clinical-flow/encounter-engine';
 
@@ -83,6 +83,39 @@ export interface CheckoutGateEvaluation {
 const RESOLVED_RX_STATUSES = new Set(['dispensed', 'discontinued']);
 
 /**
+ * Stages that are themselves at or past clinic checkout (Stage 9) or facility
+ * checkout (Stage 10). An encounter reaching one of these already passed
+ * through `ready_for_clinic_checkout`/`referred_out` at some earlier hop —
+ * `transitionEncounter` stamped `closedAt` at that moment and it persists
+ * forward — so the clinic portion of the visit is closed even though the
+ * CURRENT status has moved on.
+ */
+const CLOSED_CLINIC_STAGES = new Set(['clinic_checkout', 'facility_checkout']);
+
+/**
+ * Is the clinic portion of this visit still open (KAN-100 audit)?
+ *
+ * Previously a 4-item hand-list (`with_clinician`, `in_rooming`, `in_triage`,
+ * `awaiting_labs`) that silently omitted `awaiting_imaging`, `awaiting_pharmacy`,
+ * `awaiting_procedure`, `consultation_paused_draft`, `ready_for_clinician` and
+ * `routed_to_clinic` — so a visit parked mid-consultation on any of those
+ * statuses read as "closed" and cleared a CRITICAL checkout gate item with the
+ * patient still mid-visit. Derived here instead from the journey module's own
+ * terminal/closing vocabulary, so a new non-terminal status is covered
+ * automatically rather than needing this predicate edited too.
+ */
+async function isEncounterOpenForCheckout(status: EncounterStatus): Promise<boolean> {
+  if (isTerminal(status)) return false;
+  try {
+    const { CLOSES_CLINIC_PORTION } = await import('./encounter-service');
+    if (CLOSES_CLINIC_PORTION.includes(status)) return false;
+  } catch {
+    return true; // fail closed — cannot confirm the closing set, so it blocks.
+  }
+  return !CLOSED_CLINIC_STAGES.has(stageOf(status));
+}
+
+/**
  * Evaluate every checkout condition for a patient against live data.
  *
  * `encounter` is optional — when absent, conditions that need visit context
@@ -110,7 +143,7 @@ export async function evaluateCheckoutGate(
   if (!encounter) {
     push('all_clinic_visits_closed', false, 'No encounter found for this visit — cannot confirm the clinic visit is closed.');
   } else {
-    const open = ['with_clinician', 'in_rooming', 'in_triage', 'awaiting_labs'].includes(encounter.status);
+    const open = await isEncounterOpenForCheckout(encounter.status);
     push('all_clinic_visits_closed', !open,
       open ? `Visit is still at "${encounter.status}".` : undefined,
       open ? `/consultation?encounterId=${encounter._id}` : undefined);

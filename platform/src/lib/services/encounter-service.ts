@@ -32,6 +32,15 @@ export const RESUMABLE_STATUSES: EncounterStatus[] = [
 ];
 
 /**
+ * Statuses that close the CLINIC portion of a visit even though they are not
+ * themselves terminal (KAN-100 audit). Hoisted to module scope — and
+ * exported — so `checkout-gate-service.ts` can derive "is this visit still
+ * open" from the same set `transitionEncounter` uses to stamp `closedAt`,
+ * instead of maintaining a second hand-list that can drift from this one.
+ */
+export const CLOSES_CLINIC_PORTION: EncounterStatus[] = ['ready_for_clinic_checkout', 'referred_out'];
+
+/**
  * Current shape of `EncounterDoc.snapshot`.
  *
  * Bump this whenever the consultation draft changes shape in a way that older
@@ -141,12 +150,24 @@ export async function getEncountersClosedSince(
   return visible.sort((a, b) => (b.closedAt || '').localeCompare(a.closedAt || ''));
 }
 
-/** Open (non-closed) encounters a clinician can resume, newest first. */
-export async function getResumableEncounters(clinicianId?: string): Promise<EncounterDoc[]> {
+/**
+ * Open (non-closed) encounters a clinician can resume, newest first.
+ *
+ * `clinicianId` is required (KAN-?? audit): a falsy id used to fall through to
+ * "every clinician's paused encounters", which is how a hook mid-hydration (no
+ * signed-in user yet) briefly listed every open encounter in the replica.
+ * `scope` is applied like every other multi-tenant read in this module — a
+ * device replicates every org it has synced, and without it a clinician whose
+ * `_id` happened to collide across tenants (or a stale/shared session) could
+ * resume a visit that is not theirs.
+ */
+export async function getResumableEncounters(clinicianId: string, scope?: DataScope): Promise<EncounterDoc[]> {
+  if (!clinicianId) return [];
   const rows = await findByType<EncounterDoc>(encountersDB(), 'clinical_encounter', {}, { indexFields: ['type'] });
-  return rows
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible
     .filter(e => !e.closedAt && RESUMABLE_STATUSES.includes(e.status))
-    .filter(e => !clinicianId || e.clinicianId === clinicianId)
+    .filter(e => e.clinicianId === clinicianId)
     .sort((a, b) => new Date(b.updatedAt || '').getTime() - new Date(a.updatedAt || '').getTime());
 }
 
@@ -253,7 +274,6 @@ export async function transitionEncounter(
   // The two non-terminal statuses kept from the original list still stamp it:
   // they close the CLINIC portion of the visit, which is what the front-desk
   // and payment views are grouping on.
-  const CLOSES_CLINIC_PORTION: EncounterStatus[] = ['ready_for_clinic_checkout', 'referred_out'];
   const closed = TERMINAL_STATUSES.includes(to) || CLOSES_CLINIC_PORTION.includes(to);
   const updated: EncounterDoc = {
     ...existing,
@@ -828,6 +848,26 @@ export async function dischargeEncounter(
       // The visit is closed either way; the desk can complete the booking.
     }
   }
+
+  // Clear the shared progress tracker (KAN-?? — "write-only progress
+  // tracker"). Nothing ever moved a ConsultationProgressDoc to 'completed', so
+  // the last real update (often "waiting for provider") stood forever and the
+  // notification bell kept reporting a patient as in-progress long after the
+  // facility discharged them. Best-effort and scoped to THIS visit's own
+  // tracker (by encounterId, falling back to the most recently touched one for
+  // the patient) — a stale tracker from an unrelated earlier episode must
+  // never be closed by this discharge.
+  try {
+    const { getAllConsultationProgress, updateProgressMilestone } = await import('./consultation-progress-service');
+    const trackers = (await getAllConsultationProgress()).filter(p => p.patientId === current.patientId);
+    const tracker = trackers.find(p => p.encounterId === id) ?? trackers[0];
+    if (tracker && tracker.currentStage !== 'completed' && tracker.currentStage !== 'cancelled') {
+      await updateProgressMilestone(tracker._id, 'consultation_signed', 'completed', { id: opts.actorId });
+    }
+  } catch {
+    // A stale progress notification is a nuisance, not a safety issue.
+  }
+
   return current;
 }
 

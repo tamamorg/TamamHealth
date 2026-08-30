@@ -33,7 +33,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useEncounters } from '@/lib/hooks/useEncounters';
-import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
+import { resolveOperationalVisitState, type VisitLane } from '@/lib/clinical-flow/visit-state';
 import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import Modal from '@/components/Modal';
 import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
@@ -429,6 +429,11 @@ export interface RowQueueColumns {
    *  the row is running late, which the Time column shows in red. */
   isPast: boolean;
   inService: boolean;
+  /** The encounter-derived lane, when the row has a live encounter. The status
+   *  chip already reads the encounter (via resolveOperationalVisitState), so
+   *  the lane must read the same source — otherwise a patient whose chip says
+   *  "Awaiting triage" files under Upcoming while In Facility shows zero. */
+  operationalLane: VisitLane | null;
 }
 
 export function computeRowQueueColumns(
@@ -525,14 +530,28 @@ export function computeRowQueueColumns(
         && appointmentAt.getTime() < relativeNow.getTime(),
     ),
     inService,
+    operationalLane: operationalState?.lane ?? null,
   };
 }
 
 /** Which of the three worklist lanes (Scheduled / In Office / Finished) a row
- *  belongs in. A live queue entry (or being actively in service) promotes an
- *  otherwise-"scheduled" appointment status to In Office — a walk-in or
- *  triaged patient is physically here even when no desk ever checked them in. */
-export function computeRowStatusGroup(status: AppointmentStatus, hasLiveQueueEntry: boolean): AppointmentStatusGroup {
+ *  belongs in. The encounter-derived lane wins outright when there is one —
+ *  the encounter is authoritative once a patient arrives (visit-state.ts), and
+ *  it is the same source the row's status chip reads, so chip and lane cannot
+ *  disagree. Without an encounter, a live queue entry (or being actively in
+ *  service) still promotes an otherwise-"scheduled" appointment status to In
+ *  Office — a walk-in or triaged patient is physically here even when no desk
+ *  ever checked them in. */
+export function computeRowStatusGroup(
+  status: AppointmentStatus,
+  hasLiveQueueEntry: boolean,
+  operationalLane?: VisitLane | null,
+): AppointmentStatusGroup {
+  if (operationalLane) {
+    return operationalLane === 'in_facility' ? 'in_office'
+      : operationalLane === 'finished' ? 'finished'
+      : 'scheduled';
+  }
   const group = appointmentStatusGroup(status);
   if (group !== 'scheduled') return group;
   return hasLiveQueueEntry ? 'in_office' : 'scheduled';
@@ -1136,9 +1155,14 @@ export default function EhrClinicalDashboard({
   // Finished (visit closed — checked out, cancelled, no-show, rescheduled).
   const rowStatusGroup = (row: UnifiedPatientRow): AppointmentStatusGroup => {
     // A live queue entry means the patient is physically here even when the
-    // appointment rung still says scheduled/arrived (walk-ins, triage).
+    // appointment rung still says scheduled/arrived (walk-ins, triage). The
+    // encounter's lane outranks both — it is what the status chip displays.
     const columns = rowQueueColumns(row);
-    return computeRowStatusGroup(row.status, Boolean(columns.entry) || columns.inService);
+    return computeRowStatusGroup(
+      row.status,
+      Boolean(columns.entry) || columns.inService,
+      columns.operationalLane,
+    );
   };
   const groupCounts = tallyByStatusGroup(visiblePatientRows, rowStatusGroup);
   const filteredPatientRows = visiblePatientRows.filter(row => rowStatusGroup(row) === worklistFilter);
@@ -1220,7 +1244,7 @@ export default function EhrClinicalDashboard({
         });
       }
       await escalateEncounterToEmergency(triage.encounterId, { actorId: currentUser?._id });
-      await updateTriageDoc(triage._id, { status: 'referred' });
+      await updateTriageDoc(triage._id, { status: 'referred' }, { userId: currentUser?._id, username: currentUser?.name });
       showToast(`${triage.patientName} escalated to emergency care.`, 'success');
       setVisitRow(null);
     } catch (err) {
@@ -1234,7 +1258,7 @@ export default function EhrClinicalDashboard({
     try {
       const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
       await recordLeftWithoutBeingSeen(triage.encounterId, { actorId: currentUser?._id });
-      await updateTriageDoc(triage._id, { status: 'lwbs' });
+      await updateTriageDoc(triage._id, { status: 'lwbs' }, { userId: currentUser?._id, username: currentUser?.name });
       showToast(`${triage.patientName} recorded as left without being seen.`, 'success');
       setVisitRow(null);
     } catch (err) {
@@ -1731,31 +1755,44 @@ export default function EhrClinicalDashboard({
               </div>
 
               <div className="ehr-appointment-list">
-                {visibleOutstandingEntries.length === 0 && (
-                  <div className="ehr-empty-state">
-                    <ClipboardList className="w-8 h-8" />
-                    <strong>{appointmentQuery ? 'Nothing matches your search' : 'Nothing outstanding'}</strong>
-                    <span>
-                      {appointmentQuery
-                        ? `No ${activeOutstanding.label.toLowerCase()} items match “${appointmentSearch.trim()}”.`
-                        : `${activeOutstanding.label} is clear — no items need your attention.`}
-                    </span>
-                    {appointmentQuery
-                      ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
-                      : <button type="button" onClick={() => navigateDashboardState({ outstanding: null })}>Back to schedule</button>}
-                  </div>
-                )}
-
-                {visibleOutstandingEntries.length > 0 && (
-                  <div className="ehr-queue-scroll">
-                    <div className="ehr-queue-cards ehr-queue-cards--compact">
-                      {visibleOutstandingEntries.map(entry => {
-                        const pill = outstandingPillTone(entry.tone);
-                        return (
+                <div className="ehr-queue-scroll">
+                  {/* Same table frame as the schedule board: sticky column head,
+                      hairline rows, initials plate, status pill — an outstanding
+                      list is a worklist and reads like one. The head stays
+                      rendered through an empty list (the list's frame, not a
+                      label for whichever rows happen to be loaded). */}
+                  <div className="appointment-card-flow">
+                    <div className="appointment-card-head" aria-hidden="true">
+                      <span>Patient</span>
+                      <span>When</span>
+                      <span>Item</span>
+                      <span>Status</span>
+                      <span>Action</span>
+                    </div>
+                    {visibleOutstandingEntries.length === 0 && (
+                      <div className="ehr-empty-state">
+                        <ClipboardList className="w-8 h-8" />
+                        <strong>{appointmentQuery ? 'Nothing matches your search' : 'Nothing outstanding'}</strong>
+                        <span>
+                          {appointmentQuery
+                            ? `No ${activeOutstanding.label.toLowerCase()} items match “${appointmentSearch.trim()}”.`
+                            : `${activeOutstanding.label} is clear — no items need your attention.`}
+                        </span>
+                        {appointmentQuery
+                          ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
+                          : <button type="button" onClick={() => navigateDashboardState({ outstanding: null })}>Back to schedule</button>}
+                      </div>
+                    )}
+                    {visibleOutstandingEntries.map(entry => {
+                      const pill = outstandingPillTone(entry.tone);
+                      const pillClass = pill.key === 'red' ? 'status-no-show'
+                        : pill.key === 'yellow' ? 'status-attention'
+                        : 'status-checked-in';
+                      return (
+                        <div key={entry.id} className="ehr-appointment-group">
                           <div
-                            key={entry.id}
-                            className="ehr-queue-card ehr-queue-card--compact"
                             data-triage={outstandingTonePriority(entry.tone)}
+                            className="ehr-appointment-row appointment-card-row"
                             role="button"
                             tabIndex={0}
                             onClick={() => openOutstandingEntry(entry)}
@@ -1766,41 +1803,51 @@ export default function EhrClinicalDashboard({
                               }
                             }}
                           >
-                            <div className="ehr-queue-patient">
-                              <span
-                                className="ehr-patient-icon"
-                                data-acuity={outstandingTonePriority(entry.tone)}
-                              >
+                            <div className="ehr-appointment-identity">
+                              <div className="ehr-patient-icon" data-acuity={outstandingTonePriority(entry.tone)}>
                                 {initials(entry.title)}
-                              </span>
-                              <div className="ehr-queue-patient-text">
-                                <button type="button" className="ehr-queue-name" onClick={event => { event.stopPropagation(); openOutstandingEntry(entry); }}>
+                              </div>
+                              <div className="ehr-appointment-main appointment-card-patient">
+                                <button
+                                  type="button"
+                                  className="print-visible ehr-row-name-link"
+                                  onClick={event => { event.stopPropagation(); openOutstandingEntry(entry); }}
+                                >
                                   {entry.title}
                                 </button>
-                                {entry.subtitle && <p>{entry.subtitle}</p>}
                               </div>
                             </div>
 
-                            <div className="ehr-queue-cell ehr-queue-muted-cell">{entry.meta || '—'}</div>
-
-                            <div className="ehr-queue-cell">
-                              <span className="ehr-queue-pill" data-tone={pill.key}>{pill.label}</span>
+                            <div className="ehr-appointment-time">
+                              <strong>{entry.meta || '—'}</strong>
                             </div>
-                            {entry.actionLabel && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={event => { event.stopPropagation(); handleOutstandingAction(entry); }}
-                              >
-                                {entry.actionLabel}
-                              </button>
-                            )}
+
+                            <div className="ehr-appointment-department">
+                              <strong>{entry.subtitle || activeOutstanding.label}</strong>
+                              <span>{activeOutstanding.label}</span>
+                            </div>
+
+                            <div className="appointment-card-status appointment-card-status--start">
+                              <span className={`appointment-status-pill ${pillClass}`}>{pill.label}</span>
+                            </div>
+
+                            <div className="appointment-card-status">
+                              {entry.actionLabel && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={event => { event.stopPropagation(); handleOutstandingAction(entry); }}
+                                >
+                                  {entry.actionLabel}
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             </>
           ) : (

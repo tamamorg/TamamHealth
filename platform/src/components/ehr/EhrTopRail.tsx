@@ -41,6 +41,7 @@ import {
   groupNavItemsBySection,
   navItemLabel,
   isHrefAllowed,
+  impersonationChipInfo,
   railCenterLabels,
   uniqueAllowedNavItems,
 } from './ehr-navigation';
@@ -139,6 +140,15 @@ export default function EhrTopRail() {
   // roster / "Add a record" entries appear at all.
   const isFacilityConsole = homeHref === '/facility-management';
   const roleLabel = roleConfig?.label || currentUser?.role.replace(/_/g, ' ') || 'Workspace';
+  // A support session: the platform super-admin signed in AS this role via
+  // the login role picker. See `impersonationChipInfo`'s own doc comment for
+  // why this was invisible before and why the rule lives there, pure.
+  const impersonation = impersonationChipInfo({
+    role: currentUser?.role,
+    actualRole: currentUser?.actualRole,
+    roleLabel,
+    actualRoleLabel: currentUser?.actualRole ? getRoleConfig(currentUser.actualRole).label : undefined,
+  });
   const canSearchPatients = isHrefAllowed('/patients', allowedRoutes);
 
   const navItems = useMemo(() => {
@@ -478,6 +488,35 @@ export default function EhrTopRail() {
       )}
 
       <div className="ehr-top-actions">
+        {impersonation && (
+          // Solid fill, not a translucent tint: the rail's own background is
+          // the dark accent colour, and a light amber tint over a dark ground
+          // renders muddy rather than amber. `--accent-orange-on` is the
+          // token this design system already carries for text sitting ON a
+          // solid orange fill (see globals.css's orange-token comment), so
+          // contrast here is by design rather than a guess.
+          <span
+            className="ehr-impersonation-chip"
+            role="status"
+            title={t('topbar.impersonationChipTooltip', { actualRole: impersonation.actualRoleLabel, role: impersonation.activeRoleLabel })}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 10px',
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+              background: 'var(--accent-orange)',
+              color: 'var(--accent-orange-on)',
+            }}
+          >
+            {t('topbar.impersonationChip', { role: impersonation.activeRoleLabel })}
+          </span>
+        )}
         {(isPlatformAdmin || canSearchPatients) && (
           <button
             type="button"

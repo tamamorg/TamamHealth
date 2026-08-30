@@ -101,6 +101,16 @@ export async function GET(
       recentRx,
     );
 
+    // PHI read audit (KAN-97). Fire-and-forget: a failed audit write must
+    // never turn a receiving facility's packet pull into an error.
+    import('@/lib/services/audit-service').then(({ logPhiRead }) =>
+      logPhiRead(
+        { userId: auth.sub, username: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId, route: '/api/fhir/Bundle/referral/:id' },
+        'Bundle',
+        { patientId: referral.patientId, resourceId: id },
+      ),
+    ).catch(() => {});
+
     return NextResponse.json(bundle, {
       headers: { 'Content-Type': 'application/fhir+json' },
     });

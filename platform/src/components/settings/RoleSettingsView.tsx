@@ -572,6 +572,12 @@ export default function RoleSettingsView() {
       setPinForm({ next: '', confirm: '' });
       setPinOpen(false);
       showToast('Screen-lock PIN set', 'success');
+    } catch (err) {
+      // Thrown on a non-secure context (no crypto.subtle) — this device
+      // cannot hash a PIN safely, and setLockPin refuses rather than falling
+      // back to a weaker scheme. Surface that instead of an uncaught
+      // rejection with the dialog stuck open and no explanation.
+      showToast(err instanceof Error ? err.message : 'Could not set a screen-lock PIN on this device', 'error');
     } finally {
       setPinSaving(false);
     }

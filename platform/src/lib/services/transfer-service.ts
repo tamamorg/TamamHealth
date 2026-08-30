@@ -3,10 +3,63 @@ import type { PatientDoc, MedicalRecordDoc, LabResultDoc } from '../db-types';
 import type { TransferPackage, Attachment } from '@/data/mock';
 import { findByType } from './db-query';
 
+/** One signed clinical note, as carried in a transfer package. */
+export interface TransferPackageClinicalNote {
+  id: string;
+  noteType: string;
+  serviceDate: string;
+  serviceTime?: string;
+  hospitalName?: string;
+  authorName?: string;
+  signedByName?: string;
+  signedAt?: string;
+  sections: { sectionId: string; text?: string }[];
+}
+
+/** One problem-list entry, as carried in a transfer package. */
+export interface TransferPackageProblem {
+  id: string;
+  name: string;
+  icd11Code?: string;
+  status: string;
+  onsetDate?: string;
+  severity?: string;
+}
+
+/** One active prescription, as carried in a transfer package. */
+export interface TransferPackagePrescription {
+  id: string;
+  medication: string;
+  dose: string;
+  route: string;
+  frequency: string;
+  duration: string;
+  prescribedBy: string;
+  status: string;
+  indication?: string;
+}
+
+/**
+ * `TransferPackage` (data/mock.ts) predates the notes/problem-list/pharmacy
+ * modules and only carries legacy MedicalRecordDoc + LabResultDoc data. A
+ * receiving facility got a referral with no clinical narrative, no problem
+ * list and no current medications whenever the sending visit was documented
+ * (as every visit now is) through the notes module instead of the legacy
+ * consultation path. Extending the shape here — rather than editing the
+ * shared mock.ts type this fix's scope did not cover — keeps every existing
+ * caller (typed on plain `TransferPackage`) working unchanged, since this is
+ * a structural superset of it.
+ */
+export interface TransferPackageWithClinicalHistory extends TransferPackage {
+  clinicalNotes: TransferPackageClinicalNote[];
+  problems: TransferPackageProblem[];
+  activePrescriptions: TransferPackagePrescription[];
+}
+
 export async function assembleTransferPackage(
   patientId: string,
   packagedBy: string
-): Promise<TransferPackage> {
+): Promise<TransferPackageWithClinicalHistory> {
   // Get patient demographics
   const pDb = patientsDB();
   // Direct fetch by _id. This previously pulled EVERY patient document into
@@ -66,6 +119,55 @@ export async function assembleTransferPackage(
     }
   }
 
+  // Signed clinical notes — the current documentation path (medical_record is
+  // the legacy consultation flow no browser UI writes to any more). Only
+  // attested notes travel with the referral: an unsigned draft is not yet a
+  // record of what happened at this visit.
+  const { getNotesByPatient } = await import('../clinical-notes/note-service');
+  const clinicalNotes: TransferPackageClinicalNote[] = (await getNotesByPatient(patientId))
+    .filter(n => n.status === 'signed' || n.status === 'amended')
+    .map(n => ({
+      id: n._id,
+      noteType: n.noteType,
+      serviceDate: n.serviceDate,
+      serviceTime: n.serviceTime,
+      hospitalName: n.hospitalName,
+      authorName: n.authorName,
+      signedByName: n.signedByName,
+      signedAt: n.signedAt,
+      sections: n.sections.map(s => ({ sectionId: s.sectionId, text: s.text })),
+    }));
+
+  // The problem list — chronic/ongoing conditions a receiving clinician needs
+  // regardless of which visit is being referred.
+  const { getProblemsByPatient } = await import('./problem-service');
+  const problems: TransferPackageProblem[] = (await getProblemsByPatient(patientId)).map(p => ({
+    id: p._id,
+    name: p.name,
+    icd11Code: p.icd11Code,
+    status: p.status,
+    onsetDate: p.onsetDate,
+    severity: p.severity,
+  }));
+
+  // Active prescriptions — 'pending' is this codebase's existing definition
+  // of "active" (see prescription-service's own duplicate/interaction
+  // checks): an order still outstanding, not yet dispensed or discontinued.
+  const { getPrescriptionsByPatient } = await import('./prescription-service');
+  const activePrescriptions: TransferPackagePrescription[] = (await getPrescriptionsByPatient(patientId))
+    .filter(rx => rx.status === 'pending')
+    .map(rx => ({
+      id: rx._id,
+      medication: rx.medication,
+      dose: rx.dose,
+      route: rx.route,
+      frequency: rx.frequency,
+      duration: rx.duration,
+      prescribedBy: rx.prescribedBy,
+      status: rx.status,
+      indication: rx.indication,
+    }));
+
   // Convert records to plain objects (strip PouchDB fields)
   const cleanRecords = medicalRecords.map(rec => ({
     id: rec._id,
@@ -95,7 +197,8 @@ export async function assembleTransferPackage(
     packageSizeBytes += att.sizeBytes;
   }
   // Add estimated JSON overhead (~1KB per record)
-  packageSizeBytes += (cleanRecords.length + labResults.length) * 1024;
+  packageSizeBytes += (cleanRecords.length + labResults.length
+    + clinicalNotes.length + problems.length + activePrescriptions.length) * 1024;
 
   return {
     patientDemographics: {
@@ -120,6 +223,9 @@ export async function assembleTransferPackage(
     medicalRecords: cleanRecords,
     labResults,
     attachments: allAttachments,
+    clinicalNotes,
+    problems,
+    activePrescriptions,
     packagedAt: new Date().toISOString(),
     packagedBy,
     packageSizeBytes,

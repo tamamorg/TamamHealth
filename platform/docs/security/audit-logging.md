@@ -105,6 +105,11 @@ itself swallows write errors with a `console.error`.
   `hospitalId`, `patientId`, `resourceType`, `resourceId`, `route`,
   `query`, `resultCount`) onto the same `AuditLogDoc` shape — several
   newer PHI-read routes use these instead of the plainer `logDataAccess`.
+  `logPhiRead` covers `GET /api/patients/[id]` and every `/api/fhir/*`
+  data route that returns patient data (`Patient/[id]`, `Observation`,
+  `MedicationRequest`, `Encounter`, `Bundle/referral/[id]`) — each fires
+  after the scope check passes, so a 403/404 never becomes a phantom
+  "read" row.
 
 The existing `audit-service.ts` already redacts via `JSON.stringify` of a
 small, hand-curated `details` object. If you need to log a value, add a
@@ -120,31 +125,42 @@ just not wrapping. The current exempt list:
 | `/api/auth/login`                 | Login auditing is a separate concern — failed logins are rate-limited.    |
 | `/api/auth/logout`                | Idempotent, no-op on bad input; not a clinical mutation.                  |
 | `/api/auth/me`                    | Read-only.                                                                |
-| `/api/account-requests`           | Public, unauthenticated (no session to audit against); IP rate-limited.   |
+| `/api/demo-credentials`           | Public, unauthenticated by necessity (the sign-in page has no session yet); GET-only, and fails closed to an empty roster outside the standalone demo gate. |
 | `/api/booking/*`                  | Public, unauthenticated booking requests; same rationale as login.        |
 | `/api/fhir/metadata`              | Public CapabilityStatement.                                               |
-| `/api/country/metadata`           | Public reference data.                                                    |
-| `/api/terminology/*`              | Public reference data, no PHI.                                            |
-| `/api/patient-portal/*`           | Separate JWT scheme with its own audit policy.                            |
-| `/api/sync/*`                     | Already heavily logged via the sync-event outbox — would double-write.    |
+| `/api/country/metadata`           | Public reference data.                                                   |
+| `/api/terminology/*`              | Public reference data, no PHI.                                           |
+| `/api/patient-portal/*`           | Separate JWT scheme with its own audit policy.                           |
+| `/api/sync/*`                     | Already heavily logged via the sync-event outbox — would double-write.   |
 
-`/api/demo-credentials` used to be in this list; the route was removed
-(superseded by `/api/account-requests`).
+`/api/auth/change-password` is not wrapped either, but it is not a gap: it
+follows the same pattern as `/api/auth/login` (see below) — direct
+`logAuditSafe` calls for `password_change_success` and
+`password_change_failed`, because, like login, its request body carries
+raw passwords that must never reach `details`.
 
 Adding a new public/read-only route? It does not need the wrapper. Adding
 a new mutation route? It does — review will not approve a `POST | PUT |
 PATCH | DELETE` handler that is not wrapped, with a single documented
 exception captured in this list.
 
-**Known gaps**, surfaced here rather than silently omitted: these mutation
-routes are neither wrapped nor documented as exempt. `/api/auth/change-password`
-(password changes go unaudited); `/api/couch/[...path]` (a raw CouchDB
-write proxy handling POST/PUT/DELETE against org-scoped databases —
-distinct from `/api/sync/*`, not covered by that exemption);
-`/api/telehealth/consent`, `/api/telehealth/token`,
-`/api/telehealth/waiting-room` (unaudited while sibling
-`/api/telehealth/*` routes are wrapped). Each should get `withAuditLog` or
-an explicit, reasoned exemption entry.
+**Known gaps**, surfaced here rather than silently omitted: none tracked at
+present. The two routes previously listed here are both handled, just not
+by the decorator:
+
+- `/api/auth/change-password` — password changes are now audited via direct
+  `logAuditSafe` calls (see above), not `withAuditLog`.
+- `/api/couch/[...path]` — a raw CouchDB write proxy handling POST/PUT/DELETE
+  against org-scoped databases, distinct from `/api/sync/*`. It already logs
+  one `sync.gateway.write` row per proxied write (not per proxied request —
+  reads and the constant pull-poll/push-replication traffic are screened out
+  first) via a direct `logAuditSafe` call, for the same body-shape reason
+  `withAuditLog` doesn't fit here: the proxied body is an arbitrary CouchDB
+  document, not something to serialize into `details`.
+
+If a genuinely unaudited mutation route turns up, add it here with the
+same treatment: file, reason, and either a fix or an explicit exemption —
+this list is kept honest by hand, not generated.
 
 ## Storage and retention
 
@@ -163,14 +179,23 @@ an explicit, reasoned exemption entry.
 
 ## Testing
 
-There is currently **no test coverage** for `withAuditLog` or
-`audit-service.ts` — `src/__tests__/audit/` is an empty directory. A
-previous unit-test suite (`with-audit.test.ts`, using
-`jest.mock('@/lib/services/audit-service')` to capture `logAudit` calls
-and assert one row per wrapped invocation, `success: false` on non-2xx/
-thrown handlers, identity flow-through with anonymous fallback, logging
-failures never surfacing to the caller, and safe-method bypass) was
-deleted along with ~200 other files in a large unrelated sync-refactor
-commit and never restored. The behaviors above are still true of the code
-today — they're just unverified by any test. This is a real coverage gap
-worth restoring, not just a doc-freshness issue.
+`src/__tests__/audit/` was deleted along with ~200 other files in a large
+unrelated sync-refactor commit (2026-08-07) and rebuilt 2026-08-18 — it is
+not empty. It currently holds:
+
+- [`with-audit.test.ts`](../../src/__tests__/audit/with-audit.test.ts) (15
+  tests) — the `withAuditLog` decorator: one row per wrapped invocation,
+  `success: false` on non-2xx/thrown handlers, identity flow-through with
+  anonymous fallback, logging failures never surfacing to the caller, and
+  safe-method (GET/HEAD/OPTIONS) bypass.
+- [`get-recent-audit-logs-scope.test.ts`](../../src/__tests__/audit/get-recent-audit-logs-scope.test.ts) —
+  `getRecentAuditLogs`'s `DataScope` parameter: fails closed with no scope,
+  `super_admin`/`government` see every org unscoped, every other role is
+  filtered to its own org and never sees a row with no determinable
+  tenant.
+
+Route-level PHI-read auditing (`logPhiRead` on `/api/patients/[id]` and the
+`/api/fhir/*` data routes) is covered by
+[`src/__tests__/api/phi-read-audit.test.ts`](../../src/__tests__/api/phi-read-audit.test.ts):
+each route emits exactly one `logPhiRead` call on a successful read and
+none on a 403/404 denial.

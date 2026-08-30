@@ -232,6 +232,22 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
         if (created.accessionNumber) accessionNumbers.push(created.accessionNumber);
       }
 
+      // Record the ordered test ids on the visit. `labOrderIds` is what
+      // useResumableEncounters counts to tell the clinician how many results
+      // are back — without this write the "Resume" worklist permanently read
+      // "0 of 0 results", because nothing on this, the actual ordering path,
+      // ever populated the field `appendLabOrderIds` exists to fill. Best
+      // effort: the tests themselves are already placed and billable even if
+      // this bookkeeping write fails.
+      if (deskEncounterId && createdIds.length) {
+        try {
+          const { appendLabOrderIds } = await import('@/lib/services/encounter-service');
+          await appendLabOrderIds(deskEncounterId, createdIds);
+        } catch (err) {
+          console.warn('[lab-order] could not record order ids on the encounter (the order was placed):', err);
+        }
+      }
+
       // Bill the tests against that encounter. Price-driven and best-effort:
       // lines with no catalogued price are skipped and no bill is created when
       // the org hasn't priced anything — the same contract the consultation

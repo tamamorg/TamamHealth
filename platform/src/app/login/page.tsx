@@ -18,7 +18,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
-import { canRedirectAfterSignIn } from '@/lib/navigation/login-redirect';
+import { canRedirectAfterSignIn, resolveNextPath } from '@/lib/navigation/login-redirect';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { ROLE_LABEL } from '@/lib/role-display';
 import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
@@ -243,7 +243,14 @@ export default function LoginPage() {
     if (!canRedirectAfterSignIn({
       loading, signedIn, switching, isAuthenticated, hasUser: !!currentUser,
     })) return;
-    const landing = resolveLandingPage(currentUser!.role);
+    // `apiFetch` sends an expired session here as `/login?next=<path>` so a
+    // resumed sign-in can return to the page it was bounced from. Accepted
+    // only when `resolveNextPath` clears it — a same-origin relative path
+    // this role may actually open — otherwise the role's normal landing page.
+    const nextParam = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('next')
+      : null;
+    const landing = resolveNextPath(nextParam, currentUser!.role) ?? resolveLandingPage(currentUser!.role);
     if (sessionMode === 'offline') {
       // A document navigation lets the service worker serve the verified HTML
       // route. A Next soft navigation needs an RSC network response and can
@@ -301,7 +308,7 @@ export default function LoginPage() {
       // Whoever is signed in now is not who was just asked for. Drop that
       // session first, so the new credentials are the only ones in play.
       if (isAuthenticated) logout();
-      const result = await login(account.username, account.password);
+      const result = await login(account.username, account.password, undefined, undefined, keepSignedIn);
       if (result) { setSignedIn(true); return; }
       else { setError(describeLoginFailure('That demo account could not sign in.')); setLoading(false); }
     } catch { setError('Login failed. Please try again.'); setLoading(false); }
@@ -313,7 +320,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isAuthenticated) logout();
-      const result = await login(username, password, undefined, roleChoice || undefined);
+      const result = await login(username, password, undefined, roleChoice || undefined, keepSignedIn);
       if (result) { setSignedIn(true); return; }
 
       setError(describeLoginFailure(t('login.errorInvalidCredentials')));

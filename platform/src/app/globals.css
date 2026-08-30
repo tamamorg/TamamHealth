@@ -18752,6 +18752,14 @@ textarea.ehr-handoff-input {
   min-width: 0;
 }
 
+/* Outstanding drill-down rows keep the schedule board's cell classes, but
+   their Status column sits mid-table (the Action column holds the right
+   edge), so it aligns under its column head instead of anchoring to the
+   table's far edge the way the board's last column does. */
+.appointment-card-row .appointment-card-status--start {
+  align-items: flex-start;
+}
+
 .appointment-card-status small {
   display: block;
   max-width: 100%;
@@ -33121,6 +33129,43 @@ button.sadb-signal { cursor: pointer; }
 .wdis-note.is-danger { color: var(--color-danger-text); }
 .wdis-note.is-ok { color: var(--color-success-text); }
 .wdis-note svg { flex: 0 0 auto; }
+
+/* ── Sync status badge ────────────────────────────────────────────────────
+   Per-row indicator that a document's offline write hasn't reached the
+   server yet (components/ehr/SyncStatusBadge.tsx). Quiet neutral tone for
+   "pending"; the shared danger semantic for "failed"/"conflict" so it reads
+   with the same urgency as the appointment/queue status pills it sits next
+   to. Never color-only — every tone pairs an icon with a text label. */
+.sync-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.sync-status-badge-icon {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+}
+
+.sync-status-badge--neutral {
+  background: var(--semantic-neutral-bg);
+  border-color: var(--semantic-neutral-border);
+  color: var(--semantic-neutral);
+}
+
+.sync-status-badge--danger {
+  background: var(--semantic-danger-bg);
+  border-color: var(--semantic-danger-border);
+  color: var(--semantic-danger);
+}
 
 /* Chart on the left, the decision on the right: the destructive-ish action is
    never the button a hurried thumb lands on first. */

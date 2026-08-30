@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
@@ -8,12 +8,13 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useANC } from '@/lib/hooks/useANC';
 import { useTriage } from '@/lib/hooks/useTriage';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
-import type { PatientDoc, TriageDisposition } from '@/lib/db-types';
+import type { PatientDoc, TriageDisposition, TriageDoc } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
-import { patientAge, patientFullName, patientGenderAge, initials, shortenPersonName } from '@/lib/patient-utils';
+import { patientAge, patientAgeYearsExact, patientFullName, patientGenderAge, initials, shortenPersonName } from '@/lib/patient-utils';
 import {
   calculateBmi,
   getTriageVitalWarnings,
@@ -27,17 +28,37 @@ import {
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
   Activity, Clock, X, AlertTriangle, Wind, Brain, Heart,
-  Eye, ClipboardList, CheckCircle2, LogIn, LogOut, Send,
+  Eye, ClipboardList, CheckCircle2, LogIn, LogOut, Send, TrendingUp,
 } from '@/components/icons/lucide';
 import {
   ACCENT, calculateTriagePriority, type TriageResult,
 } from './shared';
+import { countActiveRedTriage, selectTriageQueueRows, sortTriageQueueRows } from './triage-queue';
+import { composeTriageIntakeNotes, manualPriorityRaiseNeedsReason } from './triage-intake-notes';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import ListSearch from './ListSearch';
 import RowActionsMenu, { type RowAction } from '@/components/referrals/RowActionsMenu';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
+import {
+  dropTriageDraft, loadTriageDraft, saveTriageDraft, type TriageDraft,
+} from '@/lib/triage-draft';
+
+/** High-prevalence chronic conditions offered as quick-pick chips. TriageDoc
+ *  has no `chronicConditions` field of its own (that lives on PatientDoc, a
+ *  standing record — not this visit's triage snapshot), so the selection here
+ *  folds into `notes` as a clearly labelled line rather than inventing a new
+ *  schema field (see the report for this limitation). */
+const TRIAGE_CHRONIC_CONDITIONS = ['HIV', 'TB', 'Diabetes', 'Hypertension', 'Sickle cell', 'Epilepsy', 'Other'] as const;
+
+/** Why a vital could not be captured this visit — recorded as a structured
+ *  note (TriageDoc has no dedicated field for this; see the report). */
+const UNMEASURED_VITAL_REASONS = [
+  ['equipment_unavailable', 'Equipment unavailable'],
+  ['patient_condition', 'Patient condition'],
+  ['declined', 'Patient declined'],
+] as const;
 
 function VitalInputField({
   field,
@@ -48,6 +69,8 @@ function VitalInputField({
   error,
   warning,
   onChange,
+  unmeasuredReason,
+  onUnmeasuredReasonChange,
 }: {
   field: TriageVitalField;
   label: string;
@@ -57,16 +80,32 @@ function VitalInputField({
   error?: string;
   warning?: TriageVitalWarning;
   onChange: (value: string) => void;
+  /** Set once the nurse has flagged this vital as not captured this visit —
+   *  see UNMEASURED_VITAL_REASONS. `undefined` means "captured normally". */
+  unmeasuredReason?: string;
+  onUnmeasuredReasonChange: (reason: string | undefined) => void;
 }) {
   const message = error || warning?.message;
   const messageId = `triage-vital-${field}-message`;
   const tone = error || warning?.urgency === 'RED' ? 'var(--color-danger)' : 'var(--color-warning)';
+  const isUnmeasured = unmeasuredReason !== undefined;
 
   return (
     <div data-vital-field={field}>
-      <label htmlFor={`triage-vital-${field}`} className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-        {label}
-      </label>
+      <div className="flex items-center justify-between gap-1">
+        <label htmlFor={`triage-vital-${field}`} className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+          {label}
+        </label>
+        <button
+          type="button"
+          onClick={() => onUnmeasuredReasonChange(isUnmeasured ? undefined : UNMEASURED_VITAL_REASONS[0][0])}
+          className="text-[8px] font-semibold uppercase tracking-wide"
+          style={{ color: isUnmeasured ? 'var(--color-warning)' : 'var(--text-muted)' }}
+          title="Record why this vital could not be measured"
+        >
+          {isUnmeasured ? 'Not taken' : 'N/A'}
+        </button>
+      </div>
       <input
         id={`triage-vital-${field}`}
         type="text"
@@ -74,6 +113,7 @@ function VitalInputField({
         value={value}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
+        disabled={isUnmeasured}
         aria-invalid={Boolean(error)}
         aria-describedby={message ? messageId : undefined}
         style={{
@@ -81,11 +121,21 @@ function VitalInputField({
           padding: '5px 8px',
           borderRadius: 6,
           fontSize: 12,
-          background: 'var(--bg-card)',
+          background: isUnmeasured ? 'var(--overlay-subtle)' : 'var(--bg-card)',
           border: `1px solid ${message ? tone : 'var(--border-light)'}`,
           color: 'var(--text-primary)',
         }}
       />
+      {isUnmeasured && (
+        <Select
+          aria-label={`Reason ${label} was not measured`}
+          value={unmeasuredReason}
+          onChange={event => onUnmeasuredReasonChange(event.target.value)}
+          style={{ width: '100%', marginTop: 4, padding: '3px 6px', borderRadius: 6, fontSize: 10, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+        >
+          {UNMEASURED_VITAL_REASONS.map(([code, reasonLabel]) => <option key={code} value={code}>{reasonLabel}</option>)}
+        </Select>
+      )}
       {message && (
         <p id={messageId} role={error ? 'alert' : 'status'} className="mt-1 text-[9px] leading-tight font-medium" style={{ color: tone }}>
           {error || `${warning?.urgency}: ${warning?.message}`}
@@ -148,11 +198,31 @@ export default function TriageWorkflow({
   const { triages: triageHistory, create: createTriageRecord, update: updateTriageRecord } = useTriage();
   const { appointments } = useAppointments();
   const { showToast } = useToast();
+  const dataScope = useDataScope();
+  const currentActor = { userId: currentUser?._id, username: currentUser?.name };
 
   // When set, the form is correcting an already-saved triage record rather
   // than creating a new one. Lets a nurse fix a mistyped vital / mis-tapped
   // ABCC option after saving — the audit trail keeps the record id stable.
   const [editingTriageId, setEditingTriageId] = useState<string | null>(null);
+  // When set, the next save completes THIS pending (clerical walk-in
+  // placeholder, KAN-100) triage via createTriage's resumePendingId rather
+  // than creating a second record for the same visit. Distinct from
+  // `editingTriageId`, which corrects an already-ASSESSED ('seen') record —
+  // a pending placeholder was never assessed at all, so this is a resume, not
+  // a correction, even though both end up calling the same update path.
+  const [resumePendingTriageId, setResumePendingTriageId] = useState<string | null>(null);
+  // The encounter a brand-new triage should attach to — either the pending
+  // placeholder's own encounter (carried through on resume) or, absent any
+  // active triage, the patient's own already-open encounter. Without this the
+  // saved triage carried no encounterId at all and the Escalate/LWBS row
+  // actions (which require one) never appeared for a walk-in.
+  const [encounterIdForNewTriage, setEncounterIdForNewTriage] = useState<string | undefined>(undefined);
+  // Guards the patient-select effect below so it resolves a pending/active
+  // triage (or restores a draft) once per patient selection rather than on
+  // every re-render triggered by the live triage subscription.
+  const resumeCheckedPatientRef = useRef<string | null>(null);
+  const [draftRestoredNotice, setDraftRestoredNotice] = useState(false);
 
   const [triageData, setTriageData] = useState<TriageResult>({
     airway: '', breathing: '', circulation: '', consciousness: '', priority: '',
@@ -161,10 +231,15 @@ export default function TriageWorkflow({
   const [triagePatientSearch, setTriagePatientSearch] = useState('');
   // Inline search for the "Recent Triages" list (right column).
   const [historySearch, setHistorySearch] = useState('');
-  // "Now" for the recent-triages Wait column — captured once on mount rather
-  // than read from Date.now() during render (impure). Live-ish, not live: no
-  // ticking interval, matching the spec for this list.
-  const [nowMs] = useState(() => Date.now());
+  // "Now" for the station queue's Wait column — sampled in an effect (render
+  // stays pure) and refreshed every minute, the same pattern EhrClinicalDashboard
+  // uses for its own queue clock, so a nurse watching the board sees wait
+  // times actually age instead of freezing at whenever the page first loaded.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const [triageVitals, setTriageVitals] = useState({
     temperature: '', pulse: '', respiratoryRate: '', systolic: '', diastolic: '',
     oxygenSaturation: '', weight: '', height: '', painScore: '', bloodGlucose: '', gcs: '', muac: '',
@@ -196,8 +271,26 @@ export default function TriageWorkflow({
   const [handoffNote, setHandoffNote] = useState('');
   const [overrideVitalUrgency, setOverrideVitalUrgency] = useState(false);
   const [vitalUrgencyOverrideReason, setVitalUrgencyOverrideReason] = useState('');
+  // Manual upgrade: the complement of the override above. That flow lets a
+  // nurse save BELOW the computed recommendation with a reason; this is the
+  // only path that lets a nurse go the other way and mark a patient MORE
+  // urgent than everything else on the form computes, for a reason no
+  // structured field captures (e.g. safeguarding concern, gut instinct on a
+  // vulnerable patient). Never lower via this control.
+  const [manualPriorityRaise, setManualPriorityRaise] = useState<'RED' | 'YELLOW' | ''>('');
+  const [manualUpgradeReason, setManualUpgradeReason] = useState('');
+  // Light-touch intake fields with no dedicated TriageDoc column (see the
+  // report) — folded into `notes` on save with a clear label.
+  const [currentMedications, setCurrentMedications] = useState('');
+  const [chronicConditionsSelected, setChronicConditionsSelected] = useState<string[]>([]);
+  // Per-vital "couldn't measure this" reason, keyed by field. Presence of a
+  // key (even '') means the nurse has flagged that vital as unmeasured.
+  const [unmeasuredVitalReasons, setUnmeasuredVitalReasons] = useState<Partial<Record<TriageVitalField, string>>>({});
   const [triageSubmitting, setTriageSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState('patient');
+  // Station queue: exclude terminal-status triages by default (a queue, not a
+  // log of everyone ever triaged) with an opt-in to also show today's.
+  const [showCompletedToday, setShowCompletedToday] = useState(false);
 
   // Triage auto-calculate
   useEffect(() => {
@@ -223,6 +316,15 @@ export default function TriageWorkflow({
     [lockedPatient, triagePatientId, patients]
   );
   const selectedPatientAge = selectedTriagePatient ? patientAge(selectedTriagePatient) ?? undefined : undefined;
+  // FRACTIONAL, not whole years — required by getTriageVitalWarnings' IITT
+  // infant age bands (< 8 days RED, < 6 months YELLOW, MUAC eligibility from
+  // 0.5y). `selectedPatientAge` above rounds to whole years, so every infant
+  // under 12 months read as age 0 and matched the same neonatal-emergency
+  // band regardless of whether they were 1 day or 11 months old — the exact
+  // mismatch the service layer now guards against server-side. Feeding the
+  // rounded value here just meant the nurse's live preview disagreed with
+  // what the save would actually enforce.
+  const selectedPatientAgeExact = selectedTriagePatient ? patientAgeYearsExact(selectedTriagePatient) ?? undefined : undefined;
   const triagePathway = selectedPatientAge !== undefined && selectedPatientAge < 12
     ? 'pediatric_under_12' as const
     : 'adult_12_plus' as const;
@@ -239,8 +341,8 @@ export default function TriageWorkflow({
   const vitalErrors = useMemo(() => validateTriageVitals(triageVitals), [triageVitals]);
   const isPregnantForVitals = isSelectedPatientPregnant || pregnancyStatus === 'pregnant';
   const vitalWarnings = useMemo(
-    () => getTriageVitalWarnings(triageVitals, selectedPatientAge, { isPregnant: isPregnantForVitals }),
-    [triageVitals, selectedPatientAge, isPregnantForVitals],
+    () => getTriageVitalWarnings(triageVitals, selectedPatientAgeExact, { isPregnant: isPregnantForVitals }),
+    [triageVitals, selectedPatientAgeExact, isPregnantForVitals],
   );
   const warningByVital = useMemo(() => {
     const result = new Map<TriageVitalField, TriageVitalWarning>();
@@ -265,6 +367,19 @@ export default function TriageWorkflow({
   const effectivePriority = recommendationRaisesPriority && !overrideVitalUrgency
     ? recommendedPriority
     : triageData.priority;
+  // Manual raise: priorities strictly ABOVE the computed effective priority.
+  // RED has nothing higher, so it offers no options — this control can only
+  // ever move a patient UP, never down (the existing override above keeps
+  // sole ownership of "save below what was computed").
+  const manualRaiseOptions: Array<'RED' | 'YELLOW'> = effectivePriority === 'GREEN'
+    ? ['YELLOW', 'RED']
+    : effectivePriority === 'YELLOW'
+      ? ['RED']
+      : [];
+  const effectiveManualPriorityRaise = manualPriorityRaise && manualRaiseOptions.includes(manualPriorityRaise)
+    ? manualPriorityRaise
+    : '';
+  const finalPriority = effectiveManualPriorityRaise || effectivePriority;
   const recordedPregnancyStatus = pregnancyStatus === 'unknown' && isSelectedPatientPregnant
     ? 'pregnant'
     : pregnancyStatus;
@@ -284,6 +399,23 @@ export default function TriageWorkflow({
   // edit-saved-record). Uses updateTriage on the next save, keeping the id.
   const loadTriageForEdit = (ti: typeof triageHistory[number]) => {
     setEditingTriageId(ti._id);
+    // A correction targets an already-identified record directly — it is
+    // never also "resume this pending placeholder", and any encounterId this
+    // save needs is already on the record itself (updateTriage preserves
+    // fields it isn't given), so neither piece of new-triage bookkeeping
+    // applies here.
+    setResumePendingTriageId(null);
+    setEncounterIdForNewTriage(undefined);
+    // These have no TriageDoc field of their own (see the report) and are
+    // folded into `notes` as free text on save — there is nothing structured
+    // to read back out of an existing record, so a correction starts blank
+    // rather than guessing at a previous save's wording.
+    setManualPriorityRaise('');
+    setManualUpgradeReason('');
+    setCurrentMedications('');
+    setChronicConditionsSelected([]);
+    setUnmeasuredVitalReasons({});
+    setDraftRestoredNotice(false);
     setTriagePatientId(ti.patientId);
     setTriagePatientSearch('');
     // 'not_assessed' (clerical check-in, KAN-100) maps to the form's unset
@@ -338,6 +470,208 @@ export default function TriageWorkflow({
     setVitalUrgencyOverrideReason(ti.vitalUrgencyOverrideReason || '');
   };
 
+  // Prefill from a clerical walk-in placeholder (KAN-100: front-desk check-in
+  // creates a 'pending', assessmentSource:'clerical_checkin' triage with real
+  // front-desk vitals/complaint/allergies but ABCC left `not_assessed`). Never
+  // touches ABCC or priority — those must come from this nurse's own
+  // assessment — and never overwrites a field the nurse has already typed
+  // into (relevant when this runs after a draft already seeded the form).
+  const prefillFromPendingTriage = (ti: TriageDoc) => {
+    setTriageVitals(previous => ({
+      temperature: previous.temperature || ti.temperature || '',
+      pulse: previous.pulse || ti.pulse || '',
+      respiratoryRate: previous.respiratoryRate || ti.respiratoryRate || '',
+      systolic: previous.systolic || ti.systolic || '',
+      diastolic: previous.diastolic || ti.diastolic || '',
+      oxygenSaturation: previous.oxygenSaturation || ti.oxygenSaturation || '',
+      weight: previous.weight || ti.weight || '',
+      height: previous.height || ti.height || '',
+      painScore: previous.painScore || ti.painScore || '',
+      bloodGlucose: previous.bloodGlucose || '',
+      gcs: previous.gcs || '',
+      muac: previous.muac || '',
+    }));
+    setTriageComplaint(previous => previous || ti.chiefComplaint || '');
+    setTriageNotes(previous => previous || ti.notes || '');
+    setTriageContext(previous => ({
+      modeOfArrival: previous.modeOfArrival || (ti.modeOfArrival as typeof previous.modeOfArrival) || '',
+      symptomDuration: previous.symptomDuration || ti.symptomDuration || '',
+      referralSource: previous.referralSource || ti.referralSource || '',
+      knownAllergies: previous.knownAllergies || ti.knownAllergies || '',
+    }));
+  };
+
+  const applyTriageDraft = (draft: TriageDraft) => {
+    setTriageData(draft.abcc);
+    setTriageVitals(draft.vitals);
+    setTriageContext(draft.context);
+    setTriageComplaint(draft.complaint);
+    setTriageNotes(draft.notes);
+    setPresentationCategory(draft.presentationCategory);
+    setRedCriteria(draft.redCriteria);
+    setYellowCriteria(draft.yellowCriteria);
+    setCapillaryRefillSeconds(draft.capillaryRefillSeconds);
+    setPregnancyStatus(draft.pregnancyStatus);
+    setGestationalAgeWeeks(draft.gestationalAgeWeeks);
+    setInjuryMechanism(draft.injuryMechanism);
+    setInfectionRiskSigns(draft.infectionRiskSigns);
+    setIsolationRequired(draft.isolationRequired);
+    setPreArrivalCare(draft.preArrivalCare);
+    setImmediateInterventions(draft.immediateInterventions);
+    setTriageDisposition(draft.disposition);
+    setDestinationClinic(draft.destinationClinic);
+    setAssignedProviderId(draft.assignedProviderId);
+    setHandoffNote(draft.handoffNote);
+    setOverrideVitalUrgency(draft.overrideVitalUrgency);
+    setVitalUrgencyOverrideReason(draft.vitalUrgencyOverrideReason);
+    setCurrentMedications(draft.currentMedications);
+    setChronicConditionsSelected(draft.chronicConditions);
+    setUnmeasuredVitalReasons(draft.unmeasuredVitalReasons as Partial<Record<TriageVitalField, string>>);
+    setManualPriorityRaise(draft.manualPriorityRaise);
+    setManualUpgradeReason(draft.manualUpgradeReason);
+    setEditingTriageId(draft.editingTriageId);
+    setResumePendingTriageId(draft.resumePendingTriageId);
+    setEncounterIdForNewTriage(draft.encounterId ?? undefined);
+  };
+
+  // Runs once per patient selection (guarded by resumeCheckedPatientRef, reset
+  // by clearForm): restores an in-progress draft for this patient if one
+  // exists, and otherwise resolves whether this patient already has a triage
+  // in flight — a clerical walk-in placeholder to resume/prefill, or an
+  // already-assessed record to correct instead of duplicating — and which
+  // encounter a brand-new triage should attach to.
+  useEffect(() => {
+    const patientId = selectedTriagePatient?._id;
+    // The lookup is one-shot per patient, so it must not spend its shot
+    // before auth (and with it the data scope) has hydrated — on a locked
+    // /triage/[patientId] load the patient id is available on the very first
+    // render, when useDataScope() is still undefined and the local replica
+    // may still be seeding. Consuming the ref then meant the clerical
+    // placeholder was never found and never prefilled.
+    if (!patientId || !dataScope) return;
+    if (resumeCheckedPatientRef.current === patientId) return;
+    resumeCheckedPatientRef.current = patientId;
+    // A manual "Edit" from the recent-triages list already set
+    // editingTriageId (and its own resumePendingTriageId/encounterId reset)
+    // synchronously, in the same tick as selecting this patient — running the
+    // draft/pending lookup below would either overwrite that deliberate
+    // choice with an unrelated stale draft, or needlessly re-derive bookkeeping
+    // this component already knows. Nothing left to resolve.
+    if (editingTriageId) return;
+    let cancelled = false;
+    (async () => {
+      const draft = await loadTriageDraft(patientId);
+      if (cancelled) return;
+      if (draft) {
+        applyTriageDraft(draft);
+        setDraftRestoredNotice(true);
+        return;
+      }
+      try {
+        const { findActiveTriageForPatient } = await import('@/lib/services/triage-service');
+        const active = await findActiveTriageForPatient(patientId, dataScope);
+        if (cancelled) return;
+        if (active?.status === 'pending') {
+          prefillFromPendingTriage(active);
+          setResumePendingTriageId(active._id);
+          setEncounterIdForNewTriage(active.encounterId);
+        } else if (active?.status === 'seen') {
+          loadTriageForEdit(active);
+        } else if (currentUser?.hospitalId) {
+          const { findOpenEncounterForPatient } = await import('@/lib/services/encounter-service');
+          const openEncounter = await findOpenEncounterForPatient(patientId, currentUser.hospitalId);
+          if (!cancelled && openEncounter) setEncounterIdForNewTriage(openEncounter._id);
+        }
+      } catch (err) {
+        console.error('Could not resolve an existing triage/encounter for this patient:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+    // `!!dataScope` (not the object) so scope HYDRATION re-arms the un-consumed
+    // one-shot without identity churn re-triggering it after it has run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTriagePatient?._id, !!dataScope]);
+
+  // Debounced autosave while assessing — protects the in-progress ETAT
+  // against a refresh, a crash, or a tablet sleeping mid-assessment. Only the
+  // raw form fields are stored (see triage-draft.ts); nothing derived.
+  useEffect(() => {
+    const patientId = selectedTriagePatient?._id;
+    if (!patientId) return;
+    const timer = setTimeout(() => {
+      const draft: TriageDraft = {
+        version: 1,
+        patientId,
+        abcc: triageData,
+        vitals: triageVitals,
+        context: triageContext,
+        complaint: triageComplaint,
+        notes: triageNotes,
+        presentationCategory,
+        redCriteria,
+        yellowCriteria,
+        capillaryRefillSeconds,
+        pregnancyStatus,
+        gestationalAgeWeeks,
+        injuryMechanism,
+        infectionRiskSigns,
+        isolationRequired,
+        preArrivalCare,
+        immediateInterventions,
+        disposition: triageDisposition,
+        destinationClinic,
+        assignedProviderId,
+        handoffNote,
+        overrideVitalUrgency,
+        vitalUrgencyOverrideReason,
+        currentMedications,
+        chronicConditions: chronicConditionsSelected,
+        unmeasuredVitalReasons,
+        manualPriorityRaise,
+        manualUpgradeReason,
+        editingTriageId,
+        resumePendingTriageId,
+        encounterId: encounterIdForNewTriage ?? null,
+      };
+      void saveTriageDraft(patientId, draft);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [
+    selectedTriagePatient?._id, triageData, triageVitals, triageContext, triageComplaint, triageNotes,
+    presentationCategory, redCriteria, yellowCriteria, capillaryRefillSeconds, pregnancyStatus,
+    gestationalAgeWeeks, injuryMechanism, infectionRiskSigns, isolationRequired, preArrivalCare,
+    immediateInterventions, triageDisposition, destinationClinic, assignedProviderId, handoffNote,
+    overrideVitalUrgency, vitalUrgencyOverrideReason, currentMedications, chronicConditionsSelected,
+    unmeasuredVitalReasons, manualPriorityRaise, manualUpgradeReason, editingTriageId,
+    resumePendingTriageId, encounterIdForNewTriage,
+  ]);
+
+  // Clears everything the patient-select effect above derives — the resume/
+  // edit/encounter bookkeeping — so switching the PATIENT never leaves one
+  // patient's resume target attached to a different patient's save. Without
+  // this, clearing the picker and choosing someone else kept whatever
+  // `resumePendingTriageId`/`encounterIdForNewTriage` the first patient had
+  // resolved to, and the next save would have resumed (or attached to) THEIR
+  // record instead of the new patient's.
+  const resetTriageBookkeeping = () => {
+    setEditingTriageId(null);
+    setResumePendingTriageId(null);
+    setEncounterIdForNewTriage(undefined);
+    setDraftRestoredNotice(false);
+    resumeCheckedPatientRef.current = null;
+  };
+
+  // A changed ABCC selection, IITT criterion, capillary refill reading or
+  // pregnancy status can all change the RECOMMENDED priority the override
+  // reason was attesting against — not just a raw vital. Previously only the
+  // vitals' own onChange reset this attestation, so a nurse could tick a new
+  // RED danger sign after already overriding down to GREEN and save with a
+  // now-stale reason that no longer matches what it is overriding.
+  const resetVitalOverride = () => {
+    setOverrideVitalUrgency(false);
+    setVitalUrgencyOverrideReason('');
+  };
+
   // Disposition a triaged patient straight from the queue row — mark them seen,
   // admit, discharge, or refer onward — without re-opening the full form. Each
   // transition persists via updateTriage so the queue, ward acuity, and the
@@ -347,15 +681,18 @@ export default function TriageWorkflow({
     status: 'seen' | 'admitted' | 'discharged' | 'referred',
     label: string,
   ) => {
+    // Discharge closes the triage record for good (VALID_TRANSITIONS has no
+    // edge out of 'discharged') — the same one-way-door confirm
+    // EhrClinicalDashboard already asks before escalate/LWBS, so a mis-tapped
+    // row-menu entry doesn't silently end a patient's visit.
+    if (status === 'discharged' && !window.confirm(t('nurse.triageDischargeConfirm', { name: ti.patientName }))) return;
     try {
-      // updateTriage never throws on an illegal/failed transition — it
-      // swallows the error and resolves null. Without this check a rejected
-      // status change still showed the success toast below.
-      const updated = await updateTriageRecord(ti._id, { status });
-      if (!updated) {
-        showToast(t('nurse.triageStatusFailed'), 'error');
-        return;
-      }
+      // updateTriage resolves with the updated doc or throws (an illegal
+      // transition, a lost update conflict after retries, a failed vital
+      // safety check) — it never resolves to a falsy value, so there is
+      // nothing to null-check here; a rejected status change reaches the
+      // catch block below instead.
+      await updateTriageRecord(ti._id, { status }, currentActor);
       showToast(t('nurse.triageStatusUpdated', { name: ti.patientName, status: label }), 'success');
     } catch {
       showToast(t('nurse.triageStatusFailed'), 'error');
@@ -365,19 +702,17 @@ export default function TriageWorkflow({
   // LWBS and emergency escalation act on the ENCOUNTER (KAN-100): the state
   // machine removes the visit from waiting worklists (lwbs is terminal;
   // escalation hands the visit to emergency care). The triage doc mirrors
-  // lwbs so this queue stops showing a patient who has left.
+  // lwbs so this queue stops showing a patient who has left. Both are
+  // one-way — same confirm pattern EhrClinicalDashboard uses for its own
+  // copies of these two actions.
   const markLeftWithoutBeingSeen = async (ti: typeof triageHistory[number]) => {
+    if (!window.confirm(t('nurse.triageLwbsConfirm', { name: ti.patientName }))) return;
     try {
       const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
       await recordLeftWithoutBeingSeen(ti.encounterId!, { actorId: currentUser?._id });
-      // updateTriage never throws on an illegal/failed transition — it
-      // swallows the error and resolves null, which previously still hit the
-      // success toast below while the triage record stayed 'pending' forever.
-      const updated = await updateTriageRecord(ti._id, { status: 'lwbs' });
-      if (!updated) {
-        showToast(t('nurse.triageStatusFailed'), 'error');
-        return;
-      }
+      // updateTriage resolves with the updated doc or throws — see the note
+      // in setTriageStatus above.
+      await updateTriageRecord(ti._id, { status: 'lwbs' }, currentActor);
       showToast(t('nurse.triageStatusUpdated', { name: ti.patientName, status: t('nurse.triageActionLwbs') }), 'success');
     } catch {
       showToast(t('nurse.triageStatusFailed'), 'error');
@@ -385,6 +720,7 @@ export default function TriageWorkflow({
   };
 
   const escalateToEmergency = async (ti: typeof triageHistory[number]) => {
+    if (!window.confirm(t('nurse.triageEscalateConfirm', { name: ti.patientName }))) return;
     try {
       const { getEncounter, transitionEncounter, escalateEncounterToEmergency } =
         await import('@/lib/services/encounter-service');
@@ -404,11 +740,9 @@ export default function TriageWorkflow({
       // are triage-derived, so without this the escalated patient stayed at
       // the top of the triage queue as the most urgent person in the building.
       // 'referred' is the existing "handed onward" terminal the queue drops.
-      const updated = await updateTriageRecord(ti._id, { status: 'referred' });
-      if (!updated) {
-        showToast(t('nurse.triageStatusFailed'), 'error');
-        return;
-      }
+      // updateTriage resolves with the updated doc or throws — see the note
+      // in setTriageStatus above.
+      await updateTriageRecord(ti._id, { status: 'referred' }, currentActor);
       showToast(t('nurse.triageStatusUpdated', { name: ti.patientName, status: t('nurse.triageActionEscalate') }), 'success');
     } catch {
       showToast(t('nurse.triageStatusFailed'), 'error');
@@ -418,8 +752,12 @@ export default function TriageWorkflow({
   // Empty the form. On the per-patient page the patient survives the clear —
   // the nurse is there to triage that one person, and dropping the selection
   // would leave a form with no subject on a page that is about them.
-  const clearForm = () => {
+  const clearForm = (options: { discardDraft?: boolean } = {}) => {
+    const draftPatientId = selectedTriagePatient?._id;
     setEditingTriageId(null);
+    setResumePendingTriageId(null);
+    setEncounterIdForNewTriage(undefined);
+    setDraftRestoredNotice(false);
     setTriageData({ airway: '', breathing: '', circulation: '', consciousness: '', priority: '' });
     setTriagePatientId(lockedPatientId ?? '');
     setTriagePatientSearch('');
@@ -444,6 +782,17 @@ export default function TriageWorkflow({
     setHandoffNote('');
     setOverrideVitalUrgency(false);
     setVitalUrgencyOverrideReason('');
+    setManualPriorityRaise('');
+    setManualUpgradeReason('');
+    setCurrentMedications('');
+    setChronicConditionsSelected([]);
+    setUnmeasuredVitalReasons({});
+    // Let the patient-select effect re-resolve a pending/active triage (or a
+    // fresh draft) rather than treating this patient as "already checked" —
+    // relevant when Reset is pressed but the locked-patient page keeps the
+    // same patient selected.
+    resumeCheckedPatientRef.current = null;
+    if (options.discardDraft && draftPatientId) void dropTriageDraft(draftPatientId);
   };
 
   const triagePriorityColor = (priority: string) => {
@@ -492,9 +841,26 @@ export default function TriageWorkflow({
       document.getElementById('triage-vital-override-reason')?.focus();
       return;
     }
+    if (manualPriorityRaiseNeedsReason(effectiveManualPriorityRaise, manualUpgradeReason)) {
+      showToast(t('nurse.raiseReasonRequired'), 'error');
+      document.getElementById('triage-manual-raise-reason')?.focus();
+      return;
+    }
     try {
       setTriageSubmitting(true);
       const now = new Date().toISOString();
+      // Every light-touch field below (medications, chronic conditions, why a
+      // vital is missing, the manual-raise reason) has no TriageDoc column of
+      // its own — see the report — so they fold into one clearly labelled
+      // notes string rather than being silently dropped.
+      const composedNotes = composeTriageIntakeNotes({
+        baseNotes: triageNotes,
+        currentMedications,
+        chronicConditions: chronicConditionsSelected,
+        unmeasuredVitalReasons,
+        manualPriorityRaise: effectiveManualPriorityRaise,
+        manualUpgradeReason,
+      });
       // Shared field payload for both create and correct-an-existing-record paths.
       const payload = {
         airway: triageData.airway as 'clear' | 'obstructed',
@@ -504,7 +870,10 @@ export default function TriageWorkflow({
         // This form IS the clinician assessment — the submit guard above
         // refuses to save until every ABCC dimension is chosen (KAN-100).
         assessmentSource: 'clinician' as const,
-        priority: effectivePriority as 'RED' | 'YELLOW' | 'GREEN',
+        // The manually-raised priority (if any) is the one actually saved —
+        // it is presented as the effective priority throughout the UI, so the
+        // record must agree with what the nurse was shown.
+        priority: finalPriority as 'RED' | 'YELLOW' | 'GREEN',
         temperature: triageVitals.temperature || undefined,
         pulse: triageVitals.pulse || undefined,
         respiratoryRate: triageVitals.respiratoryRate || undefined,
@@ -547,7 +916,7 @@ export default function TriageWorkflow({
         preArrivalCare: preArrivalCare || undefined,
         immediateInterventions: immediateInterventions || undefined,
         chiefComplaint: triageComplaint || undefined,
-        notes: triageNotes || undefined,
+        notes: composedNotes,
         disposition: triageDisposition,
         destinationClinic: destinationClinic || undefined,
         assignedProviderId: assignedProviderId || undefined,
@@ -565,20 +934,23 @@ export default function TriageWorkflow({
         // KAN-100, that this save is now giving its first real ETAT) advances
         // past it here too — otherwise it joins the same "finished assessment
         // stuck at Awaiting Triage forever" bug fixed below for new records.
+        // updateTriage resolves with the updated doc or throws (invalid
+        // transition, lost-update conflict, failed vital safety check) — the
+        // catch block below is what handles a rejected save; there is no
+        // falsy "it silently failed" result to check for.
         const existingTriage = triageHistory.find(h => h._id === editingTriageId);
-        const updated = await updateTriageRecord(
+        await updateTriageRecord(
           editingTriageId,
           existingTriage?.status === 'pending' ? { ...payload, status: 'seen' } : payload,
+          currentActor,
         );
-        if (!updated) {
-          // updateTriage never throws on an illegal/failed transition — it
-          // swallows the error and resolves null. Without this check the
-          // correction silently didn't save while the toast still read success.
-          showToast(t('nurse.triageSaveFailed'), 'error');
-          return;
-        }
       } else {
-        created = await createTriageRecord({
+        // `resumePendingTriageId` — set by the patient-select effect below
+        // when this patient already has a clerical walk-in placeholder
+        // (KAN-100) — routes this straight into createTriage's resume path:
+        // the placeholder is completed via updateTriage instead of a second
+        // triage record being created for the same visit.
+        const createPayload = {
           patientId: selectedTriagePatient._id,
           patientName: patientFullName(selectedTriagePatient),
           hospitalNumber: selectedTriagePatient.hospitalNumber,
@@ -594,8 +966,28 @@ export default function TriageWorkflow({
           // meant buildQueueFromTriage classified every nurse-assessed
           // patient as `awaiting_triage` and no doctor's worklist ever
           // picked them up — the worst break in the triage → doctor handoff.
-          status: 'seen',
-        });
+          status: 'seen' as const,
+          // The visit this triage belongs to — the resumed placeholder's own
+          // encounter, or (no pending triage, but an open encounter already
+          // exists) that encounter. Without this a brand-new triage saved
+          // with no encounterId at all, which is what left the Escalate/LWBS
+          // row actions permanently hidden for every walk-in this form triaged.
+          ...(encounterIdForNewTriage ? { encounterId: encounterIdForNewTriage } : {}),
+        };
+        try {
+          created = await createTriageRecord(createPayload, { resumePendingId: resumePendingTriageId || undefined, actor: currentActor });
+        } catch (error) {
+          // The placeholder can arrive AFTER the patient-select effect looked
+          // for it (delayed sync — a device that came online mid-assessment).
+          // The guard names the record it found, so complete that one instead
+          // of asking the nurse to re-enter a finished assessment.
+          const dup = error as { code?: string; existingTriageId?: string };
+          if (dup?.code === 'DUPLICATE_ACTIVE_TRIAGE' && dup.existingTriageId && !resumePendingTriageId) {
+            created = await createTriageRecord(createPayload, { resumePendingId: dup.existingTriageId, actor: currentActor });
+          } else {
+            throw error;
+          }
+        }
       }
       const triageId = editingTriageId ?? created?._id;
       if (!triageId) throw new Error('The triage record has no id.');
@@ -623,7 +1015,11 @@ export default function TriageWorkflow({
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast(t('nurse.triageSaved', { priority: effectivePriority, name: patientFullName(selectedTriagePatient) }), 'success');
+      showToast(t('nurse.triageSaved', { priority: finalPriority, name: patientFullName(selectedTriagePatient) }), 'success');
+      // The assessment is safely on the record — the draft that shadowed it
+      // (if any) would otherwise "restore" a completed triage's own contents
+      // back over whatever the nurse starts filling in next for this patient.
+      await dropTriageDraft(selectedTriagePatient._id);
       // A focused patient assessment is complete: close its page and return
       // to the queue that launched it. Embedded stations remain ready for the
       // next patient instead.
@@ -631,8 +1027,22 @@ export default function TriageWorkflow({
       else clearForm();
     } catch (err) {
       console.error(err);
-      // Keep form data intact so the nurse can retry
-      showToast(t('nurse.triageSaveFailed'), 'error');
+      // Duck-typed on DuplicateActiveTriageError's discriminant `code` rather
+      // than an `instanceof` import — every other reference to the triage
+      // service in this component goes through `await import(...)` so it
+      // never gets pulled into the client bundle at parse time; importing
+      // just the error CLASS to type-check it here would undo that.
+      if ((err as { code?: unknown } | undefined)?.code === 'DUPLICATE_ACTIVE_TRIAGE') {
+        // The patient-select effect below should have already resolved this
+        // into a resume/edit before the nurse ever got to Save — reaching
+        // here means the active triage appeared after that check ran (another
+        // station triaged the same patient in the meantime). Refreshing the
+        // list is safer than silently overwriting or duplicating a record.
+        showToast(t('nurse.triageDuplicateActive'), 'error');
+      } else {
+        // Keep form data intact so the nurse can retry
+        showToast(t('nurse.triageSaveFailed'), 'error');
+      }
     } finally {
       setTriageSubmitting(false);
     }
@@ -647,6 +1057,17 @@ export default function TriageWorkflow({
   const filteredHistory = histQ
     ? scopedHistory.filter(ti => (ti.patientName || '').toLowerCase().includes(histQ) || (ti.chiefComplaint || '').toLowerCase().includes(histQ))
     : scopedHistory;
+  // The station list is a QUEUE (who still needs attention right now), not a
+  // log of everyone ever triaged — terminal statuses drop out by default,
+  // with an opt-in to also see today's, and whoever remains sorts most
+  // urgent (RED, then YELLOW, then GREEN) and longest-waiting first within
+  // the same acuity. The per-patient page's own "Triage history" is a real
+  // history across visits and keeps its plain newest-first order.
+  const stationQueueRows = useMemo(
+    () => sortTriageQueueRows(selectTriageQueueRows(filteredHistory, { includeCompletedToday: showCompletedToday, todayIso: todayIso() })),
+    [filteredHistory, showCompletedToday],
+  );
+  const displayedTriageRows = lockedPatientId ? filteredHistory : stationQueueRows;
 
   const triageSections = [
     { id: 'patient', label: 'Patient & complaint', icon: ClipboardList, detail: selectedTriagePatient ? 'Identity confirmed' : 'Select patient' },
@@ -714,7 +1135,7 @@ export default function TriageWorkflow({
             >
               {triageSubmitting ? t('nurse.saving') : editingTriageId ? t('action.saveChanges') : t('nurse.saveTriage')}
             </button>
-            <button type="button" onClick={clearForm} disabled={triageSubmitting} className="btn btn-secondary">
+            <button type="button" onClick={() => clearForm({ discardDraft: true })} disabled={triageSubmitting} className="btn btn-secondary">
               {t('nurse.reset')}
             </button>
           </div>
@@ -729,7 +1150,14 @@ export default function TriageWorkflow({
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.etatTriageAssessment')}</h3>
             </div>
             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(todayIso())).length, red: triageHistory.filter(ti => ti.priority === 'RED' && ti.status === 'pending').length })}
+              {/* RED count is every RED triage the department still owes
+                  attention to — pending, or seen but not yet in an active
+                  consultation — not just status==='pending'. The old
+                  predicate dropped a RED patient from this count the instant
+                  a nurse marked them 'seen', long before a doctor picked them
+                  up, understating how many critical patients were still
+                  waiting. */}
+              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(todayIso())).length, red: countActiveRedTriage(triageHistory) })}
             </span>
           </div>
         )}
@@ -737,6 +1165,31 @@ export default function TriageWorkflow({
           <div className={lockedPatientId ? 'omrs-reg-section' : 'space-y-4'}>
             {lockedPatientId && <div className="omrs-reg-sectionhead"><h2>ETAT assessment</h2><p>Record the patient identity, immediate risk, observations, and handoff context.</p></div>}
             <div className={lockedPatientId ? 'omrs-reg-fields space-y-4' : 'space-y-4'}>
+          {draftRestoredNotice && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33,145,208,0.25))' }}>
+              <span className="text-[11px] font-semibold" style={{ color: ACCENT }}>
+                {t('nurse.draftRestoredNotice')}
+              </span>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => clearForm({ discardDraft: true })}
+                  className="text-[10px] font-semibold"
+                  style={{ color: 'var(--color-danger)' }}
+                >
+                  {t('nurse.discardDraft')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraftRestoredNotice(false)}
+                  className="text-[10px] font-semibold inline-flex items-center gap-1"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <X className="w-3 h-3" /> {t('action.dismiss')}
+                </button>
+              </div>
+            </div>
+          )}
           {!lockedPatientId && <>
           {/* Patient picker */}
           <div id="triage-section-patient" className="relative scroll-mt-3">
@@ -754,7 +1207,7 @@ export default function TriageWorkflow({
                 {/* No clear button on the per-patient page: the patient is the
                     page, not a field on it. */}
                 {!lockedPatientId && (
-                  <button onClick={() => { setTriagePatientId(''); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); }} className="p-1.5 rounded-lg flex-shrink-0" style={{ background: 'var(--overlay-subtle)' }}>
+                  <button onClick={() => { setTriagePatientId(''); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); resetTriageBookkeeping(); }} className="p-1.5 rounded-lg flex-shrink-0" style={{ background: 'var(--overlay-subtle)' }}>
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -778,7 +1231,7 @@ export default function TriageWorkflow({
                     {triagePatientMatches.map(p => (
                       <button
                         key={p._id}
-                        onClick={() => { setTriagePatientId(p._id); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); }}
+                        onClick={() => { setTriagePatientId(p._id); setTriagePatientSearch(''); setOverrideVitalUrgency(false); setVitalUrgencyOverrideReason(''); resetTriageBookkeeping(); }}
                         className="w-full text-start px-3 py-2 text-xs hover:bg-[var(--overlay-subtle)]"
                         style={{ borderBottom: '1px solid var(--border-light)' }}
                       >
@@ -891,7 +1344,7 @@ export default function TriageWorkflow({
                 {(['clear', 'obstructed'] as const).map(opt => (
                   <button
                     key={opt}
-                    onClick={() => setTriageData(prev => ({ ...prev, airway: prev.airway === opt ? '' : opt }))}
+                    onClick={() => { setTriageData(prev => ({ ...prev, airway: prev.airway === opt ? '' : opt })); resetVitalOverride(); }}
                     title={triageData.airway === opt ? t('action.deselect') : undefined}
                     className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
@@ -922,7 +1375,7 @@ export default function TriageWorkflow({
                 {(['normal', 'distressed', 'absent'] as const).map(opt => (
                   <button
                     key={opt}
-                    onClick={() => setTriageData(prev => ({ ...prev, breathing: prev.breathing === opt ? '' : opt }))}
+                    onClick={() => { setTriageData(prev => ({ ...prev, breathing: prev.breathing === opt ? '' : opt })); resetVitalOverride(); }}
                     title={triageData.breathing === opt ? t('action.deselect') : undefined}
                     className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
@@ -953,7 +1406,7 @@ export default function TriageWorkflow({
                 {(['normal', 'impaired', 'absent'] as const).map(opt => (
                   <button
                     key={opt}
-                    onClick={() => setTriageData(prev => ({ ...prev, circulation: prev.circulation === opt ? '' : opt }))}
+                    onClick={() => { setTriageData(prev => ({ ...prev, circulation: prev.circulation === opt ? '' : opt })); resetVitalOverride(); }}
                     title={triageData.circulation === opt ? t('action.deselect') : undefined}
                     className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
@@ -989,7 +1442,7 @@ export default function TriageWorkflow({
                 ]).map(opt => (
                   <button
                     key={opt.key}
-                    onClick={() => setTriageData(prev => ({ ...prev, consciousness: prev.consciousness === opt.key ? '' : opt.key }))}
+                    onClick={() => { setTriageData(prev => ({ ...prev, consciousness: prev.consciousness === opt.key ? '' : opt.key })); resetVitalOverride(); }}
                     title={triageData.consciousness === opt.key ? t('action.deselect') : undefined}
                     className="px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
                     style={{
@@ -1038,11 +1491,11 @@ export default function TriageWorkflow({
               </div>
               <div>
                 <label htmlFor="triage-capillary-refill" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Capillary refill (seconds)</label>
-                <input id="triage-capillary-refill" type="text" inputMode="decimal" value={capillaryRefillSeconds} onChange={event => setCapillaryRefillSeconds(event.target.value)} placeholder="2" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
+                <input id="triage-capillary-refill" type="text" inputMode="decimal" value={capillaryRefillSeconds} onChange={event => { setCapillaryRefillSeconds(event.target.value); resetVitalOverride(); }} placeholder="2" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
               </div>
               <div>
                 <label htmlFor="triage-pregnancy-status" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Pregnancy status</label>
-                <Select id="triage-pregnancy-status" value={recordedPregnancyStatus} onChange={event => setPregnancyStatus(event.target.value as typeof pregnancyStatus)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
+                <Select id="triage-pregnancy-status" value={recordedPregnancyStatus} onChange={event => { setPregnancyStatus(event.target.value as typeof pregnancyStatus); resetVitalOverride(); }} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
                   <option value="unknown">Unknown</option>
                   <option value="not_applicable">Not applicable</option>
                   <option value="not_pregnant">Not pregnant</option>
@@ -1069,7 +1522,7 @@ export default function TriageWorkflow({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {IITT_RED_CRITERIA.map(([code, label]) => (
                   <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
-                    <input type="checkbox" checked={redCriteria.includes(code)} onChange={event => setRedCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code))} />
+                    <input type="checkbox" checked={redCriteria.includes(code)} onChange={event => { setRedCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code)); resetVitalOverride(); }} />
                     <span>{label}</span>
                   </label>
                 ))}
@@ -1081,7 +1534,7 @@ export default function TriageWorkflow({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {IITT_YELLOW_CRITERIA.map(([code, label]) => (
                   <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
-                    <input type="checkbox" checked={yellowCriteria.includes(code)} onChange={event => setYellowCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code))} />
+                    <input type="checkbox" checked={yellowCriteria.includes(code)} onChange={event => { setYellowCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code)); resetVitalOverride(); }} />
                     <span>{label}</span>
                   </label>
                 ))}
@@ -1121,11 +1574,11 @@ export default function TriageWorkflow({
             <div
               className="p-4 rounded-2xl text-center transition-all"
               style={{
-                background: triagePriorityColor(effectivePriority).bg,
-                color: triagePriorityColor(effectivePriority).text,
+                background: triagePriorityColor(finalPriority).bg,
+                color: triagePriorityColor(finalPriority).text,
               }}
             >
-              <p className="text-base font-bold">{triagePriorityColor(effectivePriority).label}</p>
+              <p className="text-base font-bold">{triagePriorityColor(finalPriority).label}</p>
               {recommendationRaisesPriority && (
                 <p className="text-[10px] mt-1 font-semibold opacity-90">
                   {overrideVitalUrgency
@@ -1133,8 +1586,62 @@ export default function TriageWorkflow({
                     : `Escalated from ABCC ${triageData.priority} by IITT danger signs or vital-sign warning`}
                 </p>
               )}
+              {effectiveManualPriorityRaise && (
+                <p className="text-[10px] mt-1 font-semibold opacity-90">
+                  {t('nurse.raisedByNurse', { reason: manualUpgradeReason.trim() || '—' })}
+                </p>
+              )}
               {selectedTriagePatient && (
                 <p className="text-xs mt-1 opacity-80">{t('nurse.patientLabel', { name: patientFullName(selectedTriagePatient) })}</p>
+              )}
+            </div>
+          )}
+
+          {/* Manual priority raise — the complement of the vital-urgency
+              override above. That control only ever lets a nurse save BELOW
+              the computed recommendation (with a reason); this is the only
+              path in the other direction, for a concern nothing structured on
+              the form captures. Not offered once already RED — there is
+              nothing higher to raise to. */}
+          {triageData.priority && manualRaiseOptions.length > 0 && (
+            <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
+                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.raisePriorityAboveComputed')}</span>
+              </div>
+              <div className="flex gap-2">
+                {manualRaiseOptions.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setManualPriorityRaise(current => current === option ? '' : option)}
+                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
+                    style={{
+                      background: effectiveManualPriorityRaise === option ? triagePriorityColor(option).bg : 'var(--bg-card)',
+                      color: effectiveManualPriorityRaise === option ? triagePriorityColor(option).text : 'var(--text-secondary)',
+                      border: `1px solid ${effectiveManualPriorityRaise === option ? triagePriorityColor(option).bg : 'var(--border-light)'}`,
+                    }}
+                  >
+                    {t('nurse.raiseTo', { label: triagePriorityColor(option).label })}
+                  </button>
+                ))}
+              </div>
+              {effectiveManualPriorityRaise && (
+                <div className="mt-2">
+                  <label htmlFor="triage-manual-raise-reason" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--color-danger)' }}>
+                    {t('nurse.raiseReasonLabel')}
+                  </label>
+                  <textarea
+                    id="triage-manual-raise-reason"
+                    rows={2}
+                    value={manualUpgradeReason}
+                    onChange={event => setManualUpgradeReason(event.target.value)}
+                    placeholder="What did you observe that the ABCC and danger-sign screen above didn't capture?"
+                    className="w-full px-2 py-1.5 rounded-lg text-xs mt-1"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--color-danger)', color: 'var(--text-primary)' }}
+                    required
+                  />
+                </div>
               )}
             </div>
           )}
@@ -1166,12 +1673,23 @@ export default function TriageWorkflow({
                   value={triageVitals[item.field]}
                   error={vitalErrors[item.field]}
                   warning={warningByVital.get(item.field)}
+                  unmeasuredReason={unmeasuredVitalReasons[item.field]}
                   onChange={value => {
                     setTriageVitals(previous => ({ ...previous, [item.field]: value }));
-                    // A changed reading invalidates any earlier override
-                    // attestation; the nurse must review and affirm it again.
-                    setOverrideVitalUrgency(false);
-                    setVitalUrgencyOverrideReason('');
+                    resetVitalOverride();
+                  }}
+                  onUnmeasuredReasonChange={reason => {
+                    setUnmeasuredVitalReasons(previous => {
+                      const next = { ...previous };
+                      if (reason === undefined) delete next[item.field];
+                      else next[item.field] = reason;
+                      return next;
+                    });
+                    // A reading the nurse can no longer vouch for either way —
+                    // clear it so a stale number doesn't silently get saved
+                    // once the field is disabled and out of sight.
+                    if (reason !== undefined) setTriageVitals(previous => ({ ...previous, [item.field]: '' }));
+                    resetVitalOverride();
                   }}
                 />
               ))}
@@ -1180,6 +1698,51 @@ export default function TriageWorkflow({
                 <output id="triage-bmi" aria-live="polite" className="flex items-center" style={{ width: '100%', minHeight: 30, padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: calculatedBmi ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                   {calculatedBmi || 'Calculated from height and weight'}
                 </output>
+              </div>
+            </div>
+          </div>
+
+          {/* Current medications + chronic conditions — light-touch intake.
+              TriageDoc has no dedicated column for either (that data lives on
+              PatientDoc as a standing record, not this visit's snapshot), so
+              both fold into the saved notes as clearly labelled lines — see
+              the implementation report. */}
+          <div className="p-3 rounded-xl scroll-mt-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="triage-current-medications" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Current medications</label>
+                <input
+                  id="triage-current-medications"
+                  type="text"
+                  value={currentMedications}
+                  onChange={event => setCurrentMedications(event.target.value)}
+                  placeholder="What is the patient already taking?"
+                  style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div>
+                <span className="text-[9px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>Chronic conditions</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {TRIAGE_CHRONIC_CONDITIONS.map(condition => {
+                    const selected = chronicConditionsSelected.includes(condition);
+                    return (
+                      <button
+                        key={condition}
+                        type="button"
+                        onClick={() => setChronicConditionsSelected(current =>
+                          selected ? current.filter(item => item !== condition) : [...current, condition])}
+                        className="px-2 py-1 rounded-lg text-[10px] font-semibold transition-all"
+                        style={{
+                          background: selected ? 'var(--accent-light)' : 'var(--bg-card)',
+                          color: selected ? ACCENT : 'var(--text-secondary)',
+                          border: `1px solid ${selected ? 'var(--accent-border, rgba(33,145,208,0.3))' : 'var(--border-light)'}`,
+                        }}
+                      >
+                        {condition}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -1273,7 +1836,7 @@ export default function TriageWorkflow({
             <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33,145,208,0.25))' }}>
               <span className="text-[11px] font-semibold" style={{ color: ACCENT }}>{t('action.edit')}</span>
               <button
-                onClick={clearForm}
+                onClick={() => clearForm({ discardDraft: true })}
                 className="text-[10px] font-semibold inline-flex items-center gap-1"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -1286,7 +1849,7 @@ export default function TriageWorkflow({
               patient flow places them in the registration-style rail. */}
           {!lockedPatientId && <div className="flex gap-2">
             <button
-              onClick={clearForm}
+              onClick={() => clearForm({ discardDraft: true })}
               className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{
                 background: 'var(--overlay-subtle)',
@@ -1320,11 +1883,18 @@ export default function TriageWorkflow({
           </div>
           <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('nurse.total', { count: scopedHistory.length })}</span>
         </div>
-        <div className="px-3 py-2.5 flex items-center border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
+        <div className="px-3 py-2.5 flex items-center gap-2 border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <ListSearch value={historySearch} onChange={setHistorySearch} placeholder={t('nurse.searchPatientPlaceholder')} />
+          {/* A queue by default (still-active triages only); this is the
+              opt-in to also see who was admitted/discharged/referred/left
+              today, without the list defaulting to a lifetime log. */}
+          <label className="flex items-center gap-1 text-[9px] font-semibold flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+            <input type="checkbox" checked={showCompletedToday} onChange={event => setShowCompletedToday(event.target.checked)} />
+            {t('nurse.showCompletedToday')}
+          </label>
         </div>
         <div className="p-3 flex-1 overflow-y-auto">
-          {filteredHistory.length === 0 ? (
+          {displayedTriageRows.length === 0 ? (
             <p className="text-center text-xs py-8" style={{ color: 'var(--text-muted)' }}>{t('nurse.noTriages')}</p>
           ) : (
             <div className="ehr-queue-cards ehr-queue-cards--triage">
@@ -1333,7 +1903,7 @@ export default function TriageWorkflow({
                   <span key={head}>{head}</span>
                 ))}
               </div>
-              {filteredHistory.slice(0, 12).map(ti => {
+              {displayedTriageRows.slice(0, 12).map(ti => {
                 const minutesAgo = Math.max(0, Math.floor((nowMs - new Date(ti.triagedAt).getTime()) / 60000));
                 const actions: RowAction[] = [
                   { key: 'view', label: t('nurse.triageActionView'), icon: <Eye />, onClick: () => router.push(`/patients/${ti.patientId}?tab=vitals`) },

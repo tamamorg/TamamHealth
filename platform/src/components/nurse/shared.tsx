@@ -131,25 +131,10 @@ export const DEMO_WARD_PATIENTS: WardRow[] = [
 // ============================================================
 // Helper: Calculate ETAT triage priority
 // ============================================================
-export function calculateTriagePriority(triage: TriageResult): 'RED' | 'YELLOW' | 'GREEN' | '' {
-  if (!triage.airway || !triage.breathing || !triage.circulation || !triage.consciousness) return '';
-
-  if (
-    triage.airway === 'obstructed' ||
-    triage.breathing === 'absent' ||
-    triage.circulation === 'absent' ||
-    triage.consciousness === 'unresponsive'
-  ) return 'RED';
-
-  if (
-    triage.breathing === 'distressed' ||
-    triage.circulation === 'impaired' ||
-    triage.consciousness === 'pain' ||
-    triage.consciousness === 'verbal'
-  ) return 'YELLOW';
-
-  return 'GREEN';
-}
+// Single shared implementation — see `@/lib/clinical/etat.ts`. Re-exported
+// under this workflow's own name so TriageWorkflow.tsx's existing import
+// (`calculateTriagePriority` from './shared') keeps working unchanged.
+export { calculatePriority as calculateTriagePriority } from '@/lib/clinical/etat';
 
 // ============================================================
 // MAR schedule helpers — expand a prescription's free-text `frequency`

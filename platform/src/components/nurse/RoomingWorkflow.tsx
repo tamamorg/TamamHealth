@@ -48,7 +48,7 @@ const VITAL_FIELDS: Array<{ key: keyof RoomingVitals; label: string; unit: strin
   { key: 'respiratoryRate', label: 'Respiratory rate', unit: '/min', placeholder: '16', rangeKey: 'respiratoryRate' },
   { key: 'spo2', label: 'Oxygen saturation', unit: '%', placeholder: '98', rangeKey: 'spo2' },
   { key: 'weight', label: 'Weight', unit: 'kg', placeholder: '65', rangeKey: 'weight' },
-  { key: 'height', label: 'Height', unit: 'cm', placeholder: '170' },
+  { key: 'height', label: 'Height', unit: 'cm', placeholder: '170', rangeKey: 'height' },
   { key: 'painScore', label: 'Pain score', unit: '/10', placeholder: '0', rangeKey: 'painScore' },
   { key: 'bloodGlucose', label: 'Blood glucose', unit: 'mmol/L', placeholder: '5.5', rangeKey: 'bloodGlucose' },
   { key: 'gcs', label: 'GCS', unit: '/15', placeholder: '15', rangeKey: 'gcs' },

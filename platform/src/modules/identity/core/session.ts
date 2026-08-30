@@ -57,18 +57,28 @@ interface CookieSetter {
  * Set (or refresh) the session cookie, and optionally its CSRF twin, with the
  * canonical attributes. Every place that issues a session goes through this so
  * the cookie lifetime can never drift from the JWT lifetime again.
+ *
+ * `persist` is "Keep me signed in" (default true, so every existing caller
+ * that doesn't pass it keeps the prior always-persistent behaviour). When
+ * false the cookies carry NO Max-Age at all, making them session cookies the
+ * browser drops on its own close — while the JWT inside keeps the same
+ * SESSION_TTL_SEC `exp` either way. That split is deliberate: a short browser
+ * session and a long-lived token are two different questions, and only the
+ * person at the keyboard gets to answer the first one.
  */
 export function applySessionCookies(
   cookies: CookieSetter,
   token: string,
   csrfToken?: string,
+  persist: boolean = true,
 ): void {
   const secure = process.env.NODE_ENV === 'production';
+  const maxAge = persist ? SESSION_TTL_SEC : undefined;
   cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure,
     sameSite: 'strict',
-    maxAge: SESSION_TTL_SEC,
+    ...(maxAge !== undefined ? { maxAge } : {}),
     path: '/',
   });
   if (csrfToken !== undefined) {
@@ -78,7 +88,7 @@ export function applySessionCookies(
       httpOnly: false,
       secure,
       sameSite: 'strict',
-      maxAge: SESSION_TTL_SEC,
+      ...(maxAge !== undefined ? { maxAge } : {}),
       path: '/',
     });
   }

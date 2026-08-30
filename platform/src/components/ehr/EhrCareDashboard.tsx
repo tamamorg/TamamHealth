@@ -24,9 +24,10 @@ import {
 } from '@/lib/appointment-status';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import {  } from '@/lib/date-utils';
-import type { AppointmentStatus } from '@/lib/db-types';
+import type { AppointmentStatus, BaseDoc } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
 import { stopsClickPropagation } from '@/lib/a11y';
+import SyncStatusBadge from '@/components/ehr/SyncStatusBadge';
 
 const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
 
@@ -146,6 +147,13 @@ export type EhrCareDashboardRow = {
    *  dashboard's `chartSeriesNames`. Omit and the rail infers it from
    *  `statusTone` (done → second series, everything else → first). */
   chartSeries?: 0 | 1;
+  /** The underlying document's offline-sync metadata, when the row is backed
+   *  by one that carries it (appointment, triage, patient…). Renders a
+   *  `SyncStatusBadge` under the status pill; omit or leave 'synced' for the
+   *  normal, quiet case. A row built from more than one doc (a walk-in's
+   *  triage record plus its check-in appointment) should pass whichever is
+   *  most attention-worthy — see `worstOfflineSync` in SyncStatusBadge. */
+  offlineSync?: BaseDoc['offlineSync'];
 };
 
 /** Rows from a handful of consumers (front desk, nurse) carry a real triage
@@ -1046,6 +1054,7 @@ export default function EhrCareDashboard({
                               </span>
                             )}
                             <small>{secondaryLine}</small>
+                            <SyncStatusBadge offlineSync={row.offlineSync} />
                           </div>
                         </div>
                         {row.detail}

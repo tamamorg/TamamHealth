@@ -252,7 +252,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (relevant('triage')) try {
       const { getActiveTriage } = await import('@/lib/services/triage-service');
       const triages = await getActiveTriage(scope);
-      const waiting = triages.filter(x => x.status === 'pending');
+      // Still actionable for a clinician: either not yet assessed at all
+      // ('pending', the clerical check-in state), or assessed but not yet
+      // in front of a provider. The triage form stamps a completed ETAT
+      // straight to 'seen' (see TriageWorkflow.tsx) with a handoffStatus of
+      // 'awaiting_provider'/'assigned' — filtering on 'pending' alone excluded
+      // every real assessment, which is how a RED patient waiting for a
+      // doctor stopped alerting anyone. Once the clinician has actually taken
+      // the patient ('in_consultation') the alert has done its job and stops.
+      const waiting = triages.filter(x =>
+        x.status === 'pending' || (x.status === 'seen' && x.handoffStatus !== 'in_consultation'));
       // Most acute first, then longest-waiting, so the per-source cap drops
       // routine cases rather than an emergency.
       const acuityRank = { RED: 0, YELLOW: 1, GREEN: 2 } as const;
@@ -378,6 +387,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // gated by role relevance; work assigned to THIS user always surfaces,
       // whatever their role — a task handed to a cashier must still reach them.
       const poolRelevant = relevant('progress');
+      const progressItems: NotificationItem[] = [];
       for (const p of progress) {
         const href = `/patients/${encodeURIComponent(p.patientId)}`;
         const assignedToMe = !!currentUser?._id && p.ownerId === currentUser._id;
@@ -388,7 +398,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         );
         if (assignedToMe || relevantTasks.length > 0 || (poolRelevant && p.currentStage === 'waiting_for_provider')) {
           const task = relevantTasks[0];
-          out.push({
+          progressItems.push({
             id: `progress-${p._id}-${task?.id || p.currentStage}`,
             type: 'progress',
             severity: task?.status === 'blocked' || task?.priority === 'urgent' ? 'warning' : 'info',
@@ -399,6 +409,11 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           });
         }
       }
+      // Every other source caps at perSourceLimit before pushing; this one
+      // didn't, so a busy facility's full progress backlog bypassed the cap
+      // that keeps the badge, the bell panel and /notifications reporting the
+      // same total.
+      out.push(...progressItems.slice(0, perSourceLimit));
     } catch { /* offline */ }
 
     // Prescriptions awaiting dispensing (pharmacy queue).

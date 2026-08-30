@@ -174,9 +174,19 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   // Reception takes phoned-in referrals — the `proxy_referral_capture`
   // capability in clinical-flow/roles.ts, and what `canManageReferrals` and the
   // front_desk `/referrals` route ("referral intake") both already offer.
+  //
+  // `nutritionist` and `hospital_manager` both hold the `/referrals` route in
+  // `role-routes.ts` — the nutrition dashboard's "Refer" action for a SAM/MAM
+  // case needing clinical follow-up is a nutritionist-authored referral — and
+  // both were missing here. A route grant with no matching row here is the
+  // worst failure shape available: the API guard (and the UI) let the write
+  // through, the local PouchDB write succeeds, and only the CouchDB validator
+  // — invisible to the user, replicating minutes later — rejects it. The
+  // referral looks saved and never leaves the device.
   referral: [
     'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
     'medical_superintendent', 'front_desk', 'central_registration_clerk',
+    'nutritionist', 'hospital_manager',
   ],
   birth: VITAL_EVENTS,
   death: VITAL_EVENTS,

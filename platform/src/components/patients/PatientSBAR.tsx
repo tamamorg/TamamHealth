@@ -32,6 +32,12 @@ import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import type { PatientShiftHandoff } from '@/lib/hooks/usePatientHandoff';
+import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
+import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
+
+const IITT_RED_LABELS = new Map<string, string>(IITT_RED_CRITERIA);
+const IITT_YELLOW_LABELS = new Map<string, string>(IITT_YELLOW_CRITERIA);
+const INFECTION_RISK_LABELS = new Map<string, string>(INFECTION_RISK_SIGNS);
 
 interface PatientSBARProps {
   patient: PatientDoc;
@@ -116,6 +122,98 @@ function TriageField({ label, value }: { label: string; value?: React.ReactNode 
     <div className="sbar-triage-field">
       <span>{label}</span>
       <strong>{value || '—'}</strong>
+    </div>
+  );
+}
+
+/**
+ * "Why this priority" — every structured triage danger sign is write-only in
+ * the form (a nurse ticks it, a RED badge appears) unless this renders it
+ * back out. Without this a doctor scanning a RED patient's chart saw the
+ * colour and nothing that produced it: which IITT criteria fired, whether
+ * isolation was called for, or that the nurse manually raised the priority
+ * (or downgraded it) past what the structured findings alone justified.
+ */
+function TriagePriorityExplain({ triage }: { triage: TriageDoc }) {
+  const redLabels = (triage.redCriteria || []).map(code => IITT_RED_LABELS.get(code) || code);
+  const yellowLabels = (triage.yellowCriteria || []).map(code => IITT_YELLOW_LABELS.get(code) || code);
+  const infectionLabels = (triage.infectionRiskSigns || []).map(code => INFECTION_RISK_LABELS.get(code) || code);
+  const manualRaise = extractManualPriorityRaise(triage.notes);
+  const hasContent = redLabels.length > 0 || yellowLabels.length > 0 || infectionLabels.length > 0
+    || triage.isolationRequired || triage.capillaryRefillSeconds || triage.immediateInterventions
+    || triage.preArrivalCare || (triage.vitalUrgencyWarnings?.length ?? 0) > 0
+    || triage.vitalUrgencyOverridden || manualRaise;
+  if (!hasContent) return null;
+
+  return (
+    <div className="sbar-block" aria-label="Why this triage priority">
+      <SubHead icon={<ShieldAlert className="w-3.5 h-3.5" />}>Why this priority</SubHead>
+
+      {triage.isolationRequired && (
+        <p className="sbar-para">
+          <span className="sbar-critical">ISOLATION — separate immediately and apply facility IPC pathway.</span>
+        </p>
+      )}
+
+      {redLabels.length > 0 && (
+        <div className="sbar-block">
+          <span className="sbar-fact-label">Red danger signs</span>
+          <ul className="sbar-chips">
+            {redLabels.map(label => <li key={label} data-tone="danger">{label}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {yellowLabels.length > 0 && (
+        <div className="sbar-block">
+          <span className="sbar-fact-label">Yellow danger signs</span>
+          <ul className="sbar-chips">
+            {yellowLabels.map(label => <li key={label} data-tone="warning">{label}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {infectionLabels.length > 0 && (
+        <div className="sbar-block">
+          <span className="sbar-fact-label">Infection / outbreak risk</span>
+          <ul className="sbar-chips">
+            {infectionLabels.map(label => <li key={label}>{label}</li>)}
+          </ul>
+        </div>
+      )}
+
+      <div className="sbar-triage-fields">
+        {triage.capillaryRefillSeconds && <TriageField label="Capillary refill" value={`${triage.capillaryRefillSeconds}s`} />}
+        {triage.immediateInterventions && <TriageField label="Immediate interventions" value={triage.immediateInterventions} />}
+        {triage.preArrivalCare && <TriageField label="Care before arrival" value={triage.preArrivalCare} />}
+      </div>
+
+      {(triage.vitalUrgencyWarnings?.length ?? 0) > 0 && (
+        <div className="sbar-block">
+          <span className="sbar-fact-label">Vital-sign safety warnings</span>
+          <ul className="sbar-rows">
+            {triage.vitalUrgencyWarnings!.map(warning => (
+              <li key={warning.code}>
+                <span className="sbar-row-main">{warning.urgency}: {warning.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {triage.vitalUrgencyOverridden && (
+        <p className="sbar-para">
+          <span className="sbar-critical">Saved below the recommended {triage.vitalUrgencyRecommendation || 'higher'} urgency</span> — {triage.vitalUrgencyOverrideReason || 'no reason recorded'}
+          <span className="sbar-muted"> — recorded by {triage.triagedByName || 'unknown clinician'}</span>
+        </p>
+      )}
+
+      {manualRaise && (
+        <p className="sbar-para">
+          <span className="sbar-critical">Priority raised to {manualRaise.priority} by nurse</span> — {manualRaise.reason}
+          <span className="sbar-muted"> — recorded by {triage.triagedByName || 'unknown clinician'}</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -318,6 +416,7 @@ export default function PatientSBAR({
           <div className="sbar-block">
             <SubHead>Latest triage assessment</SubHead>
             <TriageAssessment triage={latestTriage} />
+            <TriagePriorityExplain triage={latestTriage} />
             {latestTriage.notes && <p className="sbar-para"><strong>Clinical notes:</strong> {latestTriage.notes}</p>}
           </div>
         )}

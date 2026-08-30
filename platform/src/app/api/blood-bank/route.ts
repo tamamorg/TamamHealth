@@ -12,9 +12,12 @@ const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'pharmacist', 'medical_superintendent', 'lab_tech',
 ];
+// clinical_officer holds the /blood-bank route in role-routes.ts and
+// prescribes independently of a doctor — this list had drifted behind that
+// grant, leaving a CO unable to reserve/crossmatch/transfuse a unit.
 const WRITE_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'nurse', 'lab_tech',
-  'medical_superintendent',
+  'medical_superintendent', 'clinical_officer',
 ];
 export async function GET(request: NextRequest) {
   try {

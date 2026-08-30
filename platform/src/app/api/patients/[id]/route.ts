@@ -35,6 +35,15 @@ export async function GET(
     if (filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
       return forbidden('Access denied to this patient record');
     }
+    // PHI read audit (KAN-97). Fire-and-forget: a failed audit write
+    // must never turn a clinician's chart open into an error.
+    import('@/lib/services/audit-service').then(({ logPhiRead }) =>
+      logPhiRead(
+        { userId: auth.sub, username: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId, route: '/api/patients/:id' },
+        'patient',
+        { patientId: id },
+      ),
+    ).catch(() => {});
     return NextResponse.json({ patient });
   } catch (err) {
     logApiError('[API /patients/:id GET]', err);

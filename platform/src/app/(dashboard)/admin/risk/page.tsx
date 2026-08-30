@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FilterSelect } from '@/components/filters';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -61,6 +62,7 @@ const SOURCES: RiskSource[] = ['Audit', 'Sync', 'Data', 'Tenants', 'Continuity',
 export default function RiskCenterPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   /* The console is otherwise English throughout, but the explanation block is
      the one part of it meant to be READ rather than scanned — so it is carried
      in both locales rather than half-translated. */
@@ -101,7 +103,7 @@ export default function RiskCenterPage() {
           import('@/lib/services/sync-event-service'),
         ]);
         const [logs, stats, saved] = await Promise.all([
-          getRecentAuditLogs(1000),
+          getRecentAuditLogs(1000, scope),
           getSyncEventStats(),
           getRiskResolutions(),
         ]);
@@ -130,7 +132,7 @@ export default function RiskCenterPage() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [scope]);
 
   // Single source (KAN-117). This read a localStorage key nothing ever wrote
   // and returned null on absence, which dropped the backup risk row entirely —

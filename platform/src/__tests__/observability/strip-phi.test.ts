@@ -58,6 +58,37 @@ describe('stripPHI', () => {
     expect(data.notes).toBe('[redacted]');
   });
 
+  it('redacts the real patient-doc field names used across the app (dateOfBirth, patientName, hospitalNumber, address, chiefComplaint, diagnosis, firstName, lastName)', () => {
+    const event: Event = {
+      request: {
+        data: {
+          patientId: 'P-1',
+          dateOfBirth: '1980-01-01',
+          patientName: 'Nyandeng Deng',
+          hospitalNumber: 'HN-00123',
+          address: 'Juba, Central Equatoria',
+          chiefComplaint: 'fever and headache for 3 days',
+          diagnosis: 'ICD-11 1A00 Cholera',
+          diagnoses: [{ code: '1A00', label: 'Cholera' }],
+          firstName: 'Nyandeng',
+          lastName: 'Deng',
+        } as Record<string, unknown>,
+      },
+    };
+    const out = stripPHI(event);
+    const data = out.request!.data as Record<string, unknown>;
+    expect(data.patientId).toBe('P-1');
+    expect(data.dateOfBirth).toBe('[redacted]');
+    expect(data.patientName).toBe('[redacted]');
+    expect(data.hospitalNumber).toBe('[redacted]');
+    expect(data.address).toBe('[redacted]');
+    expect(data.chiefComplaint).toBe('[redacted]');
+    expect(data.diagnosis).toBe('[redacted]');
+    expect(data.diagnoses).toBe('[redacted]');
+    expect(data.firstName).toBe('[redacted]');
+    expect(data.lastName).toBe('[redacted]');
+  });
+
   it('redacts PHI keys deep inside nested objects', () => {
     const event: Event = {
       extra: {
@@ -177,7 +208,11 @@ describe('stripPHI', () => {
     // Guards against the pattern list silently drifting from what
     // docs/operations/monitoring.md documents as the contract.
     const source = require('@/lib/observability').__PHI_KEY_PATTERNS_FOR_TESTING as RegExp[];
-    const names = ['email', 'phone', 'dob', 'password', 'passwordHash', 'nationalId', 'national_id', 'notes'];
+    const names = [
+      'email', 'phone', 'dob', 'dateOfBirth', 'password', 'passwordHash',
+      'nationalId', 'national_id', 'notes', 'patientName', 'hospitalNumber',
+      'address', 'chiefComplaint', 'diagnosis', 'firstName', 'lastName',
+    ];
     for (const key of names) {
       expect(source.some((re) => re.test(key))).toBe(true);
     }

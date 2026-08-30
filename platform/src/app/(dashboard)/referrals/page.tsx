@@ -628,7 +628,7 @@ export default function ReferralsPage() {
                   message={activeTab === 'outgoing'
                     ? t('referrals.emptyOutgoingMsg')
                     : t('referrals.emptyIncomingMsg')}
-                  action={activeTab === 'outgoing' ? { label: t('referrals.createReferral'), onClick: () => setShowNewReferral(true) } : undefined}
+                  action={activeTab === 'outgoing' && canManageReferrals ? { label: t('referrals.createReferral'), onClick: () => setShowNewReferral(true) } : undefined}
                 />
               </div>
             ) : (

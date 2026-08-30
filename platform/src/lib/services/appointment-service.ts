@@ -224,9 +224,20 @@ export async function assertNoBookingConflicts(
     // Deliberately keyed on OPEN visits (`holdsSlot`): once the first is
     // checked out, cancelled, or a no-show, a genuine second same-day visit —
     // the patient who comes back that afternoon — books without argument.
+    //
+    // Scoped to the SAME FACILITY when the new booking names one. Walk-in
+    // check-in (check-in-service.ts) only ever looks at THIS facility's
+    // bookings when deciding whether to check an existing appointment in
+    // rather than write a new one — an org-wide scope here disagreed with
+    // that and hard-blocked a walk-in at facility B for a patient who simply
+    // still had an open booking at facility A, in the same org, that this
+    // desk has no way to see or act on. A booking with no facility on either
+    // side still gets the old, stricter org-wide check — there is nothing
+    // narrower to compare.
     const sameDayOpen = existing.find(a =>
       a._id !== excludeAppointmentId &&
       a.appointmentDate === data.appointmentDate &&
+      (!data.facilityId || !a.facilityId || a.facilityId === data.facilityId) &&
       holdsSlot(a));
     if (sameDayOpen) {
       throw new BookingConflictError(

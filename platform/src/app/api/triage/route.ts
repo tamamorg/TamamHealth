@@ -6,8 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import type { UserRole, TriageDoc, TriagePriority } from '@/lib/db-types';
-import { calculateBmi, isLowerTriagePriority, parseStrictVitalNumber, validateTriageVitals } from '@/lib/clinical/vitals';
+import type { UserRole, TriageDoc, TriagePriority, PatientDoc } from '@/lib/db-types';
+import {
+  calculateBmi, getTriageVitalWarnings, isLowerTriagePriority,
+  parseStrictVitalNumber, recommendTriagePriority, validateTriageVitals,
+} from '@/lib/clinical/vitals';
+import { calculatePriority } from '@/lib/clinical/etat';
+import { patientAgeYearsExact } from '@/lib/patient-utils';
 import {
   filterKnownIittCodes,
   highestTriagePriority,
@@ -24,29 +29,6 @@ const CREATE_ROLES: UserRole[] = [
   'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'front_desk',
   'midwife', 'triage_nurse', 'medical_superintendent',
 ];
-/**
- * Auto-calculate ETAT priority from ABCC assessment.
- * RED = any emergency sign; YELLOW = priority sign; GREEN = non-urgent.
- */
-function calculatePriority(data: Record<string, unknown>): TriagePriority {
-  if (
-    data.airway === 'obstructed' ||
-    data.breathing === 'absent' ||
-    data.circulation === 'absent' ||
-    data.consciousness === 'unresponsive'
-  ) {
-    return 'RED';
-  }
-  if (
-    data.breathing === 'distressed' ||
-    data.circulation === 'impaired' ||
-    data.consciousness === 'pain' ||
-    data.consciousness === 'verbal'
-  ) {
-    return 'YELLOW';
-  }
-  return 'GREEN';
-}
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
@@ -133,21 +115,75 @@ async function postHandler(request: NextRequest) {
     const requestedPriority = ['RED', 'YELLOW', 'GREEN'].includes(String(body.priority))
       ? body.priority as TriagePriority
       : undefined;
-    body.priority = requestedPriority || calculatePriority(body);
+    // The shared ETAT calculator (KAN-100) returns '' for an incomplete ABCC
+    // instead of guessing GREEN — this route used to run its own copy without
+    // that guard, so an unassessed POST (no airway/breathing/circulation/
+    // consciousness at all) silently scored and stored as GREEN. With the
+    // guard restored, an incomplete ABCC needs an explicit `priority` from
+    // the caller (matching how a clerical check-in supplies a clerk-selected
+    // acuity instead of an ETAT-derived one) rather than defaulting at all.
+    const abccPriority = calculatePriority({
+      airway: body.airway as string | undefined,
+      breathing: body.breathing as string | undefined,
+      circulation: body.circulation as string | undefined,
+      consciousness: body.consciousness as string | undefined,
+    });
+    const priority = requestedPriority || (abccPriority || undefined);
+    if (!priority) {
+      return NextResponse.json(
+        { error: 'priority is required when the ABCC assessment (airway, breathing, circulation, consciousness) is incomplete.' },
+        { status: 400 },
+      );
+    }
+    body.priority = priority;
     const redCriteria = filterKnownIittCodes(body.redCriteria, IITT_RED_CRITERIA);
     const yellowCriteria = filterKnownIittCodes(body.yellowCriteria, IITT_YELLOW_CRITERIA);
-    const suppliedRecommendation = ['RED', 'YELLOW', 'GREEN'].includes(String(body.vitalUrgencyRecommendation))
-      ? body.vitalUrgencyRecommendation as TriagePriority
-      : undefined;
+
+    // Recomputed server-side, never trusted from the caller: a client that
+    // posted `vitalUrgencyRecommendation: 'GREEN'` (or omitted it) alongside
+    // e.g. SpO2 70 was previously accepted outright — nothing here ever
+    // checked the actual vitals against IITT's danger thresholds. The
+    // patient's age is looked up for the age-banded bands (adult vs
+    // paediatric pulse/RR, the WHO MUAC screen, IITT's infant-age criteria);
+    // a lookup failure degrades to "age unknown" (adult ranges, flagged as
+    // such in the warning text) rather than blocking the write.
+    let patientAgeYears: number | undefined;
+    try {
+      const { patientsDB } = await import('@/lib/db');
+      const patient = await patientsDB().get(body.patientId as string) as PatientDoc;
+      patientAgeYears = patientAgeYearsExact(patient) ?? undefined;
+    } catch {
+      patientAgeYears = undefined;
+    }
+    const vitalWarnings = getTriageVitalWarnings(
+      {
+        temperature: body.temperature as string | undefined,
+        pulse: body.pulse as string | undefined,
+        respiratoryRate: body.respiratoryRate as string | undefined,
+        oxygenSaturation: body.oxygenSaturation as string | undefined,
+        systolic: body.systolic as string | undefined,
+        diastolic: body.diastolic as string | undefined,
+        painScore: body.painScore as string | undefined,
+        bloodGlucose: body.bloodGlucose as string | undefined,
+        gcs: body.gcs as string | undefined,
+        muac: body.muac as string | undefined,
+      },
+      patientAgeYears,
+      { isPregnant: body.pregnancyStatus === 'pregnant' },
+    );
+    // `recommendTriagePriority` never returns '' for a non-empty baseline, so
+    // `recommendation` is always a real priority (GREEN at minimum) — a
+    // triage with no elevated finding recommends GREEN, which never itself
+    // requires an override.
+    const vitalsRecommendation = recommendTriagePriority('GREEN', vitalWarnings) as TriagePriority;
     const recommendation = highestTriagePriority(
       priorityFromIittCriteria(redCriteria, yellowCriteria, capillaryRefill),
-      suppliedRecommendation,
-    );
+      vitalsRecommendation,
+    ) as TriagePriority;
     const overrideReason = typeof body.vitalUrgencyOverrideReason === 'string'
       ? body.vitalUrgencyOverrideReason.trim()
       : '';
     if (
-      recommendation &&
       isLowerTriagePriority(body.priority as TriagePriority, recommendation) &&
       (body.vitalUrgencyOverridden !== true || !overrideReason)
     ) {
@@ -190,10 +226,11 @@ async function postHandler(request: NextRequest) {
       bloodGlucose: vitalString(body.bloodGlucose),
       gcs: vitalString(body.gcs),
       muac: vitalString(body.muac),
+      // Server-recomputed, replacing whatever the caller supplied — the
+      // stored explainability banner must match what was actually enforced
+      // above, not a client claim that was never verified.
       vitalUrgencyRecommendation: recommendation,
-      vitalUrgencyWarnings: Array.isArray(body.vitalUrgencyWarnings)
-        ? body.vitalUrgencyWarnings as TriageDoc['vitalUrgencyWarnings']
-        : undefined,
+      vitalUrgencyWarnings: vitalWarnings.length > 0 ? vitalWarnings : undefined,
       vitalUrgencyOverridden: body.vitalUrgencyOverridden === true,
       vitalUrgencyOverrideReason: overrideReason || undefined,
       presentationCategory: body.presentationCategory as TriageDoc['presentationCategory'],
@@ -222,6 +259,18 @@ async function postHandler(request: NextRequest) {
     };
     const resp = await db.put(doc);
     doc._rev = resp.rev;
+    // Mirror the triage-service.ts convention so a clinical-record audit
+    // search finds every triage write regardless of which path created it —
+    // this route previously wrote no clinical audit row for a triage at all.
+    const { logAuditSafe } = await import('@/lib/services/audit-service');
+    await logAuditSafe('TRIAGE_RECORDED', auth.sub, auth.name,
+      `${doc.priority} triage for ${doc.patientName} (${doc.patientId})`
+    );
+    if (doc.vitalUrgencyOverridden) {
+      await logAuditSafe('TRIAGE_URGENCY_OVERRIDE', auth.sub, auth.name,
+        `Vital urgency ${doc.vitalUrgencyRecommendation} overridden to ${doc.priority} for ${doc.patientName} (${doc.patientId}). Reason: ${doc.vitalUrgencyOverrideReason}`
+      );
+    }
     return NextResponse.json({ triage: doc }, { status: 201 });
   } catch (err) {
     logApiError('[API /triage POST]', err);

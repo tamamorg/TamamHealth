@@ -93,7 +93,7 @@ export function pwdAtClaim(passwordUpdatedAt?: string): number | undefined {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number }): Promise<string> {
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number; persist?: boolean }): Promise<string> {
   const payload = {
     sub: user._id,
     username: user.username,
@@ -123,6 +123,15 @@ export async function createToken(user: { _id: string; username: string; role: s
     // change are rejected by getAuthPayload / /api/auth/me, so a password
     // change or admin reset revokes every other session immediately.
     pwdAt: user.pwdAt ?? pwdAtClaim(user.passwordUpdatedAt),
+    // "Keep me signed in" (login/page.tsx). Carried on the token — not just
+    // decided once at cookie-issue time — so /api/auth/me's sliding renewal
+    // (which re-mints the token and re-applies the cookies) knows whether the
+    // ORIGINAL choice was a persistent cookie or a browser-session one, and
+    // preserves it rather than defaulting every renewal back to persistent.
+    // Undefined (every caller that predates this, and every non-staff-login
+    // token, e.g. patient portal) means "persistent", matching the behaviour
+    // before this claim existed.
+    persist: user.persist === false ? false : true,
   };
 
   // A shorter life than the session default, where the caller asks for one.
@@ -169,6 +178,9 @@ export interface VerifiedTokenPayload {
   pwdAt?: number;
   /** Issued-at (unix seconds) — drives sliding session renewal. */
   iat?: number;
+  /** "Keep me signed in" — see createToken. Absent on tokens minted before
+   *  this claim existed; treat as persistent (`!== false`), not as false. */
+  persist?: boolean;
 }
 
 export async function verifyToken(token: string): Promise<VerifiedTokenPayload | null> {
@@ -203,6 +215,7 @@ export async function verifyToken(token: string): Promise<VerifiedTokenPayload |
       mustChangePassword: fallback.mustChangePassword as boolean | undefined,
       pwdAt: fallback.pwdAt as number | undefined,
       iat: fallback.iat as number | undefined,
+      persist: fallback.persist as boolean | undefined,
     };
   }
 

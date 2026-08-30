@@ -12,9 +12,19 @@ import { createToken } from '@/modules/identity/core/auth-token';
 import { mintCsrfToken } from '@/modules/identity/core/csrf';
 import { applySessionCookies } from '@/modules/identity/core/session';
 import type { ServerUser } from '@/modules/identity/core/server-users';
+import { ROLES_WITHOUT_FACILITY } from '@/modules/identity/policy/user-scope-rules';
 
-/** Roles that carry no facility of their own — see `user-scope-rules.ts`. */
-export const ROLES_WITHOUT_HOSPITAL = ['super_admin', 'org_admin', 'government', 'county_health_director'];
+/**
+ * Roles that carry no facility of their own.
+ *
+ * Re-exported under its long-standing name here rather than re-typed: this
+ * used to be a hand-written duplicate of `ROLES_WITHOUT_FACILITY`, and the
+ * OFFLINE mirror of this same rule (context.tsx's login fallback) had its own
+ * second hand-written copy that drifted to omit `county_health_director` —
+ * the two lists agreeing here was never enough on its own. One canonical
+ * list now, imported by both the online and offline paths.
+ */
+export const ROLES_WITHOUT_HOSPITAL: readonly string[] = ROLES_WITHOUT_FACILITY;
 
 /**
  * The platform's demo flagship facility.
@@ -145,6 +155,13 @@ export async function issueSessionResponse(
   user: ServerUser,
   effective: EffectiveIdentity,
   extra: Record<string, unknown> = {},
+  /**
+   * "Keep me signed in", from the login form's checkbox. Defaults true so
+   * every caller that predates this parameter (password reset, MFA
+   * completion) keeps issuing a persistent cookie exactly as before — only
+   * the login route passes an explicit value.
+   */
+  keepSignedIn: boolean = true,
 ): Promise<NextResponse> {
   // Whether this account still owes the platform a second factor. Resolved
   // here, once, and carried as a token claim — the Edge proxy enforces it and
@@ -194,6 +211,7 @@ export async function issueSessionResponse(
     ttlSeconds,
     // Password epoch — a later change/reset invalidates this token.
     passwordUpdatedAt: user.passwordUpdatedAt,
+    persist: keepSignedIn,
   });
 
   const response = NextResponse.json({
@@ -223,7 +241,7 @@ export async function issueSessionResponse(
   // apiFetch wrapper can echo it in the X-CSRF-Token header on every
   // state-changing request; the HMAC binds it to the JWT subject).
   const csrfToken = await mintCsrfToken(user._id);
-  applySessionCookies(response.cookies, token, csrfToken);
+  applySessionCookies(response.cookies, token, csrfToken, keepSignedIn);
 
   const { recordSuccessfulLogin } = await import('@/modules/identity/services/user-service');
   await recordSuccessfulLogin(user._id);

@@ -3,6 +3,7 @@ import { auditLogDB } from '../db';
 import type { AuditLogDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import { findByType } from './db-query';
+import { filterByScope, type DataScope } from './data-scope';
 
 export async function logAuditSafe(...args: Parameters<typeof logAudit>): Promise<void> {
   try {
@@ -90,12 +91,30 @@ export async function getAuditLogsForUser(
   return mine.slice(0, limit);
 }
 
-export async function getRecentAuditLogs(limit: number = 50): Promise<AuditLogDoc[]> {
+/**
+ * The platform-wide audit trail, newest first.
+ *
+ * `scope` is optional only to avoid a breaking signature change; every real
+ * caller must supply one. Fails closed like `getAuditLogsForUser`: no scope
+ * means the caller cannot establish who is asking, so nothing is returned
+ * rather than the whole platform's activity. `super_admin` and `government`
+ * are the only roles that see every org's rows unscoped — that escape hatch
+ * lives in `filterByScope` itself (its own early return), not duplicated
+ * here, so the two stay in lockstep. Every other role is filtered exactly
+ * like any other org-scoped read: an audit row from `logAudit` (most writes)
+ * carries no `orgId` at all and is excluded for a non-admin scope, so today
+ * this mainly surfaces the `orgId`-stamped `PHI_READ`/`PHI_SEARCH` rows to a
+ * non-admin caller — narrower than "everything", which is the fail-closed
+ * posture this exists for.
+ */
+export async function getRecentAuditLogs(limit: number = 50, scope?: DataScope): Promise<AuditLogDoc[]> {
   const db = auditLogDB();
   const docs = await findByType<AuditLogDoc>(db, 'audit_log');
   /* istanbul ignore next -- defensive null-safety in sort comparator */
   docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return docs.slice(0, limit);
+  if (!scope) return [];
+  const visible = filterByScope(docs, scope);
+  return visible.slice(0, limit);
 }
 
 // ── PHI read auditing (KAN-97) ───────────────────────────────────────────

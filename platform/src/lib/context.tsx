@@ -14,6 +14,7 @@ import {
   clearOfflineSession, readOfflineSession, startOfflineSession,
 } from '@/modules/identity/core/offline-session';
 import { verifyPassword } from '@/modules/identity/core/auth';
+import { ROLES_WITHOUT_FACILITY, roleNeedsFacility } from '@/modules/identity/policy/user-scope-rules';
 
 import { logAudit } from './services/audit-service';
 import { captureException } from './observability';
@@ -26,6 +27,43 @@ function isChunkLoadError(err: unknown): boolean {
   if (!err) return false;
   const msg = err instanceof Error ? `${err.name} ${err.message}` : String(err);
   return /ChunkLoadError|Loading chunk .*failed|Failed to fetch dynamically imported module/i.test(msg);
+}
+
+/**
+ * Whether platform policy allows a super-admin to sign in as another role.
+ *
+ * Pure and exported for testing. Mirrors the ONLINE fail-closed rule in
+ * `resolveEffectiveIdentity` (modules/identity/core/login-session.ts):
+ * `undefined`, `false`, or a policy this device could not read at all must
+ * ALL read as "no" — impersonation is the single most powerful thing this
+ * platform can do, and a switch that says it is off must never be bypassed
+ * because a record was missing rather than explicitly disabled.
+ */
+export function impersonationAllowedFromPolicy(
+  policy: { impersonationEnabled?: boolean } | null | undefined,
+): boolean {
+  return policy?.impersonationEnabled === true;
+}
+
+/**
+ * The offline mirror of the login role picker's impersonation gate.
+ *
+ * `tamamhealth_platform_config` is pull-replicated to every device, globally
+ * rather than per-org (see `sync/sync-config.ts`), so a device that has
+ * synced at least once usually holds a local copy. One that has not — or
+ * whose copy cannot be read for any other reason — fails CLOSED, the same
+ * posture `resolveEffectiveIdentity` takes when the server itself cannot
+ * reach the config: an unreadable policy must not silently grant the
+ * platform's most powerful capability just because the network is down.
+ */
+async function isOfflineImpersonationAllowed(): Promise<boolean> {
+  try {
+    const { getPlatformConfig } = await import('./services/platform-config-service');
+    const config = await getPlatformConfig();
+    return impersonationAllowedFromPolicy(config.superAdminPolicies);
+  } catch {
+    return false;
+  }
 }
 
 interface AppUser {
@@ -209,7 +247,10 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  login: (username: string, password: string, hospitalId?: string, requestedRole?: UserRole) => Promise<UserRole | false>;
+  /** `keepSignedIn` defaults to true — the "Keep me signed in" checkbox on
+   *  the login form; false issues a browser-session cookie instead of the
+   *  usual 30-day persistent one. See session.ts `applySessionCookies`. */
+  login: (username: string, password: string, hospitalId?: string, requestedRole?: UserRole, keepSignedIn?: boolean) => Promise<UserRole | false>;
   /** Deployment-wide policy this client must honour — see `PlatformClientPolicy`. */
   platformPolicy: PlatformClientPolicy;
   /** Why the most recent `login()` returned false, or null if the server was never reached. */
@@ -776,7 +817,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * screen shipped and read by nothing.
    */
   const [platformPolicy, setPlatformPolicy] = useState<PlatformClientPolicy>({});
-  const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole): Promise<UserRole | false> => {
+  const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole, keepSignedIn: boolean = true): Promise<UserRole | false> => {
     loginFailureRef.current = null;
     // Whether the sign-in request ever reached the server. A refusal that never
     // left the device means something completely different to the person
@@ -806,7 +847,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: sanitizedUsername, password, hospitalId, role: requestedRole }),
+          body: JSON.stringify({ username: sanitizedUsername, password, hospitalId, role: requestedRole, keepSignedIn }),
         });
         if (res.ok) {
           const body = await res.json();
@@ -1007,15 +1048,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return false;
         }
 
-        const ROLES_WITHOUT_HOSPITAL = ['super_admin', 'org_admin', 'government'];
-        if (!ROLES_WITHOUT_HOSPITAL.includes(localUser.role) && hospitalId && localUser.hospitalId && localUser.hospitalId !== hospitalId) {
+        // The canonical list (also used by the server's resolveEffectiveIdentity
+        // and by the online cached-credential path above) — a hand-written copy
+        // here had drifted to omit `county_health_director`, so a county health
+        // director signing in offline as another role was wrongly forced through
+        // the facility-assignment branch below.
+        if (!ROLES_WITHOUT_FACILITY.includes(localUser.role) && hospitalId && localUser.hospitalId && localUser.hospitalId !== hospitalId) {
           await logAudit('login_failed', localUser._id, sanitizedUsername, 'Hospital mismatch', false);
           return false;
         }
 
         // Login role picker — offline mirror of the /api/auth/login rules:
         // only a super-admin may sign in as a different role, adopting the
-        // demo flagship facility so facility-scoped queries don't fail closed.
+        // demo flagship facility so facility-scoped queries don't fail closed
+        // — and, like the server, only when the platform's impersonation
+        // switch is actually on (see `isOfflineImpersonationAllowed` above).
+        // This offline path used to skip that check entirely: a device that
+        // had never synced the policy doc — or simply never checked it —
+        // granted impersonation regardless of what the switch on
+        // /admin/security said, the exact bypass `resolveEffectiveIdentity`
+        // exists to close online.
         let effective: LoginUser = localUser;
         if (requestedRole && requestedRole !== localUser.role) {
           const { hasRoleRouteConfig } = await import('./role-routes');
@@ -1023,7 +1075,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             await logAudit('login_failed', localUser._id, sanitizedUsername, 'Role not assigned (offline)', false);
             return false;
           }
-          const needsFacility = !['super_admin', 'org_admin', 'government', 'county_health_director'].includes(requestedRole);
+          if (!(await isOfflineImpersonationAllowed())) {
+            loginFailureRef.current = { status: 403, code: 'impersonation_disabled' };
+            await logAudit('login_failed', localUser._id, sanitizedUsername, 'Impersonation disabled (offline)', false);
+            return false;
+          }
+          const needsFacility = roleNeedsFacility(requestedRole);
           effective = {
             ...localUser,
             role: requestedRole,

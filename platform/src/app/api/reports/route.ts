@@ -11,9 +11,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import type { UserRole } from '@/lib/db-types';
+// hospital_manager holds the /reports route in role-routes.ts (facility
+// oversight reads utilisation via reports rather than the per-station
+// worklists) — this list had drifted behind that grant.
 const REPORT_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'government', 'county_health_director', 'medical_superintendent',
-  'hrio', 'data_entry_clerk',
+  'hrio', 'data_entry_clerk', 'hospital_manager',
 ];
 function escapeCSV(val: string | number | boolean | null | undefined): string {
   const s = String(val ?? '');

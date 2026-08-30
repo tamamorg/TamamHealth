@@ -885,6 +885,8 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     + (claimedOutcome === 'partial' ? ` — PARTIAL fill, ${claimedRequested - claimedTotalDispensed} outstanding` : ''),
   );
 
+  await advanceEncounterAfterPharmacyClear(updated);
+
   return {
     prescription: updated,
     allocations: applied,
@@ -893,6 +895,48 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     controlledLogId,
     ...(controlledLogIds.length > 0 ? { controlledLogIds } : {}),
   };
+}
+
+/**
+ * When the last active prescription on a visit is dispensed and the doctor
+ * already signed off, the parallel pharmacy loop that parked the encounter
+ * (prescription-service.parkVisitAtPharmacy) is closed — advance it to
+ * `ready_for_clinic_checkout` via the legal `awaiting_pharmacy` edge
+ * (encounter-journey.ts), mirroring how `advanceEncounterToClinician` walks
+ * stations on the system's behalf. Before this, prescribe-then-sign left the
+ * visit at `awaiting_pharmacy` forever: `findOpenEncounterForPatient` then
+ * absorbed the patient's next arrival into the stale visit.
+ *
+ * A visit still carrying another undispensed order, or whose note is not yet
+ * signed, is left exactly where it is — this only closes a loop that has
+ * genuinely resolved.
+ *
+ * Best-effort: the dispense itself is the transaction of record and must
+ * stand even if this closing move cannot be made.
+ */
+async function advanceEncounterAfterPharmacyClear(rx: PrescriptionDoc): Promise<void> {
+  if (!rx.encounterId) return;
+  try {
+    const { getEncounter, transitionEncounter } = await import('./encounter-service');
+    const encounter = await getEncounter(rx.encounterId);
+    if (!encounter || encounter.status !== 'awaiting_pharmacy') return;
+
+    const { getPrescriptionsByPatient } = await import('./prescription-service');
+    const rxs = await getPrescriptionsByPatient(rx.patientId);
+    const stillActive = rxs.some(r =>
+      r.encounterId === rx.encounterId && r.status !== 'dispensed' && r.status !== 'discontinued');
+    if (stillActive) return;
+
+    const { getNotesByPatient } = await import('../clinical-notes/note-service');
+    const notes = await getNotesByPatient(rx.patientId);
+    const signed = notes.some(n =>
+      n.encounterId === rx.encounterId && (n.status === 'signed' || n.status === 'amended'));
+    if (!signed) return;
+
+    await transitionEncounter(rx.encounterId, 'ready_for_clinic_checkout', { actorId: rx.dispensedBy });
+  } catch {
+    // The dispense already landed; the desk can move the visit by hand.
+  }
 }
 
 /**

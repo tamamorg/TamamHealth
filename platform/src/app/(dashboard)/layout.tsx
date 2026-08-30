@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // The platform's own idle policy is a ceiling over the facility/org/user
   // chain — see useAutoLock. It was displayed on /admin/security and read by
   // nothing until this was wired.
-  const { isLocked, hasPin, unlock, verifyPin, setPin } = useAutoLock(
+  const { isLocked, hasPin, pinSupported, unlock, verifyPin, setPin } = useAutoLock(
     isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes,
   );
   const isMobile = useIsMobileViewport();
@@ -86,6 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <LockScreen
           userName={currentUser.name}
           hasPin={hasPin}
+          pinSupported={pinSupported}
           onVerifyPin={verifyPin}
           onSetPin={setPin}
           onUnlock={unlock}

@@ -83,11 +83,20 @@ const PHI_KEY_PATTERNS: readonly RegExp[] = [
   /email/i,
   /phone/i,
   /dob/i,
+  /dateofbirth/i,    // `dateOfBirth` — the field name actually used on patient docs
+  /birthdate/i,
   /password/i,       // covers `password`, `passwordHash`, `password_confirm`
   /passwordhash/i,   // explicit (covered by /password/i but kept for clarity)
   /nationalid/i,
   /national_id/i,
   /notes/i,
+  /patientname/i,    // `patientName` — used across ~170 doc-type sites
+  /hospitalnumber/i,
+  /address/i,
+  /chiefcomplaint/i,
+  /diagnos/i,        // `diagnosis`, `diagnoses`
+  /firstname/i,
+  /lastname/i,
 ] as const;
 
 const REDACTED = '[redacted]';

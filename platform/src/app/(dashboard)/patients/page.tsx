@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { patientFullName, patientDisplayName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { ScanLine, Hash, X, ArrowRight, Download, UserPlus } from '@/components/icons/lucide';
+import { ScanLine, Hash, X, ArrowRight, Download, UserPlus, Search } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useAuth, useUi } from '@/lib/context';
+import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 import dynamic from 'next/dynamic';
@@ -24,6 +24,7 @@ import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import Modal from '@/components/Modal';
+import SyncStatusBadge, { hasUnsyncedWrite } from '@/components/ehr/SyncStatusBadge';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -34,8 +35,7 @@ export default function PatientsPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { currentUser } = useAuth();
-  const { globalSearch } = useUi();
-  const { patients } = usePatients();
+  const { patients, loading: patientsLoading } = usePatients();
   const { canRegisterPatients, isMedicalBiller, isCashier } = usePermissions();
   const scope = useDataScope();
   // Billing-desk roles see money (outstanding balance) instead of clinical detail.
@@ -43,7 +43,7 @@ export default function PatientsPage() {
   // Structured filters — a single "Filters" dropdown panel (replaces the old
   // per-column funnels). Text search lives in the platform-wide search bar; this
   // panel narrows by the registry's real dimensions.
-  const emptyFilters = { olderThan: '', gender: '', state: '', registeredFrom: '', registeredTo: '', allergies: false, chronic: false, recent: false, assignedMe: false, unassigned: false, outstanding: false };
+  const emptyFilters = { olderThan: '', gender: '', state: '', registeredFrom: '', registeredTo: '', allergies: false, chronic: false, recent: false, assignedMe: false, unassigned: false, outstanding: false, pendingSync: false };
   type Filters = typeof emptyFilters;
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const setF = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters(f => ({ ...f, [k]: v }));
@@ -147,8 +147,6 @@ export default function PatientsPage() {
       !!(p.allergies?.length && p.allergies[0] !== 'None known');
     return patients.filter(p => {
       const fullName = `${p.firstName} ${p.middleName || ''} ${p.surname}`.toLowerCase();
-      // Platform-wide and inline search bars both narrow the registry.
-      if (globalSearch && !(fullName.includes(globalSearch.toLowerCase()) || (p.hospitalNumber || '').toLowerCase().includes(globalSearch.toLowerCase()) || (p.phone || '').includes(globalSearch))) return false;
       if (localSearch) {
         const ls = localSearch.toLowerCase();
         if (!(fullName.includes(ls) || (p.hospitalNumber || '').toLowerCase().includes(ls) || (p.phone || '').includes(ls))) return false;
@@ -173,15 +171,16 @@ export default function PatientsPage() {
       if (f.assignedMe && p.assignedDoctor !== currentUser?._id) return false;
       if (f.unassigned && p.assignedDoctor) return false;
       if (f.outstanding && isBilling && !((balanceByPatient.get(p._id) || 0) > 0)) return false;
+      if (f.pendingSync && !hasUnsyncedWrite(p)) return false;
       return true;
     });
-  }, [patients, filters, globalSearch, localSearch, currentUser?._id, isBilling, balanceByPatient, MS30]);
+  }, [patients, filters, localSearch, currentUser?._id, isBilling, balanceByPatient, MS30]);
 
   // Reset the visible window whenever the filters change — otherwise narrowing
   // would leave a stale "Load more" count.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [filters, globalSearch, localSearch, patientSort]);
+  }, [filters, localSearch, patientSort]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -197,7 +196,7 @@ export default function PatientsPage() {
   // Registry-wide KPIs for the stat cards (not affected by the table's search).
   const patientKpis = useMemo(() => {
     const now = Date.now();
-    let male = 0, female = 0, newThisMonth = 0, unassigned = 0, outstanding = 0;
+    let male = 0, female = 0, newThisMonth = 0, unassigned = 0, outstanding = 0, pendingSync = 0;
     for (const p of patients) {
       if (p.gender === 'Male') male++;
       else if (p.gender === 'Female') female++;
@@ -205,8 +204,9 @@ export default function PatientsPage() {
       if (reg && now - new Date(reg).getTime() < MS30) newThisMonth++;
       if (!p.assignedDoctor) unassigned++;
       if ((balanceByPatient.get(p._id) || 0) > 0) outstanding++;
+      if (hasUnsyncedWrite(p)) pendingSync++;
     }
-    return { total: patients.length, male, female, newThisMonth, unassigned, outstanding };
+    return { total: patients.length, male, female, newThisMonth, unassigned, outstanding, pendingSync };
   }, [patients, balanceByPatient, MS30]);
 
   // Export the currently filtered/sorted registry to CSV.
@@ -266,6 +266,24 @@ export default function PatientsPage() {
                       {s.label} ({s.value.toLocaleString()})
                     </span>
                   ))}
+                  {/* Only shown when there is something unpushed to report — a
+                      fully-synced registry adds no chip here, same rule the
+                      stat chips beside it follow. Clicking narrows the table
+                      to exactly those rows via the existing filter panel's
+                      own predicate (below), rather than duplicating it. */}
+                  {patientKpis.pendingSync > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setF('pendingSync', !filters.pendingSync)}
+                      title={t('sync.pendingSyncFilterHint')}
+                      aria-pressed={filters.pendingSync}
+                      className="inline-flex items-center gap-1 text-[12px]"
+                      style={{ color: 'var(--semantic-warning)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--semantic-warning)' }} />
+                      {t('sync.pendingSyncCount', { count: patientKpis.pendingSync })}
+                    </button>
+                  )}
                 </div>
               </div>
               {/* Search + filter row */}
@@ -325,6 +343,7 @@ export default function PatientsPage() {
                         ['recent', t('patients.kpiVisitedLast30d')],
                         ['assignedMe', t('patients.assignedMe')],
                         ['unassigned', t('patients.assignedUnassigned')],
+                        ['pendingSync', t('sync.docPendingLabel')],
                         ...(isBilling ? [['outstanding', t('patients.filterOutstanding')] as const] : []),
                       ] as const).map(([key, label]) => (
                         <label key={key} className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -335,6 +354,27 @@ export default function PatientsPage() {
                     </div>
                   </div>
                 </EhrSearchFilter>
+                {/* Hospital-number/geocode/national-ID lookup plus QR and
+                    fingerprint identify — the modal existed but had no way to
+                    open it (KAN-118): `showFindPatient` was never set true
+                    anywhere in this file. */}
+                <button
+                  type="button"
+                  onClick={() => setShowFindPatient(true)}
+                  aria-label={t('boma.findPatient')}
+                  title={t('boma.findPatient')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    height: 38, padding: '0 14px',
+                    borderRadius: 999, background: 'var(--bg-card-solid)', color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-light)',
+                    fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                    cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  <Search className="w-4 h-4" />
+                  {t('boma.findPatient')}
+                </button>
                 <button
                   type="button"
                   onClick={handleDownloadCsv}
@@ -390,12 +430,15 @@ export default function PatientsPage() {
                     <span>Location</span>
                     <span>Status</span>
                     </div>
-                    {visible.length === 0 && (
+                    {patientsLoading && (
+                      <div className="appointment-card-empty">Loading patients…</div>
+                    )}
+                    {!patientsLoading && visible.length === 0 && (
                       <div className="appointment-card-empty">
                         {t('patients.patientsFound', { count: 0 })}
                       </div>
                     )}
-                    {visible.map(patient => (
+                    {!patientsLoading && visible.map(patient => (
                     <div
                       key={patient._id}
                       className="ehr-appointment-row appointment-card-row"
@@ -436,6 +479,7 @@ export default function PatientsPage() {
                             ? ((balanceByPatient.get(patient._id) || 0) > 0 ? formatMoney(balanceByPatient.get(patient._id) || 0) : t('billing.paidInFull'))
                             : patient.assignedDoctor ? 'Assigned' : 'Needs care team'}
                         </small>
+                        <SyncStatusBadge offlineSync={patient.offlineSync} />
                       </div>
                     </div>
                     ))}
