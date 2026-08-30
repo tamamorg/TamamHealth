@@ -601,6 +601,11 @@ header > div { min-width: 0; }
   .tm-rule { width: 100% !important; }
   .tm-steprow > summary { grid-template-columns: 52px 1fr auto !important; gap: 16px !important; }
   .tm-steprow > p { padding-inline-start: 68px !important; }
+  /* The challenge page's step list is the same numbered row, but a plain
+     grid div rather than a <details>/<summary> — the two rules above only
+     ever match the summary. Shrinking its own numeral column here keeps both
+     "step by step" lists sized the same on a phone. */
+  .tm-steprow { grid-template-columns: 52px 1fr !important; gap: 16px !important; }
   .fs11, .fs115 { font-size: 12.5px; }
   .fs12, .fs125 { font-size: 13px; }
   .tm-flow-step { flex: 1 0 250px !important; }
@@ -613,6 +618,7 @@ header > div { min-width: 0; }
   main section { padding-inline-start: 14px !important; padding-inline-end: 14px !important; }
   .tm-steprow > summary { grid-template-columns: 34px 1fr auto !important; gap: 10px !important; }
   .tm-steprow > p { padding-inline-start: 44px !important; }
+  .tm-steprow { grid-template-columns: 34px 1fr !important; gap: 10px !important; }
   .tm-pad-lg { padding: 22px 18px !important; }
 }
 
@@ -655,9 +661,20 @@ header > div { min-width: 0; }
   .tm-newscard-body h3 { font-size: 16px !important; }
   .tm-newscard-body > span { padding-top: 6px !important; font-size: 14.5px !important; }
   /* 3 — a photograph inside a stacked split, which has no height of its own
-     once the two columns become one. */
-  main .tm-split .blueprint > img,
+     once the two columns become one. Excludes .tm-levels-fig: that panel
+     carries its own centred overlay card, sized below, so clamping only the
+     <img> here left the fixed-height box around it mostly empty. */
+  main .tm-split .blueprint:not(.tm-levels-fig) > img,
   main .tm-split > .tm-figure > img { max-height: max(200px, 30vh); object-fit: cover; }
+  /* The six-levels figure (health-system): a photo with a centred overlay
+     card reading its title, role text and product badge — that overlay needs
+     real height to lay out in, so it can't take the plain-photo clamp above.
+     The desktop 500px panel is fixed regardless of viewport, which combined
+     with that clamp shrank the <img> to ~30vh while the box around it stayed
+     500px tall, leaving a blank gap below the photo. Shrinking the box itself
+     keeps the image and the box in lockstep, at a height the overlay's own
+     content (title + role line + badge, centred) still fits inside. */
+  .tm-levels-fig { height: 360px !important; }
 }
 @media (max-width: 479px) {
   /* 2 — two columns, not one: a face at 160px is still a face. */
@@ -799,6 +816,70 @@ header > div { min-width: 0; }
 /* ── Mobile density: shorter figures on phones ── */
 @media (max-width: 639px) {
   main .tm-minh280 { height: 196px !important; min-height: 196px !important; }
+}
+
+/* ── Platform hero facts (/platform): one label row on a phone ──────────
+   Desktop reads three small stat cards. Full width each, on a phone they
+   are three redundant borders and a paragraph nobody needed to stop for —
+   the card told the reader nothing the label itself didn't. Collapsed to
+   three plain labels in a row, the same three words still register on the
+   way past. Scoped to both classes together so this never reaches the
+   other pages' .tm-g3 grids (products, news, challenges' "where handled"). */
+@media (max-width: 639px) {
+  .tm-g3.tm-platform-facts { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
+  .tm-platform-facts .tm-fact { padding: 8px 4px !important; border: none !important; text-align: center; }
+  .tm-platform-facts .tm-fact > .corner { display: none !important; }
+  .tm-platform-facts .tm-fact > span { font-size: 13px !important; line-height: 1.15 !important; }
+  .tm-platform-facts .tm-fact > p { display: none !important; }
+
+  /* "Jump to a product" chips (/products hero): all six on one row. At six
+     acronyms the wrap dropped PPS to a lonely second line — shrinking the
+     chip and dropping the 44px touch floor to a still-tappable 34px lets the
+     full set sit on one line across a 360px phone. */
+  .tm-prodchips { flex-wrap: nowrap !important; gap: 6px !important; }
+  a.tm-prodchip {
+    flex: 1 1 0 !important;
+    min-height: 34px !important;
+    padding: 8px 6px !important;
+    font-size: 12px !important;
+    letter-spacing: 0.06em !important;
+    text-align: center;
+    display: grid;
+    place-items: center;
+  }
+
+  /* ── Card carousel (CardCarousel.tsx): sibling cards that "speak to the same
+     thing" become one swipeable, snap-to track on a phone instead of a long
+     vertical stack. The container keeps its desktop grid class; this flips it
+     to a horizontal flex row. Each card is a near-full-width slide with the
+     next one peeking, so it reads as a carousel you can flick through. The
+     HeroNav ‹ ─ › control below reflects and drives the position. */
+  .tm-carousel {
+    display: flex !important;
+    grid-template-columns: none !important;
+    flex-wrap: nowrap !important;
+    gap: 14px !important;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 14px;
+    /* Bleed to the screen edges so a slide can sit full-bleed while its
+       neighbour peeks, then pull the content back to the section's own inset. */
+    margin-inline: -14px;
+    padding-inline: 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tm-carousel::-webkit-scrollbar { display: none; }
+  .tm-carousel > * {
+    flex: 0 0 86% !important;
+    scroll-snap-align: center;
+    min-width: 0;
+  }
+}
+/* The carousel control belongs to the ≤639px carousel only — suppress it in
+   the 640–760px band where HeroNav would otherwise show over a 2-up grid. */
+@media (min-width: 640px) {
+  .tm-carousel-nav .tm-hero-nav { display: none !important; }
 }
 
 /* ── Mobile resilience: notches, browser chrome, touch, and form focus ── */

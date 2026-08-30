@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Corners from "@/components/Corners";
 import NewsCard from "@/components/NewsCard";
+import CardCarousel from "@/components/CardCarousel";
 import { getTranslator } from "@/lib/i18n/server";
 import { NEWS as NEWS_EN } from "@/lib/site-data";
 
@@ -62,11 +63,11 @@ export default async function NewsBand() {
         {NEWS_EN.length === 1 ? (
           <LeadStory />
         ) : (
-          <div className="tm-g4" style={{ gap: 22 }}>
+          <CardCarousel className="tm-g4" style={{ gap: 22 }} labels={NEWS.slice(0, 4).map((n) => n.title)} prevLabel={t("Previous")} nextLabel={t("Next")}>
             {NEWS.slice(0, 4).map((n) => (
               <NewsCard key={n.slug} item={n} />
             ))}
-          </div>
+          </CardCarousel>
         )}
       </div>
     </section>

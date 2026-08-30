@@ -61,7 +61,7 @@ export default function LevelsExplorer() {
             </button>
           ))}
         </div>
-        <div className="blueprint" style={{ position: "relative", height: 500 }}>
+        <div className="blueprint tm-levels-fig" style={{ position: "relative", height: 500 }}>
           <Corners />
           <Image
             src={lv.image}

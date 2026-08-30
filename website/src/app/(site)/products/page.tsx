@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import Corners from "@/components/Corners";
+import CardCarousel from "@/components/CardCarousel";
 import { PRODUCTS as PRODUCTS_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
@@ -34,7 +35,7 @@ export default async function ProductsPage() {
             </p>
             <div style={{ width: "100%", marginTop: 30, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <span className="fs115" style={{ display: "block", marginBottom: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>{t("Jump to a product")}</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div className="tm-prodchips" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {PRODUCTS.map((p) => (
                   <Link
                     key={p.slug}
@@ -74,7 +75,7 @@ export default async function ProductsPage() {
             <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("All six products")}</h2>
             <span className="fs125" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", whiteSpace: "nowrap" }}>{t("One record · offline-first")}</span>
           </div>
-          <div className="tm-g3" style={{ gap: 34 }}>
+          <CardCarousel className="tm-g3" style={{ gap: 34 }} labels={PRODUCTS.map((p) => p.acronym)} prevLabel={t("Previous product")} nextLabel={t("Next product")}>
             {PRODUCTS.map((p) => (
               <Link key={p.slug} href={`/products/${p.slug}`} className="blueprint tm-prodcard" style={{ display: "flex", flexDirection: "column", background: "#FFFFFF", textDecoration: "none", color: "inherit" }}>
                 <Corners />
@@ -88,12 +89,9 @@ export default async function ProductsPage() {
                   />
                 </div>
                 <div style={{ padding: "22px 24px 24px", display: "flex", flexDirection: "column", gap: 11, flex: 1 }}>
-                  {/* The acronym chip, not the photograph, is what identifies a
+                  {/* The tagline, not the photograph, is what identifies a
                       card on a phone — the figure above is hidden there. */}
-                  <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 9 }}>
-                    <span className="fs115" style={{ fontFamily: "var(--font-heading)", fontWeight: 700, letterSpacing: "0.1em", color: "#FFFFFF", background: p.accent, padding: "4px 9px" }}>{p.acronym}</span>
-                    <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{p.tagline}</span>
-                  </div>
+                  <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{p.tagline}</span>
                   <h3 style={{ fontSize: 23, lineHeight: 1.2, margin: 0 }}>{p.title}</h3>
                   <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{p.description}</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
@@ -115,7 +113,7 @@ export default async function ProductsPage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </CardCarousel>
         </div>
       </section>
     </main>

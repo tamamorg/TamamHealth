@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import Corners from "@/components/Corners";
+import CardCarousel from "@/components/CardCarousel";
 import { emphasise } from "@/components/emphasise";
 import { CHALLENGES as CHALLENGES_EN, PLATFORM_FACTS as PLATFORM_FACTS_EN, PLATFORM_FLOW as PLATFORM_FLOW_EN, PLATFORM_PILLARS as PLATFORM_PILLARS_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
@@ -66,7 +67,7 @@ export default async function PlatformPage() {
               row: stacked beside the copy they competed with the headline for
               the same eye, and the column they sat in is where the product
               belongs. */}
-          <div className="tm-g3" style={{ gap: 14, marginTop: 42 }}>
+          <div className="tm-g3 tm-platform-facts" style={{ gap: 14, marginTop: 42 }}>
             {PLATFORM_FACTS.map((f) => (
               <div key={f.value} className="blueprint tm-fact" style={{ padding: "20px 24px", borderColor: "rgba(255,255,255,0.28)" }}>
                 <Corners light />
@@ -100,7 +101,7 @@ export default async function PlatformPage() {
               height of the section for facts the reader gets on the next
               click. The section heading already says which half is which, so
               the cards carry no "problem"/"solution" labels either. */}
-          <div className="tm-split tm-solution-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 26 }}>
+          <CardCarousel className="tm-split tm-solution-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 26 }} labels={CHALLENGES.map((c) => c.title)} prevLabel={t("Previous")} nextLabel={t("Next")}>
             {CHALLENGES.map((c) => (
               <Link
                 key={c.slug}
@@ -138,7 +139,7 @@ export default async function PlatformPage() {
                 </span>
               </Link>
             ))}
-          </div>
+          </CardCarousel>
         </div>
       </section>
 

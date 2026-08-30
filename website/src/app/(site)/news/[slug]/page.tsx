@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
 import NewsCard from "@/components/NewsCard";
+import CardCarousel from "@/components/CardCarousel";
 import { NEWS as NEWS_EN, newsBySlug, type Photo } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
@@ -165,11 +166,11 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
         <section style={{ padding: "50px 32px 20px" }}>
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 22px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>{t("More news")}</h2>
-            <div className="tm-g3" style={{ gap: 22 }}>
+            <CardCarousel className="tm-g3" style={{ gap: 22 }} labels={more.map((x) => x.title)} prevLabel={t("Previous")} nextLabel={t("Next")}>
               {more.map((x) => (
                 <NewsCard key={x.slug} item={x} />
               ))}
-            </div>
+            </CardCarousel>
           </div>
         </section>
       )}

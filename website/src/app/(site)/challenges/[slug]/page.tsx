@@ -4,6 +4,7 @@ import { emphasise } from "@/components/emphasise";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
+import CardCarousel from "@/components/CardCarousel";
 import { CHALLENGES as CHALLENGES_EN, PRODUCTS as PRODUCTS_EN, challengeBySlug } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
@@ -90,7 +91,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
       <section style={{ padding: "46px 32px 20px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 22px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>{t("Where this is handled")}</h2>
-          <div className="tm-g3" style={{ gap: 20 }}>
+          <CardCarousel className="tm-g3" style={{ gap: 20 }} labels={handled.map((p) => p.title)} prevLabel={t("Previous")} nextLabel={t("Next")}>
             {handled.map((p) => (
               <Link key={p.slug} href={`/products/${p.slug}`} className="blueprint tm-handled" style={{ padding: "24px 26px", background: "var(--color-surface)", textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8 }}>
                 <Corners />
@@ -98,7 +99,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
                 <span style={{ marginTop: 6, fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#015697" }}>{t("Open product →")}</span>
               </Link>
             ))}
-          </div>
+          </CardCarousel>
         </div>
       </section>
 
