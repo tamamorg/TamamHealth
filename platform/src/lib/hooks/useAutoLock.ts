@@ -223,6 +223,18 @@ export function useAutoLock(
     };
   }, []);
 
+  // Auto-lock is OFF by default. It engages only when someone has asked for it
+  // — a facility / org / platform policy, or the user's own "Auto sign-out
+  // after inactivity" choice in Settings → Security. With nothing configured
+  // the session never locks (and does not lock on tab-hide either); a user
+  // turns it on for themselves from Settings. Policies still ENFORCE it where
+  // an admin requires it on a shared workstation.
+  const lockEnabled =
+    (facilityLockMin ?? 0) > 0 ||
+    (orgLockTimeoutMinutes ?? 0) > 0 ||
+    (platformSessionTimeoutMinutes ?? 0) > 0 ||
+    (userLockMin ?? 0) > 0;
+
   const getTimeout = useCallback((): number => {
     // Priority: facility setting > org config > localStorage > default, then
     // the user's own choice applied on top — but only where it shortens the
@@ -266,18 +278,18 @@ export function useAutoLock(
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (!isAuthenticated || isAutoLockDisabled()) return;
+    if (!isAuthenticated || isAutoLockDisabled() || !lockEnabled) return;
 
     timerRef.current = setTimeout(() => {
       setIsLocked(true);
     }, getTimeout());
-  }, [isAuthenticated, getTimeout]);
+  }, [isAuthenticated, getTimeout, lockEnabled]);
 
   const lock = useCallback(() => {
-    if (isAutoLockDisabled()) return;
+    if (isAutoLockDisabled() || !lockEnabled) return;
     setIsLocked(true);
     if (timerRef.current) clearTimeout(timerRef.current);
-  }, []);
+  }, [lockEnabled]);
 
   const unlock = useCallback(() => {
     setIsLocked(false);
@@ -328,7 +340,7 @@ export function useAutoLock(
 
   // Activity listeners + visibility change
   useEffect(() => {
-    if (!isAuthenticated || isAutoLockDisabled()) {
+    if (!isAuthenticated || isAutoLockDisabled() || !lockEnabled) {
       setIsLocked(false);
       return;
     }
@@ -358,7 +370,7 @@ export function useAutoLock(
       }
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [isAuthenticated, lock, resetTimer]);
+  }, [isAuthenticated, lock, resetTimer, lockEnabled]);
 
   return {
     isLocked,

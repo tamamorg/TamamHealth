@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronRight, Search, X } from '@/components/icons/lucide';
 import type { NavItem } from '@/lib/permissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -15,9 +15,13 @@ export default function EhrModuleMenu({
   navLabel,
   onOpenModule,
   onWarm,
+  footer,
 }: {
   groups: { section: string | null; items: NavItem[] }[];
   roleLabel: string;
+  /** Rendered at the bottom of the menu — on a phone the account block
+   *  (profile, settings, sign out) lives here instead of a bar avatar. */
+  footer?: ReactNode;
   /**
    * The one module the rail considers current, already resolved by
    * longest-match in EhrTopRail. Matching on a prefix here instead would light
@@ -133,6 +137,7 @@ export default function EhrModuleMenu({
           <p className="ehr-module-menu-empty">{t('nav.noModulesFound')}</p>
         )}
       </div>
+      {footer && <div className="ehr-module-menu-account">{footer}</div>}
     </div>
   );
 }

@@ -375,6 +375,31 @@ export default function EhrTopRail() {
             navLabel={navLabel}
             onOpenModule={openModule}
             onWarm={warm}
+            footer={
+              /* Phone-only account block — CSS hides it above 640px, where the
+                 rail's own avatar menu still carries this. Keeps the profile
+                 reachable once the bar drops the avatar on a phone. */
+              <>
+                <div className="ehr-module-account-id">
+                  <span className="ehr-module-account-avatar">{userInitials}</span>
+                  <span className="ehr-module-account-copy">
+                    <b>{currentUser?.name || 'Tamam user'}</b>
+                    <small>{roleConfig?.badgeLabel || roleLabel}</small>
+                  </span>
+                </div>
+                <button type="button" onClick={() => { setModuleOpen(false); openSettingsPage(); }}>
+                  <Settings className="w-4 h-4" /><span>Settings</span>
+                </button>
+                {tourAvailable && (
+                  <button type="button" onClick={() => { setModuleOpen(false); startTour(); }}>
+                    <HelpCircle className="w-4 h-4" /><span>Take a tour</span>
+                  </button>
+                )}
+                <button type="button" className="danger" onClick={() => { setModuleOpen(false); logout(); }}>
+                  <LogOut className="w-4 h-4" /><span>Log out</span>
+                </button>
+              </>
+            }
           />
         )}
 
