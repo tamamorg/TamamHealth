@@ -11,14 +11,15 @@ const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'midwife', 'medical_superintendent', 'front_desk',
 ];
-// nutritionist and hospital_manager both hold the /referrals route
-// (role-routes.ts) and DOC_WRITE_ROLES.referral (write-permissions.ts) — the
-// nutrition dashboard's "Refer" action authors a referral directly. Without
-// them here the API guard rejected the write before it ever reached the
-// CouchDB validator's own (now-matching) role check.
+// Kept in lockstep with DOC_WRITE_ROLES.referral (write-permissions.ts) and
+// usePermissions.canManageReferrals — the roles that can actually create a
+// referral in the product. nutritionist and hospital_manager were removed
+// 2026-08-30 (audit): neither has a referral create surface (the create action
+// is gated on canManageReferrals, which excludes them), so their grant was
+// dead, and letting an administrative role author a clinical referral inverts
+// least-privilege. See the referral comment in write-permissions.ts.
 const CREATE_ROLES: UserRole[] = [
   'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife', 'medical_superintendent',
-  'nutritionist', 'hospital_manager',
 ];
 export async function GET(request: NextRequest) {
   try {

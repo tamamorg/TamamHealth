@@ -15,10 +15,12 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 jest.setTimeout(30000);
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
-import { hospitalsDB } from '@/lib/db';
+import { hospitalsDB, triageDB } from '@/lib/db';
 import { checkInPatient } from '@/lib/services/check-in-service';
+import { getTriageByPatient } from '@/lib/services/triage-service';
 import { createAppointment, getAppointmentsByPatient } from '@/lib/services/appointment-service';
 import { jubaDate } from '@/lib/time-juba';
+import type { TriageDoc } from '@/lib/db-types';
 
 const ORG = 'org-moh-ss';
 const HOSP1 = 'hosp-001';
@@ -156,5 +158,48 @@ describe('checkInPatient — same-day booking scope', () => {
     const walkIn = appts.find(a => a._id === result.appointmentId);
     expect(walkIn?.facilityId).toBe(HOSP1);
     expect(walkIn?.status).toBe('checked_in');
+  });
+});
+
+describe('checkInPatient — re-attendance while an old triage is still "active" (KAN triage audit F2)', () => {
+  it('checks a patient in even though an earlier "seen" triage at this facility never reached a terminal status', async () => {
+    // Mirrors a real data gap: the visit moved on and its encounter closed,
+    // but nothing ever transitioned this triage doc to a terminal status
+    // (admitted/discharged/referred/lwbs) — so it still reads as "active"
+    // within the 24h window. No encounter doc backs it, matching
+    // findOpenEncounterForPatient finding nothing for this patient.
+    const staleTriage = await putDoc(triageDB(), {
+      _id: 'triage-stale-seen',
+      type: 'triage',
+      patientId: 'pat-agok',
+      patientName: 'Agok Aluel',
+      airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert',
+      assessmentSource: 'clinician',
+      priority: 'GREEN',
+      triagedBy: 'user-triage.mary', triagedByName: 'Mary',
+      triagedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+      facilityId: HOSP1, facilityName: 'Juba Teaching Hospital', orgId: ORG,
+      status: 'seen',
+      encounterId: 'encounter-long-gone',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as unknown as TriageDoc & { _id: string });
+
+    // Before the fix, createTriage's DuplicateActiveTriageError went uncaught
+    // here and this check-in threw instead of resolving.
+    const result = await checkInPatient({
+      patientId: 'pat-agok', patientName: 'Agok Aluel',
+      facilityId: HOSP1, facilityName: 'Juba Teaching Hospital', orgId: ORG,
+      chiefComplaint: 'Follow-up visit', checkedInById: 'user-desk.amira', checkedInByName: 'Amira',
+    });
+
+    // The existing active triage is reused and re-linked to THIS visit
+    // instead of a second one being fabricated for the same patient.
+    expect(result.triage._id).toBe(staleTriage._id);
+    expect(result.triage.encounterId).toBe(result.encounter._id);
+    expect(result.triage.status).toBe('seen'); // real ETAT findings untouched
+
+    const allForPatient = await getTriageByPatient('pat-agok');
+    expect(allForPatient).toHaveLength(1);
   });
 });

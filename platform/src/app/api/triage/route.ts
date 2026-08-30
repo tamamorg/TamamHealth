@@ -8,7 +8,7 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole, TriageDoc, TriagePriority, PatientDoc } from '@/lib/db-types';
 import {
-  calculateBmi, getTriageVitalWarnings, isLowerTriagePriority,
+  calculateBmi, getTriageVitalWarnings,
   parseStrictVitalNumber, recommendTriagePriority, validateTriageVitals,
 } from '@/lib/clinical/vitals';
 import { calculatePriority } from '@/lib/clinical/etat';
@@ -139,6 +139,8 @@ async function postHandler(request: NextRequest) {
     const redCriteria = filterKnownIittCodes(body.redCriteria, IITT_RED_CRITERIA);
     const yellowCriteria = filterKnownIittCodes(body.yellowCriteria, IITT_YELLOW_CRITERIA);
 
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const scope = buildScopeFromAuth(auth);
     // Recomputed server-side, never trusted from the caller: a client that
     // posted `vitalUrgencyRecommendation: 'GREEN'` (or omitted it) alongside
     // e.g. SpO2 70 was previously accepted outright — nothing here ever
@@ -146,12 +148,19 @@ async function postHandler(request: NextRequest) {
     // patient's age is looked up for the age-banded bands (adult vs
     // paediatric pulse/RR, the WHO MUAC screen, IITT's infant-age criteria);
     // a lookup failure degrades to "age unknown" (adult ranges, flagged as
-    // such in the warning text) rather than blocking the write.
+    // such in the warning text) rather than blocking the write. Scoped, not
+    // just present: an out-of-tenant patientId must resolve exactly like a
+    // lookup failure too, never leak a foreign patient's real age into these
+    // warnings and turn the response into a cross-tenant existence oracle —
+    // `createTriage`'s own internal lookup below is scoped the same way, so
+    // the two can never disagree.
     let patientAgeYears: number | undefined;
     try {
       const { patientsDB } = await import('@/lib/db');
       const patient = await patientsDB().get(body.patientId as string) as PatientDoc;
-      patientAgeYears = patientAgeYearsExact(patient) ?? undefined;
+      patientAgeYears = filterByScope([patient], scope).length > 0
+        ? patientAgeYearsExact(patient) ?? undefined
+        : undefined;
     } catch {
       patientAgeYears = undefined;
     }
@@ -183,24 +192,10 @@ async function postHandler(request: NextRequest) {
     const overrideReason = typeof body.vitalUrgencyOverrideReason === 'string'
       ? body.vitalUrgencyOverrideReason.trim()
       : '';
-    if (
-      isLowerTriagePriority(body.priority as TriagePriority, recommendation) &&
-      (body.vitalUrgencyOverridden !== true || !overrideReason)
-    ) {
-      return NextResponse.json(
-        { error: 'Saving below the recommended triage urgency requires a recorded override reason.' },
-        { status: 400 },
-      );
-    }
     const vitalString = (value: unknown): string | undefined =>
       value === undefined || value === null || value === '' ? undefined : String(value).trim();
-    const { v4: uuidv4 } = await import('uuid');
-    const { getDB } = await import('@/lib/db');
-    const db = getDB('tamamhealth_triage');
     const now = new Date().toISOString();
-    const doc: TriageDoc = {
-      _id: `triage-${uuidv4()}`,
-      type: 'triage',
+    const data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'> = {
       patientId: body.patientId as string,
       patientName: body.patientName as string,
       hospitalNumber: body.hospitalNumber as string | undefined,
@@ -228,7 +223,7 @@ async function postHandler(request: NextRequest) {
       muac: vitalString(body.muac),
       // Server-recomputed, replacing whatever the caller supplied — the
       // stored explainability banner must match what was actually enforced
-      // above, not a client claim that was never verified.
+      // below, not a client claim that was never verified.
       vitalUrgencyRecommendation: recommendation,
       vitalUrgencyWarnings: vitalWarnings.length > 0 ? vitalWarnings : undefined,
       vitalUrgencyOverridden: body.vitalUrgencyOverridden === true,
@@ -254,24 +249,29 @@ async function postHandler(request: NextRequest) {
       facilityName: body.facilityName as string | undefined,
       orgId: auth.orgId,
       status: 'pending',
-      createdAt: now,
-      updatedAt: now,
     };
-    const resp = await db.put(doc);
-    doc._rev = resp.rev;
-    // Mirror the triage-service.ts convention so a clinical-record audit
-    // search finds every triage write regardless of which path created it —
-    // this route previously wrote no clinical audit row for a triage at all.
-    const { logAuditSafe } = await import('@/lib/services/audit-service');
-    await logAuditSafe('TRIAGE_RECORDED', auth.sub, auth.name,
-      `${doc.priority} triage for ${doc.patientName} (${doc.patientId})`
-    );
-    if (doc.vitalUrgencyOverridden) {
-      await logAuditSafe('TRIAGE_URGENCY_OVERRIDE', auth.sub, auth.name,
-        `Vital urgency ${doc.vitalUrgencyRecommendation} overridden to ${doc.priority} for ${doc.patientName} (${doc.patientId}). Reason: ${doc.vitalUrgencyOverrideReason}`
-      );
+    // Routed through the shared service, not a direct `db.put`: this is what
+    // gives the route the one-active-triage guard, the TRIAGE_RECORDED/
+    // TRIAGE_URGENCY_OVERRIDE audit rows, and a tenant-scoped safety-gate
+    // patient lookup, instead of a second, divergent implementation of all
+    // three (KAN triage audit F3). `assertTriageVitalSafety` inside
+    // `createTriage` re-enforces the override-reason gate above from its own
+    // recompute — any Error it throws is a validation failure the caller can
+    // fix, so it maps to 400 same as the checks already run in this handler.
+    const { createTriage, DuplicateActiveTriageError } = await import('@/lib/services/triage-service');
+    let triage: TriageDoc;
+    try {
+      triage = await createTriage(data, { scope });
+    } catch (error) {
+      if (error instanceof DuplicateActiveTriageError) {
+        return NextResponse.json({ error: error.message }, { status: 409 });
+      }
+      if (error instanceof Error) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
     }
-    return NextResponse.json({ triage: doc }, { status: 201 });
+    return NextResponse.json({ triage }, { status: 201 });
   } catch (err) {
     logApiError('[API /triage POST]', err);
     return serverError();

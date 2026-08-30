@@ -198,12 +198,19 @@ async function raiseNotifiableDiseaseAlertsFromNote(note: ClinicalNoteDoc): Prom
  * closed-out consultation kept reading "in progress" in the notification feed
  * indefinitely. Best-effort and scoped to this note's own visit — a stale
  * tracker from an unrelated earlier episode must never be closed by this sign.
+ *
+ * Looked up by `{patientId, encounterId}` via `getConsultationProgressByEncounter`
+ * rather than "the patient's most recently touched tracker": a note with no
+ * encounterId of its own (or one whose visit never got a tracker at all — a
+ * lab-only visit, say) has no tracker to close, and must close nothing rather
+ * than reaching for a DIFFERENT encounter's tracker and marking a past,
+ * unrelated consultation "completed" via a milestone that never happened.
  */
 async function closeConsultationProgressForNote(note: ClinicalNoteDoc, actorId?: string): Promise<void> {
+  if (!note.encounterId) return;
   try {
-    const { getAllConsultationProgress, updateProgressMilestone } = await import('../services/consultation-progress-service');
-    const trackers = (await getAllConsultationProgress()).filter(p => p.patientId === note.patientId);
-    const tracker = (note.encounterId && trackers.find(p => p.encounterId === note.encounterId)) || trackers[0];
+    const { getConsultationProgressByEncounter, updateProgressMilestone } = await import('../services/consultation-progress-service');
+    const tracker = await getConsultationProgressByEncounter(note.patientId, note.encounterId);
     if (!tracker || tracker.currentStage === 'completed' || tracker.currentStage === 'cancelled') return;
     await updateProgressMilestone(tracker._id, 'consultation_signed', 'completed', { id: actorId });
   } catch {

@@ -189,7 +189,7 @@ export default function SiteHeader() {
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle><path d="M6.7 19a5.3 5.3 0 0 1 10.6 0"></path></svg>
             </button>
             {util === "account" && (
-              <div className="blueprint" style={{ position: "absolute", right: 0, top: 40, width: 262, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="blueprint tm-util-menu" style={{ position: "absolute", right: 0, top: 40, width: 262, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                 <Corners />
                 <span className="fs11" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{t("Log in to the portal")}</span>
                 {/* These point at the platform on another origin (see
@@ -215,7 +215,7 @@ export default function SiteHeader() {
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"></path></svg>
             </button>
             {util === "lang" && (
-              <div className="blueprint" style={{ position: "absolute", right: 0, top: 40, width: 228, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "10px 0", display: "flex", flexDirection: "column" }}>
+              <div className="blueprint tm-util-menu" style={{ position: "absolute", right: 0, top: 40, width: 228, background: "#FFFFFF", boxShadow: "var(--shadow-md)", padding: "10px 0", display: "flex", flexDirection: "column" }}>
                 <Corners />
                 {SUPPORTED_LOCALES.map((l) => {
                   const active = l.code === locale;

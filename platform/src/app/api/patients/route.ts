@@ -10,11 +10,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized, validationError } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
-// Roles that may read patient lists. lab_tech, pharmacist, hospital_manager
-// and medical_biller all hold the /patients route in role-routes.ts (a lab
-// tech/pharmacist opens the chart from their own worklist; a manager or
-// biller needs the roster for facility oversight/billing context) — this
-// list had drifted behind that grant.
+// Roles that may read patient lists. Every read here is scoped by
+// filterByScope to the caller's own org/facility (this route is the mobile/
+// integration surface; the browser reads via services). Each grant carries a
+// concrete need, not a "the page route allows it" inference (audit 2026-08-30):
+//   • lab_tech / pharmacist — open the chart named in their own worklist
+//     (role-routes grants /patients specifically for this; the chart renders
+//     only their role's tabs).
+//   • medical_biller — look up the specific patient/visit being billed.
+//   • hospital_manager — facility-scoped roster for oversight (read only; the
+//     role has no create/edit grant here).
+// If a genuinely minimum-necessary billing subset is ever required, split
+// list-read from by-id-read rather than widening this list further.
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'midwife', 'front_desk', 'cashier', 'medical_superintendent', 'hrio',

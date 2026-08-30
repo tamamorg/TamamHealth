@@ -106,3 +106,41 @@ describe('resolveNextPath', () => {
     expect(resolveNextPath('/admin/organizations', 'super_admin')).toBe('/admin/organizations');
   });
 });
+
+/**
+ * S2: control characters (TAB/LF/CR and the rest of the C0 range) reach
+ * `window.location.assign` unstripped by the checks above, but the WHATWG
+ * URL parser strips ASCII tab/newline BEFORE parsing — so `/\t/evil.example`
+ * resolves as `//evil.example`, a protocol-relative redirect to a different
+ * host. This is the one path in this file that a literal super_admin session
+ * can walk: `isPathAllowed('super_admin', ...)` is unconditionally true, so
+ * nothing downstream of the character checks would ever catch this for that
+ * role — the control-character guard has to be the thing that stops it.
+ */
+describe('resolveNextPath — control-character open redirect (S2)', () => {
+  const SUPER = 'super_admin';
+
+  test('rejects a percent-encoded tab (the escaped form, decoded before the check)', () => {
+    expect(resolveNextPath('/%09/evil.example', SUPER)).toBeNull();
+  });
+
+  test('rejects a literal tab character', () => {
+    expect(resolveNextPath('/\t/evil.example', SUPER)).toBeNull();
+  });
+
+  test('rejects a literal carriage return', () => {
+    expect(resolveNextPath('/\r/evil.example', SUPER)).toBeNull();
+  });
+
+  test('rejects a literal newline immediately before a protocol-relative "//"', () => {
+    expect(resolveNextPath('/\n//evil.example', SUPER)).toBeNull();
+  });
+
+  test('a normal, allowed path is unaffected by the new guard', () => {
+    expect(resolveNextPath('/patients/x', SUPER)).toBe('/patients/x');
+  });
+
+  test('a role-forbidden path is still rejected — the character guard does not loosen the role check', () => {
+    expect(resolveNextPath('/admin', 'nurse')).toBeNull();
+  });
+});

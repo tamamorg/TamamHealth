@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Lock, LogOut, ShieldCheck } from '@/components/icons/lucide';
+import { Lock, LogOut } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface LockScreenProps {
@@ -14,18 +14,39 @@ interface LockScreenProps {
    *  to unlock, rather than falling back to a weaker check. */
   pinSupported?: boolean;
   onVerifyPin: (pin: string) => Promise<boolean>;
-  onSetPin: (pin: string) => Promise<void>;
   onUnlock: () => void;
   onLogout: () => void;
 }
 
-export default function LockScreen({ userName, hasPin, pinSupported = true, onVerifyPin, onSetPin, onUnlock, onLogout }: LockScreenProps) {
+/**
+ * Whether the lock screen may offer PIN entry at all, or must fall back to
+ * re-authentication only (the "Switch User" button, which signs the session
+ * out and returns to a full sign-in).
+ *
+ * This is the whole fix for the auto-lock-accepts-anything regression: PIN
+ * *registration* happens from Settings (`RoleSettingsView`), reached only
+ * once the user is already authenticated — never from this overlay, which by
+ * definition is shown to someone who has NOT proven who they are yet. There
+ * used to be a `mode === 'setup'` path here that let anyone standing in front
+ * of a locked, PIN-less device pick a fresh PIN and walk straight in
+ * (`onSetPin` immediately followed by `onUnlock`); that path is gone. The
+ * only two ways past this screen now are a correct PRE-EXISTING PIN
+ * (`onVerifyPin`, which itself refuses when none is registered — see
+ * `useAutoLock.verifyPin`) or `onLogout` into a fresh sign-in.
+ *
+ * Extracted as a pure function — this repo has no React Testing Library, so
+ * asserting "no PIN means only the re-auth branch renders" is done by testing
+ * this decision directly rather than rendering the component.
+ */
+export function canOfferPinEntry(hasPin: boolean, pinSupported: boolean): boolean {
+  return hasPin && pinSupported;
+}
+
+export default function LockScreen({ userName, hasPin, pinSupported = true, onVerifyPin, onUnlock, onLogout }: LockScreenProps) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
-  const [setupPin, setSetupPin] = useState(''); // stores first entry during setup
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
-  const [mode, setMode] = useState<'unlock' | 'setup' | 'confirm'>(hasPin ? 'unlock' : 'setup');
   const [busy, setBusy] = useState(false);
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,70 +63,44 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
       if (prev.length >= 4) return prev; // max 4 digits
       const next = prev + digit;
 
-      // Auto-submit when 4th digit entered
+      // Auto-submit when 4th digit entered — verify against the existing
+      // PIN. There is no setup/confirm branch here any more: a lock screen
+      // is only ever rendered with a digit pad when `canOfferPinEntry` is
+      // true, i.e. a PIN already exists to check against.
       if (next.length === 4) {
         if (autoRef.current) clearTimeout(autoRef.current);
         autoRef.current = setTimeout(async () => {
           setBusy(true);
-
-          if (mode === 'unlock') {
-            // Verify PIN
-            const valid = await onVerifyPin(next);
-            if (valid) {
-              onUnlock();
-            } else {
-              setError(t('lock.incorrectPin'));
-              setPin('');
-              triggerShake();
-            }
-          } else if (mode === 'setup') {
-            // Store first entry, move to confirm
-            setSetupPin(next);
-            setPin('');
-            setMode('confirm');
+          const valid = await onVerifyPin(next);
+          if (valid) {
+            onUnlock();
           } else {
-            // Confirm mode — check match
-            if (next === setupPin) {
-              await onSetPin(next);
-              onUnlock();
-            } else {
-              setError(t('lock.pinsDoNotMatch'));
-              setPin('');
-              setSetupPin('');
-              setMode('setup');
-              triggerShake();
-            }
+            setError(t('lock.incorrectPin'));
+            setPin('');
+            triggerShake();
           }
-
           setBusy(false);
         }, 250);
       }
 
       return next;
     });
-  }, [busy, mode, setupPin, onVerifyPin, onSetPin, onUnlock]);
+  }, [busy, onVerifyPin, onUnlock, t]);
 
   const handleBackspace = useCallback(() => {
     setPin(prev => prev.slice(0, -1));
     setError('');
   }, []);
 
-  const title = mode === 'unlock' ? t('auth.sessionLocked')
-    : mode === 'setup' ? t('lock.setPin')
-    : t('lock.confirmPin');
-
-  const subtitle = mode === 'unlock' ? t('lock.enterYourPin')
-    : mode === 'setup' ? t('lock.choosePin')
-    : t('lock.enterSamePin');
-
-  // This device cannot hash a PIN safely right now (no secure context — see
-  // `useAutoLock.pinHashingSupported`). The lock still engages, but it offers
-  // only the sign-in path: no digit pad, and no "set up a PIN" prompt that
-  // would otherwise appear here in `mode === 'setup'` for anyone who has
-  // never registered one. Falling through to the pad instead would mean
-  // either verifying against nothing (any 4 digits "work") or silently
-  // reaching for a weaker hash — both are the exact regression this guards.
-  if (!pinSupported) {
+  // No usable PIN to check against (never registered, or this context can't
+  // hash one — see `pinSupported`'s doc comment). Either way the ONLY way
+  // through is a fresh sign-in: no digit pad, and no "set up a PIN" prompt
+  // that would otherwise let whoever is standing at the device register one
+  // and walk straight in. Falling through to the pad instead would mean
+  // either verifying against nothing (any 4 digits "work") or minting a new
+  // PIN from an unauthenticated screen — both are the exact regression this
+  // guards against. See `canOfferPinEntry`.
+  if (!canOfferPinEntry(hasPin, pinSupported)) {
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6 text-center">
@@ -117,9 +112,15 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
               <Lock className="w-3.5 h-3.5" />
               <span className="text-xs">{t('auth.sessionLocked')}</span>
             </div>
-            <p className="text-[11px] mt-2 max-w-[240px]" style={{ color: 'var(--text-muted)' }}>
-              {t('lock.pinUnavailableInsecure')}
-            </p>
+            {/* Only the insecure-context reason has copy of its own — a
+                simply PIN-less device needs no extra explanation beyond the
+                sign-in button below, and inventing one risks implying the
+                setup flow this component no longer offers. */}
+            {!pinSupported && (
+              <p className="text-[11px] mt-2 max-w-[240px]" style={{ color: 'var(--text-muted)' }}>
+                {t('lock.pinUnavailableInsecure')}
+              </p>
+            )}
           </div>
           <button
             onClick={onLogout}
@@ -145,10 +146,10 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
         <div className="text-center">
           <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{userName}</p>
           <div className="flex items-center gap-1.5 justify-center mt-1" style={{ color: 'var(--text-muted)' }}>
-            {mode === 'unlock' ? <Lock className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-            <span className="text-xs">{title}</span>
+            <Lock className="w-3.5 h-3.5" />
+            <span className="text-xs">{t('auth.sessionLocked')}</span>
           </div>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('lock.enterYourPin')}</p>
         </div>
 
         {/* PIN dots */}

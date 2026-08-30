@@ -13,11 +13,20 @@ import { getRoleChoice } from './settings/role-settings-store';
 
 export type Density = 'comfortable' | 'compact';
 
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export interface UserPrefs {
   /** UI spacing. 'compact' tightens page padding and header spacing. */
   density: Density;
   /** Raise a desktop notification for new chat messages while the tab is hidden. */
   messageNotifications: boolean;
+  /**
+   * Interface theme. 'system' follows the OS setting live. Default is
+   * 'light', not 'system': the platform shipped light-only for years, and a
+   * clinician whose personal laptop is dark must opt in rather than find the
+   * ward software changed by an OS preference they set for other reasons.
+   */
+  theme: ThemePreference;
 }
 
 const KEY = 'tamamhealth.user-prefs';
@@ -25,6 +34,7 @@ const KEY = 'tamamhealth.user-prefs';
 export const DEFAULT_USER_PREFS: UserPrefs = {
   density: 'comfortable',
   messageNotifications: false,
+  theme: 'light',
 };
 
 let cache: UserPrefs | null = null;
@@ -53,8 +63,10 @@ export function setUserPrefs(patch: Partial<UserPrefs>): UserPrefs {
   if (typeof window !== 'undefined') {
     try { window.localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* best effort */ }
   }
-  // Density is a DOM-level concern — apply immediately so every page reflects it.
+  // Density and theme are DOM-level concerns — apply immediately so every
+  // page reflects them without a reload.
   if (patch.density !== undefined) applyDensity(next.density);
+  if (patch.theme !== undefined) applyTheme(next.theme);
   for (const cb of subscribers) { try { cb(next); } catch { /* isolate */ } }
   return next;
 }
@@ -68,6 +80,46 @@ export function subscribeUserPrefs(cb: (p: UserPrefs) => void): () => void {
 export function applyDensity(density: Density): void {
   if (typeof document === 'undefined') return;
   document.documentElement.dataset.density = density;
+}
+
+/** The theme a preference resolves to right now ('system' asks the OS). */
+export function resolveTheme(pref: ThemePreference): 'light' | 'dark' {
+  if (pref === 'light' || pref === 'dark') return pref;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'light';
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+// One OS-level listener, held only while the preference is 'system' — a
+// 'system' user who flips their OS theme sees the app follow live, and a
+// 'light'/'dark' user costs nothing.
+let systemThemeQuery: MediaQueryList | null = null;
+let systemThemeListener: ((e: MediaQueryListEvent) => void) | null = null;
+
+/**
+ * Reflect the theme choice on <html data-theme="light|dark"> for CSS to
+ * target. The inline script in app/layout.tsx stamps the same attribute from
+ * the same stored preference before first paint (no flash); this keeps it
+ * correct afterwards, including live OS changes under 'system'.
+ */
+export function applyTheme(pref: ThemePreference): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.dataset.theme = resolveTheme(pref);
+  const wantListener = pref === 'system' && typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  if (wantListener && !systemThemeListener) {
+    try {
+      systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      systemThemeListener = (e) => { document.documentElement.dataset.theme = e.matches ? 'dark' : 'light'; };
+      systemThemeQuery.addEventListener('change', systemThemeListener);
+    } catch { systemThemeQuery = null; systemThemeListener = null; }
+  } else if (!wantListener && systemThemeListener && systemThemeQuery) {
+    try { systemThemeQuery.removeEventListener('change', systemThemeListener); } catch { /* noop */ }
+    systemThemeQuery = null;
+    systemThemeListener = null;
+  }
 }
 
 /**

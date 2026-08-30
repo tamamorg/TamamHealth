@@ -83,4 +83,38 @@ describe('dischargeEncounter — clears the shared progress tracker', () => {
     const after = await getConsultationProgressByPatient('pat-00001');
     expect(after?.currentStage).toBe('completed');
   });
+
+  it('W2: does not complete an earlier, unrelated encounter\'s tracker when THIS encounter has none of its own', async () => {
+    // An older visit for the same patient already has a tracker.
+    const priorEncounter = await createEncounter({
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      clinicianId: DOCTOR_ID, clinicianName: 'Dr. Wani',
+      hospitalId: 'hosp-001', orgId: 'org-moh-ss',
+      status: 'ready_for_clinic_checkout', snapshot: {}, labOrderIds: [],
+      startedAt: new Date().toISOString(),
+    } as never);
+    const priorTracker = await ensureConsultationProgress({
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      hospitalId: 'hosp-001', orgId: 'org-moh-ss', encounterId: priorEncounter._id,
+    });
+
+    // Today's encounter (e.g. a facility-only visit that never ran through
+    // the consultation flow) has no tracker of its own. Discharging it must
+    // not reach back and close out the prior, unrelated tracker via the old
+    // `?? trackers[0]` "most recently touched" fallback.
+    const todaysEncounter = await createEncounter({
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      clinicianId: DOCTOR_ID, clinicianName: 'Dr. Wani',
+      hospitalId: 'hosp-001', orgId: 'org-moh-ss',
+      status: 'ready_for_clinic_checkout', snapshot: {}, labOrderIds: [],
+      startedAt: new Date().toISOString(),
+    } as never);
+
+    const discharged = await dischargeEncounter(todaysEncounter._id, { actorId: 'user-frontdesk-1' });
+    expect(discharged?.status).toBe('discharged');
+
+    const untouchedPriorTracker = await getConsultationProgressByPatient('pat-00001');
+    expect(untouchedPriorTracker?._id).toBe(priorTracker._id);
+    expect(untouchedPriorTracker?.currentStage).not.toBe('completed');
+  });
 });

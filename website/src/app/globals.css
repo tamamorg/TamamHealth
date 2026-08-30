@@ -725,8 +725,10 @@ header > div { min-width: 0; }
   .tm-hero-scrim { height: 300px; bottom: auto !important; }
   .tm-hero-wrap { height: auto !important; padding: 0 16px !important; margin-top: -68px !important; margin-bottom: 0 !important; }
   .tm-hero-card { width: 100% !important; padding: 26px 22px 28px !important; background: #ffffff !important; }
-  .tm-hero-btns { flex-direction: column; gap: 10px !important; }
-  .tm-hero-btns > a { width: 100%; text-align: center; padding: 15px 20px !important; }
+  /* Both hero CTAs on one row on phones (was stacked full-width), left-aligned
+     to the card's copy above them and sized to their text. */
+  .tm-hero-btns { flex-direction: row; flex-wrap: nowrap; justify-content: flex-start; gap: 10px !important; }
+  .tm-hero-btns > a { width: auto; text-align: center; padding: 11px 16px !important; font-size: 13.5px; white-space: nowrap; }
 }
 
 /* phones: the products card is copy + link only — the photo ate most of the
@@ -744,7 +746,25 @@ header > div { min-width: 0; }
   .tm-strip-rail > button { scroll-snap-align: start; border-inline-start: 0 !important; padding: 18px 18px 20px !important; min-height: 0 !important; }
   .tm-strip-rail::-webkit-scrollbar { display: none; }
   .tm-strip-section { display: none !important; }
-  .tm-hero-nav { display: flex !important; }
+  /* margin-top so the carousel control clears the card/strip above it instead
+     of butting right against its bottom edge. Applies to every HeroNav (hero,
+     products, footprint, levels — they share this component). */
+  .tm-hero-nav { display: flex !important; margin-top: 16px !important; }
+  /* Header utility dropdowns (portal login, language) open CENTRED in the
+     viewport on phones. Anchored to their icon near the right edge they
+     overflowed off the left and clipped their own text; `position: fixed`
+     breaks them out of that right-anchored icon wrapper (no transformed
+     ancestor), and the width fits the screen with a margin either side. */
+  .tm-util-menu {
+    position: fixed !important;
+    top: var(--tm-bar, 76px) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
+    width: min(320px, calc(100vw - 24px)) !important;
+    max-height: calc(100dvh - var(--tm-bar, 76px) - 16px);
+    overflow-y: auto;
+  }
   .tm-desk-steppers { display: none !important; }
 
   /* Same swap as the strip above: the desktop pickers go, HeroNav stays.

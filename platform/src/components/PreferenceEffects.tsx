@@ -13,7 +13,7 @@
  */
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/context';
-import { getUserPrefs, applyDensity, subscribeUserPrefs } from '@/lib/user-prefs';
+import { getUserPrefs, applyDensity, applyTheme, subscribeUserPrefs } from '@/lib/user-prefs';
 import { initRoleSettings, clearRoleSettings } from '@/lib/settings/role-settings-store';
 import { messagesDB } from '@/lib/db';
 import type { MessageDoc } from '@/lib/db-types';
@@ -39,6 +39,14 @@ export default function PreferenceEffects() {
   useEffect(() => {
     applyDensity(getUserPrefs().density);
     return subscribeUserPrefs(p => applyDensity(p.density));
+  }, []);
+
+  // Theme: the layout's inline script already stamped <html data-theme>
+  // before first paint; this re-applies on change and arms the live
+  // OS-preference listener for users on 'system'.
+  useEffect(() => {
+    applyTheme(getUserPrefs().theme);
+    return subscribeUserPrefs(p => applyTheme(p.theme));
   }, []);
 
   // Desktop notifications for new staff messages addressed to me.

@@ -81,6 +81,9 @@ function accountSection(landing: string, landingOptions: string[]): RoleSettingS
       sel('account.language', 'Interface language', 'Applies to labels and printed forms', 'English', []),
       sel('account.landing', 'Start-up screen', 'Where sign-in lands you', landing, landingOptions),
       sel('account.density', 'Data density', 'Row height in queues and tables', 'Comfortable', ['Comfortable', 'Compact']),
+      // 'System' follows the device's OS preference live. Default stays
+      // 'Light' — see the theme note in lib/user-prefs.ts.
+      sel('account.theme', 'Appearance', 'Light or dark interface', 'Light', ['Light', 'Dark', 'System']),
     ],
   };
 }

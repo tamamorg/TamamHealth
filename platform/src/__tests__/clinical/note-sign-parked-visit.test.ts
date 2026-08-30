@@ -23,7 +23,9 @@ import { createEncounter, getEncounter, transitionEncounter } from '@/lib/servic
 import { createPrescription, updatePrescription } from '@/lib/services/prescription-service';
 import { createLabResult, updateLabResult } from '@/lib/services/lab-service';
 import { getAlertsBySourceRecord } from '@/lib/services/surveillance-service';
-import { ensureConsultationProgress, getConsultationProgressByPatient } from '@/lib/services/consultation-progress-service';
+import {
+  ensureConsultationProgress, getConsultationProgressByPatient, getConsultationProgressByEncounter,
+} from '@/lib/services/consultation-progress-service';
 
 afterEach(async () => {
   await teardownTestDBs();
@@ -220,5 +222,53 @@ describe('signClinicalNote — clears the shared consultation-progress tracker (
 
     const after = await getConsultationProgressByPatient(PATIENT_ID);
     expect(after?.currentStage).not.toBe('completed');
+  });
+
+  it('W2: never completes a DIFFERENT, unrelated encounter\'s tracker when this note\'s own visit has none', async () => {
+    // Last week's consultation already closed out its own tracker.
+    const priorEncounter = await withClinicianEncounter();
+    const priorTracker = await ensureConsultationProgress({
+      patientId: PATIENT_ID, patientName: PATIENT_NAME, hospitalId: HOSP, orgId: ORG,
+      encounterId: priorEncounter._id,
+    });
+
+    // Today's visit is lab-only — no consultation-progress tracker was ever
+    // created for it — but a note still gets signed against it (e.g. a
+    // clinician documenting the result). The old `?? trackers[0]` fallback
+    // would have reached back and marked the PRIOR week's tracker completed.
+    const todaysEncounter = await withClinicianEncounter();
+    const todaysNote = await draftNoteFor(todaysEncounter._id);
+
+    await signClinicalNote(todaysNote._id, { signedBy: DOCTOR_ID, signedByName: DOCTOR_NAME, signerRole: 'doctor' });
+
+    const untouchedPriorTracker = await getConsultationProgressByPatient(PATIENT_ID);
+    // getConsultationProgressByPatient returns the most-recently-updated
+    // tracker for the patient; since nothing should have written to the
+    // prior tracker, it's still the only one that exists and still open.
+    expect(untouchedPriorTracker?._id).toBe(priorTracker._id);
+    expect(untouchedPriorTracker?.currentStage).not.toBe('completed');
+    expect(untouchedPriorTracker?.milestones.find(m => m.key === 'consultation_signed')?.status).not.toBe('completed');
+  });
+
+  it('W2: still completes THIS encounter\'s own tracker when one exists alongside an earlier, unrelated one', async () => {
+    const priorEncounter = await withClinicianEncounter();
+    await ensureConsultationProgress({
+      patientId: PATIENT_ID, patientName: PATIENT_NAME, hospitalId: HOSP, orgId: ORG,
+      encounterId: priorEncounter._id,
+    });
+
+    const todaysEncounter = await withClinicianEncounter();
+    const todaysTracker = await ensureConsultationProgress({
+      patientId: PATIENT_ID, patientName: PATIENT_NAME, hospitalId: HOSP, orgId: ORG,
+      encounterId: todaysEncounter._id,
+    });
+    const todaysNote = await draftNoteFor(todaysEncounter._id);
+
+    await signClinicalNote(todaysNote._id, { signedBy: DOCTOR_ID, signedByName: DOCTOR_NAME, signerRole: 'doctor' });
+
+    const after = await getConsultationProgressByEncounter(PATIENT_ID, todaysEncounter._id);
+    expect(after?._id).toBe(todaysTracker._id);
+    expect(after?.currentStage).toBe('completed');
+    expect(after?.milestones.find(m => m.key === 'consultation_signed')?.status).toBe('completed');
   });
 });

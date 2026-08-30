@@ -548,6 +548,197 @@
   --ehr-success-text: var(--color-success-800);
   --ehr-neutral-text: var(--color-slate-600);
   --ehr-mission-bg: var(--tb-blue-900);
+
+  /* Native widgets (scrollbars, form controls, date pickers) follow the app
+     theme, not the OS: <html data-theme> is the switch (set pre-paint by the
+     inline script in app/layout.tsx and kept current by lib/user-prefs.ts). */
+  color-scheme: light;
+}
+
+/* ============ DARK THEME ============
+   Selected in Settings → My account → Appearance ('Dark', or 'System' when
+   the OS is dark). Only THIS semantic layer changes: the palette above is
+   untouched, and every value here is one of the nine, a sanctioned ramp rung,
+   or a color-mix of them — `color-tokens.test.ts` still holds. The ground is
+   the palette's ink, surfaces are its navy and the three sanctioned
+   navy→deep lifts (#1B4270 / #244B75 / #35608C), and text is white pulled
+   slightly toward ice so it stays in the brand's cool cast.
+
+   The slate ramp inverts here on purpose: hundreds of rules read
+   --color-slate-* directly as "dark text / light line", and remapping the
+   ramp is what turns them all at once. A rule that truly needs
+   light-ink-on-light-field in both themes must say so with a literal.
+
+   Deliberately still light in dark mode: the login page (lg-*, its own
+   stylesheet, shown before any preference exists) and print output. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* App canvas */
+  --bg-app:        var(--tm-ink);
+  --bg-primary:    var(--tm-navy);
+  --bg-secondary:  color-mix(in srgb, var(--tm-dodger) 10%, transparent);
+  --bg-card:       var(--tm-navy);
+  --bg-card-solid: var(--tm-navy);
+  --bg-card-hover: #1B4270;
+  --bg-input:      color-mix(in srgb, var(--tm-navy) 65%, var(--tm-ink));
+  --bg-sidebar:    var(--tm-navy);
+  --overlay-subtle: color-mix(in srgb, var(--tm-dodger) 9%, transparent);
+  --overlay-light:  color-mix(in srgb, var(--tm-dodger) 14%, transparent);
+  --overlay-medium: color-mix(in srgb, var(--tm-dodger) 22%, transparent);
+  --overlay-backdrop: color-mix(in srgb, #000000 68%, transparent);
+
+  /* Slate ramp, inverted: -900 ink becomes near-white, -100 hairline becomes
+     a line one step LIGHTER than the navy surface it sits on. */
+  --color-slate-25:  color-mix(in srgb, var(--tm-navy) 35%, var(--tm-ink));
+  --color-slate-50:  color-mix(in srgb, var(--tm-navy) 55%, var(--tm-ink));
+  --color-slate-75:  color-mix(in srgb, var(--tm-navy) 75%, var(--tm-ink));
+  --color-slate-100: #1B4270;
+  --color-slate-150: #244B75;
+  --color-slate-200: #244B75;
+  --color-slate-300: #35608C;
+  --color-slate-400: #35608C;
+  --color-slate-450: color-mix(in srgb, var(--color-white) 42%, var(--tm-navy));
+  --color-slate-500: #94A2B3;
+  --color-slate-600: color-mix(in srgb, var(--color-white) 66%, var(--tm-navy));
+  --color-slate-700: color-mix(in srgb, var(--color-white) 76%, var(--tm-navy));
+  --color-slate-800: color-mix(in srgb, var(--color-white) 86%, var(--tm-navy));
+  --color-slate-900: color-mix(in srgb, var(--color-white) 93%, var(--tm-ice));
+  --color-slate-950: var(--color-white);
+  --color-neutral-600: #94A2B3;
+
+  /* Cream is a paper-hover tone; on navy the "lift" is toward deep blue. */
+  --color-cream-25:  color-mix(in srgb, var(--tm-navy) 80%, var(--tm-ink));
+  --color-cream-50:  #1B4270;
+  --color-cream-75:  #1B4270;
+  --color-cream-100: #244B75;
+
+  /* Accents: fills keep the brand blues (white still sits on them); the
+     TEXT rungs brighten to stay readable on navy. */
+  --accent-hover:  var(--tm-blue);
+  --accent-text:   var(--brand-300);
+  --accent-light:  color-mix(in srgb, var(--tm-dodger) 16%, transparent);
+  --text-strong:   var(--brand-300);
+  --text-primary:  var(--color-slate-900);
+  --text-secondary: var(--color-slate-700);
+  --text-muted:    var(--color-slate-500);
+  --link-color:    var(--brand-300);
+  --icon-color:    var(--color-slate-500);
+
+  --border-light:  var(--color-slate-100);
+  --border-medium: var(--color-slate-150);
+  --border-accent: var(--tm-dodger);
+
+  --glass-bg:        var(--bg-card);
+  --glass-bg-strong: var(--bg-card-solid);
+  --glass-border:    var(--color-slate-100);
+
+  --card-shadow:       0 1px 2px color-mix(in srgb, #000000 30%, transparent);
+  --card-shadow-lg:    0 3px 10px color-mix(in srgb, #000000 42%, transparent);
+  --card-shadow-xl:    0 12px 32px color-mix(in srgb, #000000 55%, transparent);
+  --card-hover-border: var(--border-medium);
+
+  --toggle-track: #35608C;
+  --scrollbar-thumb: color-mix(in srgb, var(--tm-dodger) 30%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--tm-dodger) 45%, transparent);
+
+  --table-header-bg: color-mix(in srgb, var(--tm-dodger) 12%, transparent);
+  --table-row-hover: color-mix(in srgb, var(--tm-dodger) 9%, transparent);
+
+  --nav-text: var(--color-slate-600);
+  --btn-secondary-bg: var(--tm-navy);
+  --btn-secondary-hover-bg: color-mix(in srgb, var(--tm-dodger) 14%, transparent);
+  --btn-secondary-hover-border: var(--tm-dodger);
+
+  /* Status: fields become the hue sunk into the ink ground; inks brighten to
+     the 400 rungs, which are the ones that clear contrast on navy. */
+  --color-success: var(--color-success-400);
+  --color-success-text: var(--color-success-400);
+  --color-success-bg: color-mix(in srgb, var(--color-success-500) 22%, var(--tm-ink));
+  --color-warning: var(--gold-500);
+  --color-warning-text: var(--gold-400);
+  --color-warning-bg: color-mix(in srgb, var(--gold-500) 16%, var(--tm-ink));
+  --color-danger: var(--color-danger-400);
+  --color-danger-text: var(--color-danger-400);
+  --color-danger-bg: color-mix(in srgb, var(--color-danger-500) 26%, var(--tm-ink));
+  --color-info: var(--tm-dodger);
+  --color-info-text: var(--brand-300);
+  --color-info-bg: color-mix(in srgb, var(--tm-dodger) 16%, transparent);
+  --color-success-border: color-mix(in srgb, var(--color-success-500) 55%, var(--tm-ink));
+  --color-warning-border: color-mix(in srgb, var(--gold-500) 50%, var(--tm-ink));
+  --color-danger-border: color-mix(in srgb, var(--color-danger-500) 55%, var(--tm-ink));
+  --color-info-border: color-mix(in srgb, var(--tm-dodger) 45%, var(--tm-ink));
+
+  --semantic-active: var(--brand-300);
+  --semantic-active-bg: color-mix(in srgb, var(--tm-dodger) 15%, var(--tm-ink));
+  --semantic-active-border: color-mix(in srgb, var(--tm-dodger) 45%, var(--tm-ink));
+  --semantic-success: var(--color-success-400);
+  --semantic-success-bg: var(--color-success-bg);
+  --semantic-success-border: var(--color-success-border);
+  --semantic-warning: var(--gold-400);
+  --semantic-warning-bg: var(--color-warning-bg);
+  --semantic-warning-border: var(--color-warning-border);
+  --semantic-danger: var(--color-danger-400);
+  --semantic-danger-bg: var(--color-danger-bg);
+  --semantic-danger-border: var(--color-danger-border);
+  --semantic-request: var(--orange-400);
+  --semantic-request-bg: color-mix(in srgb, var(--tm-orange) 16%, var(--tm-ink));
+  --semantic-request-border: color-mix(in srgb, var(--tm-orange) 45%, var(--tm-ink));
+  --semantic-it: var(--brand-300);
+  --semantic-it-bg: color-mix(in srgb, var(--tm-dodger) 12%, var(--tm-ink));
+  --semantic-it-border: color-mix(in srgb, var(--tm-dodger) 40%, var(--tm-ink));
+  --semantic-neutral: var(--color-slate-700);
+  --semantic-neutral-bg: var(--color-slate-75);
+  --semantic-neutral-border: var(--color-slate-200);
+  --semantic-inactive: var(--color-slate-600);
+  --semantic-inactive-bg: var(--color-slate-50);
+  --semantic-inactive-border: var(--color-slate-150);
+
+  --category-clinical: var(--brand-300);
+  --category-clinical-bg: color-mix(in srgb, var(--tm-deep) 35%, var(--tm-ink));
+  --category-lab: var(--tm-dodger);
+  --category-lab-bg: color-mix(in srgb, var(--tm-blue) 25%, var(--tm-ink));
+  --category-maternal: var(--orange-400);
+  --category-maternal-bg: color-mix(in srgb, var(--tm-orange) 16%, var(--tm-ink));
+  --category-transfer: var(--gold-400);
+  --category-transfer-bg: color-mix(in srgb, var(--gold-500) 14%, var(--tm-ink));
+  --category-admin: var(--color-slate-700);
+  --category-admin-bg: var(--color-slate-75);
+
+  --chart-grid: #244B75;
+  --chart-axis: #94A2B3;
+
+  --map-bg: color-mix(in srgb, var(--tm-blue) 14%, transparent);
+  --map-stroke: color-mix(in srgb, var(--color-white) 14%, transparent);
+  --map-lines: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --map-label: color-mix(in srgb, var(--color-white) 45%, transparent);
+  --map-tooltip-bg: var(--tm-navy);
+  --map-tooltip-stroke: color-mix(in srgb, var(--tm-dodger) 30%, transparent);
+  --map-tooltip-text: var(--color-slate-900);
+  --map-tooltip-sub: var(--color-slate-500);
+  --map-dot-stroke: var(--tm-ink);
+
+  /* EHR shell */
+  --ehr-page-bg: var(--bg-app);
+  --ehr-panel: var(--tm-navy);
+  --ehr-border: var(--color-slate-150);
+  --ehr-border-soft: var(--color-slate-100);
+  --ehr-text: var(--color-slate-900);
+  --ehr-muted: var(--color-slate-500);
+  --ehr-text-body: var(--color-slate-700);
+  --ehr-text-title: var(--color-slate-900);
+  --ehr-hover: var(--color-slate-25);
+  --ehr-head: var(--color-slate-50);
+  --ehr-soft: var(--color-slate-100);
+  --ehr-info-soft: color-mix(in srgb, var(--tm-dodger) 18%, var(--tm-ink));
+  --ehr-info-bg: color-mix(in srgb, var(--tm-dodger) 12%, var(--tm-ink));
+  --ehr-danger-bg: var(--color-danger-bg);
+  --ehr-danger-text: var(--color-danger-400);
+  --ehr-warning-bg: var(--color-warning-bg);
+  --ehr-warning-text: var(--gold-400);
+  --ehr-success-bg: var(--color-success-bg);
+  --ehr-success-text: var(--color-success-400);
+  --ehr-neutral-text: var(--color-slate-600);
 }
 
 * { box-sizing: border-box; }

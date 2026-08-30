@@ -65,6 +65,28 @@ export async function getConsultationProgressByPatient(
   return rows[0] ?? null;
 }
 
+/**
+ * The tracker for one specific visit — an indexed `{patientId, encounterId}`
+ * lookup rather than `getConsultationProgressByPatient`'s "most recently
+ * touched tracker for this patient". A patient can have more than one
+ * tracker (a prior, already-closed episode plus today's visit); callers that
+ * need to close out or advance THIS encounter's own tracker must never fall
+ * back to an unrelated one, so this returns `null` rather than a stand-in
+ * when no tracker has been created for `encounterId` yet.
+ */
+export async function getConsultationProgressByEncounter(
+  patientId: string,
+  encounterId: string,
+  scope?: DataScope,
+): Promise<ConsultationProgressDoc | null> {
+  const rows = await findByType<ConsultationProgressDoc>(
+    consultationProgressDB(), 'consultation_progress', { patientId, encounterId },
+    { indexFields: ['type', 'patientId', 'encounterId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible[0] ?? null;
+}
+
 export interface ProgressActor {
   id?: string;
   name?: string;

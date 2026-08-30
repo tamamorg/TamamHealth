@@ -854,13 +854,14 @@ export async function dischargeEncounter(
   // the last real update (often "waiting for provider") stood forever and the
   // notification bell kept reporting a patient as in-progress long after the
   // facility discharged them. Best-effort and scoped to THIS visit's own
-  // tracker (by encounterId, falling back to the most recently touched one for
-  // the patient) — a stale tracker from an unrelated earlier episode must
-  // never be closed by this discharge.
+  // tracker, looked up by `{patientId, encounterId}` — a stale tracker from an
+  // unrelated earlier episode (a prior, already-closed visit for the same
+  // patient) must never be closed by this discharge, so there is no
+  // most-recently-touched fallback: no tracker for this encounter means
+  // nothing to close.
   try {
-    const { getAllConsultationProgress, updateProgressMilestone } = await import('./consultation-progress-service');
-    const trackers = (await getAllConsultationProgress()).filter(p => p.patientId === current.patientId);
-    const tracker = trackers.find(p => p.encounterId === id) ?? trackers[0];
+    const { getConsultationProgressByEncounter, updateProgressMilestone } = await import('./consultation-progress-service');
+    const tracker = await getConsultationProgressByEncounter(current.patientId, id);
     if (tracker && tracker.currentStage !== 'completed' && tracker.currentStage !== 'cancelled') {
       await updateProgressMilestone(tracker._id, 'consultation_signed', 'completed', { id: opts.actorId });
     }

@@ -97,11 +97,26 @@ export async function POST(request: NextRequest) {
     // need a row an access review can find.
     void logAuditSafe('password_change_success', auth.sub, auth.username, 'Password changed', true);
 
+    // "Keep me signed in" from the original login — carried as the `persist`
+    // JWT claim (see createToken / login-session.ts), which `AuthPayload`
+    // itself doesn't declare (it's a route-auth concern, not a claim the JWT
+    // layer types), but the token this route just verified does carry it.
+    // Absent means a token minted before the claim existed — treat that as
+    // persistent, matching every session's behaviour before it existed,
+    // exactly like /api/auth/me's own renewal does.
+    const persist = (auth as unknown as { persist?: boolean }).persist !== false;
+
     // Re-issue the session JWT without the forced-change flag so the gate
     // clears immediately, no re-login required. The fresh passwordUpdatedAt
     // becomes this token's `pwdAt` claim — every OTHER session for this
     // account now fails the password-epoch check on its next request, so a
     // stolen or forgotten session can't outlive a password change.
+    //
+    // `persist` is threaded through here and into `applySessionCookies`
+    // below for the same reason /api/auth/me's renewal threads it: re-minting
+    // a token must not silently upgrade a browser-session cookie (unchecked
+    // "Keep me signed in") into a 30-day persistent one just because this
+    // endpoint happens to reissue the session.
     const token = await createToken({
       _id: auth.sub,
       username: auth.username,
@@ -117,6 +132,7 @@ export async function POST(request: NextRequest) {
       state: auth.state,
       mustChangePassword: false,
       passwordUpdatedAt: updatedUser.passwordUpdatedAt,
+      persist,
     });
 
     // The bootstrap credentials file has now served its only purpose: it
@@ -139,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true });
     const csrfToken = await mintCsrfToken(auth.sub);
-    applySessionCookies(response.cookies, token, csrfToken);
+    applySessionCookies(response.cookies, token, csrfToken, persist);
     return response;
   } catch (err) {
     logApiError('[API /auth/change-password POST]', err);

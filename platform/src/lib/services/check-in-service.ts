@@ -8,7 +8,9 @@
  * triage station; the front desk captures arrival context + an acuity flag.
  */
 import type { AppointmentDoc, TriageDoc, TriagePriority, EncounterDoc } from '../db-types';
-import { createTriage, getTriageByEncounter } from './triage-service';
+import {
+  createTriage, updateTriage, getTriageByEncounter, findActiveTriageForPatient, DuplicateActiveTriageError,
+} from './triage-service';
 import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus, BookingConflictError } from './appointment-service';
 import { jubaDate, jubaTime } from '../time-juba';
 import { APPOINTMENT_PENDING_STATUSES } from '../appointment-status';
@@ -337,42 +339,87 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
   });
 
   const existingTriage = await getTriageByEncounter(encounter._id);
-  const triage = existingTriage ?? await createTriage({
-    patientId: input.patientId,
-    patientName: input.patientName,
-    hospitalNumber: input.hospitalNumber,
-    // ABCC is NOT assessed at the front desk, and the record must say so
-    // (KAN-100): writing normal-looking defaults here fabricated clinical
-    // findings no clinician made. The clerk-selected acuity is real user
-    // input and is kept; the nurse re-triages with the full ETAT tree.
-    airway: 'not_assessed',
-    breathing: 'not_assessed',
-    circulation: 'not_assessed',
-    consciousness: 'not_assessed',
-    assessmentSource: 'clerical_checkin',
-    priority: ACUITY_TO_PRIORITY[acuity],
-    temperature: v.temperature,
-    pulse: v.pulse,
-    respiratoryRate: v.respiratoryRate,
-    systolic: v.systolic,
-    diastolic: v.diastolic,
-    oxygenSaturation: v.oxygenSaturation,
-    weight: v.weight,
-    painScore: v.painScore,
-    chiefComplaint: input.chiefComplaint,
-    symptomDuration: input.symptomDuration,
-    knownAllergies: input.knownAllergies,
-    modeOfArrival: input.modeOfArrival ?? 'walk-in',
-    notes: input.notes,
-    triagedBy: input.checkedInById,
-    triagedByName: input.checkedInByName,
-    triagedAt: new Date().toISOString(),
-    facilityId: input.facilityId,
-    facilityName: input.facilityName,
-    orgId: input.orgId,
-    status: 'pending',
-    encounterId: encounter._id,
-  } as Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
+  let triage: TriageDoc;
+  if (existingTriage) {
+    triage = existingTriage;
+  } else {
+    const triagePayload = {
+      patientId: input.patientId,
+      patientName: input.patientName,
+      hospitalNumber: input.hospitalNumber,
+      // ABCC is NOT assessed at the front desk, and the record must say so
+      // (KAN-100): writing normal-looking defaults here fabricated clinical
+      // findings no clinician made. The clerk-selected acuity is real user
+      // input and is kept; the nurse re-triages with the full ETAT tree.
+      airway: 'not_assessed',
+      breathing: 'not_assessed',
+      circulation: 'not_assessed',
+      consciousness: 'not_assessed',
+      assessmentSource: 'clerical_checkin',
+      priority: ACUITY_TO_PRIORITY[acuity],
+      temperature: v.temperature,
+      pulse: v.pulse,
+      respiratoryRate: v.respiratoryRate,
+      systolic: v.systolic,
+      diastolic: v.diastolic,
+      oxygenSaturation: v.oxygenSaturation,
+      weight: v.weight,
+      painScore: v.painScore,
+      chiefComplaint: input.chiefComplaint,
+      symptomDuration: input.symptomDuration,
+      knownAllergies: input.knownAllergies,
+      modeOfArrival: input.modeOfArrival ?? 'walk-in',
+      notes: input.notes,
+      triagedBy: input.checkedInById,
+      triagedByName: input.checkedInByName,
+      triagedAt: new Date().toISOString(),
+      facilityId: input.facilityId,
+      facilityName: input.facilityName,
+      orgId: input.orgId,
+      status: 'pending',
+      encounterId: encounter._id,
+    } as Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>;
+    try {
+      triage = await createTriage(triagePayload);
+    } catch (error) {
+      if (!(error instanceof DuplicateActiveTriageError)) throw error;
+      // The patient already has an active (pending/seen, <24h) triage that
+      // createTriage's one-active-triage-per-patient guard refuses to
+      // duplicate — e.g. left at 'seen' from an earlier visit whose encounter
+      // closed without the triage itself ever reaching a terminal status, or
+      // a same-day return after discharge. The clerical placeholder must
+      // never dead-end here: re-attendance has to succeed.
+      const existingActive = await findActiveTriageForPatient(input.patientId);
+      if (!existingActive) {
+        // Raced with something that resolved the duplicate between
+        // createTriage's own check and this one (e.g. discharged on another
+        // workstation) — retry once rather than surface a now-stale
+        // conflict to the clerk.
+        triage = await createTriage(triagePayload);
+      } else if (existingActive.facilityId === input.facilityId) {
+        // Same-facility re-attendance: attach THIS check-in's encounter to
+        // the existing active triage instead of fabricating a second one.
+        // Only encounterId is touched — updateTriage's vitals-safety gate
+        // only re-runs for fields that affect the recommendation, so a
+        // 'seen' triage's real ETAT findings are never overwritten by the
+        // front desk's not_assessed placeholder.
+        triage = await updateTriage(existingActive._id, { encounterId: encounter._id }, {
+          userId: input.checkedInById, username: input.checkedInByName,
+        });
+      } else {
+        // Active at a DIFFERENT facility — not this visit. Relinking it here
+        // would pull another facility's queue entry off its own worklist, so
+        // it is surfaced as this visit's triage as-is: the clerk still gets
+        // a normal check-in result instead of an uncaught throw and a
+        // stranded repair doc.
+        triage = existingActive;
+      }
+      await upsertWorkflowRepair(repairId, {
+        ...repairBase, appointmentId: linkedAppointmentId, encounterId: encounter._id, triageId: triage._id,
+        status: 'open', currentStep: 'triage_attached_existing',
+      });
+    }
+  }
 
   // Mark the matched EXISTING appointment checked_in — non-fatal. A
   // newly-created walk-in booking is already written with status

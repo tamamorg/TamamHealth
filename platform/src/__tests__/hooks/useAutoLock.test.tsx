@@ -151,16 +151,34 @@ describe('the screen-lock PIN (PBKDF2-SHA256, per-user salt)', () => {
 
     const { latest } = mountHarness(true);
     expect(latest().hasPin).toBe(false);
-    // "No usable PIN" reads as "accept any input" (existing contract for a
-    // device that never registered one) — never as "verify against the
-    // legacy value".
-    await expect(latest().verifyPin('0000')).resolves.toBe(true);
+    // "No usable PIN" refuses outright — never "verify against the legacy
+    // value", and never "accept any input" either. Accepting any input is
+    // exactly the auto-lock bypass this hook must not have: a lock screen
+    // with no usable PIN is only escapable via a fresh sign-in.
+    await expect(latest().verifyPin('0000')).resolves.toBe(false);
   });
 
   it('also discards the even older single-round-SHA-256-with-a-static-salt hex format', () => {
     localStorage.setItem(PIN_HASH_KEY, 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
     expect(hasLockPin()).toBe(false);
     expect(localStorage.getItem(PIN_HASH_KEY)).toBeNull();
+  });
+});
+
+describe('verifyPin refuses when no PIN is registered at all — not "accept any input" (S1)', () => {
+  it('returns false, never true, against a device that has never set a PIN', async () => {
+    // Auto-lock is on by default, so the very first time a shared device
+    // locks there is no PIN yet. verifyPin used to treat that as "nothing to
+    // check against, let it through", which meant ANY four digits unlocked a
+    // session nobody had actually authenticated into. The only ways in now
+    // are a correct pre-existing PIN or a fresh sign-in — see LockScreen's
+    // canOfferPinEntry, which keeps this same device from even offering a
+    // digit pad in this state.
+    expect(hasLockPin()).toBe(false);
+    const { latest } = mountHarness(true);
+    expect(latest().hasPin).toBe(false);
+    await expect(latest().verifyPin('1234')).resolves.toBe(false);
+    await expect(latest().verifyPin('0000')).resolves.toBe(false);
   });
 });
 

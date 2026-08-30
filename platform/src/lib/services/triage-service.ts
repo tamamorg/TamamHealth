@@ -20,10 +20,17 @@ import { patientAgeYearsExact } from '../patient-utils';
  * "apply adult ranges" and flags every such warning as resting on that
  * assumption.
  */
-async function resolvePatientAgeYears(patientId?: string): Promise<number | undefined> {
+async function resolvePatientAgeYears(patientId?: string, scope?: DataScope): Promise<number | undefined> {
   if (!patientId) return undefined;
   try {
     const patient = await patientsDB().get(patientId) as PatientDoc;
+    // Scoped, not just present: a `scope` from an authenticated caller (the
+    // /api/triage route) must resolve an out-of-tenant patient exactly like
+    // a lookup failure — age unknown — rather than let their real age reach
+    // the vitals-warning text and become a cross-tenant existence oracle.
+    // Callers with no scope (e.g. the browser's own PouchDB, which only
+    // ever holds documents the device is entitled to) keep the bare lookup.
+    if (scope && filterByScope([patient], scope).length === 0) return undefined;
     return patientAgeYearsExact(patient) ?? undefined;
   } catch {
     return undefined;
@@ -40,8 +47,8 @@ async function resolvePatientAgeYears(patientId?: string): Promise<number | unde
  * go through the override path regardless of what it claims the
  * recommendation was.
  */
-async function computeVitalUrgencyRecommendation(doc: Partial<TriageDoc>, capillaryRefill: number | null): Promise<TriagePriority> {
-  const patientAgeYears = await resolvePatientAgeYears(doc.patientId);
+async function computeVitalUrgencyRecommendation(doc: Partial<TriageDoc>, capillaryRefill: number | null, scope?: DataScope): Promise<TriagePriority> {
+  const patientAgeYears = await resolvePatientAgeYears(doc.patientId, scope);
   const warnings = getTriageVitalWarnings(
     {
       temperature: doc.temperature,
@@ -68,7 +75,7 @@ async function computeVitalUrgencyRecommendation(doc: Partial<TriageDoc>, capill
   return highestTriagePriority(structuredRecommendation, vitalsRecommendation) as TriagePriority;
 }
 
-async function assertTriageVitalSafety(doc: Partial<TriageDoc>): Promise<void> {
+async function assertTriageVitalSafety(doc: Partial<TriageDoc>, scope?: DataScope): Promise<void> {
   const errors = validateTriageVitals({
     temperature: doc.temperature,
     pulse: doc.pulse,
@@ -107,7 +114,7 @@ async function assertTriageVitalSafety(doc: Partial<TriageDoc>): Promise<void> {
   // `vitalUrgencyRecommendation` cannot use that to bypass the gate — the
   // recommendation enforced here always comes from this doc's own vitals and
   // the patient's real age.
-  const recommendation = await computeVitalUrgencyRecommendation(doc, capillaryRefill);
+  const recommendation = await computeVitalUrgencyRecommendation(doc, capillaryRefill, scope);
   if (doc.priority && isLowerTriagePriority(doc.priority, recommendation) && (!doc.vitalUrgencyOverridden || !overrideReason)) {
     throw new Error('Saving below the recommended triage urgency requires a recorded override reason.');
   }
@@ -238,6 +245,18 @@ export interface CreateTriageOptions {
   resumePendingId?: string;
   /** Forwarded to `updateTriage` when `resumePendingId` is used. */
   actor?: TriageActor;
+  /**
+   * Scope the duplicate-active-triage lookup and the vitals-safety gate's own
+   * patient-age lookup to the caller's tenant — required for an authenticated
+   * API caller (e.g. /api/triage) so it neither finds another org's active
+   * triage nor lets another org's patient's real age reach the gate. Local
+   * PouchDB callers (the browser only ever replicates data it is entitled
+   * to) may omit it and keep the previous unscoped lookup — in particular
+   * check-in-service.ts's clerical placeholder deliberately checks across
+   * every facility the device holds, so a walk-in returning to a DIFFERENT
+   * facility is still caught as a duplicate rather than missed.
+   */
+  scope?: DataScope;
 }
 
 export async function createTriage(
@@ -248,12 +267,12 @@ export async function createTriage(
     return updateTriage(options.resumePendingId, data, options.actor);
   }
 
-  const existingActive = await findActiveTriageForPatient(data.patientId);
+  const existingActive = await findActiveTriageForPatient(data.patientId, options.scope);
   if (existingActive) {
     throw new DuplicateActiveTriageError(existingActive._id, data.patientId);
   }
 
-  await assertTriageVitalSafety(data);
+  await assertTriageVitalSafety(data, options.scope);
   const db = triageDB();
   const now = new Date().toISOString();
   const doc: TriageDoc = withPendingOfflineSync({
@@ -292,6 +311,41 @@ const AMENDMENT_AUDIT_EXCLUDED_FIELDS = new Set<keyof TriageDoc>([
   'vitalUrgencyRecommendation', 'vitalUrgencyWarnings', 'updatedAt', '_rev',
 ]);
 
+/**
+ * Value equality for the update-diff checks below. `redCriteria` /
+ * `yellowCriteria` / `infectionRiskSigns` are arrays — comparing them with
+ * `!==` is always true for two different array instances holding the SAME
+ * codes, which made a caller that simply echoes a field back (a whole-form
+ * re-save, `createTriage`'s `resumePendingId` path) look like it had amended
+ * or changed it.
+ */
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  }
+  return false;
+}
+
+/**
+ * Fields whose change can move the vitals-urgency recommendation that
+ * `assertTriageVitalSafety` enforces `doc.priority` against. Anything else
+ * (status, assignedRoom, encounterId, notes, ...) cannot make a previously
+ * safe priority unsafe — see the gate below for why that distinction matters.
+ */
+const VITAL_URGENCY_RECOMPUTE_FIELDS = new Set<keyof TriageDoc>([
+  'temperature', 'pulse', 'respiratoryRate', 'oxygenSaturation', 'systolic', 'diastolic',
+  'painScore', 'bloodGlucose', 'gcs', 'muac',
+  'priority', 'redCriteria', 'yellowCriteria', 'capillaryRefillSeconds', 'pregnancyStatus',
+]);
+
+function updateAffectsVitalUrgencyRecommendation(updates: Partial<TriageDoc>, existing: TriageDoc): boolean {
+  for (const key of VITAL_URGENCY_RECOMPUTE_FIELDS) {
+    if (key in updates && !valuesEqual(updates[key], existing[key])) return true;
+  }
+  return false;
+}
+
 export async function updateTriage(
   id: string,
   updates: Partial<TriageDoc>,
@@ -311,7 +365,19 @@ export async function updateTriage(
     }
 
     const updated: TriageDoc = withPendingOfflineSync({ ...existing, ...updates, updatedAt: new Date().toISOString() });
-    await assertTriageVitalSafety(updated);
+    // Only recompute-and-enforce when this update actually touches a field
+    // the recommendation depends on. The doc's own vitals already passed
+    // this gate at whichever earlier write last touched them; re-running it
+    // for an update that doesn't (a bare status transition, an assigned-room
+    // patch, encounterId re-linking) permanently stranded any doc where the
+    // recommendation and the stored priority already disagree — a legacy
+    // record predating this gate, or an infant/abnormal-vitals doc — since
+    // that call would throw before the transition (e.g. seen → discharged,
+    // or the escalate/LWBS encounter transition that runs ahead of it) could
+    // ever succeed.
+    if (updateAffectsVitalUrgencyRecommendation(updates, existing)) {
+      await assertTriageVitalSafety(updated);
+    }
     let resp: Awaited<ReturnType<typeof db.put>>;
     try {
       resp = await db.put(updated);
@@ -331,7 +397,7 @@ export async function updateTriage(
       // an already-saved record) and audit which FIELDS changed. Never the
       // values: this is a compliance trail, not a second copy of the PHI.
       const changedFields = (Object.keys(updates) as Array<keyof TriageDoc>).filter(
-        key => !AMENDMENT_AUDIT_EXCLUDED_FIELDS.has(key) && updates[key] !== existing[key],
+        key => !AMENDMENT_AUDIT_EXCLUDED_FIELDS.has(key) && !valuesEqual(updates[key], existing[key]),
       );
       if (changedFields.length > 0) {
         await logAuditSafe('TRIAGE_AMENDED', actor?.userId, actor?.username,

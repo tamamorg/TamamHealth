@@ -171,22 +171,28 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
     'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'front_desk',
     'medical_superintendent', 'triage_nurse', 'midwife',
   ],
-  // Reception takes phoned-in referrals — the `proxy_referral_capture`
-  // capability in clinical-flow/roles.ts, and what `canManageReferrals` and the
-  // front_desk `/referrals` route ("referral intake") both already offer.
+  // Referral authorship is the set of roles that can actually CREATE a
+  // referral in the product — the clinicians who refer plus reception, which
+  // takes phoned-in referrals (the `proxy_referral_capture` capability in
+  // clinical-flow/roles.ts). This must stay in lockstep with
+  // `usePermissions.canManageReferrals`, which gates the referrals-page create
+  // action: a write role here for a role that has no create surface is a dead
+  // grant, and a create surface with no write role is the worst failure shape
+  // (local write succeeds, the CouchDB validator silently rejects on replicate,
+  // the referral looks saved and never leaves the device).
   //
-  // `nutritionist` and `hospital_manager` both hold the `/referrals` route in
-  // `role-routes.ts` — the nutrition dashboard's "Refer" action for a SAM/MAM
-  // case needing clinical follow-up is a nutritionist-authored referral — and
-  // both were missing here. A route grant with no matching row here is the
-  // worst failure shape available: the API guard (and the UI) let the write
-  // through, the local PouchDB write succeeds, and only the CouchDB validator
-  // — invisible to the user, replicating minutes later — rejects it. The
-  // referral looks saved and never leaves the device.
+  // `nutritionist` and `hospital_manager` were removed 2026-08-30 (audit): both
+  // hold the `/referrals` ROUTE but neither can create a referral — the create
+  // action is gated on `canManageReferrals`, which excludes them, and the
+  // nutrition dashboard's "Refer" action only navigates to `/referrals`. Their
+  // write grant was therefore unused, and granting an administrative role
+  // (hospital_manager) authorship of a clinical referral with no clinician in
+  // the loop inverts least-privilege. If nutritionist SAM/MAM referral
+  // authorship is wanted, add it deliberately as a set: canManageReferrals +
+  // this row + a real create surface, not a dangling write permission.
   referral: [
     'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
     'medical_superintendent', 'front_desk', 'central_registration_clerk',
-    'nutritionist', 'hospital_manager',
   ],
   birth: VITAL_EVENTS,
   death: VITAL_EVENTS,

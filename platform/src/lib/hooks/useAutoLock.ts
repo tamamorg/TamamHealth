@@ -286,14 +286,21 @@ export function useAutoLock(
 
   /** Verify a PIN against the stored hash. Returns true if valid.
    *
-   * Never falls back to the retired weak schemes: a legacy entry is not
-   * parseable by `parseStoredPin` and is treated the same as no PIN at all
-   * (`hasLockPin` has already discarded it by the time this can be called
-   * from `mode === 'unlock'`). On a context that cannot hash at all, this
-   * refuses rather than accepting or silently downgrading — the lock screen
-   * is expected to not offer PIN entry in that case in the first place. */
+   * Refuses — never accepts — when there is nothing to verify against. A
+   * device that has never registered a PIN (or whose legacy entry was just
+   * discarded by `hasLockPin`) must not be unlockable by typing ANY four
+   * digits: the only ways into a locked, PIN-less session are a correct
+   * pre-existing PIN or a fresh sign-in (`LockScreen`'s re-auth path). PIN
+   * *registration* happens from Settings, while authenticated — never from
+   * this, an unauthenticated, lock overlay.
+   *
+   * Never falls back to the retired weak schemes either: a legacy entry is
+   * not parseable by `parseStoredPin` and is treated the same as no PIN at
+   * all. On a context that cannot hash at all, this refuses rather than
+   * accepting or silently downgrading — the lock screen is expected to not
+   * offer PIN entry in that case in the first place. */
   const verifyPin = useCallback(async (pin: string): Promise<boolean> => {
-    if (!hasLockPin()) return true; // No usable PIN set = accept any input
+    if (!hasLockPin()) return false; // No usable PIN set = nothing to verify against
     if (!pinHashingSupported()) return false;
     const stored = parseStoredPin(localStorage.getItem(PIN_HASH_KEY)!)!;
     const candidate = await derivePinHash(pin, base64ToBytes(stored.salt), stored.iterations);

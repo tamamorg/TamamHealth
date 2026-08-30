@@ -145,6 +145,29 @@ function VitalInputField({
   );
 }
 
+/**
+ * Whether an existing active triage record is safe to silently resume onto —
+ * i.e. it is still an unassessed placeholder, never a completed assessment
+ * from someone else. `pending` is the clerical walk-in placeholder
+ * `createTriage`'s `resumePendingId` path exists for (see triage-service.ts);
+ * `assessmentSource === 'clerical_checkin'` identifies the same placeholder
+ * the other way, as defense in depth if status and source ever disagree.
+ *
+ * A `seen` record is a completed clinician assessment — resuming onto it
+ * would run it through `updateTriage`, which has no guard against a
+ * seen → seen write, so Station B's payload would silently overwrite Station
+ * A's finished ETAT (and, on a multi-org replica, potentially a foreign
+ * tenant's record). Auto-resume must refuse anything that isn't the
+ * placeholder and let the caller fall back to its "refresh, don't overwrite"
+ * path instead.
+ */
+export function mayAutoResume(
+  existing: Pick<TriageDoc, 'status' | 'assessmentSource'> | null | undefined,
+): boolean {
+  if (!existing) return false;
+  return existing.status === 'pending' || existing.assessmentSource === 'clerical_checkin';
+}
+
 // Mode-of-arrival → Source column label, using the same terms as the ETAT
 // form's own <select> options.
 function modeOfArrivalLabel(mode: string | undefined, t: (key: string) => string): string {
@@ -980,10 +1003,23 @@ export default function TriageWorkflow({
           // The placeholder can arrive AFTER the patient-select effect looked
           // for it (delayed sync — a device that came online mid-assessment).
           // The guard names the record it found, so complete that one instead
-          // of asking the nurse to re-enter a finished assessment.
+          // of asking the nurse to re-enter a finished assessment — but ONLY
+          // when that record is still the unassessed placeholder. The error
+          // carries just an id, not the record's own status/source, so it must
+          // be re-read before resuming onto it: without this check, a record
+          // that arrived as someone else's completed 'seen' assessment (a
+          // different station triaged the same patient in the meantime, or —
+          // on a multi-org replica — a same-id collision from another tenant)
+          // would silently be overwritten via updateTriage, which lets a
+          // seen → seen write through with no guard of its own.
           const dup = error as { code?: string; existingTriageId?: string };
+          let existing: TriageDoc | undefined;
           if (dup?.code === 'DUPLICATE_ACTIVE_TRIAGE' && dup.existingTriageId && !resumePendingTriageId) {
-            created = await createTriageRecord(createPayload, { resumePendingId: dup.existingTriageId, actor: currentActor });
+            const { findActiveTriageForPatient } = await import('@/lib/services/triage-service');
+            existing = await findActiveTriageForPatient(selectedTriagePatient._id, dataScope);
+          }
+          if (existing && existing._id === dup.existingTriageId && mayAutoResume(existing)) {
+            created = await createTriageRecord(createPayload, { resumePendingId: existing._id, actor: currentActor });
           } else {
             throw error;
           }
@@ -1035,9 +1071,12 @@ export default function TriageWorkflow({
       if ((err as { code?: unknown } | undefined)?.code === 'DUPLICATE_ACTIVE_TRIAGE') {
         // The patient-select effect below should have already resolved this
         // into a resume/edit before the nurse ever got to Save — reaching
-        // here means the active triage appeared after that check ran (another
-        // station triaged the same patient in the meantime). Refreshing the
-        // list is safer than silently overwriting or duplicating a record.
+        // here means either the active triage appeared after that check ran
+        // (another station triaged the same patient in the meantime), or the
+        // create-path retry above found one but it was someone else's
+        // completed assessment rather than the unassessed placeholder
+        // (`mayAutoResume` above refused it). Either way, refreshing the list
+        // is safer than silently overwriting or duplicating a record.
         showToast(t('nurse.triageDuplicateActive'), 'error');
       } else {
         // Keep form data intact so the nurse can retry

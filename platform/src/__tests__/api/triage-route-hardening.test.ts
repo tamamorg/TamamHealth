@@ -185,3 +185,41 @@ describe('ETAT incompleteness guard (item 5, enforced at the route)', () => {
     expect(body.triage.priority).toBe('GREEN');
   });
 });
+
+describe('cross-tenant scoping and the shared service path (KAN triage audit F3)', () => {
+  test('a patientId belonging to a different org resolves as age-unknown — no cross-tenant existence oracle', async () => {
+    // NURSE is in org-a; this patient is registered to org-b. A 3-day-old
+    // meets IITT's under-8-days RED criterion regardless of vitals — if the
+    // real age reached the recompute, GREEN would be refused below it. The
+    // route must not read this patient at all: treated as not-found, it
+    // succeeds exactly like a patientId this device has never seen.
+    await putDoc(patientsDB(), {
+      _id: 'patient-foreign-infant', type: 'patient', firstName: 'Newborn', surname: 'Foreign',
+      dateOfBirth: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      orgId: 'org-b', registrationHospital: 'hosp-b',
+    } as unknown as PatientDoc & { _id: string });
+
+    mockGetAuth.mockResolvedValue(NURSE);
+    const { POST } = await import('@/app/api/triage/route');
+    const res = await POST(postRequest(basePayload({ patientId: 'patient-foreign-infant', priority: 'GREEN' })));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.triage.vitalUrgencyRecommendation).toBe('GREEN');
+    expect(body.triage.vitalUrgencyWarnings).toBeUndefined();
+  });
+
+  test('a valid POST is routed through createTriage — the duplicate-active-triage guard now applies', async () => {
+    // The old direct `db.put` bypassed createTriage entirely, so a second
+    // POST for the same still-active patient wrote a second triage record
+    // outright instead of being refused.
+    mockGetAuth.mockResolvedValue(NURSE);
+    const { POST } = await import('@/app/api/triage/route');
+    const first = await POST(postRequest(basePayload({ patientId: 'patient-dup', priority: 'GREEN' })));
+    expect(first.status).toBe(201);
+
+    const second = await POST(postRequest(basePayload({ patientId: 'patient-dup', priority: 'GREEN' })));
+    expect(second.status).toBe(409);
+    const body = await second.json();
+    expect(body.error).toMatch(/already has an active triage/i);
+  });
+});

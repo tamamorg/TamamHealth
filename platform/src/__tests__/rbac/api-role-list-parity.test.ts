@@ -79,4 +79,17 @@ describe('API role lists match role-routes.ts grants (2026-08 audit)', () => {
     const list = roleListSource(readRoute('blood-bank/route.ts'), 'WRITE_ROLES');
     expect(containsRole(list, 'clinical_officer')).toBe(true);
   });
+
+  // Least-privilege (2026-08-30 audit): referral CREATE must not include a
+  // role that has no create surface. nutritionist and hospital_manager hold
+  // the /referrals route but the create action is gated on canManageReferrals,
+  // which excludes them — so an authorship grant here would be a dead grant
+  // and, for the administrative hospital_manager, a clinician-less clinical
+  // referral. Removing them is safe precisely because the UI never let them
+  // create. This pins the removal so it can't silently drift back.
+  test('/api/referrals CREATE_ROLES does NOT include nutritionist or hospital_manager (no create surface)', () => {
+    const list = roleListSource(readRoute('referrals/route.ts'), 'CREATE_ROLES');
+    expect(containsRole(list, 'nutritionist')).toBe(false);
+    expect(containsRole(list, 'hospital_manager')).toBe(false);
+  });
 });

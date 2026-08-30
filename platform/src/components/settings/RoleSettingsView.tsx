@@ -104,12 +104,13 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
 };
 
 /** Default value for a row, resolving the app-wired specials. */
-function rowDefault(row: RoleSettingRow, wired: { language: string; density: string; displayName: string }): boolean | string | null {
+function rowDefault(row: RoleSettingRow, wired: { language: string; density: string; theme: string; displayName: string }): boolean | string | null {
   if (row.kind === 'toggle') return row.pending ? null : row.def;
   if (row.kind === 'select') {
     if (row.pending) return null;
     if (row.key === 'account.language') return wired.language;
     if (row.key === 'account.density') return wired.density;
+    if (row.key === 'account.theme') return wired.theme;
     return row.def;
   }
   if (row.kind === 'text') return row.key === 'account.displayName' ? wired.displayName : row.def;
@@ -177,6 +178,7 @@ export default function RoleSettingsView() {
     language: SUPPORTED_LOCALES.find(l => l.code === locale)?.nativeName
       || SUPPORTED_LOCALES.find(l => l.code === locale)?.name || 'English',
     density: getUserPrefs().density === 'compact' ? 'Compact' : 'Comfortable',
+    theme: getUserPrefs().theme === 'dark' ? 'Dark' : getUserPrefs().theme === 'system' ? 'System' : 'Light',
     displayName: currentUser?.name || '',
   }), [locale, currentUser?.name]);
 
@@ -189,7 +191,8 @@ export default function RoleSettingsView() {
       for (const row of section.rows) {
         if (row.kind !== 'toggle' && row.kind !== 'select' && row.kind !== 'text') continue;
         const def = rowDefault(row, wired);
-        const isWiredRow = row.key === 'account.language' || row.key === 'account.density' || row.key === 'account.displayName';
+        const isWiredRow = row.key === 'account.language' || row.key === 'account.density'
+          || row.key === 'account.theme' || row.key === 'account.displayName';
         map[row.key] = (!isWiredRow && stored[row.key] !== undefined ? stored[row.key] : def) as boolean | string;
       }
     }
@@ -506,6 +509,11 @@ export default function RoleSettingsView() {
 
       const density = draft['account.density'] === 'Compact' ? 'compact' : 'comfortable';
       if (density !== getUserPrefs().density) setUserPrefs({ density });
+
+      const theme = draft['account.theme'] === 'Dark' ? 'dark' as const
+        : draft['account.theme'] === 'System' ? 'system' as const
+        : 'light' as const;
+      if (theme !== getUserPrefs().theme) setUserPrefs({ theme });
 
       const nextName = String(draft['account.displayName'] || '').trim();
       if (nextName && nextName !== currentUser.name) {

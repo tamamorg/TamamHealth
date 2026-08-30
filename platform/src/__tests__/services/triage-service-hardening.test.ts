@@ -25,12 +25,12 @@ jest.mock('@/lib/services/audit-service', () => {
 });
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
-import { patientsDB } from '@/lib/db';
+import { patientsDB, triageDB } from '@/lib/db';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import {
   createTriage, updateTriage, findActiveTriageForPatient, DuplicateActiveTriageError,
 } from '@/lib/services/triage-service';
-import type { PatientDoc } from '@/lib/db-types';
+import type { PatientDoc, TriageDoc } from '@/lib/db-types';
 
 const mockLogAudit = logAuditSafe as jest.MockedFunction<typeof logAuditSafe>;
 
@@ -209,6 +209,90 @@ describe('updateTriage actor + amendment audit (item 8)', () => {
     await updateTriage(created._id, { chiefComplaint: 'Fever' }, { userId: 'nurse-42', username: 'nurse.grace' });
 
     expect(mockLogAudit.mock.calls.some(call => call[0] === 'TRIAGE_AMENDED')).toBe(false);
+  });
+
+  test('resending an identical redCriteria array is not treated as a changed field (item F4)', async () => {
+    const created = await createTriage(triageInput({
+      patientId: 'patient-11', status: 'seen', priority: 'RED', redCriteria: ['unresponsive_convulsions'],
+    }));
+    mockLogAudit.mockClear();
+
+    // A different array instance holding the SAME codes, alone, must not be
+    // reported as an amendment at all — the whole point of the value compare.
+    await updateTriage(created._id, { redCriteria: ['unresponsive_convulsions'] }, { userId: 'nurse-42', username: 'nurse.grace' });
+    expect(mockLogAudit.mock.calls.some(call => call[0] === 'TRIAGE_AMENDED')).toBe(false);
+
+    // Alongside a genuine change, the genuine field is audited but the
+    // echoed-back array is not swept in with it.
+    await updateTriage(
+      created._id,
+      { redCriteria: ['unresponsive_convulsions'], chiefComplaint: 'Same complaint, resent' },
+      { userId: 'nurse-42', username: 'nurse.grace' },
+    );
+    const amendedCall = mockLogAudit.mock.calls.find(call => call[0] === 'TRIAGE_AMENDED');
+    expect(amendedCall).toBeDefined();
+    const details = amendedCall![3] as string;
+    expect(details).toContain('chiefComplaint');
+    expect(details).not.toContain('redCriteria');
+  });
+});
+
+describe('updateTriage vitals-safety gate only recomputes on a relevant change (item F1)', () => {
+  test('a status-only transition succeeds even though the stored priority is below the current recommendation', async () => {
+    // Simulates a doc that predates this gate (or was saved before policy
+    // tightened): dangerously low SpO2, GREEN priority, no override —
+    // exactly the shape assertTriageVitalSafety would now refuse to CREATE.
+    // A pure status transition on an already-saved doc like this one must
+    // not be blocked by it, or the doc can never be marked seen/discharged/
+    // LWBS again.
+    const legacy = await putDoc(triageDB(), {
+      _id: 'triage-legacy-1',
+      type: 'triage',
+      patientId: 'patient-legacy',
+      patientName: 'Legacy Patient',
+      airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert',
+      assessmentSource: 'clinician',
+      priority: 'GREEN',
+      oxygenSaturation: '70', // IITT high-risk regardless of age — recommends RED
+      triagedBy: 'nurse-1', triagedByName: 'Nurse Test',
+      triagedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      status: 'seen',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as unknown as TriageDoc & { _id: string });
+
+    const updated = await updateTriage(legacy._id, { status: 'discharged' }, { userId: 'nurse-42', username: 'nurse.grace' });
+    expect(updated.status).toBe('discharged');
+    expect(updated.priority).toBe('GREEN'); // untouched — the gate never ran
+  });
+
+  test('an update that lowers priority against present dangerous vitals still throws without an override', async () => {
+    const created = await createTriage(triageInput({ patientId: 'patient-12', status: 'seen', priority: 'GREEN' }));
+
+    await expect(
+      updateTriage(created._id, { oxygenSaturation: '70' }, { userId: 'nurse-42', username: 'nurse.grace' }),
+    ).rejects.toThrow('Saving below the recommended triage urgency');
+  });
+
+  test('an administrative field change (assignedRoom) does not re-run the gate either', async () => {
+    const legacy = await putDoc(triageDB(), {
+      _id: 'triage-legacy-2',
+      type: 'triage',
+      patientId: 'patient-legacy-2',
+      patientName: 'Legacy Patient Two',
+      airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert',
+      assessmentSource: 'clinician',
+      priority: 'GREEN',
+      oxygenSaturation: '70',
+      triagedBy: 'nurse-1', triagedByName: 'Nurse Test',
+      triagedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as unknown as TriageDoc & { _id: string });
+
+    const updated = await updateTriage(legacy._id, { assignedRoom: 'Bay 3' } as Partial<TriageDoc>);
+    expect(updated.assignedRoom).toBe('Bay 3');
   });
 });
 
