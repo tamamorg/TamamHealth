@@ -19,7 +19,7 @@ export type RefundStatus = 'pending' | 'processed' | 'failed';
 export type PaymentPlanStatus = 'active' | 'completed' | 'delinquent' | 'cancelled' | 'defaulted';
 export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled';
 export type LedgerEntryType = 'charge' | 'payment' | 'insurance_payment' | 'adjustment' | 'refund' | 'write_off';
-export type PaymentMethodType = 'cash' | 'mpesa' | 'airtel' | 'mtn_momo' | 'm_gurush' | 'card' | 'bank_transfer' | 'payment_plan' | 'waiver' | 'insurance';
+export type PaymentMethodType = 'cash' | 'mobile_money' | 'mpesa' | 'airtel' | 'mtn_momo' | 'm_gurush' | 'card' | 'bank_transfer' | 'payment_plan' | 'waiver' | 'insurance';
 export type SavedPaymentMethodType = 'mpesa' | 'airtel' | 'mtn_momo' | 'm_gurush' | 'card' | 'bank';
 export type CollectionStage = 'current' | '30_day' | '60_day' | '90_day' | '120_plus' | 'collections_agency' | 'written_off';
 

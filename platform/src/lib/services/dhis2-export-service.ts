@@ -11,6 +11,7 @@ import type { DHIS2ElementValidation } from './dhis2-element-map';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { isInRange } from '../time-juba';
+import { escapeCsvCell } from '../csv';
 
 // DHIS2 only accepts compact period codes (YYYYMM / YYYYWww / YYYY) — accept
 // the HTML-friendly YYYY-MM the UI emits but reject anything else.
@@ -525,17 +526,10 @@ export async function pushDataSetToDHIS2(
   return { ok: false, status: 'failed', message: lastErr.message || 'Unknown error' };
 }
 
-function escapeCSV(val: string): string {
-  if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-    return `"${val.replace(/"/g, '""')}"`;
-  }
-  return val;
-}
-
 export function exportToCSV(dataset: DHIS2DataSet): string {
   const header = 'dataElement,category,value,period,orgUnit';
   const rows = dataset.dataValues.map(v =>
-    [v.dataElement, v.category, v.value, v.period, v.orgUnit].map(escapeCSV).join(',')
+    [v.dataElement, v.category, v.value, v.period, v.orgUnit].map(escapeCsvCell).join(',')
   );
   return [header, ...rows].join('\n');
 }

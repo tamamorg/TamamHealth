@@ -82,6 +82,7 @@ function toBillingPaymentMethod(method: PaymentMethodType): BillingPaymentMethod
     case 'insurance': return 'insurance';
     case 'waiver': return 'waiver';
     case 'mpesa':
+    case 'mobile_money':
     case 'airtel':
     case 'mtn_momo':
     case 'm_gurush':

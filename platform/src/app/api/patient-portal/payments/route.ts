@@ -6,6 +6,7 @@ import { paymentsDB } from '@/lib/db';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
 import type { PaymentDoc, PaymentStatus, PaymentMethodType } from '@/lib/db-types-payments';
+import { validatePortalPayment } from '@/lib/patient-portal-write-validation';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyPatientToken(req);
@@ -26,12 +27,14 @@ export async function POST(req: NextRequest) {
   // Finance control: patient-submitted payments land in 'pending' and MUST be
   // reviewed/approved before being posted to the ledger. Do not auto-allocate.
   try {
-    const db = paymentsDB();
     const now = new Date().toISOString();
     const id = (typeof body._id === 'string' && body._id) || `pmt-${uuidv4()}`;
 
-    const rawAmount = typeof body.amount === 'number' ? body.amount : Number(body.amount);
-    const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 0;
+    const validated = validatePortalPayment(body);
+    if (!validated.ok) {
+      return NextResponse.json({ error: 'Invalid payment', fields: validated.fields }, { status: 400 });
+    }
+    const db = paymentsDB();
 
     const doc: PaymentDoc = {
       _id: id,
@@ -40,9 +43,9 @@ export async function POST(req: NextRequest) {
       patientName: auth.name,
       encounterId: typeof body.encounterId === 'string' ? body.encounterId : undefined,
       invoiceId: typeof body.invoiceId === 'string' ? body.invoiceId : undefined,
-      method: (typeof body.method === 'string' ? body.method : 'mobile_money') as PaymentMethodType,
-      amount,
-      currency: typeof body.currency === 'string' ? body.currency : 'SSP',
+      method: validated.value.method as PaymentMethodType,
+      amount: validated.value.amount,
+      currency: validated.value.currency,
       reference: typeof body.reference === 'string' ? body.reference : undefined,
       mobileMoneyPhone: typeof body.mobileMoneyPhone === 'string' ? body.mobileMoneyPhone : undefined,
       status: 'pending' as PaymentStatus,

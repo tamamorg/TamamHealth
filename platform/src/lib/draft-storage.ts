@@ -21,9 +21,8 @@
  * - Drafts have a TTL stamped at write-time; expired drafts are removed
  *   lazily on read.
  * - Logout calls `dropAllDrafts()` — best-effort, doesn't block logout.
- * - In dev / non-secure contexts where `crypto.subtle` is unavailable we
- *   fall back to plaintext localStorage (with a console warning) so the dev
- *   loop still works. Production over HTTPS always has subtle crypto.
+ * - If `crypto.subtle` is unavailable, persistence fails closed. The caller's
+ *   in-memory form state keeps working, but PHI is never written in plaintext.
  *
  * Storage shape
  * -------------
@@ -34,13 +33,13 @@
  *     'tamamhealth.draft.<sanitizedKey>' -> JSON {
  *        savedAt:    epoch-ms,
  *        ttlMs:      number,
- *        ciphertext: base64(iv || ciphertext+tag)   // 'plain:' prefix in fallback mode
+ *        ciphertext: base64(iv || ciphertext+tag)
  *     }
  */
 
 const STORAGE_PREFIX = 'tamamhealth.draft.';
 const SESSION_KEY_NAME = 'tamamhealth.draft.k';
-const PLAINTEXT_FALLBACK_PREFIX = 'plain:';
+const LEGACY_PLAINTEXT_PREFIX = 'plain:';
 const DEFAULT_TTL_HOURS = Number(process.env.NEXT_PUBLIC_DRAFT_TTL_HOURS) || 24;
 const DEFAULT_TTL_MS = DEFAULT_TTL_HOURS * 60 * 60 * 1000;
 
@@ -107,16 +106,14 @@ function hasSubtleCrypto(): boolean {
   );
 }
 
-let warnedAboutFallback = false;
-function warnFallbackOnce(): void {
-  if (warnedAboutFallback) return;
-  warnedAboutFallback = true;
-  // eslint-disable-next-line no-console
+let warnedAboutUnavailableCrypto = false;
+function warnUnavailableCryptoOnce(): void {
+  if (warnedAboutUnavailableCrypto) return;
+  warnedAboutUnavailableCrypto = true;
   console.warn(
     '[draft-storage] crypto.subtle unavailable (insecure context?). ' +
-      'Falling back to plaintext localStorage for drafts. ' +
-      'PHI drafts WILL be readable on this device until logout. ' +
-      'This is a dev-only fallback — production must be served over HTTPS.',
+      'Draft persistence is disabled so PHI is not written in plaintext. ' +
+      'Serve the application in a secure context to restore encrypted autosave.',
   );
 }
 
@@ -204,17 +201,7 @@ export async function saveDraft(
   const sk = storageKey(key);
 
   if (!hasSubtleCrypto()) {
-    warnFallbackOnce();
-    const record: PersistedDraft = {
-      savedAt: Date.now(),
-      ttlMs,
-      ciphertext: PLAINTEXT_FALLBACK_PREFIX + JSON.stringify(value),
-    };
-    try {
-      window.localStorage.setItem(sk, JSON.stringify(record));
-    } catch {
-      // quota / disabled / private mode — same UX as before, fail silently
-    }
+    warnUnavailableCryptoOnce();
     return;
   }
 
@@ -269,16 +256,14 @@ export async function loadDraft<T = unknown>(key: string): Promise<T | null> {
     return null;
   }
 
-  // Plaintext fallback path (dev only).
+  // Remove records written by the legacy plaintext fallback. Never return PHI
+  // from them, even in development: an insecure context must fail closed.
   if (
     typeof record.ciphertext === 'string' &&
-    record.ciphertext.startsWith(PLAINTEXT_FALLBACK_PREFIX)
+    record.ciphertext.startsWith(LEGACY_PLAINTEXT_PREFIX)
   ) {
-    try {
-      return JSON.parse(record.ciphertext.slice(PLAINTEXT_FALLBACK_PREFIX.length)) as T;
-    } catch {
-      return null;
-    }
+    try { window.localStorage.removeItem(sk); } catch { /* ignore */ }
+    return null;
   }
 
   if (!hasSubtleCrypto()) {
@@ -350,6 +335,6 @@ export async function dropAllDrafts(): Promise<void> {
 export const __INTERNAL__ = {
   STORAGE_PREFIX,
   SESSION_KEY_NAME,
-  PLAINTEXT_FALLBACK_PREFIX,
+  LEGACY_PLAINTEXT_PREFIX,
   storageKey,
 };

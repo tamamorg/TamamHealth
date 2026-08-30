@@ -103,7 +103,7 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
               return;
             }
             if (next !== setupFirst) {
-              setError(t('lock.pinMismatch'));
+              setError(t('lock.pinsDoNotMatch'));
               setSetupFirst(null);
               setPin('');
               triggerShake();
@@ -188,7 +188,7 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
 
   // Instruction under the name: create → confirm → (or) enter existing PIN.
   const prompt = setupMode
-    ? (setupFirst === null ? t('lock.createPin') : t('lock.confirmPin'))
+    ? (setupFirst === null ? t('lock.choosePin') : t('lock.confirmPin'))
     : t('lock.enterYourPin');
 
   return (

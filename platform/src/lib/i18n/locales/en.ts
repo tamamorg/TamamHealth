@@ -3215,6 +3215,7 @@ const en: TranslationMap = {
   'lock.enterSamePin': 'Enter the same PIN again',
   'lock.enterYourPin': 'Enter your PIN to unlock',
   'lock.incorrectPin': 'Incorrect PIN',
+  'lock.pinSetupFailed': 'Could not set the PIN. Try again.',
   'lock.pinsDoNotMatch': 'PINs do not match. Try again.',
   'lock.pinUnavailableInsecure': 'PIN unlock needs a secure connection, which this device does not have right now. Sign in again to continue.',
   'lock.setPin': 'Set a PIN',

@@ -3207,6 +3207,7 @@ const apd: TranslationMap = {
   'lock.enterSamePin': 'ادخل نفس الرقم السري تاني',
   'lock.enterYourPin': 'ادخل رقمك السري عشان تفتح',
   'lock.incorrectPin': 'الرقم السري غلط',
+  'lock.pinSetupFailed': 'ما قدرنا نحدد الرقم السري. جرب تاني.',
   'lock.pinsDoNotMatch': 'الأرقام السرية ما متطابقة. جرب تاني.',
   'lock.pinUnavailableInsecure': 'فتح القفل بالرقم السري محتاج اتصال آمن، وده مش متوفر هسة في الجهاز ده. سجل دخول تاني عشان تكمل.',
   'lock.setPin': 'حدد رقم سري',

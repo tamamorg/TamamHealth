@@ -7,6 +7,7 @@ import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
 import type { AppointmentDoc, AppointmentStatus } from '@/lib/db-types';
 import { demoFallbackEnabled, logDemoFallback, getDemoAppointmentsByPatient, recordDemoAppointment } from '@/lib/patient-portal-demo';
+import { validatePortalAppointment } from '@/lib/patient-portal-write-validation';
 
 export async function GET(req: NextRequest) {
   const auth = await verifyPatientToken(req);
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
   // collide on), so there was never anything to bypass it for.
   const now = new Date().toISOString();
   const id = (typeof body._id === 'string' && body._id) || `apt-${uuidv4()}`;
+  const validated = validatePortalAppointment(body);
+  if (!validated.ok) {
+    return NextResponse.json({ error: 'Invalid appointment request', fields: validated.fields }, { status: 400 });
+  }
 
   const doc: AppointmentDoc = {
     _id: id,
@@ -64,16 +69,16 @@ export async function POST(req: NextRequest) {
     patientPhone: typeof body.patientPhone === 'string' ? body.patientPhone : undefined,
     providerId: typeof body.providerId === 'string' ? body.providerId : '',
     providerName: typeof body.providerName === 'string' ? body.providerName : '',
-    facilityId: typeof body.facilityId === 'string' ? body.facilityId : '',
+    facilityId: validated.value.facilityId,
     facilityName: typeof body.facilityName === 'string' ? body.facilityName : '',
-    facilityLevel: (typeof body.facilityLevel === 'string' ? body.facilityLevel : 'county') as AppointmentDoc['facilityLevel'],
-    appointmentDate: typeof body.appointmentDate === 'string' ? body.appointmentDate : '',
-    appointmentTime: typeof body.appointmentTime === 'string' ? body.appointmentTime : '',
-    duration: typeof body.duration === 'number' ? body.duration : 30,
-    appointmentType: (typeof body.appointmentType === 'string' ? body.appointmentType : 'general') as AppointmentDoc['appointmentType'],
-    priority: (typeof body.priority === 'string' ? body.priority : 'routine') as AppointmentDoc['priority'],
-    department: typeof body.department === 'string' ? body.department : 'General',
-    reason: typeof body.reason === 'string' ? body.reason : '',
+    facilityLevel: validated.value.facilityLevel,
+    appointmentDate: validated.value.appointmentDate,
+    appointmentTime: validated.value.appointmentTime,
+    duration: validated.value.duration,
+    appointmentType: validated.value.appointmentType,
+    priority: validated.value.priority,
+    department: validated.value.department,
+    reason: validated.value.reason,
     status: 'requested' as AppointmentStatus,
     reminderSent: false,
     isRecurring: false,

@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import type { UserRole } from '@/lib/db-types';
+import { rowsToCsv } from '@/lib/csv';
 // hospital_manager holds the /reports route in role-routes.ts (facility
 // oversight reads utilisation via reports rather than the per-station
 // worklists) — this list had drifted behind that grant.
@@ -18,17 +19,8 @@ const REPORT_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'government', 'county_health_director', 'medical_superintendent',
   'hrio', 'data_entry_clerk', 'hospital_manager',
 ];
-function escapeCSV(val: string | number | boolean | null | undefined): string {
-  const s = String(val ?? '');
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
 function toCSV(headers: string[], rows: (string | number | boolean | null | undefined)[][]): string {
-  const headerLine = headers.map(escapeCSV).join(',');
-  const dataLines = rows.map(row => row.map(escapeCSV).join(','));
-  return [headerLine, ...dataLines].join('\n');
+  return rowsToCsv(headers, rows);
 }
 export async function GET(request: NextRequest) {
   try {

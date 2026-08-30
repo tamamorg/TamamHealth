@@ -44,7 +44,9 @@ function southSudanMetadata(): CountryMetadata {
     currency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'SSP',
     timezone: process.env.NEXT_PUBLIC_ORG_TIMEZONE || 'Africa/Juba',
     dhis2: {
-      baseUrl: process.env.DHIS2_BASE_URL || process.env.NEXT_PUBLIC_DHIS2_BASE_URL,
+      // This route is intentionally public. Never fall back to the private
+      // server-side endpoint: it may reveal internal DNS or network topology.
+      baseUrl: process.env.NEXT_PUBLIC_DHIS2_BASE_URL,
       rootOrgUnit: process.env.DHIS2_ROOT_ORG_UNIT || 'SS',
       periodType: process.env.DHIS2_PERIOD_TYPE || 'Monthly',
     },

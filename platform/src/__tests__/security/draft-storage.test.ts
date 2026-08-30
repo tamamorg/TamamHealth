@@ -181,7 +181,7 @@ describe('draft-storage (AES-GCM, sessionStorage-pinned key)', () => {
   });
 });
 
-describe('draft-storage — plaintext fallback when crypto.subtle is unavailable', () => {
+describe('draft-storage — fail closed when crypto.subtle is unavailable', () => {
   const originalCrypto = globalThis.crypto;
 
   beforeEach(() => {
@@ -195,16 +195,21 @@ describe('draft-storage — plaintext fallback when crypto.subtle is unavailable
     Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
   });
 
-  it('still round-trips a draft without crypto.subtle (dev-only fallback)', async () => {
+  it('does not persist a draft without crypto.subtle', async () => {
     const value = { complaint: 'no https in dev' };
     await saveDraft('consultation:fallback-test', value);
-    expect(await loadDraft('consultation:fallback-test')).toEqual(value);
+    expect(await loadDraft('consultation:fallback-test')).toBeNull();
+    expect(window.localStorage.getItem(storageKey('consultation:fallback-test'))).toBeNull();
   });
 
-  it('marks the fallback record so it is never mistaken for ciphertext', async () => {
-    await saveDraft('consultation:fallback-marker', { a: 1 });
-    const raw = window.localStorage.getItem(storageKey('consultation:fallback-marker'));
-    const record = JSON.parse(raw!) as { ciphertext: string };
-    expect(record.ciphertext.startsWith('plain:')).toBe(true);
+  it('deletes legacy plaintext fallback records instead of returning them', async () => {
+    const key = storageKey('consultation:fallback-marker');
+    window.localStorage.setItem(key, JSON.stringify({
+      savedAt: Date.now(),
+      ttlMs: 60_000,
+      ciphertext: 'plain:{"a":1}',
+    }));
+    expect(await loadDraft('consultation:fallback-marker')).toBeNull();
+    expect(window.localStorage.getItem(key)).toBeNull();
   });
 });

@@ -46,7 +46,7 @@ export default function GetStartedCard() {
   if (collapsed) {
     return (
       <div
-        className="absolute bottom-4 start-4 z-30 flex items-center gap-0.5 rounded-full py-0.5 ps-1.5 pe-1 text-xs font-semibold text-white shadow-lg"
+        className="gsc-collapsed-pill absolute bottom-4 start-4 z-30 flex items-center gap-0.5 rounded-full py-0.5 ps-1.5 pe-1 text-xs font-semibold text-white shadow-lg"
         style={{ background: 'var(--accent-primary)' }}
       >
         <button
