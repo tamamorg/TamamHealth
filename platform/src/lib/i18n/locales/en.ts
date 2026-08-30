@@ -1657,6 +1657,7 @@ const en: TranslationMap = {
   'facilityAssessments.domainGeneralEquipment': 'General Equipment',
   'facilityAssessments.domainReportingCompleteness': 'Reporting Completeness',
   'facilityAssessments.domainStaffingAdequacy': 'Staffing Adequacy',
+  'facilityAssessments.emptyList': 'No facility assessments recorded yet.',
   'facilityAssessments.fieldDataQuality': 'Data Quality',
   'facilityAssessments.fieldDiagnostics': 'Diagnostics',
   'facilityAssessments.fieldGeneralEquipment': 'General Equipment',

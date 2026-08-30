@@ -3,13 +3,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import {
-  Building2, BedDouble, Users, Zap,
-  Activity, Save, CheckCircle, AlertTriangle, Loader2, Send, Clock,
+  Building2, Save, CheckCircle, AlertTriangle, Loader2, Send, Clock,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import {
+  SadbPage, SadbCard, SadbSettingGroup, SadbSettingRow, SadbToggle, SadbChip,
+} from '@/components/admin/sadb-ui';
+import type { ChipTone } from '@/components/admin/sadb-ui';
+
+// Roles this console page is routed to (lib/role-routes.ts) — medical_superintendent
+// and hospital_manager both carry '/my-facility' in their allowed list, and
+// super_admin reaches every SadbPage regardless of the roles passed here.
+// Kept identical to the proxy's grant so this client-side gate never narrows
+// (or widens) who can actually reach the page.
+const MY_FACILITY_ROLES = ['medical_superintendent', 'hospital_manager', 'super_admin'] as const;
+
+const STATUS_TONE: Record<string, ChipTone> = {
+  functional: 'green',
+  partially_functional: 'yellow',
+  non_functional: 'red',
+  closed: 'neutral',
+};
 
 export default function MyFacilityPage() {
   const { t } = useTranslation();
@@ -123,311 +139,238 @@ export default function MyFacilityPage() {
     setServiceFlags(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Compact row builders — every field stays a real, live-bound control
+  // (not a read-only tile): this page edits the facility record, it doesn't
+  // just report it.
+  const numberField = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
+    <SadbSettingRow key={label} label={label}>
+      <input
+        type="number"
+        min={0}
+        max={max}
+        className="sadb-modal-input"
+        style={{ maxWidth: 120 }}
+        value={value}
+        onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+      />
+    </SadbSettingRow>
+  );
+
+  const toggleField = (label: string, checked: boolean, onChange: (v: boolean) => void) => (
+    <SadbSettingRow key={label} label={label}>
+      <SadbToggle checked={checked} onChange={onChange} label={label} />
+    </SadbSettingRow>
+  );
+
+  const statusLabels: Record<string, string> = {
+    functional: t('myFacility.statusFunctional'),
+    partially_functional: t('myFacility.statusPartiallyFunctional'),
+    non_functional: t('myFacility.statusNonFunctional'),
+    closed: t('myFacility.statusClosed'),
+  };
+
   // Not assigned to a facility
   if (!hospitalId) {
     return (
-      <main className="page-container page-enter">
-        <div className="card-elevated p-8 text-center max-w-md mx-auto mt-16">
-          <Building2 className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{t('myFacility.notAssignedTitle')}</h2>
+      <SadbPage roles={[...MY_FACILITY_ROLES]}>
+        <div className="sadb-card" style={{ maxWidth: 420, margin: '48px auto 0', padding: '32px 24px', textAlign: 'center' }}>
+          <Building2 className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+            {t('myFacility.notAssignedTitle')}
+          </h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('myFacility.notAssignedDesc')}
           </p>
         </div>
-      </main>
+      </SadbPage>
     );
   }
 
   if (hospitalsLoading) {
     return (
-      <main className="page-container page-enter flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--text-muted)' }} />
-      </main>
+      <SadbPage roles={[...MY_FACILITY_ROLES]}>
+        <p className="sadb-empty" aria-live="polite">
+          <Loader2 className="w-4 h-4 inline-block me-2 animate-spin" style={{ verticalAlign: -3 }} />
+          Loading facility data…
+        </p>
+      </SadbPage>
     );
   }
 
-  const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    functional: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', label: t('myFacility.statusFunctional') },
-    partially_functional: { bg: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning)', label: t('myFacility.statusPartiallyFunctional') },
-    non_functional: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', label: t('myFacility.statusNonFunctional') },
-    closed: { bg: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)', label: t('myFacility.statusClosed') },
-  };
-
-  const sectionClass = 'card-elevated p-5 space-y-4';
-  const sectionTitle = (icon: React.ReactNode, title: string, iconBg: string = 'var(--accent-light)') => (
-    <div className="flex items-center gap-2 pb-3 mb-1" style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <div className="icon-box-sm" style={{ background: iconBg }}>
-        {icon}
-      </div>
-      <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-    </div>
-  );
-
-  const numberInput = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
-    <div>
-      <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-      <input
-        type="number"
-        min={0}
-        max={max}
-        value={value}
-        onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-        className="w-full px-3 py-2 rounded-lg text-sm font-bold"
-        style={{
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-light)',
-          color: 'var(--text-primary)',
-          outline: 'none',
-        }}
-      />
-    </div>
-  );
-
-  const toggle = (label: string, checked: boolean, onChange: (v: boolean) => void) => (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className="tbn-toggle"
-        style={{ background: checked ? 'var(--accent-primary)' : 'var(--toggle-track)' }}
-      >
-        <span
-          className="tbn-toggle__knob"
-          style={{ transform: checked ? 'translateX(22px)' : 'translateX(3px)' }}
-        />
-      </button>
-    </div>
-  );
-
   return (
-    <>
-      <main className="page-container page-enter">
-        <DashboardGreetingHeader module="My facility" actions={
-          <>
-            {error && (
-              <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
-                <AlertTriangle className="w-3.5 h-3.5" /> {error}
-              </span>
-            )}
-            {saved && (
-              <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-success-text)' }}>
-                <CheckCircle className="w-3.5 h-3.5" /> {t('myFacility.savedSuccessfully')}
-              </span>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all"
-              style={{
-                background: saving ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                boxShadow: '0 2px 8px rgba(17, 116, 180,0.3)',
-              }}
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? t('consultation.saving') : t('appointments.saveChanges')}
-            </button>
-          </>
-        } />
-
-        {/* Form Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Operational Status */}
-          <div className={sectionClass}>
-            {sectionTitle(<Activity className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />, t('myFacility.operationalStatus'))}
-            <div>
-              <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.currentStatus')}</label>
+    <SadbPage
+      roles={[...MY_FACILITY_ROLES]}
+      greeting="My facility"
+      actions={
+        <>
+          {error && (
+            <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+              <AlertTriangle className="w-3.5 h-3.5" /> {error}
+            </span>
+          )}
+          {saved && (
+            <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-success-text)' }}>
+              <CheckCircle className="w-3.5 h-3.5" /> {t('myFacility.savedSuccessfully')}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="btn btn-primary btn-sm"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? t('consultation.saving') : t('appointments.saveChanges')}
+          </button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
+        {/* Operational Status */}
+        <SadbSettingGroup title={t('myFacility.operationalStatus')}>
+          <SadbSettingRow label={t('myFacility.currentStatus')}>
+            <span className="flex items-center gap-2.5 flex-wrap justify-end">
               <Select
                 value={operationalStatus}
                 onChange={e => setOperationalStatus(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg text-sm font-bold"
-                style={{
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-light)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                }}
+                className="sadb-modal-input"
+                style={{ maxWidth: 210 }}
               >
                 <option value="functional">{t('myFacility.statusFunctional')}</option>
                 <option value="partially_functional">{t('myFacility.statusPartiallyFunctional')}</option>
                 <option value="non_functional">{t('myFacility.statusNonFunctional')}</option>
                 <option value="closed">{t('myFacility.statusClosed')}</option>
               </Select>
-              <hr className="section-divider" />
-              <div>
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{
-                  background: statusColors[operationalStatus]?.bg,
-                  color: statusColors[operationalStatus]?.color,
-                }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColors[operationalStatus]?.color }} />
-                  {statusColors[operationalStatus]?.label}
-                </span>
-              </div>
-            </div>
-          </div>
+              <SadbChip tone={STATUS_TONE[operationalStatus] ?? 'neutral'}>
+                {statusLabels[operationalStatus] ?? operationalStatus}
+              </SadbChip>
+            </span>
+          </SadbSettingRow>
+        </SadbSettingGroup>
 
-          {/* Bed Capacity */}
-          <div className={sectionClass}>
-            {sectionTitle(<BedDouble className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />, t('myFacility.bedCapacity'), 'rgba(253, 217, 95,0.12)')}
-            <div className="grid grid-cols-2 gap-3">
-              {numberInput(t('dataEntry.totalBeds'), totalBeds, setTotalBeds)}
-              {numberInput(t('dataEntry.icuBeds'), icuBeds, setIcuBeds)}
-              {numberInput(t('dataEntry.maternityBeds'), maternityBeds, setMaternityBeds)}
-              {numberInput(t('dataEntry.pediatricBeds'), pediatricBeds, setPediatricBeds)}
-            </div>
-          </div>
+        {/* Bed Capacity */}
+        <SadbSettingGroup title={t('myFacility.bedCapacity')}>
+          {numberField(t('dataEntry.totalBeds'), totalBeds, setTotalBeds)}
+          {numberField(t('dataEntry.icuBeds'), icuBeds, setIcuBeds)}
+          {numberField(t('dataEntry.maternityBeds'), maternityBeds, setMaternityBeds)}
+          {numberField(t('dataEntry.pediatricBeds'), pediatricBeds, setPediatricBeds)}
+        </SadbSettingGroup>
 
-          {/* Staffing */}
-          <div className={sectionClass}>
-            {sectionTitle(<Users className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />, t('myFacility.staffing'), 'rgba(33, 145, 208, 0.12)')}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {numberInput(t('dashboard.doctors'), doctors, setDoctors)}
-              {numberInput(t('dataEntry.nurses'), nurses, setNurses)}
-              {numberInput(t('dataEntry.clinicalOfficers'), clinicalOfficers, setClinicalOfficers)}
-              {numberInput(t('dataEntry.labTechnicians'), labTechnicians, setLabTechnicians)}
-              {numberInput(t('dataEntry.pharmacists'), pharmacists, setPharmacists)}
-            </div>
-          </div>
+        {/* Staffing */}
+        <SadbSettingGroup title={t('myFacility.staffing')}>
+          {numberField(t('dashboard.doctors'), doctors, setDoctors)}
+          {numberField(t('dataEntry.nurses'), nurses, setNurses)}
+          {numberField(t('dataEntry.clinicalOfficers'), clinicalOfficers, setClinicalOfficers)}
+          {numberField(t('dataEntry.labTechnicians'), labTechnicians, setLabTechnicians)}
+          {numberField(t('dataEntry.pharmacists'), pharmacists, setPharmacists)}
+        </SadbSettingGroup>
 
-          {/* Infrastructure */}
-          <div className={sectionClass}>
-            {sectionTitle(<Zap className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />, t('myFacility.infrastructure'), 'rgba(253, 217, 95,0.12)')}
-            <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-              {toggle(t('myFacility.hasElectricity'), hasElectricity, setHasElectricity)}
-              {hasElectricity && (
-                <div className="ps-4 pb-2">
-                  {numberInput(t('myFacility.electricityHoursPerDay'), electricityHours, setElectricityHours, 24)}
+        {/* Infrastructure */}
+        <SadbSettingGroup title={t('myFacility.infrastructure')}>
+          {toggleField(t('myFacility.hasElectricity'), hasElectricity, setHasElectricity)}
+          {hasElectricity && numberField(t('myFacility.electricityHoursPerDay'), electricityHours, setElectricityHours, 24)}
+          {toggleField(t('myFacility.hasGenerator'), hasGenerator, setHasGenerator)}
+          {toggleField(t('myFacility.hasSolarPower'), hasSolar, setHasSolar)}
+          {toggleField(t('myFacility.hasInternet'), hasInternet, setHasInternet)}
+          {hasInternet && (
+            <SadbSettingRow key="internet-type" label={t('myFacility.internetType')}>
+              <Select
+                value={internetType}
+                onChange={e => setInternetType(e.target.value)}
+                className="sadb-modal-input"
+                style={{ maxWidth: 190 }}
+              >
+                <option value="">{t('myFacility.selectType')}</option>
+                <option value="fiber">{t('myFacility.internetFiber')}</option>
+                <option value="4g">{t('myFacility.internet4g')}</option>
+                <option value="3g">{t('myFacility.internet3g')}</option>
+                <option value="satellite">{t('myFacility.internetSatellite')}</option>
+                <option value="dsl">{t('myFacility.internetDsl')}</option>
+              </Select>
+            </SadbSettingRow>
+          )}
+          {toggleField(t('myFacility.hasAmbulance'), hasAmbulance, setHasAmbulance)}
+          {toggleField(t('myFacility.emergency24hr'), emergency24hr, setEmergency24hr)}
+        </SadbSettingGroup>
+      </div>
+
+      {/* Services */}
+      <SadbSettingGroup title={t('myFacility.servicesOffered')}>
+        {toggleField(t('myFacility.serviceEpi'), serviceFlags.epi, () => toggleService('epi'))}
+        {toggleField(t('anc.title'), serviceFlags.anc, () => toggleService('anc'))}
+        {toggleField(t('myFacility.serviceDelivery'), serviceFlags.delivery, () => toggleService('delivery'))}
+        {toggleField(t('boma.conditionHiv'), serviceFlags.hiv, () => toggleService('hiv'))}
+        {toggleField(t('boma.conditionTb'), serviceFlags.tb, () => toggleService('tb'))}
+        {toggleField(t('myFacility.serviceEmergencySurgery'), serviceFlags.emergencySurgery, () => toggleService('emergencySurgery'))}
+        {toggleField(t('lab.laboratory'), serviceFlags.laboratory, () => toggleService('laboratory'))}
+        {toggleField(t('nav.pharmacy'), serviceFlags.pharmacy, () => toggleService('pharmacy'))}
+      </SadbSettingGroup>
+
+      {/* Ministry of Health reporting — facility-level review gate. Data is
+          reviewed and explicitly submitted here rather than syncing to the
+          Ministry automatically. */}
+      <SadbCard title="Ministry of Health Reporting">
+        <div className="p-4 space-y-3">
+          {(() => {
+            const submission = hospital?.mohSubmission;
+            const submittedAt = submission?.submittedAt;
+            const hasPendingChanges = !!submittedAt && !!hospital?.updatedAt && hospital.updatedAt > submittedAt;
+
+            return (
+              <>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Review the facility profile above, then submit it to the Ministry of Health.
+                  Facility data is not sent automatically — it is only reported once you submit it here.
+                </p>
+
+                <div>
+                  {!submittedAt ? (
+                    <SadbChip tone="neutral">Not yet submitted</SadbChip>
+                  ) : hasPendingChanges ? (
+                    <SadbChip tone="yellow">
+                      <Clock className="w-3 h-3" style={{ marginInlineEnd: 4 }} /> Changes pending submission
+                    </SadbChip>
+                  ) : (
+                    <SadbChip tone="green">
+                      <CheckCircle className="w-3 h-3" style={{ marginInlineEnd: 4 }} /> Submitted to Ministry of Health
+                    </SadbChip>
+                  )}
                 </div>
-              )}
-              {toggle(t('myFacility.hasGenerator'), hasGenerator, setHasGenerator)}
-              {toggle(t('myFacility.hasSolarPower'), hasSolar, setHasSolar)}
-            </div>
-            <hr className="section-divider" />
-            <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-              {toggle(t('myFacility.hasInternet'), hasInternet, setHasInternet)}
-              {hasInternet && (
-                <div className="ps-4 pb-2">
-                  <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.internetType')}</label>
-                  <Select
-                    value={internetType}
-                    onChange={e => setInternetType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm"
-                    style={{
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border-light)',
-                      color: 'var(--text-primary)',
-                      outline: 'none',
-                    }}
+
+                {submittedAt && (
+                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    Last submitted {new Date(submittedAt).toLocaleString()}
+                    {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
+                    {hasPendingChanges ? ' The profile has been edited since — submit again to report the latest data.' : ''}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSubmitToMoH}
+                    disabled={submitting || (!!submittedAt && !hasPendingChanges)}
+                    data-tour="moh-submit-gate"
+                    className="btn btn-primary btn-sm"
                   >
-                    <option value="">{t('myFacility.selectType')}</option>
-                    <option value="fiber">{t('myFacility.internetFiber')}</option>
-                    <option value="4g">{t('myFacility.internet4g')}</option>
-                    <option value="3g">{t('myFacility.internet3g')}</option>
-                    <option value="satellite">{t('myFacility.internetSatellite')}</option>
-                    <option value="dsl">{t('myFacility.internetDsl')}</option>
-                  </Select>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
+                  </button>
+                  {submitError && (
+                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+                      <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
+                    </span>
+                  )}
                 </div>
-              )}
-              {toggle(t('myFacility.hasAmbulance'), hasAmbulance, setHasAmbulance)}
-              {toggle(t('myFacility.emergency24hr'), emergency24hr, setEmergency24hr)}
-            </div>
-          </div>
 
-          {/* Services */}
-          <div className="lg:col-span-2">
-            <div className={sectionClass}>
-              {sectionTitle(<CheckCircle className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />, t('myFacility.servicesOffered'), 'rgba(79, 199, 155,0.12)')}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 data-row-divider-sm">
-                {toggle(t('myFacility.serviceEpi'), serviceFlags.epi, () => toggleService('epi'))}
-                {toggle(t('anc.title'), serviceFlags.anc, () => toggleService('anc'))}
-                {toggle(t('myFacility.serviceDelivery'), serviceFlags.delivery, () => toggleService('delivery'))}
-                {toggle(t('boma.conditionHiv'), serviceFlags.hiv, () => toggleService('hiv'))}
-                {toggle(t('boma.conditionTb'), serviceFlags.tb, () => toggleService('tb'))}
-                {toggle(t('myFacility.serviceEmergencySurgery'), serviceFlags.emergencySurgery, () => toggleService('emergencySurgery'))}
-                {toggle(t('lab.laboratory'), serviceFlags.laboratory, () => toggleService('laboratory'))}
-                {toggle(t('nav.pharmacy'), serviceFlags.pharmacy, () => toggleService('pharmacy'))}
-              </div>
-            </div>
-          </div>
-
-          {/* Ministry of Health reporting — facility-level review gate. Data is
-              reviewed and explicitly submitted here rather than syncing to the
-              Ministry automatically. */}
-          <div className="lg:col-span-2">
-            <div className={sectionClass}>
-              {sectionTitle(<Send className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />, 'Ministry of Health Reporting')}
-
-              {(() => {
-                const submission = hospital?.mohSubmission;
-                const submittedAt = submission?.submittedAt;
-                const hasPendingChanges = !!submittedAt && !!hospital?.updatedAt && hospital.updatedAt > submittedAt;
-
-                return (
-                  <>
-                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Review the facility profile above, then submit it to the Ministry of Health.
-                      Facility data is not sent automatically — it is only reported once you submit it here.
-                    </p>
-
-                    <div className="flex items-center gap-2 text-xs">
-                      {!submittedAt ? (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)' }}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--text-muted)' }} />
-                          Not yet submitted
-                        </span>
-                      ) : hasPendingChanges ? (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning-text)' }}>
-                          <Clock className="w-3 h-3" />
-                          Changes pending submission
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success-text)' }}>
-                          <CheckCircle className="w-3 h-3" />
-                          Submitted to Ministry of Health
-                        </span>
-                      )}
-                    </div>
-
-                    {submittedAt && (
-                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                        Last submitted {new Date(submittedAt).toLocaleString()}
-                        {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
-                        {hasPendingChanges ? ' The profile has been edited since — submit again to report the latest data.' : ''}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-3 pt-1">
-                      <button
-                        onClick={handleSubmitToMoH}
-                        disabled={submitting || (!!submittedAt && !hasPendingChanges)}
-                        data-tour="moh-submit-gate"
-                        className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{
-                          background: submitting ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                          boxShadow: '0 2px 8px rgba(17, 116, 180,0.3)',
-                        }}
-                      >
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
-                      </button>
-                      {submitError && (
-                        <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
-                          <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-[11px] flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
-                      <AlertTriangle className="w-3 h-3" /> Save your changes before submitting so the Ministry receives the latest data.
-                    </p>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+                <p className="text-[11px] flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
+                  <AlertTriangle className="w-3 h-3" /> Save your changes before submitting so the Ministry receives the latest data.
+                </p>
+              </>
+            );
+          })()}
         </div>
-      </main>
-    </>
+      </SadbCard>
+    </SadbPage>
   );
 }

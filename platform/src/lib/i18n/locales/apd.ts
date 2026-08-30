@@ -1660,6 +1660,7 @@ const apd: TranslationMap = {
   'facilityAssessments.domainGeneralEquipment': 'معدات عامة',
   'facilityAssessments.domainReportingCompleteness': 'اكتمال الإبلاغ',
   'facilityAssessments.domainStaffingAdequacy': 'كفاية العاملين',
+  'facilityAssessments.emptyList': 'لا توجد تقييمات مرافق مسجلة حتى الآن.',
   'facilityAssessments.fieldDataQuality': 'جودة البيانات',
   'facilityAssessments.fieldDiagnostics': 'التشخيص',
   'facilityAssessments.fieldGeneralEquipment': 'معدات عامة',

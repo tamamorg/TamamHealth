@@ -10,12 +10,18 @@
  * → it collects here at the facility level → facility management reviews it and
  * submits to the Ministry of Health. Only submitted facilities are counted in
  * the national dashboard (see the government dashboard's reporting gate).
+ *
+ * Restyled onto the sadb-* admin-console kit (2026-08-30) to match every other
+ * admin/facility-management surface: navy greeting header (via SadbPage),
+ * KPI tiles for the census/staffing glance, a card for vital events & care
+ * programs, status/performance cards, and the visits trend inside a SadbCard.
+ * `RoleGuard` is folded into `SadbPage`'s own `roles` prop — the exact role
+ * set `/facility-overview` allows in `lib/role-routes.ts` (super_admin is
+ * always allowed there via its wildcard).
  */
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import RoleGuard from '@/components/RoleGuard';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useBirths } from '@/lib/hooks/useBirths';
 import { useDeaths } from '@/lib/hooks/useDeaths';
@@ -25,22 +31,29 @@ import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { censusFor } from '@/lib/services/facility-census';
+import { Building2, AlertTriangle, Send, Loader2 } from '@/components/icons/lucide';
 import {
-  Building2, Users, BedDouble, Activity, Baby, Skull, Syringe, HeartPulse,
-  ArrowRightLeft, AlertTriangle, Send, CheckCircle, Clock, Loader2, TrendingUp,
-} from '@/components/icons/lucide';
-import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import ChartCard, { tooltipStyle as chartTooltipStyle, axisTick } from '@/components/ChartCard';
+import { tooltipStyle as chartTooltipStyle, axisTick } from '@/components/ChartCard';
+import { SadbPage, SadbCard, SadbKpiTile, SadbKvRow, SadbChip, type ChipTone } from '@/components/admin/sadb-ui';
+import type { UserRole } from '@/lib/db-types';
+
+/* The exact role set `lib/role-routes.ts` grants `/facility-overview`
+ * (org_admin, medical_superintendent, hospital_manager), plus super_admin's
+ * standing wildcard — folded from the bare `<RoleGuard>` this page used to
+ * wrap itself in. */
+const FACILITY_OVERVIEW_ROLES: UserRole[] = ['org_admin', 'medical_superintendent', 'hospital_manager', 'super_admin'];
+
+const OP_STATUS_TONE: Record<string, ChipTone> = {
+  functional: 'green',
+  partially_functional: 'yellow',
+  non_functional: 'red',
+  closed: 'neutral',
+};
 
 export default function FacilityOverviewPage() {
-  return (
-    <RoleGuard>
-      <FacilityOverview />
-    </RoleGuard>
-  );
+  return <FacilityOverview />;
 }
 
 function FacilityOverview() {
@@ -85,21 +98,26 @@ function FacilityOverview() {
   // Not assigned to a facility — the dashboard has nothing to scope to.
   if (!hospitalId) {
     return (
-      <main className="page-container page-enter">
-        <div className="card-elevated p-8 text-center max-w-md mx-auto mt-16">
-          <Building2 className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{t('myFacility.notAssignedTitle')}</h2>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.notAssignedDesc')}</p>
-        </div>
-      </main>
+      <SadbPage roles={FACILITY_OVERVIEW_ROLES}>
+        <SadbCard>
+          <div className="p-8 text-center max-w-md mx-auto">
+            <Building2 className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+            <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{t('myFacility.notAssignedTitle')}</h2>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('myFacility.notAssignedDesc')}</p>
+          </div>
+        </SadbCard>
+      </SadbPage>
     );
   }
 
   if (hospitalsLoading && !hospital) {
     return (
-      <main className="page-container page-enter flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--text-muted)' }} />
-      </main>
+      <SadbPage roles={FACILITY_OVERVIEW_ROLES}>
+        <p className="sadb-empty" aria-live="polite">
+          <Loader2 className="w-4 h-4 inline-block me-2 animate-spin" style={{ verticalAlign: -3 }} />
+          Loading facility data…
+        </p>
+      </SadbPage>
     );
   }
 
@@ -125,11 +143,11 @@ function FacilityOverview() {
     'Immunizations': r.immunizations || 0,
   }));
 
-  const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    functional: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', label: t('myFacility.statusFunctional') },
-    partially_functional: { bg: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning)', label: t('myFacility.statusPartiallyFunctional') },
-    non_functional: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', label: t('myFacility.statusNonFunctional') },
-    closed: { bg: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)', label: t('myFacility.statusClosed') },
+  const opStatusLabel: Record<string, string> = {
+    functional: t('myFacility.statusFunctional'),
+    partially_functional: t('myFacility.statusPartiallyFunctional'),
+    non_functional: t('myFacility.statusNonFunctional'),
+    closed: t('myFacility.statusClosed'),
   };
   const opStatus = hospital?.operationalStatus || 'functional';
 
@@ -137,212 +155,136 @@ function FacilityOverview() {
   const submission = hospital?.mohSubmission;
   const submittedAt = submission?.submittedAt;
   const hasPendingChanges = !!submittedAt && !!hospital?.updatedAt && hospital.updatedAt > submittedAt;
+  const mohTone: ChipTone = !submittedAt ? 'neutral' : hasPendingChanges ? 'yellow' : 'green';
+  const mohLabel = !submittedAt ? 'Not yet submitted' : hasPendingChanges ? 'Changes pending submission' : 'Submitted to Ministry of Health';
 
   return (
-    <>
-      <main className="page-container page-enter">
-        <DashboardGreetingHeader module="Facility overview" />
-        {/* ═══ MINISTRY OF HEALTH SUBMISSION GATE ═══ */}
-        <div className="card-elevated p-5 mb-4">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-[240px]">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="icon-box-sm">
-                  <Send className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
-                </div>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Ministry of Health Reporting</h3>
-              </div>
-              <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Review your facility&apos;s data below, then submit it to the Ministry of Health. Data is reported
-                only when you submit it here — it is not sent automatically.
-              </p>
-              {!submittedAt ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(148, 162, 179,0.12)', color: 'var(--text-muted)' }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--text-muted)' }} /> Not yet submitted
-                </span>
-              ) : hasPendingChanges ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(253, 217, 95,0.12)', color: 'var(--color-warning-text)' }}>
-                  <Clock className="w-3 h-3" /> Changes pending submission
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success-text)' }}>
-                  <CheckCircle className="w-3 h-3" /> Submitted to Ministry of Health
-                </span>
-              )}
-              {submittedAt && (
-                <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
-                  Last submitted {new Date(submittedAt).toLocaleString()}
-                  {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || (!!submittedAt && !hasPendingChanges)}
-                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  background: submitting ? 'var(--text-muted)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                  boxShadow: '0 2px 8px rgba(17, 116, 180,0.3)',
-                }}
-              >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
-              </button>
-              {submitError && (
-                <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
-                  <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
-                </span>
-              )}
-            </div>
+    <SadbPage roles={FACILITY_OVERVIEW_ROLES} greeting="Facility overview">
+
+      {/* ═══ MINISTRY OF HEALTH SUBMISSION GATE ═══ */}
+      <SadbCard
+        title="Ministry of Health Reporting"
+        action={
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || (!!submittedAt && !hasPendingChanges)}
+            className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
+          >
+            {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
+          </button>
+        }
+      >
+        <div className="p-4 flex flex-col gap-2.5">
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Review your facility&apos;s data below, then submit it to the Ministry of Health. Data is reported
+            only when you submit it here — it is not sent automatically.
+          </p>
+          <div>
+            <SadbChip tone={mohTone}>{mohLabel}</SadbChip>
           </div>
+          {submittedAt && (
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              Last submitted {new Date(submittedAt).toLocaleString()}
+              {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
+            </p>
+          )}
+          {submitError && (
+            <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
+              <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
+            </span>
+          )}
+        </div>
+      </SadbCard>
+
+      {/* ═══ KEY METRICS — operational stats + vital events & care programs ═══ */}
+      <div data-tour="facility-overview-metrics" className="flex flex-col gap-3.5">
+        <div className="sadb-kpi-row">
+          <SadbKpiTile
+            label="Patients"
+            value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).patients) : '…'}
+          />
+          <SadbKpiTile label="Beds" value={String(hospital?.totalBeds ?? 0)} />
+          <SadbKpiTile label="Clinical Staff" value={String(staff)} />
+          <SadbKpiTile
+            label="Today's Visits"
+            value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).todayVisits) : '…'}
+          />
+          <SadbKpiTile label="Referrals (in / out)" value={`${referralsIn} / ${referralsOut}`} />
+          <SadbKpiTile
+            label="Active Alerts"
+            value={String(activeAlerts)}
+            delta={activeAlerts > 0 ? 'Needs attention' : undefined}
+            deltaTone={activeAlerts > 0 ? 'warn' : undefined}
+          />
+          {/* '—' when never measured — a red 0% would assert a measurement
+              that was never taken. */}
+          <SadbKpiTile
+            label="Data Quality"
+            value={dataQuality === null ? '—' : `${Math.round(dataQuality)}%`}
+            delta={dataQuality !== null && dataQuality < 80 ? 'Below target' : undefined}
+            deltaTone={dataQuality !== null && dataQuality < 80 ? 'warn' : undefined}
+          />
         </div>
 
-        {/* ═══ KEY METRICS — operational stats + vital events & care programs,
-              wrapped in one background card with quick-action style tiles ═══ */}
-        <div className="dash-card p-4" data-tour="facility-overview-metrics">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Key Metrics</h3>
-            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>· operations &amp; care programs</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            <StatCard icon={Users} label="Patients" value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).patients) : '…'} tint="var(--accent-primary)" />
-            <StatCard icon={BedDouble} label="Beds" value={String(hospital?.totalBeds ?? 0)} tint="var(--color-warning)" />
-            <StatCard icon={Users} label="Clinical Staff" value={String(staff)} tint="var(--accent-primary)" />
-            <StatCard icon={Activity} label="Today's Visits" value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).todayVisits) : '…'} tint="var(--accent-primary)" />
-            <StatCard icon={ArrowRightLeft} label="Referrals (in / out)" value={`${referralsIn} / ${referralsOut}`} tint="var(--accent-primary)" />
-            <StatCard icon={AlertTriangle} label="Active Alerts" value={String(activeAlerts)} tint={activeAlerts > 0 ? 'var(--color-danger)' : 'var(--color-success)'} />
-            {/* '—' when never measured — a red 0% would assert a measurement
-                that was never taken. */}
-            <StatCard icon={CheckCircle} label="Data Quality" value={dataQuality === null ? '—' : `${Math.round(dataQuality)}%`} tint={dataQuality === null ? 'var(--text-muted)' : dataQuality >= 80 ? 'var(--color-success)' : dataQuality >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'} />
-            <StatCard icon={Baby} label="Births Registered" value={String(births.length)} tint="var(--accent-primary)" />
-            <StatCard icon={Skull} label="Deaths Registered" value={String(deaths.length)} tint="var(--text-muted)" />
-            <StatCard icon={HeartPulse} label="ANC Visits" value={String(ancVisits.length)} tint="var(--chart-2)" />
-            <StatCard icon={Syringe} label="Immunizations" value={String(immunizations.length)} tint="var(--color-success)" />
-          </div>
-        </div>
-
-        {/* ═══ OPERATIONAL STATUS + PERFORMANCE GAUGES ═══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-          <div className="card-elevated p-5">
-            <SectionTitle icon={<Activity className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />} title="Operational Status" />
-            <div className="mt-3">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: statusColors[opStatus]?.bg, color: statusColors[opStatus]?.color }}>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColors[opStatus]?.color }} />
-                {statusColors[opStatus]?.label}
-              </span>
-            </div>
-          </div>
-          <div className="card-elevated p-5 lg:col-span-2">
-            <SectionTitle icon={<TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />} title="Facility Performance" />
-            {perf ? (
-              <div className="grid grid-cols-3 gap-4 mt-3">
-                <Gauge label="Reporting" value={perf.reportingCompleteness ?? 0} />
-                <Gauge label="Service Readiness" value={perf.serviceReadinessScore ?? 0} />
-                <Gauge label="Immunization Coverage" value={perf.immunizationCoverage ?? 0} />
-              </div>
-            ) : (
-              <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-                No performance data recorded for this facility yet.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* ═══ HEALTH VISITS TREND ═══ */}
-        <ChartCard
-          title="Health Visits Trend"
-          defaultType="area"
-          defaultPeriod="month"
-          className="mt-4"
-        >
-          {({ chartType }) => {
-            if (trend.length === 0) {
-              return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No monthly trend data recorded for this facility yet.</p>;
-            }
-            const visitSeries = [
-              { key: 'OPD Visits', color: 'var(--accent-primary)' },
-              { key: 'ANC Visits', color: 'var(--chart-2)' },
-              { key: 'Immunizations', color: 'var(--color-success-text)' },
-            ];
-            const commonProps = { data: trend, margin: { top: 8, right: 16, left: -8, bottom: 0 } };
-            const legendProps = { iconType: 'circle' as const, iconSize: 8, wrapperStyle: { fontSize: '0.75rem', paddingTop: '4px' } };
-            if (chartType === 'bar') {
-              return (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart {...commonProps}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
-                    <XAxis dataKey="month" tick={axisTick} />
-                    <YAxis tick={axisTick} />
-                    <Tooltip {...chartTooltipStyle} />
-                    <Legend {...{ ...legendProps, iconType: 'square' as const }} />
-                    {visitSeries.map(s => <Bar key={s.key} dataKey={s.key} fill={s.color} radius={[3, 3, 0, 0]} />)}
-                  </BarChart>
-                </ResponsiveContainer>
-              );
-            }
-            if (chartType === 'line') {
-              return (
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart {...commonProps}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
-                    <XAxis dataKey="month" tick={axisTick} />
-                    <YAxis tick={axisTick} />
-                    <Tooltip {...chartTooltipStyle} />
-                    <Legend {...legendProps} />
-                    {visitSeries.map(s => <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} strokeWidth={2} dot={{ r: 3 }} />)}
-                  </LineChart>
-                </ResponsiveContainer>
-              );
-            }
-            return (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart {...commonProps}>
-                  <defs>
-                    <linearGradient id="gOpd" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="gAnc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="gImm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--color-success)" stopOpacity={0} /></linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
-                  <XAxis dataKey="month" tick={axisTick} />
-                  <YAxis tick={axisTick} />
-                  <Tooltip {...chartTooltipStyle} />
-                  <Legend {...legendProps} />
-                  <Area type="monotone" dataKey="OPD Visits" stroke="var(--accent-primary)" fill="url(#gOpd)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="ANC Visits" stroke="var(--chart-2)" fill="url(#gAnc)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="Immunizations" stroke="var(--color-success)" fill="url(#gImm)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            );
-          }}
-        </ChartCard>
-
-      </main>
-    </>
-  );
-}
-
-// Matches the lab / pharmacy KPI tile: card-elevated surface with a small
-// colored icon + tiny UPPERCASE muted label on one line, value beneath.
-function StatCard({ icon: Icon, label, value, tint }: { icon: typeof Users; label: string; value: string; tint: string }) {
-  return (
-    <div className="card-elevated px-3 py-2.5">
-      <div className="flex items-center gap-1.5 mb-1">
-        <Icon className="w-[18px] h-[18px] flex-shrink-0" style={{ color: tint }} />
-        <span className="text-[9px] font-semibold uppercase tracking-wider truncate" style={{ color: 'var(--text-muted)' }}>{label}</span>
+        <SadbCard title="Vital Events & Care Programs">
+          <SadbKvRow label="Births Registered" value={String(births.length)} />
+          <SadbKvRow label="Deaths Registered" value={String(deaths.length)} />
+          <SadbKvRow label="ANC Visits" value={String(ancVisits.length)} />
+          <SadbKvRow label="Immunizations" value={String(immunizations.length)} />
+        </SadbCard>
       </div>
-      <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{value}</p>
-    </div>
-  );
-}
 
-function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
-  return (
-    <div className="flex items-center gap-2 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <div className="icon-box-sm">{icon}</div>
-      <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-    </div>
+      {/* ═══ OPERATIONAL STATUS + PERFORMANCE GAUGES ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-3.5">
+        <SadbCard title="Operational Status">
+          <div className="p-4">
+            <SadbChip tone={OP_STATUS_TONE[opStatus] ?? 'neutral'}>{opStatusLabel[opStatus] ?? opStatus}</SadbChip>
+          </div>
+        </SadbCard>
+
+        <SadbCard title="Facility Performance">
+          {perf ? (
+            <div className="grid grid-cols-3 gap-4 p-4">
+              <Gauge label="Reporting" value={perf.reportingCompleteness ?? 0} />
+              <Gauge label="Service Readiness" value={perf.serviceReadinessScore ?? 0} />
+              <Gauge label="Immunization Coverage" value={perf.immunizationCoverage ?? 0} />
+            </div>
+          ) : (
+            <p className="sadb-empty">No performance data recorded for this facility yet.</p>
+          )}
+        </SadbCard>
+      </div>
+
+      {/* ═══ HEALTH VISITS TREND ═══ */}
+      <SadbCard title="Health Visits Trend" meta="Monthly">
+        <div className="px-3 pt-3 pb-1">
+          {trend.length === 0 ? (
+            <p className="sadb-empty">No monthly trend data recorded for this facility yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={trend} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gOpd" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0} /></linearGradient>
+                  <linearGradient id="gAnc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} /></linearGradient>
+                  <linearGradient id="gImm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-success)" stopOpacity={0.4} /><stop offset="95%" stopColor="var(--color-success)" stopOpacity={0} /></linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
+                <XAxis dataKey="month" tick={axisTick} />
+                <YAxis tick={axisTick} />
+                <Tooltip {...chartTooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.75rem', paddingTop: '4px' }} />
+                <Area type="monotone" dataKey="OPD Visits" stroke="var(--accent-primary)" fill="url(#gOpd)" strokeWidth={2} />
+                <Area type="monotone" dataKey="ANC Visits" stroke="var(--chart-2)" fill="url(#gAnc)" strokeWidth={2} />
+                <Area type="monotone" dataKey="Immunizations" stroke="var(--color-success)" fill="url(#gImm)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </SadbCard>
+
+    </SadbPage>
   );
 }
 

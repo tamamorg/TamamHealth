@@ -13,42 +13,71 @@ interface LockScreenProps {
    *  false, the PIN pad is never offered — signing in again is the only way
    *  to unlock, rather than falling back to a weaker check. */
   pinSupported?: boolean;
+  /**
+   * Allow creating a PIN from THIS screen when none is registered yet, then
+   * unlocking with it — the "first-lock setup" convenience.
+   *
+   * OFF by default, and the caller only turns it on in demo/dev mode
+   * (`NEXT_PUBLIC_DEMO_MODE`). In a real deployment this stays false, so the
+   * secure rule still holds: a PIN is registered from Settings while
+   * authenticated, never from an overlay shown to someone who has not proven
+   * who they are. See `canOfferPinSetup`.
+   */
+  allowSetup?: boolean;
   onVerifyPin: (pin: string) => Promise<boolean>;
+  /** Registers a new PIN (demo/dev first-lock setup only). Required for the
+   *  setup path to render. */
+  onSetPin?: (pin: string) => Promise<void>;
   onUnlock: () => void;
   onLogout: () => void;
 }
 
 /**
- * Whether the lock screen may offer PIN entry at all, or must fall back to
- * re-authentication only (the "Switch User" button, which signs the session
- * out and returns to a full sign-in).
+ * Whether the lock screen may offer PIN entry to UNLOCK an existing PIN, or
+ * must fall back to re-authentication only (the "Switch User" button, which
+ * signs the session out and returns to a full sign-in).
  *
  * This is the whole fix for the auto-lock-accepts-anything regression: PIN
  * *registration* happens from Settings (`RoleSettingsView`), reached only
  * once the user is already authenticated — never from this overlay, which by
- * definition is shown to someone who has NOT proven who they are yet. There
- * used to be a `mode === 'setup'` path here that let anyone standing in front
- * of a locked, PIN-less device pick a fresh PIN and walk straight in
- * (`onSetPin` immediately followed by `onUnlock`); that path is gone. The
- * only two ways past this screen now are a correct PRE-EXISTING PIN
+ * definition is shown to someone who has NOT proven who they are yet. The one
+ * exception is the demo/dev first-lock setup path (`canOfferPinSetup`), gated
+ * on `allowSetup`, which callers only enable in demo mode. In production the
+ * two ways past this screen are still a correct PRE-EXISTING PIN
  * (`onVerifyPin`, which itself refuses when none is registered — see
  * `useAutoLock.verifyPin`) or `onLogout` into a fresh sign-in.
  *
- * Extracted as a pure function — this repo has no React Testing Library, so
- * asserting "no PIN means only the re-auth branch renders" is done by testing
- * this decision directly rather than rendering the component.
+ * Extracted as pure functions — this repo has no React Testing Library, so
+ * asserting the branch logic is done by testing these decisions directly
+ * rather than rendering the component.
  */
 export function canOfferPinEntry(hasPin: boolean, pinSupported: boolean): boolean {
   return hasPin && pinSupported;
 }
 
-export default function LockScreen({ userName, hasPin, pinSupported = true, onVerifyPin, onUnlock, onLogout }: LockScreenProps) {
+/**
+ * Whether the lock screen may let the user CREATE a PIN here and unlock with
+ * it. Only when there is no PIN yet, the device can hash one, and the caller
+ * has explicitly opted in (demo/dev). Never a fallback for a missing PIN in
+ * production — that would let anyone at a locked, PIN-less device set a PIN
+ * and walk in, which is the exact regression `canOfferPinEntry` guards.
+ */
+export function canOfferPinSetup(hasPin: boolean, pinSupported: boolean, allowSetup: boolean): boolean {
+  return !hasPin && pinSupported && allowSetup;
+}
+
+export default function LockScreen({ userName, hasPin, pinSupported = true, allowSetup = false, onVerifyPin, onSetPin, onUnlock, onLogout }: LockScreenProps) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Setup path only: the first PIN entered, held while the user re-enters it
+   *  to confirm. `null` = still on the first entry. */
+  const [setupFirst, setSetupFirst] = useState<string | null>(null);
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setupMode = canOfferPinSetup(hasPin, pinSupported, allowSetup) && !!onSetPin;
 
   const triggerShake = () => {
     setShake(true);
@@ -63,13 +92,38 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
       if (prev.length >= 4) return prev; // max 4 digits
       const next = prev + digit;
 
-      // Auto-submit when 4th digit entered — verify against the existing
-      // PIN. There is no setup/confirm branch here any more: a lock screen
-      // is only ever rendered with a digit pad when `canOfferPinEntry` is
-      // true, i.e. a PIN already exists to check against.
       if (next.length === 4) {
         if (autoRef.current) clearTimeout(autoRef.current);
         autoRef.current = setTimeout(async () => {
+          if (setupMode) {
+            // First-lock setup: capture, then confirm, then register + unlock.
+            if (setupFirst === null) {
+              setSetupFirst(next);
+              setPin('');
+              return;
+            }
+            if (next !== setupFirst) {
+              setError(t('lock.pinMismatch'));
+              setSetupFirst(null);
+              setPin('');
+              triggerShake();
+              return;
+            }
+            setBusy(true);
+            try {
+              await onSetPin!(next);
+              onUnlock();
+            } catch {
+              setError(t('lock.pinSetupFailed'));
+              setSetupFirst(null);
+              setPin('');
+              triggerShake();
+            }
+            setBusy(false);
+            return;
+          }
+
+          // Verify path: check against the existing PIN.
           setBusy(true);
           const valid = await onVerifyPin(next);
           if (valid) {
@@ -85,22 +139,19 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
 
       return next;
     });
-  }, [busy, onVerifyPin, onUnlock, t]);
+  }, [busy, setupMode, setupFirst, onSetPin, onVerifyPin, onUnlock, t]);
 
   const handleBackspace = useCallback(() => {
     setPin(prev => prev.slice(0, -1));
     setError('');
   }, []);
 
-  // No usable PIN to check against (never registered, or this context can't
-  // hash one — see `pinSupported`'s doc comment). Either way the ONLY way
-  // through is a fresh sign-in: no digit pad, and no "set up a PIN" prompt
-  // that would otherwise let whoever is standing at the device register one
-  // and walk straight in. Falling through to the pad instead would mean
-  // either verifying against nothing (any 4 digits "work") or minting a new
-  // PIN from an unauthenticated screen — both are the exact regression this
-  // guards against. See `canOfferPinEntry`.
-  if (!canOfferPinEntry(hasPin, pinSupported)) {
+  // No usable PIN to check against and no setup offered (never registered and
+  // not demo/dev, or this context can't hash one — see `pinSupported`). The
+  // ONLY way through is a fresh sign-in: no digit pad, and no "set up a PIN"
+  // prompt on an unauthenticated screen. See `canOfferPinEntry` /
+  // `canOfferPinSetup`.
+  if (!canOfferPinEntry(hasPin, pinSupported) && !setupMode) {
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6 text-center">
@@ -135,6 +186,11 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
     );
   }
 
+  // Instruction under the name: create → confirm → (or) enter existing PIN.
+  const prompt = setupMode
+    ? (setupFirst === null ? t('lock.createPin') : t('lock.confirmPin'))
+    : t('lock.enterYourPin');
+
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
       <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6">
@@ -149,7 +205,7 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, onVe
             <Lock className="w-3.5 h-3.5" />
             <span className="text-xs">{t('auth.sessionLocked')}</span>
           </div>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('lock.enterYourPin')}</p>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{prompt}</p>
         </div>
 
         {/* PIN dots */}
