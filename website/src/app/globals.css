@@ -905,6 +905,25 @@ header > div { min-width: 0; }
   .tm-pex-cta { flex-direction: column; align-items: flex-start !important; }
 }
 
+/* ── Two-button CTA pairs stay side by side on a phone ───────────────────
+   A primary + secondary pair (e.g. Get in touch / The six levels of care)
+   wrapped to a stack on narrow screens. Kept on one row, each taking half
+   the width and centring its label — wrapping inside its own half if a label
+   runs long, with the shorter button stretching to match. */
+@media (max-width: 639px) {
+  .tm-btn-pair { flex-wrap: nowrap !important; align-items: stretch; width: 100%; }
+  .tm-btn-pair > a,
+  .tm-btn-pair > .btn {
+    flex: 1 1 0 !important;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding-inline: 12px !important;
+  }
+}
+
 /* ── Mobile resilience: notches, browser chrome, touch, and form focus ── */
 @media (max-width: 767px) {
   input,

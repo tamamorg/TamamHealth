@@ -105,7 +105,7 @@ export default async function ProductsPage() {
                 {t("Tell us the level of care and what you run today. We will map it onto the products and show you the gaps.")}
               </p>
             </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div className="tm-btn-pair" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link href="/contact" className="btn btn-primary blueprint" style={{ padding: "13px 26px", fontSize: 15, color: "#113055" }}>
                 {t("Get in touch")}
                 <Corners />
