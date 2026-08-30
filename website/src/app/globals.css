@@ -882,6 +882,29 @@ header > div { min-width: 0; }
   .tm-carousel-nav .tm-hero-nav { display: none !important; }
 }
 
+/* ── Product explorer (/products): rail · photo · panel ──────────────────
+   Below 1000px the three columns get cramped, so the block stacks: the rail
+   turns into a horizontal chip scroller above the photo, and the photo drops
+   to a fixed banner. The panel keeps its overlay-to-tallest sizing at every
+   width, so switching products never resizes the block. */
+@media (max-width: 1000px) {
+  .tm-pex-body { grid-template-columns: 1fr !important; row-gap: 26px; }
+  .tm-pex-rail {
+    flex-direction: row !important;
+    overflow-x: auto;
+    gap: 8px;
+    margin-inline: -14px;
+    padding-inline: 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tm-pex-rail::-webkit-scrollbar { display: none; }
+  .tm-pex-tab { flex: 0 0 auto; border: 1px solid var(--color-divider); }
+  .tm-pex-tab[aria-current="true"] { border-color: var(--color-accent-700); }
+  .tm-pex-photo { min-height: 300px !important; }
+  .tm-pex-cta { flex-direction: column; align-items: flex-start !important; }
+}
+
 /* ── Mobile resilience: notches, browser chrome, touch, and form focus ── */
 @media (max-width: 767px) {
   input,

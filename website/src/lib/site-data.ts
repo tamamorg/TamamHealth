@@ -11,11 +11,17 @@ export interface Product {
   accent: string;
   acronym: string;
   title: string;
+  /** Short room/audience label under the acronym in the explorer rail. */
+  sector: string;
   tagline: string;
   description: string;
+  /** Three one-line proof points shown above the module grid. */
+  highlights: string[];
   modules: string[];
   image: string;
   imageAlt: string;
+  /** Short scene label overlaid on the explorer photograph. */
+  imageCaption: string;
 }
 
 export const PRODUCTS: Product[] = [
@@ -24,76 +30,135 @@ export const PRODUCTS: Product[] = [
     accent: "#015697",
     acronym: "HMIS",
     title: "Hospital Management System",
+    sector: "Hospitals",
     tagline: "For State, County & Referral hospitals",
     description:
       "A connected facility platform for OPD, IPD, ward management, laboratory, imaging, pharmacy, billing, HR, and reporting, all tied to the same patient record.",
+    highlights: [
+      "One patient record across OPD, IPD and every department",
+      "Wards, laboratory, imaging and pharmacy on the same chart",
+      "Billing and DHIS2 reporting drawn from the same visit",
+    ],
     modules: ["Patient Registry", "Outpatient & Inpatient", "Ward & Bed Management", "Laboratory", "Imaging", "Pharmacy", "Billing & Payments", "Reporting & BI", "DHIS2 Sync"],
     image: "/assets/doctor-at-workstation.jpg",
     imageAlt: "A doctor at a workstation, reading a patient's record on screen",
+    imageCaption: "Hospital floor",
   },
   {
     slug: "cms",
     accent: "#015697",
     acronym: "CMS",
     title: "Clinic Management System",
+    sector: "Clinics & PHCUs",
     tagline: "For PHCUs, private practices & faith-based clinics",
     description:
       "Everything a single-site clinic needs to run a full patient day: registration, consultation, prescriptions, basic lab, dispensing, billing — offline-first.",
+    highlights: [
+      "A full patient day from registration to dispensing",
+      "Consultation, prescriptions and basic lab in one place",
+      "Runs offline-first on a single site",
+    ],
     modules: ["Patient Registry", "Outpatient Consultation", "Lab Orders", "Pharmacy Dispensing", "Billing", "DHIS2 Sync"],
     image: "/assets/community-health-worker.jpg",
     imageAlt: "Community health worker at a primary care clinic",
+    imageCaption: "Primary care clinic",
   },
   {
     slug: "lis",
     accent: "#015697",
     acronym: "LIS",
     title: "Laboratory Information System",
+    sector: "Laboratory",
     tagline: "For diagnostic centres & hospital labs",
     description:
       "Receive orders from any clinician, run bench workflows, capture results, validate, and release them back into the encounter.",
+    highlights: [
+      "Orders arrive from any clinician on the record",
+      "Specimen tracked from intake to validated result",
+      "Released results flow straight back into the encounter",
+    ],
     modules: ["Order Intake", "Specimen Tracking", "Result Capture", "Quality Control", "TAT Dashboards", "Critical Result Alerts"],
     image: "/assets/doctor-writing-notes.jpg",
     imageAlt: "Lab staff recording results",
+    imageCaption: "Diagnostic lab",
   },
   {
     slug: "ris",
     accent: "#015697",
     acronym: "RIS",
     title: "Radiology Information System",
+    sector: "Radiology",
     tagline: "For radiology centres & imaging departments",
     description:
       "Schedule modalities, accession studies, capture findings, and deliver reports back to the ordering clinician — connected to the same record.",
+    highlights: [
+      "Modality scheduling and study worklists in one place",
+      "Structured findings captured at the workstation",
+      "Reports delivered back to the ordering clinician",
+    ],
     modules: ["Modality Scheduling", "Study Worklist", "Structured Reporting", "PACS Integration", "DICOM Export"],
     image: "/assets/doctor-tablet-review.jpg",
     imageAlt: "Radiologist reviewing imaging on a workstation",
+    imageCaption: "Imaging suite",
   },
   {
     slug: "pms",
     accent: "#015697",
     acronym: "PMS",
     title: "Pharmacy Management System",
+    sector: "Pharmacy",
     tagline: "For retail & hospital pharmacies",
     description:
-      "Track medicines from stock to dispense, manage batches and expiry, fill electronic prescriptions, and keep pharmacy activity visible.",
+      "Medicines tracked from delivery to dispense: batches and expiry dates on the ledger, electronic prescriptions filled without transcription, and reorder decisions made on real consumption instead of a look at the shelf.",
+    highlights: [
+      "First-expiry-first-out proposed at every dispense",
+      "Reorder alerts before a stock-out reaches the counter",
+      "Controlled medicines on an append-only two-signature register",
+    ],
     modules: ["Inventory & Batches", "Expiry Tracking", "Reorder Alerts", "Electronic Rx Dispensing", "POS for OTC", "Supplier Orders"],
     image: "/assets/doctor-prescription.jpg",
     imageAlt: "Pharmacist preparing a prescription",
+    imageCaption: "Hospital pharmacy",
   },
   {
     slug: "pps",
     accent: "#015697",
     acronym: "PPS",
     title: "Patient Portal",
+    sector: "Patients",
     tagline: "Patients' window into their own care",
     description:
       "Patients see their own records, prescriptions, lab results, and visit history — on a phone, by SMS, or at a kiosk — and share feedback that flows back to the facility.",
+    highlights: [
+      "Records, prescriptions and results on a phone",
+      "Reachable by app, SMS or a facility kiosk",
+      "Patient feedback flows back to the facility",
+    ],
     modules: ["My Records", "Prescriptions & Results", "Visit History", "Appointment Reminders", "Feedback & Follow-up"],
     image: "/assets/clinician-with-tablet.jpg",
     imageAlt: "A patient reading their own health record on a tablet",
+    imageCaption: "In the patient's hands",
   },
 ];
 
 export const productBySlug = (slug: string) => PRODUCTS.find((p) => p.slug === slug);
+
+/* "Why six, not one" — the three things every product shares underneath, shown
+   below the explorer on /products. The products differ; the record does not. */
+export const PRODUCT_UNITY: { title: string; body: string }[] = [
+  {
+    title: "One patient identity",
+    body: "The same person, found the same six ways, whichever product is open — so a referral continues rather than restarting.",
+  },
+  {
+    title: "One offline engine",
+    body: "Every product holds its data locally and replicates both ways. None of them assumes a server or a live socket.",
+  },
+  {
+    title: "One reporting path",
+    body: "Whatever the room, the visit tallies into the same indicators and leaves in DHIS2-ready form.",
+  },
+];
 
 interface ProductDetailStep {
   t: string;
@@ -612,7 +677,7 @@ export const HEROES: Hero[] = [
   },
   {
     kicker: "The Goal",
-    title: "Our goal is to prove it works, then bring it to every clinic that needs it",
+    title: "Our goal is to prove it works, then bring it to every clinic",
     body: "We're raising **$100,000** to launch TamamHealth in **10 clinics** across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and the model we take across sub-Saharan Africa.",
     image: "/assets/community-health-worker.jpg",
     alt: "Community health worker at a primary care clinic",

@@ -49,25 +49,39 @@ export default function HeroShowcase() {
         </div>
         <div className="tm-hero-scrim" style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(1,86,151,0.42) 0%, rgba(1,86,151,0.06) 62%, rgba(1,86,151,0.22) 100%)" }} />
         <div className="tm-hero-wrap" style={{ position: "relative", maxWidth: 1320, margin: "0 auto", padding: "0 32px", height: "100%", display: "flex", alignItems: "center" }}>
-          <div className="blueprint tm-hero-card" style={{ width: "min(608px, 100%)", background: "rgba(255,255,255,0.92)", padding: "36px 44px 38px", display: "flex", flexDirection: "column", gap: 16 }}>
-            <Corners />
-            <h1 style={{ fontSize: "clamp(29px, 4.6vw, 46px)", lineHeight: 1.08, margin: 0, letterSpacing: "-0.02em" }}>{h.title}</h1>
-            <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{emphasise(h.body)}</p>
-            <div className="tm-hero-btns" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
-              <Link href={h.href} className="btn btn-primary blueprint" style={{ padding: "13px 26px", fontSize: 15, color: "#113055" }}>
-                {t("Learn more")}
-                <Corners />
-              </Link>
-              {/* Not /products — that is the catalogue. "Our Solution" is a
-                  claim about the problem this hero just stated, so it resolves
-                  to the page that answers it failure by failure. It lands at
-                  the TOP of that page, not on #solution: the platform hero
-                  states what the answer is before the eight failures argue it,
-                  and deep-linking past it dropped the reader mid-argument. */}
-              <Link href="/platform" className="btn btn-secondary" style={{ padding: "13px 26px", fontSize: 15 }}>
-                {t("Our Solution")}
-              </Link>
-            </div>
+          {/* Every slide's card is rendered into the SAME grid cell, so the
+              stack is always as tall as the wordiest slide and never resizes
+              when you switch tabs — only opacity cross-fades. Just the active
+              card is visible and focusable; the rest hold the height open so
+              the panel and the photograph behind it stay put. "Our Solution"
+              always resolves to /platform (the page that answers the problem
+              failure by failure), landing at its top — not /products, the
+              catalogue, and not #solution, which drops the reader mid-argument. */}
+          <div className="tm-hero-cardstack" style={{ display: "grid", width: "min(608px, 100%)" }}>
+            {HEROES.map((hh, i) => {
+              const on = i === hero;
+              return (
+                <div
+                  key={hh.stripKicker}
+                  className="blueprint tm-hero-card"
+                  aria-hidden={!on}
+                  style={{ gridArea: "1 / 1", background: "rgba(255,255,255,0.92)", padding: "36px 44px 38px", display: "flex", flexDirection: "column", gap: 16, opacity: on ? 1 : 0, pointerEvents: on ? "auto" : "none", transition: "opacity 0.32s ease" }}
+                >
+                  <Corners />
+                  <h1 style={{ fontSize: "clamp(29px, 4.6vw, 46px)", lineHeight: 1.08, margin: 0, letterSpacing: "-0.02em" }}>{hh.title}</h1>
+                  <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{emphasise(hh.body)}</p>
+                  <div className="tm-hero-btns" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
+                    <Link href={hh.href} className="btn btn-primary blueprint" tabIndex={on ? 0 : -1} style={{ padding: "13px 26px", fontSize: 15, color: "#113055" }}>
+                      {t("Learn more")}
+                      <Corners />
+                    </Link>
+                    <Link href="/platform" className="btn btn-secondary" tabIndex={on ? 0 : -1} style={{ padding: "13px 26px", fontSize: 15 }}>
+                      {t("Our Solution")}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
