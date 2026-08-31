@@ -113,6 +113,33 @@ export function isPendingApproval(appointment: { status: AppointmentStatus; appo
   return appointment.status === 'requested' && appointment.appointmentDate >= today;
 }
 
+/**
+ * How long the walk-in dialog waits on `checkInPatient` before giving up on
+ * the promise ever settling and surfacing an error instead.
+ *
+ * `checkInPatient` chains several PouchDB/IndexedDB writes (booking,
+ * encounter, triage) with no network round-trip involved, so it normally
+ * settles in well under a second — but IndexedDB transactions on a
+ * freshly-created local database are the one class of operation in this app
+ * already known to hang instead of rejecting (see `repairCorruptLocalDatabases`
+ * in lib/db.ts, written for the same failure mode). Before this guard, that
+ * hang left "Register Walk-In" showing "Registering…" forever even though the
+ * write underneath it had already landed — never closing, never erroring, and
+ * inviting a clerk who does not know that to click it again.
+ */
+const WALK_IN_CHECKIN_TIMEOUT_MS = 20_000;
+
+/** Rejects with `message` after `ms` if `promise` has not settled by then. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 /* ─── Page ─── */
 export default function AppointmentsPage() {
   const { appointments, loading: appointmentsLoading } = useAppointments();
@@ -425,24 +452,28 @@ export default function AppointmentsPage() {
       const { BookingConflictError } = await import('@/lib/services/appointment-service');
       let result;
       try {
-        result = await checkInPatient({
-          patientId: patient._id,
-          patientName: `${patient.firstName} ${patient.surname}`,
-          hospitalNumber: patient.hospitalNumber,
-          patientPhone: patient.phone || undefined,
-          facilityId: currentUser?.hospitalId || '',
-          facilityName: currentUser?.hospitalName || '',
-          orgId: currentUser?.orgId,
-          department: wiDepartment,
-          chiefComplaint: wiReason,
-          notes: wiNotes || undefined,
-          // The dialog's own Routine/Urgent/Emergency picker → the service's
-          // acuity vocabulary, which also sets the triage priority
-          // (GREEN/YELLOW/RED) the nurse re-triages against.
-          acuity: wiPriority === 'emergency' ? 'emergency' : wiPriority === 'urgent' ? 'priority' : 'routine',
-          checkedInById: currentUser?._id || '',
-          checkedInByName: currentUser?.name || '',
-        });
+        result = await withTimeout(
+          checkInPatient({
+            patientId: patient._id,
+            patientName: `${patient.firstName} ${patient.surname}`,
+            hospitalNumber: patient.hospitalNumber,
+            patientPhone: patient.phone || undefined,
+            facilityId: currentUser?.hospitalId || '',
+            facilityName: currentUser?.hospitalName || '',
+            orgId: currentUser?.orgId,
+            department: wiDepartment,
+            chiefComplaint: wiReason,
+            notes: wiNotes || undefined,
+            // The dialog's own Routine/Urgent/Emergency picker → the service's
+            // acuity vocabulary, which also sets the triage priority
+            // (GREEN/YELLOW/RED) the nurse re-triages against.
+            acuity: wiPriority === 'emergency' ? 'emergency' : wiPriority === 'urgent' ? 'priority' : 'routine',
+            checkedInById: currentUser?._id || '',
+            checkedInByName: currentUser?.name || '',
+          }),
+          WALK_IN_CHECKIN_TIMEOUT_MS,
+          t('appointments.toastWalkInTimeout'),
+        );
       } catch (err) {
         if (err instanceof BookingConflictError) {
           // A same-day slot this desk cannot safely fold into (a different

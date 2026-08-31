@@ -12,6 +12,8 @@
  * browser and server runtimes, so `createIndex`/`find` are always available.
  */
 
+import { getDB, isClosingConnectionError } from '../db';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDB = any;
 
@@ -83,10 +85,32 @@ export async function findByType<T>(
   extraSelector: Record<string, unknown> = {},
   options: { limit?: number; indexFields?: string[] } = {},
 ): Promise<T[]> {
-  await ensureIndex(db, options.indexFields ?? derivedIndexFields(extraSelector));
-  const res = (await db.find({
+  const fields = options.indexFields ?? derivedIndexFields(extraSelector);
+  const query = (target: AnyDB) => target.find({
     selector: { type, ...extraSelector },
     limit: options.limit ?? 100_000,
-  })) as { docs: T[] };
-  return (res.docs || []) as T[];
+  }) as Promise<{ docs: T[] }>;
+
+  await ensureIndex(db, fields);
+  try {
+    const res = await query(db);
+    return (res.docs || []) as T[];
+  } catch (err) {
+    // `db` can be a cached instance that a concurrent background wipe (logout,
+    // session expiry, device handover — see lib/security/local-wipe.ts) closed
+    // out from under this call, most commonly when a fast re-login on the same
+    // device races the previous session's cleanup. Without this retry the
+    // caller — often a data hook loading on mount right after login — got an
+    // empty result indistinguishable from "no records", which for patients,
+    // triage or appointments reads as data loss to clinical staff even though
+    // nothing was actually lost. See isClosingConnectionError() in lib/db.ts
+    // for why a fresh getDB() call here is guaranteed to return a healthy
+    // instance rather than repeat the same failure.
+    const name = dbName(db);
+    if (!isClosingConnectionError(err) || name === 'unknown') throw err;
+    const fresh = getDB(name);
+    await ensureIndex(fresh, fields);
+    const res = await query(fresh);
+    return (res.docs || []) as T[];
+  }
 }

@@ -451,6 +451,7 @@ const apd: TranslationMap = {
   'appointments.toastWalkInRegistered': 'العيان الطارئ اتسجل',
   'appointments.toastWalkInCheckedInExisting': 'اتسجل دخوله — استخدمنا موعد العيان الموجود اليوم',
   'appointments.toastWalkInNoVisit': 'اتسجل، لكن الزيارة ما اتفتحت — الفرز ما حيشوف العيان دا. بلغ الدعم الفني.',
+  'appointments.toastWalkInTimeout': 'الأمر بياخد وقت أطول من المتوقع. اتأكد من قايمة اليوم قبل ما تحاول تاني — يمكن العيان اتسجل خلاص.',
   'appointments.typeAnc': 'رعاية ما قبل الولادة',
   'appointments.typeDental': 'أسنان',
   'appointments.typeFollowUp': 'متابعة',

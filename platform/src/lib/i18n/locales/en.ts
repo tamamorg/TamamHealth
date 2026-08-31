@@ -445,6 +445,7 @@ const en: TranslationMap = {
   'appointments.toastWalkInRegistered': 'Walk-in registered',
   'appointments.toastWalkInCheckedInExisting': 'Checked in — used the patient’s existing appointment for today',
   'appointments.toastWalkInNoVisit': 'Registered, but the visit could not be opened — triage will not see this patient. Tell IT.',
+  'appointments.toastWalkInTimeout': 'This is taking longer than expected. Check today’s queue before trying again — the patient may already be checked in.',
   'appointments.typeAnc': 'Antenatal Care',
   'appointments.typeDental': 'Dental',
   'appointments.typeFollowUp': 'Follow-Up',

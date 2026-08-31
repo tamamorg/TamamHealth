@@ -76,15 +76,17 @@ export default function ForcePasswordChange({
         className="w-full max-w-md rounded-2xl p-6 sm:p-8"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow-lg)' }}
       >
-        <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-          style={{ background: 'transparent', color: 'var(--accent-primary)' }}
-        >
-          <ShieldCheck className="w-6 h-6" />
+        <div className="flex items-center gap-2.5 mb-1">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'transparent', color: 'var(--accent-primary)' }}
+          >
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            Set your password
+          </h1>
         </div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          Set your password
-        </h1>
         <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
           Welcome, {userName}. For security, choose a new password before continuing.
           Your temporary password was set by an administrator.

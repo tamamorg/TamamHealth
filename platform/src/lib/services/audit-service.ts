@@ -1,5 +1,5 @@
 import { captureException } from '@/lib/observability';
-import { auditLogDB } from '../db';
+import { auditLogDB, isClosingConnectionError } from '../db';
 import type { AuditLogDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import { findByType } from './db-query';
@@ -37,7 +37,19 @@ export async function logAudit(
       createdAt: now,
       updatedAt: now,
     };
-    await db.put(doc);
+    try {
+      await db.put(doc);
+    } catch (err) {
+      // The cached auditLogDB() instance can be closed mid-write by a
+      // concurrent background wipe (logout / session-expiry / device
+      // handover — lib/security/local-wipe.ts), most commonly right after a
+      // fast re-login on the same device. A fresh auditLogDB() call is
+      // guaranteed to return a healthy instance — see isClosingConnectionError
+      // in lib/db.ts — so retry once before falling through to the outer
+      // catch's "never break the caller" handling.
+      if (!isClosingConnectionError(err)) throw err;
+      await auditLogDB().put(doc);
+    }
   } catch (err) {
     // Never let audit logging failures break the main flow
     console.error('[Audit] Failed to write audit log:', err);
@@ -222,7 +234,14 @@ async function writeReadEntry(
       updatedAt: now,
       ...fields,
     } as AuditLogDoc;
-    await db.put(doc);
+    try {
+      await db.put(doc);
+    } catch (err) {
+      // Same race as logAudit's retry above — retry once against a fresh
+      // connection before falling through to the outer catch.
+      if (!isClosingConnectionError(err)) throw err;
+      await auditLogDB().put(doc);
+    }
   } catch (err) {
     // Same posture as logAudit: never break the read path over the log.
     console.error('[Audit] Failed to write PHI read log:', err);

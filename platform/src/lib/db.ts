@@ -167,6 +167,32 @@ export async function destroyLocalDatabase(name: string): Promise<void> {
   }
 }
 
+/**
+ * True for the browser IndexedDB race where a caller already holds a
+ * reference to a database instance that gets torn down out from under it by
+ * a concurrent background wipe (`lib/security/local-wipe.ts`, driven by
+ * logout, session expiry, or the device-handover check on login) — most
+ * visibly when a fast re-login on the same device (e.g. "Switch User" from
+ * the lock screen straight back into a full sign-in) lands the new session's
+ * first reads/writes in the same tick as the old session's cleanup.
+ * IndexedDB answers with this exact `InvalidStateError` instead of data or a
+ * write confirmation.
+ *
+ * The fix is a bare retry, not a lock: `destroyLocalDatabase()` above always
+ * deletes the stale cache entry from `databases` *before* it starts closing
+ * the connection, and this error can only be thrown once that close is
+ * already underway — so by the time a caller catches it, the cache entry is
+ * guaranteed gone and a fresh `getDB(name)` call is guaranteed to construct a
+ * brand-new, healthy instance rather than hand back the one that just closed.
+ */
+export function isClosingConnectionError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    err.name === 'InvalidStateError' &&
+    /connection is closing/i.test(err.message)
+  );
+}
+
 // Typed database accessors
 export const usersDB = () => getDB('tamamhealth_users');
 export const patientsDB = () => getDB('tamamhealth_patients');
