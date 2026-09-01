@@ -8,7 +8,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Why Tamam exists, what the data says, and the team building it — founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
+    "Why Tamam exists, what the data says, and the team building it: founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
 };
 
 export default async function AboutPage() {
@@ -24,7 +24,7 @@ export default async function AboutPage() {
             <div>
               <h1 style={{ fontSize: "clamp(28px, 4.4vw, 46px)", margin: "0 0 20px", color: "#FFFFFF" }}>{t("Our story & Purpose")}</h1>
               <p style={{ margin: "0 0 16px", fontSize: 16.5, lineHeight: 1.75, color: "rgba(255,255,255,0.84)" }}>
-                {t("We did not start from a market study. We started from waiting rooms we have sat in — as patients, as relatives, and alongside clinicians in South Sudan who are asked to practise medicine without a record to practise from. We watched a nurse rebuild a child’s history by asking the mother to remember it, and a lab result walk across a compound in a hand and never arrive.")}
+                {t("We did not start from a market study. We started from waiting rooms we have sat in: as patients, as relatives, and alongside clinicians in South Sudan who are asked to practise medicine without a record to practise from. We watched a nurse rebuild a child’s history by asking the mother to remember it, and a lab result walk across a compound in a hand and never arrive.")}
               </p>
               <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.75, color: "rgba(255,255,255,0.84)" }}>
                 {t("That is the problem we set out to fix, and it is why every design decision starts from the constraint rather than the ideal: it has to work on a tablet, on battery, with no signal, run by staff who were trained in a morning. Tamam is built by people who know what the paper system costs, because we have watched it cost them.")}

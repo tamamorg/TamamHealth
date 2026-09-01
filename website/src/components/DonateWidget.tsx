@@ -34,12 +34,12 @@ export default function DonateWidget() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           access_key: WEB3FORMS_ACCESS_KEY,
-          subject: `TamamHealth donation pledge — ${summary}`,
+          subject: `TamamHealth donation pledge: ${summary}`,
           from_name: "tamamhealth.org donate form",
           name: data.get("name"),
           email: data.get("email"),
           clinic: data.get("clinic"),
-          tier: `${activeTier.amount} — ${activeTier.label}`,
+          tier: `${activeTier.amount} · ${activeTier.label}`,
           frequency: freq,
         }),
       });
@@ -131,7 +131,7 @@ export default function DonateWidget() {
         </button>
         {state === "error" && (
           <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "#B4180F" }}>
-            {t("Something went wrong sending that — please email support.tamam@gmail.com directly.")}
+            {t("Something went wrong sending that. Please email support.tamam@gmail.com directly.")}
           </span>
         )}
         <span className="fs125" style={{ lineHeight: 1.5, color: "var(--color-neutral-600)" }}>

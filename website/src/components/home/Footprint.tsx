@@ -26,7 +26,7 @@ const DEFAULT_SITE: Site = {
   name: "Juba",
   state: "Central Equatoria",
   tier: "Referral / teaching tier",
-  note: "Pilot launch site — the 10-clinic pilot begins in Juba and greater South Sudan.",
+  note: "Pilot launch site: the 10-clinic pilot begins in Juba and greater South Sudan.",
   pilot: true,
 };
 
@@ -57,7 +57,7 @@ export default function Footprint() {
           <h2 style={{ fontSize: "clamp(27px, 4vw, 44px)", margin: 0, maxWidth: 760 }}>{t("Starting in Juba, built to scale across sub-Saharan Africa")}</h2>
           <span className="tm-rule" style={{ display: "block", width: 380, height: 3, background: "var(--color-accent)" }} />
           <p style={{ margin: 0, maxWidth: 640, fontSize: 15.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-            {emphasise(t("We’re raising **$100,000** to launch TamamHealth in 10 clinics across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and a foundation built to scale across sub-Saharan Africa."))}
+            {emphasise(t("We’re raising **$100,000** to launch TamamHealth in 10 clinics across Juba and greater South Sudan: proof that offline-first digital records can work in the hardest conditions, and a foundation built to scale across sub-Saharan Africa."))}
           </p>
         </div>
         <div className="tm-map tm-split" style={{ position: "relative", marginTop: 34, display: "grid", gridTemplateColumns: "400px 1fr", alignItems: "center", gap: 0 }}>

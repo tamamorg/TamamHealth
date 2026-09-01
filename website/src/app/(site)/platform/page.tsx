@@ -10,7 +10,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "The Platform",
   description:
-    "How TamamHealth solves it: each failure paper records create in South Sudan's facilities, and what the offline-first platform does about it — from the front desk to the Ministry.",
+    "How TamamHealth solves it: each failure paper records create in South Sudan's facilities, and what the offline-first platform does about it. From the front desk to the Ministry.",
 };
 
 export default async function PlatformPage() {
@@ -27,7 +27,7 @@ export default async function PlatformPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 18, alignItems: "flex-start" }}>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>{t("One record, from the front desk to the Ministry")}</h1>
               <p style={{ margin: 0, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.82)", maxWidth: 660 }}>
-                {t("Simple enough for the front desk. Strong enough for the nation. Everything the paper system loses — history, time, trust — Tamam keeps. One offline-first record that follows the patient through every visit.")}
+                {t("Simple enough for the front desk. Strong enough for the nation. Everything the paper system loses (history, time, trust), Tamam keeps. One offline-first record that follows the patient through every visit.")}
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap", marginTop: 6 }}>
                 <Link href="/contact" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, background: "#FFFFFF", borderColor: "#FFFFFF", color: "#015697" }}>
@@ -59,7 +59,7 @@ export default async function PlatformPage() {
                   screenshot is decoration, and a reader who has never seen the
                   product cannot tell a chart from a queue. */}
               <figcaption className="fs125" style={{ padding: "9px 5px 2px", lineHeight: 1.5, color: "var(--color-neutral-600)" }}>
-                {t("The patient record — allergies, vitals, medications and the next care actions, in one view.")}
+                {t("The patient record: allergies, vitals, medications and the next care actions, in one view.")}
               </figcaption>
             </figure>
           </div>
@@ -91,7 +91,7 @@ export default async function PlatformPage() {
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("Our solution")}</span>
             <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("Eight ways paper fails, and what the platform does instead")}</h2>
             <p style={{ margin: 0, maxWidth: 760, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              {t("Every one of these was documented inside South Sudanese facilities before a line of the platform was written. None of them is solved by digitising a form — each needed a specific mechanism, and each mechanism works with the power off and the network down.")}
+              {t("Every one of these was documented inside South Sudanese facilities before a line of the platform was written. None of them is solved by digitising a form: each needed a specific mechanism, and each mechanism works with the power off and the network down.")}
             </p>
           </div>
 
@@ -152,7 +152,7 @@ export default async function PlatformPage() {
               <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("How it works")}</span>
               <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "10px 0 0", color: "#FFFFFF" }}>{t("A patient day, end to end")}</h2>
             </div>
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 420 }}>{t("Seven steps, one record — from the front desk to the national report.")}</span>
+            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 420 }}>{t("Seven steps, one record: from the front desk to the national report.")}</span>
           </div>
           {/* The seven steps divide the container rather than sitting on a fixed
               190px basis: seven of those came to 1330px inside a 1320px row, so

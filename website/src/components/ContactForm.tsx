@@ -65,7 +65,7 @@ export default function ContactForm() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           access_key: WEB3FORMS_ACCESS_KEY,
-          subject: `TamamHealth website — ${data.get("topic") || "Contact"}`,
+          subject: `TamamHealth website: ${data.get("topic") || "Contact"}`,
           from_name: "tamamhealth.org contact form",
           name: who.name,
           email: who.email,
@@ -123,7 +123,7 @@ export default function ContactForm() {
             value={who.phone} onChange={(e) => setWho({ ...who, phone: e.target.value })}
           />
           <input
-            aria-label={t("Organisation")} placeholder={t("Organisation — clinic, hospital, NGO or ministry*")} className="tm-cfield" style={field}
+            aria-label={t("Organisation")} placeholder={t("Organisation: clinic, hospital, NGO or ministry*")} className="tm-cfield" style={field}
             value={who.organisation} onChange={(e) => setWho({ ...who, organisation: e.target.value })}
           />
           {/* type="button": step 1 advances the wizard, it never submits. */}
@@ -170,7 +170,7 @@ export default function ContactForm() {
           </div>
           {state === "error" && (
             <span style={{ fontSize: 14, lineHeight: 1.5, color: "#b4180f" }}>
-              {t("Something went wrong sending that — please email support.tamam@gmail.com directly.")}
+              {t("Something went wrong sending that. Please email support.tamam@gmail.com directly.")}
             </span>
           )}
         </div>

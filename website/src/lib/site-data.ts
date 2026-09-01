@@ -52,7 +52,7 @@ export const PRODUCTS: Product[] = [
     sector: "Clinics & PHCUs",
     tagline: "For PHCUs, private practices & faith-based clinics",
     description:
-      "Everything a single-site clinic needs to run a full patient day: registration, consultation, prescriptions, basic lab, dispensing, billing — offline-first.",
+      "Everything a single-site clinic needs to run a full patient day: registration, consultation, prescriptions, basic lab, dispensing, billing, all offline-first.",
     highlights: [
       "A full patient day from registration to dispensing",
       "Consultation, prescriptions and basic lab in one place",
@@ -90,7 +90,7 @@ export const PRODUCTS: Product[] = [
     sector: "Radiology",
     tagline: "For radiology centres & imaging departments",
     description:
-      "Schedule modalities, accession studies, capture findings, and deliver reports back to the ordering clinician — connected to the same record.",
+      "Schedule modalities, accession studies, capture findings, and deliver reports back to the ordering clinician, connected to the same record.",
     highlights: [
       "Modality scheduling and study worklists in one place",
       "Structured findings captured at the workstation",
@@ -128,7 +128,7 @@ export const PRODUCTS: Product[] = [
     sector: "Patients",
     tagline: "Patients' window into their own care",
     description:
-      "Patients see their own records, prescriptions, lab results, and visit history — on a phone, by SMS, or at a kiosk — and share feedback that flows back to the facility.",
+      "Patients see their own records, prescriptions, lab results, and visit history (on a phone, by SMS, or at a kiosk) and share feedback that flows back to the facility.",
     highlights: [
       "Records, prescriptions and results on a phone",
       "Reachable by app, SMS or a facility kiosk",
@@ -148,7 +148,7 @@ export const productBySlug = (slug: string) => PRODUCTS.find((p) => p.slug === s
 export const PRODUCT_UNITY: { title: string; body: string }[] = [
   {
     title: "One patient identity",
-    body: "The same person, found the same six ways, whichever product is open — so a referral continues rather than restarting.",
+    body: "The same person, found the same six ways, whichever product is open, so a referral continues rather than restarting.",
   },
   {
     title: "One offline engine",
@@ -181,13 +181,13 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
       "The full facility spine. One patient, one record, from the moment they arrive at the gate to the moment the visit is closed and reported.",
     stepsTitle: "A patient day, step by step",
     steps: [
-      { t: "Register", b: "A 6-step wizard: demographics, contact and location (the household number derives a geocode, BOMA-[code]-HH[number]), next of kin, biometrics — patient photo and consent-gated fingerprint enrolment — payment coverage, then review. A hospital number is assigned on submit." },
-      { t: "Check in the arrival", b: "Arrival mode (walk-in, ambulance, referral, police), symptom duration, chief complaint, known allergies, then acuity: Routine, Priority or Emergency. Submitting creates a pending triage entry — the queue token — and flips any same-day appointment to checked in." },
+      { t: "Register", b: "A 6-step wizard: demographics, contact and location (the household number derives a geocode, BOMA-[code]-HH[number]), next of kin, biometrics (patient photo and consent-gated fingerprint enrolment), payment coverage, then review. A hospital number is assigned on submit." },
+      { t: "Check in the arrival", b: "Arrival mode (walk-in, ambulance, referral, police), symptom duration, chief complaint, known allergies, then acuity: Routine, Priority or Emergency. Submitting creates a pending triage entry (the queue token) and flips any same-day appointment to checked in." },
       { t: "Room and assign", b: "The front-desk queue merges triaged walk-ins, arrived appointments and open checkouts, sorted RED → YELLOW → GREEN. Reception assigns an exam room and a provider; the patient then appears in that clinician's worklist. This is the reception-to-clinical handoff." },
       { t: "Triage", b: "The nurse records chief complaint, ETAT ABCC (airway, breathing, circulation, consciousness) and full vitals including GCS, MUAC and glucose. Priority auto-derives: obstructed airway, absent breathing or circulation, or unresponsive → RED; distressed or impaired → YELLOW; otherwise GREEN." },
       { t: "Consultation", b: "A 6-step wizard: intake (complaint and vitals) → examination by system → assessment with ICD-11 coded diagnoses → orders (prescriptions with interaction, allergy and duplicate checks, plus lab and imaging orders) → plan and disposition → summary with a charge preview. Drafts auto-save encrypted." },
       { t: "Departments work the orders", b: "Lab results, imaging reports and dispensed drugs flow back into the chart. Sending to lab mid-visit parks the encounter as awaiting labs and returns the clinician to the dashboard; the visit resumes later with results attached." },
-      { t: "Disposition", b: "Checkout runs the facility checkout gate — prescriptions dispensed, critical labs reviewed, documents generated, payment determined — or the visit becomes an admission (ward, bed, medication administration record) or a referral with a bundled transfer package." },
+      { t: "Disposition", b: "Checkout runs the facility checkout gate (prescriptions dispensed, critical labs reviewed, documents generated, payment determined) or the visit becomes an admission (ward, bed, medication administration record) or a referral with a bundled transfer package." },
       { t: "Records and reporting", b: "The visit feeds charges, vital statistics, daily census tallies and DHIS2 exports: Monthly HMIS 105, Weekly Epi, Quarterly HIV, Monthly Maternal, Immunization Coverage." },
     ],
     lifecycleTitle: "Appointment lifecycle",
@@ -204,9 +204,9 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
       "Everything a single-site clinic needs to run a full patient day, on one tablet, with no server room and no assumption of connectivity.",
     stepsTitle: "A clinic day, step by step",
     steps: [
-      { t: "Find or register the patient", b: "Three identity lookups: text (hospital ID, geocode, national ID), a camera scan of the patient's QR card, or a 1:N fingerprint match — which runs offline against locally-replicated templates." },
+      { t: "Find or register the patient", b: "Three identity lookups: text (hospital ID, geocode, national ID), a camera scan of the patient's QR card, or a 1:N fingerprint match, which runs offline against locally-replicated templates." },
       { t: "Check in", b: "Chief complaint, symptom duration, known allergies and acuity. Optional quick vitals: temperature, pulse, respiratory rate, SpO₂, blood pressure, weight." },
-      { t: "Consult", b: "The same 6-step wizard the hospitals use: intake, examination, ICD-11 assessment, orders, plan, summary — with drug interaction, allergy and duplicate checks on every prescription." },
+      { t: "Consult", b: "The same 6-step wizard the hospitals use: intake, examination, ICD-11 assessment, orders, plan, summary, with drug interaction, allergy and duplicate checks on every prescription." },
       { t: "Order basic lab work", b: "Orders go to the clinic's own bench and come back onto the same encounter, with the visit parked as awaiting labs in the meantime." },
       { t: "Dispense on site", b: "Prescriptions are filled from the clinic's stock: quantity for the full course, a stock gate that refuses on insufficient stock, then an interaction check against the patient's other active medicines." },
       { t: "Charge or exempt", b: "Out-of-pocket, program, exemption or NGO coverage. Unpriced lines are skipped rather than charged at zero, and public facilities can run fee-free while still tracking cost for donor reporting." },
@@ -216,19 +216,19 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
     lifecycle: ["pending triage", "in consult", "orders out", "awaiting labs", "checkout", "synced"],
     roles: ["Clinical Officer", "Nurse / Midwife", "Clinic Clerk", "Pharmacist (dispensing)", "Facility Administrator"],
     safeguards: [
-      { t: "One tablet is enough", b: "The clinic runs on the same offline-first record as a referral hospital — no local server, no permanent line." },
+      { t: "One tablet is enough", b: "The clinic runs on the same offline-first record as a referral hospital: no local server, no permanent line." },
       { t: "Auto-lock", b: "The screen locks when the tab is hidden and after 10 minutes idle. Unlock is a 4-digit PIN; log out is always available from the lock screen." },
       { t: "Referral out, records with it", b: "Referring bundles a transfer package of the patient's records; the receiving facility gets an intake encounter with handover notes." },
     ],
   },
   LIS: {
     intro:
-      "A real order state machine from the moment a clinician files a test to the moment the result is communicated to the patient — with the safety rails a lab needs.",
+      "A real order state machine from the moment a clinician files a test to the moment the result is communicated to the patient, with the safety rails a lab needs.",
     stepsTitle: "Working the bench, step by step",
     steps: [
       { t: "The order arrives", b: "Filed from a consultation onto the lab worklist. STAT orders arrive already in process and flagged critical." },
       { t: "Collect the specimen", b: "The tech works the queue row by row; collection is stamped on the order." },
-      { t: "Receive at lab — or reject", b: "A rejected specimen enters a recollection loop rather than disappearing: rejected, needs recollection → re-collect." },
+      { t: "Receive at lab, or reject", b: "A rejected specimen enters a recollection loop rather than disappearing: rejected, needs recollection → re-collect." },
       { t: "Start processing", b: "The order moves to in-process and the turnaround clock is visible to the ordering clinician." },
       { t: "Enter the result", b: "Value, unit, reference range, abnormal and critical flags. Entered values are auto-scored against a critical-value table." },
       { t: "Confirm a critical result", b: "A critical value requires a two-eyes confirmation and fires a high-priority message to the ordering clinician." },
@@ -245,7 +245,7 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
   },
   RIS: {
     intro:
-      "Imaging orders sit on the same order store as the lab, filtered onto the radiology worklist — so a study is never a separate paper life.",
+      "Imaging orders sit on the same order store as the lab, filtered onto the radiology worklist, so a study is never a separate paper life.",
     stepsTitle: "A study, step by step",
     steps: [
       { t: "The order reaches the worklist", b: "Imaging orders are filtered onto the radiology worklist automatically, carrying the modality and body region requested." },
@@ -265,7 +265,7 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
   },
   PMS: {
     intro:
-      "The dispensing queue, the stock room and the controlled-substance register in one place — with the checks that stop the wrong medicine leaving the counter.",
+      "The dispensing queue, the stock room and the controlled-substance register in one place, with the checks that stop the wrong medicine leaving the counter.",
     stepsTitle: "Dispensing, step by step",
     steps: [
       { t: "The prescription arrives", b: "Prescriptions land from consultations into a priority queue: life-sustaining medicines first, immediate urgency floating to the top." },
@@ -280,14 +280,14 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
     lifecycle: ["prescribed", "received_in_pharmacy_queue", "under_review", "cleared_for_dispensing", "dispensed", "counseled", "complete"],
     roles: ["Pharmacist", "Pharmacy Technician", "Medical Superintendent (register oversight)"],
     safeguards: [
-      { t: "Append-only controlled register", b: "Inspection-grade: every movement — intake, dispense, waste, reconciliation, transfer — needs an operator and a distinct witness, a positive quantity and a non-negative running balance. Entries can never be edited or deleted." },
+      { t: "Append-only controlled register", b: "Inspection-grade: every movement (intake, dispense, waste, reconciliation, transfer) needs an operator and a distinct witness, a positive quantity and a non-negative running balance. Entries can never be edited or deleted." },
       { t: "Stock you can trust", b: "Live status (adequate, low, critical, expired), stock received against batch and expiry, first-expiry-first-out tracking, reorder quantities and a printable purchase order." },
       { t: "Charged once", b: "Medicines sent to pharmacy mid-visit are charged at send time, so completing the consultation does not bill them twice." },
     ],
   },
   PPS: {
     intro:
-      "The patient's own window into their care — on a phone, by SMS, or at a kiosk — separate from staff login and read-only where it should be.",
+      "The patient's own window into their care (on a phone, by SMS, or at a kiosk), separate from staff login and read-only where it should be.",
     stepsTitle: "What a patient can do",
     steps: [
       { t: "Sign in", b: "With a hospital ID and phone number, or name, date of birth and phone. The session is separate from staff login and clears on sign out." },
@@ -301,7 +301,7 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
     lifecycle: ["requested", "confirmed", "checked_in", "in_progress", "completed"],
     roles: ["Patients", "Caregivers", "Front Desk (confirming)", "Cashier (verifying payments)"],
     safeguards: [
-      { t: "Nothing new to install", b: "Reached from a phone browser, by SMS reminder, or at a facility kiosk — no app store, no smartphone requirement." },
+      { t: "Nothing new to install", b: "Reached from a phone browser, by SMS reminder, or at a facility kiosk: no app store, no smartphone requirement." },
       { t: "Payments are verified, not assumed", b: "Portal payments arrive pending and are approved or rejected by a cashier before they post to the ledger." },
       { t: "Intake before arrival", b: "Form packets sent by SMS come back for staff review, then merge into the chart field by field on approval." },
     ],
@@ -335,13 +335,13 @@ export const CHALLENGES: Challenge[] = [
     d2: "M9 14h6",
     body: "Paper files live where they were written. If the folder is at another facility, in a locked office, or lost to flooding, the clinician in front of the patient has nothing to read. Staff search shelves while a queue builds outside the door.",
     cost: "Time spent looking for a file is time taken from the patient in front of you.",
-    fix: "**One patient record**, held on the device and **replicated when a connection appears** — searchable by name, hospital number, geocode, QR card or fingerprint.",
+    fix: "**One patient record**, held on the device and **replicated when a connection appears**: searchable by name, hospital number, geocode, QR card or fingerprint.",
     products: ["HMIS", "CMS", "PPS"],
     steps: [
       { t: "Register once, keep the identity", b: "The front desk registers the patient once. The record carries a hospital number, a geocode down to the boma, and optionally a QR card or fingerprint, so the same person is found again without a folder." },
-      { t: "Find the patient in seconds", b: "Search by any of those identifiers. The result is the whole record — every past encounter, prescription, result and referral attached to that person." },
+      { t: "Find the patient in seconds", b: "Search by any of those identifiers. The result is the whole record: every past encounter, prescription, result and referral attached to that person." },
       { t: "Hold it on the device", b: "The record lives on the facility device, so a power cut or a dropped connection does not remove access to the history in front of the clinician." },
-      { t: "Replicate when a connection appears", b: "When bandwidth returns, changes sync both ways. The file is no longer in one building on one shelf — it exists wherever that patient presents." },
+      { t: "Replicate when a connection appears", b: "When bandwidth returns, changes sync both ways. The file is no longer in one building on one shelf: it exists wherever that patient presents." },
     ],
   },
   {
@@ -353,14 +353,14 @@ export const CHALLENGES: Challenge[] = [
     d: "M3 12a9 9 0 1 0 3-6.7",
     d2: "M3 4v5h5",
     body: "Without the last visit in hand, the clinician takes the story again: what was diagnosed, what was prescribed, whether it worked. The patient answers from memory, and the memory of an unwell person under pressure is an unreliable clinical record.",
-    cost: "Consultations run long and start incomplete — the second visit knows less than the first.",
+    cost: "Consultations run long and start incomplete: the second visit knows less than the first.",
     fix: "The chart opens with vitals, diagnoses, prescriptions, results and the plan from **every previous visit already there**.",
     products: ["HMIS", "CMS", "PPS"],
     steps: [
       { t: "Open the chart, not a blank page", b: "Starting a consultation loads the patient's timeline: previous diagnoses, medicines, results, vitals and the plan left by the last clinician." },
       { t: "Record the encounter as structured data", b: "Vitals, complaint, examination, diagnosis and plan are captured in fields, not prose, so the next clinician can read them without interpretation." },
       { t: "Carry the plan forward", b: "Follow-up instructions and review dates persist on the record and surface at the next visit instead of relying on the patient's recall." },
-      { t: "Let the patient see it too", b: "Through the patient portal, the person can read their own visit history, prescriptions and results — a second copy of the truth." },
+      { t: "Let the patient see it too", b: "Through the patient portal, the person can read their own visit history, prescriptions and results: a second copy of the truth." },
     ],
   },
   {
@@ -397,7 +397,7 @@ export const CHALLENGES: Challenge[] = [
     steps: [
       { t: "Prescribe from the active medicine list", b: "The prescriber sees what the patient is already taking, when it was dispensed and by whom." },
       { t: "Run the safety checks", b: "Interaction, allergy and duplicate-therapy checks run against that list before the prescription can be issued." },
-      { t: "Dispense against the prescription", b: "The pharmacy fills the electronic prescription — no transcription, no guessing at handwriting — and records the batch actually given out." },
+      { t: "Dispense against the prescription", b: "The pharmacy fills the electronic prescription (no transcription, no guessing at handwriting) and records the batch actually given out." },
       { t: "Write it back to the record", b: "The dispense event closes the loop on the same patient record, so the next clinician sees what was received, not what was intended." },
     ],
   },
@@ -430,7 +430,7 @@ export const CHALLENGES: Challenge[] = [
     d2: "M4 7.5 12 12v9",
     body: "Medicines are counted by eye during a busy shift, expiry dates are checked when someone remembers, and a stock-out is discovered at the counter with a prescription already in hand. Reorder decisions rest on guesswork.",
     cost: "Patients are turned away from drugs the facility owned but let expire.",
-    fix: "**Live stock status**, batch and expiry tracking with **first-expiry-first-out**, reorder alerts and a printable purchase order — plus an append-only two-signature register for controlled medicines.",
+    fix: "**Live stock status**, batch and expiry tracking with **first-expiry-first-out**, reorder alerts and a printable purchase order, plus an append-only two-signature register for controlled medicines.",
     products: ["PMS", "HMIS"],
     steps: [
       { t: "Receive stock into batches", b: "Deliveries are entered by batch number and expiry date, so the shelf has a ledger behind it." },
@@ -466,9 +466,9 @@ export const CHALLENGES: Challenge[] = [
     short: "National figures are transcribed from tally sheets weeks after the fact.",
     d: "M4 20V10m5 10V4m5 16v-7m5 7V7",
     d2: "",
-    body: "Facility staff spend days copying registers into monthly summaries. Numbers arrive late, incomplete, and impossible to check against the visits that produced them — which is precisely the gap the Ministry names in its own review of the system.",
+    body: "Facility staff spend days copying registers into monthly summaries. Numbers arrive late, incomplete, and impossible to check against the visits that produced them: which is precisely the gap the Ministry names in its own review of the system.",
     cost: "Planning and outbreak response run on data that is already out of date.",
-    fix: "**Every visit tallies as it happens**, data-quality scoring runs **before** export, and DHIS2-ready reports — Monthly HMIS 105, Weekly Epi, Immunization Coverage — are generated, not retyped.",
+    fix: "**Every visit tallies as it happens**, data-quality scoring runs **before** export, and DHIS2-ready reports (Monthly HMIS 105, Weekly Epi, Immunization Coverage) are generated, not retyped.",
     products: ["HMIS", "CMS"],
     steps: [
       { t: "Tally at the point of care", b: "Each visit contributes to the indicators as it is recorded. There is no separate counting exercise." },
@@ -491,7 +491,7 @@ export interface CareLevel {
 }
 
 export const CARE_LEVELS: CareLevel[] = [
-  { tone: "#015697", level: "Community — Boma Health Initiative", role: "Promotion, screening & referral", product: "Registry & referral", image: "/assets/community-malaria-test.jpg", alt: "A community health worker running a malaria rapid test on a small child held by their mother, at a village outreach" },
+  { tone: "#015697", level: "Community: Boma Health Initiative", role: "Promotion, screening & referral", product: "Registry & referral", image: "/assets/community-malaria-test.jpg", alt: "A community health worker running a malaria rapid test on a small child held by their mother, at a village outreach" },
   { tone: "#015697", level: "Primary Health Care Unit (PHCU)", role: "First formal point of care", product: "CMS", image: "/assets/community-health-worker.jpg", alt: "Community health worker at a primary care clinic" },
   { tone: "#015697", level: "Primary Health Care Centre (PHCC)", role: "Expanded primary & maternity care", product: "CMS", image: "/assets/medical-unit-female-ward.jpg", alt: "The women's side of a health centre's medical unit" },
   { tone: "#015697", level: "County Hospital", role: "First referral & inpatient care", product: "HMIS", image: "/assets/inpatient-ward-beds.jpg", alt: "Mothers and babies on numbered beds under mosquito nets in a hospital inpatient ward" },
@@ -501,7 +501,7 @@ export const CARE_LEVELS: CareLevel[] = [
 
 /** Sidebar label for a care level — "Community" for the Boma tier, otherwise the level minus its parenthetical. */
 export const careLevelLabel = (c: CareLevel) =>
-  c.product === "Registry & referral" ? "Community" : c.level.replace(/ \(.*\)/, "").replace(" — Boma Health Initiative", "");
+  c.product === "Registry & referral" ? "Community" : c.level.replace(/ \(.*\)/, "").replace(": Boma Health Initiative", "");
 
 /* The two infrastructure figures that carry the closing argument on the
    health-system page: they are the reason offline-first is a requirement and
@@ -627,7 +627,7 @@ export const HEROES: Hero[] = [
        the diagnosis. No terminal full stop — none of the four hero titles
        takes one. */
     title: "Transforming fragmented records into connected care",
-    body: "In South Sudan, a patient's history lives on paper — **one ledger, one building, one shelf** — so when it is lost or damaged, care begins again from nothing. The same break runs upward: what a facility knows about an outbreak, a stock-out or a missed vaccination rarely reaches anyone who can act on it. **The data exists**; what has been missing is a record built for a clinic with no power and no signal. That is what Tamam is.",
+    body: "In South Sudan, a patient's history lives on paper (**one ledger, one building, one shelf**), so when it is lost or damaged, care begins again from nothing. The same break runs upward: what a facility knows about an outbreak, a stock-out or a missed vaccination rarely reaches anyone who can act on it. **The data exists**; what has been missing is a record built for a clinic with no power and no signal. That is what Tamam is.",
     /* The paper record itself, in the hands of the two people the platform is
        for. The left third of the frame is bare wall, which is exactly where
        the hero card sits — the clinicians and the file stay in view beside it. */
@@ -642,13 +642,13 @@ export const HEROES: Hero[] = [
     /* The mission's own statement of the problem (VISION-MINDMAP.md). A single
        health-outcome figure read as one statistic among many; the failure this
        venture actually addresses is that the record never travels. */
-    stripTitle: "The data exists — it never makes it up the chain",
+    stripTitle: "The data exists: it never makes it up the chain",
     href: "/health-system#reality",
   },
   {
     kicker: "Ground Truth",
     title: "The daily reality inside South Sudan's facilities",
-    body: "Documented across South Sudanese facilities, from the wards to the waiting line — the same failures repeat on both sides of the consultation desk: **lost histories, duplicate treatment, and very slow clinical flow**.",
+    body: "Documented across South Sudanese facilities, from the wards to the waiting line, the same failures repeat on both sides of the consultation desk: **lost histories, duplicate treatment, and very slow clinical flow**.",
     image: "/assets/medical-unit-male-ward.jpg",
     alt: "Patients and clinical staff inside a crowded male medical ward in South Sudan",
     accent: "#015697",
@@ -661,7 +661,7 @@ export const HEROES: Hero[] = [
   {
     kicker: "National Alignment",
     title: "South Sudan's healthcare system",
-    body: "The Ministry of Health's **2025 Essential Health Services Package** organises the country's care into **six levels** — and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not replace it — and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.",
+    body: "The Ministry of Health's **2025 Essential Health Services Package** organises the country's care into **six levels**, and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not replace it, and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels.",
     /* Takes the frame the problem card gave up. The carousel shows four
        photographs; two of them being the same one made it read as a stall
        rather than a change of subject. A rural clinic also sits at the tier
@@ -678,7 +678,7 @@ export const HEROES: Hero[] = [
   {
     kicker: "The Goal",
     title: "Our goal is to prove it works, then bring it to every clinic",
-    body: "We're raising **$100,000** to launch TamamHealth in **10 clinics** across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and the model we take across sub-Saharan Africa.",
+    body: "We're raising **$100,000** to launch TamamHealth in **10 clinics** across Juba and greater South Sudan: proof that offline-first digital records can work in the hardest conditions, and the model we take across sub-Saharan Africa.",
     image: "/assets/community-health-worker.jpg",
     alt: "Community health worker at a primary care clinic",
     accent: "#015697",
@@ -692,12 +692,12 @@ export const DONATION_TIERS = [
   { accent: "#015697", amount: "$50", label: "Powers one clinic day", note: "Solar charging and data for a tablet running a full patient day offline." },
   { accent: "#015697", amount: "$250", label: "Equips a front desk", note: "One tablet plus the fingerprint reader that gives undocumented patients an identity." },
   { accent: "#015697", amount: "$1,000", label: "Trains a facility team", note: "Registration, consultation, lab, and pharmacy staff trained on the same record." },
-  { accent: "#015697", amount: "$10,000", label: "Launches a clinic", note: "One of the ten pilot clinics — devices, power, training, and twelve months of support." },
+  { accent: "#015697", amount: "$10,000", label: "Launches a clinic", note: "One of the ten pilot clinics: devices, power, training, and twelve months of support." },
 ];
 
 export const DONATION_STEPS = [
   { accent: "#015697", n: "01", title: "You give", body: "Choose an amount, one-time or monthly. Every gift is earmarked for the 10-clinic pilot in Juba and greater South Sudan." },
-  { accent: "#015697", n: "02", title: "We equip", body: "Funds buy the physical things a clinic needs to go digital: affordable tablets, solar power, fingerprint readers — no server room, no IT department." },
+  { accent: "#015697", n: "02", title: "We equip", body: "Funds buy the physical things a clinic needs to go digital: affordable tablets, solar power, fingerprint readers. No server room, no IT department." },
   { accent: "#015697", n: "03", title: "We deploy and train", body: "Each facility is set up offline-first and its team is trained on one patient record across registration, consultation, lab, and pharmacy." },
   { accent: "#015697", n: "04", title: "We measure and report back", body: "Clean records roll up into facility dashboards and DHIS2-ready national reports. Donors get the same numbers the Ministry sees." },
 ];
@@ -705,8 +705,8 @@ export const DONATION_STEPS = [
 export const DONATION_FAQ = [
   { q: "Where exactly does the money go?", a: "Devices and solar power, deployment and staff training, connectivity and sync, and measurement. The $100,000 pilot goal covers all ten clinics over twelve months, from equipment to measurement and scale." },
   { q: "Can I fund a specific clinic?", a: "Yes. Tell us in the message and we will assign your gift to one of the ten pilot facilities and report on that facility directly." },
-  { q: "Can my organisation partner instead of donating?", a: "Facility, NGO, funder, or ministry — write to support.tamam@gmail.com and we will scope a deployment with you." },
-  { q: "How do I know it worked?", a: "Every level writes to the same patient record and rolls up into DHIS2-ready national reports — the pilot is designed to be measured, not asserted." },
+  { q: "Can my organisation partner instead of donating?", a: "Facility, NGO, funder, or ministry: write to support.tamam@gmail.com and we will scope a deployment with you." },
+  { q: "How do I know it worked?", a: "Every level writes to the same patient record and rolls up into DHIS2-ready national reports: the pilot is designed to be measured, not asserted." },
 ];
 
 /**
@@ -821,7 +821,7 @@ export function platformHref(role: LoginRole["key"] = "staff"): string {
 
 export const LEGAL = [
   { id: "covers", title: "What these terms cover", paras: [
-    "These Terms & Conditions govern use of the TamamHealth platform — the hospital, clinic, laboratory, radiology, pharmacy and patient portal products — together with this website and any related services. By creating an account, signing in, or using the platform on a facility device, you agree to them.",
+    "These Terms & Conditions govern use of the TamamHealth platform (the hospital, clinic, laboratory, radiology, pharmacy and patient portal products) together with this website and any related services. By creating an account, signing in, or using the platform on a facility device, you agree to them.",
     "Where a facility, ministry or partner organisation has signed a separate deployment agreement with TamamHealth, that agreement takes precedence over these terms for the users it covers.",
   ]},
   { id: "accounts", title: "Accounts and access", paras: [
@@ -829,7 +829,7 @@ export const LEGAL = [
     "You are responsible for activity under your account. Report a lost device or suspected compromise to your facility administrator immediately so the session can be revoked.",
   ]},
   { id: "roles", title: "Role-based use", paras: [
-    "The platform restricts what each role can see and do — doctor, clinical officer, nurse, laboratory technician, pharmacist, front desk, community health worker, and government administrator. You may only use the functions your role has been granted.",
+    "The platform restricts what each role can see and do: doctor, clinical officer, nurse, laboratory technician, pharmacist, front desk, community health worker, and government administrator. You may only use the functions your role has been granted.",
     "Attempting to reach records outside your role or your facility is a breach of these terms and is recorded in the audit log.",
   ]},
   { id: "patient-data", title: "Patient data and confidentiality", paras: [
@@ -882,7 +882,7 @@ export const PLATFORM_FACTS = [
 export const PLATFORM_FLOW = [
   { n: "01", t: "Arrival and identification", b: "The patient is registered once, or found again by name, hospital number, geocode, QR card or fingerprint. No folder has to be located." },
   { n: "02", t: "Triage", b: "Vitals are entered at the triage station and ETAT criteria assign RED, YELLOW or GREEN. The queue re-sorts itself by urgency rather than arrival order." },
-  { n: "03", t: "Consultation", b: "The chart opens with the patient's history already in it — past diagnoses, medicines, results and the plan left by the last clinician." },
+  { n: "03", t: "Consultation", b: "The chart opens with the patient's history already in it: past diagnoses, medicines, results and the plan left by the last clinician." },
   { n: "04", t: "Orders", b: "Lab and imaging orders leave the encounter electronically, arrive on the bench worklist, and return validated results into the same chart." },
   { n: "05", t: "Prescribing and dispensing", b: "Interaction, allergy and duplicate checks run against the active medicine list; pharmacy dispenses against the electronic prescription and records the batch." },
   { n: "06", t: "Admission or referral", b: "Admission opens ward and bed management on the same record. A referral bundles a transfer package and returns a structured outcome to the referring clinician." },
@@ -891,7 +891,7 @@ export const PLATFORM_FLOW = [
 
 export const PLATFORM_PILLARS = [
   { t: "Works without a connection", b: "The record lives on the facility device. Registration, triage, consultation, dispensing and reporting all continue offline; changes replicate both ways when bandwidth returns." },
-  { t: "Survives power loss", b: "Designed for facilities where 13% have reliable power — no work is lost to a cut, and the device resumes where the shift stopped." },
+  { t: "Survives power loss", b: "Designed for facilities where 13% have reliable power: no work is lost to a cut, and the device resumes where the shift stopped." },
   { t: "Role-based and audited", b: "Accounts are issued by facility administrators against a role. Every view and change is stamped, and logging out clears the local copy from the device." },
 ];
 
@@ -905,7 +905,7 @@ export const PLATFORM_PILLARS = [
    structural account around the numbers is field observation, stated as such. */
 
 export const PROBLEM_LEAD =
-  "A health system is only as good as what it can remember. South Sudan's runs on paper: a visit is written into a ledger that lives in one building, on one shelf. That single choice — made by circumstance, not by anyone's preference — breaks the record in three places at once.";
+  "A health system is only as good as what it can remember. South Sudan's runs on paper: a visit is written into a ledger that lives in one building, on one shelf. That single choice (made by circumstance, not by anyone's preference) breaks the record in three places at once.";
 
 export interface ProblemBreak {
   where: string;
@@ -926,7 +926,7 @@ export const PROBLEM_BREAKS: ProblemBreak[] = [
     where: "At the bedside",
     what: "The history is gone",
     body:
-      "A patient arrives and their past is whatever they can remember out loud. Allergies, the drug that failed last time, the result that came back abnormal — none of it is in the room. So the clinician starts from nothing: tests already done get repeated, treatment already tried gets tried again, and a warning already recorded goes unseen. Where clinicians are this thin on the ground, every repeated test is time the next patient in the queue does not get.",
+      "A patient arrives and their past is whatever they can remember out loud. Allergies, the drug that failed last time, the result that came back abnormal: none of it is in the room. So the clinician starts from nothing: tests already done get repeated, treatment already tried gets tried again, and a warning already recorded goes unseen. Where clinicians are this thin on the ground, every repeated test is time the next patient in the queue does not get.",
     image: "/assets/images/reviewing-health-records.jpeg",
     imageAlt: "Two health workers reading through wide paper registers, page by page, with more ledgers stacked on the floor behind them",
     focus: "center 26%",
@@ -941,7 +941,7 @@ export const PROBLEM_BREAKS: ProblemBreak[] = [
     where: "At the supervisor's desk",
     what: "The work is invisible",
     body:
-      "Community health workers see patients across thousands of scattered villages and decide alone — no second opinion, no one reviewing whether the assessment was right. Their supervisor cannot see which of them are active this week, how many patients they have seen, or which children have missed a vaccine dose, because nothing they write travels any further than the notebook they write it in. At this density, most care happens nowhere near a desk that could review it.",
+      "Community health workers see patients across thousands of scattered villages and decide alone: no second opinion, no one reviewing whether the assessment was right. Their supervisor cannot see which of them are active this week, how many patients they have seen, or which children have missed a vaccine dose, because nothing they write travels any further than the notebook they write it in. At this density, most care happens nowhere near a desk that could review it.",
     image: "/assets/outreach-blood-pressure.jpg",
     imageAlt: "A health worker in a surveillance-and-response vest writing on a paper form at a village outreach table, having just taken a woman's blood pressure",
     focus: "center 30%",
@@ -956,7 +956,7 @@ export const PROBLEM_BREAKS: ProblemBreak[] = [
     where: "At the Ministry",
     what: "The picture arrives too late",
     body:
-      "Reports are assembled by hand at month end, copied from ledgers into forms and totalled by whoever is free that day. Numbers arrive incomplete, late, and impossible to check back against the visits that produced them. An outbreak signal, a stock-out, a run of missed immunisations — all of it is visible in the paper, weeks after the moment when acting on it would have mattered.",
+      "Reports are assembled by hand at month end, copied from ledgers into forms and totalled by whoever is free that day. Numbers arrive incomplete, late, and impossible to check back against the visits that produced them. An outbreak signal, a stock-out, a run of missed immunisations: all of it is visible in the paper, weeks after the moment when acting on it would have mattered.",
     image: "/assets/facility-banner.jpg",
     imageAlt: "Patients on camp beds under a canvas outbreak-treatment tent, the kind of surge a month-end report announces after the fact",
     focus: "center 55%",
@@ -972,7 +972,7 @@ export const PROBLEM_BREAKS: ProblemBreak[] = [
 export const PROBLEM_WHY_TITLE = "None of this is a failure of care. It is a failure of tooling.";
 
 export const PROBLEM_WHY =
-  "Software that assumes a server, a live connection or a stable socket was never going to be used here — so the record keeps being written in the one place it cannot travel from. The data exists. It is simply trapped at the point where it is created.";
+  "Software that assumes a server, a live connection or a stable socket was never going to be used here, so the record keeps being written in the one place it cannot travel from. The data exists. It is simply trapped at the point where it is created.";
 
 /* ── National alignment page ── */
 
@@ -1016,7 +1016,7 @@ export const DERBY_PHOTOS: Photo[] = [
   {
     src: "/assets/derby/derby-13.jpg",
     alt: "Teny Makuach pitching with a microphone, the live record system on the projector behind him",
-    caption: "Teny pitching from the product itself — the live record system on screen, not a slide deck.",
+    caption: "Teny pitching from the product itself: the live record system on screen, not a slide deck.",
     w: 1400,
     h: 933,
   },
@@ -1030,7 +1030,7 @@ export const DERBY_PHOTOS: Photo[] = [
   {
     src: "/assets/derby/derby-12.jpg",
     alt: "A team member answering questions with a microphone during the pitch",
-    caption: "Taking the judges' questions — five minutes of them, after a five-minute pitch.",
+    caption: "Taking the judges' questions: five minutes of them, after a five-minute pitch.",
     w: 1400,
     h: 933,
   },
@@ -1164,10 +1164,10 @@ export const NEWS: NewsItem[] = [
     image: "/assets/derby/derby-05.jpg",
     imageAlt: "Toye Adebayo, Teny Makuach and Ekow Williams holding the $10,000 check at the Derby Entrepreneurship Center at Tufts",
     summary:
-      "Our first venture competition, and a $10,000 award — judged on a working offline-first record system rather than a slide deck.",
+      "Our first venture competition, and a $10,000 award: judged on a working offline-first record system rather than a slide deck.",
     body: [
       "On April 10, 2026, at the Derby Entrepreneurship Center at Tufts, TamamHealth took second place in the Healthcare & Life Science track of the Tufts New Ventures Competition, and a $10,000 award with it. It was the first venture competition we had ever entered.",
-      "The story we told the judges does not start in a lab or a lecture hall. It starts in Kakuma refugee camp, where our founder, Teny Makuach, grew up. The failures this platform is built to fix were never an abstraction to him — they were a queue with no order to it, a clinician rebuilding a history by asking the patient to remember it, a treatment given twice because nobody could see what had already been given. He built the first version of TamamHealth out of that. Ekow Williams and Toye Adebayo joined him having watched the same system fail the same way, first-hand. None of the three of us needed the problem explained.",
+      "The story we told the judges does not start in a lab or a lecture hall. It starts in Kakuma refugee camp, where our founder, Teny Makuach, grew up. The failures this platform is built to fix were never an abstraction to him: they were a queue with no order to it, a clinician rebuilding a history by asking the patient to remember it, a treatment given twice because nobody could see what had already been given. He built the first version of TamamHealth out of that. Ekow Williams and Toye Adebayo joined him having watched the same system fail the same way, first-hand. None of the three of us needed the problem explained.",
       "So we pitched from the product rather than about it. The live record system was on the screen behind us, running a full patient day with the network switched off: registration, triage, consultation, lab orders, dispensing, and the reports that go back to the Ministry. Nothing in the demo was a mock-up, and nothing in it required a connection.",
       "The judges score eight things, and one of them is whether this is the right team to solve this problem. That was the easiest answer we had. The rest came from the constraint rather than the ideal: 4% of South Sudan's facilities have a computer with internet, 13% have any on-site power, and there are 7.6 health workers per 10,000 people against a WHO norm of 44.5. A record system that assumes connectivity is a record system that fails there, so ours does not assume it.",
       "It was the first time the platform had been judged by people outside the team, and the answer came back on the thing itself rather than on the pitch around it. The work ahead is the one it was built for: ten clinics in Juba and greater South Sudan, on one record.",
@@ -1182,7 +1182,7 @@ export const NEWS: NewsItem[] = [
       { after: 4, photos: [derby("derby-02"), derby("derby-11")] },
     ],
     link: { label: "Meet the team behind it", href: "/about#team" },
-    galleryTitle: "April 10, 2026 — the night the pilot got its first funding",
+    galleryTitle: "April 10, 2026: the night the pilot got its first funding",
     gallery: DERBY_PHOTOS,
   },
 ];
@@ -1207,7 +1207,7 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
     accent: "#015697",
     title: "Products",
     links: PRODUCTS.slice(0, 5).map((p) => ({
-      label: `${p.acronym} — ${p.title.replace(" System", "")}`,
+      label: `${p.acronym}: ${p.title.replace(" System", "")}`,
       href: `/products/${p.slug}`,
     })),
   },
@@ -1285,14 +1285,14 @@ export const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] 
 export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel: string; allHref: string; links: MenuLink[] }> = {
   products: {
     title: "Products",
-    blurb: "Six products for every tier of care — hospital, clinic, laboratory, radiology, pharmacy, and the patient's own portal.",
+    blurb: "Six products for every tier of care: hospital, clinic, laboratory, radiology, pharmacy, and the patient's own portal.",
     allLabel: "View all products",
     allHref: "/products",
     links: PRODUCTS.map((p) => ({ label: p.title, note: p.tagline, href: `/products/${p.slug}` })),
   },
   system: {
     title: "The health system",
-    blurb: "Six levels of care from the Boma health worker to the teaching hospital — and how Tamam fits the Ministry's own structure rather than replacing it.",
+    blurb: "Six levels of care from the Boma health worker to the teaching hospital, and how Tamam fits the Ministry's own structure rather than replacing it.",
     allLabel: "National alignment",
     allHref: "/health-system",
     links: [
@@ -1306,7 +1306,7 @@ export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel
   },
   platform: {
     title: "The platform",
-    blurb: "One offline-first record behind every product — simple enough for the front desk, strong enough for the nation.",
+    blurb: "One offline-first record behind every product: simple enough for the front desk, strong enough for the nation.",
     /* The panel's headline link stays inside the section it heads, like the
        other three menus. The two portal links below already carry log-in. */
     allLabel: "The platform",
@@ -1322,7 +1322,7 @@ export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel
   },
   about: {
     title: "About Tamam",
-    blurb: "Why Tamam exists, what the data says, and the team building it — founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
+    blurb: "Why Tamam exists, what the data says, and the team building it: founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
     allLabel: "About Tamam",
     allHref: "/about",
     links: [
@@ -1376,9 +1376,9 @@ export const FOOTPRINT_MAP_VOCABULARY = [
   // Tiers
   "PHCU / community tier", "Referral / teaching tier", "State hospital tier",
   // Notes
-  "Geocode household pilot — patient IDs in the form BOMA-KJ-HH1001.",
-  "Pilot launch site — 10-clinic pilot begins in Juba and greater South Sudan.",
-  "Secondary and specialised care — HMIS.",
+  "Geocode household pilot: patient IDs in the form BOMA-KJ-HH1001.",
+  "Pilot launch site: 10-clinic pilot begins in Juba and greater South Sudan.",
+  "Secondary and specialised care: HMIS.",
 ];
 
 /* ── Contact form copy ──
@@ -1391,7 +1391,7 @@ export const CONTACT_SUBJECTS = ["What is this about?", "Book a demo", "Deploy T
 /** The Ministry's six tiers, plus the answer for everyone who isn't a facility. */
 export const CONTACT_LEVELS = [
   "Level of care",
-  "Community — Boma Health Initiative",
+  "Community: Boma Health Initiative",
   "Primary Health Care Unit",
   "Primary Health Care Centre",
   "County or State Hospital",

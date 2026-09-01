@@ -5,7 +5,7 @@ import { CONTACT_POINTS } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "Get in touch",
-  description: "Facility, NGO, funder, or just curious — tell us what you're building or how you want to help. We answer every message.",
+  description: "Facility, NGO, funder, or just curious: tell us what you're building or how you want to help. We answer every message.",
 };
 
 function Check() {
@@ -30,7 +30,7 @@ export default async function ContactPage() {
               {t("Get in touch")}
             </h1>
             <p style={{ margin: 0, maxWidth: 560, fontSize: 17.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>
-              {t("Facility, NGO, funder, or just curious — tell us what you’re building or how you want to help. We answer every message.")}
+              {t("Facility, NGO, funder, or just curious: tell us what you’re building or how you want to help. We answer every message.")}
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 6 }}>

@@ -9,7 +9,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "Products",
   description:
-    "Six products, one connected encounter — hospital, clinic, laboratory, radiology, pharmacy and the patient portal, all on the same offline-first record.",
+    "Six products, one connected encounter: hospital, clinic, laboratory, radiology, pharmacy and the patient portal, all on the same offline-first record.",
 };
 
 export default async function ProductsPage() {
@@ -27,7 +27,7 @@ export default async function ProductsPage() {
             <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Products")}</span>
             <h1 style={{ fontSize: "clamp(32px, 5.4vw, 58px)", margin: "14px 0 14px", color: "#FFFFFF", maxWidth: 900 }}>{t("Six products, one connected encounter")}</h1>
             <p style={{ margin: 0, maxWidth: 640, fontSize: 16.5, lineHeight: 1.65, color: "rgba(255,255,255,0.76)" }}>
-              {t("From referral hospitals to single-room clinics — every product ties back to the same record, built for intermittent connectivity. Deployed first in South Sudan, designed for health systems across sub-Saharan Africa.")}
+              {t("From referral hospitals to single-room clinics: every product ties back to the same record, built for intermittent connectivity. Deployed first in South Sudan, designed for health systems across sub-Saharan Africa.")}
             </p>
             <div style={{ width: "100%", marginTop: 30, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <span className="fs115" style={{ display: "block", marginBottom: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>{t("Jump to a product")}</span>
@@ -59,7 +59,7 @@ export default async function ProductsPage() {
             />
             {/* Same line as the figure on /platform, naming the other room. */}
             <figcaption className="fs125" style={{ padding: "9px 5px 2px", lineHeight: 1.5, color: "var(--color-neutral-600)" }}>
-              {t("The front desk — the day's arrivals with their times, care team and triage status.")}
+              {t("The front desk: the day's arrivals with their times, care team and triage status.")}
             </figcaption>
           </figure>
         </div>
@@ -80,7 +80,7 @@ export default async function ProductsPage() {
           <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Why six, not one")}</span>
           <h2 style={{ fontSize: "clamp(26px, 3.8vw, 44px)", margin: "16px 0 18px", color: "#FFFFFF", maxWidth: 900 }}>{t("Different rooms, the same file underneath")}</h2>
           <p style={{ margin: 0, maxWidth: 760, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.76)" }}>
-            {t("A pharmacy does not need ward management and a PHCU does not need a modality worklist. What every one of them needs is to read what the last room wrote — so the products differ and the record does not.")}
+            {t("A pharmacy does not need ward management and a PHCU does not need a modality worklist. What every one of them needs is to read what the last room wrote, so the products differ and the record does not.")}
           </p>
           <div className="tm-g3" style={{ gap: 22, marginTop: 44 }}>
             {PRODUCT_UNITY.map((u) => (

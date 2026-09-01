@@ -28,7 +28,7 @@ const TAB_TITLE = "TamamHealth";
 /** The full line, for search results and link previews. Matches the platform
  *  (`platform/src/app/layout.tsx`) verbatim, so the product and the site that
  *  sells it say the same thing. */
-const TITLE = "TamamHealth — Every Patient Deserves to Be Remembered";
+const TITLE = "TamamHealth: Every Patient Deserves to Be Remembered";
 const DESCRIPTION =
   "South Sudan's clinics run on paper-based records that get lost, damaged, or destroyed. TamamHealth brings digital records that work offline, so care never starts from zero.";
 
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://tamamhealth.org"),
   title: {
     default: TAB_TITLE,
-    template: "%s — TamamHealth",
+    template: "%s | TamamHealth",
   },
   description: DESCRIPTION,
   // Names the apex as the one real address for every page. Without it, the

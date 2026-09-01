@@ -24,7 +24,7 @@ export default async function SiteFooter() {
     <footer style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "60px 32px 30px" }}>
       <div className="tm-footer-grid" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 44 }}>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-          {t("TamamHealth is offline-first digital health infrastructure for South Sudan and sub-Saharan Africa — one patient record that works through power cuts and network gaps, from the Boma health worker to the Ministry of Health. Founded at Tufts University · starting in South Sudan, built for sub-Saharan Africa.")}
+          {t("TamamHealth is offline-first digital health infrastructure for South Sudan and sub-Saharan Africa: one patient record that works through power cuts and network gaps, from the Boma health worker to the Ministry of Health. Founded at Tufts University · starting in South Sudan, built for sub-Saharan Africa.")}
         </p>
         {FOOTER_COLS.map((col) => (
           <details key={col.title} className="tm-foot-col">

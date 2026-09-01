@@ -17,7 +17,7 @@ export default async function TermsPage() {
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 8px" }}>{t("Terms & Conditions")}</h1>
           <p style={{ margin: 0, fontSize: 17, color: "var(--color-neutral-700)" }}>{t("The terms that govern use of the TamamHealth platform and this website.")}</p>
-          <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--color-neutral-600)" }}>{t("Last updated 13 August 2026 · Draft for review — not yet legal advice.")}</p>
+          <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--color-neutral-600)" }}>{t("Last updated 13 August 2026 · Draft for review, not yet legal advice.")}</p>
         </div>
       </section>
       <section style={{ padding: "20px 32px 96px" }}>

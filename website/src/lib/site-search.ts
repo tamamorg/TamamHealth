@@ -59,7 +59,7 @@ const PAGES: SearchEntry[] = [
     title: "Products",
     kind: "Page",
     href: "/products",
-    summary: "Six systems — HMIS, CMS, LIS, RIS, PMS and the patient portal.",
+    summary: "Six systems: HMIS, CMS, LIS, RIS, PMS and the patient portal.",
     keywords: "catalogue modules software systems",
   },
   {
@@ -73,7 +73,7 @@ const PAGES: SearchEntry[] = [
     title: "About Tamam",
     kind: "Page",
     href: "/about",
-    summary: "Founded at Tufts University, starting in South Sudan — the crisis, the goal and the team.",
+    summary: "Founded at Tufts University, starting in South Sudan: the crisis, the goal and the team.",
     keywords: "who we are mission story founders tufts",
   },
   {
@@ -94,7 +94,7 @@ const PAGES: SearchEntry[] = [
     title: "Get in touch",
     kind: "Page",
     href: "/contact",
-    summary: "Facility, NGO, funder or partner — tell us what you are building.",
+    summary: "Facility, NGO, funder or partner: tell us what you are building.",
     keywords: "contact email phone partner demo enquiry inquiry",
   },
   {
@@ -135,7 +135,7 @@ const SECTIONS: SearchEntry[] = [
     title: "The Ministry's own diagnosis",
     kind: "Section",
     href: "/health-system#diagnosis",
-    summary: "Parallel, disconnected systems — named as a gap by the Ministry of Health.",
+    summary: "Parallel, disconnected systems: named as a gap by the Ministry of Health.",
     keywords: "ehsp policy government fragmentation",
   },
   {
@@ -193,7 +193,7 @@ function buildIndex(): SearchEntry[] {
     ...SECTIONS,
 
     ...PRODUCTS.map((p): SearchEntry => ({
-      title: `${p.acronym} — ${p.title}`,
+      title: `${p.acronym}: ${p.title}`,
       kind: "Product",
       href: `/products/${p.slug}`,
       summary: p.tagline,

@@ -416,7 +416,7 @@ export default function SiteHeader() {
                   search box feel broken. */}
               {hits.length === 0 && query.trim().length >= 2 && (
                 <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-700)", textAlign: "center" }}>
-                  {t("Nothing on the site matches that. Try a product name (HMIS, pharmacy), a place, or what you are trying to do — reporting, referrals, donate.")}
+                  {t("Nothing on the site matches that. Try a product name (HMIS, pharmacy), a place, or what you are trying to do: reporting, referrals, donate.")}
                 </p>
               )}
 

@@ -94,7 +94,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <Corners />
             <h3 style={{ fontSize: 21, margin: "0 0 6px" }}>{d.lifecycleTitle}</h3>
             <p style={{ margin: "0 0 20px", fontSize: 14, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>
-              {t("Statuses are a real state machine, not free text — every transition is stamped and audited.")}
+              {t("Statuses are a real state machine, not free text: every transition is stamped and audited.")}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {d.lifecycle.map((l) => (

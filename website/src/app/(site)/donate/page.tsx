@@ -23,7 +23,7 @@ export default async function DonatePage() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px", color: "#FFFFFF" }}>{t("$100,000 puts ten clinics on one record")}</h1>
             <p style={{ margin: "0 0 auto", maxWidth: 620, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.82)" }}>
-              {t("We’re raising $100,000 to launch TamamHealth in 10 clinics across Juba and greater South Sudan — proof that offline-first digital records can work in the hardest conditions, and the first step toward the same system across sub-Saharan Africa. Every gift buys something physical: a tablet, a solar panel, a trained front desk.")}
+              {t("We’re raising $100,000 to launch TamamHealth in 10 clinics across Juba and greater South Sudan: proof that offline-first digital records can work in the hardest conditions, and the first step toward the same system across sub-Saharan Africa. Every gift buys something physical: a tablet, a solar panel, a trained front desk.")}
             </p>
             <div className="tm-goal-row" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28, paddingTop: 30, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               {GOALS.map((g) => (
@@ -75,7 +75,7 @@ export default async function DonatePage() {
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 40, flexWrap: "wrap", paddingBottom: 20, borderBottom: "1px solid var(--color-divider)" }}>
             <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("Questions donors ask")}</h2>
             <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>
-              {t("Anything not answered here — write to")} <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+              {t("Anything not answered here, write to")} <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
