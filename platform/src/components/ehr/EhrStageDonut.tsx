@@ -23,7 +23,7 @@ export type StageSegment = {
 };
 
 /* The design's slice order: accent, amber, green — waiting, in office, done. */
-const DEFAULT_COLORS = ['#015697', '#B35900', '#0A6E4A', '#CC6600', '#5D728B'];
+const DEFAULT_COLORS = ['var(--chart-1)', 'var(--chart-5)', 'var(--color-success)', 'var(--chart-2)', 'var(--chart-6)'];
 
 export default function EhrStageDonut({
   segments,

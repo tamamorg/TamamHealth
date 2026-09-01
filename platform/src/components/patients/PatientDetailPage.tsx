@@ -1291,7 +1291,7 @@ export default function PatientDetailPage() {
                       <div className="rx-section-body">
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
                           <thead>
-                            <tr style={{ background: '#f5f7f8' }}>
+                            <tr style={{ background: 'var(--color-slate-50)' }}>
                               <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Test</th>
                               <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Result</th>
                               <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Unit</th>

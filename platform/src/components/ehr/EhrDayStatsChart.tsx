@@ -251,8 +251,8 @@ export function EhrWeekActivityChart({
       </div>
       <div className="ehr-day-stats-legend">
         {/* Dots match the bars: the design's navy/orange pair. */}
-        <span><i style={{ background: '#015697' }} /> {seriesNames[0]}</span>
-        <span><i style={{ background: '#CC6600' }} /> {seriesNames[1]}</span>
+        <span><i style={{ background: 'var(--chart-1)' }} /> {seriesNames[0]}</span>
+        <span><i style={{ background: 'var(--chart-5)' }} /> {seriesNames[1]}</span>
       </div>
     </div>
   );

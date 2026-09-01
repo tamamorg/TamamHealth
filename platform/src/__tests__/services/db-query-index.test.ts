@@ -33,10 +33,19 @@ describe('findByType index derivation', () => {
     expect(db.created[0]).toEqual(['type', 'hospitalId', 'status']);
   });
 
-  it('falls back to type when nothing narrows the query', async () => {
+  it('builds no index when nothing narrows the query — a type-only index is worthless here', async () => {
+    // A lone `type` column spans every row (one type per database), so Mango
+    // scans regardless — find() does the same scan without it, at no cost.
+    // Building it is pure downside, and a createIndex on the patients database
+    // was observed to wedge every write behind it during initial sync. So the
+    // derivation still resolves to ['type'], but ensureIndex must NOT build it;
+    // find() still runs with the correct selector.
     const db = fakeDB('t_plain_1');
-    await findByType(db, 'patient');
-    expect(db.created).toEqual([['type']]);
+    const res = await findByType(db, 'patient');
+    expect(db.created).toEqual([]);
+    expect(db.createIndex).not.toHaveBeenCalled();
+    expect(db.find).toHaveBeenCalledWith(expect.objectContaining({ selector: { type: 'patient' } }));
+    expect(res).toEqual([]);
   });
 
   it('leaves operator selectors out of the index', async () => {

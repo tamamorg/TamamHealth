@@ -37,12 +37,12 @@ function tintIndex(name: string, buckets: number): number {
 }
 
 const TINTS = [
-  { bg: '#C9F4FF', fg: 'var(--accent-hover)' },
-  { bg: '#E2F2EC', fg: '#0A6E4A' },
-  { bg: '#FCEEED', fg: '#A65300' },
-  { bg: '#FFEDDB', fg: '#A65300' },
-  { bg: '#FFEDDB', fg: '#A65300' },
-  { bg: '#FFEDDB', fg: '#A65300' },
+  { bg: 'var(--semantic-active-bg)', fg: 'var(--semantic-active)' },
+  { bg: 'var(--semantic-success-bg)', fg: 'var(--semantic-success)' },
+  { bg: 'var(--semantic-danger-bg)', fg: 'var(--semantic-danger)' },
+  { bg: 'var(--semantic-request-bg)', fg: 'var(--semantic-request)' },
+  { bg: 'var(--semantic-warning-bg)', fg: 'var(--semantic-warning)' },
+  { bg: 'var(--semantic-it-bg)', fg: 'var(--semantic-it)' },
 ];
 
 export default function StaffAvatar({

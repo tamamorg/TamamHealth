@@ -602,7 +602,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   </div>
                 );
               }) : (
-                <div style={{ padding: '14px', fontSize: 12, color: '#5D728B' }}>
+                <div style={{ padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>
                   {t('patientPortal.noUpcomingAppointments')}
                 </div>
               )}
@@ -620,7 +620,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   <span style={{ flex: 'none', fontSize: 11, color: 'var(--ehr-muted)', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{rx.status}</span>
                 </div>
               )) : (
-                <div style={{ padding: '14px', fontSize: 12, color: '#5D728B' }}>{t('patientPortal.noMedications')}</div>
+                <div style={{ padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>{t('patientPortal.noMedications')}</div>
               )}
               <button type="button" className="pp-card-foot" onClick={() => goTab('prescriptions')}>All prescriptions ›</button>
             </div>
@@ -629,12 +629,12 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             <div className="pp-card">
               <div className="pp-card-head"><h2>{t('patientPortal.healthAlerts')}</h2></div>
               {realAllergies.length === 0 && realConditions.length === 0 && pendingLabCount === 0 && !hasCritical ? (
-                <div style={{ padding: '14px', fontSize: 12, color: '#0A6E4A' }}>{t('patientPortal.noHealthAlerts')}</div>
+                <div style={{ padding: '14px', fontSize: 12, color: 'var(--color-success-text)' }}>{t('patientPortal.noHealthAlerts')}</div>
               ) : (
                 <>
                   {realAllergies.length > 0 && (
                     <div className="pp-row" style={{ alignItems: 'flex-start', padding: '11px 14px' }}>
-                      <i className="pp-dot" style={{ background: '#9E1B14' }} />
+                      <i className="pp-dot" style={{ background: 'var(--color-danger)' }} />
                       <div className="pp-row-main">
                         <b style={{ fontSize: 13 }}>{t('patient.allergies')}</b>
                         <span style={{ fontSize: 11.5, lineHeight: 1.45 }}>{realAllergies.join(', ')}</span>
@@ -652,7 +652,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   ))}
                   {hasCritical && (
                     <div className="pp-row" style={{ alignItems: 'flex-start', padding: '11px 14px' }}>
-                      <i className="pp-dot" style={{ background: '#9E1B14' }} />
+                      <i className="pp-dot" style={{ background: 'var(--color-danger)' }} />
                       <div className="pp-row-main">
                         <b style={{ fontSize: 13 }}>{t('patientPortal.criticalLabAlert')}</b>
                         <span style={{ fontSize: 11.5 }}>{t('patientPortal.tabLabResults')}</span>
@@ -681,7 +681,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   <small>{shortDate(ac.when)}</small>
                 </div>
               )) : (
-                <div style={{ padding: '14px', fontSize: 12, color: '#5D728B' }}>{t('patientPortal.noRecentActivity')}</div>
+                <div style={{ padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>{t('patientPortal.noRecentActivity')}</div>
               )}
             </div>
           </div>
@@ -739,7 +739,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                 const recRx = (r.prescriptions as Array<{ medication: string; dosage: string }> | undefined) || [];
                 const open = expandedId === rec._id;
                 return (
-                  <div key={rec._id} style={{ borderBottom: '1px solid #F1F3F5' }}>
+                  <div key={rec._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <button type="button" className="pp-row-toggle" onClick={() => setExpandedId(open ? null : rec._id)}>
                       <div className="pp-row-main">
                         <b>{(r.visitType as string) || t('patientPortal.consultation')}</b>
@@ -803,7 +803,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                     ? (lab.abnormal ? { tone: 'red' as ChipTone, label: t('patientPortal.abnormal') } : { tone: 'green' as ChipTone, label: t('patientPortal.normal') })
                     : { tone: 'neutral' as ChipTone, label: lab.status };
                 return (
-                  <div key={lab._id} style={{ borderBottom: '1px solid #F1F3F5' }}>
+                  <div key={lab._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <button type="button" className="pp-row-toggle" onClick={() => setExpandedId(open ? null : lab._id)}>
                       <div className="pp-row-main">
                         <b>{lab.testName}</b>
@@ -821,7 +821,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                         <div className="pp-row-detail-box" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                           <div>
                             <p className="pp-field-label" style={{ margin: 0 }}>{t('patientPortal.result')}</p>
-                            <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-condensed)', fontSize: 17, fontWeight: 600, color: lab.abnormal ? '#9E1B14' : '#113055' }}>{lab.result}</p>
+                            <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-condensed)', fontSize: 17, fontWeight: 600, color: lab.abnormal ? 'var(--color-danger-text)' : 'var(--text-primary)' }}>{lab.result}</p>
                           </div>
                           {lab.referenceRange && (
                             <div style={{ textAlign: 'end' }}>
@@ -832,8 +832,8 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                         </div>
                         {lab.critical && (
                           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <AlertTriangle size={12} style={{ color: '#9E1B14' }} />
-                            <span style={{ fontSize: 11.5, fontWeight: 600, color: '#9E1B14' }}>{t('patientPortal.criticalResult')}</span>
+                            <AlertTriangle size={12} style={{ color: 'var(--color-danger-text)' }} />
+                            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--color-danger-text)' }}>{t('patientPortal.criticalResult')}</span>
                           </div>
                         )}
                       </div>
@@ -979,7 +979,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               <div style={{ flex: 'none', width: 190 }}>
                 <Select value={chatDepartment} onChange={e => setChatDepartment(e.target.value)}
                   aria-label={t('patientPortal.department')}
-                  style={{ width: '100%', height: 28, padding: '0 8px', borderRadius: 6, border: '1px solid #ECEEF1', background: '#FFFFFF', color: '#113055', fontSize: 12, fontFamily: 'var(--font-platform)' }}>
+                  style={{ width: '100%', height: 28, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-light)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'var(--font-platform)' }}>
                   {['General / OPD', 'Internal Medicine', 'Obstetrics', 'Pediatrics', 'Surgery', 'Laboratory', 'Pharmacy', 'Dental', 'Emergency'].map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}
@@ -997,7 +997,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               ))}
             </div>
             {chatError && (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid #F1F3F5', background: 'rgba(158, 27, 20,0.06)', color: '#9E1B14', fontSize: 12 }}>
+              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--color-danger-border)', background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 12 }}>
                 {chatError}
               </div>
             )}

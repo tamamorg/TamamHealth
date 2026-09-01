@@ -31,7 +31,7 @@ const STATUS_TOKENS: Record<AssetStatus, { labelKey: string; color: string; bg: 
   operational:    { labelKey: 'equipment.statusOperational',     color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)' },
   needs_service:  { labelKey: 'equipment.statusNeedsService',   color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)' },
   under_repair:   { labelKey: 'equipment.statusUnderRepair',    color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-  decommissioned: { labelKey: 'equipment.statusDecommissioned',  color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)' },
+  decommissioned: { labelKey: 'equipment.statusDecommissioned',  color: 'var(--text-muted)', bg: 'var(--overlay-light)' },
   lost_or_stolen: { labelKey: 'equipment.statusLostOrStolen',   color: 'var(--color-danger-text)', bg: 'rgba(224, 49, 39, 0.14)' },
 };
 

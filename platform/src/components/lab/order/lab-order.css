@@ -16,11 +16,11 @@
   --labord-rail: 250px;
   --labord-line: var(--ehr-border, #E2E6EB);
   --labord-surface: var(--bg-card-solid, #FFFFFF);
-  --labord-surface-soft: #F5F7F8;
+  --labord-surface-soft: var(--color-slate-50);
   /* Cards read as one system: a tinted header bar over a white body, with a
      slightly firmer border than the page's hairlines so a box is a box. */
-  --labord-card-head: #F1F3F5;
-  --labord-card-line: #CFD6DD;
+  --labord-card-head: var(--color-slate-75);
+  --labord-card-line: var(--color-slate-300);
 
   display: flex;
   flex-direction: column;
@@ -143,7 +143,7 @@
    order, so it is the one that carries colour. */
 .labord-tag--stat {
   border-color: var(--color-danger, #D92B20);
-  background: #FCEEED;
+  background: var(--color-danger-bg);
   color: var(--color-danger, #D92B20);
 }
 
@@ -205,7 +205,7 @@
 
 .labord-rail-item::before {
   content: '•';
-  color: var(--accent-primary);
+  color: var(--accent-text);
   flex: 0 0 auto;
 }
 
@@ -282,7 +282,7 @@
   min-width: 112px;
   padding: 11px 18px 11px 24px;
   border: 0;
-  background: #F1F3F5;
+  background: var(--color-slate-75);
   color: var(--text-muted);
   font-family: inherit;
   font-size: 0.75rem;
@@ -357,7 +357,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light, #ECEEF1);
+  border-bottom: 1px solid var(--border-light, var(--border-light));
   font-size: 0.8125rem;
 }
 
@@ -377,7 +377,7 @@
 .labord-numbered-row code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-weight: 700;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   margin-right: 6px;
 }
 
@@ -556,7 +556,7 @@
   width: 100%;
   padding: 8px 12px;
   border: 0;
-  border-bottom: 1px solid var(--border-light, #ECEEF1);
+  border-bottom: 1px solid var(--border-light, var(--border-light));
   background: transparent;
   font-family: inherit;
   text-align: left;
@@ -602,7 +602,7 @@
 .labord-chip code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.6875rem;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .labord-chip button {
@@ -624,7 +624,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light, #ECEEF1);
+  border-bottom: 1px solid var(--border-light, var(--border-light));
 }
 
 .labord-row:last-child { border-bottom: 0; }
@@ -729,7 +729,7 @@
 .labord-requisition {
   border: 1px solid var(--labord-line);
   border-radius: 4px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: #111;
   padding: 20px;
   max-width: 760px;
@@ -804,7 +804,7 @@
 .labord-req-table th {
   text-align: left;
   padding: 6px 8px;
-  background: #FFF7DC;
+  background: var(--color-warning-bg);
   border: 1px solid #999;
   font-size: 0.6875rem;
   text-transform: uppercase;
@@ -821,7 +821,7 @@
   display: inline-block;
   padding: 2px 8px;
   border: 1px solid #D92B20;
-  color: #D92B20;
+  color: var(--color-danger-text);
   font-size: 0.6875rem;
   font-weight: 800;
   letter-spacing: 0.08em;

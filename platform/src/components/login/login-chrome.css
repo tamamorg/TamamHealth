@@ -26,13 +26,38 @@
   --lg-neutral-600: #6B7F96;
   --lg-neutral-700: #5D728B;
   --lg-neutral-800: #3C5574;
+  --lg-field: #FFFFFF;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #FFFFFF;
+  background: var(--lg-field);
   color: var(--lg-text);
   font-family: var(--font-barlow), 'Barlow', system-ui, sans-serif;
 }
+
+/* Sign-in is part of the product, not a permanently light marketing island.
+   Keep the same blueprint language at night: ink canvas, navy fields, cool
+   blue rules, and the orange submit as the one warm action. */
+:root[data-theme="dark"] .lg-root {
+  --lg-text: var(--color-slate-900);
+  --lg-divider: var(--border-medium);
+  --lg-surface: var(--color-slate-50);
+  --lg-accent: var(--tm-dodger);
+  --lg-accent-100: var(--color-info-bg);
+  --lg-accent-700: var(--accent-text);
+  --lg-neutral-600: var(--color-slate-600);
+  --lg-neutral-700: var(--color-slate-700);
+  --lg-neutral-800: var(--color-slate-800);
+  --lg-field: var(--bg-input);
+  background: var(--bg-app);
+}
+
+:root[data-theme="dark"] .lg-corner { color: color-mix(in srgb, var(--color-white) 45%, transparent); }
+:root[data-theme="dark"] .lg-field > label { color: var(--text-secondary); }
+:root[data-theme="dark"] .lg-input:hover { border-color: var(--border-accent); }
+:root[data-theme="dark"] .lg-input::placeholder { color: var(--text-muted); }
+:root[data-theme="dark"] .lg-spin,
+:root[data-theme="dark"] .lg-redirect-mark { border-color: var(--border-medium); border-top-color: var(--lg-accent); }
 .lg-root h1, .lg-root h2 {
   font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
   font-weight: 600;
@@ -77,13 +102,13 @@
    fields are white. */
 .lg-root .lg-input {
   width: 100%; min-height: 46px; padding: 6px 12px; font: inherit; font-size: 14px;
-  color: var(--lg-text); caret-color: var(--lg-accent); background: #FFFFFF;
+  color: var(--lg-text); caret-color: var(--lg-accent); background: var(--lg-field);
   border: 1px solid var(--lg-divider); border-radius: 0; box-shadow: none;
 }
 .lg-input:hover { border-color: rgba(17, 48, 85, 0.45); }
 .lg-input:focus, .lg-input:focus-visible { border-color: var(--lg-accent); outline: none; box-shadow: none; }
 .lg-input::placeholder { color: rgba(17, 48, 85, 0.45); }
-.lg-inputwrap { display: flex; align-items: center; border: 1px solid var(--lg-divider); background: #FFFFFF; }
+.lg-inputwrap { display: flex; align-items: center; border: 1px solid var(--lg-divider); background: var(--lg-field); }
 .lg-inputwrap:focus-within { border-color: var(--lg-accent); }
 .lg-input--bare { border: 0 !important; background: transparent !important; }
 .lg-inputicon { margin-left: 13px; flex-shrink: 0; color: var(--lg-neutral-600); }
@@ -95,12 +120,12 @@
 .lg-eye { width: 44px; color: var(--lg-accent-700); }
 
 .lg-rolelist {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 40; background: #FFFFFF;
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 40; background: var(--lg-field);
   border: 1px solid var(--lg-divider); border-top: 0; max-height: 232px; overflow-y: auto;
   box-shadow: 0 3px 10px rgba(17, 48, 85, 0.16);
 }
 .lg-rolerow {
-  appearance: none; border: 0; border-bottom: 1px solid var(--lg-divider); background: #FFFFFF;
+  appearance: none; border: 0; border-bottom: 1px solid var(--lg-divider); background: var(--lg-field);
   cursor: pointer; width: 100%; text-align: left; padding: 11px 14px;
   display: flex; flex-direction: column; gap: 2px; font: inherit;
 }
@@ -121,7 +146,7 @@
 .lg-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%; padding: 15px 0; font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
-  font-weight: 600; font-size: 16px; color: #113055; background: var(--lg-cta);
+  font-weight: 600; font-size: 16px; color: var(--tm-ink); background: var(--lg-cta);
   border: 1px solid var(--lg-cta); border-radius: 0; cursor: pointer;
 }
 .lg-btn:hover:not(:disabled) { background: var(--lg-cta-hover); border-color: var(--lg-cta-hover); }
@@ -159,7 +184,7 @@
    keeps the 21-account roster inside one laptop viewport. */
 .lg-demo-row {
   display: flex; flex-direction: column; gap: 1px;
-  padding: 5px 10px; border: 1px solid var(--lg-divider); background: #FFFFFF;
+  padding: 5px 10px; border: 1px solid var(--lg-divider); background: var(--lg-field);
   cursor: pointer; font: inherit; text-align: left;
 }
 .lg-demo-row:hover:not(:disabled) { background: var(--lg-accent-100); border-color: var(--lg-accent); }
@@ -177,7 +202,7 @@
    band — the list is what the column is for, and the picture is a caption
    to whichever row the pointer is on. It never moves, so running down the
    roster swaps the image in place rather than reflowing the panel. */
-.lg-demo-shot { height: 132px; margin: 0 0 10px; background: #FFFFFF; overflow: hidden; }
+.lg-demo-shot { height: 132px; margin: 0 0 10px; background: var(--lg-field); overflow: hidden; }
 .lg-demo-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%; display: block; transition: opacity 120ms ease; }
 @media (prefers-reduced-motion: reduce) { .lg-demo-shot img { transition: none; } }
 
@@ -189,7 +214,7 @@
    record is for, and the person signing in is about to see the interface
    anyway. A fixed height with an object-fit crop so a landscape frame
    sits as a band under the copy rather than setting the column height. */
-.lg-shot { margin-top: 10px; height: 232px; background: #FFFFFF; overflow: hidden; }
+.lg-shot { margin-top: 10px; height: 232px; background: var(--lg-field); overflow: hidden; }
 .lg-shot img { width: 100%; height: 100%; object-fit: cover; object-position: center 38%; display: block; }
 /* A portrait source in the same landscape band needs a higher anchor, or
    the crop keeps the desk and loses the person. */
@@ -201,7 +226,7 @@
 .lg-redirect-who { margin: 2px 0 0; font-size: 13px; color: var(--lg-neutral-600); }
 .lg-redirect-switch {
   margin-top: 14px; padding: 8px 16px; border: 1px solid var(--lg-accent);
-  background: #FFFFFF; color: var(--lg-accent-700); font: inherit; font-size: 14px;
+  background: var(--lg-field); color: var(--lg-accent-700); font: inherit; font-size: 14px;
   font-weight: 600; cursor: pointer;
 }
 .lg-redirect-switch:hover { background: var(--lg-accent-100); }
@@ -214,7 +239,7 @@
 
 .lg-redirect {
   min-height: 100vh; display: flex; flex-direction: column; gap: 16px;
-  align-items: center; justify-content: center; background: #FFFFFF;
+  align-items: center; justify-content: center; background: var(--lg-field);
 }
 .lg-redirect-mark { width: 26px; height: 26px; border-width: 3px; }
 .lg-redirect p { color: var(--lg-accent-700, #015697); font-size: 14px; font-weight: 600; }
@@ -230,7 +255,7 @@
 }
 .lg-points li::before {
   content: ''; flex: none; width: 7px; height: 7px; margin-top: 8px;
-  border: 1px solid var(--lg-accent-700); background: #FFFFFF;
+  border: 1px solid var(--lg-accent-700); background: var(--lg-field);
 }
 
 /* Demo credential hint under the fields (the patient portal has one demo

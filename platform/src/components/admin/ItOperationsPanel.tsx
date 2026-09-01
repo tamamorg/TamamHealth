@@ -318,7 +318,7 @@ export default function ItOperationsPanel({ embedded = false }: {
       <style>{`
         .it-group-label {
           margin: 0;
-          color: #5D728B;
+          color: var(--text-muted);
           font-family: var(--font-condensed);
           font-size: 10.5px;
           font-weight: 600;
@@ -330,20 +330,20 @@ export default function ItOperationsPanel({ embedded = false }: {
           align-items: center;
           gap: 12px;
           padding: 11px 2px;
-          border-bottom: 1px solid #F1F3F5;
+          border-bottom: 1px solid var(--border-light);
         }
         .it-job-row:last-child { border-bottom: 0; }
         .it-job-text { min-width: 0; flex: 1; }
         .it-job-text strong {
           display: block;
-          color: #113055;
+          color: var(--text-primary);
           font-size: 13.5px;
           font-weight: 600;
         }
         .it-job-text span {
           display: block;
           margin-top: 1px;
-          color: #5D728B;
+          color: var(--text-muted);
           font-size: 12px;
         }
         .it-tile {
@@ -353,7 +353,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           padding: 11px 13px;
           border: 1px solid var(--border-light);
           border-radius: 10px;
-          background: #fff;
+          background: var(--bg-card-solid);
           text-decoration: none;
         }
         .it-tile:hover { border-color: var(--accent-primary); }
@@ -365,7 +365,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           align-items: center;
           gap: 12px;
           padding: 9px 0;
-          border-bottom: 1px solid #F1F3F5;
+          border-bottom: 1px solid var(--border-light);
         }
         .it-store-row:last-child { border-bottom: 0; }
         .it-store-label { color: var(--text-secondary); font-size: 13px; font-weight: 600; }
@@ -383,7 +383,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           justify-content: space-between;
           gap: 12px;
           min-height: 42px;
-          border-bottom: 1px solid #F1F3F5;
+          border-bottom: 1px solid var(--border-light);
           font-size: 13px;
         }
         .it-kv-row:last-child { border-bottom: 0; }
@@ -396,8 +396,8 @@ export default function ItOperationsPanel({ embedded = false }: {
           padding: 0 9px;
           border: 1px solid #1E90FF;
           border-radius: 999px;
-          background: #F2FCFF;
-          color: #113055;
+          background: var(--color-info-bg);
+          color: var(--text-primary);
           font-family: var(--font-condensed);
           font-size: 10.5px;
           font-weight: 600;

@@ -79,7 +79,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
             <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color }} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: '#fff', color }}>{CARE_ALERT_CATEGORY_LABELS[a.category]}</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-card-solid)', color }}>{CARE_ALERT_CATEGORY_LABELS[a.category]}</span>
                 <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{a.message}</span>
               </div>
               {a.recordedByName && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Added by {a.recordedByName}</span>}

@@ -793,8 +793,8 @@ export function SystemAdminStyles() {
         background: var(--overlay-subtle);
       }
       .sysadm-sidebar-item.is-active {
-        background: #F2FCFF;
-        color: #113055;
+        background: var(--color-info-bg);
+        color: var(--text-primary);
       }
       .sysadm-sidebar-item span {
         flex: 1;
@@ -808,14 +808,14 @@ export function SystemAdminStyles() {
         height: 17px;
         padding: 0 5px;
         border-radius: 999px;
-        background: #ECEEF1;
-        color: #015697;
+        background: var(--color-slate-100);
+        color: var(--accent-text);
         font-family: var(--font-condensed);
         font-size: 10px;
         font-weight: 600;
       }
       .sysadm-sidebar-item.is-active b {
-        background: #ECEEF1;
+        background: var(--color-slate-100);
       }
       .sysadm-content {
         display: flex;
@@ -861,10 +861,10 @@ export function SystemAdminStyles() {
         gap: 8px;
         height: 36px;
         padding: 0 12px;
-        border: 1px solid #ECEEF1;
+        border: 1px solid var(--border-light);
         border-radius: 8px;
-        background: #F5F7F8;
-        color: #5D728B;
+        background: var(--bg-input);
+        color: var(--text-muted);
       }
       .sysadm-search:focus-within {
         border-color: #7CC7FF;
@@ -903,7 +903,7 @@ export function SystemAdminStyles() {
         align-items: center;
         gap: 8px;
         margin-bottom: 4px;
-        color: #5D728B;
+        color: var(--text-muted);
         font-family: var(--font-condensed);
         font-size: 11px;
         font-weight: 600;
@@ -920,10 +920,10 @@ export function SystemAdminStyles() {
         justify-content: space-between;
         gap: 16px;
         padding: 12px 4px;
-        border-bottom: 1px solid #F1F3F5;
+        border-bottom: 1px solid var(--border-light);
       }
       .sysadm-row:hover {
-        background: #F2FCFF;
+        background: var(--color-info-bg);
       }
       .sysadm-list .sysadm-row:last-child {
         border-bottom: 0;
@@ -934,13 +934,13 @@ export function SystemAdminStyles() {
       }
       .sysadm-row-main strong {
         display: block;
-        color: #113055;
+        color: var(--text-primary);
         font-size: 13.5px;
         font-weight: 600;
       }
       .sysadm-row-main p {
         margin: 2px 0 0;
-        color: #5D728B;
+        color: var(--text-muted);
         font-size: 12px;
         line-height: 1.5;
       }
@@ -954,7 +954,7 @@ export function SystemAdminStyles() {
       .sysadm-row-value {
         display: block;
         margin-top: 5px;
-        color: var(--accent-primary);
+        color: var(--accent-text);
         font-size: 12px;
         font-weight: 700;
       }
@@ -988,10 +988,10 @@ export function SystemAdminStyles() {
         gap: 5px;
         height: 28px;
         padding: 0 11px;
-        border: 1px solid #ECEEF1;
+        border: 1px solid var(--border-light);
         border-radius: 6px;
-        background: #FFFFFF;
-        color: #015697;
+        background: var(--bg-card-solid);
+        color: var(--accent-text);
         font-family: var(--font-condensed);
         font-size: 11px;
         font-weight: 600;
@@ -1002,13 +1002,13 @@ export function SystemAdminStyles() {
         white-space: nowrap;
       }
       .sysadm-action-btn:hover {
-        background: #F2FCFF;
+        background: var(--color-info-bg);
       }
       .sysadm-open-link {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        color: var(--accent-primary);
+        color: var(--accent-text);
         font-size: 11.5px;
         font-weight: 800;
         text-decoration: none;
@@ -1024,7 +1024,7 @@ export function SystemAdminStyles() {
         flex: 0 0 auto;
         border: 0;
         border-radius: 999px;
-        background: #CFD6DD;
+        background: var(--color-slate-300);
         cursor: pointer;
         transition: background 0.15s ease;
       }
@@ -1042,7 +1042,7 @@ export function SystemAdminStyles() {
         width: 17px;
         height: 17px;
         border-radius: 50%;
-        background: #fff;
+        background: var(--color-white);
         box-shadow: 0 1px 2px rgba(17, 48, 85,0.25);
         transition: transform 0.15s ease;
       }
@@ -1063,7 +1063,7 @@ export function SystemAdminStyles() {
         border-bottom: 1px solid var(--border-light);
       }
       .sysadm-table-head {
-        color: #5D728B;
+        color: var(--text-muted);
         font-family: var(--font-condensed);
         font-size: 10.5px;
         font-weight: 600;

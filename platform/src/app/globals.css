@@ -299,6 +299,9 @@
   --rail-bg: var(--accent-primary);
   --accent-bright:    var(--tm-dodger);
   --accent-bright-on: var(--tm-ink);
+  /* A 2px keyboard indicator. Bright blue clears the 3:1 non-text contrast
+     threshold against the light canvas; dark mode promotes it one rung. */
+  --focus-ring:       var(--accent-bright);
   --accent-orange:    var(--tm-orange);
   --accent-orange-on: var(--tm-ink);
   /* The text/border rung of orange, for orange words on white and for the
@@ -569,8 +572,8 @@
    ramp is what turns them all at once. A rule that truly needs
    light-ink-on-light-field in both themes must say so with a literal.
 
-   Deliberately still light in dark mode: the login page (lg-*, its own
-   stylesheet, shown before any preference exists) and print output. */
+   Print output deliberately remains light; it represents paper and is emitted
+   into isolated print documents. Login and booking inherit this theme too. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
@@ -587,6 +590,26 @@
   --overlay-light:  color-mix(in srgb, var(--tm-dodger) 14%, transparent);
   --overlay-medium: color-mix(in srgb, var(--tm-dodger) 22%, transparent);
   --overlay-backdrop: color-mix(in srgb, #000000 68%, transparent);
+
+  /* Low-numbered ramps are surface colours, not immutable brand swatches.
+     A large part of the platform predates the semantic `--*-bg` tokens and
+     still asks for `--brand-50`, `--orange-100`, or `--gold-200` directly.
+     Leaving those aliases on their light values produced the remaining pale
+     cards, selected rows, filter chips, and navigation panels in dark mode.
+     Sink each surface ramp into the ink canvas while keeping its hue; the
+     high-numbered ink/fill rungs remain unchanged below. */
+  --brand-50:  color-mix(in srgb, var(--tm-dodger) 9%, var(--tm-ink));
+  --brand-100: color-mix(in srgb, var(--tm-dodger) 14%, var(--tm-ink));
+  --brand-200: color-mix(in srgb, var(--tm-dodger) 22%, var(--tm-ink));
+  --orange-50:  color-mix(in srgb, var(--tm-orange) 9%, var(--tm-ink));
+  --orange-100: color-mix(in srgb, var(--tm-orange) 14%, var(--tm-ink));
+  --orange-200: color-mix(in srgb, var(--tm-orange) 19%, var(--tm-ink));
+  --orange-300: color-mix(in srgb, var(--tm-orange) 27%, var(--tm-ink));
+  --gold-50:  color-mix(in srgb, var(--tm-gold) 7%, var(--tm-ink));
+  --gold-100: color-mix(in srgb, var(--tm-gold) 10%, var(--tm-ink));
+  --gold-200: color-mix(in srgb, var(--tm-gold) 14%, var(--tm-ink));
+  --gold-300: color-mix(in srgb, var(--tm-gold) 19%, var(--tm-ink));
+  --gold-400: color-mix(in srgb, var(--tm-gold) 27%, var(--tm-ink));
 
   /* Slate ramp, inverted: -900 ink becomes near-white, -100 hairline becomes
      a line one step LIGHTER than the navy surface it sits on. */
@@ -617,6 +640,7 @@
      TEXT rungs brighten to stay readable on navy. */
   --accent-hover:  var(--tm-blue);
   --accent-text:   var(--brand-300);
+  --focus-ring:    var(--brand-300);
   --accent-light:  color-mix(in srgb, var(--tm-dodger) 16%, transparent);
   --text-strong:   var(--brand-300);
   --text-primary:  var(--color-slate-900);
@@ -707,6 +731,20 @@
 
   --chart-grid: #244B75;
   --chart-axis: #94A2B3;
+  /* Dark canvases need a lightened data scale as well as lighter labels.
+     Each categorical mark clears 3:1 against the navy panel while preserving
+     its hue and ordering for colour-vision-deficiency recognition. */
+  --chart-1: var(--brand-300);
+  --chart-2: var(--tm-dodger);
+  --chart-3: color-mix(in srgb, #BE185D 70%, var(--color-white));
+  --chart-4: color-mix(in srgb, #0D9488 70%, var(--color-white));
+  --chart-5: color-mix(in srgb, #E67200 70%, var(--color-white));
+  --chart-6: color-mix(in srgb, #6D45C2 70%, var(--color-white));
+  --chart-seq-1: color-mix(in srgb, var(--brand-300) 55%, var(--color-white));
+  --chart-seq-2: var(--brand-300);
+  --chart-seq-3: var(--tm-dodger);
+  --chart-seq-4: color-mix(in srgb, var(--tm-blue) 70%, var(--color-white));
+  --chart-seq-5: var(--tm-blue);
 
   --map-bg: color-mix(in srgb, var(--tm-blue) 14%, transparent);
   --map-stroke: color-mix(in srgb, var(--color-white) 14%, transparent);
@@ -1631,7 +1669,7 @@ input::placeholder, textarea::placeholder {
   border: 1px solid var(--ehr-border, var(--border-medium));
   border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 12.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -1688,6 +1726,8 @@ input::placeholder, textarea::placeholder {
 .ehr-top-rail :is(h1, h2, h3, h4),
 .modal-portal-backdrop [role="dialog"] > * > div:first-child :is(h1, h2, h3, h4),
 .hero-banner :is(h1, h2, h3, h4),
+.sadb-card-head :is(h1, h2, h3, h4),
+.sadb-group-head :is(h1, h2, h3, h4),
 .ehr-toast :is(h1, h2, h3, h4) {
   color: inherit;
 }
@@ -1766,8 +1806,8 @@ select option {
 select option:hover,
 select option:focus,
 select option:checked {
-  background: #F2FCFF;
-  color: #113055;
+  background: var(--color-info-bg);
+  color: var(--text-primary);
 }
 
 label {
@@ -1903,12 +1943,12 @@ small,
 .btn-filter.is-active {
   background: var(--accent-light) !important;
   border-color: var(--accent-primary) !important;
-  color: var(--accent-primary) !important;
+  color: var(--accent-text) !important;
 }
 .btn-filter[aria-expanded="true"] svg,
 .btn-filter[aria-pressed="true"] svg,
 .btn-filter.is-active svg {
-  color: var(--accent-primary) !important;
+  color: var(--accent-text) !important;
 }
 
 .btn-sm { padding: 7px 16px; font-size: 0.78rem; border-radius: 6px; }
@@ -1916,11 +1956,11 @@ small,
 
 /* ============ Focus visible — keyboard accessibility ============ */
 :focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -1943,7 +1983,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #5D728B;
+  color: var(--text-muted);
   text-align: start;
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-condensed);
@@ -1974,7 +2014,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   top: 0;
   z-index: 2;
   background: var(--bg-card-solid) !important;
-  color: #5D728B !important;
+  color: var(--text-muted) !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -2009,7 +2049,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   /* The design's column head: condensed small caps at 0.12em in the quiet
      slate, on a 10px rhythm. (Was 10px extrabold at 0.06em.) */
   padding: 10px 16px;
-  color: #5D728B;
+  color: var(--text-muted);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -2026,7 +2066,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
 .ehr-set-section table.w-full tbody td,
 .org-set-card table.w-full tbody td {
   padding: 13px 16px;
-  border-bottom: 1px solid #F1F3F5;
+  border-bottom: 1px solid var(--border-light);
   font-size: 13.5px;
   font-weight: 600;
 }
@@ -2042,7 +2082,7 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
 .card-elevated table.w-full tbody tr:hover,
 .ehr-set-section table.w-full tbody tr:hover,
 .org-set-card table.w-full tbody tr:hover {
-  background: #F5F7F8;
+  background: var(--color-slate-50);
 }
 
 /* The design's status chip: a 24px pill in condensed small caps, tinted by
@@ -2552,7 +2592,7 @@ thead th {
   background: var(--accent-light);
 }
 .registration-option-button[data-selected="true"] .registration-option-label {
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .registration-info-note {
@@ -2812,15 +2852,15 @@ thead th {
   --ehr-panel-soft: rgba(33, 145, 208, 0.075);
   --ehr-table-head: rgba(33, 145, 208, 0.11);
   --ehr-table-head-strong: rgba(33, 145, 208, 0.18);
-  --ehr-border: #D9DEE4;
-  --ehr-text: #113055;
-  --ehr-muted: #5D728B;
+  --ehr-border: var(--border-light);
+  --ehr-text: var(--text-primary);
+  --ehr-muted: var(--text-muted);
   --ehr-blue: var(--accent-primary);
   --ehr-blue-light: color-mix(in srgb, var(--accent-primary) 8%, transparent);
-  --ehr-conflict: #FCEEED;
-  --ehr-conflict-text: #B4180F;
-  --ehr-good: #0B8557;
-  --ehr-warning: #FEF2C7;
+  --ehr-conflict: var(--color-danger-bg);
+  --ehr-conflict-text: var(--color-danger-text);
+  --ehr-good: var(--color-success-text);
+  --ehr-warning: var(--color-warning-bg);
 }
 
 /* The top rail's height lives on :root, not only on the app shell, because
@@ -2887,7 +2927,7 @@ html:has(.ehr-top-rail) {
   flex: 0 0 auto;
   gap: 4px;
   min-height: 28px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;
   border-radius: 4px;
@@ -3003,7 +3043,7 @@ html:has(.ehr-top-rail) {
   }
 
   .ehr-mobile-tabbar button.active {
-    color: var(--accent-primary);
+    color: var(--accent-text);
     background: color-mix(in srgb, var(--accent-primary) 11%, transparent);
     font-weight: 700;
   }
@@ -3145,7 +3185,7 @@ html:has(.ehr-top-rail) {
 }
 
 .mobile-shell-tabbar button.active {
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .mobile-shell-tabbar-fab {
@@ -3167,7 +3207,7 @@ html:has(.ehr-top-rail) {
   align-items: center;
   justify-content: center;
   padding: 60px 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .mobile-dashboard {
@@ -3645,7 +3685,7 @@ html:has(.ehr-top-rail) {
   border: 1px solid var(--accent-primary);
   border-radius: 12px;
   background: var(--bg-card);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 800;
 }
@@ -3691,7 +3731,7 @@ html:has(.ehr-top-rail) {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 16px;
   padding: 0;
 }
@@ -3751,7 +3791,7 @@ html:has(.ehr-top-rail) {
 }
 
 .mobile-week-day.selected i.has-dot {
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .mobile-calendar-list {
@@ -3957,7 +3997,7 @@ html:has(.ehr-top-rail) {
   place-items: center;
   border-radius: 10px;
   background: var(--accent-light, #F2FCFF);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .mobile-sheet-section {
@@ -4388,7 +4428,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-module-menu section > button.ehr-module-group.is-expanded {
   background: var(--ehr-blue-light);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-module-menu section > button.ehr-module-group.is-expanded .ehr-module-group-chevron {
@@ -4463,7 +4503,7 @@ html:has(.ehr-top-rail) {
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .ehr-top-search-menu {
@@ -4543,7 +4583,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-avatar:hover,
 .ehr-avatar.active {
-  background: #F2FCFF !important;
+  background: var(--color-info-bg) !important;
   border-color: var(--ehr-border) !important;
 }
 
@@ -4686,16 +4726,16 @@ html:has(.ehr-top-rail) {
 
 .ehr-user-menu > button:hover {
   background: var(--ehr-blue-light);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-user-menu > button.danger {
-  color: #B4180F;
+  color: var(--color-danger-text);
 }
 
 .ehr-user-menu > button.danger:hover {
-  background: #FAE6E4;
-  color: #9E1B14;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .tamam-page-toolbar {
@@ -5100,7 +5140,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-schedule-actions button.orange:hover,
 .ehr-clinical-strip button.orange:hover {
-  border-color: #A65300;
+  border-color: var(--color-warning-border);
   background: #A65300;
   color: white;
 }
@@ -5118,7 +5158,7 @@ html:has(.ehr-top-rail) {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  color: var(--ehr-blue) !important;
+  color: var(--accent-text) !important;
   stroke: currentColor !important;
 }
 
@@ -5229,7 +5269,7 @@ html:has(.ehr-top-rail) {
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-mini-calendar-title button:hover {
@@ -5268,7 +5308,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-mini-calendar-grid button:hover {
   border-color: var(--ehr-border);
-  background: #F2FCFF;
+  background: var(--color-info-bg);
 }
 
 .ehr-mini-calendar-grid b {
@@ -5284,7 +5324,7 @@ html:has(.ehr-top-rail) {
 
 .ehr-mini-calendar-grid button.today:not(.selected) {
   border-color: var(--ehr-blue);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-mini-calendar-grid button.muted {
@@ -5304,7 +5344,7 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-mini-calendar-grid button.selected.has-events::after {
-  background: white;
+  background: var(--bg-card-solid);
 }
 
 .ehr-filter-group {
@@ -5512,7 +5552,7 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
-  background: #F2FCFF;
+  background: var(--color-info-bg);
   color: var(--tb-blue-800, #113055);
 }
 
@@ -5536,7 +5576,7 @@ html:has(.ehr-top-rail) {
   flex-direction: column;
   gap: 0;
   padding: 0;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-workspace-grid.is-dashboard > .ehr-center-panel > .ehr-appointment-list,
@@ -5589,8 +5629,8 @@ html:has(.ehr-top-rail) {
   padding: 0 13px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: white;
-  color: var(--ehr-blue);
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -5606,7 +5646,7 @@ html:has(.ehr-top-rail) {
   min-height: 0;
   padding: 14px 6px;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -5627,8 +5667,8 @@ html:has(.ehr-top-rail) {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #ECEEF1;
-  color: var(--ehr-blue);
+  background: var(--color-slate-100);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 800;
   flex-shrink: 0;
@@ -5657,20 +5697,20 @@ html:has(.ehr-top-rail) {
 
 .ehr-appointment-row[data-triage="RED"] .ehr-patient-icon,
 .ehr-worklist-row[data-triage="RED"] .ehr-patient-icon {
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .ehr-appointment-row[data-triage="YELLOW"] .ehr-patient-icon,
 .ehr-worklist-row[data-triage="YELLOW"] .ehr-patient-icon {
-  background: #FFF5EB;
-  color: #B35900;
+  background: var(--orange-50);
+  color: var(--color-warning-text);
 }
 
 .ehr-appointment-row[data-triage="GREEN"] .ehr-patient-icon,
 .ehr-worklist-row[data-triage="GREEN"] .ehr-patient-icon {
-  background: #ECF6F3;
-  color: #0B8557;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .ehr-appointment-main {
@@ -5691,7 +5731,7 @@ html:has(.ehr-top-rail) {
   text-overflow: ellipsis;
   border: 0;
   background: transparent;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
   font-size: 14px;
   font-weight: 800;
   line-height: 1.15;
@@ -5727,7 +5767,7 @@ html:has(.ehr-top-rail) {
   padding: 6px 12px;
   border-radius: 999px;
   background: var(--accent-light);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -5780,7 +5820,7 @@ html:has(.ehr-top-rail) {
   grid-column: 1;
   grid-row: 1 / span 2;
   align-self: center;
-  color: #113055;
+  color: var(--text-primary);
   font-size: 17px;
   font-weight: 800;
   line-height: 1.1;
@@ -5795,7 +5835,7 @@ html:has(.ehr-top-rail) {
   height: 30px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px !important;
-  background: white;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   padding: 0 4px;
   font-weight: 800;
@@ -5811,8 +5851,8 @@ html:has(.ehr-top-rail) {
 }
 
 .ehr-status-menu select.done {
-  border-color: #4FC79B;
-  background: #ECF6F3;
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
 }
 
 .ehr-status-menu select.ready {
@@ -5928,7 +5968,7 @@ button.ward-stat-chip {
 }
 button.ward-stat-chip:hover,
 button.ward-stat-chip.is-active {
-  color: var(--ehr-blue, var(--accent-primary));
+  color: var(--accent-text);
 }
 button.ward-stat-chip:focus:not(:focus-visible) {
   outline: none;
@@ -6016,7 +6056,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-height: 64px;
   border: 1px solid var(--ehr-border);
   border-radius: 14px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: none;
   color: var(--text-strong);
   font-size: 13px;
@@ -6126,7 +6166,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   width: 17px;
   height: 17px;
   margin: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* ── Progress feed ────────────────────────────────────────────────────────
@@ -6236,14 +6276,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-side-card > button:hover {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 /* Selected metric row — blue text only, matching the clinical dashboard's
    Outstanding-items rows. The old expanded pill (negative margin + tinted
    background) made the clicked row visually jump out of column alignment. */
 .ehr-side-card > button.active {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 /* Clicking a metric row opens a panel; the row shouldn't keep a mouse-focus
@@ -6258,7 +6298,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #ECEEF1;
+  background: var(--color-slate-100);
   color: var(--ehr-text);
   font-size: 12px;
 }
@@ -6308,7 +6348,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-side-card-icon-row svg {
   flex-shrink: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .ehr-outstanding-chips {
@@ -6333,7 +6373,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-outstanding-chips button:hover {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-outstanding-chips button span {
@@ -6351,8 +6391,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -6386,7 +6426,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
   background: var(--ehr-panel);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-mobile-outstanding-tabs {
@@ -6407,7 +6447,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-care-greeting {
   margin: 4px 0 0;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
   font-family: var(--font-platform);
   font-weight: 800;
   font-size: 20px;
@@ -6530,7 +6570,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 0 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   overflow: hidden;
 }
 
@@ -6543,7 +6583,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-care-search input {
@@ -6599,7 +6639,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: #ECEEF1;
+  background: var(--color-slate-100);
   color: var(--ehr-text);
   font-size: 12px;
 }
@@ -6610,7 +6650,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-rail-action:hover {
   border-color: var(--ehr-border);
   background: var(--ehr-blue-light);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-care-rail-action {
@@ -6706,7 +6746,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-items: start;
   padding: 14px 6px;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   border-radius: 0;
   background: transparent;
   box-shadow: none !important;
@@ -6778,7 +6818,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--ehr-table-head);
-  color: #015697;
+  color: var(--accent-text);
   font-size: 11px;
   font-weight: 800;
 }
@@ -6788,13 +6828,13 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-care-status.ready {
-  background: #ECF6F3;
-  color: #0A6E4A;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .ehr-care-status.active {
   background: var(--ehr-blue-light);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-care-status.done {
@@ -6934,8 +6974,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   justify-content: center;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
-  color: var(--ehr-blue);
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
   font-size: 11px;
   font-weight: 800;
   padding: 0 10px;
@@ -6952,7 +6992,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-care-detail > div:first-child {
@@ -7024,7 +7064,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   border: 1px solid rgba(224, 49, 39, 0.15);
   border-radius: 6px;
   background: rgba(224, 49, 39, 0.06);
-  color: #B4180F;
+  color: var(--color-danger-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -7044,7 +7084,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-height: 30px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   padding: 0 10px;
   font-size: 12px;
@@ -7144,7 +7184,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-worklist-panel.ehr-care-workflow--bare {
   margin: 0;
   border: 0;
-  background: #fff;
+  background: var(--bg-card-solid);
   border-radius: 0;
   padding: 12px;
   box-shadow: none !important;
@@ -7324,7 +7364,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   place-items: center;
   border: 1px solid var(--ehr-border);
   border-radius: 6px;
-  background: white;
+  background: var(--bg-card-solid);
   color: var(--ehr-text);
 }
 
@@ -7367,7 +7407,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   border: 1px solid var(--ehr-border);
   border-radius: 6px;
   background: var(--ehr-panel, #fff);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .ehr-registration-dialog-actions button:hover {
   background: var(--tb-blue-50, #F2FCFF);
@@ -7438,7 +7478,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 14px;
   border: 1px solid var(--ehr-border);
   border-radius: 6px;
-  background: white;
+  background: var(--bg-card-solid);
 }
 
 .ehr-checkin-form-actions {
@@ -7959,7 +7999,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-consult-patient-name:hover {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -7978,7 +8018,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-consult-change-btn:hover {
   background: var(--ehr-blue-light);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-consult-meta-strip {
@@ -8007,7 +8047,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-consult-meta-strip select {
   height: 34px;
   border: 1px solid var(--ehr-border);
-  background: white;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 800;
@@ -8021,16 +8061,16 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 7px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: white;
-  color: var(--ehr-blue);
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 800;
 }
 
 .ehr-consult-meta-strip button.active {
-  background: #FAE6E4;
-  border-color: #F9DDDB;
-  color: #D92B20;
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
 }
 
 .ehr-consult-workspace {
@@ -8095,7 +8135,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   padding-bottom: 6px;
   margin-bottom: 10px;
   border-bottom: 1px solid var(--border-light);
@@ -8133,7 +8173,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   margin-top: 3px;
   font-size: 11px;
   font-weight: 600;
-  color: #B35900;
+  color: var(--color-warning-text);
 }
 /* Live BMI tile inside the Body measurements group. */
 .ehr-bmi-tile {
@@ -8172,9 +8212,9 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 1px 8px;
   border-radius: 999px;
 }
-.ehr-bmi-tile-chip.is-ok { background: rgba(10, 110, 74, 0.12); color: #0A6E4A; }
-.ehr-bmi-tile-chip.is-warn { background: rgba(179, 89, 0, 0.14); color: #B35900; }
-.ehr-bmi-tile-chip.is-alert { background: rgba(224, 49, 39, 0.12); color: #E03127; }
+.ehr-bmi-tile-chip.is-ok { background: rgba(10, 110, 74, 0.12); color: var(--color-success-text); }
+.ehr-bmi-tile-chip.is-warn { background: rgba(179, 89, 0, 0.14); color: var(--color-warning-text); }
+.ehr-bmi-tile-chip.is-alert { background: rgba(224, 49, 39, 0.12); color: var(--color-danger-text); }
 
 .ehr-soap-scroll .card-elevated > button,
 .ehr-soap-scroll .card-elevated > div:first-child,
@@ -8363,7 +8403,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-soap-scroll textarea,
 .ehr-soap-scroll input,
 .ehr-soap-scroll select {
-  background: white !important;
+  background: var(--bg-card-solid) !important;
   border: 1px solid var(--ehr-border) !important;
   box-shadow: none !important;
 }
@@ -8617,7 +8657,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
@@ -8696,14 +8736,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-nav button:hover {
   background: var(--ehr-blue-light) !important;
-  color: var(--ehr-blue) !important;
+  color: var(--accent-text) !important;
 }
 
 /* Active tab — the inline style carries var(--accent-primary); underline it
    (inset shadow, since the border is zeroed with !important above). */
 .ehr-chart-nav button[style*="var(--accent-primary)"] {
   background: transparent !important;
-  color: var(--ehr-blue) !important;
+  color: var(--accent-text) !important;
   box-shadow: inset 0 -2px 0 var(--ehr-blue);
 }
 
@@ -8740,8 +8780,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-page .card-elevated {
   border-radius: 0 !important;
-  border: 1px solid #d9dee4 !important;
-  background: #fff !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-card-solid) !important;
   box-shadow: none !important;
   overflow: hidden;
 }
@@ -8838,8 +8878,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-page .card-elevated > .border-b,
 .ehr-chart-page .card-elevated > [style*="borderBottom"] {
   min-height: 50px;
-  background: #fafbfc !important;
-  border-color: #d9dee4 !important;
+  background: var(--color-slate-25) !important;
+  border-color: var(--border-light) !important;
 }
 
 .ehr-chart-page .card-elevated h2,
@@ -8852,16 +8892,16 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-chart-content .data-table thead th,
 .ehr-chart-content table thead th {
   height: 44px;
   padding: 0 14px !important;
-  border-bottom: 1px solid #d9dee4 !important;
-  background: #f1f3f5 !important;
-  color: #5d728b !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  background: var(--color-slate-75) !important;
+  color: var(--text-muted) !important;
   font-size: 11px !important;
   font-weight: 800 !important;
   letter-spacing: 0.03em !important;
@@ -8873,7 +8913,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content table:not(.omrs-table) tbody td {
   min-height: 46px;
   padding: 12px 14px !important;
-  border-bottom: 1px solid #eceef1 !important;
+  border-bottom: 1px solid var(--border-light) !important;
   color: var(--ehr-text);
   font-size: 13px;
   vertical-align: middle;
@@ -8881,7 +8921,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-content .data-table tbody tr:hover td,
 .ehr-chart-content table tbody tr:hover td {
-  background: #fafbfc;
+  background: var(--color-slate-25);
 }
 
 .ehr-chart-page .grid.lg\:grid-cols-3 {
@@ -8989,7 +9029,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   border-radius: 999px !important;
   background: var(--ehr-panel) !important;
   border: 1px solid var(--ehr-border) !important;
-  color: var(--ehr-blue) !important;
+  color: var(--accent-text) !important;
 }
 
 .ehr-vitals-body {
@@ -9101,7 +9141,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-section-title h1,
 .tebra-demo-title h1 {
   margin: 0;
-  color: #113055;
+  color: var(--text-primary);
   font-size: 25px;
   font-weight: 800;
   letter-spacing: 0;
@@ -9111,7 +9151,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-section-title button {
   border: 0;
   background: transparent;
-  color: #5d728b;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -9134,16 +9174,16 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-height: 0;
   height: 100%;
   padding: 16px 18px;
-  border: 1px solid #d9dee4;
+  border: 1px solid var(--border-light);
   border-radius: 2px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: none;
   cursor: pointer;
 }
 
 .tebra-panel:hover {
-  background: #F2FCFF;
-  border-color: #D8EEE6;
+  background: var(--color-info-bg);
+  border-color: var(--color-success-border);
 }
 
 .tebra-panel--wide {
@@ -9151,7 +9191,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-panel--highlight {
-  background: #f1f3f5;
+  background: var(--color-slate-75);
 }
 
 .tebra-panel h2 {
@@ -9164,7 +9204,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-none,
 .tebra-empty {
-  color: #113055;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 800;
 }
@@ -9185,7 +9225,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-list-row strong {
   flex: 1 1 auto;
   overflow: hidden;
-  color: #113055;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.3;
@@ -9197,7 +9237,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex: 0 0 auto;
   overflow: hidden;
   margin-top: 0;
-  color: #5D728B;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -9216,7 +9256,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 8px;
   border: 1px solid rgba(10, 110, 74, 0.18);
   background: rgba(255, 255, 255, 0.58);
-  color: #546A85;
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 800;
 }
@@ -9224,7 +9264,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-vitals strong {
   display: block;
   margin-top: 3px;
-  color: #113055;
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -9244,7 +9284,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 12px;
   align-items: center;
   min-height: 48px;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tebra-reco-row:last-child {
@@ -9268,7 +9308,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-reco-row > .tebra-reco-grade.is-info {
   background: var(--accent-light);
-  color: var(--accent-primary) !important;
+  color: var(--accent-text) !important;
 }
 
 .tebra-reco-row > .tebra-reco-grade.is-rec {
@@ -9278,7 +9318,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-reco-row small {
   display: block;
-  color: #2E4969;
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.25;
@@ -9286,7 +9326,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-reco-row strong {
   display: block;
-  color: #5D728B;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.3;
@@ -9296,14 +9336,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-demographics {
   margin: 0 0 18px;
-  border: 1px solid #d9dee4;
-  background: #fff;
+  border: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
   box-shadow: none;
 }
 
 .tebra-demo-title {
   padding: 12px 14px 6px;
-  border-bottom: 1px solid #E2E6EB;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tebra-demo-tabs {
@@ -9312,7 +9352,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-items: flex-end;
   min-height: 48px;
   padding: 8px 14px 0;
-  border-bottom: 1px solid #D9DEE4;
+  border-bottom: 1px solid var(--border-light);
   overflow-x: auto;
 }
 
@@ -9320,11 +9360,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-width: max-content;
   height: 40px;
   padding: 0 16px;
-  border: 1px solid #D9DEE4;
+  border: 1px solid var(--border-light);
   border-bottom: 0;
   border-radius: var(--radius-control) var(--radius-control) 0 0;
-  background: #fff;
-  color: #6B7F96;
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -9332,7 +9372,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-demo-tabs button.active {
   background: #0A6E4A;
-  border-color: #0A6E4A;
+  border-color: var(--color-success-border);
   color: #fff;
 }
 
@@ -9350,10 +9390,10 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   inset-inline-end: 16px;
   min-width: 96px;
   height: 28px;
-  border: 1px solid #D9DEE4;
+  border: 1px solid var(--border-light);
   border-radius: 3px;
-  background: #fff;
-  color: #546A85;
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -9372,21 +9412,21 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: grid;
   place-items: center;
   border-radius: 3px;
-  background: #E2E6EB;
-  color: #6B7F96;
+  background: var(--color-slate-150);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 800;
 }
 
 .tebra-demo-person h2 {
   margin: 0;
-  color: #113055;
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 800;
 }
 
 .tebra-demo-person span {
-  color: #0FA06A;
+  color: var(--color-success-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -9410,7 +9450,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-demo-field dt {
-  color: #3C5574;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -9418,7 +9458,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-field dd {
   min-width: 0;
   margin: 0;
-  color: #113055;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.35;
@@ -9428,12 +9468,12 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-section {
   margin-top: 20px;
   padding-top: 14px;
-  border-top: 1px solid #E2E6EB;
+  border-top: 1px solid var(--border-light);
 }
 
 .tebra-demo-section h3 {
   margin: 0 0 18px;
-  color: #113055 !important;
+  color: var(--text-primary) !important;
   font-size: 16px;
   font-weight: 800;
 }
@@ -9446,8 +9486,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-table th,
 .tebra-demo-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #ECEEF1;
-  color: #113055;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   text-align: start;
@@ -9457,8 +9497,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #ffffff;
-  color: #5D728B;
+  background: var(--bg-card-solid);
+  color: var(--text-muted);
   font-weight: 800;
 }
 
@@ -9647,17 +9687,17 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-page {
   --ehr-page-bg: var(--bg-app);
   --ehr-panel: var(--bg-card-solid);
-  --ehr-panel-soft: #E1F9FF;
-  --ehr-table-head: #E1F9FF;
-  --ehr-table-head-strong: #C9F4FF;
-  --ehr-border: #D9DEE4;
-  --ehr-border-soft: #ECEEF1;
-  --ehr-text: #113055;
-  --ehr-muted: #5D728B;
+  --ehr-panel-soft: var(--color-info-bg);
+  --ehr-table-head: var(--color-info-bg);
+  --ehr-table-head-strong: var(--brand-200);
+  --ehr-border: var(--border-light);
+  --ehr-border-soft: var(--border-light);
+  --ehr-text: var(--text-primary);
+  --ehr-muted: var(--text-muted);
   --ehr-blue: var(--accent-primary);
   --ehr-blue-strong: var(--accent-hover);
   --ehr-blue-light: color-mix(in srgb, var(--accent-primary) 8%, transparent);
-  --ehr-focus-ring: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  --ehr-focus-ring: var(--focus-ring);
   background: var(--ehr-page-bg) !important;
 }
 
@@ -9704,12 +9744,12 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-chart-nav {
-  background: #ffffff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-chart-nav button {
   min-height: 50px;
-  color: #546A85 !important;
+  color: var(--text-secondary) !important;
   font-weight: 700 !important;
 }
 
@@ -9719,7 +9759,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-nav button[style*="var(--accent-primary)"] {
   background: var(--ehr-panel-soft) !important;
-  color: var(--ehr-blue-strong) !important;
+  color: var(--accent-text) !important;
   font-weight: 700 !important;
 }
 
@@ -9792,7 +9832,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   height: 38px;
   border-bottom: 1px solid var(--ehr-border) !important;
   background: var(--ehr-table-head-strong) !important;
-  color: #3c5574 !important;
+  color: var(--text-secondary) !important;
   font-size: 10px !important;
   font-weight: 800 !important;
   letter-spacing: 0 !important;
@@ -9807,7 +9847,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-content .data-table tbody tr:hover td,
 .ehr-chart-content table tbody tr:hover td {
-  background: #f2fcff;
+  background: var(--color-info-bg);
 }
 
 .billing-account-grid {
@@ -9876,7 +9916,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .billing-card-action:hover {
   background: var(--ehr-blue-light) !important;
   border-color: var(--ehr-border) !important;
-  color: var(--ehr-blue-strong) !important;
+  color: var(--accent-text) !important;
 }
 
 .billing-account-card > :not(.billing-account-card__header) {
@@ -9916,7 +9956,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .billing-account-card .icon-box-sm {
   background: var(--ehr-blue-light) !important;
-  color: var(--ehr-blue) !important;
+  color: var(--accent-text) !important;
 }
 
 .billing-account-card .icon-box-sm svg {
@@ -9945,7 +9985,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-dashboard .ehr-care-row.danger {
   border-inline-start: 0 !important;
   /* Cards stay white on the soft list backdrop; tone lives in the status pill. */
-  background: #fff !important;
+  background: var(--bg-card-solid) !important;
 }
 
 .ehr-checkin-form-actions .btn {
@@ -9965,13 +10005,13 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-height: 36px;
   border: 1px solid var(--ehr-border) !important;
   border-radius: 3px !important;
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
   color: var(--ehr-text) !important;
 }
 
 .ehr-chart-page input::placeholder,
 .ehr-chart-page textarea::placeholder {
-  color: #6b7f96;
+  color: var(--text-secondary);
 }
 
 .ehr-chart-page input:focus,
@@ -9983,14 +10023,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-page .badge {
   border: 1px solid currentColor !important;
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
   font-weight: 800 !important;
 }
 
 .ehr-encounter-card {
   border: 1px solid var(--ehr-border) !important;
   border-radius: 4px !important;
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
   box-shadow: none !important;
 }
 
@@ -10005,11 +10045,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-encounter-card__body {
-  background: #ffffff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-chart-content .relative > button[aria-label*="encounter"] {
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
   border-width: 3px !important;
 }
 
@@ -10019,11 +10059,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-panel {
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--bg-card-solid);
 }
 
 .tebra-panel:hover {
-  background: #f2fcff;
+  background: var(--color-info-bg);
   border-color: var(--ehr-blue-strong) !important;
 }
 
@@ -10040,11 +10080,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-demo-edit,
 .tebra-demo-tabs button {
   border-color: var(--ehr-border) !important;
-  color: var(--ehr-blue-strong);
+  color: var(--accent-text);
 }
 
 .tebra-demo-tabs {
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
 }
 
 .tebra-demo-tabs button {
@@ -10059,7 +10099,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-demo-panel {
-  background: #ffffff;
+  background: var(--bg-card-solid);
 }
 
 .tebra-demo-table th {
@@ -10116,7 +10156,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-chart-actions button {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
   font-size: var(--type-size-caption) !important;
   font-weight: var(--type-weight-semibold) !important;
   line-height: var(--type-leading-caption) !important;
@@ -10147,13 +10187,13 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-nav button:hover,
 .ehr-chart-nav-button:hover {
   background: var(--ehr-panel-soft) !important;
-  color: var(--ehr-blue-strong) !important;
+  color: var(--accent-text) !important;
 }
 
 .ehr-chart-nav button.is-active,
 .ehr-chart-nav button[style*="var(--accent-primary)"] {
   background: var(--ehr-panel-soft) !important;
-  color: var(--ehr-blue-strong) !important;
+  color: var(--accent-text) !important;
   font-weight: var(--type-weight-bold) !important;
 }
 
@@ -10258,7 +10298,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-reco-row > span {
-  color: var(--ehr-blue-strong);
+  color: var(--accent-text);
   font-size: var(--type-size-section-title) !important;
   font-weight: var(--type-weight-semibold) !important;
 }
@@ -10674,7 +10714,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 12px 14px;
   border: 1px solid var(--ehr-border-soft);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--bg-card-solid);
 }
 
 .tebra-customize-panel__head {
@@ -10693,7 +10733,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tebra-customize-panel__head button {
   border: 0;
   background: transparent;
-  color: var(--ehr-blue-strong);
+  color: var(--accent-text);
   font-size: var(--type-size-caption);
   font-weight: var(--type-weight-semibold);
   cursor: pointer;
@@ -10741,7 +10781,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content .tebra-panel {
   border: 1px solid var(--ehr-ledger-border) !important;
   border-radius: var(--card-radius) !important;
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
   box-shadow: var(--card-shadow) !important;
 }
 
@@ -10773,7 +10813,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content .icon-box-sm,
 .ehr-chart-content .w-8.h-8.rounded-lg {
   background: transparent !important;
-  color: var(--ehr-blue) !important;
+  color: var(--accent-text) !important;
 }
 
 .ehr-chart-content .data-table,
@@ -10807,7 +10847,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content select,
 .ehr-chart-content textarea {
   border-color: var(--ehr-ledger-border) !important;
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
 }
 
 .ehr-chart-content input:focus,
@@ -10834,7 +10874,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-chart-content .ehr-encounter-card__body {
-  background: #ffffff !important;
+  background: var(--bg-card-solid) !important;
 }
 
 .ehr-chart-content .record-signature-bar {
@@ -10865,7 +10905,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding: 4px;
   border: 1.5px solid var(--ehr-ledger-border);
   border-radius: 5px;
-  background: #ffffff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-chart-subtabs button {
@@ -10883,7 +10923,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-subtabs button:hover,
 .ehr-chart-subtabs button:focus-visible {
   background: var(--ehr-ledger-softer);
-  color: var(--ehr-blue-strong);
+  color: var(--accent-text);
   outline: none;
 }
 
@@ -10931,7 +10971,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
      redesign; every design file draws heads this way, so the app-wide rule is
      the right place to say it once.) */
   background: var(--bg-card-solid) !important;
-  color: #5D728B !important;
+  color: var(--text-muted) !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -10954,7 +10994,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .tamam-ehr-app .data-table tbody td,
 .tamam-ehr-app table tbody td {
   /* The design's row hairline — one shade quieter than the card border. */
-  border-bottom: 1px solid #F1F3F5 !important;
+  border-bottom: 1px solid var(--border-light) !important;
 }
 
 /* Final role-wide override: the EHR theme normalizes table headings to
@@ -10962,7 +11002,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
    appointments column treatment for every user. */
 .tamam-ehr-app .appointment-table-head th,
 .ehr-chart-content .appointment-table-head th {
-  color: #5D728B !important;
+  color: var(--text-muted) !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -11230,12 +11270,12 @@ canvas {
 
 /* ============ Focus visible ============ */
 :focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 .nav-item:focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   border-radius: var(--btn-radius);
 }
@@ -11610,7 +11650,7 @@ svg circle {
   justify-content: center;
   background: var(--accent-light);
   border: 1px solid var(--accent-border);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   flex-shrink: 0;
   box-shadow: none;
 }
@@ -11824,7 +11864,7 @@ svg circle {
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   background: var(--accent-light);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .data-row__label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); }
 .data-row__value { font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
@@ -12740,7 +12780,7 @@ span:has(> svg:only-child) {
   flex-direction: column;
   gap: 2px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
 .appointment-detail-row dt {
@@ -12765,7 +12805,7 @@ span:has(> svg:only-child) {
 .appointment-detail-modal__insurance {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-top: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
 .appointment-detail-modal__insurance-label {
@@ -12785,7 +12825,7 @@ span:has(> svg:only-child) {
   flex-shrink: 0;
   padding: 12px 16px;
   border-top: 1px solid var(--color-brand-500);
-  background: #F2FCFF;
+  background: var(--color-info-bg);
 }
 
 /* flex-basis 0 → the buttons always share one line (wrap can never trigger
@@ -13357,7 +13397,7 @@ span:has(> svg:only-child) {
    is the marker. Tinting the header as well as the column below it made the
    whole day read as selected rather than as current. */
 .rbc-tamam .rbc-header.rbc-today {
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-weight: 700;
   background: transparent;
 }
@@ -13404,7 +13444,7 @@ span:has(> svg:only-child) {
 }
 .rbc-tamam .rbc-date-cell.rbc-now {
   font-weight: 700;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .rbc-tamam .rbc-date-cell.rbc-now a {
   display: inline-flex;
@@ -13852,7 +13892,7 @@ span:has(> svg:only-child) {
   background: var(--accent-light);
   border: 1px solid var(--accent-border);
   border-radius: 4px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 600;
 }
@@ -14015,7 +14055,7 @@ span:has(> svg:only-child) {
     max-width: 100%;
     margin: 0;
     overflow: hidden;
-    color: var(--ehr-blue);
+    color: var(--accent-text);
     font-size: 18px;
     line-height: 1.1;
     text-overflow: ellipsis;
@@ -14133,16 +14173,16 @@ span:has(> svg:only-child) {
   }
 
   .ehr-day-tabs .ehr-mobile-day-check b {
-    color: var(--ehr-blue);
+    color: var(--accent-text);
     font-weight: 800;
   }
 
   .ehr-day-tabs .ehr-mobile-day-check.warning b {
-    color: #A65300;
+    color: var(--color-warning-text);
   }
 
   .ehr-day-tabs .ehr-mobile-day-check.danger b {
-    color: #B4180F;
+    color: var(--color-danger-text);
   }
 
   .ehr-outstanding-card {
@@ -14239,7 +14279,7 @@ span:has(> svg:only-child) {
     grid-template-columns: minmax(0, 1.2fr) 34px 46px minmax(76px, 0.78fr) minmax(58px, 0.66fr);
     gap: 6px;
     padding: 8px 10px;
-    background: #fafbfc;
+    background: var(--color-slate-25);
     color: var(--ehr-muted);
     font-size: 8.5px;
     font-weight: 800;
@@ -14566,7 +14606,7 @@ span:has(> svg:only-child) {
   }
 
   .ehr-clinical-dashboard-header .ehr-segmented button svg {
-    color: var(--ehr-blue) !important;
+    color: var(--accent-text) !important;
     stroke: currentColor !important;
   }
 
@@ -14726,7 +14766,7 @@ span:has(> svg:only-child) {
   width: 17px !important;
   height: 17px !important;
   flex: 0 0 auto;
-  color: var(--ehr-blue-strong, var(--accent-primary));
+  color: var(--accent-text);
 }
 
 /* Facesheet card header row — icon+title on the left, the card's primary
@@ -14752,10 +14792,10 @@ span:has(> svg:only-child) {
   gap: 4px;
   height: 26px;
   padding: 0 9px;
-  border: 1px solid var(--ehr-ledger-border, #E2E6EB);
+  border: 1px solid var(--ehr-ledger-border, var(--border-light));
   border-radius: 4px;
-  background: #fff;
-  color: var(--ehr-blue-strong, var(--accent-primary));
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -15100,10 +15140,10 @@ span:has(> svg:only-child) {
     justify-content: center;
     gap: 8px;
     padding: 0 12px;
-    border: 1px solid #E2E6EB;
+    border: 1px solid var(--border-light);
     border-radius: 12px;
     background: var(--bg-card);
-    color: var(--accent-primary);
+    color: var(--accent-text);
     box-shadow: none;
     font-size: 13px;
     font-weight: 800;
@@ -15116,7 +15156,7 @@ span:has(> svg:only-child) {
     width: 17px;
     height: 17px;
     flex: 0 0 auto;
-    color: var(--accent-primary) !important;
+    color: var(--accent-text) !important;
     stroke: currentColor !important;
   }
 }
@@ -15357,7 +15397,7 @@ span:has(> svg:only-child) {
 /* Care rows (reception, lab, pharmacy…) name the patient in link blue, same
    as the doctor's queue card and the ward board. */
 .ehr-care-row .ehr-appointment-main button {
-  color: var(--ehr-blue, var(--accent-primary));
+  color: var(--accent-text);
 }
 
 /* The name is its own target: clicking it opens the patient's chart, while
@@ -15522,7 +15562,7 @@ span:has(> svg:only-child) {
 }
 
 .ehr-worklist-status.done {
-  background: #ECEEF1;
+  background: var(--color-slate-100);
   color: var(--ehr-muted);
 }
 
@@ -15530,7 +15570,7 @@ span:has(> svg:only-child) {
 .ehr-worklist-panel {
   border-radius: 18px;
   border-color: var(--ehr-border);
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.04) !important;
 }
 
@@ -15578,11 +15618,11 @@ span:has(> svg:only-child) {
 }
 
 .ehr-worklist-search:focus-within {
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-worklist-search:focus-within svg {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 @media (max-width: 860px) {
@@ -15600,7 +15640,7 @@ span:has(> svg:only-child) {
 }
 
 .ehr-worklist-table {
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
 }
 
 .ehr-worklist-head,
@@ -15631,7 +15671,7 @@ span:has(> svg:only-child) {
 .ehr-worklist-row {
   min-height: 68px;
   border-bottom-color: var(--ehr-border-soft);
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   color: var(--ehr-text-body);
   font-size: 13px;
   font-weight: 700;
@@ -15654,7 +15694,7 @@ span:has(> svg:only-child) {
 
 /* Patient name reads as the link into the chart, same as the queue card. */
 .ehr-worklist-row .ehr-worklist-name strong {
-  color: var(--ehr-blue, var(--accent-primary));
+  color: var(--accent-text);
 }
 
 .ehr-worklist-row:hover .ehr-worklist-name strong {
@@ -15777,7 +15817,7 @@ span:has(> svg:only-child) {
   /* One card corner across the app, per the Clinical/Reception design. */
   border-radius: var(--card-radius);
   padding: 14px;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
 }
 
 .ehr-side-card h2 {
@@ -15848,15 +15888,15 @@ span:has(> svg:only-child) {
 .ehr-worklist-panel {
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   box-shadow: none !important;
 }
 
 .ehr-today-button {
   width: 100%;
   margin: 0;
-  background: #FFFFFF;
-  color: var(--ehr-blue);
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
 }
 
 .ehr-mini-calendar {
@@ -16096,7 +16136,7 @@ span:has(> svg:only-child) {
   flex-direction: column;
   width: 100%;
   max-height: min(86vh, 920px);
-  background: #fff;
+  background: var(--bg-card-solid);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -16109,7 +16149,7 @@ span:has(> svg:only-child) {
   gap: 12px;
   min-height: 56px;
   padding: 10px 16px;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .ehr-handoff-head-title {
@@ -16123,7 +16163,7 @@ span:has(> svg:only-child) {
   flex: 0 0 auto;
   width: 17px;
   height: 17px;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-handoff-head-title h2 {
@@ -16173,7 +16213,7 @@ span:has(> svg:only-child) {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-handoff-stats {
@@ -16189,7 +16229,7 @@ span:has(> svg:only-child) {
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-handoff-stat svg {
@@ -16217,7 +16257,7 @@ span:has(> svg:only-child) {
 .ehr-handoff-section {
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
   overflow: hidden;
 }
 
@@ -16228,7 +16268,7 @@ span:has(> svg:only-child) {
   gap: 10px;
   min-height: 44px;
   padding: 0 12px;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .ehr-handoff-section-head > div {
@@ -16242,7 +16282,7 @@ span:has(> svg:only-child) {
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .ehr-handoff-section-head h3 {
@@ -16266,27 +16306,27 @@ span:has(> svg:only-child) {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
 
 .ehr-handoff-badge[data-tone='red'] {
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .ehr-handoff-badge[data-tone='green'] {
-  background: #ECF6F3;
-  color: #0B8557;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .ehr-handoff-card {
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-handoff-card-head {
@@ -16323,8 +16363,8 @@ button.ehr-handoff-name:hover {
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -16343,7 +16383,7 @@ button.ehr-handoff-name:hover {
 }
 
 .ehr-handoff-clear:hover {
-  color: #E03127;
+  color: var(--color-danger-text);
 }
 
 .ehr-handoff-grid {
@@ -16360,7 +16400,7 @@ textarea.ehr-handoff-input {
   padding: 6px 10px;
   border: 1px solid var(--ehr-border);
   border-radius: 8px !important;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--ehr-text);
   font-size: 13px;
   font-weight: 700;
@@ -16427,7 +16467,7 @@ textarea.ehr-handoff-input {
   padding: 0 16px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
@@ -16495,7 +16535,7 @@ textarea.ehr-handoff-input {
   justify-content: center;
   gap: 8px;
   padding: 6px 0;
-  color: #0B8557;
+  color: var(--color-success-text);
   font-size: 13px;
   font-weight: 700;
 }
@@ -16626,7 +16666,7 @@ textarea.ehr-handoff-input {
 .ehr-appointment-list {
   border: 0;
   border-radius: 0;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: none !important;
 }
 
@@ -16863,7 +16903,7 @@ textarea.ehr-handoff-input {
   width: 24px !important;
   height: 24px !important;
   margin: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   stroke: currentColor;
 }
 
@@ -16919,12 +16959,12 @@ textarea.ehr-handoff-input {
 .ehr-chart-nav button:hover,
 .ehr-chart-nav-button:hover {
   background: var(--ehr-panel-soft) !important;
-  color: var(--ehr-blue-strong) !important;
+  color: var(--accent-text) !important;
 }
 
 .ehr-chart-nav-button.is-active {
   background: var(--ehr-panel-soft) !important;
-  color: var(--ehr-blue-strong) !important;
+  color: var(--accent-text) !important;
   font-weight: 800 !important;
 }
 
@@ -17012,7 +17052,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
   background: var(--ehr-panel);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
   flex: 0 0 auto;
@@ -17061,7 +17101,7 @@ textarea.ehr-handoff-input {
   min-height: 48px;
   padding: 0;
   border: 0;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
   border-radius: 0;
   background: transparent;
   color: var(--ehr-text);
@@ -17274,7 +17314,7 @@ textarea.ehr-handoff-input {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -17359,7 +17399,7 @@ textarea.ehr-handoff-input {
 
 .popup-select-row.is-selected {
   background: var(--accent-light);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .popup-select-row-label {
@@ -17403,7 +17443,7 @@ textarea.ehr-handoff-input {
 }
 
 .popup-select-row--add {
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -17639,7 +17679,7 @@ textarea.ehr-handoff-input {
   padding: 8px 10px;
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: none;
   color: var(--ehr-text);
   cursor: pointer;
@@ -17704,7 +17744,7 @@ textarea.ehr-handoff-input {
   padding: 0 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--tb-blue-800, #113055);
   font-size: 12px;
   font-weight: 700;
@@ -17755,23 +17795,23 @@ textarea.ehr-handoff-input {
 /* Acuity avatars are soft semantic tints (not solid triage colors), matching
    the priority pills — RED/YELLOW/GREEN from triage, neutral elsewhere. */
 .ehr-patient-icon[data-acuity='RED'] {
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .ehr-patient-icon[data-acuity='YELLOW'] {
-  background: #FFF5EB;
-  color: #B35900;
+  background: var(--orange-50);
+  color: var(--color-warning-text);
 }
 
 .ehr-patient-icon[data-acuity='GREEN'] {
-  background: #ECF6F3;
-  color: #0B8557;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .ehr-patient-icon[data-acuity='neutral'] {
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
 }
 
 .ehr-queue-patient-text {
@@ -17818,18 +17858,18 @@ textarea.ehr-handoff-input {
 /* Priority pill tints/text are the semantic danger/warning/success tokens
    (design-facts), replacing the older ward-soft colors. */
 .ehr-queue-pill[data-tone='red'] {
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .ehr-queue-pill[data-tone='yellow'] {
-  background: #FFF5EB;
-  color: #B35900;
+  background: var(--orange-50);
+  color: var(--color-warning-text);
 }
 
 .ehr-queue-pill[data-tone='green'] {
-  background: #ECF6F3;
-  color: #0B8557;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 /* Neutral status pill — used by EhrCareDashboard rows whose `priority` isn't
@@ -17837,7 +17877,7 @@ textarea.ehr-handoff-input {
    label instead of the clinician acuity pill. */
 .ehr-queue-pill[data-tone='neutral'] {
   background: var(--ehr-table-head);
-  color: #015697;
+  color: var(--accent-text);
 }
 
 .ehr-queue-status {
@@ -17876,7 +17916,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-queue-wait small.is-soon {
-  color: #B35900;
+  color: var(--color-warning-text);
 }
 
 /* Over-target waits in the queue's Time column. The row used to spell it out
@@ -17885,7 +17925,7 @@ textarea.ehr-handoff-input {
    `.ehr-appointment-countdown` and `.ehr-queue-wait small`, neither of which
    matches this span, so it was rendering muted grey under a red time. */
 .ehr-appointment-time span.is-soon {
-  color: #E03127;
+  color: var(--color-danger-text);
 }
 
 /* Past due, everywhere a time is listed — the station shells
@@ -17897,31 +17937,31 @@ textarea.ehr-handoff-input {
    The clock time above it turns with the sub-line: the row is late, not the
    half of it that happens to carry the word "ago". */
 .ehr-appointment-time span.is-past {
-  color: #E03127;
+  color: var(--color-danger-text);
   font-weight: 700;
 }
 
 .ehr-appointment-time:has(span.is-past) strong {
-  color: #E03127;
+  color: var(--color-danger-text);
 }
 
 .ehr-queue-wait small.is-past {
-  color: #E03127;
+  color: var(--color-danger-text);
   font-weight: 700;
 }
 
 .ehr-queue-wait:has(small.is-past) strong {
-  color: #E03127;
+  color: var(--color-danger-text);
 }
 
 .ehr-queue-wait-over {
-  color: #E03127;
+  color: var(--color-danger-text);
   font-weight: 700;
 }
 
 .ehr-queue-wait.ehr-queue-wait-over strong,
 .ehr-queue-wait.ehr-queue-wait-over small {
-  color: #E03127;
+  color: var(--color-danger-text);
 }
 
 .ehr-queue-wait-over small {
@@ -18079,7 +18119,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-daybar .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
-  background: #F2FCFF;
+  background: var(--color-info-bg);
   color: var(--tb-blue-800, #113055);
 }
 
@@ -18510,7 +18550,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 700;
 }
@@ -18705,7 +18745,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   justify-content: center;
   background: rgba(33, 145, 208, 0.10);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   flex-shrink: 0;
 }
 .listpage-eyebrow { font-size: 12px; color: var(--text-muted); margin: 0 0 2px; }
@@ -18806,7 +18846,7 @@ textarea.ehr-handoff-input {
   overflow: auto;
   flex-direction: column;
   gap: 8px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .appointment-card-empty {
@@ -18829,8 +18869,8 @@ textarea.ehr-handoff-input {
   /* Tracks the row's side padding so the column labels stay over their
      values. */
   padding: 0 4px 6px;
-  background: #fff;
-  color: #5D728B;
+  background: var(--bg-card-solid);
+  color: var(--text-muted);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -18907,7 +18947,7 @@ textarea.ehr-handoff-input {
 }
 
 .appointment-card-patient a:hover {
-  color: var(--ehr-blue, var(--accent-primary));
+  color: var(--accent-text);
 }
 
 .appointment-card-provider {
@@ -19026,7 +19066,7 @@ textarea.ehr-handoff-input {
   padding: 0 11px;
   border: 1px solid var(--ehr-border, var(--border-light));
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   /* The design's chip voice: condensed small caps — crisper at the same
      size than the sentence-case 12px it replaces. */
@@ -19140,7 +19180,7 @@ textarea.ehr-handoff-input {
 .appt-edit-header-actions .btn-secondary:hover,
 .appt-edit-header-actions .btn-secondary:focus-visible {
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   background: var(--accent-light, #e1f9ff);
 }
 
@@ -19266,7 +19306,7 @@ textarea.ehr-handoff-input {
 .appointment-status-pill.status-reminder-sent {
   border-color: var(--ehr-blue);
   background: var(--ehr-blue-light);
-  color: var(--ehr-blue-strong, var(--ehr-blue));
+  color: var(--accent-text);
 }
 
 .appointment-status-pill.status-requested,
@@ -19328,14 +19368,14 @@ textarea.ehr-handoff-input {
 
 .checkin-patient-search:focus-within {
   border-color: var(--accent-primary);
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 0 0 3px var(--accent-light) !important;
 }
 
 .checkin-patient-search-icon {
   width: 16px;
   height: 16px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   opacity: 1;
   transition: opacity 0.14s ease;
 }
@@ -19629,7 +19669,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
   border-radius: 8px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, filter 0.15s;
 }
@@ -19642,7 +19682,7 @@ textarea.ehr-handoff-input {
 .listpage-icon-btn.is-active {
   border-color: var(--accent-primary);
   background: rgba(33, 145, 208, 0.10);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .listpage-icon-btn-primary {
   background: var(--accent-primary);
@@ -19668,7 +19708,7 @@ textarea.ehr-handoff-input {
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
   border-radius: 8px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   cursor: pointer;
 }
 .listpage-icon-select:hover { border-color: var(--accent-border); }
@@ -19978,7 +20018,7 @@ textarea.ehr-handoff-input {
 
 .ehr-set-back:hover {
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* The "where Back goes" crumb — a button, so it reads and behaves like the
@@ -19995,7 +20035,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-crumb:hover {
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .ehr-set-header-actions {
@@ -20034,7 +20074,7 @@ textarea.ehr-handoff-input {
   padding: 0 14px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 700;
@@ -20178,7 +20218,7 @@ textarea.ehr-handoff-input {
   padding: 16px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
@@ -20253,7 +20293,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-identity {
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   overflow: hidden;
@@ -20345,7 +20385,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 13px;
   padding: 16px 18px;
-  border-bottom: 1px solid #E2E6EB;
+  border-bottom: 1px solid var(--border-light);
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #fff;
@@ -20376,7 +20416,7 @@ textarea.ehr-handoff-input {
 .ehr-set-account-edit:hover {
   background: var(--accent-light);
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .ehr-set-account-edit svg {
@@ -20587,7 +20627,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-nav {
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   padding: 6px;
@@ -20606,7 +20646,7 @@ textarea.ehr-handoff-input {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #2E4969;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   text-align: start;
@@ -20683,7 +20723,7 @@ textarea.ehr-handoff-input {
   padding: 14px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
@@ -20709,7 +20749,7 @@ textarea.ehr-handoff-input {
   padding: 14px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
@@ -20758,7 +20798,7 @@ textarea.ehr-handoff-input {
   padding: 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   text-align: start;
   color: var(--ehr-text);
   cursor: pointer;
@@ -20821,7 +20861,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-section {
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   overflow: hidden;
@@ -20834,7 +20874,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 12px;
   padding: 16px 18px;
-  border-bottom: 1px solid #E2E6EB;
+  border-bottom: 1px solid var(--border-light);
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #fff;
@@ -20886,7 +20926,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-row:hover {
-  background: #FAFBFC;
+  background: var(--color-slate-25);
 }
 
 .ehr-set-row-label b {
@@ -20937,7 +20977,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   padding: 2px;
   border-radius: 999px;
-  background: #D9DEE4;
+  background: var(--color-slate-200);
   transition: background 120ms ease;
 }
 
@@ -20949,7 +20989,7 @@ textarea.ehr-handoff-input {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.25);
   margin-inline-start: 0;
   transition: margin-left 120ms ease;
@@ -20966,7 +21006,7 @@ textarea.ehr-handoff-input {
   padding: 6px 30px 6px 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 8px !important;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12.5px;
   font-weight: 700;
@@ -20990,7 +21030,7 @@ textarea.ehr-handoff-input {
   padding: 6px 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 8px !important;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12.5px;
   font-weight: 700;
@@ -21009,8 +21049,8 @@ textarea.ehr-handoff-input {
   gap: 6px;
   padding: 5px 11px;
   border-radius: 8px;
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
@@ -21173,8 +21213,8 @@ textarea.ehr-handoff-input {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: #FFF5EB;
-  color: #B35900;
+  background: var(--orange-50);
+  color: var(--color-warning-text);
   font-size: 11px;
   font-weight: 800;
 }
@@ -21199,7 +21239,7 @@ textarea.ehr-handoff-input {
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #FAFBFC;
-  border-bottom: 1px solid #E2E6EB;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .ehr-set-users-head span {
@@ -21217,12 +21257,12 @@ textarea.ehr-handoff-input {
 .ehr-set-user-row {
   min-height: 52px;
   padding: 8px 18px;
-  border-bottom: 1px solid #F1F3F5;
-  background: #fff;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
 }
 
 .ehr-set-user-row:hover {
-  background: #FAFBFC;
+  background: var(--color-slate-25);
 }
 
 .ehr-set-user-row:last-child {
@@ -21289,8 +21329,8 @@ textarea.ehr-handoff-input {
   display: inline-flex;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
   font-style: normal;
@@ -21298,13 +21338,13 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-set-user-status.is-active {
-  background: #ECF6F3;
-  color: #0B8557;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .ehr-set-user-status.is-off {
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .ehr-set-user-actions {
@@ -21318,30 +21358,30 @@ textarea.ehr-handoff-input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 1px;
-  background: #ECEEF1;
+  background: var(--color-slate-100);
 }
 
 .ehr-set-integrations > div {
   min-width: 0;
   padding: 15px 18px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-set-int-pill {
   display: inline-flex;
   padding: 2px 9px;
   border-radius: 999px;
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
   font-style: normal;
   white-space: nowrap;
 }
 
-.ehr-set-int-pill[data-tone='green'] { background: #ECF6F3; color: #0B8557; }
-.ehr-set-int-pill[data-tone='yellow'] { background: #FFF5EB; color: #B35900; }
-.ehr-set-int-pill[data-tone='red'] { background: #FCEEED; color: #E03127; }
+.ehr-set-int-pill[data-tone='green'] { background: var(--color-success-bg); color: var(--color-success-text); }
+.ehr-set-int-pill[data-tone='yellow'] { background: var(--orange-50); color: var(--color-warning-text); }
+.ehr-set-int-pill[data-tone='red'] { background: var(--color-danger-bg); color: var(--color-danger-text); }
 
 .ehr-set-integrations b {
   display: block;
@@ -21361,19 +21401,19 @@ textarea.ehr-handoff-input {
 
 /* Restricted actions (danger zone). */
 .ehr-set-danger {
-  border-color: #F9DDDB;
+  border-color: var(--color-danger-border);
 }
 
 .ehr-set-danger .ehr-set-section-head {
-  border-bottom-color: #FAE6E4;
+  border-bottom-color: var(--color-danger-border);
   background:
     linear-gradient(90deg, rgba(224, 49, 39, 0.08), rgba(255, 255, 255, 0)),
     #fff;
 }
 
 .ehr-set-danger .ehr-set-section-head > span {
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .ehr-set-danger-btn {
@@ -21382,17 +21422,17 @@ textarea.ehr-handoff-input {
   align-items: center;
   height: 30px;
   padding: 0 13px;
-  border: 1px solid #F9DDDB;
+  border: 1px solid var(--color-danger-border);
   border-radius: 999px;
-  background: #FCEEED;
-  color: #E03127;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .ehr-set-danger-btn:hover {
-  border-color: #E03127;
+  border-color: var(--color-danger-border);
   background: #E03127;
   color: #fff;
 }
@@ -21400,13 +21440,13 @@ textarea.ehr-handoff-input {
 /* Embedded full-page editors (facility settings) inside a settings panel. */
 .ehr-set-embed {
   padding: 12px;
-  background: #FAFBFC;
+  background: var(--color-slate-25);
 }
 
 /* Organization admin settings: policy hub summaries, not duplicate editors. */
 .org-set-wrapper {
   padding: 0;
-  background: #FAFBFC;
+  background: var(--color-slate-25);
 }
 
 .org-set-panel {
@@ -21421,7 +21461,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 12px;
   padding: 16px 18px;
-  border-bottom: 1px solid #E2E6EB;
+  border-bottom: 1px solid var(--border-light);
   background:
     linear-gradient(90deg, rgba(33, 145, 208, 0.08), rgba(255, 255, 255, 0)),
     #fff;
@@ -21476,7 +21516,7 @@ textarea.ehr-handoff-input {
   padding: 0 13px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--tb-blue-800, #113055);
   font-size: 12px;
   font-weight: 800;
@@ -21499,10 +21539,10 @@ textarea.ehr-handoff-input {
   gap: 9px;
   margin: 0 18px;
   padding: 10px 12px;
-  border: 1px solid #E2E6EB;
+  border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: #F2FCFF;
-  color: #546A85;
+  background: var(--color-info-bg);
+  color: var(--text-secondary);
 }
 
 .org-set-readonly svg {
@@ -21536,7 +21576,7 @@ textarea.ehr-handoff-input {
   min-width: 0;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
@@ -21636,7 +21676,7 @@ textarea.ehr-handoff-input {
   padding: 13px 14px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .org-set-meter > div {
@@ -21674,7 +21714,7 @@ textarea.ehr-handoff-input {
   display: block;
   height: 7px;
   border-radius: 999px;
-  background: #ECEEF1;
+  background: var(--color-slate-100);
   overflow: hidden;
 }
 
@@ -21745,7 +21785,7 @@ textarea.ehr-handoff-input {
   padding: 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .org-set-feature[data-enabled='true'] {
@@ -21803,8 +21843,8 @@ textarea.ehr-handoff-input {
   gap: 7px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: #F1F3F5;
-  color: #546A85;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-size: 11.5px;
   font-weight: 750;
 }
@@ -21845,7 +21885,7 @@ textarea.ehr-handoff-input {
 .settings-embedded-page {
   min-height: 0;
   overflow: hidden;
-  background: #FAFBFC;
+  background: var(--color-slate-25);
 }
 
 .settings-embedded-page > .flex-1,
@@ -21891,7 +21931,7 @@ textarea.ehr-handoff-input {
   padding: 6px;
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
@@ -21933,7 +21973,7 @@ textarea.ehr-handoff-input {
 }
 
 .fs-section {
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .fs-section-body {
@@ -21946,7 +21986,7 @@ textarea.ehr-handoff-input {
 .settings-manage-shell textarea {
   border-color: var(--ehr-border) !important;
   border-radius: 8px !important;
-  background-color: #fff !important;
+  background-color: var(--bg-card-solid) !important;
 }
 
 .fs-section .fs-input:focus,
@@ -21990,7 +22030,7 @@ textarea.ehr-handoff-input {
   flex-direction: column;
   gap: 2px;
   padding: 6px;
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
@@ -22006,7 +22046,7 @@ textarea.ehr-handoff-input {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 
 .fs-nav-group small {
@@ -22056,12 +22096,12 @@ textarea.ehr-handoff-input {
   flex: none;
   width: 15px;
   height: 15px;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 
 .fs-nav button:hover,
 .fs-nav-foot:hover {
-  background: #F2FCFF;
+  background: var(--color-info-bg);
 }
 
 .fs-nav button.is-active {
@@ -22070,7 +22110,7 @@ textarea.ehr-handoff-input {
 }
 
 .fs-nav button.is-active svg {
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 /* Quiet dot on a facility module while no facility is chosen — it opens the
@@ -22080,12 +22120,12 @@ textarea.ehr-handoff-input {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #CFD6DD;
+  background: var(--color-slate-300);
 }
 
 .fs-nav-foot {
   margin-top: 6px;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 
 .fs-shell-body {
@@ -22102,7 +22142,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
@@ -22149,7 +22189,7 @@ textarea.ehr-handoff-input {
 
 /* ── Facility picker: a list, on the shared flat row language ──────────── */
 .fs-fac-pick {
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 12px;
   overflow: hidden;
@@ -22205,7 +22245,7 @@ textarea.ehr-handoff-input {
   padding-inline-start: 33px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   font-size: 13px;
   color: var(--tb-blue-800, #113055);
 }
@@ -22227,14 +22267,14 @@ textarea.ehr-handoff-input {
 
 .fs-fac-colhead {
   padding-block: 10px;
-  background: #F5F7F8;
+  background: var(--color-slate-50);
   border-bottom: 1px solid var(--ehr-border);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 
 .fs-fac-count {
@@ -22248,14 +22288,14 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 8px;
   padding: 9px 16px;
-  background: #FAFBFC;
+  background: var(--color-slate-25);
   border-bottom: 1px solid var(--ehr-border);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 
 .fs-fac-group-label b { color: #94A2B3; }
@@ -22270,7 +22310,7 @@ textarea.ehr-handoff-input {
 
 .fs-fac-group:last-child .fs-fac-row:last-child { border-bottom: 0; }
 
-.fs-fac-row:hover { background: #F2FCFF; }
+.fs-fac-row:hover { background: var(--color-info-bg); }
 
 .fs-fac-ident {
   display: flex;
@@ -22328,22 +22368,22 @@ textarea.ehr-handoff-input {
   padding: 4px 10px;
   border: 1px solid var(--ehr-border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card-solid);
   font-family: var(--font-condensed);
   font-size: 11.5px;
   font-weight: 600;
-  color: #5D728B;
+  color: var(--text-muted);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .fs-fac-profile:hover {
   border-color: var(--ehr-blue);
-  color: var(--ehr-blue);
+  color: var(--accent-text);
 }
 
 .fs-fac-chev { flex: none; color: #CFD6DD; }
-.fs-fac-row:hover .fs-fac-chev { color: var(--ehr-blue); }
+.fs-fac-row:hover .fs-fac-chev { color: var(--accent-text); }
 
 .fs-fac-empty {
   padding: 22px 16px;
@@ -22449,7 +22489,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-center-panel:has(> .ehr-care-footer) > .ehr-appointment-list {
@@ -22465,7 +22505,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   margin: 0;
   padding: 0 12px 12px;
   overflow: visible;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 /* Care-dashboard patient lists share the appointments table exactly; the flow
@@ -22482,9 +22522,9 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 /* Amber tone for care statuses that need attention (no appointment-status
    equivalent existed). */
 .appointment-status-pill.status-attention {
-  border-color: #FFD2A6;
-  background: #FFF5EB;
-  color: #B35900;
+  border-color: var(--color-warning-border);
+  background: var(--orange-50);
+  color: var(--color-warning-text);
 }
 
 /* Care-dashboard patient lists = the appointments table exactly: same white
@@ -22495,7 +22535,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   flex-direction: column;
   overflow: hidden;
   padding: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .ehr-appointment-list.ehr-care-list .ehr-queue-scroll {
@@ -22546,7 +22586,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   min-height: 0;
   padding: 10px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--bg-card-solid);
   overflow: auto;
 }
 
@@ -22574,7 +22614,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   min-height: 0;
   overflow: auto;
   padding: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 /* Doubled class beats `.dash-card table.w-full { border-spacing: 0 }` (higher
@@ -22591,7 +22631,7 @@ table.patient-data-table.patient-data-table {
   position: sticky;
   top: 0;
   z-index: 4;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(0, 29, 63, 0.06);
 }
 
@@ -22603,7 +22643,7 @@ table.patient-data-table.patient-data-table {
 .patient-data-head-cell {
   padding: 0 16px 6px;
   color: var(--text-muted);
-  background: #fff;
+  background: var(--bg-card-solid);
   border: 0;
 }
 
@@ -22627,7 +22667,7 @@ table.patient-data-table.patient-data-table {
    registry out so both headers are plain white; specificity plus `!important`
    is required to beat that rule. */
 .tamam-ehr-app .patient-data-table thead th.patient-data-head-cell {
-  background: #fff !important;
+  background: var(--bg-card-solid) !important;
 }
 
 /* `capitalize`, not `uppercase`: the appointments board and the module
@@ -22672,7 +22712,7 @@ table.patient-data-table.patient-data-table {
 .patient-data-row:hover .patient-data-cell,
 .patient-data-row:focus-visible .patient-data-cell {
   border-color: var(--ehr-blue);
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .patient-data-cell.is-right {
@@ -22809,7 +22849,7 @@ table.patient-data-table.patient-data-table {
   /* The inline padding every page's scroll container carried before this class
      replaced them — sides only, no vertical inset. */
   padding: 0 16px;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 .tamam-ehr-app .ehr-list-scroll .data-table,
@@ -22824,7 +22864,7 @@ table.patient-data-table.patient-data-table {
   position: sticky;
   top: 0;
   z-index: 4;
-  background: #fff;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(0, 29, 63, 0.06);
 }
 
@@ -22836,8 +22876,8 @@ table.patient-data-table.patient-data-table {
   padding: 0 16px 6px !important;
   border: 0 !important;
   border-radius: 0 !important;
-  background: #fff !important;
-  color: #5D728B !important;
+  background: var(--bg-card-solid) !important;
+  color: var(--text-muted) !important;
   font-family: var(--font-condensed) !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
@@ -22903,7 +22943,7 @@ table.patient-data-table.patient-data-table {
 .ehr-list-scroll .data-table tbody tr:hover td,
 .ehr-list-scroll .data-table tbody tr:focus-visible td {
   border-color: var(--ehr-blue) !important;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 /* `.data-table tbody tr:last-child td { border-bottom: none }` would clip the
@@ -23117,7 +23157,8 @@ table.patient-data-table.patient-data-table {
   height: 22px;
   padding: 0 9px;
   border: 1px solid var(--border-light);
-  border-radius: 999px;
+  /* Rectangular, with .sadb-chip: the two stamps appear in the same lists. */
+  border-radius: 3px;
   background: var(--ehr-head);
   color: var(--text-muted);
   font-family: var(--font-condensed);
@@ -23163,7 +23204,7 @@ table.patient-data-table.patient-data-table {
 
 .sa-table td {
   padding: 9px 14px;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   color: var(--text-secondary);
   font-size: 12.5px;
   font-weight: 600;
@@ -23242,14 +23283,14 @@ table.patient-data-table.patient-data-table {
   padding: 0 12px;
   border: 1px solid var(--ehr-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.sa-btn:hover { border-color: var(--tb-blue-900); color: #015697; }
+.sa-btn:hover { border-color: var(--tb-blue-900); color: var(--accent-text); }
 
 .sa-btn.primary {
   border-color: var(--tb-blue-900);
@@ -23293,7 +23334,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 9px;
   border: 1px solid var(--ehr-border);
   border-radius: 8px !important;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12.5px;
   font-weight: 700;
@@ -23325,7 +23366,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 8px;
   border: 1px solid var(--ehr-border);
   border-radius: 8px !important;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
@@ -23373,14 +23414,14 @@ table.patient-data-table.patient-data-table {
   letter-spacing: -0.015em;
   color: var(--text-primary);
 }
-.gov-page-head p { margin: 2px 0 0; font-size: 12px; font-weight: 700; color: #5D728B; }
+.gov-page-head p { margin: 2px 0 0; font-size: 12px; font-weight: 700; color: var(--text-muted); }
 .gov-page-head .btn {
   min-height: 36px;
   gap: 7px;
   border-radius: 8px;
   white-space: nowrap;
 }
-.gov-page-head .btn-secondary { background: #FFFFFF; border-color: var(--ehr-border); }
+.gov-page-head .btn-secondary { background: var(--bg-card-solid); border-color: var(--ehr-border); }
 /* The design's one crimson button: alerts are the ministry's call to action. */
 .gov-page-head .btn-alerts { background: #9E1B14; border-color: #9E1B14; color: #ffffff; }
 .gov-page-head .btn-alerts:hover { background: #7E150F; border-color: #7E150F; }
@@ -23438,7 +23479,7 @@ table.patient-data-table.patient-data-table {
 .gov-panel {
   display: flex;
   flex-direction: column;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
@@ -23462,7 +23503,7 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   color: var(--text-primary);
 }
-.gov-panel-head .gov-meta { font-size: 11px; font-weight: 700; color: #5D728B; }
+.gov-panel-head .gov-meta { font-size: 11px; font-weight: 700; color: var(--text-muted); }
 
 /* Map layer pills sit in their own row under the head, not in it. */
 .gov-map-layers {
@@ -23476,8 +23517,8 @@ table.patient-data-table.patient-data-table {
   padding: 4px 11px;
   border: 0;
   border-radius: 999px;
-  background: #F1F3F5;
-  color: #3C5574;
+  background: var(--color-slate-75);
+  color: var(--text-secondary);
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
@@ -23501,9 +23542,9 @@ table.patient-data-table.patient-data-table {
   gap: 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #5D728B;
+  color: var(--text-muted);
 }
-.gov-map-legend { padding: 10px 12px; background: #F5F7F8; border-radius: 8px; }
+.gov-map-legend { padding: 10px 12px; background: var(--color-slate-50); border-radius: 8px; }
 .gov-map-legend .gov-legend-title {
   margin: 0 0 6px;
   font-family: var(--font-condensed);
@@ -23529,7 +23570,7 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   text-align: start;
-  color: #015697;
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11.5px;
   font-weight: 700;
@@ -23539,7 +23580,7 @@ table.patient-data-table.patient-data-table {
 }
 .gov-map-hint {
   padding: 10px 12px;
-  border: 1px dashed #D9DEE4;
+  border: 1px dashed var(--border-light);
   border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
@@ -23577,7 +23618,7 @@ table.patient-data-table.patient-data-table {
   gap: 8px;
   font-size: 12px;
 }
-.gov-donut-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; color: #5D728B; }
+.gov-donut-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; color: var(--text-muted); }
 .gov-donut-legend i { width: 8px; height: 8px; flex: none; border-radius: 50%; }
 .gov-donut-legend b {
   font-family: var(--font-condensed);
@@ -23596,7 +23637,7 @@ table.patient-data-table.patient-data-table {
   gap: 8px;
 }
 .gov-rank-row .gov-rank-line > span { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
-.gov-rank-row .gov-rank-line > span small { font-size: 11px; font-weight: 700; color: #5D728B; }
+.gov-rank-row .gov-rank-line > span small { font-size: 11px; font-weight: 700; color: var(--text-muted); }
 .gov-rank-row .gov-rank-line > b {
   font-family: var(--font-condensed);
   font-size: 13px;
@@ -23607,12 +23648,12 @@ table.patient-data-table.patient-data-table {
 .gov-rank-row .gov-rank-track {
   height: 6px;
   margin-top: 4px;
-  background: #F1F3F5;
+  background: var(--color-slate-75);
   border-radius: 3px;
   overflow: hidden;
 }
 .gov-rank-row .gov-rank-track > div { height: 100%; }
-.gov-rank-foot { margin: 0; padding: 0 14px 12px; font-size: 10.5px; font-weight: 700; color: #5D728B; }
+.gov-rank-foot { margin: 0; padding: 0 14px 12px; font-size: 10.5px; font-weight: 700; color: var(--text-muted); }
 
 /* Chart bodies breathe 14px like every other panel body. */
 .gov-chart-body { padding: 14px; }
@@ -23792,7 +23833,7 @@ table.patient-data-table.patient-data-table {
   padding: 9px 14px;
   border-top: 1px solid var(--border-light);
   background: transparent;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-weight: 700;
   font-size: 11px;
@@ -23888,7 +23929,7 @@ table.patient-data-table.patient-data-table {
   flex: none;
   width: 26px;
   height: 26px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .xfer-head-icon svg { width: 20px; height: 20px; }
 .xfer-title { font-size: 15px; font-weight: 700; line-height: 1.2; color: var(--text-strong); }
@@ -24196,7 +24237,7 @@ table.patient-data-table.patient-data-table {
      expanded row hands that job to the group so the block has one outline
      instead of two nested ones. */
   border: 0 !important;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1) !important;
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light)) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
 }
@@ -24275,7 +24316,7 @@ table.patient-data-table.patient-data-table {
 .ehr-table-detail-row > td {
   padding: 0 !important;
   background: var(--ehr-page-bg, #F5F8FB);
-  border-bottom: 1px solid var(--border-light, #ECEEF1);
+  border-bottom: 1px solid var(--border-light, var(--border-light));
 }
 
 .ehr-table-detail-row > td > .ehr-row-detail--table {
@@ -24316,7 +24357,7 @@ table.patient-data-table.patient-data-table {
 .ehr-visit-pop-tabs .ehr-visit-pop-icon,
 .ehr-visit-pop-tabs .ehr-visit-pop-icon:hover {
   padding: 0;
-  border: 1px solid var(--ehr-border, #E2E6EB);
+  border: 1px solid var(--ehr-border, var(--border-light));
   border-radius: 6px;
   font-size: 0;
 }
@@ -24344,15 +24385,15 @@ table.patient-data-table.patient-data-table {
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  border: 1px solid var(--ehr-border, #E2E6EB);
-  background: #fff;
+  border: 1px solid var(--ehr-border, var(--border-light));
+  background: var(--bg-card-solid);
   color: var(--text-secondary);
   cursor: pointer;
 }
 
 .ehr-visit-pop-icon:hover {
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   background: var(--accent-light, rgba(33, 145, 208, 0.08));
 }
 
@@ -24379,7 +24420,7 @@ table.patient-data-table.patient-data-table {
 /* A patient name in a queue row is a link to their chart — say so on hover,
    without turning every row title blue at rest. */
 .ehr-row-name-link { cursor: pointer; }
-.ehr-row-name-link:hover { color: var(--accent-primary); text-decoration: underline; }
+.ehr-row-name-link:hover { color: var(--accent-text); text-decoration: underline; }
 
 /* A dashboard-supplied panel lays itself out; the shell only gives it room. */
 .ehr-row-detail__custom { display: block; }
@@ -24802,7 +24843,7 @@ table.patient-data-table.patient-data-table {
   margin: 12px 0 2px;
   padding-bottom: 5px;
   border-bottom: 1px solid var(--border-light);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 12.5px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -24924,7 +24965,7 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 0 18px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
 .appt-edit-shell.is-inline .appt-edit-col > div:last-child {
@@ -24943,7 +24984,7 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline .appt-edit-section {
   margin: 14px 0 0;
   padding: 0 0 6px;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 800;
@@ -24975,7 +25016,7 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline input:focus,
 .appt-edit-shell.is-inline textarea:focus {
   border-color: var(--accent-primary);
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 
 /* Date / time / duration keep their own line, still label-left. */
@@ -24984,7 +25025,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0 14px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
 .appt-edit-shell.is-inline .appt-edit-row > div {
@@ -25011,7 +25052,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: 132px minmax(0, 1fr);
   gap: 0 18px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
 .appt-edit-shell.is-inline .appointment-billing-panel dd {
@@ -25036,7 +25077,7 @@ table.patient-data-table.patient-data-table {
   display: flex;
   padding: 10px 0;
   border: 0;
-  border-bottom: 1px solid var(--ehr-border-soft, #ECEEF1);
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
   border-radius: 0;
   background: transparent;
 }
@@ -25775,7 +25816,7 @@ table.patient-data-table.patient-data-table {
 }
 .registration-contact-badge.is-primary {
   background: var(--accent-light);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .omrs-reg .registration-contact-badge {
   border-radius: 0;
@@ -25877,7 +25918,7 @@ table.patient-data-table.patient-data-table {
 .triage-patient-photo {
   width: 168px;
   border: 1px solid var(--color-slate-300, #CFD6DD);
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 .triage-patient-photo-frame {
   display: flex;
@@ -25886,7 +25927,7 @@ table.patient-data-table.patient-data-table {
   width: 168px;
   height: 168px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg-card-solid);
 }
 .triage-patient-photo-frame img { width: 100%; height: 100%; object-fit: cover; }
 .triage-patient-photo-label {
@@ -26177,7 +26218,7 @@ table.patient-data-table.patient-data-table {
   inset-inline-start: 15px;
   width: 16px;
   height: 16px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .tsel-menu.is-inline .tsel-search input {
@@ -26209,7 +26250,7 @@ table.patient-data-table.patient-data-table {
      still show now that its own chevron is covered. */
   transform: translateY(-50%) rotate(180deg);
   pointer-events: none;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* Rows left after filtering, sitting where the chevron was. */
@@ -26222,7 +26263,7 @@ table.patient-data-table.patient-data-table {
   padding: 3px 7px;
   border-radius: 999px;
   background: var(--overlay-subtle);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 0.7rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -26307,7 +26348,7 @@ table.patient-data-table.patient-data-table {
 
 .tsel-row.is-selected {
   background: var(--accent-light);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -26334,7 +26375,7 @@ table.patient-data-table.patient-data-table {
    no highlighter block, which would fight the row tints above. */
 .tsel-mark {
   background: none;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -26348,7 +26389,7 @@ table.patient-data-table.patient-data-table {
   flex: none;
   width: 15px;
   height: 15px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .tsel-empty {
@@ -26447,7 +26488,7 @@ table.patient-data-table.patient-data-table {
   gap: 12px;
   flex-wrap: wrap;
   padding: 10px 12px;
-  border: 1px solid var(--border-light, #ECEEF1);
+  border: 1px solid var(--border-light, var(--border-light));
   border-radius: 10px;
   background: var(--bg-card-solid, #FFFFFF);
 }
@@ -26489,7 +26530,7 @@ table.patient-data-table.patient-data-table {
 }
 
 .omrs-reg-reviewgroup {
-  border: 1px solid var(--border-light, #ECEEF1);
+  border: 1px solid var(--border-light, var(--border-light));
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-card-solid, #FFFFFF);
@@ -26502,7 +26543,7 @@ table.patient-data-table.patient-data-table {
   gap: 12px;
   padding: 10px 14px;
   background: var(--overlay-subtle);
-  border-bottom: 1px solid var(--border-light, #ECEEF1);
+  border-bottom: 1px solid var(--border-light, var(--border-light));
 }
 
 .omrs-reg-reviewgroup > header h4 {
@@ -26521,7 +26562,7 @@ table.patient-data-table.patient-data-table {
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   cursor: pointer;
 }
 .omrs-reg-reviewgroup > header button:hover { text-decoration: underline; }
@@ -26543,7 +26584,7 @@ table.patient-data-table.patient-data-table {
   align-items: baseline;
   gap: 10px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--border-light, #ECEEF1);
+  border-bottom: 1px solid var(--border-light, var(--border-light));
   min-width: 0;
 }
 
@@ -26588,7 +26629,7 @@ table.patient-data-table.patient-data-table {
 .ehr-side-card .ehr-side-card-head {
   margin-inline: -14px;
   padding: 0 14px 10px;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
 }
 
 /* Right-rail cards pad to 22px/24px, so the header gets matching breathing
@@ -26617,7 +26658,7 @@ table.patient-data-table.patient-data-table {
 .ehr-day-stats .ehr-day-stats-head {
   margin-inline: -18px;
   padding: 0 18px 14px;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .ehr-day-stats .ehr-week-activity-bars {
@@ -26866,7 +26907,7 @@ table.patient-data-table.patient-data-table {
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-control, 6px);
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
@@ -26915,7 +26956,7 @@ table.patient-data-table.patient-data-table {
 
 .booking-week-grid .bwg-nav:hover:not(:disabled) {
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .booking-week-grid .bwg-nav:disabled {
@@ -27184,7 +27225,7 @@ table.patient-data-table.patient-data-table {
   min-height: 0;
   padding: 14px 6px;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   border-radius: 0;
   background: transparent;
   box-shadow: none !important;
@@ -27589,7 +27630,7 @@ table.patient-data-table.patient-data-table {
   padding: 10px 0;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
 }
 .ehr-right-rail .ehr-side-card > button:not(.ehr-side-card-icon-row):last-child {
   border-bottom: 0;
@@ -27621,7 +27662,7 @@ table.patient-data-table.patient-data-table {
   margin-inline: 0;
   padding: 0 0 10px;
   margin-bottom: 10px;
-  border-bottom: 1px solid var(--ehr-border, #E2E6EB);
+  border-bottom: 1px solid var(--ehr-border, var(--border-light));
 }
 
 /* Day activity, measured against the design: a 60px plot of 8px bars, 7px
@@ -27674,8 +27715,8 @@ table.patient-data-table.patient-data-table {
   min-height: 34px;
   margin-bottom: 11px;
   padding: 0 10px;
-  background: #FFFFFF;
-  border: 1px solid #D9DEE4;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   color: var(--text-primary);
   font-family: var(--font-condensed) !important; /* the app-wide button reset re-fonts this otherwise */
@@ -27683,7 +27724,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   cursor: pointer;
 }
-.ehr-mini-calendar .ehr-mini-calendar-goto:hover { background: #F2FCFF; }
+.ehr-mini-calendar .ehr-mini-calendar-goto:hover { background: var(--color-info-bg); }
 
 /* The list-page title — the name of the page, on its own.
    This block used to stack "Welcome, {name}" over a "ROLE · MODULE" eyebrow on
@@ -27743,7 +27784,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.ehr-right-rail .ehr-outstanding-chips button b { color: #015697; }
+.ehr-right-rail .ehr-outstanding-chips button b { color: var(--accent-text); }
 .ehr-right-rail .ehr-outstanding-chips button.warning b { color: var(--semantic-warning); }
 .ehr-right-rail .ehr-outstanding-chips button.danger b { color: var(--semantic-danger); }
 
@@ -27817,7 +27858,7 @@ table.patient-data-table.patient-data-table {
   border: 1px solid var(--ehr-border);
   border-radius: 8px;
   background: transparent;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   cursor: pointer;
 }
 .msgs-new-btn:hover { background: var(--ehr-hover); }
@@ -28038,7 +28079,7 @@ table.patient-data-table.patient-data-table {
   cursor: pointer;
 }
 .msgs-iconbtn:hover { background: var(--ehr-hover); color: var(--ehr-text); }
-.msgs-iconbtn.is-on { color: var(--accent-primary); }
+.msgs-iconbtn.is-on { color: var(--accent-text); }
 
 .msgs-menu {
   position: absolute;
@@ -28125,7 +28166,7 @@ table.patient-data-table.patient-data-table {
   font-variant-numeric: tabular-nums;
 }
 .msgs-bubble--mine .msgs-bubble-time { color: rgba(255, 255, 255, 0.68); }
-.msgs-bubble .msgs-mention { font-weight: 700; color: var(--accent-primary); }
+.msgs-bubble .msgs-mention { font-weight: 700; color: var(--accent-text); }
 .msgs-bubble--mine .msgs-mention { color: #FFFFFF; text-decoration: underline; }
 
 .msgs-quote {
@@ -28323,7 +28364,7 @@ table.patient-data-table.patient-data-table {
   margin: 0 0 12px;
   margin-inline: 0;
   padding: 0 0 10px;
-  border-bottom: 1px solid var(--ehr-border, #E2E6EB);
+  border-bottom: 1px solid var(--ehr-border, var(--border-light));
 }
 .ehr-day-stats .ehr-side-card-head h2,
 .ehr-stage-donut .ehr-side-card-head h2 {
@@ -28345,7 +28386,7 @@ table.patient-data-table.patient-data-table {
   width: 24px !important;
   height: 24px !important;
   margin: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   stroke: currentColor;
 }
 .ehr-side-card-head .ehr-week-activity-caption,
@@ -28363,18 +28404,18 @@ table.patient-data-table.patient-data-table {
    Stated last so the design wins in one place. */
 
 .ehr-set-shell, .ehr-set-grid {
-  --set-ink: #113055;
-  --set-accent: #015697;
-  --set-accent-deep: #113055;
-  --set-line: #ECEEF1;
-  --set-line-soft: #F1F3F5;
-  --set-band: #F5F7F8;
-  --set-tint: #F2FCFF;
-  --set-tint-border: #1E90FF;
-  --set-muted: #5D728B;
+  --set-ink: var(--text-primary);
+  --set-accent: var(--accent-text);
+  --set-accent-deep: var(--text-primary);
+  --set-line: var(--border-light);
+  --set-line-soft: var(--color-slate-75);
+  --set-band: var(--color-slate-50);
+  --set-tint: var(--color-info-bg);
+  --set-tint-border: var(--border-accent);
+  --set-muted: var(--text-muted);
   /* Was #94A2B3 — under 3:1 on white. Matched to the app-wide --ehr-muted
      rung so the settings "ghost" tier still reads as caption ink. */
-  --set-ghost: #5D728B;
+  --set-ghost: var(--text-muted);
 }
 
 /* ── Header: title + caps context; saved chip; 8px-radius actions ── */
@@ -28390,7 +28431,7 @@ table.patient-data-table.patient-data-table {
 .ehr-set-saved {
   height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--set-line, #ECEEF1);
+  border: 1px solid var(--set-line, var(--border-light));
   border-radius: 8px;
   background: var(--set-band, #F5F7F8);
   color: var(--set-muted, #5D728B);
@@ -28398,12 +28439,12 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
 }
 .ehr-set-saved i { background: #0A6E4A; }
-.ehr-set-saved.is-dirty { border-color: rgba(179, 89, 0, 0.42); color: #B35900; }
+.ehr-set-saved.is-dirty { border-color: rgba(179, 89, 0, 0.42); color: var(--color-warning-text); }
 .ehr-set-saved.is-dirty i { background: #B35900; }
 
 .ehr-set-btn {
   min-height: 36px;
-  border-color: var(--set-line, #ECEEF1);
+  border-color: var(--set-line, var(--border-light));
   border-radius: 8px;
   color: var(--set-ink, #113055);
   font-family: var(--font-condensed);
@@ -28411,7 +28452,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-.ehr-set-btn:hover { border-color: var(--set-tint-border, #1E90FF); background: var(--set-band, #F5F7F8); color: var(--set-ink, #113055); }
+.ehr-set-btn:hover { border-color: var(--set-tint-border, var(--border-accent)); background: var(--set-band, #F5F7F8); color: var(--set-ink, #113055); }
 .ehr-set-btn.primary {
   background: var(--set-accent, #015697);
   border-color: var(--set-accent, #015697);
@@ -28421,7 +28462,7 @@ table.patient-data-table.patient-data-table {
 
 /* ── Nav: flat white card, tinted active row, quiet neutral badges ── */
 .ehr-set-nav {
-  border-color: var(--set-line, #ECEEF1);
+  border-color: var(--set-line, var(--border-light));
   border-radius: 8px;
   padding: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
@@ -28433,7 +28474,7 @@ table.patient-data-table.patient-data-table {
   font-size: 13px;
   font-weight: 700;
 }
-.ehr-set-nav button:hover { background: #F5F7F8; color: var(--set-ink, #113055); }
+.ehr-set-nav button:hover { background: var(--color-slate-50); color: var(--set-ink, #113055); }
 .ehr-set-nav button.active { background: var(--set-tint, #F2FCFF); color: var(--set-accent-deep, #113055); font-weight: 700; }
 .ehr-set-nav button svg { width: 15px; height: 15px; }
 
@@ -28453,7 +28494,7 @@ table.patient-data-table.patient-data-table {
   height: 17px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #ECEEF1;
+  background: var(--color-slate-100);
   color: var(--set-accent, #015697);
   font-family: var(--font-condensed);
   font-size: 10px;
@@ -28474,7 +28515,7 @@ table.patient-data-table.patient-data-table {
   border-radius: 7px;
 }
 .ehr-set-nav button.active b.is-badge {
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   color: var(--set-accent, #015697);
 }
 .ehr-set-nav button b.is-nested {
@@ -28496,7 +28537,7 @@ table.patient-data-table.patient-data-table {
 
 /* ── Sections: flat cards with #F5F7F8 head bands, caps titles, right meta ── */
 .ehr-set-section {
-  border-color: var(--set-line, #ECEEF1);
+  border-color: var(--set-line, var(--border-light));
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
@@ -28504,7 +28545,7 @@ table.patient-data-table.patient-data-table {
   gap: 10px;
   padding: 10px 16px;
   background: var(--set-band, #F5F7F8);
-  border-bottom-color: var(--set-line, #ECEEF1);
+  border-bottom-color: var(--set-line, var(--border-light));
 }
 /* The design's card heads carry no icon plate — the caps title is the label. */
 .ehr-set-section-head > span { display: none; }
@@ -28526,9 +28567,9 @@ table.patient-data-table.patient-data-table {
 
 .ehr-set-row {
   padding: 12px 16px;
-  border-bottom-color: var(--set-line-soft, #F1F3F5);
+  border-bottom-color: var(--set-line-soft, var(--border-light));
 }
-.ehr-set-row:hover { background: #F2FCFF; }
+.ehr-set-row:hover { background: var(--color-info-bg); }
 .ehr-set-row-label b { font-size: 13.5px; font-weight: 700; color: var(--set-ink, #113055); }
 .ehr-set-row-label span { margin-top: 1px; font-size: 12px; font-weight: 700; color: var(--set-muted, #5D728B); }
 
@@ -28536,7 +28577,7 @@ table.patient-data-table.patient-data-table {
 /* Toggle: 38×21, navy on / mist off; the switch colour is the state, so the
    ON/OFF text beside it retires. */
 .ehr-set-toggle b { display: none; }
-.ehr-set-toggle > span { width: 38px; height: 21px; background: #CFD6DD; }
+.ehr-set-toggle > span { width: 38px; height: 21px; background: var(--color-slate-300); }
 .ehr-set-toggle.is-on > span { background: var(--set-accent, #015697); }
 .ehr-set-toggle > span i { width: 17px; height: 17px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.25); }
 .ehr-set-toggle.is-on > span i { margin-inline-start: 17px; }
@@ -28546,7 +28587,7 @@ table.patient-data-table.patient-data-table {
 .tamam-ehr-app select.ehr-set-select {
   min-height: 30px;
   padding: 4px 28px 4px 11px;
-  border-color: var(--set-line, #ECEEF1);
+  border-color: var(--set-line, var(--border-light));
   border-radius: 6px !important;
   background-color: var(--set-band, #F5F7F8);
   color: var(--set-ink, #113055);
@@ -28554,11 +28595,11 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.ehr-set-select:hover { border-color: #7CC7FF; background-color: var(--set-tint, #F2FCFF); color: var(--set-ink, #113055); }
+.ehr-set-select:hover { border-color: var(--border-accent); background-color: var(--set-tint, #F2FCFF); color: var(--set-ink, #113055); }
 .ehr-set-input,
 .tamam-ehr-app input.ehr-set-input {
   min-height: 30px;
-  border-color: var(--set-line, #ECEEF1);
+  border-color: var(--set-line, var(--border-light));
   border-radius: 6px !important;
   background: var(--set-band, #F5F7F8);
   color: var(--set-ink, #113055);
@@ -28566,14 +28607,14 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.ehr-set-input:hover { border-color: #7CC7FF; background: var(--set-tint, #F2FCFF); }
-.ehr-set-input:focus { border-color: #7CC7FF; }
+.ehr-set-input:hover { border-color: var(--border-accent); background: var(--set-tint, #F2FCFF); }
+.ehr-set-input:focus { border-color: var(--border-accent); }
 
 /* Locked / read-only values read as toned pills, per the design's chips. */
 .ehr-set-locked {
   height: 22px;
   padding: 0 9px;
-  border: 1px solid var(--set-tint-border, #1E90FF);
+  border: 1px solid var(--set-tint-border, var(--border-accent));
   border-radius: 999px;
   background: var(--set-tint, #F2FCFF);
   color: var(--set-accent-deep, #113055);
@@ -28592,7 +28633,7 @@ table.patient-data-table.patient-data-table {
   gap: 6px;
   height: 22px;
   padding: 0 9px;
-  border: 1px solid var(--set-line, #ECEEF1);
+  border: 1px solid var(--set-line, var(--border-light));
   border-radius: 999px;
   background: var(--set-band, #F5F7F8);
   color: var(--set-muted, #5D728B);
@@ -28605,11 +28646,11 @@ table.patient-data-table.patient-data-table {
   font-style: normal;
 }
 .ehr-set-int-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #94A2B3; }
-.ehr-set-int-pill[data-tone='green'] { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.4); color: #0A6E4A; }
+.ehr-set-int-pill[data-tone='green'] { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.4); color: var(--color-success-text); }
 .ehr-set-int-pill[data-tone='green']::before { background: #0A6E4A; }
-.ehr-set-int-pill[data-tone='yellow'] { background: rgba(179, 89, 0, 0.10); border-color: rgba(179, 89, 0, 0.42); color: #B35900; }
+.ehr-set-int-pill[data-tone='yellow'] { background: rgba(179, 89, 0, 0.10); border-color: rgba(179, 89, 0, 0.42); color: var(--color-warning-text); }
 .ehr-set-int-pill[data-tone='yellow']::before { background: #B35900; }
-.ehr-set-int-pill[data-tone='red'] { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: #9E1B14; }
+.ehr-set-int-pill[data-tone='red'] { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: var(--color-danger-text); }
 .ehr-set-int-pill[data-tone='red']::before { background: #9E1B14; }
 
 /* ── Restricted actions: red-toned head band, outline red actions ── */
@@ -28618,14 +28659,14 @@ table.patient-data-table.patient-data-table {
   background: rgba(158, 27, 20, 0.04);
   border-bottom-color: rgba(158, 27, 20, 0.2);
 }
-.ehr-set-danger .ehr-set-section-head h3 { color: #9E1B14; }
+.ehr-set-danger .ehr-set-section-head h3 { color: var(--color-danger-text); }
 .ehr-set-danger-btn {
   height: 30px;
   padding: 0 12px;
   border: 1px solid rgba(158, 27, 20, 0.45);
   border-radius: 6px;
-  background: #FFFFFF;
-  color: #9E1B14;
+  background: var(--bg-card-solid);
+  color: var(--color-danger-text);
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
@@ -28642,11 +28683,11 @@ table.patient-data-table.patient-data-table {
    pill buttons). Brought onto the same design language as the core kit. */
 
 /* Org panels: flat band heads, no icon plates, design card geometry. */
-.org-set-wrapper { background: #FFFFFF; }
+.org-set-wrapper { background: var(--bg-card-solid); }
 .org-set-head {
   padding: 10px 16px;
-  background: #F5F7F8;
-  border-bottom-color: #ECEEF1;
+  background: var(--color-slate-50);
+  border-bottom-color: var(--border-light);
 }
 .org-set-head > span,
 .org-set-card-head > span { display: none; }
@@ -28656,14 +28697,14 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #113055;
+  color: var(--text-primary);
 }
-.org-set-head small { font-size: 11px; font-weight: 700; color: #5D728B; }
+.org-set-head small { font-size: 11px; font-weight: 700; color: var(--text-muted); }
 .org-set-card { border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
 .org-set-card-head {
   padding: 10px 14px;
-  background: #F5F7F8;
-  border-bottom-color: #ECEEF1;
+  background: var(--color-slate-50);
+  border-bottom-color: var(--border-light);
 }
 .org-set-card-head h4 {
   font-family: var(--font-condensed);
@@ -28671,20 +28712,20 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #113055;
+  color: var(--text-primary);
 }
 .org-set-link-btn {
   min-height: 28px;
   border-radius: 6px;
-  border-color: #ECEEF1;
-  color: #015697;
+  border-color: var(--border-light);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.org-set-link-btn:hover { border-color: #ECEEF1; background: #F2FCFF; }
+.org-set-link-btn:hover { border-color: var(--border-light); background: var(--color-info-bg); }
 
 /* Facility settings + management console buttons: 8px corners, condensed. */
 .fs-section .btn,
@@ -28699,30 +28740,30 @@ table.patient-data-table.patient-data-table {
 .settings-manage-shell input,
 .settings-manage-shell select,
 .settings-manage-shell textarea {
-  border-color: #ECEEF1 !important;
+  border-color: var(--border-light) !important;
 }
 
 /* Users & roles table: flat band head, condensed columns, toned chips. */
 .ehr-set-users-head {
-  background: #F5F7F8;
-  border-bottom-color: #ECEEF1;
+  background: var(--color-slate-50);
+  border-bottom-color: var(--border-light);
 }
 .ehr-set-users-head span {
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #5D728B;
+  color: var(--text-muted);
 }
-.ehr-set-user-row:hover { background: #F2FCFF; }
-.ehr-set-user-id b { font-size: 13.5px; font-weight: 600; color: #113055; }
+.ehr-set-user-row:hover { background: var(--color-info-bg); }
+.ehr-set-user-id b { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
 .ehr-set-user-status {
   padding: 0 9px;
   height: 22px;
   align-items: center;
-  border: 1px solid #ECEEF1;
-  background: #F5F7F8;
-  color: #5D728B;
+  border: 1px solid var(--border-light);
+  background: var(--color-slate-50);
+  color: var(--text-muted);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -28730,29 +28771,29 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   line-height: 1;
 }
-.ehr-set-user-status.is-active { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.4); color: #0A6E4A; }
-.ehr-set-user-status.is-off { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: #9E1B14; }
+.ehr-set-user-status.is-active { background: rgba(10, 110, 74, 0.10); border-color: rgba(10, 110, 74, 0.4); color: var(--color-success-text); }
+.ehr-set-user-status.is-off { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: var(--color-danger-text); }
 
 /* Integrations grid hairlines onto the design's line colour. */
-.ehr-set-integrations { background: #ECEEF1; }
-.ehr-set-integrations > div b { font-size: 13.5px; font-weight: 600; color: #113055; }
-.ehr-set-integrations > div p { color: #5D728B; }
+.ehr-set-integrations { background: var(--color-slate-100); }
+.ehr-set-integrations > div b { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+.ehr-set-integrations > div p { color: var(--text-muted); }
 
 /* Security-row action buttons (Change password, Set PIN) onto the design's
    action-button geometry. This class has no consumer outside settings. */
 .ehr-queue-action-pill {
   height: 28px;
   padding: 0 11px;
-  border-color: #ECEEF1;
+  border-color: var(--border-light);
   border-radius: 6px;
-  color: #015697;
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.ehr-queue-action-pill:hover { background: #F2FCFF; }
+.ehr-queue-action-pill:hover { background: var(--color-info-bg); }
 
 /* ═══ Settings design alignment, part 3 — the My-account landing panel ═══
    The identity card, scope card, "You control" chips, and shortcut tiles kept
@@ -28761,38 +28802,38 @@ table.patient-data-table.patient-data-table {
 
 .ehr-set-account-head {
   padding: 12px 16px;
-  background: #F5F7F8;
-  border-bottom-color: #ECEEF1;
+  background: var(--color-slate-50);
+  border-bottom-color: var(--border-light);
 }
-.ehr-set-account-head b { font-size: 14px; font-weight: 700; color: #113055; }
-.ehr-set-account-head small { font-size: 11.5px; font-weight: 700; color: #5D728B; }
+.ehr-set-account-head b { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.ehr-set-account-head small { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
 .ehr-set-account-head > span { border-radius: 12px; font-weight: 700; }
 .ehr-set-account-gear {
-  border-color: #ECEEF1;
-  background: #FFFFFF;
-  color: #015697;
+  border-color: var(--border-light);
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
 }
-.ehr-set-account-gear:hover { background: #F2FCFF; border-color: #7CC7FF; color: #113055; }
+.ehr-set-account-gear:hover { background: var(--color-info-bg); border-color: var(--border-accent); color: var(--text-primary); }
 
-.ehr-set-account-rows > div { border-bottom-color: #F1F3F5; }
+.ehr-set-account-rows > div { border-bottom-color: var(--border-light); }
 .ehr-set-account-rows span {
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #5D728B;
+  color: var(--text-muted);
 }
-.ehr-set-account-rows b { font-size: 13.5px; font-weight: 600; color: #113055; }
+.ehr-set-account-rows b { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
 
 /* Scope card + "You control" chips onto the design's card and chip shapes. */
 .ehr-set-scope {
-  border-color: #ECEEF1;
+  border-color: var(--border-light);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
-.ehr-set-scope b { font-size: 13.5px; font-weight: 600; color: #113055; }
+.ehr-set-scope b { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
 .ehr-set-chips {
-  border-color: #ECEEF1;
+  border-color: var(--border-light);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
@@ -28801,14 +28842,14 @@ table.patient-data-table.patient-data-table {
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 .ehr-set-chips > div span {
   height: 22px;
   padding: 0 9px;
-  border: 1px solid #1E90FF;
-  background: #F2FCFF;
-  color: #113055;
+  border: 1px solid var(--border-accent);
+  background: var(--color-info-bg);
+  color: var(--text-primary);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -28819,26 +28860,26 @@ table.patient-data-table.patient-data-table {
 
 /* Shortcut tiles: white on hairlines, tint on hover, condensed labels. */
 .ehr-set-shortcuts button {
-  border-color: #ECEEF1;
+  border-color: var(--border-light);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
-.ehr-set-shortcuts button:hover { border-color: #7CC7FF; background: #F2FCFF; }
+.ehr-set-shortcuts button:hover { border-color: var(--border-accent); background: var(--color-info-bg); }
 .ehr-set-shortcuts button > span {
   border-radius: 8px;
-  background: #F2FCFF;
-  color: #015697;
+  background: var(--color-info-bg);
+  color: var(--accent-text);
 }
-.ehr-set-shortcuts button b { font-size: 12.5px; font-weight: 600; color: #113055; }
+.ehr-set-shortcuts button b { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
 
 /* Update-account popup identity rows. */
-.ehr-set-acct-readonly { border-color: #ECEEF1; background: #F5F7F8; }
+.ehr-set-acct-readonly { border-color: var(--border-light); background: var(--color-slate-50); }
 
 /* Management-console tab strip onto the design's nav treatment. */
-.settings-tab-strip { border-color: #ECEEF1; border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
-.settings-tab-strip button { border-radius: 7px; color: #113055; font-weight: 700; }
-.settings-tab-strip button:hover { background: #F5F7F8; color: #113055; }
-.settings-tab-strip button.active { background: #F2FCFF; color: #113055; font-weight: 700; }
+.settings-tab-strip { border-color: var(--border-light); border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
+.settings-tab-strip button { border-radius: 7px; color: var(--text-primary); font-weight: 700; }
+.settings-tab-strip button:hover { background: var(--color-slate-50); color: var(--text-primary); }
+.settings-tab-strip button.active { background: var(--color-info-bg); color: var(--text-primary); font-weight: 700; }
 
 /* ══════════════════ Patient portal (pp-*) ══════════════════
    The signed-in patient portal on the Patient Portal design: 54px brand-blue
@@ -28851,8 +28892,8 @@ table.patient-data-table.patient-data-table {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: #F5F7F8;
-  color: #113055;
+  background: var(--color-slate-50);
+  color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 14px;
 }
@@ -28939,8 +28980,8 @@ table.patient-data-table.patient-data-table {
 .pp-pop {
   position: absolute;
   z-index: 80;
-  background: #FFFFFF;
-  border: 1px solid #ECEEF1;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   box-shadow: 0 14px 40px rgba(17, 48, 85, 0.25);
   overflow: hidden;
@@ -28957,10 +28998,10 @@ table.patient-data-table.patient-data-table {
   text-align: start;
   cursor: pointer;
 }
-.pp-search-menu button:hover { background: #F5F7F8; }
-.pp-search-menu button strong { display: block; font-size: 12.5px; font-weight: 700; color: #113055; }
-.pp-search-menu button small { display: block; font-size: 11px; color: #5D728B; }
-.pp-search-menu > p { margin: 0; padding: 10px; font-size: 12px; color: #5D728B; }
+.pp-search-menu button:hover { background: var(--color-slate-50); }
+.pp-search-menu button strong { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.pp-search-menu button small { display: block; font-size: 11px; color: var(--text-muted); }
+.pp-search-menu > p { margin: 0; padding: 10px; font-size: 12px; color: var(--text-muted); }
 
 /* Patient chip + menu. */
 .pp-user-wrap { position: relative; flex: none; }
@@ -29000,9 +29041,9 @@ table.patient-data-table.patient-data-table {
   color: rgba(255, 255, 255, 0.85);
 }
 .pp-user-menu { top: 44px; inset-inline-end: 0; width: 236px; }
-.pp-user-menu-id { padding: 9px 10px 8px; border-bottom: 1px solid #F1F3F5; margin-bottom: 4px; }
-.pp-user-menu-id b { display: block; font-size: 13px; color: #113055; }
-.pp-user-menu-id small { display: block; margin-top: 1px; font-size: 11px; color: #5D728B; }
+.pp-user-menu-id { padding: 9px 10px 8px; border-bottom: 1px solid var(--border-light); margin-bottom: 4px; }
+.pp-user-menu-id b { display: block; font-size: 13px; color: var(--text-primary); }
+.pp-user-menu-id small { display: block; margin-top: 1px; font-size: 11px; color: var(--text-muted); }
 .pp-menu-item {
   display: flex;
   align-items: center;
@@ -29012,14 +29053,14 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   border-radius: 7px;
-  color: #113055;
+  color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 13px;
   text-align: start;
   cursor: pointer;
 }
-.pp-menu-item:hover { background: #F5F7F8; }
-.pp-menu-item.danger { color: #9E1B14; }
+.pp-menu-item:hover { background: var(--color-slate-50); }
+.pp-menu-item.danger { color: var(--color-danger-text); }
 .pp-menu-item.danger:hover { background: rgba(158, 27, 20, 0.06); }
 .pp-scrim { position: fixed; inset: 0; z-index: 79; }
 
@@ -29036,7 +29077,7 @@ table.patient-data-table.patient-data-table {
   display: flex;
   flex-direction: column;
   padding: 14px 10px 14px 12px;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   border-inline-end: 1px solid #ECEEF1;
 }
 .pp-side-group { margin-bottom: 14px; }
@@ -29048,7 +29089,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 .pp-side-item {
   display: flex;
@@ -29059,15 +29100,15 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   border-radius: 7px;
-  color: #113055;
+  color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 13px;
   font-weight: 700;
   text-align: start;
   cursor: pointer;
 }
-.pp-side-item:hover { background: #F5F7F8; }
-.pp-side-item.active { background: #F2FCFF; color: #113055; font-weight: 700; }
+.pp-side-item:hover { background: var(--color-slate-50); }
+.pp-side-item.active { background: var(--color-info-bg); color: var(--text-primary); font-weight: 700; }
 .pp-side-item svg { flex: none; }
 .pp-side-item > span {
   flex: 1;
@@ -29085,14 +29126,14 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #ECEEF1;
-  color: var(--accent-primary);
+  background: var(--color-slate-100);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 10px;
   font-weight: 700;
 }
 .pp-side-badge.orange { background: #CC6600; color: #ffffff; }
-.pp-side-foot { margin-top: auto; padding: 10px 10px 2px; border-top: 1px solid #F1F3F5; }
+.pp-side-foot { margin-top: auto; padding: 10px 10px 2px; border-top: 1px solid var(--border-light); }
 .pp-side-foot p { margin: 0; font-size: 11px; font-weight: 700; color: var(--ehr-muted); line-height: 1.5; }
 
 .pp-main { min-height: 0; overflow-y: auto; padding: 18px 22px 30px; }
@@ -29114,9 +29155,9 @@ table.patient-data-table.patient-data-table {
   font-weight: 800;
   letter-spacing: -0.015em;
   line-height: 1.12;
-  color: #113055;
+  color: var(--text-primary);
 }
-.pp-head-note { margin: 2px 0 0; font-size: 12.5px; font-weight: 700; color: #5D728B; }
+.pp-head-note { margin: 2px 0 0; font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
 .pp-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Buttons — condensed labels, 38px, flat. */
@@ -29138,8 +29179,8 @@ table.patient-data-table.patient-data-table {
 .pp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .pp-btn-primary { background: var(--accent-primary); border: 1px solid var(--accent-primary); color: #ffffff; }
 .pp-btn-primary:hover:not(:disabled) { background: #113055; border-color: #113055; }
-.pp-btn-secondary { background: #FFFFFF; border: 1px solid #ECEEF1; color: #113055; }
-.pp-btn-secondary:hover:not(:disabled) { background: #F5F7F8; }
+.pp-btn-secondary { background: var(--bg-card-solid); border: 1px solid var(--border-light); color: var(--text-primary); }
+.pp-btn-secondary:hover:not(:disabled) { background: var(--color-slate-50); }
 
 /* Small outline action on list rows ("View", "Book"…). */
 .pp-row-action {
@@ -29149,10 +29190,10 @@ table.patient-data-table.patient-data-table {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: #FFFFFF;
-  border: 1px solid #ECEEF1;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
@@ -29161,7 +29202,7 @@ table.patient-data-table.patient-data-table {
   white-space: nowrap;
   cursor: pointer;
 }
-.pp-row-action:hover { background: #F2FCFF; }
+.pp-row-action:hover { background: var(--color-info-bg); }
 
 /* Small solid action ("Pay"). */
 .pp-row-pay {
@@ -29183,8 +29224,8 @@ table.patient-data-table.patient-data-table {
 
 /* ── Cards ── */
 .pp-card {
-  background: #FFFFFF;
-  border: 1px solid #ECEEF1;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
@@ -29195,7 +29236,7 @@ table.patient-data-table.patient-data-table {
   justify-content: space-between;
   gap: 10px;
   padding: 11px 14px;
-  border-bottom: 1px solid #ECEEF1;
+  border-bottom: 1px solid var(--border-light);
 }
 .pp-card-head h2 {
   margin: 0;
@@ -29204,14 +29245,14 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #113055;
+  color: var(--text-primary);
 }
 .pp-card-head small { font-size: 11px; font-weight: 700; color: var(--ehr-muted); }
 .pp-card-link {
   padding: 0;
   background: transparent;
   border: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 10.5px;
   font-weight: 700;
@@ -29225,7 +29266,7 @@ table.patient-data-table.patient-data-table {
   padding: 10px 14px;
   background: transparent;
   border: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11px;
   font-weight: 700;
@@ -29234,7 +29275,7 @@ table.patient-data-table.patient-data-table {
   text-align: start;
   cursor: pointer;
 }
-.pp-card-foot:hover { background: #F5F7F8; }
+.pp-card-foot:hover { background: var(--color-slate-50); }
 
 /* ── List rows ── */
 .pp-row {
@@ -29242,18 +29283,18 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 13px;
   padding: 12px 16px;
-  border-bottom: 1px solid #F1F3F5;
+  border-bottom: 1px solid var(--border-light);
 }
-.pp-row:hover { background: #F2FCFF; }
+.pp-row:hover { background: var(--color-info-bg); }
 .pp-row-main { min-width: 0; flex: 1; }
-.pp-row-main b { display: block; font-size: 13.5px; font-weight: 600; color: #113055; }
-.pp-row-main span { display: block; margin-top: 1px; font-size: 12px; font-weight: 700; color: #5D728B; }
+.pp-row-main b { display: block; font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+.pp-row-main span { display: block; margin-top: 1px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
 .pp-row-value {
   flex: none;
   font-size: 12.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #113055;
+  color: var(--text-primary);
   text-align: end;
   white-space: nowrap;
 }
@@ -29269,13 +29310,13 @@ table.patient-data-table.patient-data-table {
   text-align: start;
   font-family: var(--font-platform);
 }
-.pp-row-toggle:hover { background: #F2FCFF; }
+.pp-row-toggle:hover { background: var(--color-info-bg); }
 .pp-row-detail { padding: 2px 16px 14px; }
 .pp-row-detail-box {
   padding: 10px 12px;
   border-radius: 8px;
-  background: #F5F7F8;
-  border: 1px solid #F1F3F5;
+  background: var(--color-slate-50);
+  border: 1px solid var(--border-light);
 }
 
 /* Status chips — condensed caps pills, toned per the design's CHIP map. */
@@ -29294,11 +29335,11 @@ table.patient-data-table.patient-data-table {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.pp-chip--green { background: rgba(10, 110, 74, 0.10); border: 1px solid rgba(10, 110, 74, 0.4); color: #0A6E4A; }
-.pp-chip--yellow { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: #B35900; }
-.pp-chip--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: #9E1B14; }
-.pp-chip--blue { background: #F2FCFF; border: 1px solid #1E90FF; color: #113055; }
-.pp-chip--neutral { background: #F5F7F8; border: 1px solid #ECEEF1; color: #5D728B; }
+.pp-chip--green { background: rgba(10, 110, 74, 0.10); border: 1px solid rgba(10, 110, 74, 0.4); color: var(--color-success-text); }
+.pp-chip--yellow { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: var(--color-warning-text); }
+.pp-chip--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: var(--color-danger-text); }
+.pp-chip--blue { background: var(--color-info-bg); border: 1px solid var(--border-accent); color: var(--text-primary); }
+.pp-chip--neutral { background: var(--color-slate-50); border: 1px solid var(--border-light); color: var(--text-muted); }
 
 /* ── Stat tiles (vitals, billing) ── */
 .pp-tiles {
@@ -29308,8 +29349,8 @@ table.patient-data-table.patient-data-table {
   margin-bottom: 14px;
 }
 .pp-tile {
-  background: #FFFFFF;
-  border: 1px solid #ECEEF1;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   padding: 11px 13px;
@@ -29321,7 +29362,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #5D728B;
+  color: var(--text-muted);
 }
 .pp-tile-value {
   margin: 5px 0 0;
@@ -29329,7 +29370,7 @@ table.patient-data-table.patient-data-table {
   font-size: 21px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #113055;
+  color: var(--text-primary);
 }
 .pp-tile-value small { font-size: 11.5px; font-weight: 700; color: var(--ehr-muted); }
 .pp-tile-sub { margin: 2px 0 0; font-size: 10.5px; font-weight: 700; color: var(--ehr-muted); }
@@ -29344,12 +29385,12 @@ table.patient-data-table.patient-data-table {
   background: transparent;
   border: 0;
   border-inline-end: 1px solid #F1F3F5;
-  border-bottom: 1px solid #F1F3F5;
+  border-bottom: 1px solid var(--border-light);
   text-align: start;
   cursor: pointer;
   font-family: var(--font-platform);
 }
-.pp-todo:hover { background: #F5F7F8; }
+.pp-todo:hover { background: var(--color-slate-50); }
 .pp-todo-ic {
   flex: none;
   width: 30px;
@@ -29357,13 +29398,13 @@ table.patient-data-table.patient-data-table {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #F2FCFF;
-  color: var(--accent-primary);
+  background: var(--color-info-bg);
+  color: var(--accent-text);
 }
-.pp-todo-ic.amber { background: rgba(179, 89, 0, 0.10); color: #B35900; }
+.pp-todo-ic.amber { background: rgba(179, 89, 0, 0.10); color: var(--color-warning-text); }
 .pp-todo-body { min-width: 0; }
-.pp-todo-body b { display: block; font-size: 13px; font-weight: 700; color: #113055; }
-.pp-todo-body small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 700; color: #5D728B; }
+.pp-todo-body b { display: block; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.pp-todo-body small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
 
 /* ── Overview: card grid + widgets ── */
 .pp-grid2 {
@@ -29376,7 +29417,7 @@ table.patient-data-table.patient-data-table {
   width: 44px;
   text-align: center;
   padding: 5px 0;
-  background: #F2FCFF;
+  background: var(--color-info-bg);
   border-radius: 8px;
 }
 .pp-date-plate b {
@@ -29384,14 +29425,14 @@ table.patient-data-table.patient-data-table {
   font-family: var(--font-condensed);
   font-size: 15px;
   font-weight: 700;
-  color: #113055;
+  color: var(--text-primary);
 }
 .pp-date-plate small {
   display: block;
   font-size: 9.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .pp-dot { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; }
 .pp-activity-row {
@@ -29400,9 +29441,9 @@ table.patient-data-table.patient-data-table {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 1px solid #F1F3F5;
+  border-bottom: 1px solid var(--border-light);
 }
-.pp-activity-row > span { min-width: 0; font-size: 12.5px; font-weight: 600; color: #113055; }
+.pp-activity-row > span { min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
 .pp-activity-row > small { flex: none; font-size: 11px; font-weight: 700; color: var(--ehr-muted); }
 
 /* ── Chat ── */
@@ -29427,8 +29468,8 @@ table.patient-data-table.patient-data-table {
   max-width: 72%;
   padding: 9px 13px;
   border-radius: 12px;
-  background: #F1F3F5;
-  color: #113055;
+  background: var(--color-slate-75);
+  color: var(--text-primary);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -29439,23 +29480,23 @@ table.patient-data-table.patient-data-table {
   display: flex;
   gap: 8px;
   padding: 12px 14px;
-  border-top: 1px solid #ECEEF1;
+  border-top: 1px solid var(--border-light);
 }
 .pp-composer input {
   flex: 1;
   min-width: 0;
   height: 38px;
   padding: 0 13px;
-  background: #F5F7F8;
-  border: 1px solid #ECEEF1;
+  background: var(--color-slate-50);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   outline: none;
   font-family: var(--font-platform);
   font-size: 13px;
   font-weight: 700;
-  color: #113055;
+  color: var(--text-primary);
 }
-.pp-composer input:focus { border-color: #1E90FF; }
+.pp-composer input:focus { border-color: var(--border-accent); }
 .pp-composer input::placeholder { color: var(--ehr-muted); }
 
 /* ── Profile ── */
@@ -29474,10 +29515,10 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   color: var(--ehr-muted);
 }
-.pp-field-value { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: #113055; overflow-wrap: anywhere; }
+.pp-field-value { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
 .pp-card--danger { border-color: rgba(158, 27, 20, 0.3); box-shadow: none; }
-.pp-card--danger .pp-card-head { border-bottom-color: #F1F3F5; }
-.pp-card--danger .pp-card-head h2 { color: #9E1B14; }
+.pp-card--danger .pp-card-head { border-bottom-color: var(--border-light); }
+.pp-card--danger .pp-card-head h2 { color: var(--color-danger-text); }
 .pp-pillbox { padding: 10px 14px; display: flex; gap: 6px; flex-wrap: wrap; }
 .pp-pill {
   display: inline-flex;
@@ -29492,9 +29533,9 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
   line-height: 1;
 }
-.pp-pill--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: #9E1B14; }
-.pp-pill--amber { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: #B35900; }
-.pp-pill--blue { background: #F2FCFF; border: 1px solid #1E90FF; color: #113055; }
+.pp-pill--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: var(--color-danger-text); }
+.pp-pill--amber { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: var(--color-warning-text); }
+.pp-pill--blue { background: var(--color-info-bg); border: 1px solid var(--border-accent); color: var(--text-primary); }
 
 /* ── Toast ── */
 .pp-toast {
@@ -29525,7 +29566,7 @@ table.patient-data-table.patient-data-table {
   padding: 0;
   background: none;
   border: 0;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 12px;
   font-weight: 700;
@@ -29546,7 +29587,7 @@ table.patient-data-table.patient-data-table {
     overflow-y: hidden;
     padding: 8px 10px;
     border-inline-end: 0;
-    border-bottom: 1px solid #ECEEF1;
+    border-bottom: 1px solid var(--border-light);
   }
   .pp-side-group { display: contents; }
   .pp-side-title, .pp-side-foot { display: none; }
@@ -29567,12 +29608,68 @@ table.patient-data-table.patient-data-table {
    --accent-primary, its inks and rules the slate ramp — so everything here
    reads tokens. */
 
+/* ── The console band ─────────────────────────────────────────────────
+   ONE strip does every section head in both consoles — card heads,
+   setting-group heads and the two dashboard heroes — so a card, a settings
+   group and the page they sit on are visibly the same kind of object.
+
+   It is the HEADER's own blue, --accent-primary (#015697), the colour the top
+   rail is painted: the console then reads as one continuous piece of chrome
+   from the rail down through every card, instead of introducing a second dark
+   that belongs to nothing else on screen.
+
+   One value for both themes. --accent-primary is not remapped in dark, and it
+   is lighter than the dark card body (--tm-navy), so the band still reads as a
+   band there without a twin of its own.
+
+   Nothing here is a new colour: band, ink, soft ink and the column tint are
+   existing rungs of the palette. */
+:root {
+  --sadb-band:      var(--accent-primary);
+  --sadb-band-ink:  var(--color-white);
+  /* Head links and the hero eyebrow. The pale ice wash, not --brand-300:
+     against this blue the dodger rung is only 4.1:1, where ice is 6.4:1. A
+     palette literal, so it does not invert out from under the band in dark. */
+  --sadb-band-soft: var(--tm-ice);
+  --sadb-band-quiet: color-mix(in srgb, var(--color-white) 82%, transparent);
+  --sadb-band-line: color-mix(in srgb, var(--color-white) 30%, transparent);
+  --sadb-band-fill: color-mix(in srgb, var(--color-white) 12%, transparent);
+  /* The column-header strip under a card head. A TINT, not a second band, so
+     a list still reads as one object with two rules inside it. OPAQUE, not an
+     alpha wash: these strips are sticky and rows scroll underneath them. The
+     mix follows --overlay-subtle's own recipe (the accent at 7% in light, the
+     brighter dodger in dark, where 7% of a navy accent on a navy card is
+     invisible). */
+  --sadb-colhead: color-mix(in srgb, var(--accent-primary) 7%, var(--bg-card-solid));
+}
+:root[data-theme="dark"] {
+  --sadb-colhead: color-mix(in srgb, var(--tm-dodger) 12%, var(--bg-card-solid));
+}
+
 .sadb-scope .ehr-care-header-subtitle {
   font-family: var(--font-condensed);
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* ── The dashboard greeting ───────────────────────────────────────────
+   The console's two dashboards (/admin and /facility-management) keep the
+   greeting on the page ground — no band behind the welcome line or its create
+   buttons, so the name, the eyebrow and the buttons all keep the colours they
+   have on every other dashboard.
+
+   The one thing kept from the banded rev: the eyebrow reads ABOVE the name.
+   On a console screen the label that says WHICH console you are standing in is
+   worth more than your own name, and it is the order the design asked for.
+   Order, not markup — the same component still serves the twelve non-console
+   dashboards that want the greeting first. */
+.sadb-scope .dashboard-greeting-copy { display: flex; flex-direction: column; }
+.sadb-scope .dashboard-greeting-copy .ehr-care-greeting-sub,
+.sadb-scope .dashboard-greeting-copy .ehr-care-header-subtitle {
+  order: -1;
+  margin: 0 0 3px;
 }
 
 .sadb-page {
@@ -29599,11 +29696,15 @@ table.patient-data-table.patient-data-table {
   gap: 10px;
   flex-wrap: wrap;
   flex-shrink: 0;
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--border-light);
-  /* A shade off white so the head reads as a head and the card reads as a
-     card. White-on-white left every heading floating over its own content. */
-  background: var(--overlay-subtle);
+  padding: 12px 16px;
+  /* No hairline: the band IS the separator, and a rule under it drew a second
+     line a shade off the first. */
+  border-bottom: 0;
+  background: var(--sadb-band);
+  /* The band owns the foreground for everything inside it — the heading rule
+     above hands its headings back with `inherit`, and that is what they
+     inherit. */
+  color: var(--sadb-band-ink);
   border-start-start-radius: 8px;
   border-start-end-radius: 8px;
 }
@@ -29614,7 +29715,7 @@ table.patient-data-table.patient-data-table {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-primary);
+  color: var(--sadb-band-ink);
 }
 .sadb-card-meta { font-size: 11px; font-weight: 700; color: var(--text-muted); }
 .sadb-head-link {
@@ -29627,9 +29728,9 @@ table.patient-data-table.patient-data-table {
   font-size: 10.5px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--accent-primary);
+  color: var(--sadb-band-soft);
 }
-.sadb-head-link:hover { color: var(--accent-hover); }
+.sadb-head-link:hover { color: var(--sadb-band-ink); }
 
 /* Icon-only head action. Sized to the 32px touch floor rather than to the
    glyph, so it is hittable on a tablet — the head strip's text links are not,
@@ -29641,14 +29742,97 @@ table.patient-data-table.patient-data-table {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--sadb-band-line);
   border-radius: 7px;
-  background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  background: transparent;
+  color: var(--sadb-band-ink);
   cursor: pointer;
 }
-.sadb-head-iconbtn:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
+.sadb-head-iconbtn:hover { border-color: var(--sadb-band-ink); background: var(--sadb-band-fill); }
 .sadb-head-iconbtn svg { width: 16px; height: 16px; }
+
+/* ── What the band hosts ──────────────────────────────────────────────
+   Both heads at once — a card head and a setting-group head are the same
+   band, so a control drawn for the navy is styled here once rather than in
+   two places that then drift.
+
+   Head controls are drawn for the band, not for a white card: outlines and
+   fills come off the band's own white ramp.
+
+   A status chip is the exception, and goes the other way. It is a signal
+   ("attention required", "healthy"), so it has to keep its tone — but on this
+   blue no tonal ink survives (success-400 is 3.6:1, danger-400 2.6:1). So the
+   chip stops being transparent and keeps the exact face it wears everywhere
+   else in the console: a white plate, the tone on its rule, the tone's text
+   rung as ink. That reads at the ratios those rungs were measured for
+   (success 6.3:1, danger 8.0:1, warning 4.8:1) and is theme-independent —
+   plate and inks are palette literals that do not invert. */
+:is(.sadb-card-head, .sadb-group-head) .sadb-card-meta { color: var(--sadb-band-quiet); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-chip {
+  background: var(--color-white);
+  border-color: var(--color-slate-200);
+  color: var(--tm-navy);
+}
+:is(.sadb-card-head, .sadb-group-head) .sadb-chip--green  { border-color: var(--color-success-600); color: var(--color-success-800); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-chip--yellow { border-color: var(--color-warning-600); color: var(--color-warning-700); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-chip--red    { border-color: var(--color-danger-500);  color: var(--color-danger-800); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-chip--blue   { border-color: var(--brand-400);         color: var(--brand-800); }
+/* The count legends that sit at the end of a list head (audit, risk, sync,
+   flags). Their tone dots are inline-styled fills and stay their own colour;
+   only the words move onto the band. */
+:is(.sadb-card-head, .sadb-group-head) .sadb-legend { color: var(--sadb-band-quiet); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-tabs { border-color: var(--sadb-band-line); background: var(--sadb-band-fill); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-tab { color: var(--sadb-band-quiet); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-tab:hover { color: var(--sadb-band-ink); }
+:is(.sadb-card-head, .sadb-group-head) .sadb-tab-badge { background: var(--sadb-band-fill); color: var(--sadb-band-ink); }
+/* The SELECTED tab is a white pill even on the band, so its badge keeps the
+   light fill and takes dark ink back — white-on-near-white left the count
+   showing as a blank grey blob. */
+:is(.sadb-card-head, .sadb-group-head) .sadb-tab.is-active .sadb-tab-badge {
+  background: var(--tb-blue-50);
+  color: var(--accent-primary);
+}
+/* An unclassed <button> in a head — the ⤢ promote actions, whose icon colour
+   is set inline by the caller. The !important is what beats that inline
+   style; without it the icon stayed accent-blue on the navy. */
+:is(.sadb-card-head, .sadb-group-head) button:not([class*="sadb-"]):not(.btn) { color: var(--sadb-band-ink); }
+:is(.sadb-card-head, .sadb-group-head) button:not([class*="sadb-"]):not(.btn):hover { background: var(--sadb-band-fill); }
+:is(.sadb-card-head, .sadb-group-head) button:not([class*="sadb-"]):not(.btn) svg { color: var(--sadb-band-ink) !important; }
+/* A .btn in a head follows the hero's rule for the same reason: the accent
+   blue is the one colour on the palette that disappears into this band. */
+:is(.sadb-card-head, .sadb-group-head) .btn-primary {
+  background: var(--accent-orange);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange-on);
+}
+:is(.sadb-card-head, .sadb-group-head) .btn-primary:hover {
+  background: var(--gold-600);
+  border-color: var(--gold-600);
+  color: var(--accent-orange-on);
+}
+:is(.sadb-card-head, .sadb-group-head) .btn-secondary {
+  background: transparent;
+  border-color: var(--sadb-band-line);
+  color: var(--sadb-band-ink);
+}
+:is(.sadb-card-head, .sadb-group-head) .btn-secondary:hover {
+  background: var(--sadb-band-fill);
+  border-color: var(--sadb-band-ink);
+  color: var(--sadb-band-ink);
+}
+/* The kit's own outline button (Retry batch, Run now) when it lands in a
+   head — same treatment as .btn-secondary; its white card fill went muddy
+   over the navy, and muddier still at the 0.5 opacity it takes when
+   disabled. */
+:is(.sadb-card-head, .sadb-group-head) .sadb-action-btn {
+  background: transparent;
+  border-color: var(--sadb-band-line);
+  color: var(--sadb-band-ink);
+}
+:is(.sadb-card-head, .sadb-group-head) .sadb-action-btn:hover:not(:disabled) {
+  background: var(--sadb-band-fill);
+  border-color: var(--sadb-band-ink);
+}
 
 /* Card-head tabs. Pill shapes rather than underlines: the head is a 12px
    condensed strip, and an underline there would read as a second border
@@ -29690,7 +29874,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 5px;
   border-radius: 999px;
   background: var(--color-slate-100);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
@@ -29706,13 +29890,41 @@ table.patient-data-table.patient-data-table {
 }
 .sadb-kpi {
   text-align: start;
-  padding: 12px 14px;
+  padding: 13px 15px 14px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   min-width: 0;
 }
+
+/* ── Every KPI tile in the app takes the same top rule ────────────────
+   3px of --accent-primary: the colour the header rail is painted and the
+   colour the console's card heads carry, so a row of headline numbers reads
+   as one object no matter which screen it is on.
+
+   Listed by name rather than given a shared class because these four families
+   grew up separately — the console kit (.sadb-kpi), the analytics/stats pages
+   (.kpi), org settings (.org-set-mini-stat) and the superintendent board,
+   whose tiles are ad-hoc .dash-card buttons and carry .kpi-tile purely as the
+   hook for this rule. The rule is now the one thing they share.
+
+   Position matters: this sits after .sadb-kpi so it also beats the plain
+   `.kpi { border: … }` and `.org-set-mini-stat { border: … }` declarations
+   further up, which are the same specificity and would win on order. */
+.sadb-kpi,
+.kpi,
+.kpi-tile,
+.org-set-mini-stat {
+  border-top: 3px solid var(--accent-primary);
+}
+/* The superintendent board's tiles are .dash-card, and the app-wide
+   `.tamam-ehr-app .dash-card { border-color: … !important }` (globals ~4809,
+   plus its :hover twin) repaints all four sides. Matching that specificity and
+   its !important is the only way the top rule survives on that one family —
+   the other three need none of this. */
+.tamam-ehr-app .kpi-tile { border-top-color: var(--accent-primary) !important; }
+.tamam-ehr-app .kpi-tile:hover { border-top-color: var(--accent-primary) !important; }
 /* ── Mobile: cards read more like app cards — a softer corner and more room
    to breathe — while staying flat (no lift or glow, per the design). ── */
 @media (max-width: 639px) {
@@ -29726,7 +29938,7 @@ table.patient-data-table.patient-data-table {
    the same row. Column flex is the one layout that overrides that. */
 button.sadb-kpi { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; cursor: pointer; }
 /* Flat, so the hover is a border and a shade — never a lift or a glow. */
-button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
+button.sadb-kpi:hover { border-color: var(--brand-300); border-top-color: var(--accent-primary); background: var(--tb-blue-50); }
 .sadb-kpi-label {
   margin: 0;
   font-family: var(--font-condensed);
@@ -29758,7 +29970,9 @@ button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blu
   align-items: center;
   height: 22px;
   padding: 0 9px;
-  border-radius: 999px;
+  /* Rectangles, not pills. A status is a stamp on a dense console row; at
+     22px the 999px pill read as a button, and softened the whole console. */
+  border-radius: 3px;
   white-space: nowrap;
   line-height: 1;
   font-family: var(--font-condensed);
@@ -29792,7 +30006,7 @@ button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blu
   width: fit-content;
   padding: 2px 9px;
   border: 1px solid var(--border-light);
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--bg-card-solid);
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -29873,7 +30087,7 @@ button.sadb-signal { cursor: pointer; }
   justify-content: space-between;
   gap: 10px;
   padding: 11px 14px;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -30077,7 +30291,10 @@ button.sadb-signal { cursor: pointer; }
   padding: 11px 16px;
 }
 .sadb-tenant-grid--head {
-  padding: 12px 16px 8px;
+  padding: 10px 16px;
+  /* Tinted, so the column names read as part of the list rather than as its
+     first row. */
+  background: var(--sadb-colhead);
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -30091,12 +30308,22 @@ button.sadb-signal { cursor: pointer; }
   text-align: start;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
+
+/* The console draws lists two ways — SadbGridList and .sa-table — and only
+   one of them named its columns on a tinted strip. Same object, same header,
+   so the table borrows the grid's. Scoped to the console: .sa-table is the
+   super-admin kit's table and appears nowhere else, but the scope says so.
+   `!important` because the app-wide sticky-header rule
+   (.tamam-ehr-app table thead th) paints every table head solid card-white
+   with one of its own — this is the console's exception to it, and the tint
+   is opaque so the sticky behaviour that rule exists for still holds. */
+.sadb-scope .sa-table thead th { background: var(--sadb-colhead) !important; }
 /* A row that opens something should say so on approach: the tint is the
    accent's lightest step rather than a neutral grey, which read as disabled. */
 .sadb-tenant-row:hover { background: var(--tb-blue-50); }
@@ -30120,7 +30347,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 12px 14px;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   text-align: start;
   cursor: pointer;
 }
@@ -30241,7 +30468,7 @@ button.sadb-signal { cursor: pointer; }
   justify-content: center;
   border-radius: 999px;
   background: var(--color-slate-100);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 10px;
   font-weight: 700;
@@ -30295,9 +30522,12 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light);
-  background: var(--ehr-head);
+  padding: 11px 16px;
+  border-bottom: 0;
+  /* The same band as a card head: a settings group and a card are the same
+     object on two different screens, and they used to head differently. */
+  background: var(--sadb-band);
+  color: var(--sadb-band-ink);
 }
 .sadb-group-title {
   margin: 0;
@@ -30306,14 +30536,19 @@ button.sadb-signal { cursor: pointer; }
   font-size: 11.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-primary);
+  color: var(--sadb-band-ink);
+}
+.sadb-group-head .sadb-chip {
+  background: var(--sadb-band-fill);
+  border-color: var(--sadb-band-line);
+  color: var(--sadb-band-ink);
 }
 .sadb-setting-row {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
 }
 .sadb-setting-row:last-child { border-bottom: 0; }
 .sadb-setting-copy { min-width: 0; flex: 1; }
@@ -30370,7 +30605,7 @@ button.sadb-signal { cursor: pointer; }
   width: 17px;
   height: 17px;
   border-radius: 50%;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.25);
 }
 
@@ -30386,7 +30621,7 @@ button.sadb-signal { cursor: pointer; }
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   border-radius: 6px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-weight: 700;
   font-size: 11px;
@@ -30602,7 +30837,7 @@ button.sadb-signal { cursor: pointer; }
   border-radius: 8px;
   background: var(--accent-light, #F2FCFF);
 }
-.fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-text); }
 .fac-head-id { min-width: 0; flex: 1 1 220px; }
 .fac-head-name {
   margin: 0;
@@ -30712,10 +30947,10 @@ button.sadb-signal { cursor: pointer; }
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
-.fac-secnav-trigger:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+.fac-secnav-trigger:hover { border-color: var(--accent-primary); color: var(--accent-text); }
 .fac-secnav-trigger svg { width: 13px; height: 13px; color: var(--text-muted); }
-.fac-secnav-trigger:hover svg { color: var(--accent-primary); }
-.fac-secnav-trigger[aria-expanded='true'] { border-color: var(--accent-primary); color: var(--accent-primary); }
+.fac-secnav-trigger:hover svg { color: var(--accent-text); }
+.fac-secnav-trigger[aria-expanded='true'] { border-color: var(--accent-primary); color: var(--accent-text); }
 .fac-secnav-caret { margin-inline-start: 1px; }
 
 .fac-secnav-menu {
@@ -30754,8 +30989,8 @@ button.sadb-signal { cursor: pointer; }
 .fac-secnav-item:hover svg { color: var(--text-secondary); }
 /* The section you are in, marked in the menu the way the tab used to be
    marked in the strip. */
-.fac-secnav-item.is-active { background: var(--accent-light); color: var(--accent-primary); }
-.fac-secnav-item.is-active svg { color: var(--accent-primary); }
+.fac-secnav-item.is-active { background: var(--accent-light); color: var(--accent-text); }
+.fac-secnav-item.is-active svg { color: var(--accent-text); }
 
 
 @media (max-width: 640px) {
@@ -30785,7 +31020,7 @@ button.sadb-signal { cursor: pointer; }
   justify-content: space-between;
   gap: 14px;
   padding: 9px 13px;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   font-size: 12.5px;
 }
 .sadb-usercard-row:last-child { border-bottom: 0; }
@@ -30845,7 +31080,7 @@ button.sadb-signal { cursor: pointer; }
   border-radius: 6px;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-family: var(--font-condensed);
   font-weight: 700;
   font-size: 11px;
@@ -30911,7 +31146,7 @@ button.sadb-signal { cursor: pointer; }
      lives on the first cell, so every track after it stays on the parent's
      grid — indenting the row itself narrows the grid and walks the columns
      out of alignment, which is the whole problem this replaced. */
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   background: var(--ehr-head);
   font-size: 12px;
   font-weight: 600;
@@ -30957,7 +31192,7 @@ button.sadb-signal { cursor: pointer; }
   text-align: start;
   cursor: pointer;
 }
-.sadb-subrow-link:hover { color: var(--accent-primary); text-decoration: underline; }
+.sadb-subrow-link:hover { color: var(--accent-text); text-decoration: underline; }
 .sadb-subrow-link:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
@@ -30973,7 +31208,7 @@ button.sadb-signal { cursor: pointer; }
   margin: 0;
   padding: 11px 16px;
   padding-inline-start: calc(16px + var(--depth, 1) * 18px + 20px);
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   background: var(--ehr-head);
   font-size: 12px;
   font-weight: 600;
@@ -31008,7 +31243,7 @@ button.sadb-signal { cursor: pointer; }
   border-radius: 8px;
   background: var(--accent-light, #F2FCFF);
 }
-.fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-primary); }
+.fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-text); }
 .fac-head-id { min-width: 0; flex: 1 1 220px; }
 .fac-head-name {
   margin: 0;
@@ -31146,7 +31381,7 @@ button.sadb-signal { cursor: pointer; }
   justify-content: space-between;
   gap: 14px;
   padding: 9px 13px;
-  border-bottom: 1px solid var(--ehr-row-rule, #F1F3F5);
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light));
   font-size: 12.5px;
 }
 .sadb-usercard-row:last-child { border-bottom: 0; }
@@ -31252,7 +31487,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-facrow-users.is-open {
   border-color: var(--border-light);
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 .sadb-facrow-users:disabled {
@@ -31376,7 +31611,7 @@ button.sadb-signal { cursor: pointer; }
   border: 1px solid var(--border-light);
 }
 .rpt-stats-title { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1 1 auto; }
-.rpt-stats-title svg { width: 16px; height: 16px; color: var(--accent-primary); flex: 0 0 auto; }
+.rpt-stats-title svg { width: 16px; height: 16px; color: var(--accent-text); flex: 0 0 auto; }
 .rpt-stats-title > div { display: flex; flex-direction: column; min-width: 0; }
 /* The page's name, now that the title card is gone. */
 .rpt-eyebrow {
@@ -31418,7 +31653,7 @@ button.sadb-signal { cursor: pointer; }
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .rpt-nav-btn svg { width: 14px; height: 14px; }
-.rpt-nav-btn:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
+.rpt-nav-btn:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-text); }
 .rpt-nav-btn:disabled { opacity: 0.4; cursor: default; }
 .rpt-nav-pos {
   font-size: 11px;
@@ -31455,7 +31690,7 @@ button.sadb-signal { cursor: pointer; }
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .rpt-nav-csv svg { width: 13px; height: 13px; }
-.rpt-nav-csv:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-primary); }
+.rpt-nav-csv:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--accent-text); }
 .rpt-nav-csv:disabled { opacity: 0.45; cursor: default; }
 
 /* ── Headline figures, read off the chart below them ──
@@ -31628,7 +31863,7 @@ button.sadb-signal { cursor: pointer; }
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .rpt-rail-clear:hover { color: var(--accent-hover); }
 /* Why the picked report is not in the list below it. */
@@ -31654,7 +31889,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 1px 6px;
   border-radius: 999px;
   background: var(--tb-blue-50, rgba(33,145,208,0.12));
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 9.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -31705,9 +31940,9 @@ button.sadb-signal { cursor: pointer; }
 .rpt-ctl-kinds button.is-on {
   border-color: var(--accent-primary);
   background: var(--tb-blue-50, rgba(33,145,208,0.10));
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
-.rpt-ctl-kinds button.is-on svg { color: var(--accent-primary); }
+.rpt-ctl-kinds button.is-on svg { color: var(--accent-text); }
 .rpt-ctl-kinds button:disabled { opacity: 0.42; cursor: not-allowed; }
 .rpt-ctl-check {
   display: flex;
@@ -31789,7 +32024,7 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-secondary);
   line-height: 1.3;
 }
-.rpt-rail-item.is-on .rpt-rail-name { color: var(--accent-primary); font-weight: 700; }
+.rpt-rail-item.is-on .rpt-rail-name { color: var(--accent-text); font-weight: 700; }
 .rpt-rail-meta {
   display: flex;
   align-items: center;
@@ -31962,7 +32197,7 @@ button.sadb-signal { cursor: pointer; }
   font-size: 12px;
   color: var(--text-muted);
 }
-.rpt-panel-empty svg { width: 15px; height: 15px; color: var(--accent-primary); }
+.rpt-panel-empty svg { width: 15px; height: 15px; color: var(--accent-text); }
 
 
 /* Chart-form switcher. Icon-only and segmented: five forms of ONE thing, so
@@ -31994,7 +32229,7 @@ button.sadb-signal { cursor: pointer; }
 .rpt-kinds button:hover:not(:disabled) { color: var(--text-primary); }
 .rpt-kinds button.is-on {
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
 }
 .rpt-kinds button:disabled { opacity: 0.32; cursor: not-allowed; }
@@ -32021,7 +32256,7 @@ button.sadb-signal { cursor: pointer; }
 .rpt-nav-generate:disabled { opacity: 0.45; cursor: default; }
 .rpt-nav-generate.is-on {
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* Generated, the table shares the centre column with the plot rather than
@@ -32150,7 +32385,9 @@ button.sadb-signal { cursor: pointer; }
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bg-card-solid);
+  /* Keeps the tint while it sticks — it is opaque, so rows still pass under
+     it rather than through it. */
+  background: var(--sadb-colhead);
 }
 
 @media (max-width: 1100px) {
@@ -32362,7 +32599,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 0 14px;
   border-radius: 6px;
   border: 1px solid transparent;
-  background: #fff;
+  background: var(--bg-card-solid);
   color: var(--tm-navy);
   font-family: var(--font-condensed);
   font-size: 13px;
@@ -32536,7 +32773,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 14px 16px 16px;
   border: 1px solid var(--ehr-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
   margin-bottom: 14px;
 }
 .fac-assess-head {
@@ -32638,7 +32875,7 @@ button.sadb-signal { cursor: pointer; }
   font-size: 12.5px;
   color: var(--text-muted);
 }
-.trash-empty svg { width: 15px; height: 15px; color: var(--accent-primary); }
+.trash-empty svg { width: 15px; height: 15px; color: var(--accent-text); }
 
 .trash-row { align-items: center; }
 .trash-row .ehr-set-row-label { min-width: 0; }
@@ -32700,7 +32937,7 @@ button.sadb-signal { cursor: pointer; }
   margin: 0;
   padding: 12px 18px 14px;
   border-top: 1px solid #F5F7F8;
-  background: #FAFBFC;
+  background: var(--color-slate-25);
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -32827,13 +33064,13 @@ button.sadb-signal { cursor: pointer; }
   cursor: pointer;
   font: inherit;
 }
-.sadb-card-head--toggle:hover .sadb-card-title { color: var(--accent-primary); }
+.sadb-card-head--toggle:hover .sadb-card-title { color: var(--accent-text); }
 .sadb-card-caret {
   display: inline-flex;
   align-items: center;
   color: var(--text-muted);
 }
-.sadb-card-head--toggle:hover .sadb-card-caret { color: var(--accent-primary); }
+.sadb-card-head--toggle:hover .sadb-card-caret { color: var(--accent-text); }
 
 /* ── Unified organization / facility / people workspace ──────────────
    Console-kit surface: a KPI band, the strip of section tabs, and the work
@@ -33157,7 +33394,7 @@ button.sadb-signal { cursor: pointer; }
   border-radius: 50%;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-medium);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
@@ -33269,7 +33506,7 @@ button.sadb-signal { cursor: pointer; }
   border: 1px solid var(--border-light);
   border-radius: 9px;
   background: var(--bg-card-solid);
-  color: var(--accent-primary);
+  color: var(--accent-text);
   text-align: start;
   cursor: pointer;
 }

@@ -46,12 +46,12 @@ export const STATUS_TOKENS: Record<LeaveRequestDoc['status'], StatusToken> = {
   pending:   { label: 'Pending',   color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)', border: 'rgba(254, 230, 151, 0.45)' },
   approved:  { label: 'Approved',  color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)', border: 'rgba(15, 160, 106, 0.40)' },
   rejected:  { label: 'Rejected',  color: 'var(--color-danger-500)', bg: 'rgba(224, 49, 39, 0.14)', border: 'rgba(224, 49, 39, 0.40)' },
-  cancelled: { label: 'Cancelled', color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)', border: 'rgba(93, 114, 139, 0.40)' },
+  cancelled: { label: 'Cancelled', color: 'var(--text-muted)', bg: 'var(--overlay-light)', border: 'var(--border-medium)' },
   taken:     { label: 'Taken',     color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
 };
 
 export const PAYROLL_STATUS_TOKENS: Record<PayrollEntryDoc['status'], StatusToken> = {
-  draft:    { label: 'Draft',    color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)', border: 'rgba(93, 114, 139, 0.40)' },
+  draft:    { label: 'Draft',    color: 'var(--text-muted)', bg: 'var(--overlay-light)', border: 'var(--border-medium)' },
   approved: { label: 'Approved', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
   paid:     { label: 'Paid',     color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.14)', border: 'rgba(15, 160, 106, 0.40)' },
   reversed: { label: 'Reversed', color: 'var(--color-danger-500)', bg: 'rgba(224, 49, 39, 0.14)', border: 'rgba(224, 49, 39, 0.40)' },
@@ -62,7 +62,7 @@ export const PAYROLL_STATUS_TOKENS: Record<PayrollEntryDoc['status'], StatusToke
 export const SCHEDULE_STATUS_TOKENS: Record<StaffScheduleDoc['status'], StatusToken> = {
   scheduled: { label: 'Scheduled', color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.14)', border: 'rgba(33, 145, 208, 0.40)' },
   confirmed: { label: 'Confirmed', color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)', border: 'rgba(15, 160, 106, 0.40)' },
-  completed: { label: 'Completed', color: '#5D728B', bg: 'rgba(93, 114, 139, 0.14)', border: 'rgba(93, 114, 139, 0.40)' },
+  completed: { label: 'Completed', color: 'var(--text-muted)', bg: 'var(--overlay-light)', border: 'var(--border-medium)' },
   absent:    { label: 'Absent',    color: 'var(--color-danger-500)', bg: 'rgba(224, 49, 39, 0.14)', border: 'rgba(224, 49, 39, 0.40)' },
   swapped:   { label: 'Swapped',   color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)', border: 'rgba(254, 230, 151, 0.45)' },
 };
@@ -237,4 +237,3 @@ export function useUrlParams(basePath: string) {
     router.replace(query ? `${basePath}?${query}` : basePath, { scroll: false });
   }, [searchParams, router, basePath]);
 }
-

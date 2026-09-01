@@ -17,6 +17,54 @@ import { getDB, isClosingConnectionError } from '../db';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDB = any;
 
+/**
+ * A local PouchDB read that never settles wedges every caller behind it — a
+ * registration's duplicate scan, a data hook loading on mount — as an infinite
+ * spinner with no error (DEF-2). Observed during a device's initial sync:
+ * `createIndex()` on the patients database stopped responding while replication
+ * streamed documents into the same IndexedDB, and because `ensureIndex` only
+ * caches the index name *after* `createIndex` resolves, every subsequent
+ * `getAllPatients()` re-issued the same wedged `createIndex` and hung with it —
+ * so the patient list, the front-desk board and "Register patient" all stalled
+ * together with no error surfaced.
+ *
+ * Bounding the two database operations converts an unbounded await into a
+ * defined outcome: a wedged index build falls back to a full scan (correct, per
+ * this module's contract — just slower), and a wedged query rejects so the
+ * caller can retry or surface an error instead of spinning forever.
+ *
+ * The ceilings are deliberately far above any healthy local operation — a Mango
+ * index build or scan over a browser database is sub-second in steady state —
+ * so a legitimately slow device is never tripped; only a genuinely stuck handle
+ * is.
+ */
+const INDEX_BUILD_TIMEOUT_MS = 8_000;
+const QUERY_TIMEOUT_MS = 20_000;
+
+export class LocalQueryTimeoutError extends Error {
+  constructor(op: string, ms: number) {
+    super(`Local database operation "${op}" did not respond within ${Math.round(ms / 1000)}s`);
+    this.name = 'LocalQueryTimeoutError';
+  }
+}
+
+export function isLocalQueryTimeoutError(err: unknown): boolean {
+  return err instanceof LocalQueryTimeoutError;
+}
+
+/**
+ * Reject if `p` has not settled within `ms`. The underlying PouchDB promise
+ * cannot be cancelled, so on timeout it is left pending (and ignored) rather
+ * than aborted — the point is to unblock the awaiting caller, not the DB.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, op: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new LocalQueryTimeoutError(op, ms)), ms);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer)) as Promise<T>;
+}
+
 // db name -> set of "field1,field2" index keys already created this process.
 const created = new Map<string, Set<string>>();
 
@@ -34,10 +82,32 @@ export async function ensureIndex(db: AnyDB, fields: string[]): Promise<void> {
   }
   const key = fields.join(',');
   if (set.has(key)) return;
+  // A lone `type` column is not a useful index in this schema and must not be
+  // built. `DATABASE_DOCUMENT_TYPES` gives each browser database essentially one
+  // document type (see `derivedIndexFields`), so a `type` index holds a single
+  // key spanning every row and Mango scans the whole database regardless —
+  // find() does the exact same scan without it, at no extra cost. Building it is
+  // therefore pure downside, and a downside with teeth: during a device's
+  // initial sync, `createIndex` on the patients database was observed to wedge,
+  // holding a readwrite transaction that stalled every write queued behind it —
+  // the `_local` hospital-number counter, then the patient document itself — so
+  // "Register patient" hung on "Saving…" with nothing ever written. Skip it:
+  // cache the key so it is never attempted, and let find() scan directly.
+  if (fields.length === 1 && fields[0] === 'type') {
+    set.add(key);
+    return;
+  }
   try {
-    await db.createIndex({ index: { fields } });
+    await withTimeout(
+      db.createIndex({ index: { fields } }),
+      INDEX_BUILD_TIMEOUT_MS,
+      `createIndex ${name}`,
+    );
   } catch {
-    // Index unavailable — find() will scan. Cache so we don't retry each call.
+    // Index unavailable, errored, or timed out (a wedged build during initial
+    // sync) — find() will scan, which is correct, just slower. Caching the key
+    // regardless is load-bearing: it stops every later call re-issuing the same
+    // stuck createIndex and hanging behind it.
   }
   set.add(key);
 }
@@ -93,7 +163,7 @@ export async function findByType<T>(
 
   await ensureIndex(db, fields);
   try {
-    const res = await query(db);
+    const res = await withTimeout(query(db), QUERY_TIMEOUT_MS, `find ${dbName(db)}`);
     return (res.docs || []) as T[];
   } catch (err) {
     // `db` can be a cached instance that a concurrent background wipe (logout,
@@ -106,11 +176,17 @@ export async function findByType<T>(
     // nothing was actually lost. See isClosingConnectionError() in lib/db.ts
     // for why a fresh getDB() call here is guaranteed to return a healthy
     // instance rather than repeat the same failure.
+    //
+    // A timeout is deliberately NOT retried here: getDB() hands back the same
+    // cached handle for a name that is not closing, so re-issuing the query
+    // would just wedge on the same stuck instance. The timeout is re-thrown so
+    // the caller surfaces it (e.g. registration proceeds without the optional
+    // duplicate scan) instead of hanging a second time.
     const name = dbName(db);
     if (!isClosingConnectionError(err) || name === 'unknown') throw err;
     const fresh = getDB(name);
     await ensureIndex(fresh, fields);
-    const res = await query(fresh);
+    const res = await withTimeout(query(fresh), QUERY_TIMEOUT_MS, `find ${name} (retry)`);
     return (res.docs || []) as T[];
   }
 }

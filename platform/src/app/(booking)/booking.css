@@ -35,6 +35,20 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Public booking follows the same saved/system preference as the rest of the
+   platform. Keep the practice accent for identity, but move every neutral and
+   soft-accent surface onto the dark semantic canvas. */
+:root[data-theme="dark"] .booking-root {
+  --booking-accent-strong: var(--accent-text);
+  --booking-accent-soft: var(--color-info-bg);
+  --booking-ink: var(--text-primary);
+  --booking-ink-muted: var(--text-muted);
+  --booking-line: var(--border-medium);
+  --booking-line-soft: var(--border-light);
+  --booking-surface: var(--bg-card-solid);
+  --booking-surface-sunk: var(--bg-app);
+}
+
 /* globals.css uppercases every bare `<label>`. The reference labels are
    sentence case ("First Name", "Location"), and shouting them at a patient
    filling in a form reads as an error message. Reset once for the namespace
@@ -563,8 +577,8 @@
   align-self: flex-start;
   padding: 3px 9px;
   border-radius: 999px;
-  background: #FFEDDB;
-  color: #A65300;
+  background: var(--orange-100);
+  color: var(--color-warning-text);
   font-size: 12px;
   font-weight: 700;
 }

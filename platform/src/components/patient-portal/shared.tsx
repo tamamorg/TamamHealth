@@ -24,7 +24,7 @@ export function Empty({ icon: Icon, text, action, onAction }: { icon: typeof Use
   return (
     <div className="pp-card" style={{ textAlign: 'center', padding: 40 }}>
       <Icon size={44} style={{ color: '#94A2B3', opacity: 0.5, margin: '0 auto 10px' }} />
-      <p style={{ margin: 0, fontSize: 13, color: '#5D728B' }}>{text}</p>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>{text}</p>
       {action && onAction && (
         <button type="button" onClick={onAction} className="pp-btn pp-btn-primary" style={{ marginTop: 14 }}>
           <Plus size={14} /> {action}

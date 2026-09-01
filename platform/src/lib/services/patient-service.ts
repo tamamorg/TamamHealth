@@ -585,11 +585,21 @@ export async function createPatient(
   // Check for duplicate patients. `scope` controls only how much of a match
   // is disclosed (see `checkDuplicates`) — the search itself is always
   // global, so a genuine cross-facility duplicate still blocks registration.
-  const duplicateMsg = await checkDuplicates(data as unknown as Record<string, unknown>, scope);
+  //
+  // The scan is best-effort: if the local patients index is still building
+  // during a device's initial sync the read can time out (see findByType), and
+  // a registration must never be lost because this *optional* check could not
+  // run. A missed duplicate is recoverable by a later MPI merge; a lost
+  // registration is not — the same trade-off MIN_NATIONAL_ID_LENGTH makes.
+  let duplicateMsg: string | null = null;
+  try {
+    duplicateMsg = await checkDuplicates(data as unknown as Record<string, unknown>, scope);
+  } catch (err) {
+    console.warn('[createPatient] duplicate check unavailable, proceeding without it:', err);
+  }
   if (duplicateMsg) {
     errors.duplicate = duplicateMsg;
   }
-
   if (Object.keys(errors).length > 0) {
     throw new ValidationError(errors);
   }

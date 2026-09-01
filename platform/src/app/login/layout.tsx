@@ -10,7 +10,7 @@
  */
 export default function StaffLoginLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-app)' }}>
       <main style={{ width: '100%' }}>{children}</main>
     </div>
   );

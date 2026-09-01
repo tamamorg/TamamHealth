@@ -48,7 +48,7 @@ export const ehrTabPanelId = (key: string) => `ehr-tabpanel-${key}`;
 /** Flat stat-dot palette shared with the patients registry header. */
 export const LIST_STAT_COLORS = {
   muted: 'var(--text-muted)',
-  blue: 'var(--accent-primary)',
+  blue: 'var(--accent-bright)',
   amber: 'var(--color-warning)',
   green: 'var(--color-success)',
   bronze: 'var(--color-warning)',

@@ -189,13 +189,13 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: strin
   // still warms blue → amber → green; it just says so in tokens now, which is
   // what lets a tenant's brand blue reach the booked rungs.
   requested:     { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' },
-  scheduled:     { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
+  scheduled:     { color: 'var(--accent-text)', bg: 'var(--color-info-bg)' },
   // A pill that reads the same word must look the same: reminder_sent and
   // confirmed both display "Scheduled", so they take Scheduled's colours.
   // Three shades behind one word made the ladder look like it had rungs the
   // vocabulary no longer names.
-  reminder_sent: { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
-  confirmed:     { color: 'var(--accent-primary)', bg: 'var(--color-info-bg)' },
+  reminder_sent: { color: 'var(--accent-text)', bg: 'var(--color-info-bg)' },
+  confirmed:     { color: 'var(--accent-text)', bg: 'var(--color-info-bg)' },
   arrived:       { color: 'var(--color-warning-text)', bg: 'var(--color-warning-bg)' },
   checked_in:    { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
   // triaged displays as "In Progress" — same word, same colour.

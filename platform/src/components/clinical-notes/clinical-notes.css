@@ -184,7 +184,7 @@
 
 /* The chevron is painted HERE rather than inherited, and with `!important`,
    because the chart cascade (`.ehr-chart-content select`, globals.css) forces
-   `background: #fff !important` — a shorthand, so it resets `background-image`
+   `background: var(--bg-card-solid) !important` — a shorthand, so it resets `background-image`
    to `initial` and wipes any caret the select would inherit. These were the
    only selects in the app with no caret at all.
    `.bl-root .bl-toolbar-select` in billing.css takes the same trap the same
@@ -260,14 +260,14 @@ select.cn-select {
 .cn-sidebar {
   padding: 0 12px 14px;
   overflow-y: auto;
-  background: #fff;
-  border-right: 1px solid #eceef1;
+  background: var(--bg-card-solid);
+  border-right: 1px solid var(--border-light);
 }
 
 .cn-sidebar-card {
-  border: 1px solid #eceef1;
+  border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-card-solid);
   padding: 0;
   margin-bottom: 14px;
   overflow: hidden;
@@ -282,8 +282,8 @@ select.cn-select {
   padding: 11px 14px;
   font-size: 13.5px;
   font-weight: 700;
-  color: #2e4969;
-  border-bottom: 1px solid #eceef1;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .cn-card-head-action {
@@ -294,7 +294,7 @@ select.cn-select {
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .cn-card-head-action:hover { text-decoration: underline; }
 
@@ -324,7 +324,7 @@ select.cn-select {
   border-radius: 6px;
   object-fit: cover;
   flex: 0 0 auto;
-  background: #eceef1;
+  background: var(--color-slate-100);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -336,7 +336,7 @@ select.cn-select {
 .cn-patient-line {
   font-size: 12.5px;
   line-height: 1.6;
-  color: #3c5574;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -352,7 +352,7 @@ select.cn-select {
   font: inherit;
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -374,7 +374,7 @@ select.cn-select {
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   text-align: left;
 }
 .cn-rail-row:hover { text-decoration: underline; }
@@ -411,14 +411,14 @@ select.cn-select {
   background: none;
   font: inherit;
   font-size: 13.5px;
-  color: #2e4969;
+  color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
 }
 
 .cn-section-nav-item:hover { background: var(--overlay-subtle); }
 .cn-section-nav-item[aria-current='true'] {
-  background: #fff;
+  background: var(--bg-card-solid);
   font-weight: 600;
 }
 
@@ -435,7 +435,7 @@ select.cn-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d9dee4;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   background: none;
   cursor: pointer;
@@ -499,7 +499,7 @@ select.cn-select {
 .cn-section-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   margin: 0;
   flex: 1 1 auto;
 }
@@ -763,9 +763,9 @@ select.cn-select {
   padding: 9px 12px;
   margin-bottom: 12px;
   border-radius: var(--radius-card);
-  background: #ecf6f3;
-  border: 1px solid #d8eee6;
-  color: #08573a;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success-text);
   font-size: 13px;
 }
 
@@ -864,10 +864,10 @@ select.cn-select {
   color: var(--text-secondary);
 }
 
-.cn-badge.is-signed { background: #ecf6f3; color: #0A6E4A; }
-.cn-badge.is-draft { background: #fef2c7; color: #a65300; }
-.cn-badge.is-amended { background: #c9f4ff; color: #015697; }
-.cn-badge.is-cosign { background: #ffeddb; color: #a65300; }
+.cn-badge.is-signed { background: var(--color-success-bg); color: var(--color-success-text); }
+.cn-badge.is-draft { background: var(--gold-300); color: var(--color-warning-text); }
+.cn-badge.is-amended { background: var(--brand-200); color: var(--accent-text); }
+.cn-badge.is-cosign { background: var(--orange-100); color: var(--color-warning-text); }
 
 /* ── Care coordination ──────────────────────────────────────────────────── */
 .cn-coord-section { margin-bottom: 16px; }
@@ -1014,7 +1014,7 @@ select.cn-select {
   width: 12px;
   flex: 0 0 12px;
   font-size: 11px;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 
 /* ── Assign picker (reuses the portalled menu above) ─────────────────────── */
@@ -1394,7 +1394,7 @@ select.cn-select {
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .cn-dx-problem:hover { text-decoration: underline; }
 
@@ -1421,7 +1421,7 @@ select.cn-select {
   font-size: 12px;
   border: none;
   background: none;
-  color: var(--accent-primary);
+  color: var(--accent-text);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -1435,7 +1435,7 @@ select.cn-select {
 }
 .cn-rail-row-sub {
   font-size: 12px;
-  color: #3c5574;
+  color: var(--text-secondary);
 }
 
 /* ── Problems / Allergies popups (share the Medications chrome) ─────────── */
@@ -1632,7 +1632,7 @@ select.cn-select {
   padding: 3px 0;
   color: var(--text-primary);
 }
-.cn-rx-sigs button:hover { color: var(--accent-primary); text-decoration: underline; }
+.cn-rx-sigs button:hover { color: var(--accent-text); text-decoration: underline; }
 
 .cn-rx-drugname { margin: 0 0 12px; font-size: 15px; font-weight: 800; letter-spacing: 0.02em; }
 .cn-rx-panelhead { margin: 14px 0 6px; font-size: 13px; font-weight: 700; }
@@ -1704,7 +1704,7 @@ select.cn-select {
   font: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--accent-primary);
+  color: var(--accent-text);
 }
 .cn-rx-favorite:disabled { opacity: 0.5; cursor: not-allowed; }
 .cn-rx-favorite[aria-pressed='true'] { color: var(--color-warning); }
@@ -1747,7 +1747,7 @@ select.cn-select {
   margin-bottom: -1px;
 }
 .cn-rx-tabs button[aria-selected='true'] {
-  color: var(--accent-primary);
+  color: var(--accent-text);
   border-bottom-color: var(--accent-primary);
 }
 
@@ -1769,16 +1769,16 @@ select.cn-select {
    without re-fighting their specificity notes. */
 
 .cn-editor {
-  --cn-ink: #113055;
-  --cn-accent: #015697;
-  --cn-accent-deep: #113055;
-  --cn-line: #ECEEF1;
-  --cn-line-soft: #F1F3F5;
-  --cn-band: #F5F7F8;
-  --cn-tint: #F2FCFF;
-  --cn-tint-border: #1E90FF;
-  --cn-muted: #5D728B;
-  --cn-ghost: #94A2B3;
+  --cn-ink: var(--text-primary);
+  --cn-accent: var(--accent-text);
+  --cn-accent-deep: var(--text-primary);
+  --cn-line: var(--border-light);
+  --cn-line-soft: var(--color-slate-75);
+  --cn-band: var(--color-slate-50);
+  --cn-tint: var(--color-info-bg);
+  --cn-tint-border: var(--border-accent);
+  --cn-muted: var(--text-muted);
+  --cn-ghost: var(--color-slate-450);
   color: var(--cn-ink);
 }
 
@@ -1842,7 +1842,7 @@ select.cn-select {
   min-height: 34px;
   border-color: var(--cn-line);
   border-radius: 8px;
-  background-color: #FFFFFF;
+  background-color: var(--bg-card-solid);
   color: var(--cn-accent);
   font-family: var(--font-condensed);
   font-size: 12px;
@@ -1902,7 +1902,7 @@ select.cn-select {
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: #ECEEF1;
+  background: var(--color-slate-100);
   color: var(--cn-accent);
   font-size: 15px;
 }
@@ -1934,9 +1934,9 @@ select.cn-select {
   line-height: 1;
   white-space: nowrap;
 }
-.cn-pill-danger { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: #9E1B14; }
+.cn-pill-danger { background: rgba(158, 27, 20, 0.08); border-color: rgba(158, 27, 20, 0.42); color: var(--color-danger-text); }
 .cn-pill-info { background: var(--cn-tint); border-color: var(--cn-tint-border); color: var(--cn-accent-deep); }
-.cn-pill-success { background: rgba(10, 110, 74, 0.08); border-color: rgba(10, 110, 74, 0.42); color: #0A6E4A; }
+.cn-pill-success { background: rgba(10, 110, 74, 0.08); border-color: rgba(10, 110, 74, 0.42); color: var(--color-success-text); }
 
 /* ── Quick links: three icon tiles ── */
 .cn-quick-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -1946,7 +1946,7 @@ select.cn-select {
   align-items: center;
   gap: 4px;
   padding: 9px 4px;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   border: 1px solid var(--cn-line);
   border-radius: 8px;
   color: var(--cn-accent);
@@ -2035,13 +2035,13 @@ select.cn-select {
 .cn-section {
   margin-bottom: 14px;
   padding: 0;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   border: 1px solid var(--cn-line);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
-.cn-section.is-active { background: #FFFFFF; border-color: #7CC7FF; }
+.cn-section.is-active { background: var(--bg-card-solid); border-color: var(--border-accent); }
 
 .cn-section-head {
   margin-bottom: 0;
@@ -2062,7 +2062,7 @@ select.cn-select {
   padding: 0 10px;
   border-color: var(--cn-line);
   border-radius: 6px;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   color: var(--cn-accent);
   font-family: var(--font-condensed);
   font-size: 11px;
@@ -2114,12 +2114,12 @@ select.cn-select {
 .cn-signature-note { margin: 2px 0 0; font-size: 11.5px; color: var(--cn-muted); }
 
 /* ── Footer ── */
-.cn-footer { padding: 10px 18px; border-top-color: var(--cn-line); background: #FFFFFF; }
+.cn-footer { padding: 10px 18px; border-top-color: var(--cn-line); background: var(--bg-card-solid); }
 .cn-footer .cn-btn {
   min-height: 36px;
   border-color: var(--cn-line);
   border-radius: 8px;
-  background: #FFFFFF;
+  background: var(--bg-card-solid);
   color: var(--cn-ink);
   font-family: var(--font-condensed);
   font-size: 13px;
