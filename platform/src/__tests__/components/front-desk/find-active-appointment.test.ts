@@ -8,7 +8,7 @@
  * plain module-level function specifically so this can be tested without
  * rendering the dashboard.
  */
-import { findActiveAppointmentForPatient } from '@/app/(dashboard)/dashboard/front-desk/page';
+import { findActiveAppointmentForPatient } from '@/lib/appointment-workflow';
 import type { AppointmentDoc } from '@/lib/db-types';
 
 function makeAppt(overrides: Partial<AppointmentDoc>): AppointmentDoc {

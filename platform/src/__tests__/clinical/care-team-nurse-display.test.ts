@@ -85,4 +85,26 @@ describe('the nurse on a worklist row', () => {
     expect(body).toContain('assignedNurseName: input.nurse?.name');
     expect(body).toContain('staffName: input.nurse?.name');
   });
+
+  test('initial front-desk booking mirrors both care-team assignments onto the patient', () => {
+    const booking = source('components/appointments/BookAppointmentModal.tsx');
+    expect(booking).toContain('const { canBookAppointments, canAssignCareTeam } = usePermissions()');
+    expect(booking).toContain('const appointment = await create({');
+    expect(booking).toContain('if (canAssignCareTeam && currentUser && (providerId || staffId))');
+    expect(booking).toContain('await assignProviderToPatient({');
+    expect(booking).toContain('await assignNurseToPatient({');
+    expect(booking.match(/appointmentId: appointment\._id/g)).toHaveLength(2);
+  });
+
+  test('a post-create assignment failure closes the booked appointment instead of inviting a duplicate', () => {
+    const booking = source('components/appointments/BookAppointmentModal.tsx');
+    const created = booking.indexOf('const appointment = await create({');
+    const warning = booking.indexOf("t('appointments.toastBookedAssignmentIncomplete')", created);
+    const callback = booking.indexOf('onBooked?.();', warning);
+    const close = booking.indexOf('onClose();', callback);
+    expect(created).toBeGreaterThan(-1);
+    expect(warning).toBeGreaterThan(created);
+    expect(callback).toBeGreaterThan(warning);
+    expect(close).toBeGreaterThan(callback);
+  });
 });

@@ -42,6 +42,10 @@ import { avatarTint } from '@/lib/patient-utils';
 import { getRoleConfig } from '@/lib/permissions';
 import { formatDate } from '@/lib/format-utils';
 import type { AuditLogDoc, UserDoc, UserRole } from '@/lib/db-types';
+import {
+  deleteClientUser, getClientUserById, resendClientUserInvite,
+  resetClientUserPassword, setClientUserActive, updateClientUser,
+} from '@/modules/identity/services/user-client';
 
 const ROLE_OPTIONS: UserRole[] = [
   'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist',
@@ -99,8 +103,7 @@ export default function AdminUserDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { getUserById } = await import('@/modules/identity/services/user-service');
-        const found = await getUserById(userId);
+        const found = await getClientUserById(userId);
         if (!cancelled) { setUser(found ?? null); setNewRole((found?.role as UserRole) ?? 'nurse'); }
       } catch {
         if (!cancelled) setUser(null);
@@ -163,29 +166,24 @@ export default function AdminUserDetailPage() {
   };
 
   const changeRole = () => run(async () => {
-    const { updateUser } = await import('@/modules/identity/services/user-service');
-    await updateUser(userId, { role: newRole } as Partial<UserDoc>, currentUser!._id, currentUser!.username);
+    await updateClientUser(userId, { role: newRole } as Partial<UserDoc>);
     setUser(u => (u ? { ...u, role: newRole } : u));
     setRoleOpen(false);
   }, t('adminUsers.roleChanged', { name: user?.name ?? '', role: roleLabel(newRole) }));
 
   const resetPassword = () => run(async () => {
     const password = generateTempPassword(tempLength);
-    const { resetPassword: reset } = await import('@/modules/identity/services/user-service');
-    await reset(userId, password, currentUser!._id, currentUser!.username);
+    await resetClientUserPassword(userId, password);
     setResetOpen(false);
     setHandoff({ username: user!.username, password });
   }, t('adminUsers.passwordReset', { name: user?.name ?? '' }));
 
   const resendInvite = () => run(async () => {
-    const { resendUserInvite } = await import('@/modules/identity/services/user-service');
-    await resendUserInvite(userId);
+    await resendClientUserInvite(userId);
   }, t('adminUsers.invitationSent', { name: user?.name ?? '' }));
 
   const setActive = (active: boolean) => run(async () => {
-    const svc = await import('@/modules/identity/services/user-service');
-    if (active) await svc.reactivateUser(userId, currentUser!._id, currentUser!.username);
-    else await svc.deactivateUser(userId, currentUser!._id, currentUser!.username);
+    await setClientUserActive(userId, active);
     setUser(u => (u ? { ...u, isActive: active } : u));
     setConfirm(null);
   }, active
@@ -193,8 +191,7 @@ export default function AdminUserDetailPage() {
     : t('adminUsers.deactivated', { name: user?.name ?? '' }));
 
   const remove = () => run(async () => {
-    const { deleteUser } = await import('@/modules/identity/services/user-service');
-    await deleteUser(userId, currentUser!._id, currentUser!.username);
+    await deleteClientUser(userId);
     setConfirm(null);
     backToRoster();
   }, t('adminUsers.deletedUser', { name: user?.name ?? '' }));

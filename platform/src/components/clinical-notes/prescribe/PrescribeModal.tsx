@@ -432,7 +432,7 @@ export default function PrescribeModal({
   if (presentation === 'page') return panel;
 
   return (
-    <Modal onClose={onClose} width={1140} align="top" labelledBy="cn-rx-title">
+    <Modal onClose={onClose} width={1140} labelledBy="cn-rx-title">
       {panel}
     </Modal>
   );

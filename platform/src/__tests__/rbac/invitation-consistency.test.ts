@@ -52,19 +52,19 @@ const ORG_FORM_HOSTS = [
 
 describe('every creation surface reports the invitation', () => {
   test.each(CREATION_SURFACES)('%s asks for the outcome', file => {
-    expect(source(file)).toContain('createUserWithInvitation');
+    expect(source(file)).toContain('createClientUserWithInvitation');
   });
 
   test.each(DELEGATING_SURFACES)('%s creates through the shared dialog', file => {
     // A second copy of the form is how the outcome got dropped on two
     // surfaces in the first place.
     expect(source(file)).toContain('CreateUserModal');
-    expect(source(file)).not.toContain('createUserWithInvitation');
+    expect(source(file)).not.toContain('createClientUserWithInvitation');
   });
 
   test.each(ORG_FORM_HOSTS)('%s hosts the shared organization form', file => {
     expect(source(file)).toContain('OrganizationForm');
-    expect(source(file)).not.toContain('createUserWithInvitation');
+    expect(source(file)).not.toContain('createClientUserWithInvitation');
   });
 
   test('the organization form shows its one-time credential panel where it can create an admin', () => {

@@ -30,7 +30,7 @@ export default function NotificationsPanel({ onClose }: { onClose: () => void })
   const openAll = () => { onClose(); router.push('/notifications'); };
 
   return (
-    <Modal onClose={onClose} width={520} align="top">
+    <Modal onClose={onClose} width={520}>
       <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 16, padding: 0, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
           <div className="flex items-center gap-2">

@@ -18,6 +18,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClientUserWithInvitation } from '@/modules/identity/services/user-client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -289,13 +290,12 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
   const provisionOrgAdmin = async (orgId: string, savedAs: 'created' | 'updated') => {
     const savedToast = savedAs === 'created' ? `Organization "${form.name}" created.` : `Organization "${form.name}" updated.`;
     try {
-      const { createUserWithInvitation } = await import('@/modules/identity/services/user-service');
       // The invitation outcome is the point of using this variant: the route
       // always mails a "set your password" link when the account has an email,
       // and this flow used to discard the answer and always tell the operator
       // to read out a temporary password. The actor comes from the session on
       // the server side, so there is nothing to pass here.
-      const { user: created, invitation } = await createUserWithInvitation(
+      const { user: created, invitation } = await createClientUserWithInvitation(
         buildOrgAdminUserPayload(adminForm, orgId),
       );
       showToast(savedToast, 'success');

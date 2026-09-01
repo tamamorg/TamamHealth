@@ -61,6 +61,17 @@ describe('modal backdrop scrim', () => {
     expect(dialog?.style.width).toBe('100%');
   });
 
+  it('centres the dialog below app chrome and bounds both viewport edges', () => {
+    const backdrop = renderModal();
+    const dialog = backdrop.querySelector<HTMLElement>('.modal-portal-dialog');
+
+    expect(backdrop.style.alignItems).toBe('center');
+    expect(backdrop.style.padding).toContain('var(--app-overlay-top-inset, 0px)');
+    expect(dialog?.style.maxHeight).toContain('100dvh - 32px');
+    expect(dialog?.style.maxHeight).toContain('var(--app-overlay-top-inset, 0px)');
+    expect(dialog?.style.margin).toBe('0px');
+  });
+
   it('dims with near-neutral ink rather than a brand hue', () => {
     const backdrop = renderModal();
     const [r, g, b] = channels(backdrop.style.background || backdrop.style.backgroundColor);

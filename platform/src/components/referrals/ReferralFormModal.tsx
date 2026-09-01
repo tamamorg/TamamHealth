@@ -291,7 +291,7 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
   if (presentation === 'page') return body;
 
   return (
-    <Modal onClose={onClose} width={760} align="top" labelledBy="referral-form-title">
+    <Modal onClose={onClose} width={760} labelledBy="referral-form-title">
       <div className="modal-panel modal-panel--lg">
         <PopupHeader
           surface="panel"

@@ -526,7 +526,7 @@ function StaffPickerModal({
   const canCreate = mode === 'add' ? selectedList.length > 0 : (selectedList.length > 0 && groupName.trim().length > 0);
 
   return (
-    <Modal onClose={onClose} width={460} align="top">
+    <Modal onClose={onClose} width={460}>
       <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 12, overflow: 'hidden' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--ehr-border)' }}>

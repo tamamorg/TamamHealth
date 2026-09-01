@@ -44,9 +44,10 @@ describe('activation uses its own action', () => {
   });
 
   test.each(SURFACES)('%s reactivates through the dedicated call', file => {
-    // One page calls the service directly, the other the hook — either is the
-    // dedicated path; what matters is that neither goes through `update`.
-    expect(code(file)).toMatch(/\breactivate(User)?\(/);
+    // The page uses the browser-safe API client. The boolean only selects the
+    // dedicated activate/deactivate action; it never falls through `update`.
+    expect(code(file)).toMatch(/\bsetClientUserActive\(/);
+    expect(code(file)).toMatch(/\bsetActive\(true\)/);
   });
 
   test('the API keeps activation free of the organization check', () => {

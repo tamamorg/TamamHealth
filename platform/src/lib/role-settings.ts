@@ -103,7 +103,11 @@ function securitySection(idle: string, mask: boolean): RoleSettingSection {
   return {
     id: 'security', title: 'Security & sessions', icon: 'shield', note: 'Policy set by the facility admin',
     rows: [
-      sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min']),
+      // 'Off' ends the user's OWN idle sign-out; it does not switch the
+      // feature off. Where a facility, org or platform policy sets a lock
+      // timeout that still applies — an individual may make the lock
+      // stricter than policy, never looser (see useAutoLock.getTimeout).
+      sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min', 'Off']),
       tg('security.mask', 'Hide patient identifiers on shared screens', 'Masks phone and address in queues', mask),
       { kind: 'action', label: 'Password', hint: 'Change the password you sign in with', action: 'password', buttonLabel: 'Change password' },
       { kind: 'action', label: 'Screen-lock PIN', hint: 'Quick unlock on this shared device', action: 'pin', buttonLabel: 'Manage PIN' },

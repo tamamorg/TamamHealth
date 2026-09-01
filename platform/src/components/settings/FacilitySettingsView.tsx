@@ -17,7 +17,10 @@
  *
  * A left rail switches modules, so one module is on screen at a time instead
  * of all of them stacked. Accounts with no facility of their own (super-admin,
- * org-admin, government) pick one from the list first; the shared modules need
+ * org-admin, government) choose which hospital they are editing from a
+ * dropdown in the context bar — it used to be a full-height list that took
+ * the whole panel, so clicking any module showed the same roster of
+ * facilities rather than the module that was clicked. The shared modules need
  * no facility and are reachable straight away.
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -25,10 +28,11 @@ import Link from 'next/link';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import {
   Building2, FlaskConical, Trash2, Plus, ClipboardCheck, CalendarClock,
-  ChevronRight, Search, Layers, MapPin,
+  Layers, MapPin,
 } from '@/components/icons/lucide';
 import { useSettings, useSettingsContext } from '@/lib/settings/SettingsProvider';
 import { getFacilitySettings, saveFacilitySettings } from '@/lib/settings/settings-service';
@@ -117,6 +121,18 @@ const initials = (name: string) => {
 
 const typeLabel = (t?: string) => (t ? t.replace(/_/g, ' ') : 'facility');
 
+/**
+ * The facility a multi-facility account was last editing. Remembered so that
+ * coming back to Settings lands on that hospital's modules instead of asking
+ * for the choice again; a stale id (facility removed, or the roster now scoped
+ * to a different org) falls back to the first facility in the list.
+ */
+const FACILITY_CHOICE_KEY = 'tamam.facility-settings.facility';
+
+const readRememberedFacility = (): string => {
+  try { return localStorage.getItem(FACILITY_CHOICE_KEY) || ''; } catch { return ''; }
+};
+
 // `embedded` renders just the settings body (no TopBar / page-container) so the
 // main Settings page can host it as its "Facility" tab. The standalone route
 // (default, embedded=false) still renders the full page.
@@ -142,6 +158,7 @@ export function FacilitySettingsView({
   hideNav?: boolean;
 } = {}) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { hospitalId, orgId } = useSettingsContext();
   const settings = useSettings();
@@ -150,7 +167,6 @@ export function FacilitySettingsView({
   const [selectedHospitalId, setSelectedHospitalId] = useState<string>('');
   const [selectedSettings, setSelectedSettings] = useState<FacilitySettings | null>(null);
   const [loadingSelected, setLoadingSelected] = useState(false);
-  const [facilityQuery, setFacilityQuery] = useState('');
   // One module on screen at a time: 'facility:<key>' or 'network:<key>'.
   // Controlled when the host rail owns the choice, uncontrolled otherwise.
   const [ownModule, setOwnModule] = useState<string>('facility:identity');
@@ -159,24 +175,67 @@ export function FacilitySettingsView({
     if (controlledModule === undefined) setOwnModule(next);
     onModuleChange?.(next);
   };
-  const effectiveHospitalId = hospitalId || selectedHospitalId;
   const effectiveSettings = hospitalId ? settings : (selectedSettings || settings);
-  const selectedHospital = pickerHospitals.find(h => h._id === effectiveHospitalId);
   const canOpenProfile = !!currentUser && FACILITY_PROFILE_ROLES.includes(currentUser.role);
+  // An account bound to its own facility never chooses one; everyone else does.
+  const canPickFacility = !hospitalId;
+
+  // ── Facility chooser ──────────────────────────────────────────────────────
+  // Grouped by facility type, each group alphabetical, so the dropdown reads
+  // in the same order as the facilities list elsewhere in the console.
+  const facilityGroups = useMemo(() => TYPE_GROUPS
+    .map(g => ({
+      ...g,
+      rows: pickerHospitals
+        .filter(h => (TYPE_GROUPS.some(t => t.key === h.facilityType) ? h.facilityType : 'other') === g.key)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .filter(g => g.rows.length > 0), [pickerHospitals]);
+  const orderedFacilities = useMemo(() => facilityGroups.flatMap(g => g.rows), [facilityGroups]);
+  // Two facilities can carry the same name in different towns (a "Mercy
+  // General" per org); the town only joins the label where it disambiguates.
+  const facilityOptionLabel = (id: string) => {
+    const h = orderedFacilities.find(f => f._id === id);
+    if (!h) return '';
+    const twin = orderedFacilities.some(f => f._id !== h._id && f.name === h.name);
+    return twin && h.town ? `${h.name} · ${h.town}` : h.name;
+  };
+
+  const chooseFacility = (id: string) => {
+    setSelectedHospitalId(id);
+    try { localStorage.setItem(FACILITY_CHOICE_KEY, id); } catch { /* private mode — the choice just won't outlive the visit */ }
+  };
+
+  // Land on a facility rather than on a chooser: the one last edited, else the
+  // first in the roster. Derived rather than stored, so no render happens with
+  // nothing chosen — every module used to sit empty until a hospital was
+  // picked, which is what the full-panel list was there to force.
+  //
+  // Reading localStorage during render is safe here *because* the roster is
+  // empty until after mount (it comes from the local database, which the
+  // server does not have): the server and the hydrating client both see no
+  // facilities and render the same nothing.
+  const defaultFacilityId = useMemo(() => {
+    if (orderedFacilities.length === 0) return '';
+    const remembered = readRememberedFacility();
+    return orderedFacilities.some(h => h._id === remembered) ? remembered : orderedFacilities[0]._id;
+  }, [orderedFacilities]);
+  const effectiveHospitalId = hospitalId || selectedHospitalId || defaultFacilityId;
+  const selectedHospital = pickerHospitals.find(h => h._id === effectiveHospitalId);
 
   useEffect(() => {
-    if (hospitalId || !selectedHospitalId) {
+    if (hospitalId || !effectiveHospitalId) {
       setSelectedSettings(null);
       return;
     }
     let cancelled = false;
     setLoadingSelected(true);
-    getFacilitySettings(selectedHospitalId)
+    getFacilitySettings(effectiveHospitalId)
       .then(next => { if (!cancelled) setSelectedSettings(next); })
       .catch(() => { if (!cancelled) setSelectedSettings(settings); })
       .finally(() => { if (!cancelled) setLoadingSelected(false); });
     return () => { cancelled = true; };
-  }, [hospitalId, selectedHospitalId, settings]);
+  }, [hospitalId, effectiveHospitalId, settings]);
 
   // Local editable copy, re-synced whenever the persisted settings change.
   const [draft, setDraft] = useState<FacilitySettings>(effectiveSettings);
@@ -202,22 +261,6 @@ export function FacilitySettingsView({
     }
   };
 
-  // ── Facility picker ───────────────────────────────────────────────────────
-  const groupedFacilities = useMemo(() => {
-    const q = facilityQuery.trim().toLowerCase();
-    const matches = pickerHospitals.filter(h => !q || [h.name, h.town, h.county, h.state, typeLabel(h.facilityType)]
-      .some(v => v?.toLowerCase().includes(q)));
-    return TYPE_GROUPS
-      .map(g => ({
-        ...g,
-        rows: matches
-          .filter(h => (TYPE_GROUPS.some(t => t.key === h.facilityType) ? h.facilityType : 'other') === g.key)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-      .filter(g => g.rows.length > 0);
-  }, [pickerHospitals, facilityQuery]);
-  const matchCount = groupedFacilities.reduce((n, g) => n + g.rows.length, 0);
-
   const [scope, moduleKey] = activeModule.split(':');
   const isNetworkModule = scope === 'network';
   const facilityModule = (isNetworkModule ? 'identity' : moduleKey) as FacilityModuleKey;
@@ -230,93 +273,29 @@ export function FacilitySettingsView({
       : (hospitalId ? [{ _id: hospitalId, orgId }] : [])
   ), [pickerHospitals, hospitalId, orgId]);
 
-  const picker = (
-    <div className="fs-fac-pick">
-      <div className="fs-fac-pick-head">
-        <div style={{ minWidth: 0 }}>
-          <h4>Choose a facility</h4>
-          <p>
-            These modules configure one hospital at a time. Everything the whole network shares
-            is under <b>All facilities</b> — set there once.
-          </p>
-        </div>
-        <div className="fs-fac-search">
-          <Search className="w-4 h-4" aria-hidden />
-          <input
-            value={facilityQuery}
-            onChange={e => setFacilityQuery(e.target.value)}
-            placeholder="Search by name, town, or type"
-            aria-label="Search facilities"
-          />
-        </div>
-      </div>
-
-      <div className="fs-fac-list">
-        {/* The column head is the table's frame — it stays put when the list
-            is empty or still loading, so the panel never changes shape. */}
-        <div className="fs-fac-colhead">
-          <span>Facility</span>
-          <span>Town</span>
-          <span>County / State</span>
-          <span className="fs-fac-count">{matchCount} of {pickerHospitals.length}</span>
-        </div>
-
-        {hospitalsLoading && pickerHospitals.length === 0 && (
-          <p className="fs-fac-empty">Loading facilities…</p>
-        )}
-        {!hospitalsLoading && pickerHospitals.length === 0 && (
-          <p className="fs-fac-empty">No facilities registered yet.</p>
-        )}
-        {pickerHospitals.length > 0 && matchCount === 0 && (
-          <p className="fs-fac-empty">No facility matches “{facilityQuery}”.</p>
-        )}
-
-        {groupedFacilities.map(group => (
-          <div className="fs-fac-group" key={group.key}>
-            <p className="fs-fac-group-label">{group.label}<b>{group.rows.length}</b></p>
-            {group.rows.map(h => (
-              <div className="fs-fac-row" key={h._id}>
-                <div className="fs-fac-ident">
-                  <span className="fs-fac-plate" aria-hidden>{initials(h.name)}</span>
-                  {/* Stretched hit area: the whole row opens the facility, and
-                      the profile link beside it stays independently clickable. */}
-                  <button type="button" className="fs-fac-open" onClick={() => setSelectedHospitalId(h._id)}>
-                    {h.name}
-                  </button>
-                </div>
-                <span className="fs-fac-loc" title={h.town || undefined}>{h.town || '—'}</span>
-                {(() => {
-                  // County and state repeat each other at several facilities
-                  // ("Juba · Juba"), so the pair is de-duplicated before it
-                  // is joined; the title carries the untruncated value.
-                  const area = [h.county, h.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ');
-                  return <span className="fs-fac-loc" title={area || undefined}>{area || '—'}</span>;
-                })()}
-                <span className="fs-fac-act">
-                  {canOpenProfile && (
-                    <Link href={`/admin/facilities/${h._id}`} className="fs-fac-profile">Profile</Link>
-                  )}
-                  <ChevronRight className="w-4 h-4 fs-fac-chev" aria-hidden />
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
   // ── Per-facility module bodies ────────────────────────────────────────────
   const facilityBody = () => {
-    if (!effectiveHospitalId) return picker;
-    if (loadingSelected) {
+    const meta = FACILITY_MODULES.find(m => m.key === facilityModule) ?? FACILITY_MODULES[0];
+    // The module keeps its own card even with nothing to edit yet, so the
+    // clicked module is always what the panel shows.
+    if (!effectiveHospitalId) {
       return (
-        <SectionCard icon={Building2} title="Loading facility">
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading facility settings…</p>
+        <SectionCard icon={meta.icon} title={meta.title}>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {hospitalsLoading
+              ? t('facilitySettings.loadingFacilities')
+              : t('facilitySettings.noFacilityAvailable')}
+          </p>
         </SectionCard>
       );
     }
-    const meta = FACILITY_MODULES.find(m => m.key === facilityModule) ?? FACILITY_MODULES[0];
+    if (loadingSelected) {
+      return (
+        <SectionCard icon={meta.icon} title={meta.title}>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('facilitySettings.loadingSettings')}</p>
+        </SectionCard>
+      );
+    }
     const note = selectedHospital ? `${selectedHospital.name} only` : 'This facility only';
 
     switch (facilityModule) {
@@ -594,24 +573,45 @@ export function FacilitySettingsView({
       <div className="fs-shell-body">
         {/* Context bar: which facility the per-facility modules are editing,
             and the two ways out of it — switch facility, or open its profile. */}
-        {!isNetworkModule && effectiveHospitalId && (
+        {!isNetworkModule && (
           <div className="fs-ctx">
             <span className="fs-ctx-plate" aria-hidden>{initials(selectedHospital?.name || 'Facility')}</span>
-            <div className="fs-ctx-name">
-              <strong>{selectedHospital?.name || 'Selected facility'}</strong>
-              <span>
-                {selectedHospital
-                  ? [selectedHospital.town || selectedHospital.state, typeLabel(selectedHospital.facilityType)].filter(Boolean).join(' · ')
-                  : 'Facility settings'}
-              </span>
-            </div>
-            {canOpenProfile && (
-              <Link href={`/admin/facilities/${effectiveHospitalId}`} className="ehr-set-btn">Facility profile</Link>
+            {canPickFacility && orderedFacilities.length > 0 ? (
+              <div className="fs-ctx-pick">
+                <span className="fs-ctx-cap">{t('facilitySettings.editing')}</span>
+                <Select
+                  className="ehr-set-select fs-ctx-select"
+                  value={effectiveHospitalId}
+                  onChange={e => chooseFacility(e.target.value)}
+                  aria-label={t('facilitySettings.facilityBeingEdited')}
+                  searchPlaceholder={t('facilitySettings.searchFacilities')}
+                >
+                  {facilityGroups.map(group => (
+                    <optgroup key={group.key} label={group.label}>
+                      {group.rows.map(h => (
+                        <option key={h._id} value={h._id}>{facilityOptionLabel(h._id)}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+                <span className="fs-ctx-where">
+                  {selectedHospital
+                    ? [selectedHospital.town || selectedHospital.state, typeLabel(selectedHospital.facilityType)].filter(Boolean).join(' · ')
+                    : ''}
+                </span>
+              </div>
+            ) : (
+              <div className="fs-ctx-name">
+                <strong>{selectedHospital?.name || (hospitalsLoading ? t('facilitySettings.loadingFacilities') : t('facilitySettings.noFacility'))}</strong>
+                <span>
+                  {selectedHospital
+                    ? [selectedHospital.town || selectedHospital.state, typeLabel(selectedHospital.facilityType)].filter(Boolean).join(' · ')
+                    : t('facilitySettings.title')}
+                </span>
+              </div>
             )}
-            {!hospitalId && (
-              <button type="button" className="ehr-set-btn" onClick={() => setSelectedHospitalId('')}>
-                Change facility
-              </button>
+            {canOpenProfile && effectiveHospitalId && (
+              <Link href={`/admin/facilities/${effectiveHospitalId}`} className="ehr-set-btn">{t('facilitySettings.profile')}</Link>
             )}
           </div>
         )}

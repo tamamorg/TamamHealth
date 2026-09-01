@@ -49,11 +49,9 @@ export default function LabOrderModal({
       // whole screen — stretched to 1560 the two-field cards read as bands of
       // whitespace with a control stranded at each end.
       width={phase === 'dialog' ? 760 : 1320}
-      align="center"
       // Sit below the app's top rail rather than covering it, so the clinician
       // keeps their bearings — which facility, which patient, what else is
       // waiting — while the order is being written.
-      topOffset="var(--app-overlay-top-inset, 0px)"
       disableBackdropClose={controller.submitting}
     >
       {phase === 'dialog' ? (

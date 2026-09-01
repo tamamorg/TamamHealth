@@ -172,7 +172,7 @@ export default function CareCoordinationModal({
   };
 
   return (
-    <Modal onClose={onClose} width={780} align="top">
+    <Modal onClose={onClose} width={780}>
       <div style={{ padding: '18px 20px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, flex: 1 }}>

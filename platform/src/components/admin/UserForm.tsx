@@ -23,6 +23,7 @@ import {
   generateTempPassword, roleNeedsFacility, roleNeedsOrganization,
   usePasswordPolicy, validateUserScope,
 } from '@/modules/identity/client';
+import { createClientUserWithInvitation } from '@/modules/identity/services/user-client';
 import { useAssignableFacilities } from '@/modules/tenancy/client';
 import type { InvitationOutcome } from '@/modules/identity/client';
 import { canCreateFacilities } from '@/lib/people-nav';
@@ -157,9 +158,8 @@ export function UserForm({
       // ALWAYS attempts an invitation and reports what happened, so the host
       // can tell the operator whether a link was mailed or a password must be
       // read out.
-      const { createUserWithInvitation } = await import('@/modules/identity/services/user-service');
       const hospital = facilityChoices.find(h => h._id === form.hospitalId);
-      const { user, invitation } = await createUserWithInvitation({
+      const { user, invitation } = await createClientUserWithInvitation({
         name: form.name.trim(),
         username: form.username.trim(),
         email: form.email.trim() || undefined,

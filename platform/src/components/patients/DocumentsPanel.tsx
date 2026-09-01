@@ -510,9 +510,9 @@ export default function DocumentsPanel({
 
       {/* Preview modal */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.82)' }} {...dismissBackdrop(closePreview)}>
+        <div className="viewport-popup fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.82)' }} {...dismissBackdrop(closePreview)}>
           {preview.kind === 'images' ? (
-            <div {...stopsClickPropagation}>
+            <div className="viewport-popup__content" {...stopsClickPropagation}>
               <ClinicalImageViewer
                 images={preview.images.map(item => ({
                   ...item,

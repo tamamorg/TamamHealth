@@ -24,7 +24,7 @@ import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import Modal from '@/components/Modal';
-import SyncStatusBadge, { hasUnsyncedWrite } from '@/components/ehr/SyncStatusBadge';
+import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -479,7 +479,6 @@ export default function PatientsPage() {
                             ? ((balanceByPatient.get(patient._id) || 0) > 0 ? formatMoney(balanceByPatient.get(patient._id) || 0) : t('billing.paidInFull'))
                             : patient.assignedDoctor ? 'Assigned' : 'Needs care team'}
                         </small>
-                        <SyncStatusBadge offlineSync={patient.offlineSync} />
                       </div>
                     </div>
                     ))}

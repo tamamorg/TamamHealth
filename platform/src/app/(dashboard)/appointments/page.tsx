@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Download,
   Search,
+  FileText,
 } from '@/components/icons/lucide';
 import EhrMiniCalendar, { parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
@@ -47,6 +48,8 @@ import PortalModal from '@/components/Modal';
 import { jubaDate } from '@/lib/time-juba';
 import Select from '@/components/Select';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
+import { isPendingApproval } from '@/lib/appointment-workflow';
+import { appointmentCalendarClinicalAction } from '@/lib/appointment-calendar-role';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -57,17 +60,17 @@ const AppointmentsCalendar = dynamic(() => import('./_AppointmentsCalendar'), {
 });
 
 /* ─── Config ─── */
-const appointmentTypes: { value: AppointmentType; label: string; icon: typeof Calendar; color: string; bg: string }[] = [
-  { value: 'general',      label: 'General Consultation', icon: Stethoscope,   color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
-  { value: 'follow_up',    label: 'Follow-Up',            icon: RefreshCw,     color: 'var(--accent-hover)', bg: 'rgba(1,86,151,0.10)' },
-  { value: 'specialist',   label: 'Specialist',           icon: User,          color: 'var(--accent-hover)', bg: 'rgba(17, 116, 180,0.10)' },
-  { value: 'anc',          label: 'Antenatal Care',       icon: HeartPulse,    color: 'var(--color-success-text)', bg: 'rgba(10, 110, 74,0.10)' },
-  { value: 'immunization', label: 'Immunization',         icon: Syringe,       color: 'var(--color-success-text)', bg: 'rgba(14, 148, 99,0.10)' },
-  { value: 'lab',          label: 'Laboratory',           icon: FlaskConical,  color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208,0.10)' },
-  { value: 'surgical',     label: 'Surgical',             icon: Stethoscope,   color: 'var(--color-danger-text)', bg: 'rgba(217, 43, 32,0.10)' },
-  { value: 'dental',       label: 'Dental',               icon: Stethoscope,   color: 'var(--accent-hover)', bg: 'rgba(1, 86, 151,0.10)' },
-  { value: 'mental_health',label: 'Mental Health',        icon: HeartPulse,    color: 'var(--color-warning-text)', bg: 'rgba(230, 114, 0,0.10)' },
-  { value: 'walk_in',      label: 'Walk-In',              icon: UserPlus,      color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
+const appointmentTypes: { value: AppointmentType; label: string; labelKey: string; icon: typeof Calendar; color: string; bg: string }[] = [
+  { value: 'general',      label: 'General Consultation', labelKey: 'appointments.typeGeneral', icon: Stethoscope,   color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
+  { value: 'follow_up',    label: 'Follow-Up',            labelKey: 'appointments.typeFollowUp', icon: RefreshCw,     color: 'var(--accent-hover)', bg: 'rgba(1,86,151,0.10)' },
+  { value: 'specialist',   label: 'Specialist',           labelKey: 'appointments.typeSpecialist', icon: User,          color: 'var(--accent-hover)', bg: 'rgba(17, 116, 180,0.10)' },
+  { value: 'anc',          label: 'Antenatal Care',       labelKey: 'appointments.typeAnc', icon: HeartPulse,    color: 'var(--color-success-text)', bg: 'rgba(10, 110, 74,0.10)' },
+  { value: 'immunization', label: 'Immunization',         labelKey: 'appointments.typeImmunization', icon: Syringe,       color: 'var(--color-success-text)', bg: 'rgba(14, 148, 99,0.10)' },
+  { value: 'lab',          label: 'Laboratory',           labelKey: 'appointments.typeLab', icon: FlaskConical,  color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208,0.10)' },
+  { value: 'surgical',     label: 'Surgical',             labelKey: 'appointments.typeSurgical', icon: Stethoscope,   color: 'var(--color-danger-text)', bg: 'rgba(217, 43, 32,0.10)' },
+  { value: 'dental',       label: 'Dental',               labelKey: 'appointments.typeDental', icon: Stethoscope,   color: 'var(--accent-hover)', bg: 'rgba(1,86,151,0.10)' },
+  { value: 'mental_health',label: 'Mental Health',        labelKey: 'appointments.typeMentalHealth', icon: HeartPulse,    color: 'var(--color-warning-text)', bg: 'rgba(230, 114, 0,0.10)' },
+  { value: 'walk_in',      label: 'Walk-In',              labelKey: 'appointments.typeWalkIn', icon: UserPlus,      color: 'var(--accent-primary)', bg: 'rgba(33,145,208,0.10)' },
 ];
 
 // Fallback list when the facility hasn't set its departments in Facility Settings.
@@ -110,10 +113,6 @@ const CAL_VIEW_TABS: { key: 'day' | 'week' | 'month'; label: string }[] = [
  * the two call sites can never drift apart again, and so the rule is directly
  * unit-testable without rendering the page.
  */
-export function isPendingApproval(appointment: { status: AppointmentStatus; appointmentDate: string }, today: string): boolean {
-  return appointment.status === 'requested' && appointment.appointmentDate >= today;
-}
-
 /**
  * How long the walk-in dialog waits on `checkInPatient` before giving up on
  * the promise ever settling and surfacing an error instead.
@@ -147,6 +146,7 @@ export default function AppointmentsPage() {
     () => appointmentsVisibleToUser(appointments, currentUser),
     [appointments, currentUser],
   );
+  const calendarClinicalAction = appointmentCalendarClinicalAction(currentUser?.role);
 
   // Translated label lookups for module-level config (which can't call t()).
   const statusLabelKey = APPOINTMENT_STATUS_I18N_KEYS;
@@ -541,26 +541,64 @@ export default function AppointmentsPage() {
   }, [calendarEvents, patientById, today, t, statusLabelKey]);
 
   /**
-   * One appointment editor, everywhere. Clicking a calendar event opens this
-   * in a dialog; `onDone` closes it, so an action that navigates away or opens
-   * another dialog doesn't leave this hanging open behind it.
-   *
-   * This used to be a bespoke facts grid over a strip of a dozen status
-   * buttons — a second way to read and change a booking that drifted from the
-   * editor the front desk uses. `AppointmentEditModal` is that editor: Details,
-   * Provider & staff, Status & billing, saving status through
-   * `updateAppointmentStatus` so the timestamps and history are stamped rather
-   * than written past.
+   * A calendar event means different work to different roles. Clinical staff
+   * continue the patient's care; scheduling staff maintain the booking. This
+   * split also prevents doctors and nurses from being offered appointment
+   * reassignment/status fields from their personal calendars.
    */
-  const renderAppointmentDetail = (apt: typeof appointments[0], onDone: () => void) => (
-    <AppointmentEditModal
-      inline
-      appointment={apt}
-      appointments={visibleAppointments}
-      patient={patientById.get(apt.patientId)}
-      onClose={onDone}
-    />
-  );
+  const renderAppointmentDetail = (apt: typeof appointments[0], onDone: () => void) => {
+    if (calendarClinicalAction) {
+      const primaryLabel = calendarClinicalAction === 'consult'
+        ? t('appointments.startConsultation')
+        : t('appointments.startTriage');
+      const PrimaryIcon = calendarClinicalAction === 'consult' ? Stethoscope : HeartPulse;
+      const primaryRoute = calendarClinicalAction === 'consult'
+        ? `/consultation?patientId=${encodeURIComponent(apt.patientId)}`
+        : `/triage/${encodeURIComponent(apt.patientId)}`;
+      const typeConfig = appointmentTypes.find(option => option.value === apt.appointmentType);
+      const typeLabel = typeConfig ? t(typeConfig.labelKey) : apt.appointmentType;
+
+      const navigate = (path: string) => {
+        onDone();
+        router.push(path);
+      };
+
+      return (
+        <section className="appointment-calendar-clinical-card" aria-label={t('appointments.clinicalActions')}>
+          <dl className="appointment-calendar-clinical-card__facts">
+            <div><dt>{t('appointments.labelDate')}</dt><dd>{apt.appointmentDate}</dd></div>
+            <div><dt>{t('appointments.labelTime')}</dt><dd>{apt.appointmentTime}</dd></div>
+            <div><dt>{t('appointments.labelType')}</dt><dd>{typeLabel}</dd></div>
+            <div><dt>{t('appointments.labelStatus')}</dt><dd>{t(statusLabelKey[apt.status])}</dd></div>
+            <div><dt>{t('appointments.labelDepartment')}</dt><dd>{apt.department || '—'}</dd></div>
+            <div><dt>{t('appointments.labelProvider')}</dt><dd>{apt.providerName || apt.staffName || '—'}</dd></div>
+          </dl>
+          <div className="appointment-calendar-clinical-card__reason">
+            <span>{t('appointments.labelReason')}</span>
+            <p>{apt.reason || '—'}</p>
+          </div>
+          <div className="appointment-calendar-clinical-card__actions">
+            <button type="button" className="btn btn-primary" onClick={() => navigate(primaryRoute)}>
+              <PrimaryIcon className="w-4 h-4" aria-hidden /> {primaryLabel}
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => navigate(`/patients/${encodeURIComponent(apt.patientId)}`)}>
+              <FileText className="w-4 h-4" aria-hidden /> {t('appointments.openChart')}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <AppointmentEditModal
+        inline
+        appointment={apt}
+        appointments={visibleAppointments}
+        patient={patientById.get(apt.patientId)}
+        onClose={onDone}
+      />
+    );
+  };
 
   return (
     <main className="page-container page-enter">
@@ -851,8 +889,8 @@ export default function AppointmentsPage() {
                 </div>
               }
             >
-              {/* The booking's own editor, rendered inline inside the dialog
-                  so it reads the same here as everywhere else it is opened. */}
+              {/* Clinical calendars open care actions; scheduling calendars
+                  retain the booking editor. */}
               <div className="ehr-row-detail ehr-row-detail--dialog">
                 {renderAppointmentDetail(eventApt, () => setEventApt(null))}
               </div>

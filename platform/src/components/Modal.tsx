@@ -9,8 +9,6 @@ interface ModalProps {
   children: React.ReactNode;
   /** Max width of the dialog in px. Default 600. */
   width?: number;
-  /** Vertical alignment of the dialog. Default 'center'. */
-  align?: 'center' | 'top';
   /**
    * Layout variant. 'dialog' (default) is the centered popup; 'drawer' slides
    * in as a full-height panel anchored to the right edge of the screen.
@@ -20,15 +18,6 @@ interface ModalProps {
   disableBackdropClose?: boolean;
   /** id of the element labelling the dialog (for a11y). */
   labelledBy?: string;
-  /**
-   * Keeps the panel this far clear of the top of the viewport — a number of px
-   * or any CSS length, e.g. `var(--app-overlay-top-inset)` to start it below
-   * the app's top rail on the shells that have one. The backdrop still covers
-   * the whole screen, so the modal
-   * stays modal; only the panel moves down, and it centres in what is left.
-   * Default 0 (the panel uses the full viewport height).
-   */
-  topOffset?: number | string;
 }
 
 /**
@@ -47,15 +36,11 @@ export default function Modal({
   onClose,
   children,
   width = 600,
-  align = 'center',
   variant = 'dialog',
   disableBackdropClose = false,
   labelledBy,
-  topOffset = 0,
 }: ModalProps) {
   const isDrawer = variant === 'drawer';
-  // A drawer is flush to the screen edges, so an offset never applies to one.
-  const offset = isDrawer ? '0px' : typeof topOffset === 'number' ? `${topOffset}px` : topOffset;
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -165,11 +150,11 @@ export default function Modal({
         inset: 0,
         zIndex: 2000,
         display: 'flex',
-        alignItems: isDrawer ? 'stretch' : align === 'top' ? 'flex-start' : 'center',
+        alignItems: isDrawer ? 'stretch' : 'center',
         justifyContent: isDrawer ? 'flex-end' : 'center',
         padding: isDrawer
           ? 0
-          : `calc(16px + env(safe-area-inset-top, 0px) + ${offset}) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px))`,
+          : 'calc(16px + env(safe-area-inset-top, 0px) + var(--app-overlay-top-inset, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px))',
         background: 'rgba(15, 31, 29, 0.70)',
         animation: 'modalFadeIn 0.2s ease-out',
         overflowY: isDrawer ? 'hidden' : 'auto',
@@ -191,10 +176,11 @@ export default function Modal({
           maxWidth: width,
           maxHeight: isDrawer
             ? '100dvh'
-            : `calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - ${offset})`,
+            : 'calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px))',
           height: isDrawer ? '100dvh' : undefined,
           display: 'flex',
           flexDirection: 'column',
+          overflowY: isDrawer ? 'hidden' : 'auto',
           outline: 'none',
           // Opaque panel, supplied HERE rather than trusted to every caller.
           //
@@ -215,7 +201,7 @@ export default function Modal({
           background: 'var(--bg-card-solid)',
           // A drawer is flush to the screen edge, so it stays square.
           borderRadius: isDrawer ? 0 : 6,
-          margin: isDrawer ? 0 : align === 'top' ? '24px 0' : 0,
+          margin: 0,
           animation: isDrawer ? 'modalSlideInRight 0.28s ease-out' : 'modalSlideUp 0.25s ease-out',
         }}
       >

@@ -594,7 +594,7 @@ export default function TransferPatientModal({
   if (presentation === 'page') return panel;
 
   return (
-    <Modal onClose={onClose} width={720} align="top" labelledBy="transfer-modal-title">
+    <Modal onClose={onClose} width={720} labelledBy="transfer-modal-title">
       {/* `card-elevated` supplies the opaque surface. Without it the dialog is
           transparent — the shared Modal only styles the backdrop, leaving the
           panel background to the caller — and the dimmed page showed straight

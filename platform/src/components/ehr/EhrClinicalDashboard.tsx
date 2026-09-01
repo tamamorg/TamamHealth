@@ -2167,7 +2167,7 @@ export default function EhrClinicalDashboard({
               this) so leftover `findPatientOpen` state — e.g. a role switch
               mid-session — can't render the search itself for a non-pharmacist. */}
           {canDispense && findPatientOpen && (
-            <Modal onClose={() => setFindPatientOpen(false)} width={480} align="top" labelledBy="find-patient-title">
+            <Modal onClose={() => setFindPatientOpen(false)} width={480} labelledBy="find-patient-title">
               <div className="ehr-find-patient">
                 <div className="modal-headband">
                   <h3 id="find-patient-title">Dispense to patient</h3>

@@ -25,6 +25,7 @@ import {
 } from '@/lib/hooks/useAutoLock';
 import { setSettings } from '@/lib/settings/settings-store';
 import { DEFAULT_FACILITY_SETTINGS } from '@/lib/settings/facility-settings';
+import { setRoleSettings, clearRoleSettings } from '@/lib/settings/role-settings-store';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -52,6 +53,9 @@ afterEach(() => {
   jest.useRealTimers();
   jest.restoreAllMocks();
   clearLockPin();
+  // The role-settings store is a module singleton — a value one test picks
+  // would otherwise still be the user's choice in the next.
+  clearRoleSettings();
 });
 
 type HookResult = ReturnType<typeof useAutoLock>;
@@ -218,5 +222,38 @@ describe('a non-secure context (no crypto.subtle)', () => {
     // Refuses — it must NOT accept (that would make the lock screen a no-op)
     // and must NOT fall back to a weaker check to decide.
     await expect(latest().verifyPin('1234')).resolves.toBe(false);
+  });
+});
+
+describe("the user's own \"Auto sign-out after inactivity\" choice", () => {
+  it('arms the timer at the chosen minute count when no policy is configured', () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.idle': '5 min' });
+    const { latest } = mountHarness(true);
+    expect(latest().timeoutMs).toBe(5 * 60_000);
+    act(() => { jest.advanceTimersByTime(5 * 60_000); });
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it("'Off' leaves the session unlocked no matter how long it idles", () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.idle': 'Off' });
+    // Nothing else is configured: facility is zeroed in beforeEach and no org
+    // or platform value is passed, so this user's choice is the only layer.
+    const { latest } = mountHarness(true);
+    act(() => { jest.advanceTimersByTime(12 * 60 * 60_000); });
+    expect(latest().isLocked).toBe(false);
+  });
+
+  it("'Off' cannot switch off a lock an admin's policy requires", () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.idle': 'Off' });
+    // 2-minute platform ceiling. An individual may shorten a policy window,
+    // never cancel one — a shared workstation's protection is not theirs to
+    // relax.
+    const { latest } = mountHarness(true, undefined, 2);
+    expect(latest().timeoutMs).toBe(2 * 60_000);
+    act(() => { jest.advanceTimersByTime(2 * 60_000); });
+    expect(latest().isLocked).toBe(true);
   });
 });

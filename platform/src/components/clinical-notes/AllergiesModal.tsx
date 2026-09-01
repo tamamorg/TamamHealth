@@ -132,7 +132,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   });
 
   return (
-    <Modal onClose={onClose} width={760} align="top" labelledBy="cn-allergies-title">
+    <Modal onClose={onClose} width={760} labelledBy="cn-allergies-title">
       <div className="cn-meds">
         <div className="cn-meds-header">
           <h2 className="cn-meds-title" id="cn-allergies-title">Allergies</h2>

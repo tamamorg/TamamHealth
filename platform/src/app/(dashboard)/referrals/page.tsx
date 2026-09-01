@@ -767,7 +767,7 @@ export default function ReferralsPage() {
             package viewer is taller than a table row wants to be, and pushing
             every row below it down the page lost the reader's place. */}
         {detailReferral && (
-          <Modal onClose={() => setExpandedReferral(null)} width={760} align="top" labelledBy="referral-detail-title">
+          <Modal onClose={() => setExpandedReferral(null)} width={760} labelledBy="referral-detail-title">
             <div className="modal-panel" {...stopsClickPropagation} style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)', overflow: 'hidden' }}>
               <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
                 <div className="min-w-0">
@@ -978,7 +978,7 @@ export default function ReferralsPage() {
         {/* Preview Modal for attachments */}
         {previewAttachment && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-8"
+            className="viewport-popup fixed inset-0 z-50 flex items-center justify-center p-8"
             style={{ background: 'rgba(0,0,0,0.75)' }}
             {...dismissBackdrop(() => setPreviewAttachment(null))}
           >

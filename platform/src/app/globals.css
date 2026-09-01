@@ -1726,8 +1726,6 @@ input::placeholder, textarea::placeholder {
 .ehr-top-rail :is(h1, h2, h3, h4),
 .modal-portal-backdrop [role="dialog"] > * > div:first-child :is(h1, h2, h3, h4),
 .hero-banner :is(h1, h2, h3, h4),
-.sadb-card-head :is(h1, h2, h3, h4),
-.sadb-group-head :is(h1, h2, h3, h4),
 .ehr-toast :is(h1, h2, h3, h4) {
   color: inherit;
 }
@@ -2869,10 +2867,9 @@ thead th {
  *
  * Two variables, because "how tall is the rail" and "how far down must an
  * overlay start" are not the same question. The mobile app shell replaces the
- * rail entirely (see the `useShell` branch in (dashboard)/layout.tsx), so on a
- * phone there is no rail to clear — an overlay that offset itself by the rail
- * height there would leave a 112px band of nothing above it. `:has()` makes the
- * inset follow whether the rail is actually in the document. */
+ * rail with its own shorter header (see the `useShell` branch in
+ * (dashboard)/layout.tsx). `:has()` makes the inset follow whichever header is
+ * actually in the document. */
 :root {
   /* 72px per review — the header grew to match the design preview; every
      layout offset reads this one variable. */
@@ -2882,6 +2879,16 @@ thead th {
 
 html:has(.ehr-top-rail) {
   --app-overlay-top-inset: var(--app-top-rail-height);
+}
+
+/* Portalled dialogs also clear the phone shell's in-flow header. The popup is
+   still centred, but in the usable area below the chrome rather than over it. */
+html:has(.mobile-shell-header) {
+  --app-overlay-top-inset: 56px;
+}
+
+html:has(.mobile-shell-offline-banner) {
+  --app-overlay-top-inset: 90px;
 }
 
 .tamam-ehr-app {
@@ -3895,7 +3902,7 @@ html:has(.ehr-top-rail) {
   color: #fff;
 }
 
-/* ── Bottom sheets (quick create / all modules) ── */
+/* ── Mobile popup sheets (quick create / all modules) ── */
 .mobile-sheet-scrim {
   position: fixed;
   inset: 0;
@@ -3905,17 +3912,21 @@ html:has(.ehr-top-rail) {
 
 .mobile-sheet {
   position: fixed;
-  inset-inline-start: 0;
-  inset-inline-end: 0;
-  bottom: 0;
+  inset-inline-start: calc(16px + env(safe-area-inset-left, 0px));
+  inset-inline-end: calc(16px + env(safe-area-inset-right, 0px));
+  top: calc(16px + env(safe-area-inset-top, 0px) + var(--app-overlay-top-inset, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 1301;
-  max-height: 86%;
+  width: auto;
+  height: max-content;
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px));
+  margin-block: auto;
   display: flex;
   flex-direction: column;
   background: var(--bg-app, #F5F8FB);
-  border-radius: 24px 24px 0 0;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 -12px 40px rgba(17, 48, 85, 0.25);
+  box-shadow: 0 18px 48px rgba(17, 48, 85, 0.25);
 }
 
 .mobile-sheet-handle {
@@ -7305,6 +7316,40 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .modal-portal-backdrop > div > * {
   border-radius: 6px !important;
+}
+
+/* One viewport contract for portal dialogs and the few media previews that
+   need a darker custom scrim. Panels are centred in the usable area below the
+   app header, keep a 16px edge gutter, and shrink before either edge can be
+   touched. The panel or its existing body scroller owns any overflow. */
+.modal-portal-dialog > * {
+  min-height: 0;
+  max-height: 100%;
+}
+
+.viewport-popup {
+  overflow: auto;
+  padding:
+    calc(16px + env(safe-area-inset-top, 0px) + var(--app-overlay-top-inset, 0px))
+    calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px))
+    calc(16px + env(safe-area-inset-left, 0px)) !important;
+}
+
+.viewport-popup > * {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px)) !important;
+}
+
+.viewport-popup__content {
+  width: min(1180px, 100%);
+  height: 100%;
+}
+
+.viewport-popup .civ {
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px));
 }
 
 /* A portal dialog's width belongs to `Modal`'s `width` prop, which caps the
@@ -11217,7 +11262,7 @@ canvas {
 }
 
 .mobile-sheet {
-  max-height: calc(86dvh - env(safe-area-inset-top, 0px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -22204,8 +22249,7 @@ textarea.ehr-handoff-input {
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
-.fs-ctx-plate,
-.fs-fac-plate {
+.fs-ctx-plate {
   flex: none;
   display: grid;
   place-items: center;
@@ -22218,7 +22262,6 @@ textarea.ehr-handoff-input {
 }
 
 .fs-ctx-plate { width: 34px; height: 34px; font-size: 12px; }
-.fs-fac-plate { width: 30px; height: 30px; border-radius: 8px; font-size: 11px; }
 
 .fs-ctx-name {
   display: flex;
@@ -22243,208 +22286,46 @@ textarea.ehr-handoff-input {
   text-transform: capitalize;
 }
 
-/* ── Facility picker: a list, on the shared flat row language ──────────── */
-.fs-fac-pick {
-  background: var(--bg-card-solid);
-  border: 1px solid var(--ehr-border);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
-}
-
-.fs-fac-pick-head {
+/* ── Facility chooser: which hospital the per-facility modules are editing.
+   It used to be a full-height list that replaced the module panel, so every
+   module opened onto the same roster; it is a dropdown in the context bar
+   now and the module itself stays on screen. ─────────────────────────────── */
+.fs-ctx-pick {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 16px 18px;
-  border-bottom: 1px solid var(--ehr-border);
-}
-
-.fs-fac-pick-head h4 {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--tb-blue-800, #113055);
-}
-
-.fs-fac-pick-head p {
-  margin-top: 4px;
-  max-width: 62ch;
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--ehr-muted);
-}
-
-.fs-fac-pick-head p b {
-  font-weight: 700;
-  color: var(--tb-blue-800, #113055);
-}
-
-.fs-fac-search {
-  position: relative;
-  flex: 0 0 262px;
-  margin-inline-start: auto;
-}
-
-.fs-fac-search svg {
-  position: absolute;
-  inset-inline-start: 11px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ehr-muted);
-  pointer-events: none;
-}
-
-.fs-fac-search input {
-  width: 100%;
-  padding: 8px 14px;
-  padding-inline-start: 33px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 999px;
-  background: var(--bg-card-solid);
-  font-size: 13px;
-  color: var(--tb-blue-800, #113055);
-}
-
-.fs-fac-search input:focus {
-  outline: none;
-  border-color: var(--ehr-blue);
-  box-shadow: 0 0 0 3px rgba(33, 145, 208, 0.10);
-}
-
-.fs-fac-colhead,
-.fs-fac-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 178px 136px 112px;
-  gap: 12px;
   align-items: center;
-  padding-inline: 16px;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.fs-fac-colhead {
-  padding-block: 10px;
-  background: var(--color-slate-50);
-  border-bottom: 1px solid var(--ehr-border);
-  font-family: var(--font-condensed);
-  font-size: 10.5px;
+.fs-ctx-cap {
+  flex: none;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.fs-fac-count {
-  text-align: end;
   letter-spacing: 0.04em;
-  color: #94A2B3;
-}
-
-.fs-fac-group-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  background: var(--color-slate-25);
-  border-bottom: 1px solid var(--ehr-border);
-  font-family: var(--font-condensed);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.fs-fac-group-label b { color: #94A2B3; }
-
-/* Rows meet on hairlines, no per-row card edge — the flat list language the
-   worklists use. The divider is dropped on the last row of the last group
-   (never per-row `:last-child`, which erases every divider). */
-.fs-fac-row {
-  position: relative;
-  border-bottom: 1px solid var(--ehr-border);
-}
-
-.fs-fac-group:last-child .fs-fac-row:last-child { border-bottom: 0; }
-
-.fs-fac-row:hover { background: var(--color-info-bg); }
-
-.fs-fac-ident {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding-block: 9px;
-}
-
-/* Stretched hit area: the whole row selects the facility, while the profile
-   link keeps its own click (it is raised above this pseudo-element). */
-.fs-fac-open {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 650;
-  color: var(--tb-blue-800, #113055);
-  text-align: start;
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fs-fac-open::after { content: ''; position: absolute; inset: 0; }
-
-.fs-fac-open:focus-visible {
-  outline: 2px solid var(--ehr-blue);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-.fs-fac-loc {
-  font-size: 12.5px;
-  font-weight: 600;
   color: var(--ehr-muted);
+}
+
+.fs-ctx .fs-ctx-select,
+.tamam-ehr-app select.fs-ctx-select {
+  max-width: 320px;
+  min-width: 0;
+  flex: 0 1 320px;
+  min-height: 36px;
+  font-size: 13.5px;
+  color: var(--tb-blue-800, #113055);
+}
+
+.fs-ctx-where {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.fs-fac-act {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.fs-fac-profile {
-  position: relative;
-  z-index: 1;
-  padding: 4px 10px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 999px;
-  background: var(--bg-card-solid);
-  font-family: var(--font-condensed);
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--text-muted);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.fs-fac-profile:hover {
-  border-color: var(--ehr-blue);
-  color: var(--accent-text);
-}
-
-.fs-fac-chev { flex: none; color: #CFD6DD; }
-.fs-fac-row:hover .fs-fac-chev { color: var(--accent-text); }
-
-.fs-fac-empty {
-  padding: 22px 16px;
-  text-align: center;
-  font-size: 13px;
+  text-transform: capitalize;
   color: var(--ehr-muted);
 }
 
@@ -22512,13 +22393,13 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 }
 
 @media (max-width: 720px) {
-  .fs-fac-colhead,
-  .fs-fac-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .fs-fac-colhead span:nth-child(2),
-  .fs-fac-colhead span:nth-child(3),
-  .fs-fac-row .fs-fac-loc,
-  .fs-fac-row .fs-fac-chip { display: none; }
-  .fs-fac-search { flex: 1 1 100%; margin-inline-start: 0; }
+  /* The chooser keeps its row beside the plate; only the location line and
+     the profile link drop below it. */
+  .fs-ctx { flex-wrap: wrap; }
+  .fs-ctx-pick { flex-wrap: wrap; }
+  .fs-ctx .fs-ctx-select,
+  .tamam-ehr-app select.fs-ctx-select { flex: 1 1 140px; max-width: none; }
+  .fs-ctx-where { flex: 1 1 100%; }
 }
 
 .settings-embedded-page .settings-manage-shell,
@@ -24348,6 +24229,91 @@ table.patient-data-table.patient-data-table {
 .ehr-row-detail--dialog {
   padding: 0;
   animation: none;
+}
+
+/* A calendar click is a clinical hand-off for doctors and nurses. Keep the
+   summary compact enough for the centred dialog, with workflow actions pinned
+   together below it rather than exposing the scheduling editor. */
+.appointment-calendar-clinical-card {
+  display: grid;
+  gap: 16px;
+}
+
+.appointment-calendar-clinical-card__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--ehr-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-card-solid);
+}
+
+.appointment-calendar-clinical-card__facts > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
+}
+
+.appointment-calendar-clinical-card__facts > div:nth-child(odd) {
+  border-inline-end: 1px solid var(--ehr-border-soft, var(--border-light));
+}
+
+.appointment-calendar-clinical-card__facts > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.appointment-calendar-clinical-card__facts dt,
+.appointment-calendar-clinical-card__reason span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.appointment-calendar-clinical-card__facts dd {
+  margin: 3px 0 0;
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.appointment-calendar-clinical-card__reason p {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.appointment-calendar-clinical-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.appointment-calendar-clinical-card__actions .btn {
+  justify-content: center;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .appointment-calendar-clinical-card__facts,
+  .appointment-calendar-clinical-card__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-calendar-clinical-card__facts > div,
+  .appointment-calendar-clinical-card__facts > div:nth-child(odd),
+  .appointment-calendar-clinical-card__facts > div:nth-last-child(-n + 2) {
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
+  }
+
+  .appointment-calendar-clinical-card__facts > div:last-child {
+    border-bottom: 0;
+  }
 }
 
 /* A form unfolded under its row (recording a dose, say) rather than a set of
@@ -29664,34 +29630,6 @@ table.patient-data-table.patient-data-table {
    --accent-primary, its inks and rules the slate ramp — so everything here
    reads tokens. */
 
-/* ── The console band ─────────────────────────────────────────────────
-   ONE strip does every section head in both consoles — card heads,
-   setting-group heads and the two dashboard heroes — so a card, a settings
-   group and the page they sit on are visibly the same kind of object.
-
-   It is the HEADER's own blue, --accent-primary (#015697), the colour the top
-   rail is painted: the console then reads as one continuous piece of chrome
-   from the rail down through every card, instead of introducing a second dark
-   that belongs to nothing else on screen.
-
-   One value for both themes. --accent-primary is not remapped in dark, and it
-   is lighter than the dark card body (--tm-navy), so the band still reads as a
-   band there without a twin of its own.
-
-   Nothing here is a new colour: band, ink and soft ink are existing rungs of
-   the palette. */
-:root {
-  --sadb-band:      var(--accent-primary);
-  --sadb-band-ink:  var(--color-white);
-  /* Head links and the hero eyebrow. The pale ice wash, not --brand-300:
-     against this blue the dodger rung is only 4.1:1, where ice is 6.4:1. A
-     palette literal, so it does not invert out from under the band in dark. */
-  --sadb-band-soft: var(--tm-ice);
-  --sadb-band-quiet: color-mix(in srgb, var(--color-white) 82%, transparent);
-  --sadb-band-line: color-mix(in srgb, var(--color-white) 30%, transparent);
-  --sadb-band-fill: color-mix(in srgb, var(--color-white) 12%, transparent);
-}
-
 .sadb-scope .ehr-care-header-subtitle {
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -29757,15 +29695,11 @@ table.patient-data-table.patient-data-table {
   gap: 10px;
   flex-wrap: wrap;
   flex-shrink: 0;
-  padding: 12px 16px;
-  /* No hairline: the band IS the separator, and a rule under it drew a second
-     line a shade off the first. */
-  border-bottom: 0;
-  background: var(--sadb-band);
-  /* The band owns the foreground for everything inside it — the heading rule
-     above hands its headings back with `inherit`, and that is what they
-     inherit. */
-  color: var(--sadb-band-ink);
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-light);
+  /* A shade off white so the head reads as a head and the card reads as a
+     card. White-on-white left every heading floating over its own content. */
+  background: var(--overlay-subtle);
   border-start-start-radius: 8px;
   border-start-end-radius: 8px;
 }
@@ -29776,7 +29710,7 @@ table.patient-data-table.patient-data-table {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--sadb-band-ink);
+  color: var(--text-primary);
 }
 .sadb-card-meta { font-size: 11px; font-weight: 700; color: var(--text-muted); }
 .sadb-head-link {
@@ -29789,9 +29723,9 @@ table.patient-data-table.patient-data-table {
   font-size: 10.5px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--sadb-band-soft);
+  color: var(--accent-text);
 }
-.sadb-head-link:hover { color: var(--sadb-band-ink); }
+.sadb-head-link:hover { color: var(--accent-hover); }
 
 /* Icon-only head action. Sized to the 32px touch floor rather than to the
    glyph, so it is hittable on a tablet — the head strip's text links are not,
@@ -29803,97 +29737,14 @@ table.patient-data-table.patient-data-table {
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid var(--sadb-band-line);
+  border: 1px solid var(--border-light);
   border-radius: 7px;
-  background: transparent;
-  color: var(--sadb-band-ink);
+  background: var(--bg-card-solid);
+  color: var(--accent-text);
   cursor: pointer;
 }
-.sadb-head-iconbtn:hover { border-color: var(--sadb-band-ink); background: var(--sadb-band-fill); }
+.sadb-head-iconbtn:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
 .sadb-head-iconbtn svg { width: 16px; height: 16px; }
-
-/* ── What the band hosts ──────────────────────────────────────────────
-   Both heads at once — a card head and a setting-group head are the same
-   band, so a control drawn for the navy is styled here once rather than in
-   two places that then drift.
-
-   Head controls are drawn for the band, not for a white card: outlines and
-   fills come off the band's own white ramp.
-
-   A status chip is the exception, and goes the other way. It is a signal
-   ("attention required", "healthy"), so it has to keep its tone — but on this
-   blue no tonal ink survives (success-400 is 3.6:1, danger-400 2.6:1). So the
-   chip stops being transparent and keeps the exact face it wears everywhere
-   else in the console: a white plate, the tone on its rule, the tone's text
-   rung as ink. That reads at the ratios those rungs were measured for
-   (success 6.3:1, danger 8.0:1, warning 4.8:1) and is theme-independent —
-   plate and inks are palette literals that do not invert. */
-:is(.sadb-card-head, .sadb-group-head) .sadb-card-meta { color: var(--sadb-band-quiet); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-chip {
-  background: var(--color-white);
-  border-color: var(--color-slate-200);
-  color: var(--tm-navy);
-}
-:is(.sadb-card-head, .sadb-group-head) .sadb-chip--green  { border-color: var(--color-success-600); color: var(--color-success-800); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-chip--yellow { border-color: var(--color-warning-600); color: var(--color-warning-700); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-chip--red    { border-color: var(--color-danger-500);  color: var(--color-danger-800); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-chip--blue   { border-color: var(--brand-400);         color: var(--brand-800); }
-/* The count legends that sit at the end of a list head (audit, risk, sync,
-   flags). Their tone dots are inline-styled fills and stay their own colour;
-   only the words move onto the band. */
-:is(.sadb-card-head, .sadb-group-head) .sadb-legend { color: var(--sadb-band-quiet); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-tabs { border-color: var(--sadb-band-line); background: var(--sadb-band-fill); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-tab { color: var(--sadb-band-quiet); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-tab:hover { color: var(--sadb-band-ink); }
-:is(.sadb-card-head, .sadb-group-head) .sadb-tab-badge { background: var(--sadb-band-fill); color: var(--sadb-band-ink); }
-/* The SELECTED tab is a white pill even on the band, so its badge keeps the
-   light fill and takes dark ink back — white-on-near-white left the count
-   showing as a blank grey blob. */
-:is(.sadb-card-head, .sadb-group-head) .sadb-tab.is-active .sadb-tab-badge {
-  background: var(--tb-blue-50);
-  color: var(--accent-primary);
-}
-/* An unclassed <button> in a head — the ⤢ promote actions, whose icon colour
-   is set inline by the caller. The !important is what beats that inline
-   style; without it the icon stayed accent-blue on the navy. */
-:is(.sadb-card-head, .sadb-group-head) button:not([class*="sadb-"]):not(.btn) { color: var(--sadb-band-ink); }
-:is(.sadb-card-head, .sadb-group-head) button:not([class*="sadb-"]):not(.btn):hover { background: var(--sadb-band-fill); }
-:is(.sadb-card-head, .sadb-group-head) button:not([class*="sadb-"]):not(.btn) svg { color: var(--sadb-band-ink) !important; }
-/* A .btn in a head follows the hero's rule for the same reason: the accent
-   blue is the one colour on the palette that disappears into this band. */
-:is(.sadb-card-head, .sadb-group-head) .btn-primary {
-  background: var(--accent-orange);
-  border-color: var(--accent-orange);
-  color: var(--accent-orange-on);
-}
-:is(.sadb-card-head, .sadb-group-head) .btn-primary:hover {
-  background: var(--gold-600);
-  border-color: var(--gold-600);
-  color: var(--accent-orange-on);
-}
-:is(.sadb-card-head, .sadb-group-head) .btn-secondary {
-  background: transparent;
-  border-color: var(--sadb-band-line);
-  color: var(--sadb-band-ink);
-}
-:is(.sadb-card-head, .sadb-group-head) .btn-secondary:hover {
-  background: var(--sadb-band-fill);
-  border-color: var(--sadb-band-ink);
-  color: var(--sadb-band-ink);
-}
-/* The kit's own outline button (Retry batch, Run now) when it lands in a
-   head — same treatment as .btn-secondary; its white card fill went muddy
-   over the navy, and muddier still at the 0.5 opacity it takes when
-   disabled. */
-:is(.sadb-card-head, .sadb-group-head) .sadb-action-btn {
-  background: transparent;
-  border-color: var(--sadb-band-line);
-  color: var(--sadb-band-ink);
-}
-:is(.sadb-card-head, .sadb-group-head) .sadb-action-btn:hover:not(:disabled) {
-  background: var(--sadb-band-fill);
-  border-color: var(--sadb-band-ink);
-}
 
 /* Card-head tabs. Pill shapes rather than underlines: the head is a 12px
    condensed strip, and an underline there would read as a second border
@@ -30544,12 +30395,9 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 11px 16px;
-  border-bottom: 0;
-  /* The same band as a card head: a settings group and a card are the same
-     object on two different screens, and they used to head differently. */
-  background: var(--sadb-band);
-  color: var(--sadb-band-ink);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--ehr-head);
 }
 .sadb-group-title {
   margin: 0;
@@ -30558,12 +30406,7 @@ button.sadb-signal { cursor: pointer; }
   font-size: 11.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--sadb-band-ink);
-}
-.sadb-group-head .sadb-chip {
-  background: var(--sadb-band-fill);
-  border-color: var(--sadb-band-line);
-  color: var(--sadb-band-ink);
+  color: var(--text-primary);
 }
 .sadb-setting-row {
   display: flex;
@@ -33633,43 +33476,6 @@ button.sadb-signal { cursor: pointer; }
 .wdis-note.is-danger { color: var(--color-danger-text); }
 .wdis-note.is-ok { color: var(--color-success-text); }
 .wdis-note svg { flex: 0 0 auto; }
-
-/* ── Sync status badge ────────────────────────────────────────────────────
-   Per-row indicator that a document's offline write hasn't reached the
-   server yet (components/ehr/SyncStatusBadge.tsx). Quiet neutral tone for
-   "pending"; the shared danger semantic for "failed"/"conflict" so it reads
-   with the same urgency as the appointment/queue status pills it sits next
-   to. Never color-only — every tone pairs an icon with a text label. */
-.sync-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-
-.sync-status-badge-icon {
-  width: 11px;
-  height: 11px;
-  flex: 0 0 auto;
-}
-
-.sync-status-badge--neutral {
-  background: var(--semantic-neutral-bg);
-  border-color: var(--semantic-neutral-border);
-  color: var(--semantic-neutral);
-}
-
-.sync-status-badge--danger {
-  background: var(--semantic-danger-bg);
-  border-color: var(--semantic-danger-border);
-  color: var(--semantic-danger);
-}
 
 /* Chart on the left, the decision on the right: the destructive-ish action is
    never the button a hurried thumb lands on first. */

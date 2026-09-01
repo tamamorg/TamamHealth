@@ -29,7 +29,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleConfig } from '@/lib/permissions';
 import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
-import { worstOfflineSync, hasUnsyncedWrite } from '@/components/ehr/SyncStatusBadge';
+import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
 import {
@@ -63,6 +63,7 @@ import {
   savePatientRegistrationDraft,
   type PatientRegistrationDraft,
 } from '@/lib/patient-registration-draft';
+import { findActiveAppointmentForPatient } from '@/lib/appointment-workflow';
 
 /**
  * The one appointment a patient's queue row is threaded onto today — never a
@@ -85,18 +86,6 @@ import {
  * is this file's usual home for a pure helper like this one, but is out of
  * scope for this pass.
  */
-export function findActiveAppointmentForPatient(
-  todaysAppointments: AppointmentDoc[],
-  patientId: string,
-  encounterAppointmentId?: string,
-): AppointmentDoc | undefined {
-  if (encounterAppointmentId) {
-    const linked = todaysAppointments.find(a => a._id === encounterAppointmentId && a.patientId === patientId);
-    if (linked) return linked;
-  }
-  return todaysAppointments.find(a => a.patientId === patientId && !APPOINTMENT_STATUS_EXITS.includes(a.status));
-}
-
 /**
  * Front-desk operations workspace.
  *
@@ -1102,7 +1091,6 @@ export default function FrontDeskDashboardPage() {
       return {
         id: `pending-appt-${appointment._id}`,
         photoUrl: (patient as { photoUrl?: string } | undefined)?.photoUrl,
-        offlineSync: appointment.offlineSync,
         title: appointment.patientName,
         // The sub-line is the chief complaint alone — no demographics, no
         // department; those live in the row's other columns and the popup.
@@ -1286,11 +1274,6 @@ export default function FrontDeskDashboardPage() {
       return {
         id: entry.id,
         photoUrl: (patient as { photoUrl?: string } | undefined)?.photoUrl,
-        // Every walk-in now has its own check-in appointment, so the row can
-        // be backed by both a triage doc and an appointment doc — show
-        // whichever one's sync state needs more attention (see
-        // `worstOfflineSync`), never silently prefer one over the other.
-        offlineSync: worstOfflineSync(queueTriage?.offlineSync, queueAppointment?.offlineSync),
         title: entry.patientName,
         subtitle: entry.complaint,
         meta: `${entry.gender} · ${entry.age}${entry.assignedDoctorName ? ` · ${entry.assignedDoctorName}` : ''}`,
@@ -1419,7 +1402,6 @@ export default function FrontDeskDashboardPage() {
       return {
         id: `registered-${patient._id}`,
         photoUrl: (patient as { photoUrl?: string }).photoUrl,
-        offlineSync: patient.offlineSync,
         title: patientFullName(patient),
         subtitle: patient.hospitalNumber || patientGenderAge(patient),
         meta: `${patientGenderAge(patient)} · ${registered.date}${registered.time ? ` · ${registered.time}` : ''}`,
@@ -1526,8 +1508,8 @@ export default function FrontDeskDashboardPage() {
   // not just today's board (a device that has been offline for days should
   // say so, not just for its most recent visits). Deduped by _id since the
   // same patient can't appear twice within one of these arrays. Feeds the
-  // Reception rail tile below; the per-row `SyncStatusBadge`s are the detail
-  // view, this is the "is anything unpushed at all" summary.
+  // Reception rail tile below: with the per-row sync chip gone, this count is
+  // the whole "is anything unpushed at all" signal on the board.
   const pendingSyncCount = useMemo(() => {
     const seen = new Set<string>();
     let count = 0;
@@ -1711,7 +1693,7 @@ export default function FrontDeskDashboardPage() {
         )}
 
         {registerOpen && (
-          <Modal onClose={() => setRegisterOpen(false)} width={1180} align="center" disableBackdropClose labelledBy="patient-registration-dialog-title">
+          <Modal onClose={() => setRegisterOpen(false)} width={1180} disableBackdropClose labelledBy="patient-registration-dialog-title">
             <div className="ehr-checkin-dialog ehr-registration-dialog">
               {/* No header band. The form states its own title in the rail
                   ("Register New Patient"), so the bar above it repeated that

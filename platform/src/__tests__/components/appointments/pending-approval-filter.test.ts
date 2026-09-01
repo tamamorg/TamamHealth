@@ -7,7 +7,7 @@
  * share now, exported so the fix is directly testable without rendering the
  * calendar page.
  */
-import { isPendingApproval } from '@/app/(dashboard)/appointments/page';
+import { isPendingApproval } from '@/lib/appointment-workflow';
 import type { AppointmentStatus } from '@/lib/db-types';
 
 const today = '2026-08-29';

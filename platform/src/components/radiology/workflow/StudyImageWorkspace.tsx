@@ -130,8 +130,8 @@ export default function StudyImageWorkspace({ study, canUpload }: { study: LabRe
       </div>
 
       {viewerImageId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.84)' }} {...dismissBackdrop(() => setViewerImageId(null))}>
-          <div {...stopsClickPropagation}>
+        <div className="viewport-popup fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.84)' }} {...dismissBackdrop(() => setViewerImageId(null))}>
+          <div className="viewport-popup__content" {...stopsClickPropagation}>
             <ClinicalImageViewer
               images={images}
               initialImageId={viewerImageId}

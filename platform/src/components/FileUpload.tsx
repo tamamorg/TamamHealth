@@ -194,7 +194,7 @@ export default function FileUpload({ attachments, onAdd, onRemove, uploaderName,
       {/* Preview Modal */}
       {previewAttachment && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-8"
+          className="viewport-popup fixed inset-0 z-50 flex items-center justify-center p-8"
           style={{ background: 'rgba(0,0,0,0.75)' }}
           {...dismissBackdrop(() => setPreviewAttachment(null))}
         >

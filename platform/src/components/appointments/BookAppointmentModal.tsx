@@ -128,7 +128,7 @@ export default function BookAppointmentModal({
   const { currentUser } = useAuth();
   const { departments: facilityDepartments } = useSettings();
   const { showToast } = useToast();
-  const { canBookAppointments } = usePermissions();
+  const { canBookAppointments, canAssignCareTeam } = usePermissions();
   const departments = facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
   const today = jubaDate();
 
@@ -315,7 +315,7 @@ export default function BookAppointmentModal({
     }
     setSubmitting(true);
     try {
-      await create({
+      const appointment = await create({
         patientId: patient._id,
         patientName: `${patient.firstName} ${patient.surname}`,
         patientPhone: patient.phone || undefined,
@@ -362,7 +362,65 @@ export default function BookAppointmentModal({
         state: '',
         orgId: currentUser?.orgId,
       });
-      showToast(t('appointments.toastBooked'), 'success');
+
+      // A booking assignment must reach the same durable patient fields the
+      // doctor and nurse dashboards read. The appointment already carries the
+      // ids for calendar visibility; reception also mirrors them through the
+      // authorized care-team service so the assignees' patient worklists update
+      // immediately. Clinical self-booking deliberately stays appointment-only
+      // because only front-desk roles may change a patient's care team.
+      const assignmentFailures: unknown[] = [];
+      if (canAssignCareTeam && currentUser && (providerId || staffId)) {
+        const { assignProviderToPatient, assignNurseToPatient } = await import('@/lib/services/patient-assignment-service');
+        const actor = { id: currentUser._id, name: currentUser.name, role: currentUser.role };
+        const hospitalId = appointment.facilityId || currentUser.hospitalId;
+        const orgId = appointment.orgId || currentUser.orgId;
+
+        if (providerId) {
+          const selectedProvider = users.find(user => user._id === providerId);
+          try {
+            await assignProviderToPatient({
+              patientId: patient._id,
+              patientName: appointment.patientName,
+              provider: { id: providerId, name: provider, role: selectedProvider?.role },
+              actor,
+              hospitalId,
+              hospitalName: appointment.facilityName || currentUser.hospitalName,
+              orgId,
+              appointmentId: appointment._id,
+            });
+          } catch (error) {
+            assignmentFailures.push(error);
+          }
+        }
+
+        // Keep this attempt independent of the provider assignment. If its
+        // tracker/encounter follow-up fails after writing the patient fields,
+        // the nurse must still be mirrored rather than disappearing from the
+        // dashboard because the earlier operation threw.
+        if (staffId) {
+          try {
+            await assignNurseToPatient({
+              patientId: patient._id,
+              nurse: { id: staffId, name: staffName || users.find(user => user._id === staffId)?.name || 'Nurse' },
+              actor,
+              hospitalId,
+              orgId,
+              appointmentId: appointment._id,
+            });
+          } catch (error) {
+            assignmentFailures.push(error);
+          }
+        }
+      }
+
+      showToast(
+        assignmentFailures.length > 0
+          ? t('appointments.toastBookedAssignmentIncomplete')
+          : t('appointments.toastBooked'),
+        assignmentFailures.length > 0 ? 'error' : 'success',
+        assignmentFailures.length > 0 ? { durationMs: 8000 } : undefined,
+      );
       onBooked?.();
       onClose();
     } catch (err) {

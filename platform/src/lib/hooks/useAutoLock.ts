@@ -162,9 +162,22 @@ export function clearLockPin(): void {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PIN_CHANGED_EVENT));
 }
 
-/** "10 min" → 10. Anything unparseable means "no personal preference set". */
+/**
+ * "10 min" → 10. Anything unparseable means "no personal preference set".
+ *
+ * "Off" is the deliberate case of that, not an accident of parsing: it is the
+ * last option on Settings → Security → "Auto sign-out after inactivity", and
+ * it withdraws the user's own choice rather than disabling the lock. A
+ * facility, org or platform policy still locks the session — an individual
+ * may only ever shorten the window, never extend or cancel one an admin set
+ * for a shared workstation.
+ */
+const IDLE_OFF = 'Off';
+
 function parseIdleChoice(choice: string): number | undefined {
-  const match = /^(\d+)/.exec(choice.trim());
+  const value = choice.trim();
+  if (value.toLowerCase() === IDLE_OFF.toLowerCase()) return undefined;
+  const match = /^(\d+)/.exec(value);
   if (!match) return undefined;
   const minutes = Number(match[1]);
   return Number.isFinite(minutes) && minutes > 0 ? minutes : undefined;

@@ -641,7 +641,6 @@ export default function NutritionDashboard() {
         <Modal
           onClose={() => { setShowForm(false); setFormError(''); }}
           width={640}
-          align="top"
           labelledBy="nutrition-screening-title"
         >
           <div className="p-5" style={{ background: 'var(--bg-card-solid)', borderRadius: 'var(--card-radius)' }}>

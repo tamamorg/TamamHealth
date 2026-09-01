@@ -1,5 +1,19 @@
 import type { BaseDoc } from '../db-types';
 
+export type OfflineSyncMeta = NonNullable<BaseDoc['offlineSync']>;
+
+/**
+ * True for a doc whose latest write has not reached the server. Shared by
+ * every "N pending sync" summary and filter (patients registry, front-desk
+ * board) so one screen's count can never disagree with another's.
+ *
+ * It lived next to the per-row sync chip until that chip was removed
+ * (2026-09-01); the counts and the registry filter outlived it.
+ */
+export function hasUnsyncedWrite(doc?: { offlineSync?: OfflineSyncMeta }): boolean {
+  return !!doc?.offlineSync && doc.offlineSync.status !== 'synced';
+}
+
 type PouchDoc = BaseDoc & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta;
 
 function isDesignDoc(doc: { _id?: string } | null | undefined): boolean {

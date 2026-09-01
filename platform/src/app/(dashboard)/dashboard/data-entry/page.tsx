@@ -491,7 +491,7 @@ export default function DataEntryDashboard() {
       >
         {/* ═══ CENSUS FORM MODAL ═══ */}
         {showForm && (
-          <Modal onClose={() => setShowForm(false)} width={672} align="top" labelledBy="daily-census-title">
+          <Modal onClose={() => setShowForm(false)} width={672} labelledBy="daily-census-title">
             <div className="w-full max-w-2xl rounded-lg" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-xl)' }}>
 
               {/* Form header */}

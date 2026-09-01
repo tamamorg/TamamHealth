@@ -129,7 +129,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal onClose={onClose} width={560} align="top" labelledBy="tasks-panel-title">
+    <Modal onClose={onClose} width={560} labelledBy="tasks-panel-title">
       <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 'var(--card-radius)', padding: 0, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
           <div className="flex items-center gap-2">

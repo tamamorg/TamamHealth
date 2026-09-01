@@ -458,7 +458,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           <div className="labord-print-only labord-req-head">
             <div>
               <div className="labord-req-facility">{order.hospitalName || 'TamamHealth Health Facility'}</div>
-              <div className="labord-req-meta">Final diagnostic result report</div>
+              <div className="labord-req-meta">{t('labFlow.finalDiagnosticReport')}</div>
             </div>
             <div className="labord-req-meta" style={{ textAlign: 'end' }}>
               Patient: {order.patientName}<br />
@@ -468,7 +468,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           </div>
           {order.amended && (
             <div className="labord-print-only" style={{ border: '1px solid var(--color-warning-border)', padding: 8, marginBottom: 10 }}>
-              <strong>AMENDED RESULT</strong> — Previous value: {order.amendedFrom || '—'} · Reason: {order.amendmentReason || '—'} · Amended by: {order.amendedBy || '—'}
+              <strong>{t('labFlow.amendedResult')}</strong> — {t('labFlow.previousValue')}: {order.amendedFrom || '—'} · {t('labFlow.reason')}: {order.amendmentReason || '—'} · {t('labFlow.amendedBy')}: {order.amendedBy || '—'}
             </div>
           )}
           <div className="labord-grid-2">
