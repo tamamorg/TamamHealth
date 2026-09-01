@@ -38,6 +38,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { jubaDate } from '@/lib/time-juba';
 import { ArrowLeft, ArrowRight, Maximize2, X } from '@/components/icons/lucide';
 import { expandHref } from '@/lib/navigation/expand-to-page';
@@ -127,6 +128,7 @@ export default function BookAppointmentModal({
   const { currentUser } = useAuth();
   const { departments: facilityDepartments } = useSettings();
   const { showToast } = useToast();
+  const { canBookAppointments } = usePermissions();
   const departments = facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
   const today = jubaDate();
 
@@ -297,6 +299,10 @@ export default function BookAppointmentModal({
         : true;
 
   const handleSubmit = async () => {
+    if (!canBookAppointments) {
+      showToast('Only front desk staff can book and assign appointments', 'error');
+      return;
+    }
     if (!patientId || !date || !time || !reason) {
       showToast(t('appointments.toastFillRequired'), 'error');
       setStep(patientId && reason.trim() ? 1 : 2);
@@ -364,6 +370,19 @@ export default function BookAppointmentModal({
       setSubmitting(false);
     }
   };
+
+  if (!canBookAppointments) {
+    const denied = (
+      <div className="modal-panel" role="alert" style={{ padding: 24, width: '100%' }}>
+        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>Front desk access required</h2>
+        <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>
+          Only front desk staff can book appointments or assign doctors and nurses. Clinical staff can view and advance visits already assigned to them.
+        </p>
+      </div>
+    );
+    if (presentation === 'page') return denied;
+    return <PortalModal onClose={onClose} width={560}>{denied}</PortalModal>;
+  }
 
   const panel = (
       <div

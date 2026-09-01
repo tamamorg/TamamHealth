@@ -29678,8 +29678,8 @@ table.patient-data-table.patient-data-table {
    is lighter than the dark card body (--tm-navy), so the band still reads as a
    band there without a twin of its own.
 
-   Nothing here is a new colour: band, ink, soft ink and the column tint are
-   existing rungs of the palette. */
+   Nothing here is a new colour: band, ink and soft ink are existing rungs of
+   the palette. */
 :root {
   --sadb-band:      var(--accent-primary);
   --sadb-band-ink:  var(--color-white);
@@ -29690,16 +29690,6 @@ table.patient-data-table.patient-data-table {
   --sadb-band-quiet: color-mix(in srgb, var(--color-white) 82%, transparent);
   --sadb-band-line: color-mix(in srgb, var(--color-white) 30%, transparent);
   --sadb-band-fill: color-mix(in srgb, var(--color-white) 12%, transparent);
-  /* The column-header strip under a card head. A TINT, not a second band, so
-     a list still reads as one object with two rules inside it. OPAQUE, not an
-     alpha wash: these strips are sticky and rows scroll underneath them. The
-     mix follows --overlay-subtle's own recipe (the accent at 7% in light, the
-     brighter dodger in dark, where 7% of a navy accent on a navy card is
-     invisible). */
-  --sadb-colhead: color-mix(in srgb, var(--accent-primary) 7%, var(--bg-card-solid));
-}
-:root[data-theme="dark"] {
-  --sadb-colhead: color-mix(in srgb, var(--tm-dodger) 12%, var(--bg-card-solid));
 }
 
 .sadb-scope .ehr-care-header-subtitle {
@@ -29726,6 +29716,21 @@ table.patient-data-table.patient-data-table {
 .sadb-scope .dashboard-greeting-copy .ehr-care-header-subtitle {
   order: -1;
   margin: 0 0 3px;
+}
+/* The one primary create action up here is ORANGE. The greeting sits directly
+   under the header rail, which is painted --accent-primary, so a blue filled
+   button read as more chrome rather than as the thing to press. Orange is the
+   palette's second action hue and the same answer a .btn-primary already gets
+   on a band; the secondary create actions keep their outline. */
+.sadb-scope .dashboard-greeting-actions .btn-primary {
+  background: var(--accent-orange);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange-on);
+}
+.sadb-scope .dashboard-greeting-actions .btn-primary:hover {
+  background: var(--gold-600);
+  border-color: var(--gold-600);
+  color: var(--accent-orange-on);
 }
 
 .sadb-page {
@@ -29954,33 +29959,6 @@ table.patient-data-table.patient-data-table {
   min-width: 0;
 }
 
-/* ── Every KPI tile in the app takes the same top rule ────────────────
-   3px of --accent-primary: the colour the header rail is painted and the
-   colour the console's card heads carry, so a row of headline numbers reads
-   as one object no matter which screen it is on.
-
-   Listed by name rather than given a shared class because these four families
-   grew up separately — the console kit (.sadb-kpi), the analytics/stats pages
-   (.kpi), org settings (.org-set-mini-stat) and the superintendent board,
-   whose tiles are ad-hoc .dash-card buttons and carry .kpi-tile purely as the
-   hook for this rule. The rule is now the one thing they share.
-
-   Position matters: this sits after .sadb-kpi so it also beats the plain
-   `.kpi { border: … }` and `.org-set-mini-stat { border: … }` declarations
-   further up, which are the same specificity and would win on order. */
-.sadb-kpi,
-.kpi,
-.kpi-tile,
-.org-set-mini-stat {
-  border-top: 3px solid var(--accent-primary);
-}
-/* The superintendent board's tiles are .dash-card, and the app-wide
-   `.tamam-ehr-app .dash-card { border-color: … !important }` (globals ~4809,
-   plus its :hover twin) repaints all four sides. Matching that specificity and
-   its !important is the only way the top rule survives on that one family —
-   the other three need none of this. */
-.tamam-ehr-app .kpi-tile { border-top-color: var(--accent-primary) !important; }
-.tamam-ehr-app .kpi-tile:hover { border-top-color: var(--accent-primary) !important; }
 /* ── Mobile: cards read more like app cards — a softer corner and more room
    to breathe — while staying flat (no lift or glow, per the design). ── */
 @media (max-width: 639px) {
@@ -29994,7 +29972,7 @@ table.patient-data-table.patient-data-table {
    the same row. Column flex is the one layout that overrides that. */
 button.sadb-kpi { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; cursor: pointer; }
 /* Flat, so the hover is a border and a shade — never a lift or a glow. */
-button.sadb-kpi:hover { border-color: var(--brand-300); border-top-color: var(--accent-primary); background: var(--tb-blue-50); }
+button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blue-50); }
 .sadb-kpi-label {
   margin: 0;
   font-family: var(--font-condensed);
@@ -30347,10 +30325,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 11px 16px;
 }
 .sadb-tenant-grid--head {
-  padding: 10px 16px;
-  /* Tinted, so the column names read as part of the list rather than as its
-     first row. */
-  background: var(--sadb-colhead);
+  padding: 12px 16px 8px;
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -30371,15 +30346,6 @@ button.sadb-signal { cursor: pointer; }
   color: var(--text-primary);
 }
 
-/* The console draws lists two ways — SadbGridList and .sa-table — and only
-   one of them named its columns on a tinted strip. Same object, same header,
-   so the table borrows the grid's. Scoped to the console: .sa-table is the
-   super-admin kit's table and appears nowhere else, but the scope says so.
-   `!important` because the app-wide sticky-header rule
-   (.tamam-ehr-app table thead th) paints every table head solid card-white
-   with one of its own — this is the console's exception to it, and the tint
-   is opaque so the sticky behaviour that rule exists for still holds. */
-.sadb-scope .sa-table thead th { background: var(--sadb-colhead) !important; }
 /* A row that opens something should say so on approach: the tint is the
    accent's lightest step rather than a neutral grey, which read as disabled. */
 .sadb-tenant-row:hover { background: var(--tb-blue-50); }
@@ -32441,9 +32407,7 @@ button.sadb-signal { cursor: pointer; }
   position: sticky;
   top: 0;
   z-index: 1;
-  /* Keeps the tint while it sticks — it is opaque, so rows still pass under
-     it rather than through it. */
-  background: var(--sadb-colhead);
+  background: var(--bg-card-solid);
 }
 
 @media (max-width: 1100px) {

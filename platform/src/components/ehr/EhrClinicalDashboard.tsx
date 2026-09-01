@@ -1290,24 +1290,15 @@ export default function EhrClinicalDashboard({
   // Call = take the patient now: record the handoff on the triage doc (the
   // row flips to "In service" for every station) and open the consultation.
   const callPatient = async (row: UnifiedPatientRow) => {
-    if (!row.patientId) return;
-    const activeEncounter = encounterForRow(row);
-    if (currentUser) {
-      const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
-      await assignProviderToPatient({
-        patientId: row.patientId,
-        patientName: row.name,
-        provider: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
-        actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
-        hospitalId: currentUser.hospitalId,
-        hospitalName: currentUser.hospital?.name || currentUser.hospitalName,
-        orgId: currentUser.orgId,
-        triageId: queueEntryByPatient.get(row.patientId)?.triageId,
-        appointmentId: row.appointment?._id,
-        encounterId: activeEncounter?._id,
-        note: 'Patient called for consultation',
-      });
+    if (!row.patientId || !currentUser || !canConsult) return;
+    const assignedToViewer = row.appointment?.providerId === currentUser._id
+      || row.patient?.assignedDoctor === currentUser._id
+      || latestTriageByPatient.get(row.patientId)?.assignedProviderId === currentUser._id;
+    if (!assignedToViewer) {
+      showToast('Front desk must assign this patient before consultation can begin.', 'error');
+      return;
     }
+    const activeEncounter = encounterForRow(row);
     const entry = queueEntryByPatient.get(row.patientId);
     if (entry && currentUser && (!entry.assignedToId || entry.assignedToId === currentUser._id)) {
       await updateTriageDoc(entry.triageId, {
@@ -1980,6 +1971,11 @@ export default function EhrClinicalDashboard({
                   )}
                   {filteredPatientRows.map((row) => {
                     const columns = rowQueueColumns(row);
+                    const assignedToViewer = Boolean(currentUser && (
+                      row.appointment?.providerId === currentUser._id
+                      || row.patient?.assignedDoctor === currentUser._id
+                      || columns.triage?.assignedProviderId === currentUser._id
+                    ));
                     // Details drop down under the row rather than covering the
                     // list — the queue is the context for reading one visit.
                     const isExpanded = visitRow?.id === row.id;
@@ -2114,8 +2110,8 @@ export default function EhrClinicalDashboard({
                             lastTriage={row.patientId ? latestTriageByPatient.get(row.patientId) ?? null : null}
                             entry={columns.entry}
                             onClose={() => setVisitRow(null)}
-                            onCall={() => { setVisitRow(null); void callPatient(row); }}
-                            onAcknowledge={columns.triage && canConsult && (!columns.triage.assignedProviderId || columns.triage.assignedProviderId === currentUser?._id)
+                            onCall={canConsult && assignedToViewer ? () => { setVisitRow(null); void callPatient(row); } : undefined}
+                            onAcknowledge={columns.triage && canConsult && columns.triage.assignedProviderId === currentUser?._id
                               ? () => void acknowledgeTriage(columns.triage!)
                               : undefined}
                             onMove={columns.entry ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}

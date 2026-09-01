@@ -200,7 +200,7 @@ export default function SuperintendentDashboard() {
               key={k.id}
               type="button"
               onClick={() => openPreview(`kpi:${k.id}`)}
-              className="dash-card kpi-tile text-start transition-colors"
+              className="dash-card text-start transition-colors"
               style={{ padding: '14px 16px', position: 'relative', cursor: 'pointer' }}
             >
               {k.alarm && <span className="data-tile__alarm-pulse" aria-hidden="true" />}

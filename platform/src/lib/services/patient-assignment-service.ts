@@ -15,6 +15,7 @@
  * leaves the assignment standing rather than rolling it back.
  */
 import type { UserRole } from '../db-types';
+import { canAssignCareTeamRole } from '../care-team-permissions';
 
 export interface AssignmentActor {
   id?: string;
@@ -191,18 +192,12 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
   }
 }
 
-const ASSIGNMENT_ROLES: readonly UserRole[] = [
-  'front_desk', 'central_registration_clerk', 'clinic_clerk',
-  'medical_superintendent', 'hospital_manager', 'org_admin', 'super_admin',
-  'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
-  'triage_nurse', 'rooming_nurse',
-];
-
 function assertCanAssign(actor?: AssignmentActor): void {
-  // Internal/migration callers may not have an interactive actor. Whenever an
-  // actor is supplied, fail closed on roles that do not coordinate care.
-  if (actor?.role && !ASSIGNMENT_ROLES.includes(actor.role)) {
-    throw new Error('You do not have permission to assign care staff');
+  // Assignment changes accountability for a patient. Require an identified
+  // reception actor at the service boundary; hiding a picker is not an
+  // authorization control, and an actor-less call must not become a bypass.
+  if (!actor?.id || !canAssignCareTeamRole(actor.role)) {
+    throw new Error('Only front desk staff can assign doctors or nurses');
   }
 }
 

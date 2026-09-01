@@ -26,6 +26,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, AppointmentType, PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -89,6 +90,7 @@ export default function AppointmentEditModal({
   inline?: boolean;
 }) {
   const { currentUser } = useAuth();
+  const { canAssignCareTeam } = usePermissions();
   const { showToast } = useToast();
   const { departments } = useSettings();
   const { users } = useUsers();
@@ -171,12 +173,12 @@ export default function AppointmentEditModal({
     priority !== appointment.priority ||
     status !== appointment.status ||
     department !== appointment.department ||
-    providerId !== (appointment.providerId || '') ||
-    provider !== appointment.providerName ||
+    (canAssignCareTeam && providerId !== (appointment.providerId || '')) ||
+    (canAssignCareTeam && provider !== appointment.providerName) ||
     reason !== appointment.reason ||
     notes !== (appointment.notes || '') ||
     detail.recurrence !== (appointment.isRecurring ? (appointment.recurrencePattern || 'weekly') : '') ||
-    detail.staffId !== (appointment.staffId || '') ||
+    (canAssignCareTeam && detail.staffId !== (appointment.staffId || '')) ||
     detail.room !== (appointment.room || '');
 
   const save = async () => {
@@ -186,9 +188,13 @@ export default function AppointmentEditModal({
       const updated = await updateAppointment(appointment._id, {
         appointmentDate: date, appointmentTime: time, duration,
         appointmentType: type, priority, department,
-        providerId, providerName: provider, reason, notes,
-        staffId: detail.staffId || undefined,
-        staffName: detail.staffName || undefined,
+        reason, notes,
+        ...(canAssignCareTeam ? {
+          providerId,
+          providerName: provider,
+          staffId: detail.staffId || undefined,
+          staffName: detail.staffName || undefined,
+        } : {}),
         room: detail.room || undefined,
         isRecurring: Boolean(detail.recurrence),
         recurrencePattern: detail.recurrence || undefined,
@@ -198,8 +204,8 @@ export default function AppointmentEditModal({
       // Provider/staff are visit assignments, not merely calendar decoration.
       // Mirror changes into the encounter and patient compatibility fields so
       // the assignee's worklist updates on every device.
-      const providerChanged = providerId !== (appointment.providerId || '');
-      const nurseChanged = detail.staffId !== (appointment.staffId || '');
+      const providerChanged = canAssignCareTeam && providerId !== (appointment.providerId || '');
+      const nurseChanged = canAssignCareTeam && detail.staffId !== (appointment.staffId || '');
       if (providerChanged && providerId) {
         const selected = providerOptions.find(option => option._id === providerId);
         const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
@@ -291,7 +297,7 @@ export default function AppointmentEditModal({
         <div className="ehr-visit-pop-tabs" role="tablist">
           {([
             ['appointment', 'Details'],
-            ['care', 'Provider & staff'],
+            ['care', canAssignCareTeam ? 'Provider & staff' : 'Visit detail'],
             ['billing', statusInRow ? 'Priority & billing' : 'Status & billing'],
           ] as const).map(([key, label]) => (
             <button
@@ -345,38 +351,44 @@ export default function AppointmentEditModal({
         {(!inline || hideInlineTabs || tab === 'care') && (
         <div className="appt-edit-col">
           {!inline && <h4 className="appt-edit-section">Provider &amp; staff</h4>}
-          {/* A picker, not free text, with its own Assign so the change can be
-              committed without saving the whole form. */}
-          <div>
-            <label>Provider</label>
-            <span className="appt-assign-field">
-              <Select
-                value={providerId}
-                onChange={e => {
-                  const person = providerOptions.find(p => p._id === e.target.value);
-                  setProviderId(e.target.value);
-                  setProvider(person ? (person.name || person.username || '') : '');
-                }}
-              >
-                <option value="">{!providerId && provider ? `${provider} (not on staff list)` : 'Unassigned'}</option>
-                {providerId && !providerOptions.some(p => p._id === providerId) && (
-                  <option value={providerId}>{provider || 'Current provider'}</option>
-                )}
-                {/* Specialty/department, free-or-busy at this slot, and the
-                    day's load — so a clash is visible before the pick, not
-                    after saving. */}
-                {providerOptions.map(person => (
-                  <option key={person._id} value={person._id}>
-                    {staffOptionLabel(person, providerSlotContext)}
-                  </option>
-                ))}
-              </Select>
-              <button type="button" className="appt-assign-btn" onClick={save} disabled={saving || (providerId === (appointment.providerId || '') && provider === appointment.providerName)}>
-                {saving ? '…' : 'Assign'}
-              </button>
-            </span>
-          </div>
-          <AppointmentDetailFields section="provider" {...detailProps} onAssignStaff={save} staffAssignDisabled={saving || detail.staffId === (appointment.staffId || '')} />
+          {canAssignCareTeam ? (
+            <>
+              {/* A picker, not free text, with its own Assign so the change can
+                  be committed without saving the whole form. */}
+              <div>
+                <label>Provider</label>
+                <span className="appt-assign-field">
+                  <Select
+                    value={providerId}
+                    onChange={e => {
+                      const person = providerOptions.find(p => p._id === e.target.value);
+                      setProviderId(e.target.value);
+                      setProvider(person ? (person.name || person.username || '') : '');
+                    }}
+                  >
+                    <option value="">{!providerId && provider ? `${provider} (not on staff list)` : 'Unassigned'}</option>
+                    {providerId && !providerOptions.some(p => p._id === providerId) && (
+                      <option value={providerId}>{provider || 'Current provider'}</option>
+                    )}
+                    {providerOptions.map(person => (
+                      <option key={person._id} value={person._id}>
+                        {staffOptionLabel(person, providerSlotContext)}
+                      </option>
+                    ))}
+                  </Select>
+                  <button type="button" className="appt-assign-btn" onClick={save} disabled={saving || (providerId === (appointment.providerId || '') && provider === appointment.providerName)}>
+                    {saving ? '…' : 'Assign'}
+                  </button>
+                </span>
+              </div>
+              <AppointmentDetailFields section="provider" {...detailProps} onAssignStaff={save} staffAssignDisabled={saving || detail.staffId === (appointment.staffId || '')} />
+            </>
+          ) : (
+            <div className="appointment-billing-panel" aria-label="Assigned care team">
+              <div><dt>Provider</dt><dd>{appointment.providerName || 'Unassigned'}</dd></div>
+              <div><dt>Nurse</dt><dd>{appointment.staffName || 'Unassigned'}</dd></div>
+            </div>
+          )}
 
           {!inline && <h4 className="appt-edit-section">Visit detail</h4>}
           <div>

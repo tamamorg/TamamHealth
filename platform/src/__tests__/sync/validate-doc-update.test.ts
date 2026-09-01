@@ -27,6 +27,7 @@ const validate = compile(ORG_SCOPED_VALIDATE_FN);
 
 const clinicUser: UserCtx = { name: 'doc-1', roles: ['org:org-a', 'role:doctor'] };
 const nurseUser: UserCtx = { name: 'nurse-1', roles: ['org:org-a', 'role:nurse'] };
+const frontDeskUser: UserCtx = { name: 'desk-1', roles: ['org:org-a', 'role:front_desk'] };
 
 function reasonFor(
   newDoc: Record<string, unknown>,
@@ -106,6 +107,21 @@ describe('org-scoped validate_doc_update', () => {
         _id: 'r-consult', type: 'medical_record', orgId: 'org-a',
         recordKind: 'consultation',
       }, null, nurseUser)).toMatch(/may create medical_record only when recordKind/);
+    });
+
+    it('keeps appointment authorship and care-team fields at the front desk boundary', () => {
+      const appointment = {
+        _id: 'apt-1', type: 'appointment', orgId: 'org-a',
+        providerId: 'doctor-1', providerName: 'Dr One',
+        staffId: 'nurse-1', staffName: 'Nurse One', status: 'scheduled',
+      };
+      expect(reasonFor(appointment, null, frontDeskUser)).toBeNull();
+      expect(reasonFor(appointment, null, clinicUser)).toMatch(/role doctor may not write documents of type appointment/);
+      expect(reasonFor({ ...appointment, providerId: 'doctor-2' }, appointment, clinicUser))
+        .toMatch(/may not amend providerId on appointment/);
+      expect(reasonFor({ ...appointment, staffId: 'nurse-2' }, appointment, nurseUser))
+        .toMatch(/may not amend staffId on appointment/);
+      expect(reasonFor({ ...appointment, status: 'in_progress' }, appointment, clinicUser)).toBeNull();
     });
 
     it('rejects a user provisioned without a role claim', () => {

@@ -152,7 +152,7 @@ export default function EhrVisitPopup({
   entry: QueueEntry | null;
   onClose: () => void;
   /** Take the patient now — records the handoff and opens the consultation. */
-  onCall: () => void;
+  onCall?: () => void;
   /** Override the inline primary action label for role-specific workflows. */
   onCallLabel?: string;
   /** Acknowledge the nurse's clinical handoff without starting consultation. */
@@ -342,7 +342,7 @@ export default function EhrVisitPopup({
                 ) : (
                   <p>Visit form has not been completed for this visit</p>
                 )}
-                {patientId && (
+                {patientId && onCall && (
                   <button type="button" className="ehr-visit-pop-link" onClick={onCall}>
                     {onCallLabel || (todaysNote ? 'Open consultation' : 'Visit note form')} <ArrowRight className="w-3.5 h-3.5" />
                   </button>

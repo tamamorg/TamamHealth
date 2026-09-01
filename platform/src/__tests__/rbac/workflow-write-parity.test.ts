@@ -75,9 +75,7 @@ const WORKFLOWS: WorkflowCapability[] = [
     flag: 'canBookAppointments',
     docTypes: ['appointment'],
     roles: [
-      'doctor', 'clinical_officer', 'nurse', 'midwife', 'clinician', 'triage_nurse',
-      'rooming_nurse', 'central_registration_clerk', 'clinic_clerk', 'front_desk',
-      'medical_superintendent', 'super_admin',
+      'central_registration_clerk', 'clinic_clerk', 'front_desk',
     ],
   },
   {

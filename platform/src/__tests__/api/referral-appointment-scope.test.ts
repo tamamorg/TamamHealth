@@ -250,7 +250,11 @@ describe('BUG 3 — auth wins over a client-supplied orgId on create', () => {
   });
 
   test('appointment create stamps orgId from auth even when the body supplies a different org', async () => {
-    mockGetAuth.mockResolvedValue(authFor(ORG_A, HOSP_A));
+    mockGetAuth.mockResolvedValue({
+      ...authFor(ORG_A, HOSP_A, 'user-front-desk'),
+      role: 'front_desk',
+      name: 'Front Desk',
+    });
     const res = await appointmentsPOST(postRequest('http://test/api/appointments', {
       patientId: 'pat-7', patientName: 'Appt Create Patient', providerId: 'user-provider-a',
       appointmentDate: futureDateString(30), appointmentTime: '11:00', duration: 30,

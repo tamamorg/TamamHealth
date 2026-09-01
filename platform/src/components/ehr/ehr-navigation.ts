@@ -364,6 +364,19 @@ export function railCenterLabels(input: {
   return { centerLabel, centerSubLabel };
 }
 
+/**
+ * Prefer the live facility directory over session-denormalised names. This is
+ * what lets a facility rename or a late sync update the header immediately,
+ * while the session claim remains the first-paint/offline fallback.
+ */
+export function resolveRailFacilityName(input: {
+  liveName?: string;
+  hydratedName?: string;
+  sessionName?: string;
+}): string | undefined {
+  return input.liveName || input.hydratedName || input.sessionName;
+}
+
 export interface ImpersonationChipInfo {
   /** The role the session is actually acting as right now. */
   activeRoleLabel: string;

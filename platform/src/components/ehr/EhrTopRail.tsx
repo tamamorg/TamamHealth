@@ -43,6 +43,7 @@ import {
   isHrefAllowed,
   impersonationChipInfo,
   railCenterLabels,
+  resolveRailFacilityName,
   uniqueAllowedNavItems,
 } from './ehr-navigation';
 import { moduleBadgeCounts } from '@/lib/module-badges';
@@ -57,8 +58,14 @@ export default function EhrTopRail() {
   // before hospitalName was added to the token won't carry it — fall back to
   // resolving the name from the local hospitals store by id.
   const { hospitals } = useHospitals();
-  const facilityName = currentUser?.hospitalName
-    || (currentUser?.hospitalId ? hospitals.find(h => h._id === currentUser.hospitalId)?.name : undefined);
+  const liveFacilityName = currentUser?.hospitalId
+    ? hospitals.find(h => h._id === currentUser.hospitalId)?.name
+    : undefined;
+  const facilityName = resolveRailFacilityName({
+    liveName: liveFacilityName,
+    hydratedName: currentUser?.hospital?.name,
+    sessionName: currentUser?.hospitalName,
+  });
   // National oversight (Ministry of Health) isn't tied to a single facility —
   // show the ministry name in the rail's center and give it the header search,
   // so the National Dashboard page doesn't need its own title + search row.

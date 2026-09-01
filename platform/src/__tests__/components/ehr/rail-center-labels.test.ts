@@ -14,7 +14,7 @@
  * this suite is where each role's header is pinned.
  */
 
-import { railCenterLabels } from '@/components/ehr/ehr-navigation';
+import { railCenterLabels, resolveRailFacilityName } from '@/components/ehr/ehr-navigation';
 
 describe('railCenterLabels', () => {
   it('gives the platform operator their name over Command Center', () => {
@@ -77,5 +77,16 @@ describe('railCenterLabels', () => {
 
   it('renders nothing while the session is still hydrating', () => {
     expect(railCenterLabels({})).toEqual({});
+  });
+});
+
+describe('resolveRailFacilityName', () => {
+  it('uses the session claim on first paint and a live facility rename as soon as it arrives', () => {
+    expect(resolveRailFacilityName({ sessionName: 'Old Facility' })).toBe('Old Facility');
+    expect(resolveRailFacilityName({
+      liveName: 'Renamed Facility',
+      hydratedName: 'Old Facility',
+      sessionName: 'Older Facility',
+    })).toBe('Renamed Facility');
   });
 });

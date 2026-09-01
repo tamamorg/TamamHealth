@@ -66,17 +66,16 @@ export function usePermissions() {
   // Appointments — route visibility is broad, but workflow actions are split
   // by duty: reception schedules/checks in, clinicians advance visits, HMIS
   // and management can export operational lists.
-  // Triage/rooming nurses book too: since the nurse station merged into the
-  // shared clinical dashboard, "Book appointment" is their path for sending a
-  // routine walk-in to a clinic slot instead of holding them in the queue.
-  const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
+  // Booking selects the doctor and optional nurse who will own the visit, so it
+  // is part of reception's assignment duty rather than a clinical action.
+  const canBookAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk';
   const canConfirmAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isOrgAdmin || isSuperAdmin;
   const canManageAppointmentSchedule = canConfirmAppointments;
   const canCheckInAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
   const canAdvanceAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isMedSupt || isSuperAdmin;
   const canExportAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || role === 'hrio' || isRecordsHmis || isHospitalManager || isMedSupt || isOrgAdmin || isSuperAdmin;
-  const canAssignCareTeam = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isHospitalManager || isOrgAdmin || isSuperAdmin;
-  const canViewFacilityCalendar = canAssignCareTeam;
+  const canAssignCareTeam = isRegistrationClerk || isClinicClerk || role === 'front_desk';
+  const canViewFacilityCalendar = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isHospitalManager || isOrgAdmin || isSuperAdmin;
 
   // Messages — any clinical/CHW role can send (view is broader via nav config)
   const canSendMessages = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || isRecordsHmis || role === 'front_desk' || isCashier || role === 'pharmacist' || role === 'lab_tech' || isCountyDirector || role === 'hrio' || role === 'nutritionist' || role === 'radiologist' || isMedSupt || isOrgAdmin || isSuperAdmin;
@@ -162,7 +161,7 @@ export function usePermissions() {
   // super_admin wildcard already lives in isPathAllowed.
   if (isSuperAdmin) {
     for (const key of Object.keys(permissions) as (keyof typeof permissions)[]) {
-      if (key.startsWith('can') && key !== 'canAccess') {
+      if (key.startsWith('can') && key !== 'canAccess' && key !== 'canAssignCareTeam' && key !== 'canBookAppointments') {
         (permissions as Record<string, unknown>)[key] = true;
       }
     }

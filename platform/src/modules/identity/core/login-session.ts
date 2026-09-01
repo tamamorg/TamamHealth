@@ -75,11 +75,12 @@ export async function resolveEffectiveIdentity(
   user: ServerUser,
   requestedRole: string | undefined,
 ): Promise<RolePickerResult> {
+  const resolvedHospitalName = user.hospitalName || await lookupHospitalName(user.hospitalId);
   const base: EffectiveIdentity = {
     role: user.role,
     actualRole: undefined,
     hospitalId: user.hospitalId,
-    hospitalName: user.hospitalName,
+    hospitalName: resolvedHospitalName,
     orgId: user.orgId,
   };
   if (!requestedRole || requestedRole === user.role) return { ok: true, effective: base };
@@ -137,6 +138,17 @@ async function lookupOrgName(orgId?: string): Promise<string | undefined> {
   try {
     const { getOrganizationById } = await import('@/lib/services/organization-service');
     return (await getOrganizationById(orgId))?.name;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Resolve legacy accounts that carry a facility id but no denormalised name. */
+async function lookupHospitalName(hospitalId?: string): Promise<string | undefined> {
+  if (!hospitalId) return undefined;
+  try {
+    const { getHospitalById } = await import('@/lib/services/hospital-service');
+    return (await getHospitalById(hospitalId))?.name;
   } catch {
     return undefined;
   }

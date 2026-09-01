@@ -16,6 +16,16 @@ async function lookupOrgName(orgId?: string): Promise<string | undefined> {
   }
 }
 
+async function lookupHospitalName(hospitalId?: string): Promise<string | undefined> {
+  if (!hospitalId) return undefined;
+  try {
+    const { getHospitalById } = await import('@/lib/services/hospital-service');
+    return (await getHospitalById(hospitalId))?.name;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The slice of `superAdminPolicies` a client is allowed to act on.
  *
@@ -111,7 +121,9 @@ export async function GET(request: NextRequest) {
         role: impersonating ? payload.role : user.role,
         actualRole: impersonating ? payload.actualRole : undefined,
         hospitalId: impersonating ? payload.hospitalId : user.hospitalId,
-        hospitalName: impersonating ? payload.hospitalName : user.hospitalName,
+        hospitalName: impersonating
+          ? (payload.hospitalName || await lookupHospitalName(payload.hospitalId))
+          : (user.hospitalName || await lookupHospitalName(user.hospitalId)),
         orgId: impersonating ? payload.orgId : user.orgId,
         // Not carried on the JWT — the organization the account belongs to is
         // stable, so it is read from the live record rather than adding another

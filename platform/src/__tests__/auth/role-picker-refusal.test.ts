@@ -23,8 +23,12 @@ import apd from '@/lib/i18n/locales/apd';
 jest.mock('@/lib/services/platform-config-service', () => ({
   getPlatformConfig: jest.fn(),
 }));
+jest.mock('@/lib/services/hospital-service', () => ({
+  getHospitalById: jest.fn(),
+}));
 
 const { getPlatformConfig } = jest.requireMock('@/lib/services/platform-config-service');
+const { getHospitalById } = jest.requireMock('@/lib/services/hospital-service');
 
 const asUser = (over: Partial<ServerUser> = {}): ServerUser => ({
   _id: 'user-superadmin',
@@ -37,7 +41,10 @@ const asUser = (over: Partial<ServerUser> = {}): ServerUser => ({
 const impersonation = (enabled: boolean) =>
   getPlatformConfig.mockResolvedValue({ superAdminPolicies: { impersonationEnabled: enabled } });
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  getHospitalById.mockResolvedValue(null);
+});
 
 describe('signing in as your own role', () => {
   it('is never a role pick, so policy is not consulted at all', async () => {
@@ -49,6 +56,17 @@ describe('signing in as your own role', () => {
   it('is the same when no role is requested', async () => {
     const result = await resolveEffectiveIdentity(asUser({ role: 'doctor' }), undefined);
     expect(result.ok).toBe(true);
+  });
+
+  it('hydrates a legacy session facility name before the first authenticated render', async () => {
+    getHospitalById.mockResolvedValue({ _id: 'hospital-1', name: 'Juba Teaching Hospital' });
+    const result = await resolveEffectiveIdentity(asUser({
+      role: 'nurse', hospitalId: 'hospital-1', hospitalName: undefined,
+    }), undefined);
+    expect(result).toMatchObject({
+      ok: true,
+      effective: { role: 'nurse', hospitalId: 'hospital-1', hospitalName: 'Juba Teaching Hospital' },
+    });
   });
 });
 

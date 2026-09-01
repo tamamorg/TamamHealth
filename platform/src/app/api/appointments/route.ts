@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { CARE_TEAM_ASSIGNMENT_ROLES } from '@/lib/care-team-permissions';
 // medical_biller holds the /appointments route in role-routes.ts (billing
 // context needs the appointment a charge/claim is tied to) — read-only,
 // since a biller does not schedule visits.
@@ -188,6 +189,10 @@ async function postHandler(request: NextRequest) {
       if (!result) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       return NextResponse.json({ appointment: result });
     }
+    // Creating a booking selects its doctor and optional nurse. Status updates
+    // above remain available to the assigned clinical team, but authorship of
+    // the schedule and its care-team assignment belongs to reception.
+    if (!hasRole(auth, CARE_TEAM_ASSIGNMENT_ROLES)) return forbidden();
     // Create new appointment
     if (!body.patientId || !body.providerId || !body.appointmentDate || !body.appointmentTime) {
       return NextResponse.json(

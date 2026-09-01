@@ -38,6 +38,7 @@ import { TRANSFER_WRITE_ROLES } from '../services/patient-transfer-permissions';
 // about who works at more than one site.
 import { MULTI_FACILITY_ROLES } from './facility-entitlements';
 import { DATABASE_DOCUMENT_TYPES } from './sync-config';
+import { CARE_TEAM_ASSIGNMENT_ROLES } from '../care-team-permissions';
 
 /**
  * The canonical role groups.
@@ -212,7 +213,7 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   // capability table the API route and the UI read, so this row cannot drift
   // from the route guard the way a hand-copied list can.
   patient_transfer: TRANSFER_WRITE_ROLES,
-  appointment: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
+  appointment: CARE_TEAM_ASSIGNMENT_ROLES,
   availability: [...ADMIN, ...CLINICIANS],
   assessment: NURSING_AND_CLINICIANS,
   // Registration opens the visit and performs facility checkout; clinical
@@ -353,6 +354,12 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
     'pharmacist',
   ],
   admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+  appointment: [
+    'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician',
+    'medical_superintendent', 'nurse', 'midwife', 'triage_nurse',
+    'rooming_nurse', 'data_entry_clerk', 'records_hmis_officer', 'hrio',
+    'hospital_manager',
+  ],
 };
 
 /** Roles allowed to create a document but not receive unrestricted updates. */
@@ -391,6 +398,22 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
   admission: [
     'wardId', 'wardName', 'bedId', 'bedNumber', 'nurseAssigned',
     'nurseAssignedName', 'updatedAt', 'offlineSync',
+  ],
+  // Deliberately excludes providerId/providerName/staffId/staffName. Those
+  // four fields move accountability and remain reception-only even when a
+  // clinician may advance status or annotate the existing visit.
+  appointment: [
+    'appointmentDate', 'appointmentTime', 'endTime', 'duration',
+    'appointmentType', 'priority', 'room', 'department', 'reason', 'notes',
+    'status', 'cancelledReason', 'cancelledBy', 'cancelledByName', 'cancelledAt',
+    'confirmedAt', 'confirmedBy', 'confirmedByName',
+    'checkedInAt', 'checkedInBy', 'checkedInByName',
+    'startedAt', 'startedBy', 'startedByName',
+    'completedAt', 'completedBy', 'completedByName',
+    'noShowAt', 'noShowBy', 'noShowByName', 'statusHistory',
+    'reminderSent', 'reminderChannel', 'isRecurring', 'recurrencePattern',
+    'recurrenceEndDate', 'insuranceSubmitted', 'patientNotes',
+    'updatedAt', 'offlineSync',
   ],
 };
 

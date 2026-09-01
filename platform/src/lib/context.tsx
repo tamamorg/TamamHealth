@@ -175,6 +175,7 @@ async function hydrateAppUser(raw: {
       ? canonicalizeUserRole(raw.actualRole as UserRole)
       : undefined,
     hospital,
+    hospitalName: (raw.hospitalName as string | undefined) || hospital?.name,
     organization,
     orgName: organization?.name ?? raw.orgName,
     branding,
@@ -1173,7 +1174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         role: user.role as UserRole,
         actualRole: user.actualRole,
         hospitalId: user.hospitalId,
-        hospitalName: user.hospitalName,
+        hospitalName: user.hospitalName || hospital?.name,
         hospital,
         department: user.department,
         orgId: user.orgId,
@@ -1251,7 +1252,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    */
   const refreshCurrentUser = useCallback(async (): Promise<void> => {
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       if (!data?.user) return;
