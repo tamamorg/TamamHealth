@@ -215,6 +215,21 @@ function outstandingPillTone(tone?: OutstandingEntry['tone']) {
   return { key: 'green', label: 'Open' };
 }
 
+/**
+ * Applies only presentation-level filtering to appointments that have already
+ * been ownership-scoped by the role dashboard. In particular, providerName is
+ * display data: on a nurse's assigned visit it names the doctor, so it must not
+ * be used to decide whether that nurse can see the visit.
+ */
+export function filterRoleOwnedAppointments(
+  appointments: AppointmentDoc[],
+  locationFilter = 'all',
+): AppointmentDoc[] {
+  return appointments.filter(
+    appointment => locationFilter === 'all' || appointment.facilityName === locationFilter,
+  );
+}
+
 // Mirrors dashboard/lab/page.tsx's FLAG_COLORS convention (critical=red,
 // abnormal=amber) rather than importing it — that page's constant isn't
 // exported for reuse, so the same rgba/CSS-var values are matched here.
@@ -750,7 +765,6 @@ export default function EhrClinicalDashboard({
     ? calendarMonthOverride.month
     : startOfMonth(parseIsoDate(selectedDate));
   const [locationFilter] = useState('all');
-  const [providerFilter, setProviderFilter] = useState<string[]>([]);
   const [followUpToComplete, setFollowUpToComplete] = useState<OutstandingEntry | null>(null);
   const [followUpOutcome, setFollowUpOutcome] = useState<NonNullable<FollowUpDoc['outcome']>>('under_treatment');
   const [followUpNotes, setFollowUpNotes] = useState('');
@@ -881,39 +895,18 @@ export default function EhrClinicalDashboard({
     }
   };
 
-  const providerOptions = useMemo(() => {
-    const names = [clinicianName, ...appointments.map(appointment => appointment.providerName)]
-      .filter((name): name is string => Boolean(name));
-    return Array.from(new Set(names));
-  }, [appointments, clinicianName]);
-
-  useEffect(() => {
-    setProviderFilter(current => {
-      const active = current.filter(provider => providerOptions.includes(provider));
-      if (active.length === providerOptions.length) return active;
-      if (current.length > 0 && active.length > 0) return active;
-      return providerOptions;
-    });
-  }, [providerOptions]);
-
   useEffect(() => {
     // Calendar view was removed — the dashboard is the only view for all users.
     setView('dashboard');
   }, [searchParams]);
 
-  const matchesProviderFilter = useCallback((appointment: AppointmentDoc) => {
-    if (providerOptions.length === 0 || providerFilter.length === 0) return true;
-    return providerFilter.includes(appointment.providerName || clinicianName);
-  }, [clinicianName, providerFilter, providerOptions.length]);
-
   const appointmentCounts = useMemo(() => {
     return appointments.reduce<Map<string, number>>((counts, appointment) => {
       if (locationFilter !== 'all' && appointment.facilityName !== locationFilter) return counts;
-      if (!matchesProviderFilter(appointment)) return counts;
       counts.set(appointment.appointmentDate, (counts.get(appointment.appointmentDate) || 0) + 1);
       return counts;
     }, new Map());
-  }, [appointments, locationFilter, matchesProviderFilter]);
+  }, [appointments, locationFilter]);
 
   const calendarCells = useMemo(() => {
     const monthStart = startOfMonth(calendarMonth);
@@ -936,13 +929,20 @@ export default function EhrClinicalDashboard({
     });
   }, [appointmentCounts, calendarMonth, selectedDate, todayIso]);
 
-  // Provider/location-scoped but NOT date-scoped — the day-activity chart
+  // Role ownership is enforced before appointments reach this shared view:
+  // DoctorDashboardPage supplies the signed-in provider's book and
+  // NurseHomeView supplies visits whose staffId is the signed-in nurse. Do not
+  // infer another provider filter from providerName here. Appointments load
+  // asynchronously; the old hidden name filter initialized to the nurse's
+  // name, then rejected every newly loaded visit because those records carry
+  // the doctor's name as providerName.
+  //
+  // Keep this location-scoped but NOT date-scoped — the day-activity chart
   // needs adjacent days too, for its two-day comparison.
-  const filteredAppointments = useMemo(() => (
-    appointments
-      .filter(appointment => locationFilter === 'all' || appointment.facilityName === locationFilter)
-      .filter(matchesProviderFilter)
-  ), [appointments, locationFilter, matchesProviderFilter]);
+  const filteredAppointments = useMemo(
+    () => filterRoleOwnedAppointments(appointments, locationFilter),
+    [appointments, locationFilter],
+  );
 
   const selectedAppointmentsForDay = useMemo(() => {
     return filteredAppointments
