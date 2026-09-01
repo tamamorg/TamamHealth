@@ -66,9 +66,17 @@ export function usePermissions() {
   // Appointments — route visibility is broad, but workflow actions are split
   // by duty: reception schedules/checks in, clinicians advance visits, HMIS
   // and management can export operational lists.
-  // Booking selects the doctor and optional nurse who will own the visit, so it
-  // is part of reception's assignment duty rather than a clinical action.
-  const canBookAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk';
+  // Triage/rooming nurses book too: since the nurse station merged into the
+  // shared clinical dashboard, "Book appointment" is their path for sending a
+  // routine walk-in to a clinic slot instead of holding them in the queue.
+  //
+  // Booking is NOT reception-only. It was narrowed to the three clerk roles
+  // once, and that silently killed the button on the clinical dashboard: the
+  // only roles that screen is ever rendered for (doctor, clinical_officer,
+  // clinician, super_admin, and the nurse family) were all outside the new
+  // list, so `canBookAppointments && …` could never be true there. If this is
+  // ever narrowed again, remove that button in the same change.
+  const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
   const canConfirmAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isOrgAdmin || isSuperAdmin;
   const canManageAppointmentSchedule = canConfirmAppointments;
   const canCheckInAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
@@ -161,7 +169,7 @@ export function usePermissions() {
   // super_admin wildcard already lives in isPathAllowed.
   if (isSuperAdmin) {
     for (const key of Object.keys(permissions) as (keyof typeof permissions)[]) {
-      if (key.startsWith('can') && key !== 'canAccess' && key !== 'canAssignCareTeam' && key !== 'canBookAppointments') {
+      if (key.startsWith('can') && key !== 'canAccess' && key !== 'canAssignCareTeam') {
         (permissions as Record<string, unknown>)[key] = true;
       }
     }

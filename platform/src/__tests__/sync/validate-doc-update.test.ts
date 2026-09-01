@@ -115,8 +115,11 @@ describe('org-scoped validate_doc_update', () => {
         providerId: 'doctor-1', providerName: 'Dr One',
         staffId: 'nurse-1', staffName: 'Nurse One', status: 'scheduled',
       };
+      // Booking is open to clinical staff — a doctor may CREATE one.
       expect(reasonFor(appointment, null, frontDeskUser)).toBeNull();
-      expect(reasonFor(appointment, null, clinicUser)).toMatch(/role doctor may not write documents of type appointment/);
+      expect(reasonFor(appointment, null, clinicUser)).toBeNull();
+      expect(reasonFor(appointment, null, nurseUser)).toBeNull();
+      // What stays at the desk is re-routing an EXISTING one.
       expect(reasonFor({ ...appointment, providerId: 'doctor-2' }, appointment, clinicUser))
         .toMatch(/may not amend providerId on appointment/);
       expect(reasonFor({ ...appointment, staffId: 'nurse-2' }, appointment, nurseUser))

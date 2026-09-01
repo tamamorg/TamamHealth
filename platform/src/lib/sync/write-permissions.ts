@@ -365,6 +365,22 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
 /** Roles allowed to create a document but not receive unrestricted updates. */
 export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+  // Booking is open to clinical staff; CONFIRMING and re-routing one is not.
+  //
+  // A clinician books the slot (canBookAppointments), and the front desk then
+  // edits and confirms it — so the clinical roles need to CREATE an appointment
+  // but must not gain a blanket right to rewrite one afterwards. That is
+  // exactly this table: their later edits fall through to DOC_UPDATE_ONLY_FIELDS,
+  // whose appointment row deliberately withholds providerId/providerName/
+  // staffId/staffName. Reception keeps the unrestricted row in DOC_WRITE_ROLES.
+  //
+  // Without this the UI and the validator disagreed in the worst way: the
+  // booking wrote to local PouchDB, looked saved, and was refused at
+  // replication with no error on screen.
+  appointment: [
+    'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'triage_nurse', 'rooming_nurse', 'medical_superintendent', 'super_admin',
+  ],
   // Ward/rooming vitals are stored as medical_record documents so the chart,
   // trends and sync worker all consume one canonical observation stream. Do
   // not put these roles in DOC_WRITE_ROLES: that would also let them author or

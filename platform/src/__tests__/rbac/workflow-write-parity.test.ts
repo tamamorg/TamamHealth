@@ -28,7 +28,7 @@
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { DOC_WRITE_ROLES, DOC_UPDATE_ONLY_ROLES } from '@/lib/sync/write-permissions';
+import { DOC_WRITE_ROLES, DOC_UPDATE_ONLY_ROLES, DOC_CREATE_ONLY_ROLES } from '@/lib/sync/write-permissions';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import type { UserRole } from '@/lib/db-types';
 
@@ -75,7 +75,9 @@ const WORKFLOWS: WorkflowCapability[] = [
     flag: 'canBookAppointments',
     docTypes: ['appointment'],
     roles: [
-      'central_registration_clerk', 'clinic_clerk', 'front_desk',
+      'doctor', 'clinical_officer', 'nurse', 'midwife', 'clinician', 'triage_nurse',
+      'rooming_nurse', 'central_registration_clerk', 'clinic_clerk', 'front_desk',
+      'medical_superintendent', 'super_admin',
     ],
   },
   {
@@ -138,11 +140,22 @@ const WORKFLOWS: WorkflowCapability[] = [
   },
 ];
 
-/** Roles permitted to write `type`, counting amend-only grants when allowed. */
+/**
+ * Roles permitted to write `type`.
+ *
+ * Three tables grant a write, not two. A workflow that CREATES a document is
+ * satisfied by `DOC_CREATE_ONLY_ROLES` as well as the unrestricted row — that
+ * is the whole point of a create-only grant, and leaving it out of this
+ * function reported a role as refused when the validator accepts it. A
+ * workflow that only amends needs `DOC_UPDATE_ONLY_ROLES` instead; a
+ * create-only grant does not let it through.
+ */
 function permitted(type: string, includeAmenders: boolean): readonly string[] {
   const base = (DOC_WRITE_ROLES[type] ?? []) as readonly string[];
-  if (!includeAmenders) return base;
-  return [...base, ...((DOC_UPDATE_ONLY_ROLES[type] ?? []) as readonly string[])];
+  const extra = includeAmenders
+    ? (DOC_UPDATE_ONLY_ROLES[type] ?? [])
+    : (DOC_CREATE_ONLY_ROLES[type] ?? []);
+  return [...base, ...(extra as readonly string[])];
 }
 
 describe('every UI-granted workflow is a write CouchDB accepts', () => {

@@ -160,12 +160,12 @@ export default function BookAppointmentModal({
   /**
    * A clinician booking into their own diary, with the patient in front of them.
    *
-   * That is not a request for anyone to approve — the person who owns the slot
-   * has already agreed to it — so it is confirmed outright and the status
-   * control is not offered: every other value it could take would describe
-   * what happened less accurately than "confirmed". The booking still appears
-   * on the front desk's list like any other, because from the moment it is
-   * made it is a real appointment in the facility's day.
+   * The status control is not offered here: the person who owns the slot has
+   * already agreed to it, so none of the other rungs (checked-in, completed,
+   * no-show) describes what just happened. It is booked as SCHEDULED and left
+   * there — confirming an appointment is the front desk's step, and a booking
+   * that confirms itself would walk straight past the desk's review. It shows
+   * on their list from the moment it is made, like every other booking.
    */
   const bookingOwnDiary = Boolean(
     currentUser
@@ -300,7 +300,7 @@ export default function BookAppointmentModal({
 
   const handleSubmit = async () => {
     if (!canBookAppointments) {
-      showToast('Only front desk staff can book and assign appointments', 'error');
+      showToast('Your role cannot book appointments', 'error');
       return;
     }
     if (!patientId || !date || !time || !reason) {
@@ -334,10 +334,13 @@ export default function BookAppointmentModal({
         department,
         reason,
         notes: notes || undefined,
-        // A clinician's own booking is confirmed on the spot; anyone else's
-        // keeps whatever the booker chose.
+        // A clinician's own booking starts at Scheduled and waits for the
+        // desk; anyone else's keeps whatever the booker chose. No confirmedAt
+        // either way — that stamp belongs to whoever actually confirms it
+        // (AppointmentEditModal / updateAppointmentStatus), and writing it
+        // here left records reading "Scheduled" while carrying a confirmation
+        // time nobody had given.
         status: bookingOwnDiary ? 'scheduled' : status,
-        confirmedAt: bookingOwnDiary ? new Date().toISOString() : undefined,
         source: 'staff',
         visitReasonId: visitReason?._id,
         // Denormalised so the booking still reads correctly if the reason is
@@ -374,9 +377,9 @@ export default function BookAppointmentModal({
   if (!canBookAppointments) {
     const denied = (
       <div className="modal-panel" role="alert" style={{ padding: 24, width: '100%' }}>
-        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>Front desk access required</h2>
+        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>Booking not available for your role</h2>
         <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>
-          Only front desk staff can book appointments or assign doctors and nurses. Clinical staff can view and advance visits already assigned to them.
+          Clinical and front desk staff book appointments; the front desk then edits and confirms them. Your role can view visits already assigned to you.
         </p>
       </div>
     );
@@ -691,13 +694,13 @@ export default function BookAppointmentModal({
                     standing at the window, and data entry back-fills visits that
                     have happened — both need to start on a different rung.
                     A clinician booking their own diary gets no such choice: the
-                    appointment is agreed and confirmed, and saying so is more
-                    honest than offering a control whose other values are wrong. */}
+                    slot is agreed, so the only honest value is Scheduled, and
+                    the desk confirms it from there. */}
                 {bookingOwnDiary ? (
                   <div>
                     <label>{t('appointments.labelStatus')}</label>
                     <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                      Confirmed — booked into your own diary. Reception will see it on their list.
+                      Scheduled — booked into your own diary. Reception confirms it from their list.
                     </p>
                   </div>
                 ) : (
