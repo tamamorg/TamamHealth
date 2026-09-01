@@ -8,6 +8,7 @@
 
 import { Info } from '@/components/icons/lucide';
 import { formatDateTime } from '@/lib/format-utils';
+import { useNow } from '@/lib/hooks/useNow';
 
 // Loosely typed — mirrors data/mock.ts VitalSigns, but every field is read
 // defensively since records may have partial vitals.
@@ -41,8 +42,11 @@ interface ChartVitalsBandProps {
 export default function ChartVitalsBand({
   latestVitals, latestRecordDate, onViewVitalsHistory, onRecordVitals, canRecordVitals,
 }: ChartVitalsBandProps) {
+  // How old the last set of vitals is has to keep counting while the chart is
+  // open, and must not differ between two renders of the same reading.
+  const now = useNow(60_000);
   const recordTs = latestRecordDate ? new Date(latestRecordDate).getTime() : NaN;
-  const hoursOld = Number.isNaN(recordTs) ? null : (Date.now() - recordTs) / 3600000;
+  const hoursOld = Number.isNaN(recordTs) ? null : (now - recordTs) / 3600000;
   const isStale = hoursOld !== null && hoursOld > 16;
   let freshnessLabel = '';
   if (isStale && hoursOld !== null) {

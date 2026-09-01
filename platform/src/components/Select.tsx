@@ -432,6 +432,10 @@ export default function Select({
   };
 
   const menu = open && pos && typeof document !== 'undefined' ? createPortal(
+    // The rows inside are buttons and the trigger owns arrow/enter/escape
+    // navigation; this container's handlers only keep the popup from closing
+    // under its own scrollbar.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={menuRef}
       className={`tsel-menu${showSearch ? ' is-inline' : ''}${pos.bottom !== null ? ' is-flipped' : ''}`}

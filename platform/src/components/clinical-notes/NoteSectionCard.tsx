@@ -115,6 +115,9 @@ export default function NoteSectionCard({
 
   if (def.kind === 'derived') {
     return (
+      // onFocus notes which section the caret is in — it reports focus rather
+      // than accepting activation, so there is nothing here to key-activate.
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
       <section
         className={`cn-section${active ? ' is-active' : ''}`}
         id={`cn-section-${sectionId}`}

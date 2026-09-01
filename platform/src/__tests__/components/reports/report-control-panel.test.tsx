@@ -28,7 +28,6 @@ function Harness() {
         { id: 'bar', labelKey: 'reports.chartBar', icon: List },
       ]}
       partToWholeOkFor={() => true}
-      loading={false}
       total={16}
     />
   );

@@ -389,7 +389,7 @@ export default function ClinicalNoteEditor({
         return;
       default: return;
     }
-  }, [note, router, noteId]);
+  }, [note, noteId, navigateAway]);
 
   // ── Assessment: problems checked in the Include Problems popup become
   //    diagnosis lines on the note, deduped against what is already there ──

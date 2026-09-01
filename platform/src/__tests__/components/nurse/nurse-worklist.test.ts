@@ -25,6 +25,7 @@ import {
   makeFollowUp,
   resetFixtureSeq,
 } from './fixtures';
+import { makeAppointment } from '../doctor/fixtures';
 
 // Fixed reference instant for every test: 2026-08-04T12:00:00.000Z.
 // todayIso = '2026-08-04'.
@@ -63,6 +64,33 @@ describe('assembleNurseWorklist — ward roster rows', () => {
     const result = assembleNurseWorklist(baseInput({ patients: [patient] }));
 
     expect(result.patients.find(row => row._id === patient._id)?.ward).toBe('Assigned care');
+  });
+
+  test('a nurse carrying a primary-care patient as responsible provider sees the patient', () => {
+    const patient = makePatient({
+      _id: 'p-nurse-led',
+      assignedDoctor: 'nurse-1',
+      assignedDoctorName: 'Nurse Stella',
+    });
+
+    const result = assembleNurseWorklist(baseInput({ patients: [patient] }));
+
+    expect(result.patients.find(row => row._id === patient._id)?.ward).toBe('Assigned care');
+  });
+
+  test('a nurse-led appointment appears on today\'s dashboard even without secondary staff', () => {
+    const patient = makePatient({ _id: 'p-nurse-appointment' });
+    const appointment = makeAppointment({
+      patientId: patient._id,
+      providerId: 'nurse-1',
+      providerName: 'Nurse Stella',
+      staffId: '',
+      appointmentDate: '2026-08-04',
+    });
+
+    const result = assembleNurseWorklist(baseInput({ patients: [patient], appointments: [appointment] }));
+
+    expect(result.patients.find(row => row._id === patient._id)?.ward).toBe('OPD');
   });
 
   test('an active admission produces a row joined to the patient doc, with real ward/bed, doctor and nurse', () => {

@@ -33,7 +33,11 @@ export function canViewAppointment(appointment: AppointmentDoc, viewer?: Appoint
   if (!appointment.providerId && !appointment.staffId) return false;
   if (FACILITY_APPOINTMENT_ROLES.includes(viewer.role)) return true;
   if (PROVIDER_ROLES.includes(viewer.role)) return appointment.providerId === viewer._id;
-  if (NURSING_ROLES.includes(viewer.role)) return appointment.staffId === viewer._id;
+  // At primary-care facilities a nurse or midwife may carry the visit as the
+  // responsible provider rather than as secondary staff.
+  if (NURSING_ROLES.includes(viewer.role)) {
+    return appointment.staffId === viewer._id || appointment.providerId === viewer._id;
+  }
   return false;
 }
 

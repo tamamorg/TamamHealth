@@ -13,11 +13,10 @@ import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
 import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
 import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
-import Select from '@/components/Select';
 import type { LeaveRequestDoc, LeaveStatus } from '@/lib/db-types-hr';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
-  HrPageShell, LEAVE_STATUSES, STATUS_TOKENS, StaffIdentity, formatHrDate,
+  HrPageShell, STATUS_TOKENS, StaffIdentity, formatHrDate,
   parseLeaveStatusFromParams, statusPillStyle, useHrContext, useUrlParams,
 } from '../hr-shared';
 

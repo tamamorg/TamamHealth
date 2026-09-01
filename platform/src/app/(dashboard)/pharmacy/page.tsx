@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
@@ -640,7 +640,7 @@ export default function PharmacyPage() {
       .filter(i => categoryFilter === 'all' || i.category === categoryFilter)
       .filter(i => statusFilter === 'all' || i.status === statusFilter)
       .sort((a, b) => a.stockLevel - b.stockLevel),
-  [inventory, q, categoryFilter, statusFilter]);
+  [inventory, q, categoryFilter, statusFilter, reorderCoverDays]);
 
   // The order quantity a reorder line should request: enough to reach double
   // its reorder level, never less than the reorder level itself.

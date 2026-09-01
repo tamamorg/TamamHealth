@@ -67,6 +67,9 @@ export default function RowStatusSelect({
   );
 
   return (
+    // Same shape as AppointmentStatusPillSelect: the native <select> inside is
+    // the control, this span only keeps the row's own handlers out of it.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       className={`appointment-status-pill appointment-status-pill--select ${className}`.trim()}
       style={style}

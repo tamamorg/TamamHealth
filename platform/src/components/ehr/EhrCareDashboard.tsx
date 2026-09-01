@@ -1004,6 +1004,7 @@ export default function EhrCareDashboard({
                               is what its picker sets. */}
                           <div className="appointment-card-status" data-priority={priorityCode || undefined}>
                             {statusControl.options?.length && statusControl.onChange ? (
+                              // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- wrapper around the native <select> below; its handlers only stop the row from expanding underneath the picker.
                               <span
                                 className={`appointment-status-pill appointment-status-pill--select ${statusPillClass}`.trim()}
                                 // The row expands on click; picking a status

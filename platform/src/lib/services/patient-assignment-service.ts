@@ -15,7 +15,7 @@
  * leaves the assignment standing rather than rolling it back.
  */
 import type { UserRole } from '../db-types';
-import { canAssignCareTeamRole } from '../care-team-permissions';
+import { canAssignCareTeamRole, canAssignStaffAtFacility } from '../care-team-permissions';
 
 export interface AssignmentActor {
   id?: string;
@@ -41,7 +41,11 @@ export interface AssignProviderInput {
 
 /** Assigns the provider who will carry the visit. */
 export async function assignProviderToPatient(input: AssignProviderInput): Promise<void> {
-  assertCanAssign(input.actor);
+  await assertCanAssign(input.actor, input.hospitalId, input.orgId);
+  await assertAssignableStaff(input.provider.id, input.hospitalId, input.orgId, [
+    'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
+    'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+  ]);
   const now = new Date().toISOString();
   const { updatePatient } = await import('./patient-service');
   await updatePatient(input.patientId, {
@@ -144,7 +148,12 @@ export interface AssignNurseInput {
  * ward boards read it back.
  */
 export async function assignNurseToPatient(input: AssignNurseInput): Promise<void> {
-  assertCanAssign(input.actor);
+  await assertCanAssign(input.actor, input.hospitalId, input.orgId);
+  if (input.nurse) {
+    await assertAssignableStaff(input.nurse.id, input.hospitalId, input.orgId, [
+      'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+    ]);
+  }
   const now = new Date().toISOString();
   const { updatePatient } = await import('./patient-service');
   await updatePatient(input.patientId, {
@@ -192,12 +201,43 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
   }
 }
 
-function assertCanAssign(actor?: AssignmentActor): void {
+async function assertCanAssign(
+  actor?: AssignmentActor,
+  hospitalId?: string,
+  orgId?: string,
+): Promise<void> {
   // Assignment changes accountability for a patient. Require an identified
   // reception actor at the service boundary; hiding a picker is not an
   // authorization control, and an actor-less call must not become a bypass.
   if (!actor?.id || !canAssignCareTeamRole(actor.role)) {
     throw new Error('Only front desk staff can assign doctors or nurses');
+  }
+  const { getUserById } = await import('@/modules/identity/services/user-service');
+  const actualActor = await getUserById(actor.id);
+  if (
+    !actualActor || actualActor.isActive === false ||
+    !canAssignCareTeamRole(actualActor.role) ||
+    !orgId || actualActor.orgId !== orgId ||
+    !canAssignStaffAtFacility(hospitalId, actualActor.hospitalId)
+  ) {
+    throw new Error('The assignment actor is not authorized at this facility');
+  }
+}
+
+async function assertAssignableStaff(
+  staffId: string,
+  hospitalId: string | undefined,
+  orgId: string | undefined,
+  allowedRoles: readonly UserRole[],
+): Promise<void> {
+  const { getUserById } = await import('@/modules/identity/services/user-service');
+  const staff = await getUserById(staffId);
+  if (
+    !staff || staff.isActive === false || !allowedRoles.includes(staff.role) ||
+    !orgId || staff.orgId !== orgId ||
+    !canAssignStaffAtFacility(hospitalId, staff.hospitalId)
+  ) {
+    throw new Error('The selected staff member is not assignable at this facility');
   }
 }
 

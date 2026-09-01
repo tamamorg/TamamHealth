@@ -1,6 +1,6 @@
 'use client';
 
-// Nurse → doctor care-assignment modal. A nurse picks the clinician who will
+// Reception care-assignment modal. Front-desk staff pick the clinician who will
 // provide care for a patient; the choice is written onto the patient record
 // (assignedDoctor*) and, when the patient came through triage, onto the triage
 // handoff fields. The assigned doctor then sees the patient in their
@@ -14,6 +14,7 @@ import { Stethoscope, X, Check, Search } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import { ROLE_LABEL } from '@/lib/role-display';
 import type { UserRole } from '@/lib/db-types';
+import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 
 export interface AssignDoctorTarget {
   patientId: string;
@@ -60,16 +61,18 @@ export default function AssignDoctorModal({
   const providerLabel = isHospital ? 'doctor' : 'nurse';
   const providerLabelCap = isHospital ? 'Doctor' : 'Nurse';
 
-  // Providers at the assigner's facility; fall back to all active providers of
-  // the right type if the facility has none, so the picker is never empty.
+  // Providers at the assigner's facility. Missing facility assignment fails
+  // closed instead of exposing every clinician in the tenant.
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const doctors = useMemo(() => {
     const clinicians = users.filter(
       u => assignableRoles.includes(u.role) && u.isActive !== false,
     );
-    const sameFacility = currentUser?.hospitalId
-      ? clinicians.filter(u => u.hospitalId === currentUser.hospitalId)
-      : [];
-    const base = sameFacility.length > 0 ? sameFacility : clinicians;
+    const base = clinicians.filter(u => canAssignStaffAtFacility(myHospitalId, u.hospitalId));
     const q = search.trim().toLowerCase();
     const filtered = q
       ? base.filter(u => u.name.toLowerCase().includes(q) || (u.specialty ?? '').toLowerCase().includes(q))
@@ -77,10 +80,10 @@ export default function AssignDoctorModal({
     return [...filtered].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
     );
-  }, [users, currentUser?.hospitalId, search, assignableRoles]);
+  }, [users, myHospitalId, search, assignableRoles]);
 
   const handleAssign = async () => {
-    const doctor = doctors.find(d => d._id === selectedId) || users.find(u => u._id === selectedId);
+    const doctor = doctors.find(d => d._id === selectedId);
     if (!doctor) {
       showToast(`Select a ${providerLabel} to assign`, 'error');
       return;
@@ -95,7 +98,7 @@ export default function AssignDoctorModal({
         patientName: target.patientName,
         provider: { id: doctor._id, name: doctor.name, role: doctor.role },
         actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
-        hospitalId: currentUser?.hospitalId,
+        hospitalId: myHospitalId,
         hospitalName: currentUser?.hospital?.name || currentUser?.hospitalName,
         orgId: currentUser?.orgId,
         triageId: target.triageId,

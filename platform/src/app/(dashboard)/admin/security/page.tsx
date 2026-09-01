@@ -28,6 +28,7 @@ import type { AuditLogDoc, PlatformConfigDoc } from '@/lib/db-types';
 import { DEFAULT_POLICIES } from '@/lib/admin/super-admin-policies';
 import { Lock, FileText, AlertTriangle, Clock, ShieldCheck, Eye } from '@/components/icons/lucide';
 import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
+import { useNow } from '@/lib/hooks/useNow';
 import {
   SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbSettingGroup, SadbSettingRow,
   SadbToggle, SadbValueButton, SadbEditorModal, SadbCard, SadbKvRow, SadbHeadLink,
@@ -192,8 +193,9 @@ export default function SecurityCompliancePage() {
 
   /* Watchlist — medium risk and above, last 7 days, worst first. Same window
      and same classifier the Risk Center and Audit Logs use. */
+  const now = useNow();
   const watchlist = useMemo(() => {
-    const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+    const cutoff = now - 7 * 24 * 3600 * 1000;
     const order: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
     return auditLogs
       .map(log => ({ log, severity: classifyAuditRisk(log.action, log.success) }))
@@ -204,7 +206,7 @@ export default function SecurityCompliancePage() {
       .sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity)
         || new Date(b.log.createdAt).getTime() - new Date(a.log.createdAt).getTime())
       .slice(0, 25);
-  }, [auditLogs]);
+  }, [auditLogs, now]);
 
   // Three-way, not boolean: "unknown" must not read as "not within RPO".
   const backupWithinRpo = backupStatus?.state === 'ok';

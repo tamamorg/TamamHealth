@@ -10,7 +10,7 @@ import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { priorityOrder } from '@/lib/clinical/triage-display';
-import type { MedicationAdministration, PrescriptionDoc } from '@/lib/db-types';
+import type { MedicationAdministration } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import { todayIso } from '@/lib/date-utils';
 import { doseExpansionCutoff, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';

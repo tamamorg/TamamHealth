@@ -192,7 +192,10 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   // encounter.assignedNurseId as their durable source of truth.
   const assignedRows: WorklistPatient[] = [];
   for (const patient of patients) {
-    if (patient.assignedNurse !== currentUser._id || seenPatientIds.has(patient._id)) continue;
+    if (
+      (patient.assignedNurse !== currentUser._id && patient.assignedDoctor !== currentUser._id) ||
+      seenPatientIds.has(patient._id)
+    ) continue;
     seenPatientIds.add(patient._id);
     assignedRows.push({
       _id: patient._id,
@@ -212,7 +215,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   }
   for (const appointment of appointments) {
     if (
-      appointment.staffId !== currentUser._id ||
+      (appointment.staffId !== currentUser._id && appointment.providerId !== currentUser._id) ||
       appointment.appointmentDate !== todayIso ||
       APPOINTMENT_CLOSED_STATUSES.includes(appointment.status) ||
       seenPatientIds.has(appointment.patientId)

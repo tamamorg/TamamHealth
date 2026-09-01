@@ -406,11 +406,16 @@ export default function TriageWorkflow({
   const recordedPregnancyStatus = pregnancyStatus === 'unknown' && isSelectedPatientPregnant
     ? 'pregnant'
     : pregnancyStatus;
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const availableProviders = useMemo(() => users.filter(user =>
     user.isActive !== false &&
     ['doctor', 'clinical_officer', 'clinician', 'medical_superintendent'].includes(user.role) &&
-    (!currentUser?.hospitalId || !user.hospitalId || user.hospitalId === currentUser.hospitalId)
-  ), [currentUser?.hospitalId, users]);
+    (!myHospitalId || !user.hospitalId || user.hospitalId === myHospitalId)
+  ), [myHospitalId, users]);
   const destinationOptions = useMemo(
     () => facilitySettings.departments.filter(Boolean),
     [facilitySettings.departments],
@@ -600,9 +605,9 @@ export default function TriageWorkflow({
           setEncounterIdForNewTriage(active.encounterId);
         } else if (active?.status === 'seen') {
           loadTriageForEdit(active);
-        } else if (currentUser?.hospitalId) {
+        } else if (myHospitalId) {
           const { findOpenEncounterForPatient } = await import('@/lib/services/encounter-service');
-          const openEncounter = await findOpenEncounterForPatient(patientId, currentUser.hospitalId);
+          const openEncounter = await findOpenEncounterForPatient(patientId, myHospitalId);
           if (!cancelled && openEncounter) setEncounterIdForNewTriage(openEncounter._id);
         }
       } catch (err) {
@@ -981,7 +986,7 @@ export default function TriageWorkflow({
           triagedBy: currentUser?._id || '',
           triagedByName: currentUser?.name || 'Unknown Nurse',
           triagedAt: now,
-          facilityId: currentUser?.hospitalId,
+          facilityId: myHospitalId,
           facilityName: currentUser?.hospitalName,
           orgId: currentUser?.orgId,
           // A completed ETAT (the submit guard above requires every ABCC
@@ -1047,7 +1052,7 @@ export default function TriageWorkflow({
         actorId: currentUser?._id,
         actorName: currentUser?.name,
         actorRole: currentUser?.role,
-        hospitalId: currentUser?.hospitalId || selectedTriagePatient.registrationHospital,
+        hospitalId: myHospitalId || selectedTriagePatient.registrationHospital,
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
@@ -1133,6 +1138,7 @@ export default function TriageWorkflow({
               <div className="triage-patient-photo">
                 <div className="triage-patient-photo-frame">
                   {(selectedTriagePatient as { photoUrl?: string }).photoUrl
+                    // eslint-disable-next-line @next/next/no-img-element -- patient photo from the record; the host is not known at build time, and this frame is CSS-sized rather than a fixed width/height next/image could take.
                     ? <img src={(selectedTriagePatient as { photoUrl?: string }).photoUrl} alt={patientFullName(selectedTriagePatient)} />
                     : <span className="text-3xl font-semibold" style={{ color: 'var(--accent-primary)' }}>{initials(patientFullName(selectedTriagePatient))}</span>}
                 </div>

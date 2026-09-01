@@ -48,6 +48,7 @@ export default function PatientRoomingPage() {
 
       <div className="card-elevated flex items-center gap-3 px-4 py-3 mb-3 flex-shrink-0" style={{ borderRadius: 12 }}>
         <span className="ehr-patient-icon" style={stateTint()} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a patient photo is a stored URL (seeded asset, or one an admin typed): next/image needs every remote host declared in next.config and hard-errors on one that is not, where a plain img just falls back to the initials behind it. */}
           {photo ? <img src={photo} alt="" className="ehr-patient-icon-photo" /> : initials(name)}
         </span>
         <div className="min-w-0 flex-1">

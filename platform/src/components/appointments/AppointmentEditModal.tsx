@@ -13,7 +13,7 @@
  * write: that path stamps confirmedAt/checkedInAt, appends the status history,
  * and enforces who may confirm.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import AppointmentStatusSelect from '@/components/appointments/AppointmentStatusSelect';
 import AppointmentDetailFields, { type AppointmentDetailFieldValues } from '@/components/appointments/AppointmentDetailFields';
@@ -27,6 +27,7 @@ import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, Appointmen
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -95,10 +96,15 @@ export default function AppointmentEditModal({
   const { departments } = useSettings();
   const { users } = useUsers();
   // Providers who can carry a visit at this facility.
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const providerOptions = useMemo(() => users
     .filter(u => (u.role === 'doctor' || u.role === 'clinical_officer')
-      && (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentUser?.hospitalId]);
+      && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
   const [saving, setSaving] = useState(false);
   /* In a row dropdown the form is tabbed, the way the doctor dashboard's visit
      panel is: one tab of fields at a time on the row's own line, instead of a
@@ -136,7 +142,18 @@ export default function AppointmentEditModal({
   // The nurse worklist keeps one editor mounted while the expanded patient
   // changes; resetting only status would leak the previous patient's provider,
   // date, billing, and appointment details into the next row.
-  useEffect(() => {
+  //
+  // Adjusted during render rather than from an effect: React discards this
+  // render and immediately re-runs the component with the new draft, so the
+  // previous row's values are never committed to the DOM at all — and the
+  // seeding reads the props it actually copies instead of a dependency list
+  // that had to omit fifteen of them. See react.dev, "You Might Not Need an
+  // Effect" → adjusting state when a prop changes.
+  const [seededFor, setSeededFor] = useState(appointment._id);
+  const [statusSeededFor, setStatusSeededFor] = useState(appointment.status);
+  if (seededFor !== appointment._id) {
+    setSeededFor(appointment._id);
+    setStatusSeededFor(appointment.status);
     setDate(appointment.appointmentDate);
     setTime(appointment.appointmentTime);
     setDuration(appointment.duration);
@@ -154,11 +171,13 @@ export default function AppointmentEditModal({
       staffName: appointment.staffName || '',
       room: appointment.room || '',
     });
-  }, [appointment._id]);
-
-  useEffect(() => {
+  } else if (statusSeededFor !== appointment.status) {
+    // The same row's status moved underneath the open editor (someone checked
+    // the patient in from the board): follow it without touching the rest of
+    // the draft the user may be part-way through.
+    setStatusSeededFor(appointment.status);
     setStatus(appointment.status);
-  }, [appointment._id, appointment.status]);
+  }
 
   // The Cancel/Save bar only appears once the draft differs from the saved
   // appointment — a clean form has nothing to save and nothing to discard.
@@ -214,7 +233,7 @@ export default function AppointmentEditModal({
           patientName: appointment.patientName,
           provider: { id: providerId, name: provider, role: selected?.role },
           actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
-          hospitalId: appointment.facilityId || currentUser?.hospitalId,
+          hospitalId: appointment.facilityId || myHospitalId,
           hospitalName: appointment.facilityName || currentUser?.hospitalName,
           orgId: appointment.orgId || currentUser?.orgId,
           appointmentId: appointment._id,
@@ -227,7 +246,7 @@ export default function AppointmentEditModal({
           patientId: appointment.patientId,
           nurse: detail.staffId ? { id: detail.staffId, name: detail.staffName || selected?.name || 'Nurse' } : null,
           actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
-          hospitalId: appointment.facilityId || currentUser?.hospitalId,
+          hospitalId: appointment.facilityId || myHospitalId,
           orgId: appointment.orgId || currentUser?.orgId,
           appointmentId: appointment._id,
         });
@@ -246,7 +265,7 @@ export default function AppointmentEditModal({
             patientId: appointment.patientId,
             patientName: appointment.patientName,
             hospitalNumber: patient?.hospitalNumber,
-            facilityId: appointment.facilityId || currentUser?.hospitalId,
+            facilityId: appointment.facilityId || myHospitalId,
             facilityName: appointment.facilityName || currentUser?.hospitalName,
             orgId: appointment.orgId || currentUser?.orgId,
             actorId: currentUser?._id,

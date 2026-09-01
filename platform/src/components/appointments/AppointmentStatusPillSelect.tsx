@@ -41,6 +41,9 @@ export default function AppointmentStatusPillSelect({
   }
 
   return (
+    // The interactive element here is the native <select> below; this span
+    // only stops the row underneath from also handling the click and keys.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       className={`appointment-status-pill appointment-status-pill--select ${className}`.trim()}
       {...stopsClickPropagation}

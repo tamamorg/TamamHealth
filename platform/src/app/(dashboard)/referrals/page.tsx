@@ -32,6 +32,8 @@ import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
+const isImage = (mimeType: string) => mimeType.startsWith('image/');
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -41,6 +43,297 @@ function formatFileSize(bytes: number): string {
 const DISPOSITION_OPTIONS: ReferralDisposition[] = [
   'treated_discharged', 'admitted', 'referred_onward', 'did_not_arrive', 'deceased',
 ];
+
+/**
+ * The transfer package a referral carries, rendered read-only in the detail
+ * pane.
+ *
+ * Module scope, not declared inside ReferralsPage: a component created
+ * during render is a new type every render, so React threw away and rebuilt
+ * this whole 260-line subtree — including any scroll position in it —
+ * every time the page re-rendered underneath it.
+ */
+function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }: {
+  pkg: TransferPackage;
+  refAttachments?: Attachment[];
+  reason: string;
+  notes: string;
+  /** Opens the page's attachment lightbox — the one surface outside this
+   *  component that the viewer drives. */
+  onPreview: (attachment: Attachment) => void;
+}) {
+  const { t } = useTranslation();
+  // Which clinical records are unfolded: the viewer's own business, and
+  // nothing outside it ever read this.
+  const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
+  const demo = pkg.patientDemographics;
+  return (
+    <div className="space-y-4 mt-4">
+      {/* Reason & Notes */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referrals.reasonForReferral')}</p>
+          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{reason}</p>
+        </div>
+        <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referral.notes')}</p>
+          <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{notes || t('referrals.none')}</p>
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
+      {/* Referral Attachments */}
+      {refAttachments && refAttachments.length > 0 && (
+        <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="icon-box-sm">
+              <Paperclip className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.referralAttachments', { count: refAttachments.length })}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {refAttachments.map(att => (
+              <button key={att.id} onClick={() => onPreview(att)} className="flex items-center gap-2 p-2 rounded-lg text-start transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+                {isImage(att.mimeType) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`data:${att.mimeType};base64,${att.base64Data}`} alt={att.name} className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                ) : (
+                  <FileText className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate">{att.name}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatFileSize(att.sizeBytes)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <hr className="section-divider" />
+
+      {/* Patient Demographics */}
+      <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="icon-box-sm">
+            <User className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.patientDemographics')}</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { l: t('referrals.demoName'), v: `${demo.firstName} ${demo.middleName || ''} ${demo.surname}`.replace(/\s+/g, ' ').trim() },
+            { l: t('referrals.demoHospitalNo'), v: demo.hospitalNumber },
+            { l: t('referrals.demoDob'), v: demo.dateOfBirth },
+            { l: t('patient.gender'), v: demo.gender },
+            { l: t('patient.phone'), v: formatPhoneDisplay(demo.phone) },
+            { l: t('patient.location'), v: `${demo.county}, ${demo.state}` },
+            { l: t('patient.tribe'), v: demo.tribe },
+            { l: t('patient.bloodType'), v: demo.bloodType },
+          ].map(item => (
+            <div key={item.l}>
+              <p className="text-[10px] font-semibold uppercase" style={{ color: 'var(--text-muted)' }}>{item.l}</p>
+              <p className="text-sm font-semibold">{item.v}</p>
+            </div>
+          ))}
+        </div>
+        {demo.allergies?.length > 0 && demo.allergies[0] !== 'None known' && (
+          <div className="mt-3 flex items-center gap-2">
+            <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
+            <span className="text-xs font-bold" style={{ color: 'var(--color-danger-text)' }}>
+              {t('referrals.allergiesLabel', { list: demo.allergies.join(', ') })}
+            </span>
+          </div>
+        )}
+        {demo.chronicConditions?.length > 0 && demo.chronicConditions[0] !== 'None' && (
+          <div className="mt-1 flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />
+            <span className="text-xs font-bold" style={{ color: 'var(--color-warning-text)' }}>
+              {t('referrals.chronicLabel', { list: demo.chronicConditions.join(', ') })}
+            </span>
+          </div>
+        )}
+        <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {t('referrals.nokLabel', { name: demo.nokName, relationship: demo.nokRelationship, phone: demo.nokPhone })}
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
+      {/* Medical Records Timeline */}
+      {pkg.medicalRecords.length > 0 && (
+        <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="icon-box-sm">
+              <Stethoscope className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.medicalRecords', { count: pkg.medicalRecords.length })}</span>
+          </div>
+          <div className="data-row-divider-sm">
+            {pkg.medicalRecords.map(rec => {
+              const isExpanded = expandedRecords.has(rec.id);
+              return (
+                <div key={rec.id} className="rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+                  <button
+                    onClick={() => setExpandedRecords(prev => {
+                      const next = new Set(prev);
+                      if (next.has(rec.id)) next.delete(rec.id); else next.add(rec.id);
+                      return next;
+                    })}
+                    className="w-full flex items-center justify-between p-3 text-start"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{rec.visitDate}</span>
+                      <Badge tone={rec.visitType === 'emergency' ? 'danger' : rec.visitType === 'inpatient' ? 'warning' : 'neutral'}>
+                        {rec.visitType}
+                      </Badge>
+                      <span className="text-sm font-semibold">{rec.department}</span>
+                    </div>
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} /> : <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />}
+                  </button>
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-2">
+                      <p className="text-xs"><span className="font-semibold">{t('referrals.complaintLabel')}</span> {rec.chiefComplaint}</p>
+                      <p className="text-xs"><span className="font-semibold">{t('referrals.providerLabel')}</span> {rec.providerName} ({rec.providerRole}) {t('referrals.atFacility')} {rec.hospitalName}</p>
+                      {rec.diagnoses.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--text-muted)' }}>{t('referrals.diagnoses')}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {rec.diagnoses.map((d, i) => (
+                              <span key={i} className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)' }}>
+                                {d.icd10Code} {d.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {rec.vitalSigns && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                          <span>Temp: {rec.vitalSigns.temperature}°C</span>
+                          <span>BP: {rec.vitalSigns.systolic}/{rec.vitalSigns.diastolic}</span>
+                          <span>Pulse: {rec.vitalSigns.pulse}</span>
+                          <span>SpO2: {rec.vitalSigns.oxygenSaturation}%</span>
+                        </div>
+                      )}
+                      {rec.prescriptions.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--text-muted)' }}>{t('tab.prescriptions')}</p>
+                          <div className="data-row-divider-sm">
+                            {rec.prescriptions.map((rx, i) => (
+                              <p key={i} className="text-xs">{rx.drugName} — {rx.dose} {rx.route} {rx.frequency} x {rx.duration}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {rec.treatmentPlan && (
+                        <p className="text-xs"><span className="font-semibold">{t('referrals.planLabel')}</span> {rec.treatmentPlan}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <hr className="section-divider" />
+
+      {/* Lab Results */}
+      {pkg.labResults.length > 0 && (
+        <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="icon-box-sm">
+              <FlaskConical className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.labResults', { count: pkg.labResults.length })}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.testName')}</th>
+                  <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
+                  <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.reference')}</th>
+                  <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('referrals.date')}</th>
+                  <th className="text-start py-1.5 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.status')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pkg.labResults.map((lab, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <td className="py-1.5 pe-3 font-semibold">{lab.testName}</td>
+                    <td className="py-1.5 pe-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
+                      {lab.result} {lab.unit}
+                    </td>
+                    <td className="py-1.5 pe-3" style={{ color: 'var(--text-muted)' }}>{lab.referenceRange}</td>
+                    <td className="py-1.5 pe-3 font-mono" style={{ color: 'var(--text-muted)' }}>{lab.date}</td>
+                    <td className="py-1.5">
+                      {lab.abnormal ? (
+                        <Badge tone={lab.critical ? 'danger' : 'warning'}>
+                          {lab.critical ? t('referrals.labCritical') : t('lab.abnormal')}
+                        </Badge>
+                      ) : (
+                        <Badge tone="success">{t('lab.normal')}</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <hr className="section-divider" />
+
+      {/* All Patient Attachments */}
+      {pkg.attachments.length > 0 && (
+        <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="icon-box-sm">
+              <ImageIcon className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.patientAttachments', { count: pkg.attachments.length })}</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {pkg.attachments.map(att => (
+              <button key={att.id} onClick={() => onPreview(att)} className="flex flex-col items-center gap-1 p-3 rounded-lg text-center transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+                {isImage(att.mimeType) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`data:${att.mimeType};base64,${att.base64Data}`} alt={att.name} className="w-12 h-12 rounded object-cover" />
+                ) : (
+                  <FileText className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
+                )}
+                <p className="text-[10px] font-semibold truncate w-full">{att.name}</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatFileSize(att.sizeBytes)}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <hr className="section-divider" />
+
+      {/* Package Metadata */}
+      <div className="flex items-center gap-3 p-3 rounded-lg text-xs" style={{ background: 'rgba(33, 145, 208, 0.06)', border: '1px solid var(--accent-border)' }}>
+        <div className="icon-box-sm flex-shrink-0">
+          <Package className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
+        </div>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {t('referrals.packagedByPrefix')} <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{pkg.packagedBy}</span> {t('referrals.packagedOnAt', { date: new Date(pkg.packagedAt).toLocaleDateString(), time: new Date(pkg.packagedAt).toLocaleTimeString() })}
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {t('referrals.totalSize')} <span className="font-semibold">{formatFileSize(pkg.packageSizeBytes)}</span>
+        </span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {t('referrals.packageCounts', { records: pkg.medicalRecords.length, labs: pkg.labResults.length, files: pkg.attachments.length })}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function ReferralsPage() {
   const router = useRouter();
@@ -107,7 +400,6 @@ export default function ReferralsPage() {
   const [viewedReferralIds, setViewedReferralIds] = useState<Set<string>>(new Set());
 
   // Transfer package viewer state
-  const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   // Filter referrals
@@ -280,277 +572,7 @@ export default function ReferralsPage() {
   };
 
 
-  const isImage = (mimeType: string) => mimeType.startsWith('image/');
 
-  const TransferPackageViewer = ({ pkg, refAttachments, reason, notes }: { pkg: TransferPackage; refAttachments?: Attachment[]; reason: string; notes: string }) => {
-    const demo = pkg.patientDemographics;
-    return (
-      <div className="space-y-4 mt-4">
-        {/* Reason & Notes */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referrals.reasonForReferral')}</p>
-            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{reason}</p>
-          </div>
-          <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referral.notes')}</p>
-            <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{notes || t('referrals.none')}</p>
-          </div>
-        </div>
-
-        <hr className="section-divider" />
-
-        {/* Referral Attachments */}
-        {refAttachments && refAttachments.length > 0 && (
-          <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="icon-box-sm">
-                <Paperclip className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.referralAttachments', { count: refAttachments.length })}</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {refAttachments.map(att => (
-                <button key={att.id} onClick={() => setPreviewAttachment(att)} className="flex items-center gap-2 p-2 rounded-lg text-start transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                  {isImage(att.mimeType) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`data:${att.mimeType};base64,${att.base64Data}`} alt={att.name} className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                  ) : (
-                    <FileText className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-danger)' }} />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold truncate">{att.name}</p>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatFileSize(att.sizeBytes)}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <hr className="section-divider" />
-
-        {/* Patient Demographics */}
-        <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="icon-box-sm">
-              <User className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-            </div>
-            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.patientDemographics')}</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { l: t('referrals.demoName'), v: `${demo.firstName} ${demo.middleName || ''} ${demo.surname}`.replace(/\s+/g, ' ').trim() },
-              { l: t('referrals.demoHospitalNo'), v: demo.hospitalNumber },
-              { l: t('referrals.demoDob'), v: demo.dateOfBirth },
-              { l: t('patient.gender'), v: demo.gender },
-              { l: t('patient.phone'), v: formatPhoneDisplay(demo.phone) },
-              { l: t('patient.location'), v: `${demo.county}, ${demo.state}` },
-              { l: t('patient.tribe'), v: demo.tribe },
-              { l: t('patient.bloodType'), v: demo.bloodType },
-            ].map(item => (
-              <div key={item.l}>
-                <p className="text-[10px] font-semibold uppercase" style={{ color: 'var(--text-muted)' }}>{item.l}</p>
-                <p className="text-sm font-semibold">{item.v}</p>
-              </div>
-            ))}
-          </div>
-          {demo.allergies?.length > 0 && demo.allergies[0] !== 'None known' && (
-            <div className="mt-3 flex items-center gap-2">
-              <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
-              <span className="text-xs font-bold" style={{ color: 'var(--color-danger-text)' }}>
-                {t('referrals.allergiesLabel', { list: demo.allergies.join(', ') })}
-              </span>
-            </div>
-          )}
-          {demo.chronicConditions?.length > 0 && demo.chronicConditions[0] !== 'None' && (
-            <div className="mt-1 flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5" style={{ color: 'var(--color-warning)' }} />
-              <span className="text-xs font-bold" style={{ color: 'var(--color-warning-text)' }}>
-                {t('referrals.chronicLabel', { list: demo.chronicConditions.join(', ') })}
-              </span>
-            </div>
-          )}
-          <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {t('referrals.nokLabel', { name: demo.nokName, relationship: demo.nokRelationship, phone: demo.nokPhone })}
-          </div>
-        </div>
-
-        <hr className="section-divider" />
-
-        {/* Medical Records Timeline */}
-        {pkg.medicalRecords.length > 0 && (
-          <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="icon-box-sm">
-                <Stethoscope className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.medicalRecords', { count: pkg.medicalRecords.length })}</span>
-            </div>
-            <div className="data-row-divider-sm">
-              {pkg.medicalRecords.map(rec => {
-                const isExpanded = expandedRecords.has(rec.id);
-                return (
-                  <div key={rec.id} className="rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                    <button
-                      onClick={() => setExpandedRecords(prev => {
-                        const next = new Set(prev);
-                        if (next.has(rec.id)) next.delete(rec.id); else next.add(rec.id);
-                        return next;
-                      })}
-                      className="w-full flex items-center justify-between p-3 text-start"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{rec.visitDate}</span>
-                        <Badge tone={rec.visitType === 'emergency' ? 'danger' : rec.visitType === 'inpatient' ? 'warning' : 'neutral'}>
-                          {rec.visitType}
-                        </Badge>
-                        <span className="text-sm font-semibold">{rec.department}</span>
-                      </div>
-                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} /> : <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />}
-                    </button>
-                    {isExpanded && (
-                      <div className="px-3 pb-3 space-y-2">
-                        <p className="text-xs"><span className="font-semibold">{t('referrals.complaintLabel')}</span> {rec.chiefComplaint}</p>
-                        <p className="text-xs"><span className="font-semibold">{t('referrals.providerLabel')}</span> {rec.providerName} ({rec.providerRole}) {t('referrals.atFacility')} {rec.hospitalName}</p>
-                        {rec.diagnoses.length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--text-muted)' }}>{t('referrals.diagnoses')}</p>
-                            <div className="flex flex-wrap gap-1">
-                              {rec.diagnoses.map((d, i) => (
-                                <span key={i} className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)' }}>
-                                  {d.icd10Code} {d.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {rec.vitalSigns && (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <span>Temp: {rec.vitalSigns.temperature}°C</span>
-                            <span>BP: {rec.vitalSigns.systolic}/{rec.vitalSigns.diastolic}</span>
-                            <span>Pulse: {rec.vitalSigns.pulse}</span>
-                            <span>SpO2: {rec.vitalSigns.oxygenSaturation}%</span>
-                          </div>
-                        )}
-                        {rec.prescriptions.length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: 'var(--text-muted)' }}>{t('tab.prescriptions')}</p>
-                            <div className="data-row-divider-sm">
-                              {rec.prescriptions.map((rx, i) => (
-                                <p key={i} className="text-xs">{rx.drugName} — {rx.dose} {rx.route} {rx.frequency} x {rx.duration}</p>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {rec.treatmentPlan && (
-                          <p className="text-xs"><span className="font-semibold">{t('referrals.planLabel')}</span> {rec.treatmentPlan}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <hr className="section-divider" />
-
-        {/* Lab Results */}
-        {pkg.labResults.length > 0 && (
-          <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="icon-box-sm">
-                <FlaskConical className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.labResults', { count: pkg.labResults.length })}</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs" style={{ minWidth: 600 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.testName')}</th>
-                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.result')}</th>
-                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.reference')}</th>
-                    <th className="text-start py-1.5 pe-3 font-bold" style={{ color: 'var(--text-muted)' }}>{t('referrals.date')}</th>
-                    <th className="text-start py-1.5 font-bold" style={{ color: 'var(--text-muted)' }}>{t('lab.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pkg.labResults.map((lab, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="py-1.5 pe-3 font-semibold">{lab.testName}</td>
-                      <td className="py-1.5 pe-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
-                        {lab.result} {lab.unit}
-                      </td>
-                      <td className="py-1.5 pe-3" style={{ color: 'var(--text-muted)' }}>{lab.referenceRange}</td>
-                      <td className="py-1.5 pe-3 font-mono" style={{ color: 'var(--text-muted)' }}>{lab.date}</td>
-                      <td className="py-1.5">
-                        {lab.abnormal ? (
-                          <Badge tone={lab.critical ? 'danger' : 'warning'}>
-                            {lab.critical ? t('referrals.labCritical') : t('lab.abnormal')}
-                          </Badge>
-                        ) : (
-                          <Badge tone="success">{t('lab.normal')}</Badge>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        <hr className="section-divider" />
-
-        {/* All Patient Attachments */}
-        {pkg.attachments.length > 0 && (
-          <div className="p-4 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="icon-box-sm">
-                <ImageIcon className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('referrals.patientAttachments', { count: pkg.attachments.length })}</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {pkg.attachments.map(att => (
-                <button key={att.id} onClick={() => setPreviewAttachment(att)} className="flex flex-col items-center gap-1 p-3 rounded-lg text-center transition-colors" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                  {isImage(att.mimeType) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`data:${att.mimeType};base64,${att.base64Data}`} alt={att.name} className="w-12 h-12 rounded object-cover" />
-                  ) : (
-                    <FileText className="w-8 h-8" style={{ color: 'var(--color-danger)' }} />
-                  )}
-                  <p className="text-[10px] font-semibold truncate w-full">{att.name}</p>
-                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{formatFileSize(att.sizeBytes)}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <hr className="section-divider" />
-
-        {/* Package Metadata */}
-        <div className="flex items-center gap-3 p-3 rounded-lg text-xs" style={{ background: 'rgba(33, 145, 208, 0.06)', border: '1px solid var(--accent-border)' }}>
-          <div className="icon-box-sm flex-shrink-0">
-            <Package className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-          </div>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {t('referrals.packagedByPrefix')} <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{pkg.packagedBy}</span> {t('referrals.packagedOnAt', { date: new Date(pkg.packagedAt).toLocaleDateString(), time: new Date(pkg.packagedAt).toLocaleTimeString() })}
-          </span>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {t('referrals.totalSize')} <span className="font-semibold">{formatFileSize(pkg.packageSizeBytes)}</span>
-          </span>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {t('referrals.packageCounts', { records: pkg.medicalRecords.length, labs: pkg.labResults.length, files: pkg.attachments.length })}
-          </span>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -813,6 +835,7 @@ export default function ReferralsPage() {
                     refAttachments={detailReferral.referralAttachments as Attachment[] | undefined}
                     reason={detailReferral.reason}
                     notes={detailReferral.notes}
+                    onPreview={setPreviewAttachment}
                   />
                 ) : (
                   <div className="space-y-3">

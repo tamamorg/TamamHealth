@@ -46,6 +46,7 @@ import type { EncounterStatus } from '@/lib/clinical-flow/encounter-journey';
 import { formatMoney } from '@/lib/format-utils';
 import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
+import { useNow } from '@/lib/hooks/useNow';
 
 const ClaimsPanel = dynamic(() => import('@/components/payments/ClaimsPanel'));
 const PaymentPanel = dynamic(() => import('@/components/payments/PaymentPanel'));
@@ -128,6 +129,8 @@ function downloadCsv(filename: string, header: string[], rows: (string | number)
 }
 
 export default function BillingWorkspace({ initialTab = 'accounts' }: { initialTab?: WorkspaceTab }) {
+  // Both activity windows below are cutoffs measured from the clock.
+  const now = useNow();
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -232,6 +235,11 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   );
   const [pendingBusy, setPendingBusy] = useState<string | null>(null);
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myName = currentUser?.name;
   const resolvePending = useCallback(async (p: PaymentDoc, approve: boolean) => {
     if (!p.reference) {
       showToast('This payment has no reference and cannot be transitioned — contact support', 'error');
@@ -243,7 +251,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       const updated = await updatePaymentStatus(
         p.reference,
         approve ? 'posted' : 'failed',
-        approve ? undefined : { reason: `Rejected in verification by ${currentUser?.name || 'finance'}` },
+        approve ? undefined : { reason: `Rejected in verification by ${myName || 'finance'}` },
       );
       if (!updated) throw new Error('Payment not found by reference');
       showToast(approve ? `Payment ${p.reference} approved and posted` : `Payment ${p.reference} rejected`, 'success');
@@ -254,7 +262,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     } finally {
       setPendingBusy(null);
     }
-  }, [currentUser?.name, loadData, showToast]);
+  }, [myName, loadData, showToast]);
 
   // ── Aggregate by patient ───────────────────────────────────────────
   const patientLines: PatientLine[] = useMemo(() => {
@@ -324,7 +332,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
 
   const filteredAccounts = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const cutoff = activityFilter === 'any' ? 0 : Date.now() - Number(activityFilter) * 86_400_000;
+    const cutoff = activityFilter === 'any' ? 0 : now - Number(activityFilter) * 86_400_000;
     return patientLines.filter(l => {
       if (balanceFilter === 'outstanding' && !(l.outstanding > 0)) return false;
       if (balanceFilter === 'settled' && l.outstanding > 0) return false;
@@ -333,7 +341,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       return l.patientName.toLowerCase().includes(q) ||
         (l.hospitalNumber || '').toLowerCase().includes(q);
     });
-  }, [patientLines, search, balanceFilter, activityFilter]);
+  }, [patientLines, search, balanceFilter, activityFilter, now]);
 
   // Claims the workspace is allowed to show at all, then the toolbar's cut.
   const visibleClaims = useMemo(() => (canSeeClaims ? data.claims : []), [canSeeClaims, data.claims]);
@@ -394,14 +402,14 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   // just show 0 here rather than a misleading count.
   const unbilledEncounters = useMemo(() => {
     const billedEncounterIds = new Set(data.bills.map(b => b.encounterId).filter(Boolean) as string[]);
-    const cutoff = Date.now() - 30 * 86_400_000;
+    const cutoff = now - 30 * 86_400_000;
     return data.encounters.filter(e => {
       if (!ENCOUNTER_COMPLETION_STATUSES.has(e.status)) return false;
       const closed = e.closedAt || e.startedAt;
       if (!closed || new Date(closed).getTime() < cutoff) return false;
       return !billedEncounterIds.has(e._id);
     }).length;
-  }, [data.encounters, data.bills]);
+  }, [data.encounters, data.bills, now]);
 
   // Derive the open patient's line from the live aggregates so the drawer's
   // balance/totals refresh automatically after a payment is recorded.
@@ -594,7 +602,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       const { reversePayment, issueRefund } = await import('@/lib/services/payment-service');
       const p = reverseFor.payment;
       if (reverseFor.mode === 'void') {
-        await reversePayment(p._id, reason, currentUser?._id || 'system', currentUser?.name || 'System');
+        await reversePayment(p._id, reason, currentUser?._id || 'system', myName || 'System');
       } else {
         await issueRefund({
           paymentId: p._id,
@@ -605,7 +613,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           method: p.method,
           reason,
           processedBy: currentUser?._id || 'system',
-          processedByName: currentUser?.name || 'System',
+          processedByName: myName || 'System',
           facilityId: p.facilityId || currentUser?.hospitalId || '',
           orgId: p.orgId ?? currentUser?.orgId,
         });
@@ -1121,7 +1129,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
       }
     })();
     return () => { cancelled = true; };
-  }, [line.patientId]);
+  }, [line.patientId, t]);
 
   const sortedPayments = [...payments].sort((a, b) => (b.processedAt || '').localeCompare(a.processedAt || ''));
   const owing = line.outstanding > 0;

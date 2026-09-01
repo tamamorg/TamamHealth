@@ -34,10 +34,15 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
     [patients, currentUser?.hospitalId],
   );
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myUserId = currentUser?._id;
   const assignedToMeCount = useMemo(() => {
-    if (!currentUser?._id) return 0;
-    return (patients || []).filter(p => p.assignedDoctor === currentUser._id).length;
-  }, [patients, currentUser?._id]);
+    if (!myUserId) return 0;
+    return (patients || []).filter(p => p.assignedDoctor === myUserId).length;
+  }, [patients, myUserId]);
 
   const lists = [
     { id: 'my-patients', name: 'My patients', type: `Hospital · ${currentUser?.hospitalName || '—'}`, count: myPatientsCount, href: '/patients' },

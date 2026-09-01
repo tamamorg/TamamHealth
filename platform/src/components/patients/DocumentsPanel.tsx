@@ -28,7 +28,7 @@ import { formatDate } from '@/lib/format-utils';
 import ChartSection from '@/components/ehr/chart/ChartSection';
 import type { Attachment } from '@/data/mock';
 import type { PatientDoc, PatientDocumentCategory, PatientDocumentDoc, ReferralDoc, MessageDoc } from '@/lib/db-types';
-import { FileText, Image as ImageIcon, X, Eye, ArrowRightLeft, ChevronRight, Send, MessageSquare, AlertTriangle } from '@/components/icons/lucide';
+import { FileText, X, Eye, ArrowRightLeft, ChevronRight, Send, MessageSquare, AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -188,13 +188,19 @@ export default function DocumentsPanel({
     setPreview({ kind: 'file', url, mimeType: d.mimeType, title: d.title, fileName: d.fileName });
   };
 
-  const closePreview = () => {
+  const closePreview = () => setPreview(null);
+
+  // Revoke after every path that closes the preview (button, backdrop, or
+  // Escape), rather than coupling cleanup to one button handler. This also
+  // keeps `closePreview` a plain setState — handing a ref-reading function to
+  // backdrop props during render is what the refs rule warns about.
+  useEffect(() => {
+    if (preview) return;
     previewUrlRef.current.forEach(url => URL.revokeObjectURL(url));
     previewUrlRef.current = [];
-    setPreview(null);
-  };
+  }, [preview]);
 
-  // Closing the chart with a preview open would otherwise leak the blob.
+  // Closing the chart with a preview still open would otherwise leak the blob.
   useEffect(() => () => { previewUrlRef.current.forEach(url => URL.revokeObjectURL(url)); }, []);
 
   // Which category an upload in this view is filed under. Only the general

@@ -16,8 +16,14 @@ export function useUnsavedChangesWarning(
 ) {
   const dirtyRef = useRef(isDirty);
   const messageRef = useRef(message);
-  dirtyRef.current = isDirty;
-  messageRef.current = message;
+  // Refreshed after each render rather than during it. The listener below is
+  // registered once and reads these refs when the browser asks — a beforeunload
+  // can only arrive on a user gesture, long after the commit, so it never sees
+  // the one-render-old value this defers by.
+  useEffect(() => {
+    dirtyRef.current = isDirty;
+    messageRef.current = message;
+  });
 
   const hasUnsavedChanges = useCallback(() => {
     const value = dirtyRef.current;

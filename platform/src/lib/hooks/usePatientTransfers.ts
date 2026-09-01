@@ -28,6 +28,7 @@ import {
   canRequestTransfer,
 } from '../services/patient-transfer-permissions';
 import { filterByScope } from '../services/data-scope';
+import { useNow } from '@/lib/hooks/useNow';
 
 type CurrentUser = NonNullable<ReturnType<typeof useAuth>['currentUser']>;
 
@@ -80,19 +81,22 @@ export function usePatientTransfers(patientId?: string) {
 
   const scope = useDataScope();
 
+  // The viewer's id, read out of the user so this callback depends on the id
+  // and not on the whole object (see the note in useTransferQueue below).
+  const viewerId = currentUser?._id;
   const load = useCallback(async () => {
     if (!patientId || !scope) { setTransfers([]); setLoading(false); return; }
     setLoading(true);
     try {
       const { getTransfersByPatient } = await import('../services/patient-transfer-service');
       // viewer id hides other people's unsent drafts.
-      setTransfers(await getTransfersByPatient(patientId, scope, currentUser?._id));
+      setTransfers(await getTransfersByPatient(patientId, scope, viewerId));
     } catch {
       setTransfers([]);
     } finally {
       setLoading(false);
     }
-  }, [patientId, scope, currentUser?._id]);
+  }, [patientId, scope, viewerId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -117,16 +121,16 @@ export function usePatientTransfers(patientId?: string) {
   }, [patientId, load]);
 
   /** The live transfer worth showing in a chart banner, if any. */
+  const now = useNow();
   const activeTransfer = useMemo(() => {
     const pending = transfers.find(t => t.status === 'requested' || t.status === 'accepted');
     if (pending) return pending;
-    const now = Date.now();
     return transfers.find(t =>
       t.status === 'completed'
       && t.transferType !== 'permanent'
       && t.expiresAt
       && new Date(t.expiresAt).getTime() > now) ?? null;
-  }, [transfers]);
+  }, [transfers, now]);
 
   /** Wrap a mutation so every caller gets the same error/refresh handling. */
   const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
@@ -302,24 +306,36 @@ export function useTransferQueue() {
   const [outgoing, setOutgoing] = useState<PatientTransferDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const userId = currentUser?._id;
+  const userOrgId = currentUser?.orgId;
+  const userHospitalId = currentUser?.hospitalId;
+  const userRole = currentUser?.role;
+  const userDepartment = currentUser?.department;
   const load = useCallback(async () => {
-    if (!currentUser?._id) { setIncoming([]); setOutgoing([]); setLoading(false); return; }
+    // Both are always present on a signed-in user; naming them here is what
+    // lets the scope below type as a DataScope without reaching back into the
+    // whole user object.
+    if (!userId || !userRole) { setIncoming([]); setOutgoing([]); setLoading(false); return; }
     setLoading(true);
     try {
       const svc = await import('../services/patient-transfer-service');
       const scope = {
-        orgId: currentUser.orgId,
-        hospitalId: currentUser.hospitalId,
-        role: currentUser.role,
+        orgId: userOrgId,
+        hospitalId: userHospitalId,
+        role: userRole,
       };
       const [inRows, outRows] = await Promise.all([
         svc.getIncomingTransfers({
-          id: currentUser._id,
-          department: currentUser.department,
-          hospitalId: currentUser.hospitalId,
-          role: currentUser.role,
+          id: userId,
+          department: userDepartment,
+          hospitalId: userHospitalId,
+          role: userRole,
         }, scope),
-        svc.getOutgoingTransfers(currentUser._id, scope),
+        svc.getOutgoingTransfers(userId, scope),
       ]);
       setIncoming(inRows);
       setOutgoing(outRows);
@@ -330,8 +346,8 @@ export function useTransferQueue() {
       setLoading(false);
     }
   }, [
-    currentUser?._id, currentUser?.orgId, currentUser?.hospitalId,
-    currentUser?.role, currentUser?.department,
+    userId, userOrgId, userHospitalId,
+    userRole, userDepartment,
   ]);
 
   useEffect(() => { load(); }, [load]);

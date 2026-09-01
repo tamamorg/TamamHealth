@@ -222,7 +222,11 @@ export default function ClinicalImageViewer({
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})` }}
           >
             {/* Native image rendering preserves locally-created blob URLs and works offline. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* The click places an annotation at the exact point pressed on the
+                study — a coordinate a key press cannot express. Annotating
+                from the keyboard needs a different affordance, not a keydown
+                on the image. */}
+            {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/click-events-have-key-events */}
             <img
               src={image.src}
               alt={image.title}

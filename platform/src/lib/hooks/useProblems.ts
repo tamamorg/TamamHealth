@@ -45,7 +45,7 @@ export function useProblems(patientId?: string) {
       reload.cancel();
       try { changes.cancel(); } catch { /* noop */ }
     };
-  }, [load]);
+  }, [load, patientId]);
 
   const create = useCallback(async (data: Omit<ProblemDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createProblem } = await import('../services/problem-service');

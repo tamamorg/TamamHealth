@@ -1050,7 +1050,7 @@ export default function EhrClinicalDashboard({
       icon: item.icon,
       run: () => router.push(item.href),
     })),
-  ], [canDispense, quickNavItems, router]);
+  ], [canDispense, quickNavItems, router, setFindPatientQuery, setFindPatientOpen, setPrintOpen]);
 
   /* The More menu's open state, and the outside-click that closes it. */
   const [moreOpen, setMoreOpen] = useState(false);

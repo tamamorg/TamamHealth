@@ -17,6 +17,7 @@ import Select from '@/components/Select';
 import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useNow } from '@/lib/hooks/useNow';
 
 /* The admissions list is the shared appointment/worklist card row — the same
    surface, grid, type scale and status pill the patient registry uses, so a
@@ -48,6 +49,9 @@ const SEVERITY_LABEL: Record<AdmissionDoc['severity'], string> = {
 };
 
 export default function WardsPage() {
+  // Length of stay counts days against the clock — an input, not a mid-render
+  // reading (see useNow).
+  const now = useNow(60_000);
   const router = useRouter();
   const { t } = useTranslation();
   const { currentUser } = useAuth();
@@ -362,7 +366,7 @@ export default function WardsPage() {
                 )}
 
                 {filteredAdmissions.map(a => {
-                  const days = Math.max(1, Math.ceil((Date.now() - new Date(a.admissionDate).getTime()) / 86400000));
+                  const days = Math.max(1, Math.ceil((now - new Date(a.admissionDate).getTime()) / 86400000));
                   const patient = patients.find(p => p._id === a.patientId);
                   const open = () => setDischargeFor(a);
                   return (

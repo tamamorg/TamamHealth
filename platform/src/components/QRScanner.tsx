@@ -40,7 +40,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
         hasProcessed.current = false;
       }
     }
-  }, [onScan]);
+  }, [onScan, t]);
 
   useEffect(() => {
     // Track whether the effect was torn down before the async scanner.start()
@@ -98,7 +98,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
         html5QrRef.current = null;
       }
     };
-  }, [handleScanSuccess]);
+  }, [handleScanSuccess, t]);
 
   return (
     <Modal onClose={onClose} width={448} labelledBy="qr-scanner-title">

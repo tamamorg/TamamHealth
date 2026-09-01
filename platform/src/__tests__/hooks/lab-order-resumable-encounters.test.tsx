@@ -9,7 +9,7 @@
  * (`LabResultDoc.encounterId`) without ever appearing in `labOrderIds` at all
  * (a side-channel order, or one placed before this fix existed).
  */
-import React, { act } from 'react';
+import React, { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -57,15 +57,21 @@ async function settle(check: () => boolean, maxTicks = 100): Promise<void> {
   }
 }
 
-let draftController: LabOrderController | null = null;
+// Each harness reports what its hook returned from an effect rather than
+// writing to an outer binding during render: a component may not modify
+// anything declared outside it (react-hooks/globals, /immutability), and every
+// read below happens after an `act()`, which flushes effects.
+const draft: { controller: LabOrderController | null } = { controller: null };
 function DraftHarness() {
-  draftController = useLabOrderDraft({ presetPatientId: PATIENT._id });
+  const controller = useLabOrderDraft({ presetPatientId: PATIENT._id });
+  useEffect(() => { draft.controller = controller; });
   return null;
 }
 
-let resumableState: ReturnType<typeof useResumableEncounters> | null = null;
+const resumable: { state: ReturnType<typeof useResumableEncounters> | null } = { state: null };
 function ResumableHarness() {
-  resumableState = useResumableEncounters();
+  const state = useResumableEncounters();
+  useEffect(() => { resumable.state = state; });
   return null;
 }
 
@@ -76,8 +82,8 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
-  draftController = null;
-  resumableState = null;
+  draft.controller = null;
+  resumable.state = null;
 });
 
 afterEach(async () => {
@@ -92,12 +98,12 @@ it('the production ordering path writes the created lab ids back onto the encoun
   await act(async () => { await flush(); });
 
   act(() => {
-    draftController!.toggleTest({ name: 'Creatinine', specimen: 'blood', tier: 'basic' });
+    draft.controller!.toggleTest({ name: 'Creatinine', specimen: 'blood', tier: 'basic' });
   });
 
   let receipt!: Awaited<ReturnType<LabOrderController['submit']>>;
   await act(async () => {
-    receipt = await draftController!.submit();
+    receipt = await draft.controller!.submit();
   });
 
   expect(receipt.encounterId).toBeTruthy();
@@ -111,15 +117,15 @@ it('useResumableEncounters counts an order placed through the wizard', async () 
   act(() => { root.render(<DraftHarness />); });
   await act(async () => { await flush(); });
   act(() => {
-    draftController!.toggleTest({ name: 'Creatinine', specimen: 'blood', tier: 'basic' });
+    draft.controller!.toggleTest({ name: 'Creatinine', specimen: 'blood', tier: 'basic' });
   });
   let receipt!: Awaited<ReturnType<LabOrderController['submit']>>;
-  await act(async () => { receipt = await draftController!.submit(); });
+  await act(async () => { receipt = await draft.controller!.submit(); });
 
   act(() => { root.render(<ResumableHarness />); });
-  await settle(() => resumableState !== null && !resumableState.loading);
+  await settle(() => resumable.state !== null && !resumable.state.loading);
 
-  const resumed = resumableState!.encounters.find(e => e._id === receipt.encounterId);
+  const resumed = resumable.state!.encounters.find(e => e._id === receipt.encounterId);
   expect(resumed).toBeDefined();
   expect(resumed!.resultsTotal).toBe(1);
   expect(resumed!.resultsReady).toBe(0);
@@ -145,9 +151,9 @@ it('falls back to LabResultDoc.encounterId for an order that never wrote back to
   } as never);
 
   act(() => { root.render(<ResumableHarness />); });
-  await settle(() => resumableState !== null && !resumableState.loading);
+  await settle(() => resumable.state !== null && !resumable.state.loading);
 
-  const resumed = resumableState!.encounters.find(e => e._id === encounter._id);
+  const resumed = resumable.state!.encounters.find(e => e._id === encounter._id);
   expect(resumed).toBeDefined();
   expect(resumed!.resultsTotal).toBe(1);
   expect(resumed!.resultsReady).toBe(1);

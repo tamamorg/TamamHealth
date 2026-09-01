@@ -43,9 +43,14 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const facilityUsers = useMemo(
-    () => currentUser?.hospitalId ? users.filter(u => u.hospitalId === currentUser.hospitalId) : users,
-    [users, currentUser?.hospitalId],
+    () => myHospitalId ? users.filter(u => u.hospitalId === myHospitalId) : users,
+    [users, myHospitalId],
   );
 
   const submit = async () => {
@@ -62,7 +67,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
         patientPhone: form.patientPhone.trim() || undefined,
         subject: form.subject.trim(),
         body: form.body.trim(),
-        facilityId: currentUser?.hospitalId,
+        facilityId: myHospitalId,
         facilityName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
         assignedTo: assignee ? { id: assignee._id, name: assignee.name } : undefined,

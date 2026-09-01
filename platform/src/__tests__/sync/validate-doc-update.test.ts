@@ -109,7 +109,7 @@ describe('org-scoped validate_doc_update', () => {
       }, null, nurseUser)).toMatch(/may create medical_record only when recordKind/);
     });
 
-    it('keeps appointment authorship and care-team fields at the front desk boundary', () => {
+    it('keeps appointment scheduling and care-team fields at the front desk boundary', () => {
       const appointment = {
         _id: 'apt-1', type: 'appointment', orgId: 'org-a',
         providerId: 'doctor-1', providerName: 'Dr One',
@@ -124,6 +124,10 @@ describe('org-scoped validate_doc_update', () => {
         .toMatch(/may not amend providerId on appointment/);
       expect(reasonFor({ ...appointment, staffId: 'nurse-2' }, appointment, nurseUser))
         .toMatch(/may not amend staffId on appointment/);
+      expect(reasonFor({ ...appointment, appointmentDate: '2026-09-02' }, appointment, clinicUser))
+        .toMatch(/may not amend appointmentDate on appointment/);
+      expect(reasonFor({ ...appointment, appointmentTime: '11:30' }, appointment, nurseUser))
+        .toMatch(/may not amend appointmentTime on appointment/);
       expect(reasonFor({ ...appointment, status: 'in_progress' }, appointment, clinicUser)).toBeNull();
     });
 

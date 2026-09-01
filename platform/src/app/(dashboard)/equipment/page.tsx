@@ -13,6 +13,7 @@ import type { AssetDoc, AssetCategory, AssetStatus } from '@/lib/db-types-asset'
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useNow } from '@/lib/hooks/useNow';
 
 const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
   { id: 'medical_equipment', labelKey: 'equipment.categoryMedicalEquipment' },
@@ -44,6 +45,9 @@ export default function AssetsPage() {
 
   // Text search comes from the shared global search state, surfaced via the card header's search box.
   const q = globalSearch;
+  // "Due soon" is a comparison against the clock, so the clock is an input —
+  // reading it mid-render made two renders of the same data disagree.
+  const now = useNow(60_000);
   const [createOpen, setCreateOpen] = useState(false);
   const [serviceFor, setServiceFor] = useState<AssetDoc | null>(null);
   // One popup for the table; the clicked row supplies its actions and position.
@@ -196,7 +200,7 @@ export default function AssetsPage() {
               )}
               {filtered.map(a => {
                 const tok = STATUS_TOKENS[a.status];
-                const dueSoon = a.nextServiceDueAt && (new Date(a.nextServiceDueAt).getTime() - Date.now()) < 30 * 86400000;
+                const dueSoon = a.nextServiceDueAt && (new Date(a.nextServiceDueAt).getTime() - now) < 30 * 86400000;
                 return (
                   <tr key={a._id} style={{ cursor: 'pointer' }} tabIndex={0}
                       onClick={e => setRowMenu(rowActionsAt(e, actionsFor(a)))}

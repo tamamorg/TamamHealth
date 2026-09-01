@@ -24,6 +24,8 @@ import { staffOptionLabel, type StaffSlotContext } from '@/lib/appointment-staff
 import type { AppointmentDoc, PatientDoc } from '@/lib/db-types';
 import { AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { useAuth } from '@/lib/context';
+import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 
 export interface AppointmentDetailFieldValues {
   recurrence: '' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
@@ -70,14 +72,17 @@ export default function AppointmentDetailFields({
   staffAssignDisabled?: boolean;
 }) {
   const { users } = useUsers();
+  const { currentUser } = useAuth();
+  const currentHospitalId = currentUser?.hospitalId;
   const { rooms } = useSettings();
   const { policies, balance } = usePatientPayments(patient?._id);
 
-  // Staff who can be the second person on a visit — nursing and front-of-house
-  // roles, not the provider carrying it.
+  // Staff who can be the second person on a visit — nursing roles at this
+  // facility, not the provider carrying it.
   const staffOptions = useMemo(() => users
-    .filter(u => ['nurse', 'midwife', 'clinical_officer', 'front_desk', 'clinic_clerk'].includes(u.role || ''))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users]);
+    .filter(u => ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'].includes(u.role || ''))
+    .filter(u => canAssignStaffAtFacility(currentHospitalId, u.hospitalId))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentHospitalId]);
 
   /**
    * Does this slot collide with another booking for the same provider? Same rule
@@ -152,6 +157,9 @@ export default function AppointmentDetailFields({
             }}
           >
             <option value="">None</option>
+            {values.staffId && !staffOptions.some(person => person._id === values.staffId) && (
+              <option value={values.staffId}>{values.staffName || 'Current staff'}</option>
+            )}
             {/* Role/department, whether they are free at this slot, and how
                 many visits they already hold today — the facts the pick turns
                 on, rather than a wall of interchangeable names. */}

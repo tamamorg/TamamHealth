@@ -187,9 +187,14 @@ export default function InquiriesPage() {
 
   useEffect(() => { loadEnquiries(); }, [loadEnquiries]);
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const facilityUsers = useMemo(
-    () => (currentUser?.hospitalId ? users.filter(u => u.hospitalId === currentUser.hospitalId) : users),
-    [users, currentUser?.hospitalId],
+    () => (myHospitalId ? users.filter(u => u.hospitalId === myHospitalId) : users),
+    [users, myHospitalId],
   );
 
   const typeOptions = useMemo(() => buildTypeOptions(messages), [messages]);

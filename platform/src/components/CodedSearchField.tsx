@@ -141,6 +141,7 @@ export default function CodedSearchField({
         />
       </div>
       {open && coords && (matches.length > 0 || customText) && createPortal(
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the only handler is the blur-suppressor described below; every option in this menu is a real button.
         <div
           ref={menuRef}
           className="fixed rounded-lg border overflow-hidden overflow-y-auto"

@@ -59,6 +59,34 @@ export default function RadiologyDashboard() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { results: labResults, update: updateLabResult } = useLabResults();
+
+  const realStudies = useMemo(
+    () =>
+      labResults
+        .filter(r => isImagingStudy(r))
+        .map(r => {
+          const [modality, bodyPart] = r.testName.split(' — ');
+          return {
+            id: r._id,
+            patientId: r.patientId,
+            patientName: r.patientName,
+            modality: (modality || r.testName).trim(),
+            bodyPart: (bodyPart || r.testName).trim(),
+            status: r.status,
+            priority: r.critical ? 'urgent' : 'routine',
+            orderedBy: r.orderedBy,
+            date: (r.orderedAt || '').slice(0, 10),
+            // Kept alongside `date` (which is truncated to a calendar day) so the
+            // Day statistics rail can bucket real orders by time of day.
+            orderedAt: r.orderedAt,
+            completedAt: r.completedAt,
+            notes: r.clinicalNotes || '',
+            findings: r.result || undefined,
+            isReal: true,
+          };
+        }),
+    [labResults],
+  );
   // Defaults to the Scheduled lane like every other role dashboard; the All
   // stat tile widens back to the whole worklist.
   const [filterStatus, setFilterStatus] = useState<string>('pending');
@@ -162,33 +190,6 @@ export default function RadiologyDashboard() {
   // Real imaging orders flow in from consultation as lab_result docs with
   // specimen 'Imaging' (see clinical-flow/lab-catalog.ts). They are listed
   // first; demo studies fill the queue only in demo mode.
-  const realStudies = useMemo(
-    () =>
-      labResults
-        .filter(r => isImagingStudy(r))
-        .map(r => {
-          const [modality, bodyPart] = r.testName.split(' — ');
-          return {
-            id: r._id,
-            patientId: r.patientId,
-            patientName: r.patientName,
-            modality: (modality || r.testName).trim(),
-            bodyPart: (bodyPart || r.testName).trim(),
-            status: r.status,
-            priority: r.critical ? 'urgent' : 'routine',
-            orderedBy: r.orderedBy,
-            date: (r.orderedAt || '').slice(0, 10),
-            // Kept alongside `date` (which is truncated to a calendar day) so the
-            // Day statistics rail can bucket real orders by time of day.
-            orderedAt: r.orderedAt,
-            completedAt: r.completedAt,
-            notes: r.clinicalNotes || '',
-            findings: r.result || undefined,
-            isReal: true,
-          };
-        }),
-    [labResults],
-  );
 
   const studies = useMemo(
     () => [

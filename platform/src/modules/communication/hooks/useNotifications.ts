@@ -12,7 +12,7 @@ import type { NotificationKind } from '@/modules/communication/notifications/not
 export type {
   NotificationType, NotificationSeverity, NotificationItem,
 } from '@/modules/communication/notifications/types';
-import type { NotificationItem, NotificationSeverity } from '@/modules/communication/notifications/types';
+import type { NotificationItem } from '@/modules/communication/notifications/types';
 import { todayIso as isoToday } from '@/lib/date-utils';
 import {
   NOTIFICATION_READS_EVENT,

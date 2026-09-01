@@ -77,6 +77,11 @@ export default function StaffAvatar({
     <span className={className} style={style} aria-hidden title={name || undefined}>
       {photoUrl && !broken
         ? (
+          // The onError fallback to initials is the point of this component,
+          // and it only works on a plain img: next/image routes an
+          // unconfigured remote host through the optimizer, which fails the
+          // request before onError ever runs.
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={photoUrl}
             alt=""

@@ -112,6 +112,10 @@ export default function Modal({
   if (!mounted) return null;
 
   return createPortal(
+    // The backdrop's click-to-dismiss is a pointer shortcut for a keyboard
+    // path that already exists: Escape closes the dialog (see the keydown
+    // listener above). There is nothing here for a key handler to add.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
       className="modal-portal-backdrop"
       onMouseDown={disableBackdropClose ? undefined : e => {

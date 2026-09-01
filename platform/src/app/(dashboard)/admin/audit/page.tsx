@@ -28,6 +28,7 @@ import { SaTable, classifyAuditRisk, formatWhen, type SaSeverity } from '@/compo
 import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useNow } from '@/lib/hooks/useNow';
 
 type RangeFilter = '24h' | '7d' | '30d' | 'all';
 type SuccessFilter = 'all' | 'success' | 'failure';
@@ -146,14 +147,15 @@ export default function AuditLogsPage() {
     [logs]
   );
 
+  const now = useNow();
   const inRange = useMemo(() => {
     if (range === 'all') return withRisk;
-    const cutoff = Date.now() - RANGE_MS[range];
+    const cutoff = now - RANGE_MS[range];
     return withRisk.filter(({ log }) => {
       const t = log.createdAt ? new Date(log.createdAt).getTime() : 0;
       return t >= cutoff;
     });
-  }, [withRisk, range]);
+  }, [withRisk, range, now]);
 
   const stats = useMemo(() => {
     const failures = inRange.filter(({ log }) => !log.success).length;

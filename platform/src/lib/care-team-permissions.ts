@@ -14,3 +14,11 @@ export const CARE_TEAM_ASSIGNMENT_ROLES: readonly UserRole[] = [
 export function canAssignCareTeamRole(role?: UserRole | null): boolean {
   return Boolean(role && CARE_TEAM_ASSIGNMENT_ROLES.includes(role));
 }
+
+/** Care-team routing is local to the facility operating the visit. */
+export function canAssignStaffAtFacility(
+  actorFacilityId?: string | null,
+  staffFacilityId?: string | null,
+): boolean {
+  return Boolean(actorFacilityId && staffFacilityId && actorFacilityId === staffFacilityId);
+}

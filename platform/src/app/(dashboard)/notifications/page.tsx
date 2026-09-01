@@ -17,7 +17,6 @@ import EhrListHeader, { LIST_STAT_COLORS, EhrListHeaderButton } from '@/componen
 import EmptyState from '@/components/EmptyState';
 import { Bell, BellOff, Check, ChevronRight, RefreshCw } from '@/components/icons/lucide';
 
-import Select from '@/components/Select';
 import { NOTIFICATION_META, NOTIFICATION_TYPE_ORDER, SEVERITY_META, getNotificationAlertPref, notificationBucket, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
 import type { NotificationItem, NotificationSeverity, NotificationType } from '@/modules/communication/client';
 
@@ -25,7 +24,6 @@ import type { NotificationItem, NotificationSeverity, NotificationType } from '@
 const PAGE_SIZE = 60;
 
 /** Shared control styling inside the header's Filters popover. */
-const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
 type SourceFilter = 'all' | NotificationType;
 type StatusFilter = 'all' | 'unread' | NotificationSeverity;
@@ -71,12 +69,6 @@ function NotificationsPageInner() {
     setAlertPref(next);
     setNotificationAlertPref(next);
   };
-
-  const sourceCounts = useMemo(() => {
-    const counts = new Map<NotificationType, number>();
-    for (const n of items) counts.set(n.type, (counts.get(n.type) || 0) + 1);
-    return counts;
-  }, [items]);
 
   const severityCounts = useMemo(() => ({
     critical: items.filter(n => n.severity === 'critical').length,

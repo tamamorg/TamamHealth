@@ -1,7 +1,7 @@
 'use client';
 
 import { ForcePasswordChange } from '@/modules/identity/client';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import EhrTopRail from '@/components/ehr/EhrTopRail';
@@ -39,6 +39,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMobile = useIsMobileViewport();
   const mobileArchetype = currentUser ? getMobileShellArchetype(currentUser.role) : undefined;
   const useShell = isMobile && !!mobileArchetype;
+
+  /**
+   * "Switch User" on the lock screen. The overlay has no password field of
+   * its own, so this is the whole re-authentication path: end the session and
+   * go to /login, where signing in is already a solved, audited flow.
+   *
+   * The push is explicit rather than left to the `!isAuthenticated` effect
+   * below. `logout()` starts a long best-effort teardown (sync manager,
+   * IndexedDB wipe); if `dbReady` drops while that runs, that effect's guard
+   * never passes and the locked user is left on the loading spinner.
+   */
+  const switchUser = useCallback(() => {
+    logout();
+    router.push('/login');
+  }, [logout, router]);
 
   useEffect(() => {
     if (dbReady && !isAuthenticated) {
@@ -93,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onVerifyPin={verifyPin}
           onSetPin={setPin}
           onUnlock={unlock}
-          onLogout={logout}
+          onLogout={switchUser}
         />
       )}
       <a href="#main-content" className="skip-link">Skip to main content</a>

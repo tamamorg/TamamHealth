@@ -548,6 +548,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
             style={{ width: 56, height: 56, border: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}
           >
             {form.logoUrl
+              // eslint-disable-next-line @next/next/no-img-element -- the logo is whatever this form is holding: an arbitrary URL or an unsaved data: URI from the file picker, neither of which next/image can load.
               ? <img src={form.logoUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               : <Building2 className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />}
           </span>

@@ -13,7 +13,7 @@
  *     busy facility's full progress backlog bypassed the cap that keeps the
  *     badge, the bell panel and /notifications reporting the same total.
  */
-import React, { act } from 'react';
+import React, { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -50,9 +50,13 @@ async function settle(check: () => boolean, maxTicks = 150): Promise<void> {
   }
 }
 
-let hookState: ReturnType<typeof useNotifications> | null = null;
+// Reports the hook's value from an effect rather than assigning to an outer
+// binding during render (react-hooks/globals, /immutability). Every read below
+// happens after an `act()`, which flushes effects.
+const hook: { state: ReturnType<typeof useNotifications> | null } = { state: null };
 function Harness({ perSourceLimit }: { perSourceLimit?: number }) {
-  hookState = useNotifications({ perSourceLimit });
+  const state = useNotifications({ perSourceLimit });
+  useEffect(() => { hook.state = state; });
   return null;
 }
 
@@ -63,7 +67,7 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
-  hookState = null;
+  hook.state = null;
 });
 
 /**
@@ -122,7 +126,7 @@ afterEach(async () => {
 
 async function mountAndSettle(perSourceLimit?: number) {
   act(() => { root.render(<Harness perSourceLimit={perSourceLimit} />); });
-  await settle(() => hookState !== null && !hookState.loading);
+  await settle(() => hook.state !== null && !hook.state.loading);
 }
 
 function baseTriage(id: string, overrides: Record<string, unknown> = {}) {
@@ -147,7 +151,7 @@ describe('useNotifications — triage feed matches ACTIVE triages (item 6)', () 
 
     await mountAndSettle();
 
-    const ids = hookState!.items.filter(i => i.type === 'triage').map(i => i.id);
+    const ids = hook.state!.items.filter(i => i.type === 'triage').map(i => i.id);
     expect(ids).toContain('triage-t-seen-waiting');
   });
 
@@ -156,7 +160,7 @@ describe('useNotifications — triage feed matches ACTIVE triages (item 6)', () 
 
     await mountAndSettle();
 
-    const ids = hookState!.items.filter(i => i.type === 'triage').map(i => i.id);
+    const ids = hook.state!.items.filter(i => i.type === 'triage').map(i => i.id);
     expect(ids).toContain('triage-t-pending');
   });
 
@@ -167,7 +171,7 @@ describe('useNotifications — triage feed matches ACTIVE triages (item 6)', () 
 
     await mountAndSettle();
 
-    const ids = hookState!.items.filter(i => i.type === 'triage').map(i => i.id);
+    const ids = hook.state!.items.filter(i => i.type === 'triage').map(i => i.id);
     expect(ids).not.toContain('triage-t-in-consult');
   });
 });
@@ -188,7 +192,7 @@ describe('useNotifications — consultation-progress source respects perSourceLi
 
     await mountAndSettle();
 
-    expect(hookState!.items.filter(i => i.type === 'progress')).toHaveLength(2);
+    expect(hook.state!.items.filter(i => i.type === 'progress')).toHaveLength(2);
   });
 
   it('caps the progress source at perSourceLimit instead of pushing every qualifying item', async () => {
@@ -197,7 +201,7 @@ describe('useNotifications — consultation-progress source respects perSourceLi
 
     await mountAndSettle(1);
 
-    const capped = hookState!.items.filter(i => i.type === 'progress');
+    const capped = hook.state!.items.filter(i => i.type === 'progress');
     expect(capped).toHaveLength(1);
     // Newest-updated first (getAllConsultationProgress sorts by updatedAt desc).
     expect(capped[0].title).toContain('Patient p-newer');

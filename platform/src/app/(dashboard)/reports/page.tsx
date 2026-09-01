@@ -832,7 +832,6 @@ export default function ReportsPage() {
           }}
           kinds={CHART_KINDS}
           partToWholeOkFor={partToWholeOkFor}
-          loading={dataLoading}
           total={chartableReports.length}
         />
 

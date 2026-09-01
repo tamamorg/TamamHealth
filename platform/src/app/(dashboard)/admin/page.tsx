@@ -42,6 +42,7 @@ import {
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import { Maximize2 } from '@/components/icons/lucide';
+import { useNow } from '@/lib/hooks/useNow';
 import type {
   AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
@@ -196,7 +197,8 @@ export default function AdminDashboardPage() {
   const suspendedOrgs = organizations.filter(o => o.subscriptionStatus === 'suspended' || o.subscriptionStatus === 'cancelled' || !o.isActive);
   const trialOrgs = organizations.filter(o => o.subscriptionStatus === 'trial');
 
-  const weekAgo = Date.now() - 7 * 86400000;
+  const nowMs = useNow();
+  const weekAgo = nowMs - 7 * 86400000;
   const failedAudits = useMemo(
     () => auditLogs.filter(l => l.success === false && new Date(l.createdAt).getTime() >= weekAgo),
     [auditLogs, weekAgo],
@@ -258,7 +260,7 @@ export default function AdminDashboardPage() {
   const readinessTone: Tone = readiness >= 88 ? 'ok' : readiness >= 70 ? 'warn' : 'danger';
 
   /* KPI deltas we can actually compute. */
-  const now = new Date();
+  const now = new Date(nowMs);
   const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).getTime();
   const newOrgsQuarter = organizations.filter(o => o.createdAt && new Date(o.createdAt).getTime() >= quarterStart).length;
   const newFacilitiesQuarter = hospitals.filter(h => h.createdAt && new Date(h.createdAt).getTime() >= quarterStart).length;

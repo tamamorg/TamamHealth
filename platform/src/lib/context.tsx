@@ -337,6 +337,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [sessionMode, setSessionMode] = useState<AppState['sessionMode']>(null);
   const [requiresOnlineReauth, setRequiresOnlineReauth] = useState(false);
+  /**
+   * Deployment-wide operational policy, from `/api/auth/me`.
+   *
+   * Kept beside the user rather than on it: it describes the platform, not the
+   * person, and it applies identically to every session on this deployment.
+   * It carries the idle timeout ceiling and whether screen locking is
+   * mandatory; `useAutoLock` consumes both.
+   */
+  const [platformPolicy, setPlatformPolicy] = useState<PlatformClientPolicy>({});
   // User-preference: do they want sync running? Persisted in localStorage.
   const [wantsOnline, setWantsOnline] = useState<boolean>(true);
   // OS-level: is the network actually up?
@@ -627,10 +636,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // import resolves — without an `aborted` flag the .then() body would
   // happily install a zombie manager AFTER the cleanup ran, and the next
   // teardown would never destroy it.
+  // The entitlement the replication scope is built from, read out of the user
+  // ONE level up. The effect below used to reach into `currentUser` itself,
+  // which is a new object on every refresh of the same person — so its
+  // dependency list named the four fields instead and the linter (rightly)
+  // could not tell that was deliberate. Naming them here makes the effect
+  // depend on exactly what it reads.
+  const hasUser = !!currentUser;
+  const syncOrgId = currentUser?.orgId;
+  const syncRole = currentUser?.role;
+  const syncHospitalId = currentUser?.hospitalId;
+  const syncFacilityIds = currentUser?.facilityIds;
+
   useEffect(() => {
     let aborted = false;
 
-    if (!isAuthenticated || !currentUser || sessionMode !== 'online') {
+    if (!isAuthenticated || !hasUser || !syncOrgId || !syncRole || sessionMode !== 'online') {
       // Tear down sync when logged out
       if (syncManagerRef.current) {
         import('./sync/sync-manager').then(({ destroySyncManager }) => {
@@ -656,15 +677,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const manager = createSyncManager({
-        orgId: currentUser.orgId,
+        orgId: syncOrgId,
         // Facility entitlement drives a server-side replication selector, so
         // a facility-scoped user's device never receives other facilities' PHI
         // (KAN-95). Previously every user in an org replicated all of it.
         user: {
-          role: currentUser.role,
-          orgId: currentUser.orgId,
-          hospitalId: currentUser.hospitalId,
-          facilityIds: currentUser.facilityIds,
+          role: syncRole,
+          orgId: syncOrgId,
+          hospitalId: syncHospitalId,
+          facilityIds: syncFacilityIds,
         },
         onChange: (status) => {
           setSyncStatus(status);
@@ -690,14 +711,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // A user switch can keep the same org while changing facility or role; if
   // those keys are omitted, the new session keeps the previous user's CouchDB
   // replication scope until a full reload.
-  }, [
-    isAuthenticated,
-    currentUser?.orgId,
-    currentUser?.hospitalId,
-    currentUser?.facilityIds,
-    currentUser?.role,
-    sessionMode,
-  ]);  
+  }, [isAuthenticated, hasUser, syncOrgId, syncHospitalId, syncFacilityIds, syncRole, sessionMode]);
 
   // --- Sync gating: the manager runs only when the user wants to be online
   // AND the OS reports the network is up. If either drops, stopAll(). When
@@ -811,16 +825,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * signed, bound to its own JWT audience so it can never be presented as a
    * session, and lives five minutes server-side regardless of what is kept here.
    */
-  /**
-   * Deployment-wide operational policy, from `/api/auth/me`.
-   *
-   * Kept beside the user rather than on it: it describes the platform, not the
-   * person, and it applies identically to every session on this deployment.
-   * Today it carries one value — the idle timeout that `useAutoLock` treats as
-   * a ceiling — which had been displayed on the security console since that
-   * screen shipped and read by nothing.
-   */
-  const [platformPolicy, setPlatformPolicy] = useState<PlatformClientPolicy>({});
   const login = useCallback(async (username: string, password: string, hospitalId?: string, requestedRole?: UserRole, keepSignedIn: boolean = true): Promise<UserRole | false> => {
     loginFailureRef.current = null;
     // Whether the sign-in request ever reached the server. A refusal that never

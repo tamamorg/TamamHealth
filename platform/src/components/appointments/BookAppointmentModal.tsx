@@ -39,6 +39,7 @@ import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 import { jubaDate } from '@/lib/time-juba';
 import { ArrowLeft, ArrowRight, Maximize2, X } from '@/components/icons/lucide';
 import { expandHref } from '@/lib/navigation/expand-to-page';
@@ -182,11 +183,16 @@ export default function BookAppointmentModal({
   const [staffName, setStaffName] = useState('');
   const [weekStart, setWeekStart] = useState(defaultDate || today);
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const providerOptions = useMemo(() => users
     .filter(u => (u.role === 'doctor' || u.role === 'clinical_officer')
       && u.isActive !== false
-      && (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentUser?.hospitalId]);
+      && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
   /**
    * Staff who can be the second person on a visit.
    *
@@ -201,9 +207,9 @@ export default function BookAppointmentModal({
     return users
       .filter(u => SECOND_STAFF_ROLES.has(u.role)
         && u.isActive !== false
-        && (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId))
+        && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  }, [users, currentUser?.hospitalId]);
+  }, [users, myHospitalId]);
   const providerSlotContext = useMemo<StaffSlotContext>(() => ({
     appointments, date, time: time || '09:00', duration,
   }), [appointments, date, time, duration]);
@@ -223,7 +229,7 @@ export default function BookAppointmentModal({
   const stepped = reasons.length > 0;
 
   const { slots, firstAvailableDate, loading: slotsLoading } = useBookingSlots({
-    facilityId: currentUser?.hospitalId,
+    facilityId: myHospitalId,
     orgId: currentUser?.orgId,
     visitReason,
     patientClass: 'returning',
@@ -323,7 +329,7 @@ export default function BookAppointmentModal({
         providerName: provider,
         staffId: staffId || undefined,
         staffName: staffName || undefined,
-        facilityId: currentUser?.hospitalId || '',
+        facilityId: myHospitalId || '',
         facilityName: currentUser?.hospitalName || '',
         facilityLevel: 'payam' as FacilityLevel,
         appointmentDate: date,
@@ -373,7 +379,7 @@ export default function BookAppointmentModal({
       if (canAssignCareTeam && currentUser && (providerId || staffId)) {
         const { assignProviderToPatient, assignNurseToPatient } = await import('@/lib/services/patient-assignment-service');
         const actor = { id: currentUser._id, name: currentUser.name, role: currentUser.role };
-        const hospitalId = appointment.facilityId || currentUser.hospitalId;
+        const hospitalId = appointment.facilityId || myHospitalId;
         const orgId = appointment.orgId || currentUser.orgId;
 
         if (providerId) {

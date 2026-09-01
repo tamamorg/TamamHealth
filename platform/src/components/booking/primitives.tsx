@@ -217,6 +217,7 @@ export function ProviderAvatar({ name, photoUrl, className = 'booking-avatar' }:
         // A published photo is a URL an admin typed in; if it 404s the
         // monogram behind it is what shows, which is why it is rendered as a
         // child rather than a background-image.
+        // eslint-disable-next-line @next/next/no-img-element -- see above: the 404 fallback IS the behaviour, and next/image turns that into an error instead.
         ? <img src={photoUrl} alt="" loading="lazy" />
         : monogram(name)}
     </span>

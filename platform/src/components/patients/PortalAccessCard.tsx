@@ -60,7 +60,7 @@ export default function PortalAccessCard({ patientId }: { patientId: string }) {
     } catch {
       setError(t('pac.errUnreachable'));
     }
-  }, [patientId]);
+  }, [patientId, t]);
 
   useEffect(() => { void load(); }, [load]);
 

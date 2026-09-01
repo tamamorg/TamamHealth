@@ -415,11 +415,10 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
     'wardId', 'wardName', 'bedId', 'bedNumber', 'nurseAssigned',
     'nurseAssignedName', 'updatedAt', 'offlineSync',
   ],
-  // Deliberately excludes providerId/providerName/staffId/staffName. Those
-  // four fields move accountability and remain reception-only even when a
-  // clinician may advance status or annotate the existing visit.
+  // Deliberately excludes scheduling and care-team fields. Rescheduling and
+  // re-routing remain reception-only even when a clinician may advance status
+  // or annotate the existing visit.
   appointment: [
-    'appointmentDate', 'appointmentTime', 'endTime', 'duration',
     'appointmentType', 'priority', 'room', 'department', 'reason', 'notes',
     'status', 'cancelledReason', 'cancelledBy', 'cancelledByName', 'cancelledAt',
     'confirmedAt', 'confirmedBy', 'confirmedByName',

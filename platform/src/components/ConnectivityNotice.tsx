@@ -141,7 +141,7 @@ export default function ConnectivityNotice() {
 
     prevOnline.current = isOnline;
     prevPaused.current = syncPaused;
-  }, [isOnline, isNetworkUp, syncPaused, isAuthenticated, syncStatus?.state]);
+  }, [isOnline, isNetworkUp, syncPaused, isAuthenticated, syncStatus?.state, t]);
 
   // Sync errors: notify on entering the 'error' state. Find a database error
   // message if available so we can show a useful body.
@@ -164,7 +164,7 @@ export default function ConnectivityNotice() {
       );
     }
     prevSyncErrState.current = state;
-  }, [syncStatus, isAuthenticated]);
+  }, [syncStatus, isAuthenticated, t]);
 
   // Cleanup timers on unmount
   useEffect(() => () => {

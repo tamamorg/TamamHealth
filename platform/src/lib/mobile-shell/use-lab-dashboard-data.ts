@@ -5,6 +5,7 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { LabResultDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
+import { useNow } from '@/lib/hooks/useNow';
 
 /** Lab-archetype dashboard (lab_tech): lanes grouped by LabResultDoc.status. */
 export function useLabDashboardData(): MobileDashboardData {
@@ -21,10 +22,10 @@ export function useLabDashboardData(): MobileDashboardData {
     ];
   }, [results]);
 
+  const now = useNow(60_000);
   const outstanding = useMemo<MobileOutstandingItem[]>(() => {
     const critical = results.filter((r) => r.critical && r.status !== 'completed').length;
     const agingMs = 2 * 60 * 60 * 1000; // 2h
-    const now = Date.now();
     const agedPending = results.filter(
       (r) => r.status === 'pending' && r.orderedAt && now - new Date(r.orderedAt).getTime() > agingMs
     ).length;
@@ -32,7 +33,7 @@ export function useLabDashboardData(): MobileDashboardData {
       { key: 'critical', label: 'Critical results', count: critical, href: '/lab' },
       { key: 'aged_pending', label: 'Pending > 2h', count: agedPending, href: '/lab' },
     ];
-  }, [results]);
+  }, [results, now]);
 
   return { lanes, outstanding, loading };
 }

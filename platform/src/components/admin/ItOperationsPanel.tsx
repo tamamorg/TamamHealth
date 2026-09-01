@@ -17,6 +17,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { apiFetch } from '@/lib/api-fetch';
 import { isPathAllowed } from '@/lib/role-routes';
 import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
+import { useNow } from '@/lib/hooks/useNow';
 import {
   Activity, AlertTriangle, CheckCircle2, Database, HardDrive, RefreshCw,
   Server, ShieldCheck, Smartphone, Upload,
@@ -58,6 +59,8 @@ export default function ItOperationsPanel({ embedded = false }: {
   /** True when hosted inside Settings — hides the self-referential console link. */
   embedded?: boolean;
 }) {
+  // "Last synced N minutes ago" has to keep counting while the panel is open.
+  const now = useNow(60_000);
   const { currentUser } = useAuth();
   const { isOnline, syncPaused, lastSync, syncNow } = useSync();
   const settings = useSettings();
@@ -107,8 +110,8 @@ export default function ItOperationsPanel({ embedded = false }: {
     if (!lastSync) return null;
     const at = new Date(lastSync).getTime();
     if (Number.isNaN(at)) return null;
-    return Math.floor((Date.now() - at) / 60000);
-  }, [lastSync]);
+    return Math.floor((now - at) / 60000);
+  }, [lastSync, now]);
   const syncStatus = syncPaused || !isOnline
     ? 'warning'
     : lastSyncAgeMinutes === null

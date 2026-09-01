@@ -178,19 +178,25 @@ export default function TransferPatientModal({
     );
   }, [currentUser, patient, scope, destinationOrgId]);
 
+  // Read out of the user once so the memo below depends on the FIELD rather
+  // than on the whole user object: a dependency list naming a property of an
+  // object the body reads is narrower than the compiler can infer, and it
+  // skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
+  const myOrgId = currentUser?.orgId;
   const candidates = useMemo(() => users
     .filter(u => u.isActive !== false)
-    .filter(u => !currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId)
-    .filter(u => !currentUser?.orgId || u.orgId === currentUser.orgId)
+    .filter(u => !myHospitalId || u.hospitalId === myHospitalId)
+    .filter(u => !myOrgId || u.orgId === myOrgId)
     .filter(u => RECEIVING_ROLES.has(u.role))
     .filter(u => u._id !== patient.assignedDoctor)
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, patient.assignedDoctor, currentUser?.hospitalId, currentUser?.orgId]);
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, patient.assignedDoctor, myHospitalId, myOrgId]);
 
   const departments = useMemo(() => Array.from(
-    new Set(users.filter(u => (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId)
-      && (!currentUser?.orgId || u.orgId === currentUser.orgId))
+    new Set(users.filter(u => (!myHospitalId || u.hospitalId === myHospitalId)
+      && (!myOrgId || u.orgId === myOrgId))
       .map(u => u.department).filter((d): d is string => Boolean(d))),
-  ).sort(), [users, currentUser?.hospitalId, currentUser?.orgId]);
+  ).sort(), [users, myHospitalId, myOrgId]);
 
   const selectedProvider = candidates.find(u => u._id === providerId);
   const outstanding = checklist.filter(i => i.required && !i.done);
@@ -244,15 +250,15 @@ export default function TransferPatientModal({
           ? {
               facilityId: facilityId || undefined,
               facilityName: selectedFacility?.name,
-              orgId: selectedFacility?.orgId ?? currentUser?.orgId,
+              orgId: selectedFacility?.orgId ?? myOrgId,
             }
           : {
               providerId: providerId || undefined,
               providerName: selectedProvider?.name,
               department: department || selectedProvider?.department || undefined,
-              facilityId: currentUser?.hospitalId,
+              facilityId: myHospitalId,
               facilityName: currentUser?.hospital?.name || currentUser?.hospitalName,
-              orgId: currentUser?.orgId,
+              orgId: myOrgId,
             },
         reason: reason.trim(),
         transferType,
@@ -381,7 +387,7 @@ export default function TransferPatientModal({
               >
                 <option value="">— Select a facility —</option>
                 {hospitals
-                  .filter(h => h._id !== currentUser?.hospitalId)
+                  .filter(h => h._id !== myHospitalId)
                   .map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
               </Select>
             </label>
@@ -394,7 +400,7 @@ export default function TransferPatientModal({
             </p>
           )}
           {scope === 'external' && selectedFacility && destinationOrgId
-            && destinationOrgId !== currentUser?.orgId && (
+            && destinationOrgId !== myOrgId && (
             <div className="xfer-banner xfer-banner--warn">
               <AlertTriangle />
               <span>

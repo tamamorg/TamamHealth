@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, X } from '@/components/icons/lucide';
+import { ChevronDown } from '@/components/icons/lucide';
 
 import Select from '@/components/Select';
 import type { FilterOption } from '@/components/filters';

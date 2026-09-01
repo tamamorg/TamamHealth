@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TableCols from '@/components/TableCols';
 import { useSearchParams } from 'next/navigation';
 import { formatCompactDateTime } from '@/lib/format-utils';
@@ -27,6 +27,7 @@ import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 import type { LabResultDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useNow } from '@/lib/hooks/useNow';
 
 // Human labels for the granular diagnostics lifecycle (Stage 6).
 const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
@@ -86,6 +87,9 @@ function fallbackAccessionNumber(order: Pick<LabResultDoc, '_id' | 'accessionNum
 }
 
 export default function LabPage() {
+  // SLA and turnaround are comparisons against the clock, so the clock is an
+  // input rather than something read mid-render (see useNow).
+  const now = useNow(60_000);
   // Per-column filters (replace the old search + status-tabs top bar).
   const searchParams = useSearchParams();
   const [colFilters, setColFilters] = useState({ patient: '', test: '', specimen: '', status: '', result: '', orderedBy: '', worklist: '' });
@@ -176,7 +180,7 @@ export default function LabPage() {
     const resultedAt = new Date(o.updatedAt || o.createdAt || '').getTime();
     if (!Number.isFinite(resultedAt)) return false;
     const slaHours = o.critical ? resultReviewSLA.criticalHours : resultReviewSLA.routineHours;
-    return (Date.now() - resultedAt) / 3_600_000 > slaHours;
+    return (now - resultedAt) / 3_600_000 > slaHours;
   });
   // Rather than a banner above the table, the offending rows themselves glow
   // red in the list — the alert stays attached to the patient it's about.
@@ -219,7 +223,7 @@ export default function LabPage() {
   const overTatIds = new Set(
     sortedFiltered
       .filter(o => o.status !== 'completed'
-        && (Date.now() - orderedAtMs(o)) / 60_000 > tatMinutes
+        && (now - orderedAtMs(o)) / 60_000 > tatMinutes
         && orderedAtMs(o) > 0)
       .map(o => o._id),
   );

@@ -47,6 +47,11 @@ describe('appointment calendar visibility', () => {
       .toEqual([assigned]);
   });
 
+  test('a nurse carrying a primary-care visit as provider sees it too', () => {
+    const nurseLed = appointment({ providerId: 'nurse-1', staffId: '' });
+    expect(canViewAppointment(nurseLed, { _id: 'nurse-1', role: 'nurse' })).toBe(true);
+  });
+
   test('facility scheduling roles see the facility-scoped book supplied to them', () => {
     expect(appointmentsVisibleToUser([assigned, another], { _id: 'desk-1', role: 'front_desk' }))
       .toEqual([assigned, another]);

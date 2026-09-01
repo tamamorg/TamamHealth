@@ -14,7 +14,7 @@ import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { toCsvRows, downloadCsvText, safeFilenamePart } from '@/lib/export-file';
+import { toCsvRows, downloadCsvText } from '@/lib/export-file';
 import type { ImmunizationDefaulter } from '@/lib/services/immunization-service';
 import type { ImmunizationDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
@@ -31,8 +31,6 @@ import { stopsClickPropagation } from '@/lib/a11y';
 const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
 const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'oral'> = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
 
-// Shared control styling inside the header's Filters popover.
-const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
 const statusConfig = {
   completed: { color: 'var(--color-success-text)', bg: 'rgba(14, 148, 99,0.12)', icon: CheckCircle2, label: 'Completed' },
@@ -56,9 +54,6 @@ export default function ImmunizationsPage() {
   // Clinical roles (doctors, nurses, etc.) just work the records and defaulters.
   const canViewCoverage = ['hospital_manager', 'medical_superintendent', 'government', 'county_health_director', 'super_admin'].includes(currentUser?.role ?? '');
   const [showModal, setShowModal] = useState(false);
-  // Header "vaccine" filter — scopes both the KPI stat cards and the main
-  // per-child table to a single antigen. 'all' = no filter.
-  const [vaccineFilter, setVaccineFilter] = useState<string>('all');
   // Table toolbar: local search over child name (combined with the shared
   // global search bar, same pattern as /appointments and /patients) and a
   // status filter over whether a child has any overdue/missed dose.
@@ -153,6 +148,17 @@ export default function ImmunizationsPage() {
     setPatientLookup('');
   };
 
+  // The visit/note that ordered the dose, when this page was opened from a
+  // consultation plan (e.g. `/immunizations?patientId=...&encounterId=...`).
+  //
+  // Held in state, bound to the patient the link named, rather than read from
+  // the URL on every render: an immunization session records several children
+  // back-to-back from one deep link, and a param that outlives its patient
+  // stamps child B's dose with child A's visit and note. `linkedOrder` is
+  // cleared whenever the form's patient changes (see `setLinkedPatient`
+  // below and the unlink button).
+  const [linkedOrder, setLinkedOrder] = useState<{ patientId: string; encounterId?: string; noteId?: string } | null>(null);
+
   // Deep-link support: `/immunizations?patientId=...` (e.g. from the chart's
   // Immunizations tab "Add" action) opens the record-dose modal preselected
   // to that patient. Runs once per page load — guarded by a ref so it
@@ -180,16 +186,6 @@ export default function ImmunizationsPage() {
     setShowModal(true);
   }, [searchParams, patients]);
 
-  // The visit/note that ordered the dose, when this page was opened from a
-  // consultation plan (e.g. `/immunizations?patientId=...&encounterId=...`).
-  //
-  // Held in state, bound to the patient the link named, rather than read from
-  // the URL on every render: an immunization session records several children
-  // back-to-back from one deep link, and a param that outlives its patient
-  // stamps child B's dose with child A's visit and note. `linkedOrder` is
-  // cleared whenever the form's patient changes (see `setLinkedPatient`
-  // below and the unlink button).
-  const [linkedOrder, setLinkedOrder] = useState<{ patientId: string; encounterId?: string; noteId?: string } | null>(null);
   const encounterId = linkedOrder && linkedOrder.patientId === form.patientId ? linkedOrder.encounterId : undefined;
   const noteId = linkedOrder && linkedOrder.patientId === form.patientId ? linkedOrder.noteId : undefined;
 
@@ -274,7 +270,6 @@ export default function ImmunizationsPage() {
     const entries = Array.from(childGroups.entries());
     const q = combinedSearch.toLowerCase();
     return entries.filter(([, records]) => {
-      if (vaccineFilter !== 'all' && !records.some(r => r.vaccine === vaccineFilter)) return false;
       if (q && !records[0]?.patientName?.toLowerCase().includes(q)) return false;
       if (childStatusFilter !== 'all') {
         const hasOverdue = records.some(r => r.status === 'overdue' || r.status === 'missed');
@@ -283,37 +278,28 @@ export default function ImmunizationsPage() {
       }
       return true;
     });
-  }, [childGroups, combinedSearch, vaccineFilter, childStatusFilter]);
+  }, [childGroups, combinedSearch, childStatusFilter]);
 
   // Whether the empty state should show "no matches" (vs. "no records at all").
-  const hasActiveFilters = !!combinedSearch || vaccineFilter !== 'all' || childStatusFilter !== 'all';
+  const hasActiveFilters = !!combinedSearch || childStatusFilter !== 'all';
 
-  // KPI stat cards — scoped to the selected vaccine where it makes sense
-  // (total doses / given-today / overdue); facility-wide otherwise.
+  // KPI stat cards, facility-wide. They used to narrow to one antigen through
+  // a header "vaccine" filter; that control is gone, so the state behind it
+  // sat at 'all' with nothing able to change it and every branch on it dead.
   const today = todayIso();
-  const vaccineFilteredImms = useMemo(
-    () => (vaccineFilter === 'all' ? immunizations : immunizations.filter(i => i.vaccine === vaccineFilter)),
-    [immunizations, vaccineFilter]
-  );
-  const vaccineFilteredDefaulters = useMemo(
-    () => (vaccineFilter === 'all' ? defaulters : defaulters.filter(d => d.vaccine === vaccineFilter)),
-    [defaulters, vaccineFilter]
-  );
-  const totalDosesGiven = useMemo(() => vaccineFilteredImms.filter(i => i.status === 'completed').length, [vaccineFilteredImms]);
-  const givenToday = useMemo(() => vaccineFilteredImms.filter(i => i.status === 'completed' && i.dateGiven === today).length, [vaccineFilteredImms, today]);
+  const totalDosesGiven = useMemo(() => immunizations.filter(i => i.status === 'completed').length, [immunizations]);
+  const givenToday = useMemo(() => immunizations.filter(i => i.status === 'completed' && i.dateGiven === today).length, [immunizations, today]);
 
   // Export the currently filtered per-child table as CSV — one summary row per child.
   const handleDownloadCsv = () => {
     const header = ['Child name', 'Date of birth', 'Gender', 'Facility', 'Completed doses', 'Overdue doses'];
     const rows = filteredChildren.map(([, records]) => {
       const child = records[0];
-      const scoped = vaccineFilter === 'all' ? records : records.filter(r => r.vaccine === vaccineFilter);
-      const completed = scoped.filter(r => r.status === 'completed').length;
-      const overdue = scoped.filter(r => r.status === 'overdue' || r.status === 'missed').length;
+      const completed = records.filter(r => r.status === 'completed').length;
+      const overdue = records.filter(r => r.status === 'overdue' || r.status === 'missed').length;
       return [child?.patientName || '', child?.dateOfBirth || '', child?.gender || '', child?.facilityName || '', completed, overdue];
     });
-    const suffix = vaccineFilter === 'all' ? 'all' : safeFilenamePart(vaccineFilter);
-    downloadCsvText(toCsvRows(header, rows), `immunizations-${suffix}`);
+    downloadCsvText(toCsvRows(header, rows), 'immunizations-all');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -383,9 +369,9 @@ export default function ImmunizationsPage() {
       <EhrListHeader
         title={t('immun.title')}
         stats={[
-          { label: `Doses given${vaccineFilter !== 'all' ? ` · ${vaccineFilter}` : ''}`, value: totalDosesGiven, color: LIST_STAT_COLORS.muted },
+          { label: 'Doses given', value: totalDosesGiven, color: LIST_STAT_COLORS.muted },
           { label: 'Given today', value: givenToday, color: LIST_STAT_COLORS.blue },
-          { label: 'Overdue', value: vaccineFilteredDefaulters.length, color: LIST_STAT_COLORS.amber },
+          { label: 'Overdue', value: defaulters.length, color: LIST_STAT_COLORS.amber },
           { label: 'Fully immunized', value: Math.max((stats?.totalChildren || 0) - (defaulterStats?.uniqueChildren || 0), 0), color: LIST_STAT_COLORS.green },
         ]}
         search={{ value: tableSearch, onChange: setTableSearch, placeholder: 'Search children by name…', ariaLabel: 'Search children by name' }}
@@ -770,10 +756,9 @@ export default function ImmunizationsPage() {
           {filteredChildren.map(([childId, records]) => {
             const child = records[0];
             const isExpanded = expandedChild === childId;
-            const scopedRecords = vaccineFilter === 'all' ? records : records.filter(r => r.vaccine === vaccineFilter);
-            const vaccinesToShow = vaccineFilter === 'all' ? VACCINES : [vaccineFilter];
-            const completedCount = scopedRecords.filter(r => r.status === 'completed').length;
-            const overdueCount = scopedRecords.filter(r => r.status === 'overdue' || r.status === 'missed').length;
+            const vaccinesToShow = VACCINES;
+            const completedCount = records.filter(r => r.status === 'completed').length;
+            const overdueCount = records.filter(r => r.status === 'overdue' || r.status === 'missed').length;
 
             const toggle = () => setExpandedChild(isExpanded ? null : childId);
             return (
@@ -813,7 +798,7 @@ export default function ImmunizationsPage() {
                   <div className="px-4 pb-4">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 data-row-divider-sm">
                       {vaccinesToShow.map(vac => {
-                        const doses = scopedRecords.filter(r => r.vaccine === vac);
+                        const doses = records.filter(r => r.vaccine === vac);
                         if (doses.length === 0) return (
                           <div key={vac} className="p-2 rounded-lg border" style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}>
                             <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{vac}</p>

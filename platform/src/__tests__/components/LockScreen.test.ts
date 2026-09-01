@@ -10,9 +10,9 @@
  *
  * The fix removes that path entirely. PIN registration lives in Settings
  * (`RoleSettingsView`), reached only once already authenticated. This
- * component now has exactly two states: a digit pad that verifies against an
- * EXISTING PIN, or a re-auth-only screen (the "Switch User" button, which
- * signs out into a fresh sign-in) — never both.
+ * component now has a digit pad only when it can verify an EXISTING PIN.
+ * Password re-authentication and switching users remain available without a
+ * PIN; the unauthenticated PIN-creation shortcut never is.
  *
  * There is no React Testing Library in this repo, so the decision is tested
  * directly via the exported pure helper rather than by rendering the

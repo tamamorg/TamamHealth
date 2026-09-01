@@ -145,7 +145,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
       }
     })();
     return () => { cancelled = true; };
-  }, [patient._id]);
+  }, [patient._id, t]);
 
   const safeBills = bills || [];
   const totalBilled = safeBills.reduce((s, b) => s + b.amount, 0);

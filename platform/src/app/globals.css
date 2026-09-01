@@ -4199,6 +4199,19 @@ html:has(.mobile-shell-offline-banner) {
   pointer-events: none;
 }
 
+/* Unread marker with nothing to count (announcements). Offsets are picked so
+   the dot's centre lands where a count pill's centre lands — 10.5px in from
+   the button's top and trailing edges — and the whole cluster reads as one
+   row of badges whether the icon carries a number or not. */
+.ehr-top-action-badge.is-dot {
+  top: 6px;
+  inset-inline-end: 6px;
+  min-width: 9px;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+}
+
 .ehr-top-modules button,
 .ehr-top-actions button {
   width: 44px;
@@ -13329,6 +13342,27 @@ span:has(> svg:only-child) {
   .ehr-top-actions button {
     width: 30px;
     height: 30px;
+  }
+
+  /* The rail's buttons drop to 30px here; a full-size 17px badge would cover
+     half the icon, so the pill scales with them. Both the module counts and
+     the quick-action counts use this class, so they stay identical. */
+  .ehr-top-action-badge {
+    top: 1px;
+    inset-inline-end: 1px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    font-size: 8px;
+  }
+
+  .ehr-top-action-badge.is-dot {
+    top: 4px;
+    inset-inline-end: 4px;
+    min-width: 8px;
+    width: 8px;
+    height: 8px;
+    padding: 0;
   }
 
   /* The hamburger is now the primary control — give it a touch of presence. */

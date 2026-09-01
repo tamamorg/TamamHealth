@@ -239,10 +239,10 @@ export default function RoleSettingsView() {
   const [baseline, setBaseline] = useState<RoleSettingsValues>({});
   useEffect(() => { setDraft(buildBaseline); setBaseline(buildBaseline); }, [buildBaseline]);
 
-  const dirty = useMemo(
-    () => Object.keys(draft).some(key => draft[key] !== baseline[key]),
-    [draft, baseline],
-  );
+  // A key-count comparison over a handful of settings: cheap enough that the
+  // compiler declines to memoize it, and a manual useMemo it cannot preserve
+  // makes it skip optimizing the whole component.
+  const dirty = Object.keys(draft).some(key => draft[key] !== baseline[key]);
 
   const buildDefaultSettings = (): RoleSettingsValues => {
     if (!spec || !currentUser) return {};
@@ -497,7 +497,7 @@ export default function RoleSettingsView() {
       });
     }
     return groups;
-  }, [spec, currentUser, isAdminSpec, showFacility, canManageUsers, users.length, hospitals.length, showSystemAdmin, sysAdminData, showTrash, trashedCount]);
+  }, [spec, currentUser, isAdminSpec, showFacility, canManageUsers, showSystemAdmin, sysAdminData, showTrash, trashedCount]);
 
   if (!currentUser || !spec) return null;
 

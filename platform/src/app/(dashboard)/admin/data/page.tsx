@@ -18,6 +18,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { getAllPatients } from '@/lib/services/patient-service';
 import type { PatientDoc } from '@/lib/db-types';
 import { ArrowRight, Copy, BarChart3, AlertTriangle, GitCompareArrows } from '@/components/icons/lucide';
+import { useNow } from '@/lib/hooks/useNow';
 
 const ROW_CAP = 50;
 
@@ -135,8 +136,9 @@ export default function AdminDataGovernancePage() {
   }, [patients]);
 
   // ── Missing / invalid value scan ──
+  // The clock is an input, not something read mid-render: see useNow.
+  const now = useNow();
   const validity = useMemo(() => {
-    const now = Date.now();
     let missingDob = 0;
     let missingGender = 0;
     let missingPhone = 0;
@@ -156,7 +158,7 @@ export default function AdminDataGovernancePage() {
     }
 
     return { missingDob, missingGender, missingPhone, futureDob, missingAny };
-  }, [patients]);
+  }, [patients, now]);
 
   // ── Completeness by facility ──
   const completeness = useMemo(() => {

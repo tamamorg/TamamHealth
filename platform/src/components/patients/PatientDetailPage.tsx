@@ -110,6 +110,7 @@ import type { AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import Select from '@/components/Select';
 import { safeReturnTo } from '@/lib/navigation/return-to';
 import { clickable, stopsClickPropagation } from '@/lib/a11y';
+import { useNow } from '@/lib/hooks/useNow';
 
 // Administrative tabs are the only ones a non-clinical role (e.g. Medical
 // Receptionist) may see — the "minimum necessary" rule: contact details,
@@ -516,7 +517,7 @@ export default function PatientDetailPage() {
       // still goes somewhere useful.
       selectTab('notes');
     }
-  }, [patient, createClinicalNoteDraft, scope]);
+  }, [patient, createClinicalNoteDraft, scope, selectTab]);
 
   // Edit form state — initialised when modal opens
   const [editForm, setEditForm] = useState({
@@ -2615,6 +2616,8 @@ function PatientDemographicsView({
   appointments: AppointmentDoc[];
   regHospitalName: string;
 }) {
+  // Which appointments are still ahead is a comparison against the clock.
+  const now = useNow(60_000);
   const tabs = [
     ['profile', 'Profile'],
     ['additional', 'Additional Info'],
@@ -2624,10 +2627,10 @@ function PatientDemographicsView({
     ['portal', 'Patient Portal'],
   ];
   const upcoming = appointments
-    .filter(appt => new Date(`${appt.appointmentDate}T${appt.appointmentTime || '00:00'}:00`).getTime() >= Date.now())
+    .filter(appt => new Date(`${appt.appointmentDate}T${appt.appointmentTime || '00:00'}:00`).getTime() >= now)
     .sort((a, b) => `${a.appointmentDate}${a.appointmentTime}`.localeCompare(`${b.appointmentDate}${b.appointmentTime}`));
   const past = appointments
-    .filter(appt => new Date(`${appt.appointmentDate}T${appt.appointmentTime || '00:00'}:00`).getTime() < Date.now())
+    .filter(appt => new Date(`${appt.appointmentDate}T${appt.appointmentTime || '00:00'}:00`).getTime() < now)
     .sort((a, b) => `${b.appointmentDate}${b.appointmentTime}`.localeCompare(`${a.appointmentDate}${a.appointmentTime}`));
 
   return (

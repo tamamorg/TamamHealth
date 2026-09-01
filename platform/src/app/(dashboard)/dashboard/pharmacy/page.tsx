@@ -49,6 +49,7 @@ import {
   type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { useNow } from '@/lib/hooks/useNow';
 
 const ACCENT = 'var(--accent-primary)';
 type WorkflowStepKey = 'received' | 'review' | 'checked' | 'payment' | 'dispensed' | 'counseled' | 'cleared';
@@ -331,9 +332,15 @@ export default function PharmacyDashboardPage() {
   // wave a patient who actually owes money straight through the payment gate.
   // Only 'ready' is a confirmed balance; everything else fails closed below.
   const [balanceByPatient, setBalanceByPatient] = useState<Map<string, { balance: number; status: 'loading' | 'ready' | 'error' }>>(new Map());
-  const deepLinkPatientId = searchParams?.get('patientId') || '';
-  const deepLinkPatientName = searchParams?.get('patient') || '';
-  const deepLinkRxId = searchParams?.get('rxId') || '';
+  // Pinned as their own values: read straight off `searchParams` these read as
+  // properties of an object the compiler cannot prove is never mutated, which
+  // makes them unusable as memo dependencies below.
+  const deepLink = useMemo(() => ({
+    patientId: searchParams?.get('patientId') || '',
+    patientName: searchParams?.get('patient') || '',
+    rxId: searchParams?.get('rxId') || '',
+  }), [searchParams]);
+  const { patientId: deepLinkPatientId, patientName: deepLinkPatientName, rxId: deepLinkRxId } = deepLink;
 
   useEffect(() => {
     if (!deepLinkPatientId && !deepLinkPatientName && !deepLinkRxId) return;
@@ -407,13 +414,18 @@ export default function PharmacyDashboardPage() {
   // normalised way the dispensing transaction matches — an exact-name lookup
   // missed every order written without a strength ("Amoxicillin" vs the
   // catalogued "Amoxicillin 500mg").
+  // Read out of the user once, so the memo below depends on the FIELD and not
+  // on the whole user object — the compiler cannot see that a dependency list
+  // naming `currentUser?.hospitalId` was meant to be narrower than the object
+  // its body reads, and skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const findInventoryFor = useCallback((medication: string) =>
     inventory
       .filter(i => medicationMatches(medication, i.medicationName))
-      .filter(i => !currentUser?.hospitalId || i.hospitalId === currentUser.hospitalId)
+      .filter(i => !myHospitalId || i.hospitalId === myHospitalId)
       .filter(i => (i.stockLevel || 0) > 0)
       .sort((a, b) => (a.expiryDate || '9999').localeCompare(b.expiryDate || '9999'))[0],
-  [inventory, currentUser?.hospitalId]);
+  [inventory, myHospitalId]);
 
   const isControlled = useCallback((rx: PrescriptionDoc) => {
     const inv = findInventoryFor(rx.medication);
@@ -488,13 +500,15 @@ export default function PharmacyDashboardPage() {
     () => rxQueue.filter(rx => rx.status !== 'discontinued' && !DISPENSED_DONE_STAGES.has(pharmacyStage(rx))),
     [rxQueue],
   );
+  // A wait time that would otherwise freeze at whatever the clock said when
+  // the queue last changed.
+  const now = useNow(60_000);
   const avgWaitMinutes = useMemo(() => {
     const withCreated = pendingQueueRx.filter(rx => !!rx.createdAt);
     if (withCreated.length === 0) return null;
-    const now = Date.now();
     const totalMinutes = withCreated.reduce((sum, rx) => sum + Math.max(0, (now - new Date(rx.createdAt).getTime()) / 60000), 0);
     return totalMinutes / withCreated.length;
-  }, [pendingQueueRx]);
+  }, [pendingQueueRx, now]);
 
   // (c) Estimated days-of-stock-remaining, proxied from today's real
   // consumption: stockLevel / dispensedToday (both real inventory fields —
@@ -726,7 +740,7 @@ export default function PharmacyDashboardPage() {
         quantity: qty,
         dispenserId: currentUser?._id || '',
         dispenserName: currentUser?.name || currentUser?.username || '',
-        facilityId: rx.hospitalId || currentUser?.hospitalId || '',
+        facilityId: rx.hospitalId || myHospitalId || '',
         facilityName: rx.hospitalName || currentUser?.hospitalName,
         orgId: currentUser?.orgId,
         witnessId: witness?.id,
@@ -750,13 +764,13 @@ export default function PharmacyDashboardPage() {
   // Receive purchased stock: add the delivered quantity to a matching real
   // inventory line, or create a new line if it's a drug we don't carry yet.
   const handleReceiveStock = async (name: string, qty: number, unit: string) => {
-    if (!currentUser?.hospitalId) {
+    if (!myHospitalId) {
       showToast(t('pharmacy.noFacilityAssigned'), 'error');
       return;
     }
     setReceivingStock(true);
     try {
-      const existing = inventory.find(i => i.medicationName.toLowerCase() === name.toLowerCase() && i.hospitalId === currentUser.hospitalId);
+      const existing = inventory.find(i => i.medicationName.toLowerCase() === name.toLowerCase() && i.hospitalId === myHospitalId);
       if (existing) {
         await updateInventory(existing._id, {
           stockLevel: existing.stockLevel + qty,
@@ -765,7 +779,7 @@ export default function PharmacyDashboardPage() {
       } else {
         const reorder = Math.max(qty, 50);
         await createInventory({
-          hospitalId: currentUser.hospitalId,
+          hospitalId: myHospitalId,
           hospitalName: currentUser.hospitalName || '',
           medicationName: name,
           category: 'General',

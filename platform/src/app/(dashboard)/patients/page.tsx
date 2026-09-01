@@ -25,6 +25,7 @@ import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import Modal from '@/components/Modal';
 import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
+import { useNow } from '@/lib/hooks/useNow';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -32,6 +33,9 @@ import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 const PAGE_SIZE = 100;
 
 export default function PatientsPage() {
+  // "Recently visited" and the KPI scan both compare against the clock; read
+  // once here rather than mid-render (see useNow).
+  const now = useNow();
   const router = useRouter();
   const { t } = useTranslation();
   const { currentUser } = useAuth();
@@ -140,7 +144,7 @@ export default function PatientsPage() {
   // the memoization — they're only ever used here.
   const filtered = useMemo(() => {
     const isRecentlyVisited = (p: typeof patients[number]) =>
-      !!p.lastConsultedAt && (Date.now() - new Date(p.lastConsultedAt).getTime()) < MS30;
+      !!p.lastConsultedAt && (now - new Date(p.lastConsultedAt).getTime()) < MS30;
     const hasChronic = (p: typeof patients[number]) =>
       !!(p.chronicConditions?.length && p.chronicConditions[0] !== 'None');
     const hasAllergies = (p: typeof patients[number]) =>
@@ -174,7 +178,7 @@ export default function PatientsPage() {
       if (f.pendingSync && !hasUnsyncedWrite(p)) return false;
       return true;
     });
-  }, [patients, filters, localSearch, currentUser?._id, isBilling, balanceByPatient, MS30]);
+  }, [patients, filters, localSearch, currentUser?._id, isBilling, balanceByPatient, MS30, now]);
 
   // Reset the visible window whenever the filters change — otherwise narrowing
   // would leave a stale "Load more" count.
@@ -195,7 +199,6 @@ export default function PatientsPage() {
 
   // Registry-wide KPIs for the stat cards (not affected by the table's search).
   const patientKpis = useMemo(() => {
-    const now = Date.now();
     let male = 0, female = 0, newThisMonth = 0, unassigned = 0, outstanding = 0, pendingSync = 0;
     for (const p of patients) {
       if (p.gender === 'Male') male++;
@@ -207,7 +210,7 @@ export default function PatientsPage() {
       if (hasUnsyncedWrite(p)) pendingSync++;
     }
     return { total: patients.length, male, female, newThisMonth, unassigned, outstanding, pendingSync };
-  }, [patients, balanceByPatient, MS30]);
+  }, [patients, balanceByPatient, MS30, now]);
 
   // Export the currently filtered/sorted registry to CSV.
   const handleDownloadCsv = () => {

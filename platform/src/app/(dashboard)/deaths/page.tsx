@@ -17,10 +17,29 @@ import { toIsoDate, todayIso } from '@/lib/date-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Modal from '@/components/Modal';
 
-// Shared control styling inside the header's Filters popover.
-const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 import { Plus, Search, X, FileText, ChevronDown, ChevronUp, UserCheck, ExternalLink } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+
+/**
+ * One WHO cause-of-death line's ICD-11 picker.
+ *
+ * Module scope, not declared inside the page: a component created during
+ * render is a NEW component type on every render, so React unmounted and
+ * remounted all five of these selects each time a character was typed in the
+ * cause fields beside them — losing an open dropdown mid-choice.
+ */
+function ICD11Select({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const { t } = useTranslation();
+  return (
+    <div>
+      <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{label}</label>
+      <Select value={value} onChange={e => onChange(e.target.value)} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}>
+        <option value="">{t('deaths.selectIcd11')}</option>
+        {COMMON_ICD11_CODES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.title}</option>)}
+      </Select>
+    </div>
+  );
+}
 
 export default function DeathsPage() {
   const router = useRouter();
@@ -74,6 +93,30 @@ export default function DeathsPage() {
   // Auto-link if the user types an EXACT hospital number — saves a click in
   // the typical CRVS workflow where the death is recorded immediately after
   // the patient's last vital sign and the hospital number is known.
+  const selectLinkedPatient = (patientId: string) => {
+    const p = patients.find(x => x._id === patientId);
+    if (!p) return;
+    setLinkedPatientId(p._id);
+    // A visit link belongs to the patient it arrived with — never carry it
+    // onto a manually-picked one. (The deep-link effect re-sets it right
+    // after this call for the patient it named.)
+    setEncounterId(undefined);
+    setPatientLookup('');
+    // Pre-fill the form with the patient's known data
+    const dob = p.dateOfBirth || '';
+    const ageAtDeath = patientAge(p) ?? 0;
+    setForm(f => ({
+      ...f,
+      deceasedFirstName: p.firstName || f.deceasedFirstName,
+      deceasedSurname: p.surname || f.deceasedSurname,
+      deceasedGender: (p.gender as 'Male' | 'Female') || f.deceasedGender,
+      dateOfBirth: dob || f.dateOfBirth,
+      ageAtDeath: ageAtDeath || f.ageAtDeath,
+      state: p.state || f.state,
+      county: p.county || f.county,
+    }));
+  };
+
   useEffect(() => {
     if (linkedPatientId || !patientLookup || patientLookup.length < 4) return;
     const exact = (patients || []).find(p =>
@@ -214,40 +257,6 @@ export default function DeathsPage() {
       showToast(t('deaths.registerFailed'), 'error');
     }
   };
-
-  const selectLinkedPatient = (patientId: string) => {
-    const p = patients.find(x => x._id === patientId);
-    if (!p) return;
-    setLinkedPatientId(p._id);
-    // A visit link belongs to the patient it arrived with — never carry it
-    // onto a manually-picked one. (The deep-link effect re-sets it right
-    // after this call for the patient it named.)
-    setEncounterId(undefined);
-    setPatientLookup('');
-    // Pre-fill the form with the patient's known data
-    const dob = p.dateOfBirth || '';
-    const ageAtDeath = patientAge(p) ?? 0;
-    setForm(f => ({
-      ...f,
-      deceasedFirstName: p.firstName || f.deceasedFirstName,
-      deceasedSurname: p.surname || f.deceasedSurname,
-      deceasedGender: (p.gender as 'Male' | 'Female') || f.deceasedGender,
-      dateOfBirth: dob || f.dateOfBirth,
-      ageAtDeath: ageAtDeath || f.ageAtDeath,
-      state: p.state || f.state,
-      county: p.county || f.county,
-    }));
-  };
-
-  const ICD11Select = ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) => (
-    <div>
-      <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{label}</label>
-      <Select value={value} onChange={e => onChange(e.target.value)} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}>
-        <option value="">{t('deaths.selectIcd11')}</option>
-        {COMMON_ICD11_CODES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.title}</option>)}
-      </Select>
-    </div>
-  );
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>

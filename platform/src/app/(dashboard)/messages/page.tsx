@@ -334,6 +334,7 @@ export default function MessagesPage() {
                                     </div>
                                   </div>
                                 ) : (
+                                  // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- these two handlers only suppress copy and the context menu on message text; the bubble is not actionable, so there is no keyboard equivalent to add.
                                   <div
                                     onCopy={e => e.preventDefault()}
                                     onContextMenu={e => e.preventDefault()}

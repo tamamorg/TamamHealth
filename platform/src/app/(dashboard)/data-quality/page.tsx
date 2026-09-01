@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
@@ -73,11 +73,14 @@ export default function DataQualityPage() {
   // from surveillance alerts) match on disease or location instead.
   const [rowQuery, setRowQuery] = useState('');
   const q = rowQuery.trim().toLowerCase();
-  const filterFacilityRows = (rows: DataCompletenessEntry[]) =>
-    q ? rows.filter(e => e.facilityName.toLowerCase().includes(q) || e.state.toLowerCase().includes(q)) : rows;
-  const filteredCompletenessRows = useMemo(() => filterFacilityRows(completenessRows), [completenessRows, q]);
-  const filteredTimelinessRows = useMemo(() => filterFacilityRows(timelinessRows), [timelinessRows, q]);
-  const filteredScoreRows = useMemo(() => filterFacilityRows(scoreRows), [scoreRows, q]);
+  const filterFacilityRows = useCallback(
+    (rows: DataCompletenessEntry[]) =>
+      (q ? rows.filter(e => e.facilityName.toLowerCase().includes(q) || e.state.toLowerCase().includes(q)) : rows),
+    [q],
+  );
+  const filteredCompletenessRows = useMemo(() => filterFacilityRows(completenessRows), [completenessRows, filterFacilityRows]);
+  const filteredTimelinessRows = useMemo(() => filterFacilityRows(timelinessRows), [timelinessRows, filterFacilityRows]);
+  const filteredScoreRows = useMemo(() => filterFacilityRows(scoreRows), [scoreRows, filterFacilityRows]);
 
   // Honest, simple outlier check: an alert's cases are >3x the median cases
   // reported for that same disease across all alerts on file. No validation

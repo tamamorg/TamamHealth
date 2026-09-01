@@ -11,7 +11,7 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
-  APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_EXITS,
+  APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
   appointmentStatusLabel, appointmentStatusGroup,
   APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
@@ -27,6 +27,7 @@ import { PatientRegistrationForm } from '@/components/patients/registration/Pati
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
+import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 import { getRoleConfig } from '@/lib/permissions';
 import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
@@ -198,7 +199,7 @@ export default function FrontDeskDashboardPage() {
         const { getAllEncounters } = await import('@/lib/services/encounter-service');
         const rows = await getAllEncounters({
           orgId: currentUser.orgId,
-          hospitalId: currentUser.hospitalId || currentUser.hospital?._id,
+          hospitalId: currentUser?.hospitalId || currentUser.hospital?._id,
           role: currentUser.role,
         });
         if (!cancelled) setEncounters(rows);
@@ -636,15 +637,20 @@ export default function FrontDeskDashboardPage() {
   // Facility staff the desk can route to. Doctors and clinical officers carry
   // visits; nurses cover patients. Filtered to this facility so a clerk never
   // assigns someone at another hospital.
+  // Read out of the user once, so the memo below depends on the FIELD and not
+  // on the whole user object — the compiler cannot see that a dependency list
+  // naming `currentUser?.hospitalId` was meant to be narrower than the object
+  // its body reads, and skips optimizing the component rather than guess.
+  const myHospitalId = currentUser?.hospitalId;
   const assignableDoctors = useMemo(() => users
     .filter(u => (u.role === 'doctor' || u.role === 'clinical_officer')
-      && (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentUser?.hospitalId]);
+      && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
 
   const assignableNurses = useMemo(() => users
-    .filter(u => (u.role === 'nurse' || u.role === 'midwife')
-      && (!currentUser?.hospitalId || u.hospitalId === currentUser.hospitalId))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentUser?.hospitalId]);
+    .filter(u => ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'].includes(u.role || '')
+      && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
 
   const handleAssignDoctor = useCallback(async (patient: PatientDoc, doctorId: string, visit?: { triageId?: string; appointmentId?: string; encounterId?: string }) => {
     const doctor = assignableDoctors.find(d => d._id === doctorId);
@@ -656,7 +662,7 @@ export default function FrontDeskDashboardPage() {
         patientName: `${patient.firstName} ${patient.surname}`.trim(),
         provider: { id: doctor._id, name: doctor.name || doctor.username || 'Provider', role: doctor.role },
         actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
-        hospitalId: currentUser?.hospitalId,
+        hospitalId: myHospitalId,
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
         triageId: visit?.triageId,
@@ -667,7 +673,7 @@ export default function FrontDeskDashboardPage() {
     } catch {
       showToast('Failed to assign the doctor', 'error');
     }
-  }, [assignableDoctors, currentUser, showToast]);
+  }, [assignableDoctors, currentUser, showToast, myHospitalId]);
 
   const handleAssignNurse = useCallback(async (patient: PatientDoc, nurseId: string, visit?: { appointmentId?: string; encounterId?: string }) => {
     const nurse = nurseId ? assignableNurses.find(n => n._id === nurseId) : null;
@@ -678,7 +684,7 @@ export default function FrontDeskDashboardPage() {
         patientId: patient._id,
         nurse: nurse ? { id: nurse._id, name: nurse.name || nurse.username || 'Nurse' } : null,
         actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
-        hospitalId: currentUser?.hospitalId,
+        hospitalId: myHospitalId,
         orgId: currentUser?.orgId,
         appointmentId: visit?.appointmentId,
         encounterId: visit?.encounterId,
@@ -687,7 +693,7 @@ export default function FrontDeskDashboardPage() {
     } catch {
       showToast('Failed to assign the nurse', 'error');
     }
-  }, [assignableNurses, currentUser, showToast]);
+  }, [assignableNurses, currentUser, showToast, myHospitalId]);
 
   const handleSaveRoom = useCallback(async (triageId: string, room: string) => {
     try {
@@ -789,7 +795,7 @@ export default function FrontDeskDashboardPage() {
         appointmentId: appt._id,
         patientId: appt.patientId,
         patientName: appt.patientName,
-        facilityId: appt.facilityId || currentUser?.hospitalId || '',
+        facilityId: appt.facilityId || myHospitalId || '',
         facilityName: appt.facilityName || currentUser?.hospitalName || '',
         orgId: appt.orgId || currentUser?.orgId,
         attendanceType,
@@ -803,7 +809,7 @@ export default function FrontDeskDashboardPage() {
     }
     showToast(`${appt.patientName} checked in — added to queue`, 'success');
     setCheckInTarget(null);
-  }, [showToast, currentUser]);
+  }, [showToast, currentUser, myHospitalId]);
 
   // ── Mark an appointment a no-show. Confirmed first: a mistaken no-show
   //    hides the patient from the arrivals list, so reception gets one beat to
@@ -1129,6 +1135,14 @@ export default function FrontDeskDashboardPage() {
         // nothing about how urgent they were.
         statusSecondary: appointmentPriorityLabel(appointment.priority),
         statusTone: APPOINTMENT_STATUS_TONES[appointment.status],
+        // Move the booking to a known new slot. The dialog and its save path
+        // were both still here; the row action that opened them had gone, so
+        // `openReschedule` was unreachable and the dialog could never appear —
+        // which is exactly what the row type's own docs name as this screen's
+        // example of an extra action.
+        extraActions: canSetAppointmentStatus
+          ? [{ label: 'Reschedule', onClick: () => openReschedule(appointment) }]
+          : undefined,
         // Every booking carries its acuity code, routine included. The word and
         // its colour come from the same value, so "Routine" is green here and
         // on the clinician's worklist rather than green on rows that happen to
@@ -1464,6 +1478,10 @@ export default function FrontDeskDashboardPage() {
     if (panelView === 'registered') return registeredRows;
     return [...appointmentRows, ...queueRows];
   }, [
+    appointments,
+    assignableDoctors,
+    assignableNurses,
+    canAssignCareTeam,
     canConsult,
     canSetAppointmentStatus,
     currentUser?.hospitalName,
@@ -1471,13 +1489,17 @@ export default function FrontDeskDashboardPage() {
     filteredQueue,
     filteredRegisteredPatients,
     handleAppointmentStatusChange,
+    handleAssignDoctor,
+    handleAssignNurse,
     handleSaveRoom,
     handleUndoCheckout,
+    handleWalkInStatusChange,
+    openReschedule,
     patients,
     panelView,
-    openReschedule,
     roomOptions,
     todaysAppointments,
+    triages,
     router,
     t,
     visiblePendingAppointments,

@@ -45,8 +45,7 @@ export interface ChartKindOption {
 }
 
 export default function ReportControlPanel({
-  filter, onFilterChange, applied, onApply, kinds, partToWholeOkFor,
-  loading, total,
+  filter, onFilterChange, applied, onApply, kinds, partToWholeOkFor, total,
 }: {
   filter: ReportFilter;
   onFilterChange: (next: ReportFilter) => void;
@@ -56,7 +55,6 @@ export default function ReportControlPanel({
   kinds: readonly ChartKindOption[];
   /** Whether donut/treemap are honest for a given report's numbers. */
   partToWholeOkFor: (report: string) => boolean;
-  loading: boolean;
   total: number;
 }) {
   const { t } = useTranslation();
