@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { Printer, Download } from '@/components/icons/lucide';
-import { escapeHtml } from '@/lib/safe-html';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 
 /** One column of a printable list. `key` indexes into each row record. */
 export interface PrintListColumn {
@@ -29,59 +30,31 @@ type OutputFormat = 'print' | 'csv';
  * none of the dashboard chrome, card styling, or globals.css print traps
  * apply, just a black-on-white table per section.
  */
-function buildPrintHtml(title: string, subtitle: string | undefined, sections: PrintListSection[]): string {
+export function buildPrintListHtml(title: string, subtitle: string | undefined, sections: PrintListSection[]): string {
   const printedAt = new Date().toLocaleString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
-  const meta = [subtitle, `Printed ${printedAt}`].filter(Boolean).map(part => escapeHtml(String(part))).join(' · ');
   const body = sections.map(section => {
-    const heading = sections.length > 1 ? `<h2>${escapeHtml(section.label)}</h2>` : '';
-    if (section.rows.length === 0) return `${heading}<p class="empty">No entries.</p>`;
-    const head = section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('');
-    const rows = section.rows.map(row =>
-      `<tr>${section.columns.map(column => `<td>${escapeHtml(row[column.key] ?? '')}</td>`).join('')}</tr>`,
+    const heading = `<h2 class="section-title">${escapeHtml(section.label)}<small>${section.rows.length} ${section.rows.length === 1 ? 'entry' : 'entries'}</small></h2>`;
+    if (section.rows.length === 0) return `<section class="section">${heading}<p class="empty">No entries in this list.</p></section>`;
+    const head = section.columns.map(column => `<th scope="col">${escapeHtml(column.label)}</th>`).join('');
+    const rows = section.rows.map((row, index) =>
+      `<tr><td class="num muted">${index + 1}</td>${section.columns.map(column => `<td>${escapeHtml(row[column.key] ?? '—')}</td>`).join('')}</tr>`,
     ).join('');
-    return `${heading}<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+    return `<section class="section">${heading}<table><thead><tr><th scope="col" class="num">#</th>${head}</tr></thead><tbody>${rows}</tbody></table></section>`;
   }).join('');
-  return `<!doctype html>
-<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-<style>
-  @page { margin: 1.2cm; }
-  body { margin: 0; font: 12px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; }
-  h1 { font-size: 16px; margin: 0; }
-  .meta { margin: 2px 0 0; font-size: 11px; color: #333; }
-  h2 { font-size: 13px; margin: 16px 0 4px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  th, td { text-align: left; vertical-align: top; padding: 4px 10px 4px 0; border-bottom: 1px solid #999; }
-  th { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; border-bottom-color: #000; }
-  tr { break-inside: avoid; }
-  .empty { margin: 8px 0 0; color: #333; font-style: italic; }
-</style></head>
-<body><h1>${escapeHtml(title)}</h1><p class="meta">${meta}</p>${body}</body></html>`;
-}
-
-function printHtml(html: string) {
-  const frame = document.createElement('iframe');
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.position = 'fixed';
-  frame.style.right = '0';
-  frame.style.bottom = '0';
-  frame.style.width = '0';
-  frame.style.height = '0';
-  frame.style.border = '0';
-  document.body.appendChild(frame);
-  const doc = frame.contentDocument;
-  const win = frame.contentWindow;
-  if (!doc || !win) { frame.remove(); return; }
-  doc.open();
-  doc.write(html);
-  doc.close();
-  const cleanup = () => frame.remove();
-  win.addEventListener('afterprint', cleanup);
-  // A paint tick before print so the document is laid out; the timeout is a
-  // fallback for browsers that never fire afterprint on iframes.
-  setTimeout(() => { win.focus(); win.print(); }, 50);
-  setTimeout(cleanup, 60_000);
+  return buildClinicalPrintDocument({
+    title,
+    documentLabel: 'Operational list',
+    meta: [
+      ...(subtitle ? [{ label: 'Scope', value: subtitle }] : []),
+      { label: 'Generated', value: printedAt },
+      { label: 'Selected lists', value: sections.map(section => section.label).join(', ') },
+    ],
+    safeBodyHtml: body,
+    page: sections.some(section => section.columns.length > 6) ? 'a4-landscape' : 'a4',
+    footer: 'Operational snapshot generated from the current filtered view.',
+  });
 }
 
 function downloadCsv(filename: string, sections: PrintListSection[]) {
@@ -135,7 +108,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
   const chosen = sections.filter(section => selected.has(section.key));
   const run = () => {
     if (chosen.length === 0) return;
-    if (format === 'print') printHtml(buildPrintHtml(title, subtitle, chosen));
+    if (format === 'print') openIsolatedHtmlWindow(buildPrintListHtml(title, subtitle, chosen), '', true);
     else downloadCsv(filename, chosen);
     onClose();
   };

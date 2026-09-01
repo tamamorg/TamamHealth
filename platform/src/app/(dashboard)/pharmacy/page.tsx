@@ -26,6 +26,7 @@ import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycles';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { useRoleChoice } from '@/lib/settings/useRoleSetting';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -711,18 +712,22 @@ export default function PharmacyPage() {
     const rows = reorderList.map(i =>
       `<tr><td>${escapeHtml(i.medicationName)}</td><td>${escapeHtml(i.category)}</td><td>${escapeHtml(`${i.stockLevel} ${i.unit}`)}</td><td>${escapeHtml(i.reorderLevel)}</td><td>${escapeHtml(orderQtyFor(i))}</td></tr>`
     ).join('');
-    const html = `<html><head><title>${escapeHtml(t('pharmacy.purchaseOrder'))}</title><style>
-      body{font-family:system-ui,sans-serif;padding:30px;} h1{font-size:18px;margin-bottom:4px;} h2{font-size:13px;color:#666;margin-bottom:18px;}
-      table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:13px;} th{background:#f1f3f5;}
-      .footer{margin-top:36px;font-size:12px;color:#888;}
-    </style></head><body>
-      <h1>${escapeHtml(t('pharmacy.purchaseOrderRestock'))}</h1>
-      <h2>${escapeHtml(currentUser?.hospitalName || '')} · ${escapeHtml(new Date().toLocaleDateString('en-GB'))}</h2>
-      <table><thead><tr>
+    const body = `${reorderList.length === 0 ? '<p class="notice">No medicines currently require restocking.</p>' : `<section class="section"><h2 class="section-title">${escapeHtml(t('pharmacy.purchaseOrderRestock'))}</h2><table><thead><tr>
         <th>${escapeHtml(t('pharmacy.medication'))}</th><th>${escapeHtml(t('pharmacy.category'))}</th><th>${escapeHtml(t('pharmacy.currentStock'))}</th><th>${escapeHtml(t('pharmacy.reorderLevel'))}</th><th>${escapeHtml(t('pharmacy.orderQty'))}</th>
-      </tr></thead><tbody>${rows}</tbody></table>
-      <div class="footer">${escapeHtml(t('pharmacy.authorizedBy'))}: _____________________ &nbsp;&nbsp; ${escapeHtml(t('pharmacy.dateLabel'))}: _____________________</div>
-    </body></html>`;
+      </tr></thead><tbody>${rows}</tbody></table></section>`}
+      <div class="signatures"><div><div class="signature"></div><div class="signature-label">${escapeHtml(t('pharmacy.authorizedBy'))}</div></div><div><div class="signature"></div><div class="signature-label">${escapeHtml(t('pharmacy.dateLabel'))}</div></div></div>`;
+    const html = buildClinicalPrintDocument({
+      title: t('pharmacy.purchaseOrderRestock'),
+      documentLabel: t('pharmacy.purchaseOrder'),
+      facilityName: currentUser?.hospitalName,
+      meta: [
+        { label: 'Prepared', value: new Date().toLocaleString('en-GB') },
+        { label: 'Items requested', value: reorderList.length },
+        { label: 'Prepared by', value: currentUser?.name || currentUser?.username || '—' },
+      ],
+      safeBodyHtml: body,
+      footer: 'Stock request prepared from current inventory and reorder thresholds.',
+    });
     openIsolatedHtmlWindow(html, '', true);
   };
 

@@ -5,6 +5,7 @@ import { makeCoalescer } from './live-reload';
 import type { TriageDoc } from '../db-types';
 import { triageDB } from '../db';
 import { useDataScope } from './useDataScope';
+import { withTimeout, CLINICAL_WRITE_TIMEOUT_MS } from '../write-timeout';
 import type { CreateTriageOptions, TriageActor } from '../services/triage-service';
 
 /**
@@ -59,19 +60,31 @@ export function useTriage(patientId?: string) {
     };
   }, [load, patientId]);
 
+  // Both writes are bounded (see lib/write-timeout.ts): a triage save stalled
+  // by initial-sync IndexedDB contention must reject into the ETAT form's
+  // existing catch (`nurse.triageSaveFailed` / `nurse.triageStatusFailed`)
+  // rather than leave "Save Triage" spinning forever mid-assessment.
   const create = useCallback(async (
     data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
     options?: CreateTriageOptions,
   ) => {
     const { createTriage } = await import('../services/triage-service');
-    const doc = await createTriage(data, options);
+    const doc = await withTimeout(
+      createTriage(data, options),
+      CLINICAL_WRITE_TIMEOUT_MS,
+      'Saving triage timed out — the local database did not respond. Please try again.',
+    );
     await load();
     return doc;
   }, [load]);
 
   const update = useCallback(async (id: string, updates: Partial<TriageDoc>, actor?: TriageActor) => {
     const { updateTriage } = await import('../services/triage-service');
-    const doc = await updateTriage(id, updates, actor);
+    const doc = await withTimeout(
+      updateTriage(id, updates, actor),
+      CLINICAL_WRITE_TIMEOUT_MS,
+      'Updating triage timed out — the local database did not respond. Please try again.',
+    );
     await load();
     return doc;
   }, [load]);

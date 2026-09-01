@@ -32,6 +32,7 @@ import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import type { PatientShiftHandoff } from '@/lib/hooks/usePatientHandoff';
+import { printElementById } from '@/lib/safe-html';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
 import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
 
@@ -261,12 +262,10 @@ export default function PatientSBAR({
     [labs],
   );
 
-  const handlePrint = () => {
-    if (typeof window !== 'undefined') window.print();
-  };
+  const handlePrint = () => { printElementById('patient-sbar-print'); };
 
   return (
-    <div className="sbar-doc space-y-2">
+    <div id="patient-sbar-print" className="sbar-doc space-y-2">
       {latestTriage && (
         <section className="sbar-triage-header" aria-label="Completed triage handoff">
           <div className="sbar-triage-header__top">

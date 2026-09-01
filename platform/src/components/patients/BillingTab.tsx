@@ -25,6 +25,7 @@ import type {
 } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
@@ -112,7 +113,7 @@ function buildStatementHTML(opts: {
       <tr>
         <td>${e(fmtDate(c.serviceDate))}</td>
         <td>${e(c.description)}${c.category ? ` <span class="muted">· ${e(c.category)}</span>` : ''}</td>
-        <td><span class="pill">${e(c.status)}</span></td>
+        <td><span class="status">${e(c.status)}</span></td>
         <td class="num">${e(fmt(c.billedAmount))}</td>
       </tr>`).join('');
 
@@ -123,89 +124,40 @@ function buildStatementHTML(opts: {
         <td>${e(fmtDate(p.processedAt))}</td>
         <td>${e(getMethodConfig(p.method).label)}</td>
         <td>${e(p.reference || '—')}</td>
-        <td class="num pos">${e(fmt(p.amount))}</td>
+        <td class="num">${e(fmt(p.amount))}</td>
       </tr>`).join('');
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Account Statement — ${e(patientName)}</title>
-<style>
-  @page { margin: 14mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; color: #08573A; background: #fff; max-width: 720px; margin: 0 auto; padding: 24px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 2px solid var(--accent-primary); margin-bottom: 16px; }
-  .header h1 { font-size: 18px; font-weight: 800; color: var(--accent-hover); }
-  .header p { font-size: 11px; color: #5d728b; margin-top: 2px; }
-  .doc-title { text-align: right; }
-  .doc-title .label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-primary); }
-  .doc-title .date { font-size: 11px; color: #5d728b; margin-top: 2px; }
-  .patient-block { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px 14px; background: #fafbfc; border-radius: 8px; margin-bottom: 20px; }
-  .patient-block .field .label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #5d728b; letter-spacing: 0.4px; }
-  .patient-block .field .value { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
-  h2.section { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-hover); margin: 18px 0 8px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: #5d728b; padding: 6px 8px; border-bottom: 1px solid #e2e6eb; }
-  td { padding: 7px 8px; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
-  td.num { text-align: right; font-weight: 600; white-space: nowrap; }
-  td.pos { color: #0B8557; }
-  td.empty { text-align: center; color: #94a2b3; padding: 14px 8px; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #f1f3f5; color: #3C5574; text-transform: capitalize; }
-  .muted { color: #94a2b3; font-size: 11px; }
-  .summary { margin-top: 20px; margin-left: auto; width: 260px; }
-  .summary .row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12.5px; }
-  .summary .row.total { border-top: 2px solid var(--accent-primary); margin-top: 6px; padding-top: 8px; font-size: 15px; font-weight: 800; color: var(--accent-hover); }
-  .footer { text-align: center; margin-top: 28px; padding-top: 12px; border-top: 1px dashed #cfd6dd; }
-  .footer p { font-size: 10px; color: #5d728b; line-height: 1.6; }
-  @media print { body { padding: 0; } }
-</style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <h1>${e(facilityName || 'TamamHealth Health Facility')}</h1>
-      <p>Digital Health Records — Powered by TamamHealth</p>
-    </div>
-    <div class="doc-title">
-      <div class="label">Account Statement</div>
-      <div class="date">Generated ${e(generatedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }))}</div>
-    </div>
-  </div>
+  const body = `
+    <section class="section">
+      <h2 class="section-title">Open bills</h2>
+      <table><thead><tr><th>Date</th><th>Description</th><th>Status</th><th class="num">Billed</th></tr></thead><tbody>${chargeRows}</tbody></table>
+    </section>
+    <section class="section">
+      <h2 class="section-title">Payments</h2>
+      <table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">Amount</th></tr></thead><tbody>${paymentRows}</tbody></table>
+    </section>
+    <div class="totals">
+      <div class="total-row"><span>Total charged</span><strong>${e(fmt(overview.totalCharged))}</strong></div>
+      <div class="total-row"><span>Insurance paid</span><strong>${e(fmt(overview.insurancePaid))}</strong></div>
+      <div class="total-row"><span>Patient paid</span><strong>${e(fmt(overview.selfPaid))}</strong></div>
+      <div class="total-row grand"><strong>Balance due</strong><strong>${e(fmt(balance))}</strong></div>
+    </div>`;
 
-  <div class="patient-block">
-    <div class="field"><div class="label">Patient</div><div class="value">${e(patientName)}</div></div>
-    <div class="field"><div class="label">Hospital #</div><div class="value">${e(hospitalNumber || '—')}</div></div>
-    <div class="field"><div class="label">Date of Birth</div><div class="value">${e(dateOfBirth ? fmtDate(dateOfBirth) : '—')}</div></div>
-    <div class="field"><div class="label">Gender</div><div class="value">${e(gender || '—')}</div></div>
-    <div class="field"><div class="label">Phone</div><div class="value">${e(phone || '—')}</div></div>
-    <div class="field"><div class="label">Prepared By</div><div class="value">${e(preparedBy || '—')}</div></div>
-  </div>
-
-  <h2 class="section">Open Bills</h2>
-  <table>
-    <thead><tr><th>Date</th><th>Description</th><th>Status</th><th style="text-align:right">Billed</th></tr></thead>
-    <tbody>${chargeRows}</tbody>
-  </table>
-
-  <h2 class="section">Payments</h2>
-  <table>
-    <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th style="text-align:right">Amount</th></tr></thead>
-    <tbody>${paymentRows}</tbody>
-  </table>
-
-  <div class="summary">
-    <div class="row"><span>Total Charged</span><span>${e(fmt(overview.totalCharged))}</span></div>
-    <div class="row"><span>Insurance Paid</span><span>${e(fmt(overview.insurancePaid))}</span></div>
-    <div class="row"><span>Self Paid</span><span>${e(fmt(overview.selfPaid))}</span></div>
-    <div class="row total"><span>Balance Due</span><span>${e(fmt(balance))}</span></div>
-  </div>
-
-  <div class="footer">
-    <p>This statement was electronically generated and reflects the account as of the date above.<br>For questions, contact the billing desk.</p>
-  </div>
-</body>
-</html>`;
+  return buildClinicalPrintDocument({
+    title: patientName,
+    documentLabel: 'Account statement',
+    facilityName,
+    meta: [
+      { label: 'Hospital number', value: hospitalNumber || '—' },
+      { label: 'Date of birth', value: dateOfBirth ? fmtDate(dateOfBirth) : '—' },
+      { label: 'Gender', value: gender || '—' },
+      { label: 'Phone', value: phone || '—' },
+      { label: 'Prepared by', value: preparedBy || '—' },
+      { label: 'Statement date', value: generatedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+    ],
+    safeBodyHtml: body,
+    footer: 'This statement reflects the account at the generated time. For questions, contact the billing desk.',
+  });
 }
 
 export default function BillingTab({

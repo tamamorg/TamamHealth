@@ -22,13 +22,9 @@ function walk(dir: string, extensions: RegExp, out: string[] = []): string[] {
 const LIGHT_BACKGROUND = /background(?:-color)?\s*:\s*(?:white\b|#fff(?:fff)?\b|#(?:fafbfc|f5f7f8|f1f3f5|eceef1|e2e6eb|d9dee4|cfd6dd|f2fcff|e1f9ff|c9f4ff)\b)/gi;
 
 const PRINT_DOCUMENTS = new Set([
-  'app/(dashboard)/billing/[id]/page.tsx',
-  'app/(dashboard)/pharmacy/page.tsx',
-  'components/PrintListDialog.tsx',
   'components/PublicLegalShell.tsx',
-  'components/patients/BillingTab.tsx',
   'components/patients/PatientDetailPage.tsx',
-  'lib/services/receipt-service.ts',
+  'lib/print-document.ts',
 ]);
 
 const channel = (value: number) => value / 255 <= 0.04045

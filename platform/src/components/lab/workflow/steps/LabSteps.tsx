@@ -14,6 +14,7 @@ import type { LabResultDoc } from '@/lib/db-types';
 import { containersFor, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types';
 import type { LabWorkflowController } from '../useLabWorkflow';
 import Select from '@/components/Select';
+import { printElementById } from '@/lib/safe-html';
 
 const SPECIMEN_CONDITIONS: { value: NonNullable<LabResultDoc['specimenCondition']>; label: string }[] = [
   { value: 'acceptable', label: 'Acceptable' },
@@ -449,11 +450,27 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
       <div className="labord-section">
         <div className="labord-section-head">
           <span>{t('labFlow.reportHeading')}</span>
-          <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={() => window.print()}>
+          <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={() => printElementById('lab-result-print')}>
             <Printer className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.printReport')}
           </button>
         </div>
-        <div className="labord-section-body labord-print">
+        <div id="lab-result-print" className="labord-section-body labord-print">
+          <div className="labord-print-only labord-req-head">
+            <div>
+              <div className="labord-req-facility">{order.hospitalName || 'TamamHealth Health Facility'}</div>
+              <div className="labord-req-meta">Final diagnostic result report</div>
+            </div>
+            <div className="labord-req-meta" style={{ textAlign: 'end' }}>
+              Patient: {order.patientName}<br />
+              Hospital number: {order.hospitalNumber || '—'}<br />
+              Specimen: {order.specimen || '—'}
+            </div>
+          </div>
+          {order.amended && (
+            <div className="labord-print-only" style={{ border: '1px solid var(--color-warning-border)', padding: 8, marginBottom: 10 }}>
+              <strong>AMENDED RESULT</strong> — Previous value: {order.amendedFrom || '—'} · Reason: {order.amendmentReason || '—'} · Amended by: {order.amendedBy || '—'}
+            </div>
+          )}
           <div className="labord-grid-2">
             <Field label={t('labFlow.test')} value={order.testName} />
             <Field label={t('labFlow.accession')} value={order.accessionNumber} />
@@ -467,6 +484,8 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             />
             <Field label={t('lab.referenceRange')} value={order.referenceRange} />
             <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
+            <Field label={t('lab.specimen')} value={order.specimen || '—'} />
+            <Field label="Ordered by" value={order.orderedBy || '—'} />
             <Field
               label={t('labFlow.interpretation')}
               value={order.critical ? t('lab.critical') : order.abnormal ? t('lab.abnormal') : t('labFlow.withinRange')}

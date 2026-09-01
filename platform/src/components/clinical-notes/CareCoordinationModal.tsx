@@ -23,6 +23,8 @@ import { Printer, Download, Send, X } from '@/components/icons/lucide';
 import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
 import { getSectionLabel } from '@/lib/clinical-notes/note-catalog';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 
 export interface SummaryProblem {
   effectiveDate: string;
@@ -121,16 +123,30 @@ export default function CareCoordinationModal({
   };
 
   const handlePrint = () => {
-    const w = window.open('', '_blank', 'width=800,height=900');
-    if (!w) { showToast('Allow pop-ups to preview the summary.', 'error'); return; }
-    w.document.write(
-      `<pre style="font:13px/1.6 ui-monospace,monospace;white-space:pre-wrap;padding:24px">${
-        summaryText.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))
-      }</pre>`,
-    );
-    w.document.close();
-    w.focus();
-    w.print();
+    const noteSections = note.sections.flatMap(section => {
+      const text = stripTemplateMarkers(section.text || '').trim() || (section.snapshot || '').trim();
+      return text ? [`<section class="section"><h2 class="section-title">${escapeHtml(getSectionLabel(section.sectionId))}</h2><p>${escapeHtml(text).replace(/\n/g, '<br>')}</p></section>`] : [];
+    }).join('');
+    const selectedProblems = problems.filter((_, index) => includeProblems && pickedProblems.has(index));
+    const selectedSocial = socialHistory.filter((_, index) => includeSocial && pickedSocial.has(index));
+    const body = `${noteSections}
+      ${selectedProblems.length ? `<section class="section"><h2 class="section-title">Problems</h2><table><thead><tr><th>Effective date</th><th>Problem</th><th>Status</th></tr></thead><tbody>${selectedProblems.map(problem => `<tr><td>${escapeHtml(problem.effectiveDate || '—')}</td><td>${escapeHtml(problem.problem)}</td><td><span class="status">${escapeHtml(problem.status)}</span></td></tr>`).join('')}</tbody></table></section>` : ''}
+      ${selectedSocial.length ? `<section class="section"><h2 class="section-title">Social history</h2><table><thead><tr><th>Context</th><th>Description</th></tr></thead><tbody>${selectedSocial.map(item => `<tr><td>${escapeHtml(item.comment || '—')}</td><td>${escapeHtml(item.description)}</td></tr>`).join('')}</tbody></table></section>` : ''}
+      ${includeInstructions && instructions.trim() ? `<section class="section"><h2 class="section-title">Referral instructions</h2><p class="notice">${escapeHtml(instructions.trim()).replace(/\n/g, '<br>')}</p></section>` : ''}`;
+    const html = buildClinicalPrintDocument({
+      title: note.patientName,
+      documentLabel: 'Summary of care',
+      facilityName: note.hospitalName,
+      meta: [
+        { label: 'MRN', value: note.mrn || '—' },
+        { label: 'Date of service', value: `${note.serviceDate}${note.serviceTime ? ` ${note.serviceTime}` : ''}` },
+        { label: 'Author', value: note.authorName || note.signedByName || '—' },
+        { label: 'Recipient', value: recipient.trim() || 'Not yet assigned' },
+      ],
+      safeBodyHtml: body || '<p class="notice">No clinical content was selected for this summary.</p>',
+      footer: 'Summary of care prepared for continuity of treatment. Contains selected minimum-necessary information.',
+    });
+    openIsolatedHtmlWindow(html, '', true);
   };
 
   const handleSend = async () => {

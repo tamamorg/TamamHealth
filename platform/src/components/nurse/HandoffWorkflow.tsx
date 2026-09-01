@@ -16,6 +16,7 @@ import { useMarEntries, useWardRoster } from './shared';
 import { useHandoffs } from '@/lib/hooks/useHandoffs';
 import ListSearch from './ListSearch';
 import { toIsoDate } from '@/lib/date-utils';
+import { printElementById } from '@/lib/safe-html';
 
 // Per-patient SBAR + tasks captured in the editor (string form for the textarea).
 interface SbarDraft {
@@ -445,7 +446,7 @@ export default function HandoffWorkflow({
         </div>
       </div>
       <div className="ehr-handoff-head-actions">
-        <button type="button" onClick={() => window.print()} className="ehr-handoff-btn sm">
+        <button type="button" onClick={() => printElementById('shift-handoff-print')} className="ehr-handoff-btn sm">
           <Printer /> {t('action.print')}
         </button>
         {variant === 'modal' && (
@@ -462,7 +463,7 @@ export default function HandoffWorkflow({
       <Modal onClose={() => onClose?.()} width={768}>
         {/* The shift tour targets this node; it moved with the report when
             handoff stopped being a board and became this dialog. */}
-        <div data-tour="handoff-sbar" className="ehr-handoff-modal" role="dialog" aria-modal="true" aria-label={t('nurse.shiftHandoffReport')}>
+        <div id="shift-handoff-print" data-tour="handoff-sbar" className="ehr-handoff-modal" role="dialog" aria-modal="true" aria-label={t('nurse.shiftHandoffReport')}>
           {header}
           {body}
         </div>
@@ -472,7 +473,7 @@ export default function HandoffWorkflow({
 
   // variant === 'page'
   return (
-    <div data-tour="handoff-sbar" className="ehr-handoff-modal" style={{ flex: 1, minHeight: 0, maxHeight: 'none', border: '1px solid var(--ehr-border)' }}>
+    <div id="shift-handoff-print" data-tour="handoff-sbar" className="ehr-handoff-modal" style={{ flex: 1, minHeight: 0, maxHeight: 'none', border: '1px solid var(--ehr-border)' }}>
       {header}
       {body}
     </div>

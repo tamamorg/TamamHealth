@@ -36,6 +36,7 @@ import { isPathAllowed } from '@/lib/role-routes';
 import Select from '@/components/Select';
 import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
 import Modal from '@/components/Modal';
+import { printElementById } from '@/lib/safe-html';
 
 function todayISO(): string {
   return todayIso();
@@ -242,7 +243,7 @@ export default function MARPage() {
   }
 
   return (
-    <main className="page-container">
+    <main id="mar-print-record" className="page-container">
       {/* Page header card */}
         <div className="card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
@@ -282,7 +283,7 @@ export default function MARPage() {
               style={{ minWidth: 160 }}
             />
             <button
-              onClick={() => typeof window !== 'undefined' && window.print()}
+              onClick={() => printElementById('mar-print-record')}
               className="btn btn-secondary inline-flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4" /> {t('action.print')}

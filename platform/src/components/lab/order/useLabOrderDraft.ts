@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
+import { withTimeout, CLINICAL_WRITE_TIMEOUT_MS } from '@/lib/write-timeout';
 import { aoeSchedule } from './lab-order-aoe';
 import {
   aoeKey,
@@ -123,8 +124,11 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
    * Place the order: one LabResultDoc per test, all sharing an order group id,
    * hung off a desk encounter so the tests are billable and attributable.
    * Returns the receipt the Complete step renders as a requisition.
+   *
+   * Unbounded inner path — callers go through `submit` below, which puts a
+   * ceiling on the whole orchestration (see lib/write-timeout.ts).
    */
-  const submit = useCallback(async (): Promise<LabOrderReceipt> => {
+  const submitInner = useCallback(async (): Promise<LabOrderReceipt> => {
     if (!patient) throw new Error('labOrder.errPatient');
     if (!draft.tests.length) throw new Error('labOrder.errTests');
     setSubmitting(true);
@@ -323,6 +327,27 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
       setSubmitting(false);
     }
   }, [currentUser, draft, patient, schedule]);
+
+  /**
+   * The submit every caller uses: the inner orchestration under a hard
+   * ceiling. A local write stalled by initial-sync IndexedDB contention left
+   * the wizard on "Creating…" indefinitely (2026-08 QA) — same failure mode
+   * as walk-in check-in and registration. Bounding it turns the stall into a
+   * rejection the wizard's existing catch surfaces (`lab.createOrderFailed`),
+   * and the outer finally re-enables the button — the hung inner path never
+   * reaches its own finally.
+   */
+  const submit = useCallback(async (): Promise<LabOrderReceipt> => {
+    try {
+      return await withTimeout(
+        submitInner(),
+        CLINICAL_WRITE_TIMEOUT_MS,
+        'Placing the order timed out — the local database did not respond. Please try again.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }, [submitInner]);
 
   const reset = useCallback(() => {
     setDraft({ ...emptyLabOrderDraft(currentUser?.name || ''), patientId: options.presetPatientId || '' });

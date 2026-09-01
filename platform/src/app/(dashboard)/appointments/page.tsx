@@ -39,6 +39,7 @@ import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
+import { withTimeout } from '@/lib/write-timeout';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AppointmentType, AppointmentPriority, AppointmentStatus } from '@/lib/db-types';
 import dynamic from 'next/dynamic';
@@ -126,19 +127,11 @@ export function isPendingApproval(appointment: { status: AppointmentStatus; appo
  * hang left "Register Walk-In" showing "Registering…" forever even though the
  * write underneath it had already landed — never closing, never erroring, and
  * inviting a clerk who does not know that to click it again.
+ *
+ * `withTimeout` itself now lives in lib/write-timeout.ts, shared with
+ * registration, triage and lab orders — the same failure mode in four places.
  */
 const WALK_IN_CHECKIN_TIMEOUT_MS = 20_000;
-
-/** Rejects with `message` after `ms` if `promise` has not settled by then. */
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    promise.then(
-      value => { clearTimeout(timer); resolve(value); },
-      error => { clearTimeout(timer); reject(error); },
-    );
-  });
-}
 
 /* ─── Page ─── */
 export default function AppointmentsPage() {

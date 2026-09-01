@@ -30,6 +30,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatDobOmrs } from '@/lib/date-utils';
 import { dismissBackdrop } from '@/lib/a11y';
 
@@ -303,38 +304,37 @@ export default function BillDetailPage() {
     const rows = bill.items.map((i, n) => `
       <tr>
         <td>${n + 1}</td><td>${escapeHtml(i.description)}</td><td>${escapeHtml(CATEGORY_LABELS[i.category] || i.category)}</td>
-        <td class="r">${escapeHtml(i.quantity)}</td><td class="r">${escapeHtml(money(i.unitPrice))}</td><td class="r">${escapeHtml(money(i.totalPrice))}</td>
+        <td class="num">${escapeHtml(i.quantity)}</td><td class="num">${escapeHtml(money(i.unitPrice))}</td><td class="num">${escapeHtml(money(i.totalPrice))}</td>
       </tr>`).join('');
     const payRows = bill.payments.map(p => `
       <tr><td>${escapeHtml(new Date(p.receivedAt).toLocaleString())}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
-      <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="r">${escapeHtml(money(p.amount))}</td></tr>`).join('');
-    const html = `<!doctype html><html><head><title>${escapeHtml(bill.invoiceNumber)}</title><style>
-      body { font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #113055; margin: 32px; font-size: 13px; }
-      h1 { font-size: 18px; margin: 0; } h2 { font-size: 13px; margin: 24px 0 8px; }
-      .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--chart-4); padding-bottom: 12px; }
-      .muted { color: #667; } table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-      th { text-align: left; background: #f1f3f5; padding: 6px 8px; font-size: 11px; text-transform: uppercase; }
-      td { padding: 6px 8px; border-bottom: 1px solid #eceef1; } .r { text-align: right; }
-      .totals { margin-top: 14px; margin-left: auto; width: 260px; }
-      .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
-      .totals .due { font-weight: 700; border-top: 1px solid #113055; margin-top: 4px; padding-top: 6px; }
-    </style></head><body>
-      <div class="head">
-        <div><h1>${escapeHtml(bill.facilityName)}</h1><div class="muted">Invoice ${escapeHtml(bill.invoiceNumber)} · ${escapeHtml(formatBillDate(bill.createdAt))}</div></div>
-        <div style="text-align:right"><strong>${escapeHtml(bill.patientName)}</strong><div class="muted">ID: ${escapeHtml(bill.hospitalNumber || bill.patientId)}</div></div>
-      </div>
-      <h2>Line items</h2>
-      <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr></thead><tbody>${rows}</tbody></table>
-      ${bill.payments.length ? `<h2>Payments</h2><table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th class="r">Amount</th></tr></thead><tbody>${payRows}</tbody></table>` : ''}
+      <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="num">${escapeHtml(money(p.amount))}</td></tr>`).join('');
+    const body = `
+      <section class="section"><h2 class="section-title">Line items</h2>
+        <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
+      </section>
+      ${bill.payments.length ? `<section class="section"><h2 class="section-title">Payments</h2><table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th class="num">Amount</th></tr></thead><tbody>${payRows}</tbody></table></section>` : '<p class="notice">No payments have been recorded against this invoice.</p>'}
       <div class="totals">
-        <div><span>Subtotal</span><span>${escapeHtml(money(bill.subtotal))}</span></div>
-        <div><span>Discount</span><span>- ${escapeHtml(money(bill.discount))}</span></div>
-        ${bill.taxAmount ? `<div><span>Tax (${escapeHtml(bill.taxRate)}%)</span><span>${escapeHtml(money(bill.taxAmount))}</span></div>` : ''}
-        <div><span>Total</span><span>${escapeHtml(money(bill.totalAmount))}</span></div>
-        <div><span>Paid</span><span>- ${escapeHtml(money(bill.amountPaid))}</span></div>
-        <div class="due"><span>Amount due</span><span>${escapeHtml(money(bill.balanceDue))}</span></div>
-      </div>
-    </body></html>`;
+        <div class="total-row"><span>Subtotal</span><strong>${escapeHtml(money(bill.subtotal))}</strong></div>
+        <div class="total-row"><span>Discount</span><strong>− ${escapeHtml(money(bill.discount))}</strong></div>
+        ${bill.taxAmount ? `<div class="total-row"><span>Tax (${escapeHtml(bill.taxRate)}%)</span><strong>${escapeHtml(money(bill.taxAmount))}</strong></div>` : ''}
+        <div class="total-row"><span>Invoice total</span><strong>${escapeHtml(money(bill.totalAmount))}</strong></div>
+        <div class="total-row"><span>Paid</span><strong>− ${escapeHtml(money(bill.amountPaid))}</strong></div>
+        <div class="total-row grand"><strong>Amount due</strong><strong>${escapeHtml(money(bill.balanceDue))}</strong></div>
+      </div>`;
+    const html = buildClinicalPrintDocument({
+      title: bill.invoiceNumber,
+      documentLabel: 'Patient invoice',
+      facilityName: bill.facilityName,
+      meta: [
+        { label: 'Patient', value: bill.patientName },
+        { label: 'Hospital number', value: bill.hospitalNumber || bill.patientId },
+        { label: 'Issued', value: formatBillDate(bill.createdAt) },
+        { label: 'Invoice status', value: invoiceStatusLabel(bill) },
+      ],
+      safeBodyHtml: body,
+      footer: 'Patient invoice generated from the billing ledger. Retain with the payment record.',
+    });
     openIsolatedHtmlWindow(html, 'width=800,height=900', true);
   };
 

@@ -28,6 +28,8 @@ import PatientCostSection from './PatientCostSection';
 import DrugMonographPanel, { type MonographWarning } from './DrugMonographPanel';
 import { emptyDraft, type RxDraft } from './types';
 import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc, ProblemDoc } from '@/lib/db-types';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 import './../clinical-notes.css';
 
 /** Strength fragment from a formulary name, for the stored dose. */
@@ -296,6 +298,53 @@ export default function PrescribeModal({
     onClose();
   };
 
+  const handlePrintDraft = () => {
+    if (!draft.drug) { showToast('Pick the drug before printing the prescription draft.', 'error'); return; }
+    if (!draft.instructions.trim()) { showToast('Add patient instructions before printing the prescription draft.', 'error'); return; }
+    const e = escapeHtml;
+    const allergyNames = (patient?.structuredAllergies || [])
+      .filter(allergy => allergy.status === 'active')
+      .map(allergy => allergy.substance);
+    const safetyRows = warnings.length
+      ? warnings.map(warning => `<li><strong>${e(warning.severity.toUpperCase())}</strong> — ${e(warning.text)}</li>`).join('')
+      : '<li>No interaction or formulary warning was surfaced by the current check.</li>';
+    const body = `
+      <p class="notice status-alert"><strong>DRAFT — NOT YET ISSUED.</strong> This paper does not replace the saved and signed medication order.</p>
+      <section class="section keep"><h2 class="section-title">Medication order</h2>
+        <table><tbody>
+          <tr><td class="muted">Medication</td><td><strong>${e(draft.drug.name)}</strong></td></tr>
+          <tr><td class="muted">Dose / form</td><td>${e(doseFrom(draft.drug.name))}${draft.drug.form ? ` · ${e(draft.drug.form)}` : ''}</td></tr>
+          <tr><td class="muted">Directions for patient</td><td><strong>${e(draft.instructions.trim())}</strong></td></tr>
+          <tr><td class="muted">Quantity</td><td>${e(draft.quantity || '1')}</td></tr>
+          <tr><td class="muted">Days supply</td><td>${e(draft.daysSupply ? `${draft.daysSupply} days` : 'Not specified')}</td></tr>
+          <tr><td class="muted">Refills</td><td>${e(draft.refills || '0')}</td></tr>
+          <tr><td class="muted">Effective date</td><td>${e(draft.effectiveOn || '—')}</td></tr>
+          <tr><td class="muted">Substitution</td><td>${draft.allowSubstitution ? 'Permitted' : 'Do not substitute'}</td></tr>
+          ${draft.reason ? `<tr><td class="muted">Indication</td><td>${e(draft.reason)}</td></tr>` : ''}
+          ${draft.pharmacyNote.trim() ? `<tr><td class="muted">Pharmacy instructions</td><td>${e(draft.pharmacyNote.trim())}</td></tr>` : ''}
+        </tbody></table>
+      </section>
+      <section class="section"><h2 class="section-title">Safety context</h2>
+        <p><strong>Recorded allergies:</strong> ${e(allergyNames.join(', ') || 'None recorded')}</p><ul>${safetyRows}</ul>
+      </section>
+      <div class="signatures"><div><div class="signature"></div><div class="signature-label">Prescriber signature · ${e(userName)}</div></div><div><div class="signature"></div><div class="signature-label">Date and time issued</div></div></div>`;
+    const html = buildClinicalPrintDocument({
+      title: patientName,
+      documentLabel: 'Prescription draft',
+      facilityName: facility,
+      meta: [
+        { label: 'Patient ID', value: patient?.hospitalNumber || patientId },
+        { label: 'Date of birth', value: patient?.dateOfBirth || '—' },
+        { label: 'Prescriber', value: userName },
+        { label: 'Pharmacy', value: pharmacy },
+        { label: 'Encounter', value: encounterId || 'Not linked' },
+      ],
+      safeBodyHtml: body,
+      footer: 'Draft prescription. Valid only after the corresponding medication order is saved and signed in the clinical record.',
+    });
+    openIsolatedHtmlWindow(html, '', true);
+  };
+
   const panel = (
       <div className="cn-meds">
         <div className="cn-meds-header">
@@ -359,7 +408,7 @@ export default function PrescribeModal({
 
             <div className="cn-meds-footer">
               <button type="button" className="cn-btn" onClick={onClose}>Cancel</button>
-              <button type="button" className="cn-btn" onClick={() => window.print()}>Print</button>
+              <button type="button" className="cn-btn" onClick={handlePrintDraft}>Print draft</button>
               <button type="button" className="cn-btn" onClick={handleAddRx} disabled={busy}>Add Rx</button>
               <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={busy}>
                 Send Medication

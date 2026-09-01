@@ -3,6 +3,7 @@
  */
 import type { PaymentDoc } from '../db-types-payments';
 import { escapeHtml, openIsolatedHtmlWindow } from '../safe-html';
+import { buildClinicalPrintDocument } from '../print-document';
 
 export interface ReceiptData {
   receiptNumber: string;
@@ -49,63 +50,44 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string): Re
 }
 
 export function generateReceiptHTML(receipt: ReceiptData): string {
-  const facilityName = escapeHtml(receipt.facilityName);
-  const receiptNumber = escapeHtml(receipt.receiptNumber);
-  const date = escapeHtml(receipt.date);
-  const time = escapeHtml(receipt.time);
+  const facilityName = receipt.facilityName;
+  const receiptNumber = receipt.receiptNumber;
   const patientName = escapeHtml(receipt.patientName);
   const methodLabel = escapeHtml(receipt.methodLabel);
   const reference = escapeHtml(receipt.reference);
   const currency = escapeHtml(receipt.currency);
   const processedBy = escapeHtml(receipt.processedBy);
   const notes = escapeHtml(receipt.notes);
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Payment Receipt — ${receiptNumber}</title>
-<style>
-  @page { margin: 10mm; size: 80mm auto; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; color: #08573A; background: #fff; max-width: 320px; margin: 0 auto; padding: 16px; }
-  .header { text-align: center; padding-bottom: 12px; border-bottom: 2px dashed #ccc; margin-bottom: 12px; }
-  .header h1 { font-size: 16px; font-weight: 800; color: #015697; letter-spacing: 0.5px; }
-  .header p { font-size: 11px; color: #5d728b; margin-top: 2px; }
-  .receipt-title { text-align: center; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #2191D0; margin-bottom: 12px; }
-  .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
-  .row .label { color: #5d728b; }
-  .row .value { font-weight: 600; text-align: right; max-width: 55%; }
-  .amount-row { padding: 10px 0; margin: 8px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
-  .amount-row .value { font-size: 18px; font-weight: 800; color: #2191D0; }
-  .amount-row .label { font-size: 13px; font-weight: 600; }
-  .footer { text-align: center; margin-top: 16px; padding-top: 12px; border-top: 2px dashed #ccc; }
-  .footer p { font-size: 10px; color: #5d728b; line-height: 1.5; }
-  .status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #ECF6F3; color: #0B8557; text-transform: uppercase; letter-spacing: 0.5px; }
-  @media print { body { padding: 0; } }
-</style>
-</head>
-<body>
-  <div class="header">
-    <h1>${facilityName}</h1>
-    <p>Digital Health Records — Powered by TamamHealth</p>
-  </div>
-  <div class="receipt-title">Payment Receipt</div>
-  <div class="row"><span class="label">Receipt #</span><span class="value">${receiptNumber}</span></div>
-  <div class="row"><span class="label">Date</span><span class="value">${date}</span></div>
-  <div class="row"><span class="label">Time</span><span class="value">${time}</span></div>
-  <div style="height: 8px"></div>
-  <div class="row"><span class="label">Patient</span><span class="value">${patientName}</span></div>
-  <div class="row"><span class="label">Method</span><span class="value">${methodLabel}</span></div>
-  ${receipt.reference ? `<div class="row"><span class="label">Reference</span><span class="value">${reference}</span></div>` : ''}
-  <div class="row amount-row"><span class="label">Amount Paid</span><span class="value">${receipt.amount.toLocaleString()} ${currency}</span></div>
-  <div class="row"><span class="label">Status</span><span class="value"><span class="status">Paid</span></span></div>
-  <div class="row"><span class="label">Processed By</span><span class="value">${processedBy}</span></div>
-  ${receipt.notes ? `<div class="row"><span class="label">Notes</span><span class="value">${notes}</span></div>` : ''}
-  <div class="footer">
-    <p>Thank you for your payment.<br>This receipt was electronically generated.<br>For inquiries, contact the billing desk.</p>
-  </div>
-</body>
-</html>`;
+  const body = `
+    <section class="section">
+      <h2 class="section-title">Payment details</h2>
+      <table><tbody>
+        <tr><td class="muted">Patient</td><td class="num"><strong>${patientName}</strong></td></tr>
+        <tr><td class="muted">Patient ID</td><td class="num">${escapeHtml(receipt.patientId)}</td></tr>
+        <tr><td class="muted">Method</td><td class="num">${methodLabel}</td></tr>
+        ${receipt.reference ? `<tr><td class="muted">Transaction reference</td><td class="num">${reference}</td></tr>` : ''}
+        <tr><td class="muted">Processed by</td><td class="num">${processedBy}</td></tr>
+        ${receipt.notes ? `<tr><td class="muted">Notes</td><td class="num">${notes}</td></tr>` : ''}
+      </tbody></table>
+      <div class="totals">
+        <div class="total-row grand"><strong>Amount paid</strong><strong>${escapeHtml(receipt.amount.toLocaleString())} ${currency}</strong></div>
+        <div class="total-row"><span>Status</span><strong class="status status-paid">Paid</strong></div>
+      </div>
+    </section>`;
+
+  return buildClinicalPrintDocument({
+    title: receiptNumber,
+    documentLabel: 'Payment receipt',
+    facilityName,
+    meta: [
+      { label: 'Receipt number', value: receipt.receiptNumber },
+      { label: 'Date', value: receipt.date },
+      { label: 'Time', value: receipt.time },
+    ],
+    safeBodyHtml: body,
+    page: 'receipt',
+    footer: 'Thank you for your payment. For questions, contact the billing desk.',
+  });
 }
 
 export function printReceipt(receipt: ReceiptData): void {

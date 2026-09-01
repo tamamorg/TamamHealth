@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import LabRequisition from '../LabRequisition';
 import type { LabOrderController } from '../useLabOrderDraft';
+import { printElementById } from '@/lib/safe-html';
 
 export default function CompleteStep({ controller }: { controller: LabOrderController }) {
   const { t } = useTranslation();
@@ -34,7 +35,7 @@ export default function CompleteStep({ controller }: { controller: LabOrderContr
             </span>
           </span>
         </span>
-        <button type="button" className="labord-btn" onClick={() => window.print()}>
+        <button type="button" className="labord-btn" onClick={() => printElementById('lab-requisition-print')}>
           <Printer className="w-4 h-4" aria-hidden /> {t('labOrder.print')}
         </button>
       </div>

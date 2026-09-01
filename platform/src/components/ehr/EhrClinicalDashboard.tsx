@@ -62,6 +62,8 @@ import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { buildClinicalPrintDocument } from '@/lib/print-document';
 
 /**
  * How many greeting-row actions are written out before the rest go behind
@@ -1412,6 +1414,41 @@ export default function EhrClinicalDashboard({
   const openFullAppointmentHref = openAppointment
     ? buildClinicalAppointmentHref(openAppointment._id, dashboardReturnTo)
     : '/appointments';
+  const printOpenAppointment = () => {
+    if (!openAppointment) return;
+    const appointment = openAppointment;
+    const body = `
+      <section class="section keep">
+        <h2 class="section-title">Visit details</h2>
+        <table><tbody>
+          <tr><td class="muted">Reason for visit</td><td><strong>${escapeHtml(appointment.reason || typeLabel(appointment.appointmentType))}</strong></td></tr>
+          <tr><td class="muted">Visit type</td><td>${escapeHtml(typeLabel(appointment.appointmentType))}</td></tr>
+          <tr><td class="muted">Priority</td><td><span class="status">${escapeHtml(typeLabel(appointment.priority))}</span></td></tr>
+          <tr><td class="muted">Department / room</td><td>${escapeHtml([appointment.department || 'OPD', appointment.room].filter(Boolean).join(' · '))}</td></tr>
+          <tr><td class="muted">Provider</td><td>${escapeHtml(appointment.providerName || clinicianName || 'Unassigned')}</td></tr>
+          ${appointment.staffName ? `<tr><td class="muted">Supporting staff</td><td>${escapeHtml(appointment.staffName)}</td></tr>` : ''}
+          ${appointment.patientPhone ? `<tr><td class="muted">Patient phone</td><td>${escapeHtml(appointment.patientPhone)}</td></tr>` : ''}
+        </tbody></table>
+      </section>
+      ${appointment.notes ? `<section class="section"><h2 class="section-title">Booking notes</h2><p class="notice">${escapeHtml(appointment.notes).replace(/\n/g, '<br>')}</p></section>` : ''}
+      ${appointment.cancelledReason ? `<section class="section"><h2 class="section-title">Cancellation</h2><p class="notice"><strong>Reason:</strong> ${escapeHtml(appointment.cancelledReason)}${appointment.cancelledByName ? `<br><strong>Recorded by:</strong> ${escapeHtml(appointment.cancelledByName)}` : ''}</p></section>` : ''}`;
+    const html = buildClinicalPrintDocument({
+      title: appointment.patientName,
+      documentLabel: 'Appointment record',
+      facilityName: appointment.facilityName || currentUser?.hospitalName,
+      meta: [
+        { label: 'Appointment ID', value: appointment._id },
+        { label: 'Date', value: formatAppointmentDate(appointment.appointmentDate) },
+        { label: 'Time', value: appointmentTimeRange(appointment) },
+        { label: 'Status', value: statusLabel(appointment.status) },
+        { label: 'Booked by', value: appointment.bookedByName || '—' },
+        { label: 'Source', value: appointment.source ? typeLabel(appointment.source) : 'Staff booking' },
+      ],
+      safeBodyHtml: body,
+      footer: 'Appointment record for scheduling and care coordination. This is not a clinical encounter note.',
+    });
+    openIsolatedHtmlWindow(html, '', true);
+  };
   // Compact doctor-facing appointment popup. The scheduler owns the full
   // appointment record; clinicians need the clinical next step.
   const appointmentPanel = openAppointment ? (
@@ -1530,7 +1567,7 @@ export default function EhrClinicalDashboard({
               >
                 <Calendar size={14} /> Open full page
               </button>
-              <button type="button" onClick={() => { setDetailMenuOpen(null); window.print(); }}>
+              <button type="button" onClick={() => { setDetailMenuOpen(null); printOpenAppointment(); }}>
                 <Printer size={14} /> Print appointment
               </button>
             </div>

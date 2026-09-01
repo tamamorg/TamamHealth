@@ -5,31 +5,7 @@ import type { PatientDoc } from '../db-types';
 import { patientsDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useDataScope } from './useDataScope';
-
-/**
- * Ceiling on a registration write. On a device still completing its initial
- * sync, a local write can stall indefinitely under IndexedDB contention — the
- * index build behind the duplicate scan, or the raw counter reads/writes that
- * mint a hospital number (see patient-service `generateHospitalNumber`). The
- * read path degrades gracefully (findByType falls back to a scan), but a stalled
- * write has no fallback: without a ceiling the form spins on "Saving…" forever,
- * never erroring, and the clerk never learns the patient was not saved — silent
- * data loss, and an invitation to click again. Bounding it turns the hang into a
- * retryable error the form already surfaces (`toastRegisterFailed`, and
- * `setSubmitting(false)` re-enables the form). Mirrors WALK_IN_CHECKIN_TIMEOUT_MS.
- */
-const REGISTRATION_WRITE_TIMEOUT_MS = 30_000;
-
-/** Rejects with `message` after `ms` if `promise` has not settled by then. */
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-    promise.then(
-      value => { clearTimeout(timer); resolve(value); },
-      error => { clearTimeout(timer); reject(error); },
-    );
-  });
-}
+import { withTimeout, CLINICAL_WRITE_TIMEOUT_MS } from '../write-timeout';
 
 export function usePatients(enabled = true) {
   const [patients, setPatients] = useState<PatientDoc[]>([]);
@@ -97,10 +73,11 @@ export function usePatients(enabled = true) {
     // Scope so duplicate-detection and geocode assignment don't read/disclose
     // across tenant boundaries (see createPatient's own docs). Bounded so a
     // local write stalled by initial-sync contention surfaces as a retryable
-    // error instead of an unbounded "Saving…" (see the constant's doc above).
+    // error (`toastRegisterFailed`, form re-enabled) instead of an unbounded
+    // "Saving…" — see lib/write-timeout.ts for the failure mode.
     const patient = await withTimeout(
       createPatient(data, scope),
-      REGISTRATION_WRITE_TIMEOUT_MS,
+      CLINICAL_WRITE_TIMEOUT_MS,
       'Registration timed out — the local database did not respond. Please try again.',
     );
     await loadPatients();

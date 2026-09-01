@@ -12544,6 +12544,62 @@ span:has(> svg:only-child) {
   @page {
     margin: 1cm;
   }
+  /* Direct-print workflows opt one rendered document in immediately before
+     calling print. This prevents drawers, dashboards and other hidden print
+     targets from sharing the sheet. */
+  body:has([data-print-active]) * {
+    visibility: hidden !important;
+  }
+  [data-print-active],
+  [data-print-active] * {
+    visibility: visible !important;
+  }
+  [data-print-active] {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--color-white) !important;
+    color: var(--tm-ink) !important;
+  }
+  [data-print-active] * {
+    color: var(--tm-ink) !important;
+    border-color: var(--color-slate-300) !important;
+    box-shadow: none !important;
+  }
+  [data-print-active] :is(.card, .card-elevated, .dash-card, section, thead tr, th) {
+    background: transparent !important;
+  }
+  [data-print-active] :is(h1, h2, h3) {
+    color: var(--tm-navy) !important;
+    break-after: avoid;
+  }
+  [data-print-active] button,
+  [data-print-active] [role="button"],
+  [data-print-active] input[type="search"] {
+    display: none !important;
+  }
+  [data-print-active] input:not([type="checkbox"]):not([type="radio"]),
+  [data-print-active] textarea {
+    border: 0 !important;
+    border-bottom: 1px solid var(--color-slate-300) !important;
+    border-radius: 0 !important;
+    background: var(--color-white) !important;
+    color: var(--tm-ink) !important;
+    resize: none !important;
+  }
+  [data-print-active] table { width: 100% !important; border-collapse: collapse !important; }
+  [data-print-active] thead { display: table-header-group; }
+  [data-print-active] tr,
+  [data-print-active] section,
+  [data-print-active] .card-elevated { break-inside: avoid; }
 }
 
 /* ============ Toggle Switch ============ */

@@ -10,6 +10,7 @@ import { useDeaths } from '@/lib/hooks/useDeaths';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Printer } from '@/components/icons/lucide';
+import { printElementById } from '@/lib/safe-html';
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -94,13 +95,13 @@ export default function ExecutiveBriefingPage() {
   }
 
   return (
-    <main className="page-container page-enter">
+    <main id="executive-briefing-print" className="page-container page-enter">
       <div data-tour="gov-briefing-header" className="dash-card mb-3">
         <EhrListHeader
           title="Executive briefing"
           stats={[{ label: 'As of', value: `${today} · National` }]}
           actions={
-            <button onClick={() => window.print()} className="btn btn-secondary print-visible" style={{ height: 36 }}>
+            <button onClick={() => printElementById('executive-briefing-print')} className="btn btn-secondary print-visible" style={{ height: 36 }}>
               <Printer className="w-4 h-4" /> Print briefing
             </button>
           }

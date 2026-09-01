@@ -829,6 +829,7 @@
 }
 
 /* Print only the requisition — everything else on the page is chrome. */
+.labord-print-only { display: none; }
 @media print {
   body * { visibility: hidden !important; }
   .labord-print, .labord-print * { visibility: visible !important; }
@@ -841,6 +842,11 @@
     border: 0;
     padding: 0;
   }
+  .labord-print-only { display: flex !important; }
+  .labord-requisition,
+  #lab-result-print { color: #001D3F !important; background: var(--color-white) !important; }
+  .labord-req-head { border-bottom: 2px solid #113055 !important; margin-bottom: 12px; }
+  .labord-grid-2 { break-inside: avoid; }
 }
 
 /* ══════════════════ NARROW SCREENS ══════════════════ */

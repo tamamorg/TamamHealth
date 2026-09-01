@@ -52,3 +52,18 @@ export function openIsolatedHtmlWindow(html: string, features = '', autoPrint = 
   window.open(url, '_blank', featureList);
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+/**
+ * Print one already-rendered clinical document without leaking the surrounding
+ * dashboard, modal backdrop, or a second hidden print target onto paper.
+ */
+export function printElementById(id: string): boolean {
+  const target = document.getElementById(id);
+  if (!target) return false;
+  target.setAttribute('data-print-active', 'true');
+  const cleanup = () => target.removeAttribute('data-print-active');
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
+  window.setTimeout(cleanup, 60_000);
+  return true;
+}

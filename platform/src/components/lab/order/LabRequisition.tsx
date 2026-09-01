@@ -52,7 +52,7 @@ export default function LabRequisition({
   const imaging = draft.kind === 'imaging';
 
   return (
-    <div className="labord-requisition labord-print">
+    <div id="lab-requisition-print" className="labord-requisition labord-print">
       <div className="labord-req-head">
         <div>
           <div className="labord-req-facility">{facilityName || 'TamamHealth'}</div>
