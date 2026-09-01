@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSettings, subscribeSettings } from '@/lib/settings/settings-store';
-import { getRoleChoice, subscribeRoleSettings } from '@/lib/settings/role-settings-store';
+import { getRoleChoice, getRoleSettings, subscribeRoleSettings } from '@/lib/settings/role-settings-store';
+import type { RoleSettingsValues } from '@/lib/role-settings';
 
 /**
  * Auto-lock hook for shared device security.
  *
  * Behavior:
- *   - Locks IMMEDIATELY when screen turns off / tab hidden (visibilitychange)
+ *   - While enabled, locks immediately when the screen turns off / tab hides
  *   - Locks after configurable inactivity timeout (default 1 min)
  *   - Timeout is read from org config (lockTimeoutMinutes) or localStorage
  *   - PIN stored as SHA-256 hash on UserDoc.pinHash
@@ -174,13 +175,80 @@ export function clearLockPin(): void {
  */
 const IDLE_OFF = 'Off';
 
-function parseIdleChoice(choice: string): number | undefined {
+/**
+ * "10 min" → 10, for a value that names a real window; `undefined` for one
+ * that does not. Exported so Settings can ask the same question of a stored
+ * value that the timer does, rather than re-deriving it.
+ */
+export function idleChoiceMinutes(choice: string): number | undefined {
   const value = choice.trim();
   if (value.toLowerCase() === IDLE_OFF.toLowerCase()) return undefined;
   const match = /^(\d+)/.exec(value);
   if (!match) return undefined;
   const minutes = Number(match[1]);
   return Number.isFinite(minutes) && minutes > 0 ? minutes : undefined;
+}
+
+/** Settings → Security → "Lock the screen when idle": this user's own master
+ *  switch, and the window it uses when on. */
+export const USER_LOCK_KEY = 'security.lock';
+export const USER_IDLE_KEY = 'security.idle';
+
+/** Is this user's own screen lock switched on? Unset reads as ON: every role
+ *  spec has always seeded an idle window, and an account that predates the
+ *  switch must not silently lose the lock that window describes. */
+function userLockOn(values: RoleSettingsValues = getRoleSettings()): boolean {
+  const explicit = values[USER_LOCK_KEY];
+  if (typeof explicit === 'boolean') return explicit;
+  // Compatibility for the retired dropdown option: an existing explicit
+  // "Off" must remain off until the user turns the new switch on.
+  return String(values[USER_IDLE_KEY] ?? '').toLowerCase() !== IDLE_OFF.toLowerCase();
+}
+
+/** The window this user chose, whatever the switch says. */
+function userLockWindow(values?: RoleSettingsValues): number | undefined {
+  const choice = values ? String(values[USER_IDLE_KEY] ?? '') : getRoleChoice(USER_IDLE_KEY, '');
+  return idleChoiceMinutes(choice);
+}
+
+/**
+ * Is the screen lock mandatory on this deployment — i.e. NOT this user's to
+ * switch off?
+ *
+ * One explicit flag decides it (`superAdminPolicies.screenLockRequired`,
+ * /admin/security), rather than "some window is configured somewhere". Every
+ * layer ships with a value nobody chose — a facility carries
+ * `lockTimeoutMinutes: 2`, the platform `sessionTimeoutMinutes: 15` — so
+ * inferring enforcement from a configured window would mean nobody, anywhere,
+ * could switch off a lock no operator ever asked for. Those windows still say
+ * HOW LONG the session may idle; this flag says WHO may withdraw it.
+ */
+export function lockIsMandatory(policy?: { screenLockRequired?: boolean }): boolean {
+  return policy?.screenLockRequired === true;
+}
+
+/**
+ * The configured policy idle window, in minutes, or `undefined` when no
+ * policy layer sets one. It is mandatory only when `lockIsMandatory` is true;
+ * otherwise the user's switch may withdraw it for their session.
+ *
+ * Facility outranks org; the platform's own `sessionTimeoutMinutes` is a
+ * ceiling over whatever they say, and is the answer on its own when nothing
+ * else is configured. Exported because Settings has to show the user why
+ * their switch is not theirs to flip — reading the same function the timer
+ * reads is what keeps that explanation true.
+ */
+export function policyLockMinutes(
+  facilityMinutes?: number,
+  orgMinutes?: number,
+  platformMinutes?: number,
+): number | undefined {
+  const tenant = (facilityMinutes && facilityMinutes > 0)
+    ? facilityMinutes
+    : (orgMinutes && orgMinutes > 0) ? orgMinutes : undefined;
+  const ceiling = (platformMinutes && platformMinutes > 0) ? platformMinutes : undefined;
+  if (tenant !== undefined) return ceiling ? Math.min(tenant, ceiling) : tenant;
+  return ceiling;
 }
 
 export function useAutoLock(
@@ -195,7 +263,14 @@ export function useAutoLock(
    * The screen has displayed this number since it shipped and nothing read it.
    */
   platformSessionTimeoutMinutes?: number,
+  /**
+   * The platform's screen-lock policy. `screenLockRequired: true` makes the
+   * lock mandatory — the user's own switch stops applying and the Settings
+   * row says so. Anything else leaves the switch a real control.
+   */
+  platformLockPolicy?: { screenLockRequired?: boolean },
 ) {
+  const mandatory = lockIsMandatory(platformLockPolicy);
   const [isLocked, setIsLocked] = useState(false);
   const [hasPin, setHasPin] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -205,10 +280,13 @@ export function useAutoLock(
   // org value. Kept in React state + subscribed so an admin change to the lock
   // timeout in Facility Settings re-arms the idle timer live.
   const [facilityLockMin, setFacilityLockMin] = useState<number | undefined>(() => getSettings().lockTimeoutMinutes);
-  // The user's own "Auto sign-out after inactivity" (`security.idle`, e.g.
-  // "10 min"). It may only make the lock STRICTER than facility policy — a
-  // shared workstation's protection is not something an individual can relax.
-  const [userLockMin, setUserLockMin] = useState<number | undefined>(() => parseIdleChoice(getRoleChoice('security.idle', '')));
+  // The user's own screen lock: their master switch (`security.lock`) and the
+  // window it uses (`security.idle`, e.g. "10 min"). It may only make the lock
+  // STRICTER than facility policy — a shared workstation's protection is not
+  // something an individual can extend. Switching it off withdraws the
+  // configured default unless the operator explicitly made locking mandatory.
+  const [userLockMin, setUserLockMin] = useState<number | undefined>(() => userLockWindow());
+  const [userWantsLock, setUserWantsLock] = useState<boolean>(() => userLockOn());
 
   // Keep refs in sync for use in event handlers (avoids stale closures)
   useEffect(() => { isLockedRef.current = isLocked; }, [isLocked]);
@@ -218,8 +296,12 @@ export function useAutoLock(
     return subscribeSettings(s => setFacilityLockMin(s.lockTimeoutMinutes));
   }, []);
   useEffect(() => {
-    setUserLockMin(parseIdleChoice(getRoleChoice('security.idle', '')));
-    return subscribeRoleSettings(v => setUserLockMin(parseIdleChoice(String(v['security.idle'] ?? ''))));
+    setUserLockMin(userLockWindow());
+    setUserWantsLock(userLockOn());
+    return subscribeRoleSettings(v => {
+      setUserLockMin(userLockWindow(v));
+      setUserWantsLock(userLockOn(v));
+    });
   }, []);
 
   // Check if user has a PIN set — and stay in sync when it changes (e.g. the
@@ -236,50 +318,31 @@ export function useAutoLock(
     };
   }, []);
 
-  // Auto-lock is OFF by default. It engages only when someone has asked for it
-  // — a facility / org / platform policy, or the user's own "Auto sign-out
-  // after inactivity" choice in Settings → Security. With nothing configured
-  // the session never locks (and does not lock on tab-hide either); a user
-  // turns it on for themselves from Settings. Policies still ENFORCE it where
-  // an admin requires it on a shared workstation.
-  const lockEnabled =
-    (facilityLockMin ?? 0) > 0 ||
-    (orgLockTimeoutMinutes ?? 0) > 0 ||
-    (platformSessionTimeoutMinutes ?? 0) > 0 ||
-    (userLockMin ?? 0) > 0;
+  // Configured windows are the DEFAULT this device locks on; the user's switch
+  // (Settings → Security → "Lock the screen when idle") withdraws them for
+  // them — unless the operator made the lock mandatory, in which case nothing
+  // the user stores can switch it off. See lockIsMandatory.
+  const lockHeldOn = mandatory || userWantsLock;
+  const effectivePolicyMin = lockHeldOn
+    ? policyLockMinutes(facilityLockMin, orgLockTimeoutMinutes, platformSessionTimeoutMinutes)
+    : undefined;
+  const effectiveUserMin = lockHeldOn ? userLockMin : undefined;
+
+  // With nothing configured and the switch off, the session never locks — and
+  // does not lock on tab-hide either.
+  const lockEnabled = effectivePolicyMin !== undefined || (effectiveUserMin ?? 0) > 0;
 
   const getTimeout = useCallback((): number => {
-    // Priority: facility setting > org config > localStorage > default, then
-    // the user's own choice applied on top — but only where it shortens the
-    // timeout. Picking "30 min" on a workstation the facility locks after 2
-    // must not extend it.
-    const policyMin = (facilityLockMin && facilityLockMin > 0)
-      ? facilityLockMin
-      : (orgLockTimeoutMinutes && orgLockTimeoutMinutes > 0)
-        ? orgLockTimeoutMinutes
-        : undefined;
-
-    // Every layer below is capped by the platform's own value. Applied last
-    // and by `Math.min` so it can only ever shorten: a tenant may be stricter
-    // than the platform, never looser, and the same rule already governs what
-    // an individual may do to their facility's setting.
-    const capped = (value: number): number =>
-      (platformSessionTimeoutMinutes && platformSessionTimeoutMinutes > 0)
-        ? Math.min(value, platformSessionTimeoutMinutes)
-        : value;
-
-    if (policyMin !== undefined) {
-      const effective = userLockMin && userLockMin > 0 ? Math.min(policyMin, userLockMin) : policyMin;
-      return capped(effective) * 60_000;
+    // Policy first (facility > org, under the platform ceiling), with the
+    // user's own window applied on top but only where it shortens: picking
+    // "30 min" on a workstation the facility locks after 2 must not extend it.
+    if (effectivePolicyMin !== undefined) {
+      return (effectiveUserMin && effectiveUserMin > 0
+        ? Math.min(effectivePolicyMin, effectiveUserMin)
+        : effectivePolicyMin) * 60_000;
     }
-    if (userLockMin && userLockMin > 0) {
-      return capped(userLockMin) * 60_000;
-    }
-    if (platformSessionTimeoutMinutes && platformSessionTimeoutMinutes > 0) {
-      // Nothing else configured: the platform policy IS the answer, rather
-      // than falling through to a hard-coded default that ignores it.
-      return platformSessionTimeoutMinutes * 60_000;
-    }
+    // No policy left to cap against: the user's own window stands as set.
+    if (effectiveUserMin && effectiveUserMin > 0) return effectiveUserMin * 60_000;
     if (typeof window === 'undefined') return DEFAULT_TIMEOUT_MS;
     const saved = localStorage.getItem(LOCK_TIMEOUT_KEY);
     if (saved) {
@@ -287,7 +350,7 @@ export function useAutoLock(
       if (!isNaN(parsed) && parsed > 0) return parsed;
     }
     return DEFAULT_TIMEOUT_MS;
-  }, [facilityLockMin, orgLockTimeoutMinutes, userLockMin, platformSessionTimeoutMinutes]);
+  }, [effectivePolicyMin, effectiveUserMin]);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

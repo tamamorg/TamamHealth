@@ -23,6 +23,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AuditLogDoc, PlatformConfigDoc } from '@/lib/db-types';
 import { DEFAULT_POLICIES } from '@/lib/admin/super-admin-policies';
 import { Lock, FileText, AlertTriangle, Clock, ShieldCheck, Eye } from '@/components/icons/lucide';
@@ -75,6 +76,11 @@ const ACCESS_FIELDS: SettingField[] = [
     kind: 'number', key: 'sessionTimeoutMinutes', label: 'Session timeout',
     sub: 'Idle timeout ceiling, minutes. A facility may lock sooner, never later.',
     unit: 'm', enforcement: 'enforced', enforcedBy: 'lib/hooks/useAutoLock.ts',
+  },
+  {
+    kind: 'toggle', key: 'screenLockRequired', label: 'Screen lock mandatory',
+    sub: 'Locks every session at the timeout above. Off, each person may switch their own screen lock off in Settings.',
+    enforcement: 'enforced', enforcedBy: 'lib/hooks/useAutoLock.ts',
   },
   { kind: 'toggle', key: 'ssoEnabled', label: 'SSO controls', sub: 'Expose SAML/OIDC controls per organization.' },
 ];
@@ -144,12 +150,21 @@ export default function SecurityCompliancePage() {
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { config, update } = usePlatformConfig();
   const [backupAgeHours, setBackupAgeHours] = useState<number | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
   const [auditLoading, setAuditLoading] = useState(true);
 
   const [activeSection, setActiveSection] = useSadbTab('access');
+
+  const accessFields = ACCESS_FIELDS.map(field => field.key === 'screenLockRequired'
+    ? {
+      ...field,
+      label: t('adminSecurity.screenLockMandatory'),
+      sub: t('adminSecurity.screenLockMandatorySub'),
+    }
+    : field);
 
   // Single source (KAN-117) — this used to read a localStorage key nothing
   // wrote, so "backupWithinRpo" was permanently false and reported as if
@@ -306,7 +321,7 @@ export default function SecurityCompliancePage() {
               note="Authentication requirements applied platform-wide. Changes apply once saved above."
             />
             <SadbSettingGroup title="Access & authentication">
-              {ACCESS_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
+              {accessFields.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
         )}

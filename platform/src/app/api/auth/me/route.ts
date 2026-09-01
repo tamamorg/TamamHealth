@@ -36,14 +36,17 @@ async function lookupHospitalName(hospitalId?: string): Promise<string | undefin
  * Never throws — an unreadable platform config must not stop anybody signing
  * in; the client simply falls back to the facility/org chain it used before.
  */
-async function platformPolicyForClient(): Promise<{ sessionTimeoutMinutes?: number }> {
+async function platformPolicyForClient(): Promise<{ sessionTimeoutMinutes?: number; screenLockRequired?: boolean }> {
   try {
     const { getPlatformConfig } = await import('@/lib/services/platform-config-service');
     const policies = (await getPlatformConfig()).superAdminPolicies;
     const minutes = policies?.sessionTimeoutMinutes;
-    return Number.isFinite(minutes) && (minutes as number) > 0
-      ? { sessionTimeoutMinutes: minutes }
-      : {};
+    return {
+      ...(Number.isFinite(minutes) && (minutes as number) > 0 ? { sessionTimeoutMinutes: minutes } : {}),
+      // Only the true case is worth sending: absent reads as "not required",
+      // which is what a deployment that never set it means.
+      ...(policies?.screenLockRequired === true ? { screenLockRequired: true } : {}),
+    };
   } catch {
     return {};
   }

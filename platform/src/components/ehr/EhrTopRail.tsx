@@ -492,6 +492,16 @@ export default function EhrTopRail() {
             onFocus={() => setOpen(query.trim().length >= 2)}
             placeholder={isPlatformAdmin ? t('topbar.searchPlatformPlaceholder') : t('topbar.searchPatientPlaceholder')}
             type="search"
+            /* Not a credential field, and browsers must stop guessing that it
+               is: opening Settings puts password inputs on the page, and this
+               is the text input nearest them, so Chrome was filling it with
+               the signed-in username. The password dialog now carries its own
+               username field; this is the other half. */
+            name="workspace-search"
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
             data-track="workspace.search_input"
           />
           {(query || mobileSearchOpen) && (

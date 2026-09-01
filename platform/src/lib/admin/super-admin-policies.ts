@@ -11,6 +11,11 @@ export type SuperAdminPolicies = NonNullable<PlatformConfigDoc['superAdminPolici
 export const DEFAULT_POLICIES: SuperAdminPolicies = {
   passwordMinLength: 12,
   sessionTimeoutMinutes: 15,
+  // Off by default, and deliberately: this value ships with every install, so
+  // defaulting it on would mean nobody, anywhere, could switch off a lock
+  // that no operator ever asked for. An operator who runs shared clinical
+  // hardware turns it on and it becomes mandatory for everyone.
+  screenLockRequired: false,
   emergencyAccessEnabled: true,
   emergencyAccessReviewHours: 24,
   impersonationEnabled: false,

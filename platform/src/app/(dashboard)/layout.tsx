@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // chain — see useAutoLock. It was displayed on /admin/security and read by
   // nothing until this was wired.
   const { isLocked, hasPin, pinSupported, unlock, verifyPin, setPin } = useAutoLock(
-    isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes,
+    isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes, platformPolicy,
   );
   const isMobile = useIsMobileViewport();
   const mobileArchetype = currentUser ? getMobileShellArchetype(currentUser.role) : undefined;

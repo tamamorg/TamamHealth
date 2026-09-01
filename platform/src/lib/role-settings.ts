@@ -103,11 +103,16 @@ function securitySection(idle: string, mask: boolean): RoleSettingSection {
   return {
     id: 'security', title: 'Security & sessions', icon: 'shield', note: 'Policy set by the facility admin',
     rows: [
-      // 'Off' ends the user's OWN idle sign-out; it does not switch the
-      // feature off. Where a facility, org or platform policy sets a lock
-      // timeout that still applies — an individual may make the lock
-      // stricter than policy, never looser (see useAutoLock.getTimeout).
-      sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min', 'Off']),
+      // The user's master switch for their screen lock. Off withdraws the
+      // configured default window unless an operator explicitly made locking
+      // mandatory; in that case this row reads as admin-required instead of a
+      // switch (see RoleSettingsView and useAutoLock).
+      tg('security.lock', 'Lock the screen when idle', 'Off keeps this session open on a device only you use', true),
+      // The window the switch above uses. 'Off' is deliberately NOT an option
+      // here any more: two controls that both mean "no lock" is two things
+      // that can disagree. A value stored from before the switch existed
+      // still reads as no user lock (idleChoiceMinutes returns undefined).
+      sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min']),
       tg('security.mask', 'Hide patient identifiers on shared screens', 'Masks phone and address in queues', mask),
       { kind: 'action', label: 'Password', hint: 'Change the password you sign in with', action: 'password', buttonLabel: 'Change password' },
       { kind: 'action', label: 'Screen-lock PIN', hint: 'Quick unlock on this shared device', action: 'pin', buttonLabel: 'Manage PIN' },

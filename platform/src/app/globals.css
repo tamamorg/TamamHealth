@@ -21123,6 +21123,19 @@ textarea.ehr-handoff-input {
   color: var(--tb-blue-800, #113055);
 }
 
+/* A window that belongs to a switch someone has turned off: still readable
+   (it is what turning the switch back on will use), plainly not in use. */
+.ehr-set-select:disabled,
+.tamam-ehr-app select.ehr-set-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ehr-set-select:disabled:hover {
+  border-color: var(--ehr-border);
+  color: var(--text-strong);
+}
+
 .ehr-set-input,
 .tamam-ehr-app input.ehr-set-input {
   min-height: 34px;

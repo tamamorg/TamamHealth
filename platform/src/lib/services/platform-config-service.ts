@@ -18,6 +18,7 @@ const DEFAULT_CONFIG: Omit<PlatformConfigDoc, '_id' | '_rev' | 'createdAt' | 'up
   superAdminPolicies: {
     passwordMinLength: 12,
     sessionTimeoutMinutes: 15,
+    screenLockRequired: false,
     emergencyAccessEnabled: true,
     emergencyAccessReviewHours: 24,
     impersonationEnabled: false,

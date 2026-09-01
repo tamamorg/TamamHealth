@@ -191,6 +191,9 @@ async function hydrateAppUser(raw: {
 export interface PlatformClientPolicy {
   /** Idle timeout ceiling, minutes. Nothing may configure a longer one. */
   sessionTimeoutMinutes?: number;
+  /** Whether the idle screen lock is mandatory for everyone on this
+   *  deployment. Off leaves each user their own switch in Settings. */
+  screenLockRequired?: boolean;
 }
 
 /**

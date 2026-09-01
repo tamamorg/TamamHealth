@@ -19,7 +19,6 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FilterSelect } from '@/components/filters';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -56,9 +55,6 @@ function rowHref(row: RiskRow): string {
   return SOURCE_HREF[row.source];
 }
 
-const SEVERITIES: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
-const SOURCES: RiskSource[] = ['Audit', 'Sync', 'Data', 'Tenants', 'Continuity', 'Platform'];
-
 export default function RiskCenterPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -79,8 +75,6 @@ export default function RiskCenterPage() {
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<'open' | 'resolved'>('open');
-  const [severityFilter, setSeverityFilter] = useState<'all' | SaSeverity>('all');
-  const [sourceFilter, setSourceFilter] = useState<'all' | RiskSource>('all');
   const [search, setSearch] = useState('');
   /** Rows queued for the resolve dialog — one row, or everything shown. */
   const [resolving, setResolving] = useState<RiskRow[] | null>(null);
@@ -168,15 +162,15 @@ export default function RiskCenterPage() {
   );
 
   /* The Filters popover is gone — the search box is the filter — so severity
-     and source have to be part of what a search matches, or "critical" and
-     "sync" would have stopped narrowing anything when the popover went. */
+     and source are part of what a search matches, or "critical" and "sync"
+     would have stopped narrowing anything when the popover went. The
+     popover's severity/source state went with it: held at 'all' with nothing
+     left to set them, the two guards it fed could never fail. */
   const matches = useCallback((severity: SaSeverity, source: string, haystack: string) => {
     const q = search.trim().toLowerCase();
-    if (severityFilter !== 'all' && severity !== severityFilter) return false;
-    if (sourceFilter !== 'all' && source !== sourceFilter) return false;
     if (q && !`${haystack} ${severity} ${source}`.toLowerCase().includes(q)) return false;
     return true;
-  }, [search, severityFilter, sourceFilter]);
+  }, [search]);
 
   const filteredOpen = useMemo(
     () => openRows.filter(r => matches(r.severity, r.source, `${r.signal} ${r.detail} ${r.source}`)),
@@ -192,10 +186,6 @@ export default function RiskCenterPage() {
     for (const r of openRows) c[r.severity]++;
     return c;
   }, [openRows]);
-
-  // Filters live in a popover (same control as wards/hospitals/org users)
-  // rather than as full-width selects stacked above the table.
-  const activeFilterCount = (severityFilter !== 'all' ? 1 : 0) + (sourceFilter !== 'all' ? 1 : 0);
 
   const actor = { _id: currentUser?._id, username: currentUser?.username, name: currentUser?.name };
 

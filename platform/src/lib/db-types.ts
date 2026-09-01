@@ -2221,6 +2221,11 @@ export interface PlatformConfigDoc extends BaseDoc {
   superAdminPolicies?: {
     passwordMinLength: number;
     sessionTimeoutMinutes: number;
+    /** Whether the idle screen lock is mandatory. Off (the default) leaves it
+     *  a per-user switch: Settings → Security → "Lock the screen when idle".
+     *  On, no user may switch their own lock off — for deployments where
+     *  every device is shared clinical hardware. */
+    screenLockRequired?: boolean;
     emergencyAccessEnabled: boolean;
     emergencyAccessReviewHours: number;
     impersonationEnabled: boolean;

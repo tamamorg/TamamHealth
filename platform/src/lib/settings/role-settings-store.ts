@@ -67,7 +67,14 @@ export function roleSettingDefaults(role: UserRole): RoleSettingsValues {
  */
 export function initRoleSettings(userId: string, role: UserRole): void {
   currentUserId = userId;
-  current = { ...roleSettingDefaults(role), ...getStoredRoleSettings(userId) };
+  const stored = getStoredRoleSettings(userId);
+  current = { ...roleSettingDefaults(role), ...stored };
+  // Before the dedicated switch existed, "Off" in security.idle was the
+  // user's only way to opt out. Preserve that explicit choice for existing
+  // accounts instead of letting the new default-on switch silently reverse it.
+  if (stored['security.lock'] === undefined && String(stored['security.idle']).toLowerCase() === 'off') {
+    current['security.lock'] = false;
+  }
   notify();
 }
 

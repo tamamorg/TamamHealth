@@ -11,7 +11,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Receipt, Search, ChevronLeft, ChevronRight, Activity } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
@@ -35,7 +34,6 @@ const FILTERS: { key: FilterKey; label: string; match: (b: BillingDoc) => boolea
 const PER_PAGE_OPTIONS = [10, 20, 30, 50];
 
 export default function BillingHomePage() {
-  const { currentUser } = useAuth();
   const scope = useDataScope();
   const [bills, setBills] = useState<BillingDoc[]>([]);
   const [loading, setLoading] = useState(true);

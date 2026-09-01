@@ -11,7 +11,6 @@ import {
 } from '@/lib/appointment-status';
 import { useRouter } from 'next/navigation';
 import { getDefaultDashboard } from '@/lib/role-routes';
-import { getRoleConfig } from '@/lib/permissions';
 import {
   Calendar,
   Plus,
@@ -35,7 +34,7 @@ import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_calendar-period';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { abbreviateProviderName, patientFullName } from '@/lib/patient-utils';
+import { patientFullName } from '@/lib/patient-utils';
 import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { usePermissions } from '@/lib/hooks/usePermissions';

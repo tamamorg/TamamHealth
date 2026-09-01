@@ -26,7 +26,10 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SUPPORTED_LOCALES } from '@/lib/i18n';
 import { getUserPrefs, setUserPrefs } from '@/lib/user-prefs';
-import { hasLockPin, setLockPin, clearLockPin } from '@/lib/hooks/useAutoLock';
+import {
+  hasLockPin, setLockPin, clearLockPin,
+  idleChoiceMinutes, lockIsMandatory, policyLockMinutes, USER_LOCK_KEY, USER_IDLE_KEY,
+} from '@/lib/hooks/useAutoLock';
 import { getRoleConfig } from '@/lib/permissions';
 import { isPathAllowed } from '@/lib/role-routes';
 import {
@@ -162,7 +165,7 @@ type NavGroup = { title: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
   const router = useRouter();
-  const { currentUser, refreshCurrentUser } = useAuth();
+  const { currentUser, refreshCurrentUser, platformPolicy } = useAuth();
   const { isOnline, syncPaused, lastSync, toggleOnline } = useSync();
   const { showToast } = useToast();
   const { canManageUsers, canAccess } = usePermissions();
@@ -170,6 +173,33 @@ export default function RoleSettingsView() {
   const { hospitals } = useHospitals();
   const { t, locale, setLocale } = useTranslation();
   const facilitySettings = useSettings();
+
+  /**
+   * When the operator has made the screen lock mandatory, the switch is not a
+   * control — it is a statement of what this deployment requires. Read
+   * through the same helpers the lock timer reads, so the row can never claim
+   * an enforcement the timer will not apply (or hide one it does).
+   */
+  const lockMandatory = lockIsMandatory(platformPolicy);
+  const enforcedLockMinutes = lockMandatory
+    ? policyLockMinutes(
+      facilitySettings.lockTimeoutMinutes,
+      currentUser?.organization?.lockTimeoutMinutes,
+      platformPolicy.sessionTimeoutMinutes,
+    )
+    : undefined;
+
+  const settingLabel = (row: RoleSettingRow): string => (
+    'key' in row && row.key === USER_LOCK_KEY ? t('roleSettings.lockScreenIdle') : row.label
+  );
+  const settingHint = (row: RoleSettingRow): string => {
+    if (!('key' in row)) return row.hint;
+    if (row.key === USER_LOCK_KEY) return t('roleSettings.lockScreenIdleHint');
+    if (row.key === USER_IDLE_KEY && draft[USER_LOCK_KEY] === false && enforcedLockMinutes === undefined) {
+      return t('roleSettings.lockWindowInactive');
+    }
+    return row.hint;
+  };
 
   const spec = useMemo(() => (currentUser ? specForRole(currentUser.role) : null), [currentUser]);
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
@@ -195,6 +225,12 @@ export default function RoleSettingsView() {
           || row.key === 'account.theme' || row.key === 'account.displayName';
         map[row.key] = (!isWiredRow && stored[row.key] !== undefined ? stored[row.key] : def) as boolean | string;
       }
+    }
+    // Preserve the retired dropdown's explicit Off choice when introducing
+    // the dedicated switch; otherwise the switch's default true reverses the
+    // user's stored preference merely by opening Settings after an update.
+    if (stored[USER_LOCK_KEY] === undefined && String(stored[USER_IDLE_KEY]).toLowerCase() === 'off') {
+      map[USER_LOCK_KEY] = false;
     }
     return map;
   }, [spec, currentUser, wired]);
@@ -620,16 +656,45 @@ export default function RoleSettingsView() {
         </span>
       );
     }
+    // The screen-lock switch and the window it uses are one setting in two
+    // rows: neither may claim a state the lock timer will not honour.
+    //
+    //   • An admin policy outranks both — the switch becomes a statement of
+    //     what is required, not a control, because useAutoLock keeps locking
+    //     the session whatever this user stores.
+    //   • With the switch off, the window is inert. It stays visible (it is
+    //     what turning the lock back on will use) but not editable, rather
+    //     than reading "15 min" over a session that never locks.
+    if (row.kind === 'toggle' && row.key === USER_LOCK_KEY && enforcedLockMinutes !== undefined) {
+      return (
+        <span className="ehr-set-locked" title={t('roleSettings.lockRequiredTitle', { minutes: enforcedLockMinutes })}>
+          <Lock /> {t('roleSettings.lockRequired', { minutes: enforcedLockMinutes })}
+        </span>
+      );
+    }
+    const userLockOff = draft[USER_LOCK_KEY] === false && enforcedLockMinutes === undefined;
+
     if (row.kind === 'toggle') {
       const on = Boolean(draft[row.key]);
+      const flip = () => {
+        setValue(row.key, !on);
+        // Turning the lock on with no usable window stored (an account
+        // carrying the retired "Off" choice) would switch on a lock that
+        // never fires. Restore this role's own default window with it.
+        if (!on && row.key === USER_LOCK_KEY && idleChoiceMinutes(String(draft[USER_IDLE_KEY] ?? '')) === undefined) {
+          const idleRow = spec?.sections.find(section => section.id === 'security')
+            ?.rows.find((r): r is Extract<RoleSettingRow, { kind: 'select' }> => r.kind === 'select' && r.key === USER_IDLE_KEY);
+          if (idleRow) setValue(USER_IDLE_KEY, idleRow.def);
+        }
+      };
       return (
         <button
           type="button"
           className={`ehr-set-toggle ${on ? 'is-on' : ''}`.trim()}
           role="switch"
           aria-checked={on}
-          aria-label={row.label}
-          onClick={() => setValue(row.key, !on)}
+          aria-label={settingLabel(row)}
+          onClick={flip}
         >
           <b>{on ? 'On' : 'Off'}</b>
           <span><i /></span>
@@ -641,11 +706,14 @@ export default function RoleSettingsView() {
         ? SUPPORTED_LOCALES.map(l => l.nativeName || l.name)
         : row.options;
       const value = String(draft[row.key] ?? row.def);
+      const inert = row.key === USER_IDLE_KEY && userLockOff;
       return (
         <Select
           className="ehr-set-select"
           value={value}
-          aria-label={row.label}
+          aria-label={settingLabel(row)}
+          disabled={inert}
+          title={inert ? t('roleSettings.lockWindowInactive') : undefined}
           onChange={event => setValue(row.key, event.target.value)}
         >
           {(options.includes(value) ? options : [value, ...options]).map(option => (
@@ -699,8 +767,8 @@ export default function RoleSettingsView() {
         {section.rows.map(row => (
           <div key={`${section.id}-${row.label}`} className="ehr-set-row">
             <div className="ehr-set-row-label">
-              <b>{row.label}</b>
-              <span>{row.hint}</span>
+              <b>{settingLabel(row)}</b>
+              <span>{settingHint(row)}</span>
             </div>
             {renderControl(row)}
           </div>
@@ -1188,6 +1256,24 @@ export default function RoleSettingsView() {
               </div>
             </div>
             <div className="ehr-handoff-body">
+              {/* The account these passwords belong to, stated for the browser.
+                  Without it Chrome hunts the page for a username field to pair
+                  with the password ones, walks up out of the dialog, and fills
+                  the workspace search box in the top rail with the signed-in
+                  username — the account name appearing in the search bar the
+                  moment Settings opened. Rendered, not `display:none`: a
+                  hidden input is skipped by the same heuristic it exists to
+                  satisfy. */}
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+                readOnly
+                value={currentUser.username}
+              />
               <div>
                 <label className="ehr-handoff-label">Current password</label>
                 <input type="password" className="ehr-handoff-input" autoComplete="current-password"

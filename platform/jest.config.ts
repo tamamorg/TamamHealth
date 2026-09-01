@@ -14,7 +14,7 @@ const config: Config = {
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/src/__tests__/helpers/'],
 };
 
-export default async () => {
+const buildConfig = async () => {
   const jestConfig = await createJestConfig(config as unknown as Parameters<typeof createJestConfig>[0])();
   jestConfig.transformIgnorePatterns = [
     '/node_modules/(?!(jose|uuid|pouchdb-adapter-memory)/).*\\.js$',
@@ -30,3 +30,5 @@ export default async () => {
   ];
   return jestConfig;
 };
+
+export default buildConfig;

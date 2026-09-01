@@ -22,6 +22,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import {
   useAutoLock, hasLockPin, setLockPin, pinHashingSupported, clearLockPin,
+  policyLockMinutes, lockIsMandatory, idleChoiceMinutes,
 } from '@/lib/hooks/useAutoLock';
 import { setSettings } from '@/lib/settings/settings-store';
 import { DEFAULT_FACILITY_SETTINGS } from '@/lib/settings/facility-settings';
@@ -245,15 +246,173 @@ describe("the user's own \"Auto sign-out after inactivity\" choice", () => {
     expect(latest().isLocked).toBe(false);
   });
 
-  it("'Off' cannot switch off a lock an admin's policy requires", () => {
+  it("legacy 'Off' cannot switch off a lock an admin explicitly made mandatory", () => {
     jest.useFakeTimers();
     setRoleSettings({ 'security.idle': 'Off' });
     // 2-minute platform ceiling. An individual may shorten a policy window,
     // never cancel one — a shared workstation's protection is not theirs to
     // relax.
-    const { latest } = mountHarness(true, undefined, 2);
+    const { latest } = mountHarness(true, undefined, 2, { screenLockRequired: true });
     expect(latest().timeoutMs).toBe(2 * 60_000);
     act(() => { jest.advanceTimersByTime(2 * 60_000); });
     expect(latest().isLocked).toBe(true);
+  });
+});
+
+describe('the user\'s own screen-lock switch (Settings → Security)', () => {
+  it('locks on the chosen window while the switch is on', () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.lock': true, 'security.idle': '5 min' });
+    const { latest } = mountHarness(true);
+    expect(latest().timeoutMs).toBe(5 * 60_000);
+    act(() => { jest.advanceTimersByTime(5 * 60_000); });
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('switched off, the session stays open however long it idles', () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.lock': false, 'security.idle': '5 min' });
+    const { latest } = mountHarness(true);
+    act(() => { jest.advanceTimersByTime(12 * 60 * 60_000); });
+    expect(latest().isLocked).toBe(false);
+  });
+
+  it('switched off, hiding the tab no longer locks either', () => {
+    setRoleSettings({ 'security.lock': false, 'security.idle': '5 min' });
+    const { latest } = mountHarness(true);
+    act(() => {
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(latest().isLocked).toBe(false);
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+  });
+
+  it('withdraws the facility window too — that is a default, not a policy', () => {
+    jest.useFakeTimers();
+    // Every facility ships carrying lockTimeoutMinutes: 2 whether or not
+    // anyone chose it. Reading that as policy would mean nobody anywhere
+    // could switch their own lock off.
+    setSettings({ ...DEFAULT_FACILITY_SETTINGS, lockTimeoutMinutes: 2 });
+    setRoleSettings({ 'security.lock': false, 'security.idle': '5 min' });
+    const { latest } = mountHarness(true);
+    act(() => { jest.advanceTimersByTime(60 * 60_000); });
+    expect(latest().isLocked).toBe(false);
+  });
+
+  it('still locks on the facility window while the switch is on', () => {
+    jest.useFakeTimers();
+    setSettings({ ...DEFAULT_FACILITY_SETTINGS, lockTimeoutMinutes: 2 });
+    setRoleSettings({ 'security.lock': true, 'security.idle': '30 min' });
+    const { latest } = mountHarness(true);
+    // Facility outranks the user's longer window, exactly as before.
+    expect(latest().timeoutMs).toBe(2 * 60_000);
+    act(() => { jest.advanceTimersByTime(2 * 60_000); });
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('cannot switch off a lock the operator made mandatory', () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.lock': false, 'security.idle': '5 min' });
+    // screenLockRequired is what makes the lock non-negotiable — a shared
+    // workstation's protection is not an individual's to withdraw.
+    const { latest } = mountHarness(true, undefined, 2, { screenLockRequired: true });
+    expect(latest().timeoutMs).toBe(2 * 60_000);
+    act(() => { jest.advanceTimersByTime(2 * 60_000); });
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('a configured window alone does not make the lock mandatory', () => {
+    jest.useFakeTimers();
+    // Every install ships sessionTimeoutMinutes: 15 and lockTimeoutMinutes: 2.
+    // Treating a shipped default as enforcement would mean the switch never
+    // worked anywhere.
+    setSettings({ ...DEFAULT_FACILITY_SETTINGS, lockTimeoutMinutes: 2 });
+    setRoleSettings({ 'security.lock': false, 'security.idle': '5 min' });
+    const { latest } = mountHarness(true, 30, 15);
+    act(() => { jest.advanceTimersByTime(60 * 60_000); });
+    expect(latest().isLocked).toBe(false);
+  });
+
+  it('takes the switch live without a remount', () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.lock': true, 'security.idle': '5 min' });
+    const { latest } = mountHarness(true);
+    act(() => { setRoleSettings({ 'security.lock': false }); });
+    act(() => { jest.advanceTimersByTime(60 * 60_000); });
+    expect(latest().isLocked).toBe(false);
+  });
+
+  it('an account with no stored switch keeps the lock its window describes', () => {
+    jest.useFakeTimers();
+    // Every role spec seeds `security.idle`; nothing seeded the switch before
+    // it existed, and that must not read as "off".
+    setRoleSettings({ 'security.idle': '10 min' });
+    const { latest } = mountHarness(true);
+    act(() => { jest.advanceTimersByTime(10 * 60_000); });
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('preserves the retired Off choice for an account with no stored switch', () => {
+    jest.useFakeTimers();
+    setRoleSettings({ 'security.idle': 'Off' });
+    const { latest } = mountHarness(true, undefined, 2);
+    act(() => { jest.advanceTimersByTime(60 * 60_000); });
+    expect(latest().isLocked).toBe(false);
+  });
+});
+
+describe('policyLockMinutes', () => {
+  it('is undefined when no admin layer sets a window', () => {
+    expect(policyLockMinutes(0, undefined, undefined)).toBeUndefined();
+    expect(policyLockMinutes()).toBeUndefined();
+  });
+
+  it('prefers the facility window over the org one', () => {
+    expect(policyLockMinutes(5, 30)).toBe(5);
+    expect(policyLockMinutes(30, 5)).toBe(30);
+  });
+
+  it('falls back to the org window when the facility sets none', () => {
+    expect(policyLockMinutes(0, 20)).toBe(20);
+  });
+
+  it('caps a tenant window at the platform ceiling, never extends it', () => {
+    expect(policyLockMinutes(30, undefined, 10)).toBe(10);
+    expect(policyLockMinutes(5, undefined, 10)).toBe(5);
+  });
+
+  it('is the platform ceiling on its own when nothing else is configured', () => {
+    expect(policyLockMinutes(0, 0, 15)).toBe(15);
+  });
+});
+
+describe('idleChoiceMinutes', () => {
+  it('reads a window off the stored choice', () => {
+    expect(idleChoiceMinutes('5 min')).toBe(5);
+    expect(idleChoiceMinutes('30 min')).toBe(30);
+  });
+
+  it('names no window for the retired "Off" choice, so Settings can offer the switch instead', () => {
+    expect(idleChoiceMinutes('Off')).toBeUndefined();
+    expect(idleChoiceMinutes('off')).toBeUndefined();
+  });
+
+  it('names no window for an empty or unparseable value', () => {
+    expect(idleChoiceMinutes('')).toBeUndefined();
+    expect(idleChoiceMinutes('soon')).toBeUndefined();
+    expect(idleChoiceMinutes('0 min')).toBeUndefined();
+  });
+});
+
+describe('lockIsMandatory', () => {
+  it('is true only where the operator explicitly required the lock', () => {
+    expect(lockIsMandatory({ screenLockRequired: true })).toBe(true);
+  });
+
+  it('is false for a deployment that never set it, so the switch stays a real control', () => {
+    expect(lockIsMandatory()).toBe(false);
+    expect(lockIsMandatory({})).toBe(false);
+    expect(lockIsMandatory({ screenLockRequired: false })).toBe(false);
   });
 });
