@@ -54,6 +54,10 @@ function governingKeys(item: NotificationItem): string[] {
     case 'visit':
       // Doctor/nurse: "My patients' visit updates" — the per-stage feed.
       return ['notify.visitUpdates'];
+    case 'message':
+      // Conversation-level mute state governs message alerts. There is no
+      // second role setting that can contradict the choice made in Messages.
+      return [];
     default:
       return [];
   }

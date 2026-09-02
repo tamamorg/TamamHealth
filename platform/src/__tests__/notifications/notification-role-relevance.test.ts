@@ -11,16 +11,18 @@
 import { isKindRelevantToRole, type NotificationKind } from '@/modules/communication/notifications/notification-scope';
 
 const ALL_KINDS: NotificationKind[] = [
-  'alert', 'triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'transfer', 'visit',
+  'alert', 'triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'transfer', 'visit', 'message',
 ];
 
 describe('kinds that must never be narrowed by role', () => {
-  it('outbreak alerts and transfers reach every role', () => {
+  it('outbreak alerts, addressed transfers, and personal messages reach every role', () => {
     // Outbreaks are universally safety-relevant; transfers are addressed to a
-    // specific user by construction. Both stay on for every role.
+    // specific user by construction. Messages are participant-scoped. All
+    // three stay on for every role.
     for (const role of ['pharmacist', 'cashier', 'hrio', 'super_admin', 'org_admin', 'medical_biller']) {
       expect(isKindRelevantToRole('alert', role)).toBe(true);
       expect(isKindRelevantToRole('transfer', role)).toBe(true);
+      expect(isKindRelevantToRole('message', role)).toBe(true);
     }
   });
 
@@ -77,6 +79,7 @@ describe('platform and org administrators keep only what they can act on', () =>
   it.each(['super_admin', 'org_admin'] as const)('%s receives alerts and transfers, not clinical operations', (role) => {
     expect(isKindRelevantToRole('alert', role)).toBe(true);
     expect(isKindRelevantToRole('transfer', role)).toBe(true);
+    expect(isKindRelevantToRole('message', role)).toBe(true);
     for (const kind of ['triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'visit'] as const) {
       expect(isKindRelevantToRole(kind, role)).toBe(false);
     }

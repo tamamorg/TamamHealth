@@ -30,7 +30,7 @@ import type { UserRole } from '@/lib/db-types';
  */
 export type NotificationKind =
   | 'alert' | 'triage' | 'referral' | 'lab'
-  | 'appointment' | 'prescription' | 'progress' | 'transfer' | 'visit';
+  | 'appointment' | 'prescription' | 'progress' | 'transfer' | 'visit' | 'message';
 
 /**
  * Roles that carry a named panel of patients, and so get a feed narrowed to it.
@@ -60,6 +60,10 @@ const KIND_RELEVANT_ROLES: Record<NotificationKind, readonly UserRole[] | 'all'>
   // Addressed to a specific user (accept this transfer / your transfer was
   // decided) — per-user by construction, so every role keeps it.
   transfer: 'all',
+  // Staff messages are narrowed to conversations the signed-in user belongs
+  // to before they enter the feed. That makes the source personal by
+  // construction, like transfers addressed to one user.
+  message: 'all',
   // The shared waiting room: whoever can pick a patient up, plus the desk
   // that manages the queue.
   triage: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',

@@ -51,6 +51,56 @@ export async function getConversationMessages(conversationId: string): Promise<M
 
 interface Participant { id: string; name: string }
 
+export interface UnreadStaffMessageRow {
+  conversation: ConversationDoc;
+  message: MessageDoc;
+}
+
+/**
+ * Select unread incoming staff messages from conversations the viewer belongs
+ * to. Kept pure so notification behavior can be tested without a database.
+ */
+export function selectUnreadStaffMessages(
+  conversations: ConversationDoc[],
+  messages: MessageDoc[],
+  userId: string,
+): UnreadStaffMessageRow[] {
+  const conversationById = new Map(
+    conversations
+      .filter(conversation => !conversation.mutedBy?.includes(userId))
+      .map(conversation => [conversation._id, conversation] as const),
+  );
+
+  return messages
+    .filter(message =>
+      message.direction === 'staff_to_staff'
+      && !!message.conversationId
+      && conversationById.has(message.conversationId)
+      && message.fromDoctorId !== userId
+      && !message.readBy?.includes(userId)
+      && !message.deleted,
+    )
+    .map(message => ({
+      conversation: conversationById.get(message.conversationId!)!,
+      message,
+    }))
+    .sort((a, b) => (b.message.sentAt || b.message.createdAt || '')
+      .localeCompare(a.message.sentAt || a.message.createdAt || ''));
+}
+
+/** Unread staff messages for the bell, already tenant- and participant-scoped. */
+export async function getUnreadStaffMessagesForUser(
+  userId: string,
+  scope?: DataScope,
+): Promise<UnreadStaffMessageRow[]> {
+  const conversations = await getConversationsForUser(userId, scope);
+  if (conversations.length === 0) return [];
+
+  let messages = await findByType<MessageDoc>(messagesDB(), 'message');
+  if (scope) messages = filterByScope(messages, scope);
+  return selectUnreadStaffMessages(conversations, messages, userId);
+}
+
 /** Find an existing 1:1 conversation between two users, or create one. */
 export async function getOrCreateDM(
   me: Participant,

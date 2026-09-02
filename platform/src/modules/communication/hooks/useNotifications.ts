@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/context';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
-import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB, encountersDB } from '@/lib/db';
+import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB, encountersDB, messagesDB, conversationsDB } from '@/lib/db';
 import { isForViewer, isKindRelevantToRole } from '@/modules/communication/notifications/notification-scope';
 import type { NotificationKind } from '@/modules/communication/notifications/notification-scope';
 // The shapes moved to `notifications/types.ts` so a server module can name a
@@ -41,7 +41,7 @@ const nameFirst = (name: string | null | undefined, event: string) =>
  *   - lab results (critical + newly ready to review)
  *   - appointments awaiting approval + patients checked in and waiting
  *   - prescriptions awaiting dispensing
- * Messaging is intentionally excluded — chat has its own unread indicator.
+ *   - unread staff messages from conversations this user belongs to
  * Loads per scope; the panel can call reload(), and referral/appointment
  * writes live-refresh the badge.
  */
@@ -147,6 +147,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // Whole sources that are not this role's job are skipped before their
     // database read — see KIND_RELEVANT_ROLES in lib/notification-scope.ts.
     const relevant = (kind: NotificationKind) => isKindRelevantToRole(kind, currentUser?.role);
+
+    // Staff messaging is personal by construction: the service only returns
+    // incoming unread messages from conversations this user belongs to, and
+    // honors the conversation's mute setting before rows reach the bell.
+    if (relevant('message') && currentUser?._id) try {
+      const { getUnreadStaffMessagesForUser } = await import('@/modules/communication/services/conversation-service');
+      const { messageNotificationItems } = await import('@/modules/communication/notifications/message-items');
+      const unreadMessages = await getUnreadStaffMessagesForUser(currentUser._id, scope);
+      out.push(...messageNotificationItems(unreadMessages, perSourceLimit));
+    } catch { /* offline */ }
 
     if (relevant('referral')) try {
       const { getAllReferrals } = await import('@/lib/services/referral-service');
@@ -526,6 +536,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // Every encounter transition re-mints a visit item; without this feed the
       // "ready — call them in" rung only surfaces on the next manual reload.
       isKindRelevantToRole('visit', role) ? encountersDB() : null,
+      isKindRelevantToRole('message', role) ? messagesDB() : null,
+      isKindRelevantToRole('message', role) ? conversationsDB() : null,
     ].filter((db): db is NonNullable<typeof db> => db !== null)
       .map(db => db.changes({ since: 'now', live: true, include_docs: false })
         .on('change', () => reload.trigger())

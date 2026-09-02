@@ -93,6 +93,7 @@ async function primeNotificationIndexes(): Promise<void> {
     { getAllAppointments },
     { getAllConsultationProgress },
     { getAllPrescriptions },
+    { getConversationsForUser },
   ] = await Promise.all([
     import('@/lib/services/referral-service'),
     import('@/lib/services/patient-transfer-service'),
@@ -102,6 +103,7 @@ async function primeNotificationIndexes(): Promise<void> {
     import('@/lib/services/appointment-service'),
     import('@/lib/services/consultation-progress-service'),
     import('@/lib/services/prescription-service'),
+    import('@/modules/communication/services/conversation-service'),
   ]);
   await getAllReferrals(scope);
   await getAllTransfers(scope, CURRENT_USER._id);
@@ -111,6 +113,7 @@ async function primeNotificationIndexes(): Promise<void> {
   await getAllAppointments(scope);
   await getAllConsultationProgress(scope);
   await getAllPrescriptions(scope);
+  await getConversationsForUser(CURRENT_USER._id, scope);
 }
 
 beforeAll(async () => {

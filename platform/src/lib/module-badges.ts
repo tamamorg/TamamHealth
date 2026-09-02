@@ -19,6 +19,7 @@ export const MODULE_BADGE_SOURCES: Readonly<Record<string, readonly Notification
   '/lab': ['lab'],
   '/pharmacy': ['prescription'],
   '/appointments': ['appointment'],
+  '/messages': ['message'],
   '/surveillance': ['alert'],
   // Patients waiting to be picked up — the triage queue and the shared
   // consultation progress board are both "someone is waiting on a clinician".

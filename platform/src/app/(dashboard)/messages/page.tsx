@@ -3,6 +3,7 @@
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -76,6 +77,7 @@ const NON_MESSAGEABLE_ROLES: UserRole[] = ['super_admin', 'government'];
 /* ─────────────────────────── page ─────────────────────────── */
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
   const chat = useStaffChat();
   const {
     currentUser, conversations, messages, activeId, setActiveId,
@@ -119,7 +121,17 @@ export default function MessagesPage() {
     [users, meId],
   );
 
-  useEffect(() => { if (!activeId && conversations.length > 0) setActiveId(conversations[0]._id); }, [conversations, activeId, setActiveId]);
+  const requestedConversationId = searchParams.get('conversation');
+  useEffect(() => {
+    const requested = requestedConversationId
+      ? conversations.find(conversation => conversation._id === requestedConversationId)
+      : null;
+    if (requested && activeId !== requested._id) {
+      setActiveId(requested._id);
+      return;
+    }
+    if (!activeId && conversations.length > 0) setActiveId(conversations[0]._id);
+  }, [conversations, activeId, requestedConversationId, setActiveId]);
   useEffect(() => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages, activeId]);
   useEffect(() => { setMenuOpen(false); setEditingId(null); setReplyTo(null); }, [activeId]);
 
