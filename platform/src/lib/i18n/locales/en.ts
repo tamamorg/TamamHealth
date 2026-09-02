@@ -6448,6 +6448,8 @@ const en: TranslationMap = {
   'ward.selectPatient': 'Select patient…',
   'ward.selectPatientAndWard': 'Select a patient and a ward',
   'ward.selectWard': 'Select ward…',
+  'ward.selectWardFirst': 'Select a ward first',
+  'ward.noWardsAvailable': 'No wards with free beds',
   'ward.severity': 'Severity',
   'ward.severityCritical': 'Critical',
   'ward.severityMild': 'Mild',

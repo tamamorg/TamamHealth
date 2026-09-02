@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
@@ -11,7 +11,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import type { AdmissionDoc } from '@/lib/db-types-ward';
+import type { AdmissionDoc, WardDoc } from '@/lib/db-types-ward';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 import TransferPatientModal from '@/components/patients/TransferPatientModal';
@@ -139,6 +139,23 @@ export default function WardsPage() {
   const availableBedsForWard = useMemo(
     () => admitForm.wardId ? beds.filter(b => b.wardId === admitForm.wardId && b.status === 'available') : [],
     [beds, admitForm.wardId],
+  );
+  // Free beds for a ward, resilient to two data models: a facility that tracks
+  // individual bed documents (count the available ones) and one that keeps only
+  // a denormalised `availableBeds` tally on the ward. Relying on the tally alone
+  // hid every ward whose count had drifted to 0 while beds were in fact free —
+  // which is what left the admit modal's ward list empty and "ward assignment"
+  // looking broken.
+  const wardFreeBeds = useCallback((w: WardDoc) => {
+    const hasBedDocs = beds.some(b => b.wardId === w._id);
+    return hasBedDocs
+      ? beds.filter(b => b.wardId === w._id && b.status === 'available').length
+      : (w.availableBeds ?? 0);
+  }, [beds]);
+  // Wards a patient can actually be admitted to right now.
+  const admittableWards = useMemo(
+    () => facilityWards.filter(w => w.isActive !== false && wardFreeBeds(w) > 0),
+    [facilityWards, wardFreeBeds],
   );
   const availablePlacementBeds = useMemo(
     () => placementWardId
@@ -308,17 +325,6 @@ export default function WardsPage() {
               </>
             }
           />
-          <ol className="ward-journey" aria-label={t('ward.journeyLabel')}>
-            {[
-              ['1', t('ward.journeyAdmit')],
-              ['2', t('ward.journeyPlace')],
-              ['3', t('ward.journeyTreat')],
-              ['4', t('ward.journeyHandoff')],
-              ['5', t('ward.journeyDischarge')],
-            ].map(([step, label]) => (
-              <li key={step}><span>{step}</span>{label}</li>
-            ))}
-          </ol>
           {canManageBeds && cleaningBeds.length > 0 && (
             <section className="ward-turnover" aria-label={t('ward.turnoverTitle')}>
               <div>
@@ -468,23 +474,26 @@ export default function WardsPage() {
                     <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.wardRequired')}</label>
                     <Select value={admitForm.wardId} onChange={e => setAdmitForm({ ...admitForm, wardId: e.target.value, bedId: '' })}>
                       <option value="">{t('ward.selectWard')}</option>
-                      {facilityWards.filter(w => w.availableBeds > 0).map(w => (
-                        <option key={w._id} value={w._id}>{t('ward.wardFree', { name: w.name, count: w.availableBeds })}</option>
+                      {admittableWards.length === 0 && (
+                        <option value="" disabled>{t('ward.noWardsAvailable')}</option>
+                      )}
+                      {admittableWards.map(w => (
+                        <option key={w._id} value={w._id}>{t('ward.wardFree', { name: w.name, count: wardFreeBeds(w) })}</option>
                       ))}
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 items-center">
+                <div className="grid grid-cols-2 gap-3 items-end">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.bedNumber')}</label>
                     <Select value={admitForm.bedId} onChange={e => setAdmitForm({ ...admitForm, bedId: e.target.value })} disabled={!admitForm.wardId}>
-                      <option value="">{admitForm.wardId ? t('ward.optional') : t('ward.selectWard')}</option>
+                      <option value="">{admitForm.wardId ? t('ward.optional') : t('ward.selectWardFirst')}</option>
                       {availableBedsForWard.map(b => (
                         <option key={b._id} value={b._id}>{b.bedNumber}</option>
                       ))}
                     </Select>
                   </div>
-                  <label className="flex items-center gap-2 mt-5 text-sm" style={{ color: 'var(--text-primary)' }}>
+                  <label className="flex items-center gap-2 h-10 text-sm" style={{ color: 'var(--text-primary)' }}>
                     <input type="checkbox" checked={admitForm.isolationRequired} onChange={e => setAdmitForm({ ...admitForm, isolationRequired: e.target.checked })} />
                     {t('ward.isolationRequired')}
                   </label>

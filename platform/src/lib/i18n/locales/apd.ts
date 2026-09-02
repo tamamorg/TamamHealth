@@ -6440,6 +6440,8 @@ const apd: TranslationMap = {
   'ward.selectPatient': 'اختار العيان…',
   'ward.selectPatientAndWard': 'اختار عيان وعنبر',
   'ward.selectWard': 'اختار العنبر…',
+  'ward.selectWardFirst': 'اختار العنبر الأول',
+  'ward.noWardsAvailable': 'ما في عنابر فيها سراير فاضية',
   'ward.severity': 'الشدة',
   'ward.severityCritical': 'حرج',
   'ward.severityMild': 'خفيف',

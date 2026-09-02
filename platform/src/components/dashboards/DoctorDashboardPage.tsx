@@ -140,11 +140,28 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     }
   }
 
+  // The triage handoff names its provider on the TRIAGE record
+  // (`assignedProviderId`) — the patient document's `assignedDoctor` is
+  // reception's field and is deliberately not written at triage (the
+  // care-team two-doc model). "Mine" must therefore read BOTH: reading only
+  // `patient.assignedDoctor` meant a walk-in the nurse handed to THIS
+  // clinician was filtered off their board by the default "only my patients"
+  // toggle, while the front desk showed the same visit In Facility — the two
+  // boards disagreed about who was in the building.
+  const triageAssignedToMe = patients.filter(p =>
+    !p.assignedDoctor
+    && latestActiveTriageByPatient.get(p._id)?.assignedProviderId === currentUser._id);
+
   // A patient with BOTH an assignedDoctor (any doctor, not just this viewer)
   // AND an active triage only ever shows up via `myAssigned` above — the
   // `!p.assignedDoctor` guard here is what keeps them from ALSO appearing as
-  // an unclaimed row, i.e. showing twice.
-  const unclaimedTriaged = patients.filter(p => latestActiveTriageByPatient.has(p._id) && !p.assignedDoctor);
+  // an unclaimed row, i.e. showing twice. A triage whose handoff already
+  // names a provider is NOT unclaimed either: it surfaces on that provider's
+  // board (above), not as a claimable row on every doctor's.
+  const unclaimedTriaged = patients.filter(p => {
+    const tr = latestActiveTriageByPatient.get(p._id);
+    return !!tr && !p.assignedDoctor && !tr.assignedProviderId;
+  });
 
   // Worklist rows: patients assigned to the signed-in clinician. Ward/division
   // are sampled in demo mode for visual richness and left blank in production.
@@ -169,6 +186,34 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     division: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] : '',
     triagePriority: triagePriorityByPatient[p._id],
   }));
+
+  // Rows for the patients a nurse handed to THIS clinician at triage. Shaped
+  // like `assignedRows` — `assignedDoctor` carries the viewer's id (from the
+  // triage handoff, a view-model fact, never written back to the patient
+  // document) so the row reads as assigned care AND survives
+  // buildUnifiedPatientRows' "only my patients" filter.
+  const triageAssignedRows = triageAssignedToMe.map((p, i) => {
+    const tr = latestActiveTriageByPatient.get(p._id);
+    return {
+      _id: p._id,
+      firstName: p.firstName,
+      surname: p.surname,
+      photoUrl: p.photoUrl,
+      payorInfo: p.payorInfo,
+      name: patientDisplayName(p),
+      age: patientAge(p),
+      gender: p.gender?.[0] || (IS_DEMO ? (i % 2 === 0 ? 'M' : 'F') : ''),
+      id: p.hospitalNumber,
+      admittedAt: tr?.triagedAt || p.registeredAt || p.registrationDate,
+      ward: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] + '-' + (i + 1) : '',
+      doctor: currentUser.name || '',
+      assignedDoctor: currentUser._id,
+      assignedDoctorName: tr?.assignedProviderName || currentUser.name,
+      nurse: p.assignedNurseName || tr?.triagedByName || '',
+      division: IS_DEMO ? DEPARTMENTS[i % DEPARTMENTS.length] : '',
+      triagePriority: triagePriorityByPatient[p._id] || tr?.priority,
+    };
+  });
 
   // Same row shape as `assignedRows`, but for a triaged patient nobody has
   // claimed yet: no `doctor`/`assignedDoctor`. EhrClinicalDashboard already
@@ -390,7 +435,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   ];
 
   return {
-    patients: [...assignedRows, ...unassignedRows],
+    patients: [...assignedRows, ...triageAssignedRows, ...unassignedRows],
     appointments: myAppts,
     outstanding: outstandingItems,
   };
