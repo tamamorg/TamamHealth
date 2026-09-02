@@ -204,8 +204,16 @@ export async function assertNoBookingConflicts(
   }
 
   if (data.patientId) {
+    // Both patient checks are scoped to the SAME FACILITY when the new
+    // booking names one — see the sameDayOpen comment below for why. The
+    // slot-overlap check here originally stayed org-wide, which the walk-in
+    // test only exposed when the Juba wall clock drifted into the other
+    // facility's booked window: a walk-in at facility B at 08:09 was
+    // "Duplicate booking"-blocked by an open 08:00 booking at facility A
+    // that this desk cannot see or act on.
     const existing = (await getAppointmentsByPatient(data.patientId))
-      .filter(a => a.orgId === data.orgId);
+      .filter(a => a.orgId === data.orgId
+        && (!data.facilityId || !a.facilityId || a.facilityId === data.facilityId));
     const duplicate = existing.find(overlaps);
     if (duplicate) {
       throw new BookingConflictError(`Duplicate booking: ${data.patientName || 'this patient'} already has an appointment at ${duplicate.appointmentTime} on ${duplicate.appointmentDate}${duplicate.providerName ? ` with ${duplicate.providerName}` : ''}`);
@@ -237,7 +245,6 @@ export async function assertNoBookingConflicts(
     const sameDayOpen = existing.find(a =>
       a._id !== excludeAppointmentId &&
       a.appointmentDate === data.appointmentDate &&
-      (!data.facilityId || !a.facilityId || a.facilityId === data.facilityId) &&
       holdsSlot(a));
     if (sameDayOpen) {
       throw new BookingConflictError(
