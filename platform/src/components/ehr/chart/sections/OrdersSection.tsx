@@ -123,7 +123,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
 
   const filterSlot = (
     <label className="omrs-section-filter">
-      Order type:
+      <span className="omrs-filter-caption">Order type:</span>
       <Select value={typeFilter} onChange={e => { setTypeFilter(e.target.value as OrderTypeFilter); setPage(1); }}>
         <option value="all">All</option>
         <option value="drug">Drug</option>

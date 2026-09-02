@@ -895,6 +895,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   color: var(--ehr-text-body, #3C5574);
@@ -905,12 +906,47 @@
   cursor: pointer;
 }
 
-.omrs-section-filter select {
-  background: none;
-  border: none;
+/* The caption half of the pill defers to the chosen value. */
+.omrs-section-filter .omrs-filter-caption {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ehr-muted, #5D728B);
+}
+
+/* The pill is the control; the select inside it must dissolve into it. The
+   chart page's blanket `select` chrome (globals.css .ehr-chart-page select,
+   border + background shorthand, both !important) would otherwise draw a
+   second box inside the pill — and its `background:` shorthand also wipes the
+   global chevron image, leaving the value looking like a text box. Doubled
+   selectors out-rank those rules regardless of stylesheet order. */
+.ehr-chart-page .omrs-section-filter select,
+.omrs-root .omrs-section-filter select {
+  width: auto;
+  min-height: 0;
+  border: none !important;
+  border-radius: 0 !important;
+  background:
+    transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right center / 14px !important;
+  padding: 0 18px 0 0;
   font: inherit;
-  color: inherit;
+  font-weight: 700;
+  text-transform: none;
   cursor: pointer;
+}
+
+/* Focus lives on the pill, not the embedded select. */
+.ehr-chart-page .omrs-section-filter select:focus,
+.omrs-root .omrs-section-filter select:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.omrs-section-filter:focus-within {
+  border-color: var(--ehr-blue, #0F62FE);
+  box-shadow: 0 0 0 2px var(--ehr-focus-ring, rgba(15, 98, 254, 0.16));
 }
 
 .omrs-section-toggle {
