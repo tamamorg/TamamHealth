@@ -12,7 +12,7 @@ import PouchDB from 'pouchdb-browser';
 import type { SyncDirection } from './sync-config';
 import { enqueueConflict, HIGH_RISK_RESOURCES } from '../services/conflict-service';
 import { addBreadcrumb, captureException } from '../observability';
-import { markDocsConflicted, markDocsSynced } from './offline-metadata';
+import { healStaleOfflineMetadata, markDocsConflicted, markDocsSynced } from './offline-metadata';
 import { apiFetch } from '../api-fetch';
 
 export type SyncState = 'idle' | 'connecting' | 'active' | 'paused' | 'error' | 'denied';
@@ -166,6 +166,11 @@ export function buildPushFilter(
 
 const RETRY_DELAYS = [1000, 2000, 5000, 10000, 30000]; // escalating backoff
 
+/** Minimum spacing between stale-metadata repair passes (see the push
+ *  'paused' handler). Long enough that the allDocs scan is a non-event,
+ *  short enough that stale stamps re-imported by pull don't linger. */
+const HEAL_INTERVAL_MS = 30 * 60_000;
+
 export class SyncService {
   private localDB: PouchDB.Database;
   private remoteDB: PouchDB.Database;
@@ -188,6 +193,12 @@ export class SyncService {
   private oneShotReps = new Set<PouchDB.Replication.Replication<object>>();
   private stopped = true;
   private retryCount = 0;
+  // Throttle for the stale-metadata repair pass (see the push 'paused'
+  // handler). Not once-per-session: stale stamps are BAKED INTO server
+  // revisions from the pre-fix era, so a pull can re-import one after a
+  // repair ran — re-running on idle, spaced out, converges the fleet (each
+  // healed doc pushes a clean revision and stops re-importing).
+  private lastHealAt = 0;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private _status: SyncStatus = {
     state: 'idle',
@@ -267,7 +278,7 @@ export class SyncService {
       // and only connects to POST when there's a local change, so writes reach
       // the server immediately without contributing to connection pressure.
       this.pushRep = this.localDB.replicate.to(this.remoteDB, { ...liveBase, ...pushDir });
-      this.attachListeners(this.pushRep);
+      this.attachListeners(this.pushRep, 'push');
     };
 
     const startPull = () => {
@@ -279,7 +290,7 @@ export class SyncService {
           ...liveBase,
           ...(this.selector ? { selector: this.selector } : {}),
         });
-        this.attachListeners(this.pullRep);
+        this.attachListeners(this.pullRep, 'pull');
       }
     };
 
@@ -288,7 +299,7 @@ export class SyncService {
       startPull();
     } else if (this.direction === 'push') {
       const rep = this.localDB.replicate.to(this.remoteDB, { ...liveBase, ...pushDir });
-      this.attachListeners(rep);
+      this.attachListeners(rep, 'push');
       this.replication = rep;
     } else {
       startPull();
@@ -310,7 +321,7 @@ export class SyncService {
     // Reuse the change handler for status + conflict surfacing, but NOT the
     // error→scheduleRetry path (a one-shot's error just schedules the next poll).
     (rep as unknown as { on: (ev: string, cb: (info: unknown) => void) => void })
-      .on('change', (info: unknown) => this.handleReplicationChange(info));
+      .on('change', (info: unknown) => this.handleReplicationChange(info, 'pull'));
     const done = () => {
       if (this.pullCycleRep === rep) this.pullCycleRep = null;
       if (!this.stopped) {
@@ -468,12 +479,21 @@ export class SyncService {
 
   // Status + conflict-surfacing for a replication 'change' event. Shared by
   // the live replications and the periodic pull cycle.
-  private handleReplicationChange(info: unknown): void {
+  //
+  // `repDirection` is passed by whoever attached the listener, NEVER sniffed
+  // off the event: replicate.to()/from() change events carry no `direction`
+  // field (only db.sync() events do, and this service does not use db.sync).
+  // The old sniffing had both halves wrong — `info.direction === 'push'` was
+  // never true, so a bidirectional service never marked its pushed docs
+  // synced ("Pending sync" forever); and the `direction === undefined`
+  // fallback treated PUSH changes as pull, so the conflict stamp re-ran on
+  // its own replicated writes and churned conflicted docs by the thousands
+  // of revisions.
+  private handleReplicationChange(info: unknown, repDirection: 'push' | 'pull'): void {
     this.retryCount = 0;
     const changeInfo = info as {
       docs_written?: number;
       docs_read?: number;
-      direction?: 'push' | 'pull';
       docs?: Array<{ _id?: string; _rev?: string }>;
       change?: { docs_read?: number; docs_written?: number; docs?: Array<{ _id?: string; _rev?: string }> };
     };
@@ -487,47 +507,64 @@ export class SyncService {
       docsRead: this._status.docsRead + docsRead,
     });
 
-    if ((changeInfo.direction === 'push' || this.direction === 'push') && changedDocs.length > 0) {
+    if (changedDocs.length === 0) return;
+
+    if (repDirection === 'push') {
       void markDocsSynced(this.localDB, changedDocs).catch(err =>
         captureException(err, { tag: 'sync.markDocsSynced' })
       );
+      return;
     }
 
-    // Conflict-queue wiring: when sync replication writes a doc into the
+    // Conflict-queue wiring: when pull replication writes a doc into the
     // local DB, PouchDB may have created sibling revisions (a `_conflicts`
     // array on the live head). For high-risk clinical types — allergies,
     // referrals, discharge status, adverse events — silently letting
     // most-recent-rev wins erases real edits that a clinician needs to see.
     // Surface those to the conflict queue so an admin reconciles them.
-    // Pull-direction changes carry the docs; ignore push-direction.
-    const docsLanded =
-      changeInfo.change?.docs ??
-      (changeInfo.direction === 'pull' || changeInfo.direction === undefined
-        ? changeInfo.docs
-        : undefined);
-    if (docsLanded && docsLanded.length > 0) {
-      // Fire-and-forget; never block replication on conflict-queue writes.
-      // Per-doc errors are reported inside surfaceHighRiskConflicts; this
-      // outer catch handles any failure of the call as a whole.
-      void surfaceHighRiskConflicts(this.localDB, docsLanded).catch(err =>
-        captureException(err, { tag: 'sync.surfaceHighRiskConflicts.outer' })
-      );
-      void markDocsConflicted(this.localDB, docsLanded).catch(err =>
-        captureException(err, { tag: 'sync.markDocsConflicted' })
-      );
-    }
+    // Fire-and-forget; never block replication on conflict-queue writes.
+    // Per-doc errors are reported inside surfaceHighRiskConflicts; this
+    // outer catch handles any failure of the call as a whole.
+    void surfaceHighRiskConflicts(this.localDB, changedDocs).catch(err =>
+      captureException(err, { tag: 'sync.surfaceHighRiskConflicts.outer' })
+    );
+    void markDocsConflicted(this.localDB, changedDocs).catch(err =>
+      captureException(err, { tag: 'sync.markDocsConflicted' })
+    );
+    // A doc that just ARRIVED BY PULL is on the server by definition, so a
+    // stale pending/failed stamp baked into it (written by some other device
+    // in the pre-fix era) is a lie the moment it lands — flip it here,
+    // doc-targeted, instead of waiting for the next full heal sweep.
+    // markDocsSynced's own guards make this safe: it skips docs already
+    // marked synced, and skips docs with live `_conflicts` — and a pulled
+    // rev can never cleanly replace an unpushed local edit (PouchDB keeps
+    // both as a conflict), so an actually-unsynced local write is never
+    // masked.
+    void markDocsSynced(this.localDB, changedDocs).catch(err =>
+      captureException(err, { tag: 'sync.markDocsSynced.pull' })
+    );
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private attachListeners(rep: any): void {
-    rep.on('change', (info: unknown) => this.handleReplicationChange(info));
+  private attachListeners(rep: any, repDirection: 'push' | 'pull'): void {
+    rep.on('change', (info: unknown) => this.handleReplicationChange(info, repDirection));
 
-    rep.on('paused', () => {
+    rep.on('paused', (err: unknown) => {
       // Paused means replication is up to date (or went offline)
       this.updateStatus({
         state: 'paused',
         lastSync: this._status.lastSync || new Date().toISOString(),
       });
+      // Push idle with no error = every local write is on the server. The one
+      // moment a stale "pending" stamp is provably a lie — repair them.
+      // See healStaleOfflineMetadata for why docs the push filter excludes
+      // and docs with live conflicts are left alone.
+      if (repDirection === 'push' && !err && Date.now() - this.lastHealAt > HEAL_INTERVAL_MS) {
+        this.lastHealAt = Date.now();
+        void healStaleOfflineMetadata(this.localDB, this.pushFilter).catch(e =>
+          captureException(e, { tag: 'sync.healStaleOfflineMetadata' })
+        );
+      }
     });
 
     rep.on('active', () => {
