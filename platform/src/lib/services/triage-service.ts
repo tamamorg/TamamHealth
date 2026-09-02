@@ -9,6 +9,7 @@ import { findByType } from './db-query';
 import { jubaDate } from '../time-juba';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { getTriageVitalWarnings, isLowerTriagePriority, parseStrictVitalNumber, recommendTriagePriority, validateTriageVitals } from '../clinical/vitals';
+import { isNoAllergySentinel } from '../clinical-roles';
 import { highestTriagePriority, priorityFromIittCriteria } from '../clinical/iitt';
 import { patientAgeYearsExact } from '../patient-utils';
 
@@ -268,6 +269,86 @@ export interface CreateTriageOptions {
   scope?: DataScope;
 }
 
+/**
+ * Merge the triage form's free-text "known allergies" into the patient's
+ * canonical `allergies` list — the one source the chart header banner,
+ * AllergiesSection and the prescribing safety checks all read. Without this
+ * bridge, an allergy a nurse captured at triage lived only on the triage
+ * record and the chart header kept claiming the patient had none.
+ *
+ * Returns the new list, or `null` when there is nothing to write:
+ *   - the text parses to no real allergen ("", "none", "NKDA", …) — a
+ *     sentinel must never overwrite or dilute recorded allergies;
+ *   - every parsed allergen is already on the list (case-insensitively).
+ * Additive only: existing entries are never removed, EXCEPT no-allergy
+ * sentinel entries ("None known"), which are contradicted by the real
+ * allergen being added alongside them.
+ */
+export function mergeTriageAllergies(
+  existing: string[] | undefined,
+  knownAllergies: string | undefined,
+): string[] | null {
+  const incoming = (knownAllergies || '')
+    .split(/[,;\n]/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !isNoAllergySentinel(s));
+  if (incoming.length === 0) return null;
+
+  const kept = (existing || []).filter(a => a && !isNoAllergySentinel(a));
+  const have = new Set(kept.map(a => a.trim().toLowerCase()));
+  const additions: string[] = [];
+  for (const allergen of incoming) {
+    const key = allergen.toLowerCase();
+    if (have.has(key)) continue;
+    have.add(key);
+    additions.push(allergen);
+  }
+  if (additions.length === 0 && kept.length === (existing?.length ?? 0)) return null;
+  return [...kept, ...additions];
+}
+
+/** Best-effort follow-up to a triage save: land the captured allergies on the
+ *  patient document so the chart reflects them immediately. Never fails the
+ *  triage write — the assessment must save even if the patient doc is briefly
+ *  in conflict — but a lost merge is made visible via the audit trail's
+ *  absence and the console. */
+async function applyTriageAllergiesToPatient(
+  patientId: string,
+  knownAllergies: string | undefined,
+  actor?: TriageActor,
+): Promise<void> {
+  if (!knownAllergies || !knownAllergies.trim()) return;
+  const db = patientsDB();
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const patient = await db.get(patientId) as PatientDoc;
+      const merged = mergeTriageAllergies(patient.allergies, knownAllergies);
+      if (!merged) return;
+      try {
+        await db.put(withPendingOfflineSync({
+          ...patient,
+          allergies: merged,
+          // A real allergen contradicts a standing "no known drug
+          // allergies" attestation — clear it rather than letting the chart
+          // claim both at once.
+          noKnownDrugAllergies: patient.noKnownDrugAllergies ? false : patient.noKnownDrugAllergies,
+          updatedAt: new Date().toISOString(),
+        }));
+      } catch (error) {
+        const conflict = error as { name?: string; status?: number } | undefined;
+        if ((conflict?.name === 'conflict' || conflict?.status === 409) && attempt < 2) continue;
+        throw error;
+      }
+      await logAuditSafe('PATIENT_ALLERGIES_UPDATED', actor?.userId, actor?.username,
+        `Allergies recorded at triage merged onto patient ${patientId} (${merged.length} on file)`,
+      );
+      return;
+    }
+  } catch (err) {
+    console.error('[triage] failed to merge triage allergies onto patient', patientId, err);
+  }
+}
+
 export async function createTriage(
   data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
   options: CreateTriageOptions = {},
@@ -309,6 +390,7 @@ export async function createTriage(
     orgId: doc.orgId,
     hospitalId: doc.facilityId,
   });
+  await applyTriageAllergiesToPatient(data.patientId, data.knownAllergies, options.actor);
   return doc;
 }
 
@@ -432,6 +514,9 @@ export async function updateTriage(
       orgId: updated.orgId,
       hospitalId: updated.facilityId,
     });
+    if (typeof updates.knownAllergies === 'string') {
+      await applyTriageAllergiesToPatient(updated.patientId, updates.knownAllergies, actor);
+    }
     return updated;
   }
   throw new Error('Triage changed on another workstation. Refresh and try again.');
