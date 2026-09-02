@@ -60,6 +60,11 @@ const appointmentFallbacks: Record<AppointmentStatus, Omit<OperationalVisitState
   cancelled: { label: 'Cancelled', i18nKey: 'appointments.statusCancelled', lane: 'finished' },
 };
 
+/** The ladder's own words for one encounter status, without needing an appointment. */
+export function encounterVisitState(status: EncounterStatus): OperationalVisitState {
+  return { key: status, ...encounterStates[status] };
+}
+
 /** The encounter is authoritative once a patient arrives; appointment status is only a fallback. */
 export function resolveOperationalVisitState(
   appointment: Pick<AppointmentDoc, 'status'>,

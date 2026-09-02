@@ -30,7 +30,7 @@ import type { UserRole } from '@/lib/db-types';
  */
 export type NotificationKind =
   | 'alert' | 'triage' | 'referral' | 'lab'
-  | 'appointment' | 'prescription' | 'progress' | 'transfer';
+  | 'appointment' | 'prescription' | 'progress' | 'transfer' | 'visit';
 
 /**
  * Roles that carry a named panel of patients, and so get a feed narrowed to it.
@@ -78,6 +78,12 @@ const KIND_RELEVANT_ROLES: Record<NotificationKind, readonly UserRole[] | 'all'>
     'medical_superintendent'],
   // The dispensing queue is pharmacy work; nurses keep it for overdue doses.
   prescription: ['pharmacist', 'nurse', 'medical_superintendent'],
+  // A visit's own status updates — triaged, ready to be called in, at
+  // pharmacy, dispensed. Personal by construction: the source only emits for
+  // visits whose encounter names the viewer (see visit-updates.ts), so this
+  // list is just the coarse cut of who can BE on a care team.
+  visit: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+    'triage_nurse', 'rooming_nurse', 'medical_superintendent'],
   // Care-progress pool items (blocked / unassigned urgent / waiting for
   // provider). Tasks assigned to a specific user bypass this list — see
   // useNotifications — so a task given to a cashier still reaches them.

@@ -7,7 +7,7 @@
  * comes from. Every source gets a distinct hue (appointments use the deep
  * accent blue so they don't read the same as referrals).
  */
-import { Bell, AlertTriangle, ArrowRightLeft, FlaskConical, Calendar, Pill, ClipboardList, Activity } from '@/components/icons/lucide';
+import { Bell, AlertTriangle, ArrowRightLeft, FlaskConical, Calendar, Pill, ClipboardList, Activity, Stethoscope } from '@/components/icons/lucide';
 import type { NotificationSeverity, NotificationType } from '@/modules/communication/hooks/useNotifications';
 
 export interface NotificationMeta {
@@ -34,11 +34,15 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
   // accent — the two move a patient in different senses (ownership vs facility)
   // and must not read as the same queue at a glance.
   transfer: { icon: ArrowRightLeft, color: 'var(--category-transfer)', bg: 'var(--category-transfer-bg)', label: 'Transfers' },
+  // A visit moving along its own ladder (triaged → ready → pharmacy →
+  // dispensed) for a patient this clinician is on. The clinical deep teal keeps
+  // it apart from triage's rose (the shared waiting pool) next to it.
+  visit: { icon: Stethoscope, color: 'var(--category-clinical)', bg: 'var(--category-clinical-bg)', label: 'My visits' },
 };
 
 /** Order the source filters are presented in — urgency first, admin last. */
 export const NOTIFICATION_TYPE_ORDER: NotificationType[] = [
-  'alert', 'triage', 'lab', 'transfer', 'referral', 'appointment', 'progress', 'prescription',
+  'alert', 'triage', 'visit', 'lab', 'transfer', 'referral', 'appointment', 'progress', 'prescription',
 ];
 
 export const SEVERITY_META: Record<NotificationSeverity, { label: string; color: string; bg: string }> = {

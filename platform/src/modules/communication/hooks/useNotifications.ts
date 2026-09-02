@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/context';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
-import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB } from '@/lib/db';
+import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB, encountersDB } from '@/lib/db';
 import { isForViewer, isKindRelevantToRole } from '@/modules/communication/notifications/notification-scope';
 import type { NotificationKind } from '@/modules/communication/notifications/notification-scope';
 // The shapes moved to `notifications/types.ts` so a server module can name a
@@ -416,6 +416,22 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       out.push(...progressItems.slice(0, perSourceLimit));
     } catch { /* offline */ }
 
+    // Visit-status updates for the patients this user is on the care team of —
+    // one item per active visit, re-minted at every rung of the encounter
+    // ladder (triaged → ready to call in → pharmacy → checkout), plus the
+    // dispensed loop-closer on their own prescriptions. Derivation lives in
+    // notifications/visit-updates.ts; ownership comes from the encounter's own
+    // assignment fields, so unclaimed patients stay with the triage pool above.
+    if (relevant('visit')) try {
+      const { getAllEncounters } = await import('@/lib/services/encounter-service');
+      const { visitUpdateItems, dispensedItems } = await import('@/modules/communication/notifications/visit-updates');
+      const encounters = await getAllEncounters(scope);
+      out.push(...visitUpdateItems(encounters, currentUser, nowMsLocal, perSourceLimit));
+      const { getAllPrescriptions } = await import('@/lib/services/prescription-service');
+      const rxs = await getAllPrescriptions(scope);
+      out.push(...dispensedItems(rxs, currentUser, nowMsLocal, perSourceLimit));
+    } catch { /* offline */ }
+
     // Prescriptions awaiting dispensing (pharmacy queue).
     if (relevant('prescription')) try {
       const { getAllPrescriptions } = await import('@/lib/services/prescription-service');
@@ -474,11 +490,17 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       isKindRelevantToRole('referral', role) ? referralsDB() : null,
       isKindRelevantToRole('appointment', role) ? appointmentsDB() : null,
       isKindRelevantToRole('lab', role) ? labResultsDB() : null,
-      isKindRelevantToRole('prescription', role) ? prescriptionsDB() : null,
+      // The visit kind's dispensed loop-closer also reads prescriptions, so a
+      // doctor's bell must wake on a dispense even though they skip the
+      // pharmacy-queue source itself.
+      isKindRelevantToRole('prescription', role) || isKindRelevantToRole('visit', role) ? prescriptionsDB() : null,
       patientTransfersDB(),
       consultationProgressDB(),
       // A patient triaged RED must badge the bell now, not on the next reopen.
       isKindRelevantToRole('triage', role) ? triageDB() : null,
+      // Every encounter transition re-mints a visit item; without this feed the
+      // "ready — call them in" rung only surfaces on the next manual reload.
+      isKindRelevantToRole('visit', role) ? encountersDB() : null,
     ].filter((db): db is NonNullable<typeof db> => db !== null)
       .map(db => db.changes({ since: 'now', live: true, include_docs: false })
         .on('change', () => reload.trigger())

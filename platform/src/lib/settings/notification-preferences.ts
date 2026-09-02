@@ -51,6 +51,9 @@ function governingKeys(item: NotificationItem): string[] {
     case 'progress':
       // Doctor: "Co-signature requests". Generic: "Work assigned to me".
       return ['notify.cosign', 'notify.assigned'];
+    case 'visit':
+      // Doctor/nurse: "My patients' visit updates" — the per-stage feed.
+      return ['notify.visitUpdates'];
     default:
       return [];
   }

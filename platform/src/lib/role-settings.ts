@@ -158,6 +158,7 @@ const DOCTOR: RoleSettingsSpec = {
     },
     notifySection([
       tg('notify.criticalLabs', 'Critical lab results', 'Immediate alert plus SMS out of hours', true),
+      tg('notify.visitUpdates', "My patients' visit updates", 'Each stage — triaged, ready to call in, at pharmacy, dispensed', true),
       tg('notify.cosign', 'Co-signature requests', 'When a colleague needs your sign-off', true),
       tg('notify.referrals', 'New referrals to me', 'Incoming referrals from other facilities', true),
       tg('notify.apptSummary', 'Appointment reminders', 'Daily summary at 07:00', false),
@@ -190,6 +191,7 @@ const NURSE: RoleSettingsSpec = {
     },
     notifySection([
       tg('notify.vitals', 'Deteriorating vitals', 'Immediate alert on the station screen', true),
+      tg('notify.visitUpdates', "My patients' visit updates", 'Each stage a patient assigned to me moves through', true),
       tg('notify.overdueDoses', 'Overdue medication doses', 'Alerts once a dose passes its window', true),
       tg('notify.admissions', 'New admissions to my ward', 'When a patient is assigned a bed', true),
     ]),

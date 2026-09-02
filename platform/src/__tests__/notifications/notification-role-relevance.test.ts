@@ -11,7 +11,7 @@
 import { isKindRelevantToRole, type NotificationKind } from '@/modules/communication/notifications/notification-scope';
 
 const ALL_KINDS: NotificationKind[] = [
-  'alert', 'triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'transfer',
+  'alert', 'triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'transfer', 'visit',
 ];
 
 describe('kinds that must never be narrowed by role', () => {
@@ -77,8 +77,24 @@ describe('platform and org administrators keep only what they can act on', () =>
   it.each(['super_admin', 'org_admin'] as const)('%s receives alerts and transfers, not clinical operations', (role) => {
     expect(isKindRelevantToRole('alert', role)).toBe(true);
     expect(isKindRelevantToRole('transfer', role)).toBe(true);
-    for (const kind of ['triage', 'referral', 'lab', 'appointment', 'prescription', 'progress'] as const) {
+    for (const kind of ['triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'visit'] as const) {
       expect(isKindRelevantToRole(kind, role)).toBe(false);
+    }
+  });
+});
+
+describe('visit-status updates go to the roles that can be on a care team', () => {
+  it('reach the clinical family', () => {
+    for (const role of ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife', 'triage_nurse', 'rooming_nurse']) {
+      expect(isKindRelevantToRole('visit', role)).toBe(true);
+    }
+  });
+
+  it('skip the desk, the bench and the back office', () => {
+    // Ownership already narrows this kind to visits that NAME the viewer; the
+    // role cut here removes whole audiences an encounter never names.
+    for (const role of ['front_desk', 'pharmacist', 'lab_tech', 'cashier', 'hrio', 'org_admin', 'super_admin']) {
+      expect(isKindRelevantToRole('visit', role)).toBe(false);
     }
   });
 });
