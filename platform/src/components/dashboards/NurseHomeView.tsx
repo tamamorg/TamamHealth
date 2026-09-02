@@ -210,6 +210,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
       doctor: patient.assignedDoctorName || '',
       assignedDoctor: patient.assignedDoctor,
       assignedDoctorName: patient.assignedDoctorName,
+      assignedNurse: patient.assignedNurse,
       nurse: patient.assignedNurseName || currentUser.name || '',
       triagePriority: triagePriorityByPatient[patient._id],
     });
@@ -236,6 +237,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
       doctor: appointment.providerName || patient.assignedDoctorName || '',
       assignedDoctor: appointment.providerId || patient.assignedDoctor,
       assignedDoctorName: appointment.providerName || patient.assignedDoctorName,
+      assignedNurse: patient.assignedNurse,
       nurse: appointment.staffName || patient.assignedNurseName || currentUser.name || '',
       triagePriority: triagePriorityByPatient[patient._id],
     });

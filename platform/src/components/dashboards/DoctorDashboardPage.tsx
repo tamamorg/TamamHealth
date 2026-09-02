@@ -160,7 +160,10 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   // board (above), not as a claimable row on every doctor's.
   const unclaimedTriaged = patients.filter(p => {
     const tr = latestActiveTriageByPatient.get(p._id);
-    return !!tr && !p.assignedDoctor && !tr.assignedProviderId;
+    // `returned_to_desk` is excluded even though its provider is cleared: the
+    // desk owns that visit now, so it is not claimable clinical work.
+    return !!tr && !p.assignedDoctor && !tr.assignedProviderId
+      && tr.handoffStatus !== 'returned_to_desk';
   });
 
   // Worklist rows: patients assigned to the signed-in clinician. Ward/division

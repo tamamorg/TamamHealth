@@ -1907,7 +1907,11 @@ export interface ANCVisitDoc extends BaseDoc {
 // One record per triage encounter; a patient may have many over time.
 export type TriagePriority = 'RED' | 'YELLOW' | 'GREEN';
 export type TriageDisposition = 'emergency' | 'general_clinic' | 'specialty_clinic' | 'home_care';
-export type TriageHandoffStatus = 'awaiting_room' | 'awaiting_provider' | 'assigned' | 'acknowledged' | 'in_consultation' | 'completed';
+/** `returned_to_desk`: a clinician sent the visit back to reception (patient
+ *  stepped out, wrong handoff, needs rebooking). The triage stays non-terminal
+ *  — the visit is still open — but it leaves every clinical queue and
+ *  worklist; the desk decides what happens next. */
+export type TriageHandoffStatus = 'awaiting_room' | 'awaiting_provider' | 'assigned' | 'acknowledged' | 'in_consultation' | 'completed' | 'returned_to_desk';
 
 export interface TriageDoc extends BaseDoc {
   type: 'triage';

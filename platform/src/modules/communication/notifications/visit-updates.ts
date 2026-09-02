@@ -113,6 +113,57 @@ export function visitUpdateItems(
     .slice(0, limit);
 }
 
+/** The roles that staff the desk a returned visit lands on. */
+const RECEPTION_ROLES = new Set<string>([
+  'front_desk', 'central_registration_clerk', 'clinic_clerk', 'super_admin',
+]);
+
+/** The stages a clinician can send a visit back to the desk FROM — used to
+ *  tell a RETURNED visit apart from a fresh arrival parked at the same
+ *  crossroads status by registration. */
+const RETURNABLE_STAGES = new Set<EncounterDoc['status']>([
+  'triaged_awaiting_destination', 'routed_to_clinic',
+  'arrived_at_clinic_awaiting_rooming', 'in_rooming', 'ready_for_clinician',
+]);
+
+/**
+ * Reception's side of "return to front desk": one item per open visit a
+ * clinician sent back (`awaiting_next_station` reached FROM a triage/clinic
+ * stage — a fresh arrival reaches the same status from registration and is
+ * not news to the desk that put it there). Addressed by ROLE, not care team:
+ * the whole desk needs to see it, whoever is on shift.
+ */
+export function returnedToDeskItems(
+  encounters: EncounterDoc[],
+  viewer: FeedViewer | null | undefined,
+  nowMs: number,
+  limit: number,
+): NotificationItem[] {
+  if (!viewer?.role || !RECEPTION_ROLES.has(String(viewer.role))) return [];
+  const items: NotificationItem[] = [];
+  for (const encounter of encounters) {
+    if (encounter.status !== 'awaiting_next_station') continue;
+    const trail = encounter.statusHistory;
+    const last = trail && trail.length > 0 ? trail[trail.length - 1] : undefined;
+    if (!last?.from || !RETURNABLE_STAGES.has(last.from)) continue;
+    const at = last.at || encounter.updatedAt || '';
+    const ms = Date.parse(at);
+    if (!Number.isNaN(ms) && nowMs - ms > CLOSURE_WINDOW_MS) continue;
+    items.push({
+      id: `visit-returned-${encounter._id}-${at}`,
+      type: 'visit',
+      severity: 'warning',
+      title: `${shortenPersonName(encounter.patientName) || 'Patient'} · Returned to front desk`,
+      subtitle: last.reason || 'sent back by the clinical team — rebook or close the visit',
+      time: at,
+      href: `/patients/${encodeURIComponent(encounter.patientId)}`,
+    });
+  }
+  return items
+    .sort((a, b) => (b.time || '').localeCompare(a.time || ''))
+    .slice(0, limit);
+}
+
 /**
  * The loop-closer at the end of the journey: this viewer's own prescriptions
  * that pharmacy has dispensed, inside the closure window. `prescribedBy` is a

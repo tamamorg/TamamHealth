@@ -88,6 +88,9 @@ export type WorklistPatient = {
   triagePriority?: 'RED' | 'YELLOW' | 'GREEN';
   assignedDoctor?: string;
   assignedDoctorName?: string;
+  /** The assigned nurse's USER id (the `nurse` field above is a display
+   *  name) — what the End-assignment gate compares the viewer against. */
+  assignedNurse?: string;
   assignmentStatus?: 'assigned' | 'accepted' | 'in_progress' | 'completed';
   assignmentNote?: string;
 };
@@ -1266,16 +1269,64 @@ export default function EhrClinicalDashboard({
   };
 
   const markVisitLwbs = async (triage: TriageDoc) => {
-    if (!triage.encounterId) return;
     if (!window.confirm(`Record that ${triage.patientName} left without being seen?`)) return;
     try {
-      const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
-      await recordLeftWithoutBeingSeen(triage.encounterId, { actorId: currentUser?._id });
+      // A triage-first patient (assessed without a desk check-in) has no
+      // encounter — the triage record alone carries the departure then.
+      if (triage.encounterId) {
+        const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
+        await recordLeftWithoutBeingSeen(triage.encounterId, { actorId: currentUser?._id });
+      }
       await updateTriageDoc(triage._id, { status: 'lwbs' }, { userId: currentUser?._id, username: currentUser?.name });
       showToast(`${triage.patientName} recorded as left without being seen.`, 'success');
       setVisitRow(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not record the departure.', 'error');
+    }
+  };
+
+  /** Send an open visit back to reception without closing it — the patient
+   *  stepped out, the handoff named the wrong provider, or the visit needs
+   *  rebooking. The desk is notified through the returned-to-desk feed. */
+  const returnVisitToDesk = async (triage: TriageDoc) => {
+    const reason = window.prompt(
+      `Send ${triage.patientName} back to the front desk?\n\nReason (optional — shown to reception):`, '');
+    if (reason === null) return;
+    try {
+      const { returnVisitToFrontDesk } = await import('@/lib/services/triage-handoff-service');
+      await returnVisitToFrontDesk({
+        triageId: triage._id,
+        patientId: triage.patientId,
+        patientName: triage.patientName,
+        reason: reason.trim() || undefined,
+        actorId: currentUser?._id,
+        actorName: currentUser?.name,
+        actorRole: currentUser?.role,
+      });
+      showToast(`${triage.patientName} returned to the front desk.`, 'success');
+      setVisitRow(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not return the visit.', 'error');
+    }
+  };
+
+  /** End a standing care-team assignment — the exit for an assigned patient
+   *  who left and never came back. Allowed to the assigned clinician/nurse
+   *  themselves and to reception; the service enforces it. */
+  const endAssignment = async (row: UnifiedPatientRow) => {
+    if (!row.patientId || !currentUser) return;
+    if (!window.confirm(`End the assignment for ${row.name}? They will leave the assigned worklists; their record is unaffected.`)) return;
+    try {
+      const { completePatientAssignment } = await import('@/lib/services/patient-assignment-service');
+      await completePatientAssignment({
+        patientId: row.patientId,
+        patientName: row.name,
+        actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
+      });
+      showToast(`Assignment for ${row.name} ended.`, 'success');
+      setVisitRow(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not end the assignment.', 'error');
     }
   };
 
@@ -2133,8 +2184,19 @@ export default function EhrClinicalDashboard({
                             onEscalate={columns.triage?.encounterId && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => void escalateVisit(columns.triage!)
                               : undefined}
-                            onLwbs={columns.triage?.encounterId && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
+                            onLwbs={columns.triage && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => void markVisitLwbs(columns.triage!)
+                              : undefined}
+                            onReturnToDesk={columns.triage
+                              && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
+                              && columns.triage.handoffStatus !== 'returned_to_desk'
+                              ? () => void returnVisitToDesk(columns.triage!)
+                              : undefined}
+                            onEndAssignment={row.patientId && currentUser
+                              && (row.patient?.assignedDoctor === currentUser._id
+                                || row.patient?.assignedNurse === currentUser._id)
+                              && row.patient?.assignmentStatus !== 'completed'
+                              ? () => void endAssignment(row)
                               : undefined}
                             creatingNote={creatingNote}
                             onCreateNote={row.patientId ? (noteType) => {

@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Trash2 } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import { noteTypeMenuOrder } from './CreateNoteButton';
 import { useToast } from '@/components/Toast';
@@ -60,6 +61,7 @@ export default function NotesList({
   onOpenNote, refreshToken,
 }: NotesListProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const scope = useDataScope();
 
@@ -206,48 +208,67 @@ export default function NotesList({
         )
       )}
 
-      {!loading && pageRows.map((note) => {
-        const status = STATUS_LABEL[note.status] ?? STATUS_LABEL.draft;
-        const unsigned = note.status === 'draft' || note.status === 'awaiting_cosign';
-        return (
-          <article className="cn-note-card" key={note._id}>
-            <div className="cn-note-card-main">
-              <div className="cn-note-card-title">
-                <span className="cn-note-card-type">{getNoteType(note.noteType).label}</span>
-                <span className="cn-note-card-preview">{notePreview(note)}</span>
-              </div>
-              <div className="cn-note-card-meta">
-                <span className={`cn-badge ${status.cls}`}>{status.text}</span>
-                {' '}
-                {note.signedByName || note.assignedToName || note.authorName || '—'}
-                {'  ·  DoS: '}{note.serviceDate}
-                {note.serviceTime ? ` ${note.serviceTime}` : ''}
-                {!patientId && `  ·  ${note.patientName}`}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="cn-btn"
-              onClick={() => (onOpenNote ? onOpenNote(note._id) : router.push(`/notes/${note._id}`))}
-            >
-              {unsigned ? 'Open' : 'View'}
-            </button>
-
-            {unsigned && (
-              <button
-                type="button"
-                className="cn-btn"
-                onClick={() => handleDelete(note)}
-                aria-label="Delete draft"
-                title="Delete draft"
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
-          </article>
-        );
-      })}
+      {/* One column per fact — the chart's shared omrs-table shape, with the
+          Status pill in the final column like every other clinical table. */}
+      {!loading && filtered.length > 0 && (
+        <table className="omrs-table omrs-table--fixed">
+          <colgroup>
+            <col /><col /><col />{!patientId ? <col /> : null}<col /><col /><col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>{t('notesList.colType')}</th>
+              <th>{t('notesList.colNote')}</th>
+              <th>{t('notesList.colAuthor')}</th>
+              {!patientId && <th>{t('notesList.colPatient')}</th>}
+              <th>{t('notesList.colDateOfService')}</th>
+              <th>{t('notesList.colActions')}</th>
+              <th>{t('notesList.colStatus')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((note) => {
+              const status = STATUS_LABEL[note.status] ?? STATUS_LABEL.draft;
+              const unsigned = note.status === 'draft' || note.status === 'awaiting_cosign';
+              return (
+                <tr key={note._id}>
+                  <td className="omrs-cell-strong">{getNoteType(note.noteType).label}</td>
+                  <td className="omrs-cell-note">{notePreview(note)}</td>
+                  <td>{note.signedByName || note.assignedToName || note.authorName || '—'}</td>
+                  {!patientId && <td>{note.patientName}</td>}
+                  <td>
+                    {note.serviceDate}
+                    {note.serviceTime ? ` ${note.serviceTime}` : ''}
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-secondary"
+                        onClick={() => (onOpenNote ? onOpenNote(note._id) : router.push(`/notes/${note._id}`))}
+                      >
+                        {unsigned ? 'Open' : 'View'}
+                      </button>
+                      {unsigned && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-secondary"
+                          onClick={() => handleDelete(note)}
+                          aria-label="Delete draft"
+                          title="Delete draft"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td><span className={`cn-badge ${status.cls}`}>{status.text}</span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </ChartSection>
   );
 }

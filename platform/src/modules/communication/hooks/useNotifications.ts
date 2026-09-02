@@ -446,9 +446,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // assignment fields, so unclaimed patients stay with the triage pool above.
     if (relevant('visit')) try {
       const { getAllEncounters } = await import('@/lib/services/encounter-service');
-      const { visitUpdateItems, dispensedItems } = await import('@/modules/communication/notifications/visit-updates');
+      const { visitUpdateItems, dispensedItems, returnedToDeskItems } = await import('@/modules/communication/notifications/visit-updates');
       const encounters = await getAllEncounters(scope);
       out.push(...visitUpdateItems(encounters, currentUser, nowMsLocal, perSourceLimit));
+      // Reception's half of "return to front desk": visits a clinician sent
+      // back, addressed to desk ROLES rather than the care team.
+      out.push(...returnedToDeskItems(encounters, currentUser, nowMsLocal, perSourceLimit));
       const { getAllPrescriptions } = await import('@/lib/services/prescription-service');
       const rxs = await getAllPrescriptions(scope);
       out.push(...dispensedItems(rxs, currentUser, nowMsLocal, perSourceLimit));

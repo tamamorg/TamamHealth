@@ -932,6 +932,33 @@ export async function dischargeEncounter(
  * the rate at which patients leave untreated is a facility quality measure, and
  * it cannot be measured if the event has no representation.
  */
+/**
+ * Send an open visit back to reception without closing it: the patient
+ * stepped out and may return, the handoff named the wrong provider, or the
+ * visit needs rebooking. Moves the encounter to `awaiting_next_station` — the
+ * desk-owned crossroads whose onward edges (re-route, escalate, close as
+ * LWBS) are exactly the choices reception then has. The appointment
+ * projection keeps the visit In Facility, so the front-desk board shows the
+ * patient as theirs again; the returned-to-desk notification derivation
+ * (visit-updates.ts) tells reception it happened.
+ */
+export async function returnEncounterToFrontDesk(
+  encounterId: string,
+  opts?: { actorId?: string; actorRole?: UserRole; reason?: string },
+): Promise<EncounterDoc> {
+  const updated = await transitionEncounter(encounterId, 'awaiting_next_station', {
+    actorId: opts?.actorId, actorRole: opts?.actorRole, reason: opts?.reason,
+  });
+  await logAuditSafe(
+    'ENCOUNTER_RETURNED_TO_DESK',
+    opts?.actorId,
+    undefined,
+    `Visit for ${updated.patientName || updated.patientId} returned to the front desk` +
+    (opts?.reason ? ` — ${opts.reason}` : ''),
+  );
+  return updated;
+}
+
 export async function recordLeftWithoutBeingSeen(
   encounterId: string,
   opts?: { actorId?: string; reason?: string },

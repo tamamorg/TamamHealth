@@ -51,12 +51,13 @@ import Select from '@/components/Select';
 import {
   ROOM_OPTIONS, RESCHEDULE_SLOTS, suggestDepartment, splitDateTime,
   appointmentMoment, formatDayMonthYear, isoDateKey, patientFacilityName,
+  staleOpenVisits,
   type CheckoutTarget,
 } from '@/lib/front-desk-utils';
 import { RowAppointmentEditor } from '@/components/front-desk/RowAppointmentEditor';
 import { FrontDeskDetailActions, FrontDeskDetailFacts } from '@/components/front-desk/DetailPanel';
 import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/front-desk/AssignmentControls';
-import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
+import { encounterVisitState, resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import CheckoutModal from '@/components/front-desk/CheckoutModal';
 import CheckInModal from '@/components/front-desk/CheckInModal';
 import {
@@ -148,6 +149,11 @@ export default function FrontDeskDashboardPage() {
   // "Book appointment" — the same booking dialog the doctor module opens.
   const [bookingOpen, setBookingOpen] = useState(false);
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
+  // The end-of-day reconciliation list: open visits left over from a previous
+  // day (a triaged patient who quietly left keeps an open encounter forever —
+  // nothing else prompts anyone to close it). Opened from the Reception
+  // panel's "Needs close-out" tile.
+  const [closeoutOpen, setCloseoutOpen] = useState(false);
 
   const [queueNowMs, setQueueNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -237,6 +243,34 @@ export default function FrontDeskDashboardPage() {
   // `encounterId`, so this is how a queue row recovers the encounter's own
   // `appointmentId` (see `findActiveAppointmentForPatient` above).
   const encounterById = useMemo(() => new Map(encounters.map(enc => [enc._id, enc])), [encounters]);
+
+  // Open visits whose last movement was before today — the close-out list.
+  const staleVisits = useMemo(() => staleOpenVisits(encounters, today), [encounters, today]);
+
+  /** Close a stale open visit as "left without being seen": the encounter
+   *  takes its terminal lwbs transition (which projects the appointment to
+   *  no_show), and the triage the patient arrived through — when one is
+   *  linked — is closed the same way. A person's decision, audited; never
+   *  automatic. */
+  const closeStaleVisitAsLwbs = useCallback(async (encounter: EncounterDoc) => {
+    if (!window.confirm(`Close the visit for ${encounter.patientName || 'this patient'} as left without being seen?`)) return;
+    try {
+      const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
+      await recordLeftWithoutBeingSeen(encounter._id, {
+        actorId: currentUser?._id, reason: 'Day-end close-out at the front desk',
+      });
+      try {
+        const { getTriageByEncounter } = await import('@/lib/services/triage-service');
+        const triage = await getTriageByEncounter(encounter._id);
+        if (triage && (triage.status === 'pending' || triage.status === 'seen')) {
+          await updateTriage(triage._id, { status: 'lwbs' }, { userId: currentUser?._id, username: currentUser?.name });
+        }
+      } catch { /* the encounter closure is the authoritative record */ }
+      showToast(`Visit for ${encounter.patientName || 'patient'} closed as left without being seen.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not close the visit.', 'error');
+    }
+  }, [currentUser, showToast, updateTriage]);
 
   // Work plotted on the "Day activity" week chart. Drawn from the whole booking
   // list rather than the day-scoped rows in the worklist, so all seven columns
@@ -1564,7 +1598,7 @@ export default function FrontDeskDashboardPage() {
     const ACUITY_TONE: Record<TriagePriority, EhrCareDashboardMetric['tone']> = {
       RED: 'danger', YELLOW: 'warning', GREEN: 'success',
     };
-    const acuityMetrics = (['RED', 'YELLOW', 'GREEN'] as TriagePriority[]).map(code => {
+    const acuityMetrics: EhrCareDashboardMetric[] = (['RED', 'YELLOW', 'GREEN'] as TriagePriority[]).map(code => {
       const count = counts.get(code) ?? 0;
       return {
         label: PRIORITY_META[code].label,
@@ -1579,8 +1613,16 @@ export default function FrontDeskDashboardPage() {
     if (pendingSyncCount > 0) {
       acuityMetrics.push({ label: t('sync.docPendingLabel'), value: pendingSyncCount, tone: 'neutral' });
     }
+    // Open visits left over from a previous day, waiting for a person to
+    // close them (see staleOpenVisits). Clicking opens the close-out list.
+    if (staleVisits.length > 0) {
+      acuityMetrics.push({
+        label: 'Needs close-out', value: staleVisits.length, tone: 'warning',
+        onClick: () => setCloseoutOpen(true),
+      });
+    }
     return acuityMetrics;
-  }, [boardQueue, pendingSyncCount, t]);
+  }, [boardQueue, pendingSyncCount, staleVisits, t]);
 
   // No subtitle line under the board title: the lane tabs and the Reception
   // status panel already carry the counts, so the "24 patients scheduled"
@@ -1691,6 +1733,53 @@ export default function FrontDeskDashboardPage() {
             defaultDate={boardDate}
             onClose={() => setBookingOpen(false)}
           />
+        )}
+
+        {closeoutOpen && (
+          <Modal onClose={() => setCloseoutOpen(false)} width={560} labelledBy="fd-closeout-title">
+            <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <h3 id="fd-closeout-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Needs close-out</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                  Open visits from a previous day. Close the ones whose patient left without being seen;
+                  a visit that reached the clinician needs a proper checkout from the patient&apos;s row instead.
+                </p>
+              </div>
+              {staleVisits.length === 0 && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing waiting — every open visit moved today.</p>
+              )}
+              {staleVisits.map(({ encounter, lastMovedAt, canCloseAsLwbs }) => (
+                <div key={encounter._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border-light)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {encounter.patientName || encounter.patientId}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                      {encounterVisitState(encounter.status).label || encounter.status} · last movement {formatCompactDateTime(lastMovedAt)}
+                    </p>
+                  </div>
+                  {canCloseAsLwbs ? (
+                    <button
+                      type="button"
+                      onClick={() => void closeStaleVisitAsLwbs(encounter)}
+                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--color-danger-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Close as LWBS
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>needs checkout</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setCloseoutOpen(false); router.push(`/patients/${encounter.patientId}`); }}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Open chart
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Modal>
         )}
 
         {editAppointment && (

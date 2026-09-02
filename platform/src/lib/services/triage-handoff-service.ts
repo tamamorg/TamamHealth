@@ -1,8 +1,9 @@
 import type { TriageDisposition, TriageDoc, TriageHandoffStatus, UserRole } from '../db-types';
 import { updateAppointmentStatus } from './appointment-service';
-import { getEncounter, findOpenEncounterForPatient, advanceEncounterAfterTriage, escalateEncounterToEmergency, transitionEncounter } from './encounter-service';
+import { getEncounter, findOpenEncounterForPatient, advanceEncounterAfterTriage, escalateEncounterToEmergency, returnEncounterToFrontDesk, transitionEncounter } from './encounter-service';
 import { updateTriage } from './triage-service';
 import { syncConsultationProgressStage } from './consultation-progress-service';
+import { logAuditSafe } from './audit-service';
 import { triageDB } from '../db';
 
 /** Triage statuses with no further clinical transition (see
@@ -26,6 +27,66 @@ export interface CompleteTriageHandoffInput {
   hospitalId?: string;
   hospitalName?: string;
   orgId?: string;
+}
+
+export interface ReturnVisitToFrontDeskInput {
+  triageId: string;
+  patientId: string;
+  patientName: string;
+  /** Free-text explanation, kept in the audit trail and the encounter's
+   *  transition record — "patient stepped out", "needs rebooking", … */
+  reason?: string;
+  actorId?: string;
+  actorName?: string;
+  actorRole?: UserRole;
+}
+
+/**
+ * Send a triaged-but-unfinished visit back to reception — the exit for a
+ * patient who stepped out (and may return), a handoff that named the wrong
+ * provider, or a visit that needs rebooking. The counterpart of
+ * `completeTriageHandoff`, undone:
+ *
+ *  - the triage keeps its non-terminal status but its handoff is released
+ *    (`handoffStatus: 'returned_to_desk'`, provider cleared), which removes
+ *    the patient from every clinical queue and doctor worklist — see
+ *    `buildQueueFromTriage` and `assembleDoctorWorklist`;
+ *  - the encounter (when one is linked) moves to `awaiting_next_station`,
+ *    the desk-owned crossroads, keeping the visit open and In Facility on
+ *    the front-desk board;
+ *  - reception learns about it from the returned-to-desk notification
+ *    derivation (visit-updates.ts), which reads exactly this state.
+ */
+export async function returnVisitToFrontDesk(input: ReturnVisitToFrontDeskInput): Promise<TriageDoc> {
+  const triage = await updateTriage(input.triageId, {
+    handoffStatus: 'returned_to_desk',
+    assignedProviderId: undefined,
+    assignedProviderName: undefined,
+    handoffNote: input.reason || undefined,
+  }, { userId: input.actorId, username: input.actorName });
+  if (!triage) throw new Error('The triage record could not be updated.');
+
+  if (triage.encounterId) {
+    try {
+      await returnEncounterToFrontDesk(triage.encounterId, {
+        actorId: input.actorId, actorRole: input.actorRole, reason: input.reason,
+      });
+    } catch (err) {
+      // A visit already past the returnable stages (in consultation, closed)
+      // has no legal edge back to the desk — the handoff release above still
+      // stands, so the row leaves the clinical queues either way; record why
+      // the encounter itself did not move.
+      await logAuditSafe('ENCOUNTER_RETURN_TO_DESK_SKIPPED', input.actorId, input.actorName,
+        `Visit for ${input.patientName} (${input.patientId}): encounter not moved — ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  await logAuditSafe('TRIAGE_RETURNED_TO_DESK', input.actorId, input.actorName,
+    `${input.patientName} (${input.patientId}) returned to the front desk` +
+    (input.reason ? ` — ${input.reason}` : ''),
+  );
+  return triage;
 }
 
 /**

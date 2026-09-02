@@ -6,7 +6,8 @@ import type { PatientDoc } from '@/lib/db-types';
 import { useAssessments } from '@/lib/hooks/useAssessments';
 import { ASSESSMENT_INSTRUMENTS, getInstrument, scoreAssessment } from '@/lib/clinical/assessment-instruments';
 import { isClinicalAuthorRole } from '@/lib/clinical-roles';
-import { ClipboardList, Plus, Lock } from '@/components/icons/lucide';
+import { Lock } from '@/components/icons/lucide';
+import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import { formatDateTime } from '@/lib/format-utils';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
@@ -84,18 +85,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm inline-flex items-center gap-2">
-          <ClipboardList className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} /> Outcome measures
-        </h3>
-        {!adding && (
-          <button className="btn btn-sm btn-secondary" onClick={() => { setAdding(true); setAnswers({}); }}>
-            <Plus className="w-3.5 h-3.5" /> New assessment
-          </button>
-        )}
-      </div>
-
+    <ChartSection title="Outcome measures" addLabel="New assessment" onAdd={() => { setAdding(true); setAnswers({}); }}>
       {adding && (
         <div className="rounded-lg p-3 mb-3 space-y-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
           <Select value={instrumentId} onChange={(e) => { setInstrumentId(e.target.value); setAnswers({}); }}
@@ -140,52 +130,67 @@ export default function AssessmentsPanel({ patient, focusId }: {
       )}
 
       {assessments.length === 0 && !adding && (
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No assessments recorded.</p>
+        <OmrsEmptyState itemLabel="assessments" actionLabel="New assessment" onAction={() => { setAdding(true); setAnswers({}); }} />
       )}
 
-      <ul className="space-y-2">
-        {assessments.map((a) => {
-          const signed = a.documentStatus === 'signed';
-          return (
-            <li
-              key={a._id}
-              id={`assessment-${a._id}`}
-              className="rounded-lg p-3"
-              style={a._id === focusId
-                ? { background: 'var(--accent-light)', border: '1px solid var(--accent-primary)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' }
-                : { background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}
-            >
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{a.instrumentName}</span>
-                <span className="text-[12px] font-bold" style={{ color: a.severity ? SEVERITY_COLOR[a.severity] : 'var(--text-secondary)' }}>
-                  {a.totalScore}{a.interpretation ? ` · ${a.interpretation}` : ''}
-                </span>
-                <span className="flex-1" />
-                {signed ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(10, 110, 74,0.12)', color: 'var(--color-success-text)' }}>
-                    <Lock className="w-3 h-3" /> Signed
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(230, 114, 0,0.12)', color: 'var(--color-warning-text)' }}>Held</span>
-                )}
-              </div>
-              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                {a.answeredCount}/{a.questionCount} answered · {a.enteredByName ? `entered by ${a.enteredByName}` : 'entered'} · {formatDateTime(a.createdAt)}
-                {signed && a.signedByName ? ` · signed by ${a.signedByName}` : ''}
-              </p>
-              {!signed && isProvider && (
-                <div className="mt-2">
-                  <button className="btn btn-xs btn-primary" disabled={busy} onClick={() => run(() => doSign(a._id))}>
-                    <Lock className="w-3 h-3" /> Review &amp; sign
-                  </button>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {assessments.length > 0 && (
+        <table className="omrs-table omrs-table--fixed">
+          <colgroup>
+            <col /><col /><col /><col /><col /><col /><col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Instrument</th>
+              <th>Score</th>
+              <th>Answered</th>
+              <th>Entered by</th>
+              <th>Date</th>
+              <th>Actions</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {assessments.map((a) => {
+              const signed = a.documentStatus === 'signed';
+              return (
+                <tr
+                  key={a._id}
+                  id={`assessment-${a._id}`}
+                  style={a._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
+                >
+                  <td className="omrs-cell-strong">{a.instrumentName}</td>
+                  <td>
+                    <span className="font-bold" style={{ color: a.severity ? SEVERITY_COLOR[a.severity] : 'var(--text-secondary)' }}>
+                      {a.totalScore}
+                    </span>
+                    {a.interpretation ? <span className="omrs-cell-sub"> · {a.interpretation}</span> : null}
+                  </td>
+                  <td>{a.answeredCount}/{a.questionCount}</td>
+                  <td>
+                    {a.enteredByName || '—'}
+                    {signed && a.signedByName && <div className="omrs-cell-sub">signed by {a.signedByName}</div>}
+                  </td>
+                  <td>{formatDateTime(a.createdAt)}</td>
+                  <td>
+                    {!signed && isProvider && (
+                      <button className="btn btn-xs btn-primary" disabled={busy} onClick={() => run(() => doSign(a._id))}>
+                        <Lock className="w-3 h-3" /> Review &amp; sign
+                      </button>
+                    )}
+                  </td>
+                  <td>
+                    <span className={signed ? 'omrs-panel-badge omrs-panel-badge--done' : 'omrs-panel-badge omrs-panel-badge--pending'}>
+                      {signed ? 'Signed' : 'Held'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
 
       {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
-    </div>
+    </ChartSection>
   );
 }

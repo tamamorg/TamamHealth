@@ -1,6 +1,7 @@
-import type { PatientDoc } from '@/lib/db-types';
+import type { EncounterDoc, PatientDoc } from '@/lib/db-types';
 import { formatClockTime } from '@/lib/format-utils';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { canTransition, isTerminal } from '@/lib/clinical-flow/encounter-journey';
 
 // Exam rooms / bays a walk-in patient can be placed in to meet the provider.
 // Fallback used only when facility settings provide no rooms.
@@ -81,4 +82,44 @@ export interface CheckoutTarget {
 
 export function patientFacilityName(patient: PatientDoc | undefined, fallback = 'Facility'): string {
   return (patient as (PatientDoc & { registrationHospitalName?: string }) | undefined)?.registrationHospitalName || fallback;
+}
+
+/** One row of the front desk's "Needs close-out" reconciliation list. */
+export interface StaleOpenVisit {
+  encounter: EncounterDoc;
+  /** The visit's last movement (transition trail's last entry, else the
+   *  document's own timestamps). */
+  lastMovedAt: string;
+  /** Whether the state machine allows closing this visit as LWBS from where
+   *  it stands. A visit already with the clinician (or deeper) has no lwbs
+   *  edge — it needs a real checkout instead. */
+  canCloseAsLwbs: boolean;
+}
+
+/**
+ * Open visits left over from a PREVIOUS day — the end-of-day reconciliation
+ * list. A patient who was triaged and quietly left keeps an open encounter
+ * forever; nothing else ever prompts anyone to close it, and the stale visit
+ * can absorb the patient's next arrival. Deliberately a human review list,
+ * never auto-expiry: a clinical record is closed by a person, audited — this
+ * only says which ones are waiting for that.
+ *
+ * "Previous day" is the local calendar day (`toIsoDate`), matching how every
+ * board buckets its "today".
+ */
+export function staleOpenVisits(encounters: EncounterDoc[], todayLocalIso: string): StaleOpenVisit[] {
+  const rows: StaleOpenVisit[] = [];
+  for (const encounter of encounters) {
+    if (isTerminal(encounter.status)) continue;
+    const trail = encounter.statusHistory;
+    const lastMovedAt = (trail && trail.length > 0 ? trail[trail.length - 1].at : '')
+      || encounter.updatedAt || encounter.createdAt || '';
+    if (!lastMovedAt || toIsoDate(new Date(lastMovedAt)) >= todayLocalIso) continue;
+    rows.push({
+      encounter,
+      lastMovedAt,
+      canCloseAsLwbs: canTransition(encounter.status, 'lwbs'),
+    });
+  }
+  return rows.sort((a, b) => a.lastMovedAt.localeCompare(b.lastMovedAt));
 }

@@ -111,15 +111,22 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   // cannot absorb the patient's next arrival.
   awaiting_triage: ['in_triage', 'lwbs', 'dismissed_without_formal_checkout'],
   in_triage: ['triaged_awaiting_destination', 'escalated_to_emergency', 'lwbs'],
-  triaged_awaiting_destination: ['routed_to_clinic', 'escalated_to_emergency', 'lwbs'],
+  // `awaiting_next_station` here (and on the stage-4 statuses below) is the
+  // RETURN-TO-DESK edge: a clinician sends a visit back to reception — the
+  // patient stepped out, the handoff went to the wrong provider, or the visit
+  // needs rebooking — without closing it. `awaiting_next_station` is already
+  // the desk-owned crossroads (capabilities: patient_routing), and its own
+  // onward edges (re-route to clinic, escalate, close as LWBS) are exactly
+  // the choices the desk then has.
+  triaged_awaiting_destination: ['routed_to_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
   escalated_to_emergency: ['admitted', 'discharged', 'deceased', 'referred_out'],
   lwbs: [],
 
   // Stage 4 — Clinic Intake / Rooming
-  routed_to_clinic: ['arrived_at_clinic_awaiting_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs'],
-  arrived_at_clinic_awaiting_rooming: ['in_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs'],
-  in_rooming: ['ready_for_clinician', 'escalated_to_emergency', 'transferred_to_other_clinic', 'lwbs'],
-  ready_for_clinician: ['with_clinician', 'escalated_to_emergency', 'lwbs'],
+  routed_to_clinic: ['arrived_at_clinic_awaiting_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
+  arrived_at_clinic_awaiting_rooming: ['in_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
+  in_rooming: ['ready_for_clinician', 'escalated_to_emergency', 'transferred_to_other_clinic', 'lwbs', 'awaiting_next_station'],
+  ready_for_clinician: ['with_clinician', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
   transferred_to_other_clinic: ['arrived_at_clinic_awaiting_rooming'],
 
   // Stage 5 — Clinical Consultation

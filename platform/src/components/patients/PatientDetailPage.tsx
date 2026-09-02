@@ -22,7 +22,7 @@ import { usePatientReferrals } from '@/lib/hooks/useReferrals';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
-import { Package, MessageSquare } from '@/components/icons/lucide';
+import { MessageSquare } from '@/components/icons/lucide';
 import { Icon as DuotoneInfoIcon } from '@/components/icons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import dynamic from 'next/dynamic';
@@ -1710,10 +1710,9 @@ export default function PatientDetailPage() {
                 refreshToken={notesRefreshToken}
               />
               {/* Telephone contacts stay separate: they are care-team messages
-                  about a patient, not documentation of an encounter. */}
-              <div className="card-elevated p-5">
-                <PhoneNotes patient={patient} />
-              </div>
+                  about a patient, not documentation of an encounter. PhoneNotes
+                  brings its own ChartSection card. */}
+              <PhoneNotes patient={patient} />
             </div>
           )}
 
@@ -1745,9 +1744,7 @@ export default function PatientDetailPage() {
             <div className="space-y-4">
               <ScreeningsPanel patient={patient} />
               <RemindersPanel patient={patient} />
-              <div className="card-elevated p-5">
-                <AssessmentsPanel patient={patient} focusId={focusId} />
-              </div>
+              <AssessmentsPanel patient={patient} focusId={focusId} />
             </div>
           )}
 
@@ -1967,78 +1964,92 @@ export default function PatientDetailPage() {
           {activeTab === 'referrals' && (
             <div className="space-y-3">
               <TransferHistoryPanel patient={patient} canViewClinical={canViewClinical} />
-              <div className="flex items-center justify-between px-1 mb-1">
-                <div className="flex items-center gap-2">
-                  <div className="icon-box-sm">
-                    <ArrowRightLeft className="w-3.5 h-3.5" style={{ color: 'var(--tamamhealth-blue)' }} />
-                  </div>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Referrals</span>
-                </div>
-                <button onClick={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)} className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--tamamhealth-blue)' }}>
-                  All referrals <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              {patientReferrals.length === 0 ? (
-                <div className="card-elevated p-8 text-center">
-                  <ArrowRightLeft className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('referral.none')}</p>
-                </div>
-              ) : (
-                <div className="space-y-3" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
-                {patientReferrals.map(ref => {
-                  const tp = ref.transferPackage as { medicalRecords?: unknown[]; labResults?: unknown[]; attachments?: unknown[]; packageSizeBytes?: number } | undefined;
-                  const refAtts = ref.referralAttachments as unknown[] | undefined;
-                  return (
-                    <div key={ref._id} className="card-elevated px-5 py-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`badge urgency-${ref.urgency} text-[10px]`}>
-                            {ref.urgency === 'emergency' && <AlertTriangle className="w-3 h-3" />}
-                            {ref.urgency.charAt(0).toUpperCase() + ref.urgency.slice(1)}
-                          </span>
-                          <span className={`badge ${ref.status === 'sent' ? 'ref-sent' : ref.status === 'received' ? 'ref-received' : ref.status === 'seen' ? 'ref-seen' : ref.status === 'completed' ? 'ref-completed' : 'ref-cancelled'} text-[10px]`}>
-                            {ref.status === 'sent' ? 'Sent' : ref.status === 'received' ? 'Received' : ref.status === 'seen' ? 'Being Seen' : ref.status === 'completed' ? 'Completed' : 'Cancelled'}
-                          </span>
-                          {tp && (
-                            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
-                              <Package className="w-3 h-3" /> Data Package
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {ref.referralDate}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm mb-2">
-                        <span style={{ color: 'var(--text-secondary)' }}>{ref.fromHospital}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>→</span>
-                        <span className="font-semibold">{ref.toHospital}</span>
-                        <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-subtle)' }}>{ref.department}</span>
-                      </div>
-                      {canViewClinical ? (
-                        <>
-                          <p className="text-sm mb-1"><span className="font-semibold">Reason:</span> {ref.reason}</p>
-                          {ref.notes && (
-                            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Notes: {ref.notes}</p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</p>
-                      )}
-                      <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <span>Dr. {ref.referringDoctor}</span>
-                        {refAtts && refAtts.length > 0 && (
-                          <span>{refAtts.length} attachment(s)</span>
-                        )}
-                        {tp && tp.medicalRecords && (
-                          <span>{(tp.medicalRecords as unknown[]).length} record(s) in package</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                </div>
-              )}
+              <ChartSection
+                title="Referrals"
+                addLabel="New referral"
+                onAdd={canManageReferrals ? () => setShowReferModal(true) : undefined}
+                filterSlot={(
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)}
+                    className="text-xs font-semibold flex items-center gap-1"
+                    style={{ color: 'var(--tamamhealth-blue)' }}
+                  >
+                    All referrals <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              >
+                {patientReferrals.length === 0 ? (
+                  <OmrsEmptyState
+                    itemLabel="referrals"
+                    actionLabel="New referral"
+                    onAction={canManageReferrals ? () => setShowReferModal(true) : undefined}
+                  />
+                ) : (
+                  <table className="omrs-table omrs-table--fixed">
+                    <colgroup>
+                      <col /><col /><col /><col /><col /><col /><col />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>From → To</th>
+                        <th>Department</th>
+                        <th>Reason</th>
+                        <th>Referred by</th>
+                        <th>Urgency</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientReferrals.map(ref => {
+                        const tp = ref.transferPackage as { medicalRecords?: unknown[]; labResults?: unknown[]; attachments?: unknown[]; packageSizeBytes?: number } | undefined;
+                        const refAtts = ref.referralAttachments as unknown[] | undefined;
+                        const extras = [
+                          refAtts && refAtts.length > 0 && `${refAtts.length} attachment(s)`,
+                          tp?.medicalRecords && `${(tp.medicalRecords as unknown[]).length} record(s) in package`,
+                          tp && 'data package',
+                        ].filter(Boolean).join(' · ');
+                        return (
+                          <tr key={ref._id}>
+                            <td className="font-mono">{ref.referralDate}</td>
+                            <td>
+                              <div className="appointment-card-provider">
+                                <strong>{ref.toHospital}</strong>
+                                <span>from {ref.fromHospital}</span>
+                              </div>
+                            </td>
+                            <td>{ref.department}</td>
+                            <td className="omrs-cell-note">
+                              {canViewClinical ? (
+                                <>
+                                  {ref.reason}
+                                  {ref.notes && <div className="omrs-cell-sub">Notes: {ref.notes}</div>}
+                                  {extras && <div className="omrs-cell-sub">{extras}</div>}
+                                </>
+                              ) : (
+                                <span className="italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</span>
+                              )}
+                            </td>
+                            <td>Dr. {ref.referringDoctor}</td>
+                            <td>
+                              <span className={`badge urgency-${ref.urgency} text-[10px]`}>
+                                {ref.urgency === 'emergency' && <AlertTriangle className="w-3 h-3" />}
+                                {ref.urgency.charAt(0).toUpperCase() + ref.urgency.slice(1)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`badge ${ref.status === 'sent' ? 'ref-sent' : ref.status === 'received' ? 'ref-received' : ref.status === 'seen' ? 'ref-seen' : ref.status === 'completed' ? 'ref-completed' : 'ref-cancelled'} text-[10px]`}>
+                                {ref.status === 'sent' ? 'Sent' : ref.status === 'received' ? 'Received' : ref.status === 'seen' ? 'Being Seen' : ref.status === 'completed' ? 'Completed' : 'Cancelled'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </ChartSection>
             </div>
           )}
 

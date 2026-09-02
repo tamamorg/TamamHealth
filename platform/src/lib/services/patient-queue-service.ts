@@ -137,6 +137,12 @@ export function buildQueueFromTriage(
     // Without it a RED-acuity walk-away sorts to the top of the queue as the
     // most urgent patient in the building for the next 24 hours.
     if (triage.status === 'admitted' || triage.status === 'discharged' || triage.status === 'referred' || triage.status === 'lwbs') continue;
+    // A visit sent back to reception is out of the CLINICAL queues — the desk
+    // owns it now (its encounter sits at awaiting_next_station and the
+    // front-desk board files it by appointment status). Leaving it here kept
+    // the patient on the very worklists "return to front desk" removes them
+    // from.
+    if (triage.handoffStatus === 'returned_to_desk') continue;
 
     const acuity = (triage.priority as 'RED' | 'YELLOW' | 'GREEN') ?? 'GREEN';
     const consultStatus = consultationStatusByPatient?.[triage.patientId];

@@ -19,7 +19,6 @@ import {
   ClipboardList, Plus, AlertTriangle, Activity, Send, Calendar,
 } from '@/components/icons/lucide';
 import ShortcutSearchInput from './shortcuts/ShortcutSearchInput';
-import ShortcutResults from './shortcuts/ShortcutResults';
 import { useShortcutSearch } from './shortcuts/useShortcutSearch';
 import AssessmentSection from './assessment/AssessmentSection';
 import { getSectionDef, type NoteSectionId } from '@/lib/clinical-notes/note-catalog';
@@ -193,10 +192,6 @@ export default function NoteSectionCard({
           </div>
         )}
       </div>
-
-      {/* In flow, between the heading and the body — the list never covers the
-          note underneath it. */}
-      {!readOnly && <ShortcutResults search={shortcuts} />}
 
       {/* Assessment leads with the problems included from the popup, rendered
           as diagnosis lines. The textarea below stays the narrative. */}

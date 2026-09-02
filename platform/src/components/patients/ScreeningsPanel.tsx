@@ -10,7 +10,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/context';
 import type { PatientDoc } from '@/lib/db-types';
-import { ClipboardList, Plus, Check, X, Clock } from '@/components/icons/lucide';
+import { Check, X } from '@/components/icons/lucide';
+import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { todayIso } from '@/lib/date-utils';
@@ -73,56 +74,60 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
   }
 
   return (
-    <div className="card-elevated p-3.5">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          <h3 className="font-semibold text-sm">Screenings due</h3>
-          {due.length > 0 && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>{due.length}</span>
-          )}
-        </div>
-        {!adding && (
-          <button className="btn btn-xs btn-secondary" onClick={() => setAdding(true)}>
-            <Plus className="w-3 h-3" /> Add
-          </button>
-        )}
-      </div>
-
+    <ChartSection title="Screenings due" addLabel="Add" onAdd={() => setAdding(true)}>
       {due.length === 0 && !adding ? (
-        <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>No screenings due.</p>
-      ) : (
-        <div className="space-y-1.5">
-          {due.map((s) => {
-            const overdue = !!s.dueDate && s.dueDate < today;
-            return (
-              <div key={s.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{s.type}</div>
-                  <div className="inline-flex items-center gap-1 text-[11px]" style={{ color: overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
-                    {overdue && <Clock className="w-3 h-3" />}
-                    <span>{overdue ? `Overdue · due ${s.dueDate}` : `Due ${s.dueDate || '—'}`}{s.intervalMonths ? ` · every ${s.intervalMonths}mo` : ''}</span>
-                  </div>
-                </div>
-                <button className="btn btn-xs btn-primary flex-shrink-0" disabled={busy} onClick={() => run(() => doComplete(s.id))} title="Mark done">
-                  <Check className="w-3 h-3" /> Done
-                </button>
-                <button className="btn btn-xs btn-secondary flex-shrink-0" disabled={busy} onClick={() => run(() => doDecline(s.id))} title="Patient declined">Decline</button>
-                <button className="p-1 rounded flex-shrink-0" disabled={busy} onClick={async () => {
-                  const ok = await confirm({
-                    title: 'Remove this screening?',
-                    message: `${s.type} will be deleted from this patient's chart.`,
-                    confirmLabel: 'Remove',
-                    tone: 'danger',
-                  });
-                  if (ok) run(() => doRemove(s.id));
-                }} title="Remove" style={{ color: 'var(--text-muted)' }}>
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        <OmrsEmptyState itemLabel="screenings due" actionLabel="Add screening" onAction={() => setAdding(true)} />
+      ) : due.length > 0 && (
+        <table className="omrs-table omrs-table--fixed">
+          <colgroup>
+            <col /><col /><col /><col /><col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Screening</th>
+              <th>Due date</th>
+              <th>Recall</th>
+              <th>Actions</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {due.map((s) => {
+              const overdue = !!s.dueDate && s.dueDate < today;
+              return (
+                <tr key={s.id}>
+                  <td className="omrs-cell-strong">{s.type}</td>
+                  <td>{s.dueDate || '—'}</td>
+                  <td>{s.intervalMonths ? `Every ${s.intervalMonths} months` : '—'}</td>
+                  <td>
+                    <div className="flex items-center gap-1.5">
+                      <button className="btn btn-xs btn-primary" disabled={busy} onClick={() => run(() => doComplete(s.id))} title="Mark done">
+                        <Check className="w-3 h-3" /> Done
+                      </button>
+                      <button className="btn btn-xs btn-secondary" disabled={busy} onClick={() => run(() => doDecline(s.id))} title="Patient declined">Decline</button>
+                      <button className="btn btn-xs btn-secondary" disabled={busy} onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Remove this screening?',
+                          message: `${s.type} will be deleted from this patient's chart.`,
+                          confirmLabel: 'Remove',
+                          tone: 'danger',
+                        });
+                        if (ok) run(() => doRemove(s.id));
+                      }} title="Remove" aria-label="Remove screening">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={overdue ? 'omrs-panel-badge omrs-panel-badge--pending' : 'omrs-panel-badge omrs-panel-badge--active'}>
+                      {overdue ? 'Overdue' : 'Due'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
 
       {adding && (
@@ -157,6 +162,6 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
       )}
 
       {error && <p className="text-[11px] mt-1" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
-    </div>
+    </ChartSection>
   );
 }

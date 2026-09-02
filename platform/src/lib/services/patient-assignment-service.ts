@@ -24,6 +24,53 @@ export interface AssignmentActor {
   role?: UserRole;
 }
 
+export interface CompleteAssignmentInput {
+  patientId: string;
+  patientName: string;
+  actor?: AssignmentActor;
+  /** Why the assignment ended without a normal checkout — "patient left",
+   *  "care handed to ward team", … Kept in the audit trail. */
+  reason?: string;
+}
+
+/**
+ * Close a patient's standing care-team assignment: the exit for an assigned
+ * patient whose episode is over without a formal checkout — most often a
+ * patient who left the facility and never came back, sitting on the assigned
+ * clinician's worklist with no way off it.
+ *
+ * Allowed to reception (who own assignment routing) and to the assigned
+ * clinician or nurse THEMSELVES. The write takes the exact shape the CouchDB
+ * validator's terminal-cleanup exception sanctions for non-reception roles:
+ * `assignmentStatus: 'completed'` with live ownership ids REMOVED — a
+ * clinician may close their own assignment, never route the patient to
+ * somebody else. Names and timestamps stay as the record of who carried the
+ * care.
+ */
+export async function completePatientAssignment(input: CompleteAssignmentInput): Promise<void> {
+  const actor = input.actor;
+  if (!actor?.id) throw new Error('An identified user is required to end an assignment');
+  const { getPatientById, updatePatient } = await import('./patient-service');
+  const patient = await getPatientById(input.patientId);
+  if (!patient) throw new Error('Patient not found');
+  const isReception = canAssignCareTeamRole(actor.role) || actor.role === 'super_admin';
+  const isOwnAssignment = patient.assignedDoctor === actor.id || patient.assignedNurse === actor.id;
+  if (!isReception && !isOwnAssignment) {
+    throw new Error('Only the assigned clinician, the assigned nurse, or the front desk can end this assignment');
+  }
+  const updated = await updatePatient(patient._id, {
+    assignmentStatus: 'completed',
+    assignedDoctor: undefined,
+    assignedNurse: undefined,
+  });
+  if (!updated) throw new Error('The patient could not be updated');
+  const { logAuditSafe } = await import('./audit-service');
+  await logAuditSafe('PATIENT_ASSIGNMENT_COMPLETED', actor.id, actor.name,
+    `Assignment for ${input.patientName} (${input.patientId}) ended` +
+    (input.reason ? ` — ${input.reason}` : ''),
+  );
+}
+
 export interface AssignProviderInput {
   patientId: string;
   patientName: string;
