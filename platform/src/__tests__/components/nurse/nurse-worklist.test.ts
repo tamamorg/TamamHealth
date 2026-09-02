@@ -78,6 +78,13 @@ describe('assembleNurseWorklist — ward roster rows', () => {
     expect(result.patients.find(row => row._id === patient._id)?.ward).toBe('Assigned care');
   });
 
+  test('a completed compatibility assignment is not active work', () => {
+    const patient = makePatient({
+      _id: 'p-completed', assignedNurse: 'nurse-1', assignmentStatus: 'completed',
+    });
+    expect(assembleNurseWorklist(baseInput({ patients: [patient] })).patients).toHaveLength(0);
+  });
+
   test('a nurse-led appointment appears on today\'s dashboard even without secondary staff', () => {
     const patient = makePatient({ _id: 'p-nurse-appointment' });
     const appointment = makeAppointment({

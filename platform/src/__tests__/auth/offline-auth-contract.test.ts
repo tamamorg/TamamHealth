@@ -27,4 +27,11 @@ describe('offline authentication boundary', () => {
     expect(contextSource).toContain('serverSessionRestored = true');
     expect(contextSource).toContain('if (!serverSessionRestored)');
   });
+
+  it('never silently restores a server session after an unconfirmed logout', () => {
+    expect(contextSource).toContain("LOGOUT_PENDING_KEY = 'tamamhealth.auth.logout-pending'");
+    expect(contextSource).toContain('const hasSessionCookie = !logoutPending');
+    expect(contextSource).toContain("window.localStorage.setItem(LOGOUT_PENDING_KEY, 'true')");
+    expect(contextSource).toContain('if (response.ok) window.localStorage.removeItem(LOGOUT_PENDING_KEY)');
+  });
 });

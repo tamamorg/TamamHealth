@@ -444,6 +444,22 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
 export const IMMUTABLE_FIELDS = ['orgId', 'hospitalId', 'type'] as const;
 
 /**
+ * Patient fields that move active care accountability. These are not ordinary
+ * demographics: only the reception roles that own care routing may change
+ * them through a patient document. Keeping this rule in the generated
+ * validator prevents a clinical client from bypassing the assignment service
+ * with a direct PouchDB write.
+ */
+export const PATIENT_CARE_TEAM_FIELDS = [
+  'assignedDoctor', 'assignedDoctorName', 'assignedDepartment',
+  'assignedAt', 'assignedBy', 'assignedByName', 'assignmentNote',
+  'assignmentStatus', 'assignmentAcceptedAt', 'assignmentAcceptedBy',
+  'assignmentAcceptedByName', 'assignmentSource', 'assignmentTransferId',
+  'assignedNurse', 'assignedNurseName',
+  'assignedNurseAt', 'assignedNurseBy', 'assignedNurseByName', 'careTeam',
+] as const;
+
+/**
  * Fields naming the facility that OWNS a document.
  *
  * Deliberately just these two. `facility-entitlements.ts` lists seven fields for
@@ -582,6 +598,9 @@ export function buildValidateDocUpdateFn(
   const facilityFieldsJson = JSON.stringify(FACILITY_OWNER_FIELDS);
   const facilityExemptJson = JSON.stringify(FACILITY_EXEMPT_TYPES);
   const multiFacilityJson = JSON.stringify(MULTI_FACILITY_ROLES);
+  const patientCareTeamFieldsJson = JSON.stringify(PATIENT_CARE_TEAM_FIELDS);
+  const careTeamRolesJson = JSON.stringify(CARE_TEAM_ASSIGNMENT_ROLES);
+  const transferWriteRolesJson = JSON.stringify(TRANSFER_WRITE_ROLES);
 
   return `function (newDoc, oldDoc, userCtx, secObj) {
   // Design docs are admin-only; the CouchDB security object handles that.
@@ -691,6 +710,56 @@ export function buildValidateDocUpdateFn(
       var f = immutable[j];
       if (oldDoc[f] !== undefined && newDoc[f] !== oldDoc[f]) {
         throw({ forbidden: f + ' is immutable (was ' + oldDoc[f] + ', got ' + newDoc[f] + ')' });
+      }
+    }
+  }
+
+  // Care-team routing is a protected sub-resource of the patient document.
+  // A broad right to update patient demographics must not imply a right to
+  // move clinical accountability.
+  if (oldDoc && !isDelete && docType === 'patient') {
+    var CARE_TEAM_FIELDS = ${patientCareTeamFieldsJson};
+    var CARE_TEAM_ROLES = ${careTeamRolesJson};
+    var TRANSFER_ROLES = ${transferWriteRolesJson};
+    var careTeamChanged = false;
+    for (var ct = 0; ct < CARE_TEAM_FIELDS.length; ct++) {
+      var careField = CARE_TEAM_FIELDS[ct];
+      if (JSON.stringify(newDoc[careField]) !== JSON.stringify(oldDoc[careField])) {
+        careTeamChanged = true;
+        break;
+      }
+    }
+    if (careTeamChanged && !contains(CARE_TEAM_ROLES, actingRole)) {
+      // Closing a visit may only REMOVE live ownership. This exception lets a
+      // clinician finish their own encounter without granting them a way to
+      // route a patient to somebody else.
+      var terminalCleanup = newDoc.assignmentStatus === 'completed'
+        && !newDoc.assignedDoctor && !newDoc.assignedNurse
+        && JSON.stringify(newDoc.careTeam) === JSON.stringify(oldDoc.careTeam);
+
+      // Accepted transfers are the other legitimate non-reception path. The
+      // transfer service stamps the patient with the immutable transfer id so
+      // the ownership change stays attributable during offline replication.
+      // Nurse ownership is deliberately excluded: transfers move provider
+      // accountability or shared-care membership, never nursing assignment.
+      var nursingChanged = false;
+      var NURSING_FIELDS = ['assignedNurse', 'assignedNurseName', 'assignedNurseAt', 'assignedNurseBy', 'assignedNurseByName'];
+      for (var nf = 0; nf < NURSING_FIELDS.length; nf++) {
+        var nursingField = NURSING_FIELDS[nf];
+        if (JSON.stringify(newDoc[nursingField]) !== JSON.stringify(oldDoc[nursingField])) {
+          nursingChanged = true;
+          break;
+        }
+      }
+      var transferChange = contains(TRANSFER_ROLES, actingRole)
+        && newDoc.assignmentSource === 'transfer'
+        && typeof newDoc.assignmentTransferId === 'string'
+        && newDoc.assignmentTransferId.length > 0
+        && newDoc.assignmentTransferId !== oldDoc.assignmentTransferId
+        && !nursingChanged;
+
+      if (!terminalCleanup && !transferChange) {
+        throw({ forbidden: 'role ' + actingRole + ' may not change patient care-team assignment fields' });
       }
     }
   }

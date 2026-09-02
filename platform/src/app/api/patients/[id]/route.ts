@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized, validationError } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { canAssignCareTeamRole } from '@/lib/care-team-permissions';
+import { PATIENT_CARE_TEAM_FIELDS } from '@/lib/sync/write-permissions';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'front_desk', 'medical_superintendent', 'hrio',
@@ -72,6 +74,12 @@ async function patchHandler(
     delete body.createdAt;
     const { sanitizePayload } = await import('@/lib/validation');
     const sanitized = sanitizePayload(body);
+    if (
+      !canAssignCareTeamRole(auth.role) &&
+      PATIENT_CARE_TEAM_FIELDS.some(field => Object.prototype.hasOwnProperty.call(sanitized, field))
+    ) {
+      return forbidden('Only front desk staff can change patient care-team assignments');
+    }
     // A partial edit form may serialize untouched inputs as empty strings. Merging
     // those over the stored record would silently wipe existing demographics
     // (e.g. nokPhone: ''). Drop empty/undefined keys so PATCH only updates fields

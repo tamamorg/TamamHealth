@@ -869,6 +869,49 @@ export async function dischargeEncounter(
     // A stale progress notification is a nuisance, not a safety issue.
   }
 
+  // Patient-level assignment fields are a compatibility cache for the active
+  // visit. The encounter retains the historical care team, so leaving those
+  // fields on the patient after discharge only makes a closed visit appear as
+  // live work on the doctor/nurse dashboards. Clear them only when there is no
+  // newer open encounter for this patient; a concurrent re-arrival owns the
+  // cache and must not be erased by the older visit finishing.
+  try {
+    const newerOpen = await findOpenEncounterForPatient(current.patientId, current.hospitalId);
+    if (!newerOpen || newerOpen._id === current._id) {
+      const { getPatientById, updatePatient } = await import('./patient-service');
+      const patient = await getPatientById(current.patientId);
+      const clinicianId = current.assignedClinicianId || current.clinicianId;
+      const ownsProvider = Boolean(clinicianId && patient?.assignedDoctor === clinicianId);
+      const ownsNurse = Boolean(current.assignedNurseId && patient?.assignedNurse === current.assignedNurseId);
+      if (patient && (ownsProvider || ownsNurse)) {
+        await updatePatient(patient._id, {
+          ...(ownsProvider ? {
+            assignedDoctor: undefined,
+            assignedDoctorName: undefined,
+            assignedAt: undefined,
+            assignedBy: undefined,
+            assignedByName: undefined,
+            assignmentNote: undefined,
+            assignmentAcceptedAt: undefined,
+            assignmentAcceptedBy: undefined,
+            assignmentAcceptedByName: undefined,
+          } : {}),
+          ...(ownsNurse ? {
+            assignedNurse: undefined,
+            assignedNurseName: undefined,
+            assignedNurseAt: undefined,
+            assignedNurseBy: undefined,
+            assignedNurseByName: undefined,
+          } : {}),
+          assignmentStatus: 'completed',
+        });
+      }
+    }
+  } catch {
+    // The encounter is already safely closed. A repair can clear a stale
+    // compatibility cache without reopening or changing the clinical record.
+  }
+
   return current;
 }
 

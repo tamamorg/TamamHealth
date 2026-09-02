@@ -117,7 +117,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
 
   // Patients a nurse has assigned to this clinician for care.
   const myAssigned = patients
-    .filter(p => p.assignedDoctor && p.assignedDoctor === currentUser._id)
+    .filter(p => p.assignedDoctor === currentUser._id && p.assignmentStatus !== 'completed')
     .sort((a, b) => (b.assignedAt ?? '').localeCompare(a.assignedAt ?? ''));
 
   // Active (pending/seen), unclaimed triage records at this clinician's own

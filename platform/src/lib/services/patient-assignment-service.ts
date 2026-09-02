@@ -27,7 +27,7 @@ export interface AssignmentActor {
 export interface AssignProviderInput {
   patientId: string;
   patientName: string;
-  provider: { id: string; name: string; role?: UserRole };
+  provider: { id: string; name: string; role?: UserRole } | null;
   actor?: AssignmentActor;
   hospitalId?: string;
   hospitalName?: string;
@@ -42,39 +42,38 @@ export interface AssignProviderInput {
 /** Assigns the provider who will carry the visit. */
 export async function assignProviderToPatient(input: AssignProviderInput): Promise<void> {
   await assertCanAssign(input.actor, input.hospitalId, input.orgId);
-  await assertAssignableStaff(input.provider.id, input.hospitalId, input.orgId, [
-    'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
-    'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
-  ]);
+  if (input.provider) {
+    await assertAssignableStaff(input.provider.id, input.hospitalId, input.orgId, [
+      'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
+      'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+    ]);
+  }
+  const { patient, encounter, appointment, triage } = await resolveAndValidateTargets(input);
   const now = new Date().toISOString();
   const { updatePatient } = await import('./patient-service');
-  await updatePatient(input.patientId, {
-    assignedDoctor: input.provider.id,
-    assignedDoctorName: input.provider.name,
-    assignedAt: now,
-    assignedBy: input.actor?.id,
-    assignedByName: input.actor?.name,
-    assignmentNote: input.note?.trim() || undefined,
-    assignmentStatus: 'assigned',
+  const updatedPatient = await updatePatient(patient._id, {
+    assignedDoctor: input.provider?.id,
+    assignedDoctorName: input.provider?.name,
+    assignedAt: input.provider ? now : undefined,
+    assignedBy: input.provider ? input.actor?.id : undefined,
+    assignedByName: input.provider ? input.actor?.name : undefined,
+    assignmentNote: input.provider ? input.note?.trim() || undefined : undefined,
+    assignmentStatus: input.provider ? 'assigned' : undefined,
+    assignmentSource: input.provider ? 'front_desk' : undefined,
+    assignmentTransferId: undefined,
     // A fresh assignment is unaccepted, whatever the previous provider had done.
     assignmentAcceptedAt: undefined,
     assignmentAcceptedBy: undefined,
     assignmentAcceptedByName: undefined,
   });
+  if (!updatedPatient) throw new Error('The patient could not be updated');
 
-  let encounter: Awaited<ReturnType<typeof resolveVisit>>['encounter'];
-  let appointmentId: string | undefined;
-  try {
-    ({ encounter, appointmentId } = await resolveVisit(input));
-  } catch (error) {
-    await recordAssignmentRepair(input, 'resolve_visit', error);
-    throw error;
-  }
-  if (appointmentId) {
+  const appointmentId = appointment?._id;
+  if (appointment) {
     const { updateAppointment } = await import('./appointment-service');
-    const updated = await updateAppointment(appointmentId, {
-      providerId: input.provider.id,
-      providerName: input.provider.name,
+    const updated = await updateAppointment(appointment._id, {
+      providerId: input.provider?.id || '',
+      providerName: input.provider?.name || '',
     });
     if (!updated) {
       const error = new Error('Failed to update the assigned appointment');
@@ -85,11 +84,11 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
   if (encounter) {
     const { updateEncounter } = await import('./encounter-service');
     const updated = await updateEncounter(encounter._id, {
-      assignedClinicianId: input.provider.id,
-      assignedClinicianName: input.provider.name,
-      assignedAt: now,
-      assignedBy: input.actor?.id,
-      assignedByName: input.actor?.name,
+      assignedClinicianId: input.provider?.id,
+      assignedClinicianName: input.provider?.name,
+      assignedAt: input.provider ? now : undefined,
+      assignedBy: input.provider ? input.actor?.id : undefined,
+      assignedByName: input.provider ? input.actor?.name : undefined,
     });
     if (!updated) {
       const error = new Error('Failed to update the assigned encounter');
@@ -98,7 +97,7 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
     }
   }
 
-  try {
+  if (input.provider) try {
     const { ensureConsultationProgress, assignProgressOwner, updateProgressStage } =
       await import('./consultation-progress-service');
     const tracker = await ensureConsultationProgress({
@@ -117,13 +116,34 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
     await recordAssignmentRepair(input, 'consultation_progress', error, appointmentId, encounter?._id);
   }
 
-  if (input.triageId) {
+  if (!input.provider) {
+    try {
+      const {
+        assignProgressOwner, getConsultationProgressByAppointment,
+        getConsultationProgressByEncounter, updateProgressStage,
+      } = await import('./consultation-progress-service');
+      const tracker = encounter
+        ? await getConsultationProgressByEncounter(input.patientId, encounter._id)
+        : appointmentId
+          ? await getConsultationProgressByAppointment(input.patientId, appointmentId)
+          : null;
+      if (tracker && tracker.currentStage !== 'completed' && tracker.currentStage !== 'cancelled') {
+        await assignProgressOwner(tracker._id, {}, input.actor);
+        await updateProgressStage(tracker._id, 'waiting_for_provider', input.actor, 'Assign a provider');
+      }
+    } catch (error) {
+      await recordAssignmentRepair(input, 'consultation_progress', error, appointmentId, encounter?._id);
+    }
+  }
+
+  if (triage) {
     try {
       const { updateTriage } = await import('./triage-service');
-      await updateTriage(input.triageId, {
-        handoffTo: input.provider.id,
-        handoffToName: input.provider.name,
-        handoffAt: now,
+      await updateTriage(triage._id, {
+        handoffTo: input.provider?.id,
+        handoffToName: input.provider?.name,
+        handoffAt: input.provider ? now : undefined,
+        handoffStatus: input.provider ? 'assigned' : 'awaiting_provider',
       });
     } catch (error) {
       await recordAssignmentRepair(input, 'triage_handoff', error, appointmentId, encounter?._id);
@@ -154,27 +174,22 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
       'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
     ]);
   }
+  const { patient, encounter, appointment } = await resolveAndValidateTargets(input);
   const now = new Date().toISOString();
   const { updatePatient } = await import('./patient-service');
-  await updatePatient(input.patientId, {
+  const updatedPatient = await updatePatient(patient._id, {
     assignedNurse: input.nurse?.id,
     assignedNurseName: input.nurse?.name,
     assignedNurseAt: input.nurse ? now : undefined,
     assignedNurseBy: input.nurse ? input.actor?.id : undefined,
     assignedNurseByName: input.nurse ? input.actor?.name : undefined,
   });
+  if (!updatedPatient) throw new Error('The patient could not be updated');
 
-  let resolved: Awaited<ReturnType<typeof resolveVisit>>;
-  try {
-    resolved = await resolveVisit(input);
-  } catch (error) {
-    await recordAssignmentRepair(input, 'resolve_visit', error);
-    throw error;
-  }
-  const { encounter, appointmentId } = resolved;
-  if (appointmentId) {
+  const appointmentId = appointment?._id;
+  if (appointment) {
     const { updateAppointment } = await import('./appointment-service');
-    const updated = await updateAppointment(appointmentId, {
+    const updated = await updateAppointment(appointment._id, {
       staffId: input.nurse?.id,
       staffName: input.nurse?.name,
     });
@@ -241,22 +256,67 @@ async function assertAssignableStaff(
   }
 }
 
-async function resolveVisit(input: {
+async function resolveAndValidateTargets(input: {
   patientId: string;
   hospitalId?: string;
+  orgId?: string;
   appointmentId?: string;
   encounterId?: string;
+  triageId?: string;
 }) {
+  if (!input.orgId || !input.hospitalId) throw new Error('Organization and facility are required for assignment');
+  const { getPatientById } = await import('./patient-service');
+  const patient = await getPatientById(input.patientId);
+  if (!patient) throw new Error('The patient does not exist');
+  if (patient.orgId !== input.orgId) throw new Error('The patient is outside the assignment organization');
+
   const { getEncounter, findOpenEncounterForPatient } = await import('./encounter-service');
   const encounter = input.encounterId
     ? await getEncounter(input.encounterId)
     : input.hospitalId
       ? await findOpenEncounterForPatient(input.patientId, input.hospitalId)
       : null;
-  if (encounter && encounter.patientId !== input.patientId) {
-    throw new Error('The encounter does not belong to this patient');
+  if (encounter && (
+    encounter.patientId !== input.patientId ||
+    encounter.orgId !== input.orgId ||
+    encounter.hospitalId !== input.hospitalId
+  )) {
+    throw new Error('The encounter is outside this patient visit');
   }
-  return { encounter, appointmentId: input.appointmentId || encounter?.appointmentId };
+
+  const appointmentId = input.appointmentId || encounter?.appointmentId;
+  const { getAppointmentById } = await import('./appointment-service');
+  const appointment = appointmentId ? await getAppointmentById(appointmentId) : null;
+  if (appointmentId && !appointment) throw new Error('The appointment does not exist');
+  if (appointment && (
+    appointment.patientId !== input.patientId ||
+    appointment.orgId !== input.orgId ||
+    appointment.facilityId !== input.hospitalId ||
+    (encounter?.appointmentId && encounter.appointmentId !== appointment._id)
+  )) {
+    throw new Error('The appointment is outside this patient visit');
+  }
+
+  const { getTriageByEncounter, getTriageById } = await import('./triage-service');
+  const triage = input.triageId
+    ? await getTriageById(input.triageId)
+    : encounter
+      ? await getTriageByEncounter(encounter._id)
+      : null;
+  if (input.triageId && !triage) throw new Error('The triage record does not exist');
+  if (triage && (
+    triage.patientId !== input.patientId ||
+    triage.orgId !== input.orgId ||
+    // Older triage records predate the required facility stamp. Their linked
+    // encounter has already established the visit facility above; reject only
+    // an explicit conflicting value rather than stranding a legacy visit.
+    (triage.facilityId && triage.facilityId !== input.hospitalId) ||
+    (triage.encounterId && encounter && triage.encounterId !== encounter._id)
+  )) {
+    throw new Error('The triage record is outside this patient visit');
+  }
+
+  return { patient, encounter, appointment, triage };
 }
 
 async function recordAssignmentRepair(

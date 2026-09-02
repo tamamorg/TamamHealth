@@ -1777,6 +1777,10 @@ export interface Patient {
   assignmentAcceptedAt?: string;
   assignmentAcceptedBy?: string;
   assignmentAcceptedByName?: string;
+  /** Auditable provenance for ownership changes that bypass reception because
+   *  they were accepted through the dedicated transfer workflow. */
+  assignmentSource?: 'front_desk' | 'transfer';
+  assignmentTransferId?: string;
   /**
    * The nurse covering this patient. Separate from `assignedBy`, which records
    * who *made* the doctor assignment — the front desk was reading that field as

@@ -151,6 +151,15 @@ export async function getAllTriage(scope?: DataScope): Promise<TriageDoc[]> {
   return scope ? filterByScope(all, scope) : all;
 }
 
+/** Exact triage lookup for workflows that must validate a supplied record id. */
+export async function getTriageById(id: string): Promise<TriageDoc | null> {
+  try {
+    return await triageDB().get(id) as TriageDoc;
+  } catch {
+    return null;
+  }
+}
+
 /** Triages for a specific patient, newest first. */
 export async function getTriageByPatient(patientId: string, scope?: DataScope): Promise<TriageDoc[]> {
   const rows = await findByType<TriageDoc>(

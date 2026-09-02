@@ -1009,7 +1009,11 @@ async function applyAssignment(t: PatientTransferDoc): Promise<void> {
         grantedAt: now,
         expiresAt: t.expiresAt,
       });
-      return { careTeam: team };
+      return {
+        careTeam: team,
+        assignmentSource: 'transfer',
+        assignmentTransferId: t._id,
+      };
     }
 
     if (t.transferType === 'temporary' && patient.assignedDoctor) {
@@ -1034,6 +1038,8 @@ async function applyAssignment(t: PatientTransferDoc): Promise<void> {
       assignedByName: t.decidedByName ?? t.requestedByName,
       assignmentNote: t.handoffNotes,
       careTeam: team,
+      assignmentSource: 'transfer',
+      assignmentTransferId: t._id,
     };
   });
 
@@ -1305,9 +1311,15 @@ async function expireTransfer(
         assignedDepartment: parked.department,
         assignedAt: nowIso,
         careTeam: team,
+        assignmentSource: 'transfer',
+        assignmentTransferId: t._id,
       };
     }
-    return { careTeam: team };
+    return {
+      careTeam: team,
+      assignmentSource: 'transfer',
+      assignmentTransferId: t._id,
+    };
   });
 
   const doc = await getTransferById(t._id);

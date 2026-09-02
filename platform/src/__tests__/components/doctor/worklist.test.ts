@@ -103,6 +103,13 @@ describe('assembleDoctorWorklist — assigned patients', () => {
 
     expect(result.patients.map(p => p._id)).toEqual(['p-newest', 'p-newer', 'p-older']);
   });
+
+  test('a completed compatibility assignment is not active work', () => {
+    const completed = makePatient({
+      _id: 'p-completed', assignedDoctor: 'doctor-1', assignmentStatus: 'completed',
+    });
+    expect(assembleDoctorWorklist(baseInput({ patients: [completed] })).patients).toHaveLength(0);
+  });
 });
 
 describe('assembleDoctorWorklist — unclaimed triaged walk-ins', () => {

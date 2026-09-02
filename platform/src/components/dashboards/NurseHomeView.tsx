@@ -193,6 +193,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   const assignedRows: WorklistPatient[] = [];
   for (const patient of patients) {
     if (
+      patient.assignmentStatus === 'completed' ||
       (patient.assignedNurse !== currentUser._id && patient.assignedDoctor !== currentUser._id) ||
       seenPatientIds.has(patient._id)
     ) continue;

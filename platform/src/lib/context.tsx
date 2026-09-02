@@ -272,6 +272,8 @@ interface AppState {
 
 /** localStorage key for persisting the user's sync on/off preference */
 const SYNC_PREFERENCE_KEY = 'tamamhealth.sync.preference';
+/** Survives reloads until the server confirms the httpOnly session was ended. */
+export const LOGOUT_PENDING_KEY = 'tamamhealth.auth.logout-pending';
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
@@ -393,10 +395,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } catch { /* never block boot on the repair */ }
 
       const isDemoBuild = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
-      const hasSessionCookie = document.cookie.split(';').some(c => {
+      const logoutPending = window.localStorage.getItem(LOGOUT_PENDING_KEY) === 'true';
+      const hasSessionCookie = !logoutPending && document.cookie.split(';').some(c => {
         const name = c.trim().split('=')[0];
         return name === 'tamamhealth-token' || name === CSRF_COOKIE_NAME;
       });
+      if (logoutPending) {
+        // A prior logout could not prove that its httpOnly cookie was cleared
+        // (offline, timeout, tab close). Retry before considering any server
+        // session restorable, and keep the tombstone if this attempt also fails.
+        try {
+          const response = await fetch('/api/auth/logout', {
+            method: 'POST', credentials: 'same-origin', cache: 'no-store',
+          });
+          if (response.ok) window.localStorage.removeItem(LOGOUT_PENDING_KEY);
+        } catch {
+          // Explicit credential login remains available offline; silent session
+          // restoration does not.
+        }
+      }
       if (!isDemoBuild) {
         try {
           const { completePendingWipe } = await import('./security/local-wipe');
@@ -1194,6 +1211,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         branding,
       };
       setCurrentUser(appUser);
+      window.localStorage.removeItem(LOGOUT_PENDING_KEY);
       startOfflineSession({
         _id: appUser._id,
         username: appUser.username,
@@ -1283,6 +1301,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRequiresOnlineReauth(false);
     setSyncStatus(null);
     clearOfflineSession();
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LOGOUT_PENDING_KEY, 'true');
+    }
 
     // Clear cookies that are readable by JavaScript immediately. The server
     // request below clears the httpOnly session cookie.
@@ -1298,12 +1319,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const controller = new AbortController();
         const timeout = window.setTimeout(() => controller.abort(), 3000);
         try {
-          await fetch('/api/auth/logout', {
+          const response = await fetch('/api/auth/logout', {
             method: 'POST',
             credentials: 'same-origin',
             keepalive: true,
             signal: controller.signal,
           });
+          if (response.ok) window.localStorage.removeItem(LOGOUT_PENDING_KEY);
         } finally {
           window.clearTimeout(timeout);
         }

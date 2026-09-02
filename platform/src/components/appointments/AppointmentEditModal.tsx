@@ -208,12 +208,6 @@ export default function AppointmentEditModal({
         appointmentDate: date, appointmentTime: time, duration,
         appointmentType: type, priority, department,
         reason, notes,
-        ...(canAssignCareTeam ? {
-          providerId,
-          providerName: provider,
-          staffId: detail.staffId || undefined,
-          staffName: detail.staffName || undefined,
-        } : {}),
         room: detail.room || undefined,
         isRecurring: Boolean(detail.recurrence),
         recurrencePattern: detail.recurrence || undefined,
@@ -225,13 +219,13 @@ export default function AppointmentEditModal({
       // the assignee's worklist updates on every device.
       const providerChanged = canAssignCareTeam && providerId !== (appointment.providerId || '');
       const nurseChanged = canAssignCareTeam && detail.staffId !== (appointment.staffId || '');
-      if (providerChanged && providerId) {
+      if (providerChanged) {
         const selected = providerOptions.find(option => option._id === providerId);
         const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
         await assignProviderToPatient({
           patientId: appointment.patientId,
           patientName: appointment.patientName,
-          provider: { id: providerId, name: provider, role: selected?.role },
+          provider: providerId ? { id: providerId, name: provider, role: selected?.role } : null,
           actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
           hospitalId: appointment.facilityId || myHospitalId,
           hospitalName: appointment.facilityName || currentUser?.hospitalName,

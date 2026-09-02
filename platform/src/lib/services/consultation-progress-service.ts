@@ -87,6 +87,20 @@ export async function getConsultationProgressByEncounter(
   return visible[0] ?? null;
 }
 
+/** Exact visit lookup for a booked visit that has not opened an encounter yet. */
+export async function getConsultationProgressByAppointment(
+  patientId: string,
+  appointmentId: string,
+  scope?: DataScope,
+): Promise<ConsultationProgressDoc | null> {
+  const rows = await findByType<ConsultationProgressDoc>(
+    consultationProgressDB(), 'consultation_progress', { patientId, appointmentId },
+    { indexFields: ['type', 'patientId', 'appointmentId'] },
+  );
+  const visible = scope ? filterByScope(rows, scope) : rows;
+  return visible[0] ?? null;
+}
+
 export interface ProgressActor {
   id?: string;
   name?: string;

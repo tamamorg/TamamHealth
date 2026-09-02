@@ -131,6 +131,60 @@ describe('org-scoped validate_doc_update', () => {
       expect(reasonFor({ ...appointment, status: 'in_progress' }, appointment, clinicUser)).toBeNull();
     });
 
+    it('keeps patient care-team fields at the front desk boundary', () => {
+      const patient = {
+        _id: 'patient-1', type: 'patient', orgId: 'org-a',
+        firstName: 'Nyakuma', surname: 'Deng',
+      };
+      expect(reasonFor({ ...patient, assignedDoctor: 'doctor-2' }, patient, clinicUser))
+        .toMatch(/may not change patient care-team assignment fields/);
+      expect(reasonFor({ ...patient, assignedNurse: 'nurse-2' }, patient, nurseUser))
+        .toMatch(/may not change patient care-team assignment fields/);
+      expect(reasonFor({ ...patient, assignedDoctor: 'doctor-2' }, patient, frontDeskUser))
+        .toBeNull();
+      // Clinical chart fields remain writable; this is a protected subset, not
+      // a blanket removal of the clinician's patient-update permission.
+      expect(reasonFor({ ...patient, noKnownMedications: true }, patient, clinicUser)).toBeNull();
+    });
+
+    it('allows attributable provider transfers but not transfer-stamped nurse rerouting', () => {
+      const patient = {
+        _id: 'patient-1', type: 'patient', orgId: 'org-a',
+        assignedDoctor: 'doctor-1', assignedNurse: 'nurse-1',
+      };
+      expect(reasonFor({
+        ...patient,
+        assignedDoctor: 'doctor-2',
+        assignmentSource: 'transfer',
+        assignmentTransferId: 'transfer-1',
+      }, patient, clinicUser)).toBeNull();
+      expect(reasonFor({
+        ...patient,
+        assignedNurse: 'nurse-2',
+        assignmentSource: 'transfer',
+        assignmentTransferId: 'transfer-1',
+      }, patient, nurseUser)).toMatch(/may not change patient care-team assignment fields/);
+    });
+
+    it('allows terminal assignment cleanup but cannot disguise a new owner as completion', () => {
+      const patient = {
+        _id: 'patient-1', type: 'patient', orgId: 'org-a',
+        assignedDoctor: 'doctor-1', assignedNurse: 'nurse-1',
+      };
+      expect(reasonFor({
+        ...patient,
+        assignedDoctor: undefined,
+        assignedNurse: undefined,
+        assignmentStatus: 'completed',
+      }, patient, clinicUser)).toBeNull();
+      expect(reasonFor({
+        ...patient,
+        assignedDoctor: 'doctor-2',
+        assignedNurse: undefined,
+        assignmentStatus: 'completed',
+      }, patient, clinicUser)).toMatch(/may not change patient care-team assignment fields/);
+    });
+
     it('rejects a user provisioned without a role claim', () => {
       const legacyUser: UserCtx = { name: 'old-1', roles: ['org:org-a'] };
       expect(reasonFor({ _id: 'p-1', type: 'patient', orgId: 'org-a' }, null, legacyUser))

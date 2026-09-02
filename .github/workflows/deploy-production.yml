@@ -151,7 +151,6 @@ jobs:
           push: true
           tags: |
             ${{ steps.resolve.outputs.platform_image }}:${{ steps.resolve.outputs.sha }}
-            ${{ steps.resolve.outputs.platform_image }}:production
           build-args: |
             NEXT_PUBLIC_DEMO_MODE=false
             NEXT_PUBLIC_SYNC_ENABLED=${{ vars.NEXT_PUBLIC_SYNC_ENABLED || 'true' }}
@@ -172,7 +171,6 @@ jobs:
           push: true
           tags: |
             ${{ steps.resolve.outputs.website_image }}:${{ steps.resolve.outputs.sha }}
-            ${{ steps.resolve.outputs.website_image }}:production
           cache-from: type=gha,scope=website
           cache-to: type=gha,mode=max,scope=website
 
@@ -184,7 +182,6 @@ jobs:
           push: true
           tags: |
             ${{ steps.resolve.outputs.sync_worker_image }}:${{ steps.resolve.outputs.sha }}
-            ${{ steps.resolve.outputs.sync_worker_image }}:production
           cache-from: type=gha,scope=sync-worker
           cache-to: type=gha,mode=max,scope=sync-worker
 
@@ -245,12 +242,14 @@ jobs:
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           ssh "$USER@$HOST" \
             "cd $APP_DIR && \
-             previous_platform=\$(docker inspect \$(docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform) --format '{{.Image}}') && \
-             test -n \"\$previous_platform\" && \
-             printf '%s' \"\$previous_platform\" > '.tamamhealth-rollback-platform-$SHA' && \
+             previous_platform=\$(docker inspect \$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform) --format '{{.Image}}') && \
+             previous_website=\$(docker inspect \$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q website) --format '{{.Image}}') && \
+             previous_worker=\$(docker inspect \$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q sync-worker) --format '{{.Image}}') && \
+             test -n \"\$previous_platform\" && test -n \"\$previous_website\" && test -n \"\$previous_worker\" && \
+             printf '%s\n%s\n%s\n' \"\$previous_platform\" \"\$previous_website\" \"\$previous_worker\" > '.tamamhealth-rollback-stack-$SHA' && \
              export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA' && \
-             docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull && \
-             docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d && \
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml pull && \
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml up -d && \
              echo 'Deployed immutable tag=$SHA'"
 
       # The stack can come up and still be broken (bad env refuses boot with a
@@ -258,8 +257,35 @@ jobs:
       # loudly instead of leaving that for a clinician to discover.
       - name: Verify production health
         env:
+          HOST: ${{ secrets.PROD_SSH_HOST }}
+          USER: ${{ secrets.PROD_SSH_USER }}
           HEALTH_URL: ${{ secrets.PROD_HEALTH_URL || 'https://app.tamamhealth.org/api/health' }}
+          WEBSITE_HEALTH_URL: ${{ secrets.PROD_WEBSITE_HEALTH_URL || 'https://tamamhealth.org/' }}
         run: |
+          expected_owner='${{ github.repository_owner }}'
+          expected_sha='${{ needs.build-production-images.outputs.sha }}'
+          for i in $(seq 1 30); do
+            if ssh "$USER@$HOST" "
+              set -eu
+              for service in platform website sync-worker; do
+                container=\$(docker compose --profile analytics -f '${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}/docker-compose.yml' -f '${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}/docker-compose.ghcr.yml' ps -q \"\$service\")
+                test -n \"\$container\"
+                image=\$(docker inspect \"\$container\" --format '{{.Config.Image}}')
+                health=\$(docker inspect \"\$container\" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+                case \"\$image\" in ghcr.io/$expected_owner/tamamhealth-*:$expected_sha) ;; *) echo \"\$service stale image \$image\"; exit 1;; esac
+                test \"\$health\" = healthy
+              done
+            "; then
+              echo "All release containers are healthy at immutable tag $expected_sha"
+              break
+            fi
+            if [ "$i" = 30 ]; then
+              echo "::error title=Production stack unhealthy::One or more release containers never became healthy at $expected_sha"
+              exit 1
+            fi
+            sleep 10
+          done
+          curl -fsS -m 15 "$WEBSITE_HEALTH_URL" >/dev/null
           for i in $(seq 1 30); do
             STATUS="$(curl -sS -m 10 -o /tmp/health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
             if [ "$STATUS" = "200" ]; then
@@ -279,11 +305,9 @@ jobs:
           exit 1
 
       # A failed health gate is already an outage; reporting it without
-      # restoring the previously running image leaves the clinic down until a
-      # human notices. The deploy step records only the prior immutable image
-      # ID (never secrets). Recreate just the platform service from that exact
-      # image, then prove the rollback itself is healthy.
-      - name: Roll back unhealthy platform image
+      # restoring the previously running release leaves the clinic down until a
+      # human notices. All three application images are one release unit.
+      - name: Roll back unhealthy release stack
         if: ${{ failure() && steps.deploy.outcome == 'success' }}
         env:
           HOST: ${{ secrets.PROD_SSH_HOST }}
@@ -296,24 +320,33 @@ jobs:
           ssh "$USER@$HOST" \
             "set -eu; \
              cd '$APP_DIR'; \
-             previous_platform=\$(cat '.tamamhealth-rollback-platform-$SHA'); \
-             test -n \"\$previous_platform\"; \
-             rollback_tag='tamamhealth-platform:rollback-$SHA'; \
-             docker image tag \"\$previous_platform\" \"\$rollback_tag\"; \
-             printf 'services:\n  platform:\n    image: %s\n' \"\$rollback_tag\" > '.tamamhealth-rollback-$SHA.yml'; \
+             previous_platform=\$(sed -n '1p' '.tamamhealth-rollback-stack-$SHA'); \
+             previous_website=\$(sed -n '2p' '.tamamhealth-rollback-stack-$SHA'); \
+             previous_worker=\$(sed -n '3p' '.tamamhealth-rollback-stack-$SHA'); \
+             test -n \"\$previous_platform\"; test -n \"\$previous_website\"; test -n \"\$previous_worker\"; \
+             printf 'services:\n  platform:\n    image: %s\n  website:\n    image: %s\n  sync-worker:\n    image: %s\n' \"\$previous_platform\" \"\$previous_website\" \"\$previous_worker\" > '.tamamhealth-rollback-$SHA.yml'; \
              export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA'; \
-             docker compose -f docker-compose.yml -f docker-compose.ghcr.yml -f '.tamamhealth-rollback-$SHA.yml' up -d --no-deps --force-recreate platform; \
-             docker image rm \"\$rollback_tag\" >/dev/null 2>&1 || true; \
-             rm -f '.tamamhealth-rollback-$SHA.yml' '.tamamhealth-rollback-platform-$SHA'"
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml -f '.tamamhealth-rollback-$SHA.yml' up -d --no-deps --force-recreate platform website sync-worker; \
+             rm -f '.tamamhealth-rollback-$SHA.yml' '.tamamhealth-rollback-stack-$SHA'"
           for i in $(seq 1 18); do
+            STACK_HEALTHY=false
+            if ssh "$USER@$HOST" "
+              set -eu
+              for service in platform website sync-worker; do
+                container=\$(docker compose --profile analytics -f '$APP_DIR/docker-compose.yml' -f '$APP_DIR/docker-compose.ghcr.yml' ps -q \"\$service\")
+                test -n \"\$container\"
+                health=\$(docker inspect \"\$container\" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+                test \"\$health\" = healthy
+              done
+            "; then STACK_HEALTHY=true; fi
             STATUS="$(curl -sS -m 10 -o /tmp/rollback-health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
-            if [ "$STATUS" = "200" ]; then
+            if [ "$STACK_HEALTHY" = true ] && [ "$STATUS" = "200" ]; then
               echo "Rollback restored production after ${i} checks:"; cat /tmp/rollback-health.json; echo
               exit 0
             fi
             sleep 10
           done
-          echo "::error title=Rollback failed::$HEALTH_URL did not recover after restoring the previous platform image."
+          echo "::error title=Rollback failed::The previous platform, website, and sync-worker release did not all recover."
           exit 1
 
       - name: Clean superseded images after a healthy deploy
@@ -326,7 +359,7 @@ jobs:
         run: |
           ssh "$USER@$HOST" \
             "cd '$APP_DIR' && \
-             rm -f '.tamamhealth-rollback-platform-$SHA' && \
+             rm -f '.tamamhealth-rollback-stack-$SHA' && \
              docker image prune -f"
 
       # An unread red run is not an alarm. Opens one issue while this
@@ -388,7 +421,7 @@ jobs:
               --domain "${{ secrets.PROD_DOMAIN }}" \
               --acm-cert "${{ secrets.PROD_ACM_CERT_ARN }}" \
               --instance-type "${{ vars.PROD_INSTANCE_TYPE || 't3.large' }}" \
-              --image-tag production \
+              --image-tag "${{ needs.build-production-images.outputs.sha }}" \
               --keypair "${{ secrets.PROD_EC2_KEYPAIR }}" \
               --region "${{ secrets.AWS_REGION || 'af-south-1' }}"
 

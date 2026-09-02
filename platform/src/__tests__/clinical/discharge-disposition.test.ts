@@ -9,7 +9,9 @@ let uuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-tuid` }));
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
-import { teardownTestDBs } from '../helpers/test-db';
+import { putDoc, teardownTestDBs } from '../helpers/test-db';
+import { patientsDB } from '@/lib/db';
+import { getPatientById } from '@/lib/services/patient-service';
 import {
   createEncounter,
   dischargeEncounter,
@@ -57,6 +59,29 @@ describe('dischargeEncounter dispositions', () => {
     const enc = await encounterAt('ready_for_clinic_checkout');
     const done = await dischargeEncounter(enc._id, { pendingItems: true });
     expect(done?.status).toBe('discharged_with_pending_items');
+  });
+
+  it('clears the matching patient assignment when the visit is discharged', async () => {
+    await putDoc(patientsDB(), {
+      _id: 'pat-00001', type: 'patient', orgId: 'org-moh-ss',
+      firstName: 'Nyakuma', surname: 'Deng',
+      assignedDoctor: 'user-dr-wani', assignedDoctorName: 'Dr. Wani',
+      assignedNurse: 'nurse-1', assignedNurseName: 'Nurse One',
+      assignmentStatus: 'assigned', registrationHospital: 'hosp-001',
+    } as never);
+    const enc = await createEncounter({
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      clinicianId: 'user-dr-wani', clinicianName: 'Dr. Wani',
+      assignedClinicianId: 'user-dr-wani', assignedNurseId: 'nurse-1',
+      hospitalId: 'hosp-001', orgId: 'org-moh-ss',
+      status: 'ready_for_clinic_checkout', snapshot: {}, labOrderIds: [],
+      startedAt: new Date().toISOString(),
+    } as never);
+
+    await dischargeEncounter(enc._id, { actorId: 'user-frontdesk-1' });
+    expect(await getPatientById('pat-00001')).toMatchObject({ assignmentStatus: 'completed' });
+    expect((await getPatientById('pat-00001'))?.assignedDoctor).toBeUndefined();
+    expect((await getPatientById('pat-00001'))?.assignedNurse).toBeUndefined();
   });
 });
 
