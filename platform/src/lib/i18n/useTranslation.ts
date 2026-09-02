@@ -17,11 +17,26 @@ function notifyListeners() {
   listeners.forEach(fn => fn());
 }
 
+/** Apply a signed-in user's locale immediately. The account-level choice is
+ * persisted separately; this key exists for pre-paint direction on reload. */
+export async function applyLocalePreference(locale: Locale): Promise<void> {
+  const map = await loadTranslations(locale);
+  cachedLocale = locale;
+  cachedTranslations = map;
+  localStorage.setItem(STORAGE_KEY, locale);
+  const localeConfig = SUPPORTED_LOCALES.find(l => l.code === locale);
+  if (localeConfig) {
+    document.documentElement.dir = localeConfig.dir;
+    document.documentElement.lang = locale;
+  }
+  notifyListeners();
+}
+
 /**
  * React hook for translations.
  *
- * Language is set at the organization/hospital level by org admins or hospital heads.
- * Individual users see the language their facility uses.
+ * Language starts from the organization default, then the signed-in user's
+ * synced account preference may override it.
  *
  * Usage:
  *   const { t, locale, setLocale } = useTranslation();
@@ -82,20 +97,11 @@ export function useTranslation() {
 
   /**
    * Change the locale. This persists to localStorage and updates the UI globally.
-   * Should only be called by org admin / hospital head via the settings UI.
-   * Also writes to the OrganizationDoc so all users at that facility see the same language.
+   * Account persistence is handled by user-settings-sync; this function owns
+   * only the live locale and the pre-paint device cache.
    */
   const setLocale = useCallback(async (locale: Locale) => {
-    const map = await loadTranslations(locale);
-    cachedLocale = locale;
-    cachedTranslations = map;
-    localStorage.setItem(STORAGE_KEY, locale);
-    const localeConfig = SUPPORTED_LOCALES.find(l => l.code === locale);
-    if (localeConfig) {
-      document.documentElement.dir = localeConfig.dir;
-      document.documentElement.lang = locale;
-    }
-    notifyListeners();
+    await applyLocalePreference(locale);
   }, []);
 
   return {

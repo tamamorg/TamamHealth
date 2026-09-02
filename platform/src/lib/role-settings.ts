@@ -543,6 +543,24 @@ const storageKey = (userId: string) => `tamamhealth.roleSettings.${userId}`;
 
 export type RoleSettingsValues = Record<string, boolean | string>;
 
+/** Keep only active keys belonging to this role, with values the declared
+ * control can actually represent. This closes stale-role and forged-setting
+ * paths at both hydration and the authenticated preferences endpoint. */
+export function sanitizeRoleSettingsForRole(role: UserRole, values: RoleSettingsValues): RoleSettingsValues {
+  const out: RoleSettingsValues = {};
+  for (const section of specForRole(role).sections) {
+    for (const row of section.rows) {
+      if (row.kind !== 'toggle' && row.kind !== 'select' && row.kind !== 'text') continue;
+      if ('pending' in row && row.pending) continue;
+      const value = values[row.key];
+      if (row.kind === 'toggle' && typeof value === 'boolean') out[row.key] = value;
+      if (row.kind === 'text' && typeof value === 'string') out[row.key] = value.slice(0, 200);
+      if (row.kind === 'select' && typeof value === 'string' && row.options.includes(value)) out[row.key] = value;
+    }
+  }
+  return out;
+}
+
 export function getStoredRoleSettings(userId: string): RoleSettingsValues {
   if (typeof window === 'undefined') return {};
   try {

@@ -95,6 +95,16 @@ describe('role settings store', () => {
     expect(getRoleFlag('queue.mineOnly', true)).toBe(false);
   });
 
+  it('replace drops stale keys left by a previous role or retired control', () => {
+    initRoleSettings(DOCTOR_ID, 'doctor');
+    setRoleSettings({ 'retired.setting': true });
+    replaceRoleSettings(DOCTOR_ID, { 'queue.sort': 'Appointment time' });
+    expect(getRoleSettings()['retired.setting']).toBeUndefined();
+    expect(getRoleChoice('queue.sort', '')).toBe('Appointment time');
+    // Replacement drops old overrides, not the role's effective defaults.
+    expect(getRoleFlag('queue.mineOnly', false)).toBe(true);
+  });
+
   it('falls back to the caller’s default when nothing is hydrated', () => {
     expect(getRoleChoice('queue.sort', 'Appointment time')).toBe('Appointment time');
     expect(getRoleFlag('rx.interactions', true)).toBe(true);

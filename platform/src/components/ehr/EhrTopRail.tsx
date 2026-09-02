@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -50,6 +50,7 @@ import {
 } from './ehr-navigation';
 import { moduleBadgeCounts } from '@/lib/module-badges';
 import { useNotifications } from '@/modules/communication/client';
+import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/lib/settings/disabled-apps';
 
 export default function EhrTopRail() {
   const router = useRouter();
@@ -160,6 +161,7 @@ export default function EhrTopRail() {
   }, [mobileSearchOpen]);
 
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
+  const disabledRoutes = useSyncExternalStore(subscribeDisabledApps, getDisabledAppRoutes, getDisabledAppRoutes);
   const allowedRoutes = useMemo(() => roleConfig?.allowedRoutes || [], [roleConfig]);
   const homeHref = roleConfig?.defaultDashboard || '/dashboard';
   // Whether this rail is sitting on the facility-management console, which is
@@ -181,8 +183,9 @@ export default function EhrTopRail() {
 
   const navItems = useMemo(() => {
     if (!currentUser) return [];
-    return uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes);
-  }, [allowedRoutes, currentUser, roleConfig]);
+    return uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
+      .filter(item => !isAppDisabled(item.href));
+  }, [allowedRoutes, currentUser, roleConfig, disabledRoutes]);
 
   // Keep four high-frequency destinations visible in the header as shortcuts.
   // `homeHref` is passed so the role's own dashboard never takes one of the

@@ -54,6 +54,15 @@ export type UserRole = 'super_admin' | 'org_admin' | 'doctor' | 'clinical_office
   // Clinical-flow workflow roles (EHR Clinical Flow doc §4) — capability-gated stations.
   | 'central_registration_clerk' | 'clinic_clerk' | 'triage_nurse' | 'rooming_nurse' | 'clinician' | 'records_hmis_officer';
 
+/** Account preferences that follow a user across devices. A screen-lock PIN
+ * is deliberately absent: that secret remains local to one user and device. */
+export interface UserPreferences {
+  roleSettings?: Record<string, boolean | string>;
+  density?: 'comfortable' | 'compact';
+  theme?: 'light' | 'dark' | 'system';
+  locale?: 'en' | 'apd';
+}
+
 export interface UserDoc extends BaseDoc {
   type: 'user';
   username: string;
@@ -61,6 +70,7 @@ export interface UserDoc extends BaseDoc {
   passwordHash: string;
   name: string;
   role: UserRole;
+  preferences?: UserPreferences;
   hospitalId?: string;
   hospitalName?: string;
   /**

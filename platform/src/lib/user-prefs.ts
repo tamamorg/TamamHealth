@@ -3,7 +3,8 @@
  * facility-policy-level): spacing density and whether to raise desktop
  * notifications for new chat messages.
  *
- * Stored in localStorage (per browser/device, like the theme + lock PIN) and
+ * Stored in a per-user localStorage namespace (and synced separately to the
+ * account by user-settings-sync) and
  * exposed as a tiny reactive store so the Settings page, the density applier,
  * and the notification watcher all stay in sync.
  */
@@ -29,7 +30,8 @@ export interface UserPrefs {
   theme: ThemePreference;
 }
 
-const KEY = 'tamamhealth.user-prefs';
+const KEY_PREFIX = 'tamamhealth.user-prefs.';
+export const ACTIVE_USER_PREFS_KEY = 'tamamhealth.active-user-preferences';
 
 export const DEFAULT_USER_PREFS: UserPrefs = {
   density: 'comfortable',
@@ -38,12 +40,16 @@ export const DEFAULT_USER_PREFS: UserPrefs = {
 };
 
 let cache: UserPrefs | null = null;
+let currentUserId: string | null = null;
 const subscribers = new Set<(p: UserPrefs) => void>();
+
+export const userPrefsStorageKey = (userId: string) => `${KEY_PREFIX}${userId}`;
 
 function read(): UserPrefs {
   if (typeof window === 'undefined') return DEFAULT_USER_PREFS;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    if (!currentUserId) return { ...DEFAULT_USER_PREFS };
+    const raw = window.localStorage.getItem(userPrefsStorageKey(currentUserId));
     if (!raw) return { ...DEFAULT_USER_PREFS };
     const parsed = JSON.parse(raw) as Partial<UserPrefs>;
     return { ...DEFAULT_USER_PREFS, ...parsed };
@@ -57,11 +63,38 @@ export function getUserPrefs(): UserPrefs {
   return cache;
 }
 
+/** Select the signed-in user's device-local preference namespace. */
+export function initUserPrefs(userId: string): UserPrefs {
+  if (currentUserId !== userId) {
+    currentUserId = userId;
+    cache = null;
+  }
+  try { window.localStorage.setItem(ACTIVE_USER_PREFS_KEY, userId); } catch { /* best effort */ }
+  const next = getUserPrefs();
+  applyDensity(next.density);
+  applyTheme(next.theme);
+  for (const cb of subscribers) { try { cb(next); } catch { /* isolate */ } }
+  return next;
+}
+
+/** Forget the last account's cached choices when a shared device changes user. */
+export function clearUserPrefs(): void {
+  currentUserId = null;
+  cache = null;
+  try { window.localStorage.removeItem(ACTIVE_USER_PREFS_KEY); } catch { /* best effort */ }
+  const next = { ...DEFAULT_USER_PREFS };
+  applyDensity(next.density);
+  applyTheme(next.theme);
+  for (const cb of subscribers) { try { cb(next); } catch { /* isolate */ } }
+}
+
 export function setUserPrefs(patch: Partial<UserPrefs>): UserPrefs {
   const next = { ...getUserPrefs(), ...patch };
   cache = next;
   if (typeof window !== 'undefined') {
-    try { window.localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* best effort */ }
+    try {
+      if (currentUserId) window.localStorage.setItem(userPrefsStorageKey(currentUserId), JSON.stringify(next));
+    } catch { /* best effort */ }
   }
   // Density and theme are DOM-level concerns — apply immediately so every
   // page reflects them without a reload.

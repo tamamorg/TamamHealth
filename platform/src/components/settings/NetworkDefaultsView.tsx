@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import {
-  Stethoscope, Database, Server, Wallet, ShieldCheck, Clock, AlertTriangle,
+  Stethoscope, Database, Server, Wallet, ShieldCheck, Clock, AlertTriangle, Lock,
 } from '@/components/icons/lucide';
 import {
   getFacilitySettingsMany,
@@ -28,7 +28,6 @@ import {
 import {
   DEFAULT_FACILITY_SETTINGS,
   type FacilitySettings,
-  type PatientProfileKey,
   type PaymentMethodKey,
   type PayorKey,
   PAYMENT_METHOD_LABELS,
@@ -37,40 +36,11 @@ import {
   ALL_PAYORS,
 } from '@/lib/settings/facility-settings';
 import {
-  SectionCard, Field, SaveBar, CheckRow, TextareaListEditor, toggleKey,
+  SectionCard, Field, SaveBar, CheckRow, toggleKey,
 } from '@/components/settings/settings-controls';
 
 export type NetworkModuleKey =
   | 'standards' | 'consultation' | 'reporting' | 'it' | 'billing' | 'security';
-
-const PATIENT_PROFILE_LABELS: Record<PatientProfileKey, string> = {
-  child: 'Child',
-  adult: 'Adult',
-  pregnant: 'Pregnant',
-  postnatal: 'Postnatal',
-  emergency: 'Emergency',
-};
-const ALL_PATIENT_PROFILES = Object.keys(PATIENT_PROFILE_LABELS) as PatientProfileKey[];
-
-const ALL_REPORTING_SOURCES = ['encounters', 'diagnoses', 'lab_results', 'pharmacy_dispenses', 'vital_events', 'payments'] as const;
-const REPORTING_SOURCE_LABELS: Record<(typeof ALL_REPORTING_SOURCES)[number], string> = {
-  encounters: 'Encounters',
-  diagnoses: 'Diagnoses',
-  lab_results: 'Lab results',
-  pharmacy_dispenses: 'Pharmacy dispenses',
-  vital_events: 'Vital events',
-  payments: 'Payments',
-};
-
-const ALL_INTEGRATIONS = ['dhis2', 'sms', 'email', 'payments', 'lab_devices', 'barcode_printers'] as const;
-const INTEGRATION_LABELS: Record<(typeof ALL_INTEGRATIONS)[number], string> = {
-  dhis2: 'DHIS2',
-  sms: 'SMS',
-  email: 'Email',
-  payments: 'Payment provider',
-  lab_devices: 'Lab devices',
-  barcode_printers: 'Barcode / label printers',
-};
 
 export const NETWORK_MODULES: Array<{
   key: NetworkModuleKey;
@@ -95,16 +65,12 @@ const asSet = (list: readonly string[]) => [...list].sort();
 /** The settings keys each shared module owns — also what divergence compares. */
 function moduleValue(s: FacilitySettings, key: NetworkModuleKey): unknown {
   switch (key) {
-    case 'standards':    return { resultReviewSLA: s.resultReviewSLA, acuity: s.acuity };
-    case 'consultation': return s.consultationProfiles;
+    case 'standards':    return { resultReviewSLA: s.resultReviewSLA };
+    case 'consultation': return null;
     // dhis2OrgUnitId is the one per-facility field inside a shared block, so
     // it is deliberately excluded from both the comparison and the save.
-    case 'reporting':    return {
-      ...s.reporting,
-      dhis2OrgUnitId: undefined,
-      aggregateSources: asSet(s.reporting.aggregateSources),
-    };
-    case 'it':           return { ...s.itOperations, integrations: asSet(s.itOperations.integrations) };
+    case 'reporting':    return null;
+    case 'it':           return { syncFailureAlertMinutes: s.itOperations.syncFailureAlertMinutes };
     case 'billing':      return {
       currency: s.currency,
       paymentMethods: asSet(s.paymentMethods),
@@ -118,10 +84,10 @@ function moduleValue(s: FacilitySettings, key: NetworkModuleKey): unknown {
 
 function modulePatch(draft: FacilitySettings, key: NetworkModuleKey, current: FacilitySettings): Partial<FacilitySettings> {
   switch (key) {
-    case 'standards':    return { resultReviewSLA: draft.resultReviewSLA, acuity: draft.acuity };
-    case 'consultation': return { consultationProfiles: draft.consultationProfiles };
-    case 'reporting':    return { reporting: { ...draft.reporting, dhis2OrgUnitId: current.reporting.dhis2OrgUnitId } };
-    case 'it':           return { itOperations: draft.itOperations };
+    case 'standards':    return { resultReviewSLA: draft.resultReviewSLA };
+    case 'consultation': return {};
+    case 'reporting':    return {};
+    case 'it':           return { itOperations: { ...current.itOperations, syncFailureAlertMinutes: draft.itOperations.syncFailureAlertMinutes } };
     case 'billing':      return {
       currency: draft.currency,
       paymentMethods: draft.paymentMethods,
@@ -202,6 +168,13 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
   const scopeNote = ids.length === 1
     ? 'Applies to your facility'
     : `Applies to all ${ids.length} facilities`;
+  const saveable = module !== 'consultation' && module !== 'reporting';
+
+  const unavailable = (text: string) => (
+    <div className="ehr-set-locked" style={{ justifyContent: 'flex-start', padding: '12px 0' }}>
+      <Lock /> {text} — not available until the workflow enforces it
+    </div>
+  );
 
   if (loading) {
     return (
@@ -246,133 +219,22 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
           </div>
 
           <p className="fs-grouplabel" style={{ marginTop: 16 }}>Queue acuity</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CheckRow
-              label="Age waiting patients up the queue"
-              checked={draft.acuity.timeAging}
-              onToggle={() => setDraft({ ...draft, acuity: { ...draft.acuity, timeAging: !draft.acuity.timeAging } })}
-            />
-            <Field label="Acuity gained per minute waited">
-              <input
-                type="number" min={0} step={0.05} className="fs-input"
-                value={draft.acuity.agingPerMinute}
-                onChange={e => setDraft({ ...draft, acuity: { ...draft.acuity, agingPerMinute: Number(e.target.value) } })}
-              />
-            </Field>
-          </div>
+          {unavailable('Automatic wait-time acuity escalation')}
         </>
       )}
 
-      {module === 'consultation' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {ALL_PATIENT_PROFILES.map(profile => {
-            const p = draft.consultationProfiles[profile];
-            return (
-              <div key={profile} className="p-3 rounded-xl" style={{ border: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}>
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{PATIENT_PROFILE_LABELS[profile]}</p>
-                  <CheckRow
-                    label="Chief complaint"
-                    checked={p.chiefComplaintRequired}
-                    onToggle={() => setDraft({
-                      ...draft,
-                      consultationProfiles: {
-                        ...draft.consultationProfiles,
-                        [profile]: { ...p, chiefComplaintRequired: !p.chiefComplaintRequired },
-                      },
-                    })}
-                  />
-                </div>
-                <TextareaListEditor
-                  label="Required vitals"
-                  values={p.vitalsRequired}
-                  onChange={v => setDraft({ ...draft, consultationProfiles: { ...draft.consultationProfiles, [profile]: { ...p, vitalsRequired: v } } })}
-                />
-                <TextareaListEditor
-                  label="History prompts"
-                  values={p.historyPrompts}
-                  onChange={v => setDraft({ ...draft, consultationProfiles: { ...draft.consultationProfiles, [profile]: { ...p, historyPrompts: v } } })}
-                />
-                <TextareaListEditor
-                  label="Red flags"
-                  values={p.redFlagPrompts}
-                  onChange={v => setDraft({ ...draft, consultationProfiles: { ...draft.consultationProfiles, [profile]: { ...p, redFlagPrompts: v } } })}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {module === 'consultation' && unavailable('Configurable consultation templates')}
 
-      {module === 'reporting' && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Monthly reporting deadline day">
-              <input
-                type="number" min={1} max={31} className="fs-input"
-                value={draft.reporting.monthlyDeadlineDay}
-                onChange={e => setDraft({ ...draft, reporting: { ...draft.reporting, monthlyDeadlineDay: Number(e.target.value) } })}
-              />
-            </Field>
-            <CheckRow
-              label="Require completeness signoff"
-              checked={draft.reporting.requireCompletenessSignoff}
-              onToggle={() => setDraft({ ...draft, reporting: { ...draft.reporting, requireCompletenessSignoff: !draft.reporting.requireCompletenessSignoff } })}
-            />
-          </div>
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Aggregate sources</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {ALL_REPORTING_SOURCES.map(key => (
-              <CheckRow
-                key={key}
-                label={REPORTING_SOURCE_LABELS[key]}
-                checked={draft.reporting.aggregateSources.includes(key)}
-                onToggle={() => toggleKey<(typeof ALL_REPORTING_SOURCES)[number]>(draft.reporting.aggregateSources, key, v => setDraft({ ...draft, reporting: { ...draft.reporting, aggregateSources: v } }))}
-              />
-            ))}
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <TextareaListEditor
-              label="Disease reporting buckets"
-              values={draft.reporting.diseaseBuckets}
-              onChange={v => setDraft({ ...draft, reporting: { ...draft.reporting, diseaseBuckets: v } })}
-            />
-          </div>
-        </>
-      )}
+      {module === 'reporting' && unavailable('Editable HMIS deadlines, sources, and disease buckets')}
 
       {module === 'it' && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <Field label="Backup frequency (hours)">
-              <input type="number" min={1} className="fs-input" value={draft.itOperations.backupFrequencyHours} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, backupFrequencyHours: Number(e.target.value) } })} />
-            </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Sync failure alert (minutes)">
               <input type="number" min={1} className="fs-input" value={draft.itOperations.syncFailureAlertMinutes} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, syncFailureAlertMinutes: Number(e.target.value) } })} />
             </Field>
-            <Field label="Device review (days)">
-              <input type="number" min={1} className="fs-input" value={draft.itOperations.deviceReviewDays} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, deviceReviewDays: Number(e.target.value) } })} />
-            </Field>
-            <Field label="Audit retention (days)">
-              <input type="number" min={30} className="fs-input" value={draft.itOperations.auditRetentionDays} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, auditRetentionDays: Number(e.target.value) } })} />
-            </Field>
           </div>
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Controls</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <CheckRow label="Require device registration" checked={draft.itOperations.requireDeviceRegistration} onToggle={() => setDraft({ ...draft, itOperations: { ...draft.itOperations, requireDeviceRegistration: !draft.itOperations.requireDeviceRegistration } })} />
-            <CheckRow label="Allow offline mode" checked={draft.itOperations.allowOfflineMode} onToggle={() => setDraft({ ...draft, itOperations: { ...draft.itOperations, allowOfflineMode: !draft.itOperations.allowOfflineMode } })} />
-          </div>
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Integrations</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {ALL_INTEGRATIONS.map(key => (
-              <CheckRow
-                key={key}
-                label={INTEGRATION_LABELS[key]}
-                checked={draft.itOperations.integrations.includes(key)}
-                onToggle={() => toggleKey<(typeof ALL_INTEGRATIONS)[number]>(draft.itOperations.integrations, key, v => setDraft({ ...draft, itOperations: { ...draft.itOperations, integrations: v } }))}
-              />
-            ))}
-          </div>
+          {unavailable('Backup scheduling, device registration, offline-mode enforcement, and integration switches')}
         </>
       )}
 
@@ -462,12 +324,12 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
         </div>
       )}
 
-      <SaveBar
+      {saveable && <SaveBar
         saving={saving}
         onSave={save}
         label={ids.length === 1 ? 'Save changes' : `Save to ${ids.length} facilities`}
         hint={ids.length === 1 ? undefined : 'One save, every facility.'}
-      />
+      />}
     </SectionCard>
   );
 }

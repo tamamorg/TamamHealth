@@ -2020,6 +2020,68 @@
   color: var(--ehr-text-strong, #113055);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   SBAR written out as the triage form was filled — the OpenMRS `omrs-reg`
+   layout (left step-nav rail + stacked field slabs), read-only. The rail and
+   slab styling come from globals.css (`.omrs-reg*`); these rules add the
+   read-only field surface and the two lead banners.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sbar-as-form { max-width: 100%; }
+
+/* Stack the lead banners and the sections at one rhythm — the omrs section
+   margin is neutralised here so the flex gap is the single source. */
+.omrs-reg-form.sbar-as-form-body { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.omrs-reg-form.sbar-as-form-body .omrs-reg-section + .omrs-reg-section { margin-top: 0; }
+
+/* Priority slab, the same fact the filled form leads with. */
+.sbar-as-form .sbar-form-priority {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 10px 16px; border-radius: 8px;
+}
+.sbar-as-form .sbar-form-priority strong { font-size: 16px; font-weight: 750; }
+.sbar-as-form .sbar-form-priority span { font-size: 11.5px; opacity: 0.85; text-transform: capitalize; }
+
+/* Read-only field: a label over a value on the same white, underlined surface
+   the form's inputs use, so a filled field and a read-only one match. */
+.sbar-as-form .sbar-ro-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px;
+}
+.sbar-as-form .sbar-ro-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sbar-as-form .sbar-ro-field--full { grid-column: 1 / -1; }
+.sbar-as-form .sbar-ro-label {
+  font-size: 12px; font-weight: 400; letter-spacing: 0;
+  color: var(--omrs-text-02, #5D728B);
+}
+.sbar-as-form .sbar-ro-value {
+  display: flex; align-items: center; min-height: 40px;
+  padding: 8px 12px; font-size: 14px; line-height: 1.4;
+  color: var(--omrs-ui-05, #113055);
+  background: var(--omrs-field-01, #fff);
+  border-bottom: 1px solid var(--omrs-ui-04, #CFD6DD);
+  overflow-wrap: anywhere;
+}
+.sbar-as-form .sbar-inline-dx em { font-style: normal; color: var(--omrs-text-02, #5D728B); }
+
+/* The sub-lists (chips, rows, tiles, ABCC grid) keep their own styling but sit
+   on the field slab, so a little top spacing separates them from a field grid
+   above. */
+.sbar-as-form .omrs-reg-fields > .sbar-block:not(:first-child),
+.sbar-as-form .omrs-reg-fields > .sbar-ro-grid + .sbar-ro-grid { margin-top: 2px; }
+
+/* The disclaimer closes the last slab quietly. */
+.sbar-as-form .omrs-reg-fields .sbar-disclaimer { margin-top: 4px; }
+
+@media (max-width: 900px) {
+  .sbar-as-form .sbar-ro-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Print the document, not its navigation: the rail is a table of contents. */
+@media print {
+  .sbar-as-form { display: block !important; }
+  .sbar-as-form .omrs-reg-rail { display: none !important; }
+  .sbar-as-form .omrs-reg-fields { break-inside: avoid; }
+}
+
 .sbar-triage-header,
 .sbar-triage-section {
   border-radius: 12px;

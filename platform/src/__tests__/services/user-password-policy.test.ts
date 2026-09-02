@@ -37,7 +37,7 @@ jest.mock('@/modules/identity/core/auth', () => ({
   verifyPassword: jest.fn(async (pw: string, hash: string) => hash === `hashed:${pw}`),
 }));
 
-import { createUser, resetPassword, changeOwnPassword, updateUser } from '@/modules/identity/services/user-service';
+import { createUser, resetPassword, changeOwnPassword, updateOwnPreferences, updateUser } from '@/modules/identity/services/user-service';
 import {
   ABSOLUTE_MIN_PASSWORD_LENGTH, DEFAULT_MIN_PASSWORD_LENGTH,
 } from '@/modules/identity/policy/password-policy';
@@ -115,6 +115,27 @@ describe('partial user updates', () => {
       role: 'org_admin',
       orgId: 'org-a',
       isActive: true,
+    }));
+  });
+});
+
+describe('self-service account preferences', () => {
+  test('updates preferences without exposing identity or credential fields to the browser path', async () => {
+    store.set('user-doctor', {
+      _id: 'user-doctor', _rev: '1-a', type: 'user', username: 'doctor',
+      name: 'Doctor One', role: 'doctor', passwordHash: 'secret', isActive: true,
+      preferences: { theme: 'light', roleSettings: { 'queue.sort': 'Longest wait first' } },
+    });
+
+    const preferences = await updateOwnPreferences('user-doctor', {
+      theme: 'dark', density: 'compact', roleSettings: { 'queue.sort': 'Acuity first' },
+    });
+
+    expect(preferences).toEqual({
+      theme: 'dark', density: 'compact', roleSettings: { 'queue.sort': 'Acuity first' },
+    });
+    expect(store.get('user-doctor')).toEqual(expect.objectContaining({
+      username: 'doctor', passwordHash: 'secret', role: 'doctor', preferences,
     }));
   });
 });

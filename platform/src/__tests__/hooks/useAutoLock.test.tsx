@@ -146,6 +146,18 @@ describe('the screen-lock PIN (PBKDF2-SHA256, per-user salt)', () => {
     expect(first.hash).not.toBe(second.hash);
   });
 
+  it('never lets the next account on a shared device inherit the previous account PIN', async () => {
+    await setLockPin('1234', 'user-a');
+    expect(hasLockPin('user-a')).toBe(true);
+    expect(hasLockPin('user-b')).toBe(false);
+    await setLockPin('5678', 'user-b');
+    expect(hasLockPin('user-a')).toBe(true);
+    expect(hasLockPin('user-b')).toBe(true);
+    clearLockPin('user-a');
+    expect(hasLockPin('user-a')).toBe(false);
+    expect(hasLockPin('user-b')).toBe(true);
+  });
+
   it('discards a legacy hash instead of ever verifying against it', async () => {
     // The retired 32-bit toy-hash format from the non-secure-context
     // fallback this PR removes — not JSON, so parseStoredPin rejects it.

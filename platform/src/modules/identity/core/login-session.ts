@@ -245,6 +245,7 @@ export async function issueSessionResponse(
       // organization name next to a borrowed org id would be a lie.
       orgName: effective.actualRole ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
       mustChangePassword: user.mustChangePassword,
+      preferences: user.preferences,
       },
     ...extra,
   });

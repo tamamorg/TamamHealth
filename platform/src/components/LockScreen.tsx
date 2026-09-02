@@ -81,10 +81,12 @@ export function canOfferPinSetup(hasPin: boolean, pinSupported: boolean, allowSe
 }
 
 /** localStorage flag: the user saw the first-run PIN prompt and skipped it.
- *  Device-scoped, like the PIN itself — survives logout on purpose so a
- *  returning user is not re-nagged; setting a PIN (here or in Settings) makes
- *  the flag moot. */
+ *  Scoped to this user on this device, like the PIN itself — survives logout
+ *  on purpose so that same user is not re-nagged; setting a PIN makes it moot. */
 export const PIN_SETUP_DISMISSED_KEY = 'tamamhealth-pin-setup-dismissed';
+export const pinSetupDismissedKey = (userId?: string) => userId
+  ? `${PIN_SETUP_DISMISSED_KEY}.${userId}`
+  : PIN_SETUP_DISMISSED_KEY;
 
 /**
  * Whether to show the authenticated first-run PIN prompt (the 'setup' variant)

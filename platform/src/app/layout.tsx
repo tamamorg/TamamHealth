@@ -100,7 +100,7 @@ export default async function RootLayout({
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var l=localStorage.getItem('tamamhealth-locale')||'en';var d=l==='apd'?'rtl':'ltr';document.documentElement.lang=l;document.documentElement.dir=d;}catch(e){}try{var p={};try{p=JSON.parse(localStorage.getItem('tamamhealth.user-prefs')||'{}')||{}}catch(e){}var t=p.theme;if(t!=='dark'&&t!=='system')t='light';if(t==='system')t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){}})();`,
+            __html: `(function(){try{var l=localStorage.getItem('tamamhealth-locale')||'en';var d=l==='apd'?'rtl':'ltr';document.documentElement.lang=l;document.documentElement.dir=d;}catch(e){}try{var p={};try{var u=localStorage.getItem('tamamhealth.active-user-preferences');p=u?JSON.parse(localStorage.getItem('tamamhealth.user-prefs.'+u)||'{}')||{}:{}}catch(e){}var t=p.theme;if(t!=='dark'&&t!=='system')t='light';if(t==='system')t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){}})();`,
           }}
         />
         {/* The bare brand mark in the marketing site's blue, restored

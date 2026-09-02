@@ -63,6 +63,7 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
+import { formatPhoneShared } from '@/lib/field-formats';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 
 /**
@@ -1428,7 +1429,7 @@ export default function EhrClinicalDashboard({
           <tr><td class="muted">Department / room</td><td>${escapeHtml([appointment.department || 'OPD', appointment.room].filter(Boolean).join(' · '))}</td></tr>
           <tr><td class="muted">Provider</td><td>${escapeHtml(appointment.providerName || clinicianName || 'Unassigned')}</td></tr>
           ${appointment.staffName ? `<tr><td class="muted">Supporting staff</td><td>${escapeHtml(appointment.staffName)}</td></tr>` : ''}
-          ${appointment.patientPhone ? `<tr><td class="muted">Patient phone</td><td>${escapeHtml(appointment.patientPhone)}</td></tr>` : ''}
+          ${appointment.patientPhone ? `<tr><td class="muted">Patient phone</td><td>${escapeHtml(formatPhoneShared(appointment.patientPhone))}</td></tr>` : ''}
         </tbody></table>
       </section>
       ${appointment.notes ? `<section class="section"><h2 class="section-title">Booking notes</h2><p class="notice">${escapeHtml(appointment.notes).replace(/\n/g, '<br>')}</p></section>` : ''}

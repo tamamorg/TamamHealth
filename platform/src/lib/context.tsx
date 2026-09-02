@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { syncFlagAllowsSync } from './sync/sync-config';
-import type { HospitalDoc, OrganizationDoc, UserRole, UserDoc } from './db-types';
+import type { HospitalDoc, OrganizationDoc, UserPreferences, UserRole, UserDoc } from './db-types';
 import type { OrgBranding } from './branding';
 import type { AggregateStatus } from './sync/sync-manager';
 // Eagerly bundle the critical login path. These modules are tiny and used at
@@ -103,6 +103,7 @@ interface AppUser {
   state?: string;
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
+  preferences?: UserPreferences;
   /** Role requires a second factor that has not been enrolled yet. */
   branding: OrgBranding;
 }
@@ -158,12 +159,11 @@ async function hydrateAppUser(raw: {
     initLocaleFromOrg(organization.locale);
   }
 
-  // Hydrate the user's own role settings before anyone reads them. The login
-  // redirect asks for their "Start-up screen" the moment `login()` resolves,
-  // which is before the dashboard shell (and PreferenceEffects) has mounted.
+  // Hydrate account preferences before anyone reads the landing page. The
+  // server copy follows the account; an unsent offline change wins and retries.
   try {
-    const { initRoleSettings } = await import('./settings/role-settings-store');
-    initRoleSettings(raw._id, role);
+    const { hydrateUserPreferences } = await import('./settings/user-settings-sync');
+    await hydrateUserPreferences(raw._id, role, raw.preferences as UserPreferences | undefined);
   } catch {
     // Defaults stand.
   }
@@ -859,7 +859,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Only if the request itself fails (offline / network error) do we fall
       // back to the PouchDB-local path so previously-logged-in users can still
       // sign in without connectivity.
-      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'facilityIds' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department'> & { actualRole?: UserRole };
+      type LoginUser = Pick<UserDoc, '_id' | 'username' | 'name' | 'role' | 'hospitalId' | 'hospitalName' | 'facilityIds' | 'orgId' | 'isActive' | 'passwordHash' | 'mustChangePassword' | 'department' | 'preferences'> & { actualRole?: UserRole };
       let user: LoginUser | null = null;
       let usedApi = false;
 
@@ -893,6 +893,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // silently accepted as permanent credentials.
             mustChangePassword: body.user.mustChangePassword,
             facilityIds: body.user.facilityIds,
+            preferences: body.user.preferences,
           };
           usedApi = true;
 
@@ -1208,6 +1209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         county: geo.county,
         state: geo.state,
         mustChangePassword: geo.mustChangePassword,
+        preferences: user.preferences,
         branding,
       };
       setCurrentUser(appUser);
@@ -1231,8 +1233,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Same as the restore path: the login redirect reads the user's
       // "Start-up screen" as soon as this returns.
       try {
-        const { initRoleSettings } = await import('./settings/role-settings-store');
-        initRoleSettings(user._id, user.role as UserRole);
+        const { hydrateUserPreferences } = await import('./settings/user-settings-sync');
+        await hydrateUserPreferences(user._id, user.role as UserRole, user.preferences);
       } catch {
         // Defaults stand.
       }
@@ -1290,6 +1292,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Keep organization and platform policy live for already-open sessions.
+  // Both databases are pull-replicated; without change feeds only the admin
+  // who pressed Save refreshed, while every other user kept the old policy.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    const stops: Array<() => void> = [];
+    void import('./db').then(({ organizationsDB, platformConfigDB }) => {
+      if (cancelled) return;
+      if (currentUser?.orgId) {
+        const orgFeed = organizationsDB().changes({ since: 'now', live: true, include_docs: false })
+          .on('change', (change: { id?: string }) => {
+            if (change.id === currentUser.orgId) void refreshCurrentUser();
+          })
+          .on('error', () => { /* best effort */ });
+        stops.push(() => orgFeed.cancel());
+      }
+      const platformFeed = platformConfigDB().changes({ since: 'now', live: true, include_docs: false })
+        .on('change', async (change: { id?: string }) => {
+          if (change.id !== 'platform-config') return;
+          try {
+            const { getPlatformConfig } = await import('./services/platform-config-service');
+            const policy = (await getPlatformConfig()).superAdminPolicies;
+            if (!cancelled) setPlatformPolicy({
+              ...(policy?.sessionTimeoutMinutes ? { sessionTimeoutMinutes: policy.sessionTimeoutMinutes } : {}),
+              ...(policy?.screenLockRequired === true ? { screenLockRequired: true } : {}),
+            });
+          } catch { /* retain last known policy */ }
+        })
+        .on('error', () => { /* best effort */ });
+      stops.push(() => platformFeed.cancel());
+    });
+    return () => {
+      cancelled = true;
+      for (const stop of stops) { try { stop(); } catch { /* noop */ } }
+    };
+  }, [isAuthenticated, currentUser?.orgId, refreshCurrentUser]);
+
   const logout = useCallback(() => {
     // Capture the identity before clearing it. The UI must become logged out
     // immediately; network, audit, CouchDB, and IndexedDB cleanup are all
@@ -1303,6 +1343,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearOfflineSession();
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(LOGOUT_PENDING_KEY, 'true');
+      window.localStorage.removeItem('tamamhealth.active-user-preferences');
     }
 
     // Clear cookies that are readable by JavaScript immediately. The server

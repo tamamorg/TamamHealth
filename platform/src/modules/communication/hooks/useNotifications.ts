@@ -21,6 +21,14 @@ import {
 } from '@/modules/communication/notifications/notification-reads';
 import { getRoleSettings, subscribeRoleSettings } from '@/lib/settings/role-settings-store';
 import { filterNotifications } from '@/lib/settings/notification-preferences';
+import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
+
+/** Bell rows about a person lead with WHO, then what happened —
+ *  "Teny Makuach · Emergency triage" — with the name on the two-name
+ *  display rule ([[patientDisplayName]] / shortenPersonName), like every
+ *  other list row. */
+const nameFirst = (name: string | null | undefined, event: string) =>
+  `${shortenPersonName(name) || 'Patient'} · ${event}`;
 
 /**
  * Aggregates every facility-level event a user should be notified about into
@@ -155,7 +163,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         // Incoming referral awaiting THIS facility's triage/acceptance. Admin
         // roles without a hospitalId keep the old behaviour (see everything).
         if ((isIncoming || !myHospitalId) && (x.status === 'sent' || x.status === 'received')) {
-          out.push({ id: `ref-${x._id}`, type: 'referral', severity: 'warning', title: `Referral · ${x.patientName}`, subtitle: `${x.fromHospital} → ${x.toHospital}`, time: x.referralDate || x.createdAt, href: '/referrals' });
+          out.push({ id: `ref-${x._id}`, type: 'referral', severity: 'warning', title: nameFirst(x.patientName, 'Referral'), subtitle: `${x.fromHospital} → ${x.toHospital}`, time: x.referralDate || x.createdAt, href: '/referrals' });
         }
         // Outgoing referral the receiving facility just accepted — close the
         // loop by telling the sender their patient was received on the other end.
@@ -163,7 +171,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           const acceptedAt = x.updatedAt || x.referralDate || x.createdAt;
           const acceptedMs = Date.parse(acceptedAt || '');
           if (Number.isNaN(acceptedMs) || nowMs - acceptedMs <= ACK_WINDOW_MS) {
-            out.push({ id: `ref-ack-${x._id}`, type: 'referral', severity: 'info', title: `Patient received · ${x.patientName}`, subtitle: `${x.toHospital} accepted the referral`, time: acceptedAt, href: '/referrals' });
+            out.push({ id: `ref-ack-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral accepted'), subtitle: `${x.toHospital} accepted the referral`, time: acceptedAt, href: '/referrals' });
           }
         }
         // Outgoing referral the receiving facility closed out with a structured
@@ -173,7 +181,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           const closedMs = Date.parse(closedAt || '');
           if (Number.isNaN(closedMs) || nowMs - closedMs <= ACK_WINDOW_MS) {
             const disposition = x.outcome.disposition.replace(/_/g, ' ');
-            out.push({ id: `ref-out-${x._id}`, type: 'referral', severity: 'info', title: `Referral outcome · ${x.patientName}`, subtitle: `${x.toHospital}: ${disposition}`, time: closedAt, href: '/referrals' });
+            out.push({ id: `ref-out-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral outcome'), subtitle: `${x.toHospital}: ${disposition}`, time: closedAt, href: '/referrals' });
           }
         }
       }
@@ -203,7 +211,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
             id: `xfer-in-${t._id}`,
             type: 'transfer',
             severity: overdue ? 'critical' : 'warning',
-            title: `${overdue ? 'OVERDUE · ' : ''}Transfer to accept · ${t.patientName || 'patient'}`,
+            title: nameFirst(t.patientName, `${overdue ? 'OVERDUE · ' : ''}Transfer to accept`),
             subtitle: `${svc.describeAssignment(t.from)} → you · ${t.reason}`,
             time: t.requestedAt || t.createdAt,
             href: `/patients/${t.patientId}?tab=referrals`,
@@ -223,9 +231,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
             id: `xfer-dec-${t._id}`,
             type: 'transfer',
             severity: t.status === 'rejected' ? 'warning' : 'info',
-            title: t.status === 'rejected'
-              ? `Transfer rejected · ${t.patientName || 'patient'}`
-              : `Transfer completed · ${t.patientName || 'patient'}`,
+            title: nameFirst(t.patientName, t.status === 'rejected' ? 'Transfer rejected' : 'Transfer completed'),
             subtitle: t.status === 'rejected'
               ? `${t.decidedByName || 'Receiving team'}: ${t.decisionNotes || 'no reason given'}`
               : `Care moved to ${svc.describeAssignment(t.to)}`,
@@ -284,8 +290,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           id: `triage-${x._id}`,
           type: 'triage',
           severity: x.priority === 'RED' ? 'critical' : x.priority === 'YELLOW' ? 'warning' : 'info',
-          title: `${acuity} triage · ${x.patientName}`,
-          subtitle: [x.chiefComplaint, x.assignedRoom || 'awaiting provider'].filter(Boolean).join(' · '),
+          title: nameFirst(x.patientName, `${acuity} triage`),
+          // "awaiting Dr. Chinonye Eze" once a provider is assigned; the
+          // generic "awaiting provider" only while the patient is still in
+          // the unclaimed pool.
+          subtitle: [
+            x.chiefComplaint,
+            x.assignedRoom || (x.assignedProviderName
+              ? `awaiting ${abbreviateProviderName(x.assignedProviderName)}`
+              : 'awaiting provider'),
+          ].filter(Boolean).join(' · '),
           time: x.triagedAt || x.updatedAt || x.createdAt,
           href: `/patients/${encodeURIComponent(x.patientId)}`,
         });
@@ -328,8 +342,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
             id: `lab-overdue-${doc._id}`,
             type: 'lab',
             severity: doc.critical ? 'critical' : 'warning',
-            title: `${doc.critical ? 'Critical result unreviewed' : 'Result awaiting review'} · ${doc.testName}`,
-            subtitle: `${doc.patientName} · ${age}`,
+            title: nameFirst(doc.patientName, doc.critical ? 'Critical result unreviewed' : 'Result awaiting review'),
+            subtitle: `${doc.testName} · ${age}`,
             time: doc.updatedAt || doc.completedAt || doc.createdAt,
             href: `/patients/${doc.patientId}?tab=labs&focus=${encodeURIComponent(doc._id)}`,
           });
@@ -341,7 +355,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // raised above as overdue is skipped — the overdue row says strictly
       // more about the same result.
       for (const l of labs.filter(x => x.critical && x.status === 'completed' && !overdueIds.has(x._id))) {
-        out.push({ id: `lab-${l._id}`, type: 'lab', severity: 'critical', title: `Critical result · ${l.testName}`, subtitle: l.patientName, time: l.completedAt || l.orderedAt || l.createdAt, href: l.patientName ? `/lab?patient=${encodeURIComponent(l.patientName)}` : '/lab' });
+        out.push({ id: `lab-${l._id}`, type: 'lab', severity: 'critical', title: nameFirst(l.patientName, 'Critical result'), subtitle: l.testName, time: l.completedAt || l.orderedAt || l.createdAt, href: l.patientName ? `/lab?patient=${encodeURIComponent(l.patientName)}` : '/lab' });
       }
       const readyLabs = labs
         .filter(x => !x.critical && x.status === 'completed' && !overdueIds.has(x._id))
@@ -354,7 +368,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         })
         .slice(0, perSourceLimit);
       for (const l of readyLabs) {
-        out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: `Result ready · ${l.testName}`, subtitle: `${l.patientName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: l.patientName ? `/lab?patient=${encodeURIComponent(l.patientName)}` : '/lab' });
+        out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: nameFirst(l.patientName, 'Result ready'), subtitle: `${l.testName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: l.patientName ? `/lab?patient=${encodeURIComponent(l.patientName)}` : '/lab' });
       }
     } catch { /* offline */ }
 
@@ -373,7 +387,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         .sort((a, b) => (a.appointmentDate + (a.appointmentTime || '')).localeCompare(b.appointmentDate + (b.appointmentTime || '')))
         .slice(0, perSourceLimit);
       for (const a of pending) {
-        out.push({ id: `appt-appr-${a._id}`, type: 'appointment', severity: 'info', title: `Appointment to confirm · ${a.patientName}`, subtitle: `${a.appointmentDate}${a.appointmentTime ? ` ${a.appointmentTime}` : ''} · ${a.providerName || a.department || 'awaiting approval'}`, time: a.updatedAt || a.createdAt || a.appointmentDate, href: '/appointments' });
+        out.push({ id: `appt-appr-${a._id}`, type: 'appointment', severity: 'info', title: nameFirst(a.patientName, 'Appointment to confirm'), subtitle:`${a.appointmentDate}${a.appointmentTime ? ` ${a.appointmentTime}` : ''} · ${a.providerName || a.department || 'awaiting approval'}`, time: a.updatedAt || a.createdAt || a.appointmentDate, href: '/appointments' });
       }
       // Checked in today, waiting to be seen.
       const checkedIn = appts
@@ -381,7 +395,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         .filter(a => isForViewer({ ownerId: a.providerId, ownerName: a.providerName }, currentUser))
         .slice(0, perSourceLimit);
       for (const a of checkedIn) {
-        out.push({ id: `appt-ci-${a._id}`, type: 'appointment', severity: 'warning', title: `Checked in · ${a.patientName}`, subtitle: `${a.appointmentTime ? `${a.appointmentTime} · ` : ''}${a.department || a.reason || 'waiting to be seen'}`, time: a.checkedInAt || a.updatedAt || a.appointmentDate, href: '/appointments' });
+        out.push({ id: `appt-ci-${a._id}`, type: 'appointment', severity: 'warning', title: nameFirst(a.patientName, 'Checked in'), subtitle:`${a.appointmentTime ? `${a.appointmentTime} · ` : ''}${a.department || a.reason || 'waiting to be seen'}`, time: a.checkedInAt || a.updatedAt || a.appointmentDate, href: '/appointments' });
       }
     } catch { /* offline */ }
 
@@ -410,7 +424,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
             id: `progress-${p._id}-${task?.id || p.currentStage}`,
             type: 'progress',
             severity: task?.status === 'blocked' || task?.priority === 'urgent' ? 'warning' : 'info',
-            title: task?.status === 'blocked' ? `Blocked task · ${p.patientName}` : `Patient progress · ${p.patientName}`,
+            title: nameFirst(p.patientName, task?.status === 'blocked' ? 'Blocked task' : 'Progress update'),
             subtitle: task?.title || `${p.currentStage.replace(/_/g, ' ')} · ${p.nextAction || 'review next step'}`,
             time: p.updatedAt || p.createdAt,
             href,
@@ -445,7 +459,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const { getAllPrescriptions } = await import('@/lib/services/prescription-service');
       const rxs = await getAllPrescriptions(scope);
       for (const rx of rxs.filter(x => x.status === 'pending').slice(0, perSourceLimit)) {
-        out.push({ id: `rx-${rx._id}`, type: 'prescription', severity: 'info', title: `Prescription · ${rx.patientName}`, subtitle: `${rx.medication} · awaiting dispensing`, time: rx.updatedAt || rx.createdAt, href: '/pharmacy' });
+        out.push({ id: `rx-${rx._id}`, type: 'prescription', severity: 'info', title: nameFirst(rx.patientName, 'Prescription'), subtitle:`${rx.medication} · awaiting dispensing`, time: rx.updatedAt || rx.createdAt, href: '/pharmacy' });
       }
     } catch { /* offline */ }
 

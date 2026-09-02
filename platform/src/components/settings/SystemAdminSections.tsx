@@ -39,6 +39,7 @@ import {
   type SystemExtensionDefinition,
 } from '@/lib/admin/system-admin-registry';
 import type { SystemConfigDoc } from '@/lib/services/system-config-service';
+import { setDisabledApps } from '@/lib/settings/disabled-apps';
 import {
   Building2, ChevronRight, ClipboardCheck, ClipboardList, Database, KeyRound, Layers,
   Pencil, Search, Settings, X, type LucideIcon,
@@ -144,7 +145,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
       try {
         const { getSystemConfig } = await import('@/lib/services/system-config-service');
         const doc = await getSystemConfig(orgId);
-        if (!cancelled) setConfig(doc);
+        if (!cancelled) { setConfig(doc); setDisabledApps(doc.appOverrides); }
       } catch (err) {
         console.error('Failed to load system configuration:', err);
       } finally {
@@ -153,6 +154,21 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
     })();
     return () => { cancelled = true; };
   }, [orgId, enabled]);
+
+  useEffect(() => {
+    if (!enabled || !orgId) return;
+    let cancelled = false;
+    const reload = async () => {
+      const { getSystemConfig } = await import('@/lib/services/system-config-service');
+      const doc = await getSystemConfig(orgId);
+      if (!cancelled) { setConfig(doc); setDisabledApps(doc.appOverrides); }
+    };
+    let stop = () => {};
+    void import('@/lib/services/system-config-service').then(({ subscribeSystemConfig }) => {
+      if (!cancelled) stop = subscribeSystemConfig(orgId, () => { void reload(); });
+    });
+    return () => { cancelled = true; stop(); };
+  }, [enabled, orgId]);
 
   const appOverrides = config?.appOverrides || {};
   const extensionOverrides = config?.extensionOverrides || {};
@@ -181,6 +197,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
     try {
       const { setAppEnabled } = await import('@/lib/services/system-config-service');
       await setAppEnabled(orgId, app.id, next, currentUser._id, currentUser.username);
+      setDisabledApps({ ...appOverrides, [app.id]: next });
       showToast(`${app.label} ${next ? 'enabled' : 'disabled'}.`, 'success');
     } catch (err) {
       console.error(err);
@@ -357,6 +374,12 @@ function AppExtActions({ id, label, status, route, enabled, kind, data, embedded
   const openAllowed = data.canOpen(route);
   const busy = data.busyId === id;
 
+  // Extension switches have no runtime loader yet. Showing a live toggle here
+  // previously stored an override that no extension point consulted.
+  if (kind === 'extension') {
+    return <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>Not available</span>;
+  }
+
   return (
     <div className="sysadm-row-actions">
       <span
@@ -384,27 +407,7 @@ function AppExtActions({ id, label, status, route, enabled, kind, data, embedded
               <Settings className="w-3 h-3" /> Configure
             </Link>
           )
-        ) : (
-          <>
-            <button
-              type="button"
-              className="sysadm-action-btn"
-              onClick={() => data.openEditor({
-                id,
-                label,
-                description: 'Free-text configuration note — there is no dedicated settings page for this item yet.',
-                value: data.propertyOverrides[id] ?? '',
-              })}
-            >
-              <Pencil className="w-3 h-3" /> Configure
-            </button>
-            {openAllowed && !embedded && (
-              <Link href={route!} className="sysadm-open-link">
-                Open <ChevronRight className="w-3 h-3" />
-              </Link>
-            )}
-          </>
-        )
+        ) : <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>Not available</span>
       ) : (
         <>
           <Toggle
@@ -555,13 +558,9 @@ function renderProperties(list: typeof SYSTEM_GLOBAL_PROPERTY_DEFINITIONS, data:
                     Related <ChevronRight className="w-3 h-3" />
                   </Link>
                 )}
-                <button
-                  type="button"
-                  className="sysadm-action-btn"
-                  onClick={() => data.openEditor({ id: p.id, label: p.label, description: p.description, value: effectiveValue })}
-                >
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
+                <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>
+                  Recorded only
+                </span>
               </div>
             }
           />

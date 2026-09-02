@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
      *  right inbox. Not a JWT claim, so it is only populated from the live user
      *  record; a JWT-only fallback leaves it undefined rather than stale. */
     department?: string;
+    preferences?: import('@/lib/db-types').UserPreferences;
   } = {
     name: payload.name,
     role: payload.role,
@@ -142,6 +143,7 @@ export async function GET(request: NextRequest) {
         orgName: impersonating ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
         mustChangePassword: user.mustChangePassword,
         department: user.department,
+        preferences: user.preferences,
       };
     } else if (isProduction && payload.sub !== 'admin' && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
       // Account no longer exists in production → deny. Demo deployments are
@@ -167,6 +169,7 @@ export async function GET(request: NextRequest) {
       orgName: fresh.orgName,
       mustChangePassword: fresh.mustChangePassword,
       department: fresh.department,
+      preferences: fresh.preferences,
     },
     // Deployment-wide operational policy, sent with the session because every
     // signed-in user's client needs it and none of it is sensitive: an idle

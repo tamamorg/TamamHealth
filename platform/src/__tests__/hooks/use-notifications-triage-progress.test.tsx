@@ -164,6 +164,33 @@ describe('useNotifications — triage feed matches ACTIVE triages (item 6)', () 
     expect(ids).toContain('triage-t-pending');
   });
 
+  it('leads with the patient name (two names) and names the assigned provider', async () => {
+    await putDoc(triageDB(), baseTriage('t-named', {
+      patientName: 'Teny Gatluak Makuach',
+      chiefComplaint: 'Fever at night',
+      status: 'seen', handoffStatus: 'assigned',
+      assignedProviderName: 'Dr. Chinonye Adaeze Eze',
+    }) as never);
+
+    await mountAndSettle();
+
+    const item = hook.state!.items.find(i => i.id === 'triage-t-named')!;
+    expect(item.title).toBe('Teny Makuach · Emergency triage');
+    expect(item.subtitle).toBe('Fever at night · awaiting Dr. Chinonye Eze');
+  });
+
+  it('falls back to the generic "awaiting provider" while the patient is unclaimed', async () => {
+    await putDoc(triageDB(), baseTriage('t-unclaimed', {
+      chiefComplaint: 'Headache',
+      status: 'seen', handoffStatus: 'awaiting_provider',
+    }) as never);
+
+    await mountAndSettle();
+
+    const item = hook.state!.items.find(i => i.id === 'triage-t-unclaimed')!;
+    expect(item.subtitle).toBe('Headache · awaiting provider');
+  });
+
   it('stops alerting once the patient is actually in consultation', async () => {
     await putDoc(triageDB(), baseTriage('t-in-consult', {
       status: 'seen', handoffStatus: 'in_consultation',

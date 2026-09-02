@@ -18,6 +18,7 @@ import type { RoleSettingsValues } from '@/lib/role-settings';
 
 const LOCK_TIMEOUT_KEY = 'tamamhealth-lock-timeout';
 const PIN_HASH_KEY = 'tamamhealth-pin-hash';
+export const pinHashStorageKey = (userId?: string) => userId ? `${PIN_HASH_KEY}.${userId}` : PIN_HASH_KEY;
 /** Default idle timeout before auto-lock. 10 minutes balances clinical
  *  workflow (providers don't get locked mid-consult) against shared-device
  *  risk (shift change in a ward). Override via org config or localStorage. */
@@ -132,12 +133,13 @@ async function derivePinHash(pin: string, salt: Uint8Array, iterations: number):
 /** Whether a screen-lock PIN is currently set on this device AND stored under
  *  the current hashing scheme. A legacy entry is discarded here (rather than
  *  merely ignored) so it can never be read again, by this or a future build. */
-export function hasLockPin(): boolean {
+export function hasLockPin(userId?: string): boolean {
   if (typeof window === 'undefined') return false;
-  const raw = localStorage.getItem(PIN_HASH_KEY);
+  const key = pinHashStorageKey(userId);
+  const raw = localStorage.getItem(key);
   if (!raw) return false;
   if (parseStoredPin(raw)) return true;
-  localStorage.removeItem(PIN_HASH_KEY);
+  localStorage.removeItem(key);
   return false;
 }
 
@@ -147,20 +149,20 @@ export function hasLockPin(): boolean {
  * `pinHashingSupported`) — callers MUST check that first and not offer PIN
  * setup at all when it is false, rather than catching this to fall back to
  * anything weaker. */
-export async function setLockPin(pin: string): Promise<void> {
+export async function setLockPin(pin: string, userId?: string): Promise<void> {
   if (!pinHashingSupported()) {
     throw new Error('PIN unlock needs a secure connection (HTTPS or localhost) and is unavailable here.');
   }
   const salt = crypto.getRandomValues(new Uint8Array(PIN_SALT_BYTES));
   const hash = await derivePinHash(pin, salt, PBKDF2_ITERATIONS);
   const stored: StoredPinHash = { v: PIN_HASH_VERSION, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS };
-  localStorage.setItem(PIN_HASH_KEY, JSON.stringify(stored));
+  localStorage.setItem(pinHashStorageKey(userId), JSON.stringify(stored));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PIN_CHANGED_EVENT));
 }
 
 /** Remove the screen-lock PIN from this device. */
-export function clearLockPin(): void {
-  localStorage.removeItem(PIN_HASH_KEY);
+export function clearLockPin(userId?: string): void {
+  localStorage.removeItem(pinHashStorageKey(userId));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PIN_CHANGED_EVENT));
 }
 
@@ -270,6 +272,7 @@ export function useAutoLock(
    * row says so. Anything else leaves the switch a real control.
    */
   platformLockPolicy?: { screenLockRequired?: boolean },
+  userId?: string,
 ) {
   const mandatory = lockIsMandatory(platformLockPolicy);
   const [isLocked, setIsLocked] = useState(false);
@@ -308,7 +311,7 @@ export function useAutoLock(
   // Check if user has a PIN set — and stay in sync when it changes (e.g. the
   // user sets/removes their PIN from the Settings page, or another tab does).
   useEffect(() => {
-    const sync = () => setHasPin(hasLockPin());
+    const sync = () => setHasPin(hasLockPin(userId));
     sync();
     if (typeof window === 'undefined') return;
     window.addEventListener(PIN_CHANGED_EVENT, sync);
@@ -317,7 +320,7 @@ export function useAutoLock(
       window.removeEventListener(PIN_CHANGED_EVENT, sync);
       window.removeEventListener('storage', sync);
     };
-  }, []);
+  }, [userId]);
 
   // Configured windows are the DEFAULT this device locks on; the user's switch
   // (Settings → Security → "Lock the screen when idle") withdraws them for
@@ -389,25 +392,25 @@ export function useAutoLock(
    * accepting or silently downgrading — the lock screen is expected to not
    * offer PIN entry in that case in the first place. */
   const verifyPin = useCallback(async (pin: string): Promise<boolean> => {
-    if (!hasLockPin()) return false; // No usable PIN set = nothing to verify against
+    if (!hasLockPin(userId)) return false; // No usable PIN set = nothing to verify against
     if (!pinHashingSupported()) return false;
-    const stored = parseStoredPin(localStorage.getItem(PIN_HASH_KEY)!)!;
+    const stored = parseStoredPin(localStorage.getItem(pinHashStorageKey(userId))!)!;
     const candidate = await derivePinHash(pin, base64ToBytes(stored.salt), stored.iterations);
     return candidate === stored.hash;
-  }, []);
+  }, [userId]);
 
   /** Set (or update) the user's PIN. Throws on a context that cannot hash one
    *  — see `setLockPin`; callers must gate PIN setup on `pinSupported`. */
   const setPin = useCallback(async (pin: string) => {
-    await setLockPin(pin);
+    await setLockPin(pin, userId);
     setHasPin(true);
-  }, []);
+  }, [userId]);
 
   /** Clear the stored PIN */
   const clearPin = useCallback(() => {
-    localStorage.removeItem(PIN_HASH_KEY);
+    localStorage.removeItem(pinHashStorageKey(userId));
     setHasPin(false);
-  }, []);
+  }, [userId]);
 
   /** Update the inactivity timeout (in ms) */
   const setTimeoutMs = useCallback((ms: number) => {

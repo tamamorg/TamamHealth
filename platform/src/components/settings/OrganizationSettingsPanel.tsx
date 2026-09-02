@@ -219,7 +219,6 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
                       // local copy — refresh the session or the new timeout only
                       // takes effect after the next sign-in.
                       await refreshCurrentUser();
-                      localStorage.setItem('tamamhealth-lock-timeout', String(lockTimeout * 60_000));
                       showToast(t('orgSettings.toastTimeoutUpdated'), 'success');
                     } catch {
                       showToast(t('orgSettings.toastTimeoutFailed'), 'error');

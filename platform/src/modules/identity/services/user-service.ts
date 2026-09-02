@@ -132,6 +132,26 @@ export async function getUserById(id: string): Promise<UserDoc | null> {
   }
 }
 
+/** Server-only self-service preference update. Kept separate from updateUser:
+ * preferences are writable by every account, while identity/role/scope edits
+ * remain administrator operations. */
+export async function updateOwnPreferences(
+  id: string,
+  preferences: import('@/lib/db-types').UserPreferences,
+): Promise<import('@/lib/db-types').UserPreferences> {
+  if (isBrowserRuntime()) throw new Error('updateOwnPreferences is server-only');
+  const db = usersDB();
+  const existing = await db.get(id) as UserDoc;
+  const updated: UserDoc = {
+    ...existing,
+    preferences: { ...(existing.preferences || {}), ...preferences },
+    updatedAt: new Date().toISOString(),
+  };
+  const resp = await db.put(updated);
+  updated._rev = resp.rev;
+  return updated.preferences || {};
+}
+
 interface CreateUserData {
   username: string;
   password: string;

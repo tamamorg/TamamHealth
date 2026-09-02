@@ -5,16 +5,19 @@
  */
 import {
   DEFAULT_USER_PREFS, getUserPrefs, setUserPrefs, resolveTheme, applyTheme,
+  initUserPrefs, clearUserPrefs, userPrefsStorageKey,
   type ThemePreference,
 } from '@/lib/user-prefs';
 
-const STORAGE_KEY = 'tamamhealth.user-prefs';
+const USER_ID = 'user-theme-test';
 
 // Reset the module's in-memory cache between tests: setUserPrefs writes it, and
 // there's no exported reset, so clear storage AND force a re-read by writing a
 // known baseline through the public API.
 beforeEach(() => {
   window.localStorage.clear();
+  clearUserPrefs();
+  initUserPrefs(USER_ID);
   document.documentElement.removeAttribute('data-theme');
   // matchMedia isn't in jsdom by default; default it to "OS is light".
   window.matchMedia = ((query: string) => ({
@@ -72,16 +75,25 @@ describe('setUserPrefs persistence + application', () => {
     setUserPrefs({ theme: 'dark' });
     expect(getUserPrefs().theme).toBe('dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
-    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '{}');
+    const stored = JSON.parse(window.localStorage.getItem(userPrefsStorageKey(USER_ID)) || '{}');
     expect(stored.theme).toBe('dark');
   });
 
   it('leaves an unknown persisted theme value to fall back to the default', () => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: 'neon' }));
+    window.localStorage.setItem(userPrefsStorageKey(USER_ID), JSON.stringify({ theme: 'neon' }));
     // A corrupt value is not one of the three; the store keeps whatever was
     // written, but resolveTheme/applyTheme must never stamp 'neon'.
     applyTheme('neon' as ThemePreference);
     // 'neon' isn't 'light'|'dark', so resolveTheme treats it as system → light here.
     expect(['light', 'dark']).toContain(document.documentElement.dataset.theme);
+  });
+
+  it('keeps two accounts on the same workstation isolated', () => {
+    setUserPrefs({ theme: 'dark', density: 'compact' });
+    initUserPrefs('different-user');
+    expect(getUserPrefs()).toEqual(DEFAULT_USER_PREFS);
+    setUserPrefs({ theme: 'system' });
+    initUserPrefs(USER_ID);
+    expect(getUserPrefs()).toMatchObject({ theme: 'dark', density: 'compact' });
   });
 });

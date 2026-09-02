@@ -16,19 +16,21 @@
  *   - a subscriber list, so `useRoleSetting()` re-renders on a change made in
  *     this tab, and the `storage` event carries changes from another tab.
  *
- * Scope: per user, per device. These are personal preferences — anything that
- * must hold for everyone at a facility belongs in `facility-settings.ts`,
- * which replicates.
+ * Scope: per user. localStorage is the offline cache; user-settings-sync
+ * persists the same values to the server account so they follow the user.
+ * Anything that must hold for a facility belongs in `facility-settings.ts`.
  */
 import type { UserRole } from '../db-types';
 import {
   specForRole,
   getStoredRoleSettings,
   saveStoredRoleSettings,
+  sanitizeRoleSettingsForRole,
   type RoleSettingsValues,
 } from '../role-settings';
 
 let currentUserId: string | null = null;
+let currentRole: UserRole | null = null;
 let current: RoleSettingsValues = {};
 const subscribers = new Set<(v: RoleSettingsValues) => void>();
 
@@ -67,7 +69,8 @@ export function roleSettingDefaults(role: UserRole): RoleSettingsValues {
  */
 export function initRoleSettings(userId: string, role: UserRole): void {
   currentUserId = userId;
-  const stored = getStoredRoleSettings(userId);
+  currentRole = role;
+  const stored = sanitizeRoleSettingsForRole(role, getStoredRoleSettings(userId));
   current = { ...roleSettingDefaults(role), ...stored };
   // Before the dedicated switch existed, "Off" in security.idle was the
   // user's only way to opt out. Preserve that explicit choice for existing
@@ -81,6 +84,7 @@ export function initRoleSettings(userId: string, role: UserRole): void {
 /** Drop the hydrated values (logout). */
 export function clearRoleSettings(): void {
   currentUserId = null;
+  currentRole = null;
   current = {};
   notify();
 }
@@ -118,9 +122,10 @@ export function getRoleChoice(key: string, fallback: string): string {
  * that row.
  */
 export function setRoleSettings(patch: RoleSettingsValues): RoleSettingsValues {
-  current = { ...current, ...patch };
+  const accepted = currentRole ? sanitizeRoleSettingsForRole(currentRole, patch) : patch;
+  current = { ...current, ...accepted };
   if (currentUserId) {
-    saveStoredRoleSettings(currentUserId, { ...getStoredRoleSettings(currentUserId), ...patch });
+    saveStoredRoleSettings(currentUserId, { ...getStoredRoleSettings(currentUserId), ...accepted });
   }
   notify();
   return current;
@@ -129,14 +134,19 @@ export function setRoleSettings(patch: RoleSettingsValues): RoleSettingsValues {
 /** Replace the stored overrides wholesale (the Settings page's Save button). */
 export function replaceRoleSettings(userId: string, values: RoleSettingsValues): void {
   currentUserId = userId;
-  saveStoredRoleSettings(userId, values);
-  current = { ...current, ...values };
+  const accepted = currentRole ? sanitizeRoleSettingsForRole(currentRole, values) : values;
+  saveStoredRoleSettings(userId, accepted);
+  // A replacement must drop keys retired by the role spec or left behind by
+  // a role change. Merging the old overrides kept those stale values effective
+  // until logout, while omitting defaults made unspecified controls disappear.
+  current = currentRole ? { ...roleSettingDefaults(currentRole), ...accepted } : { ...accepted };
   notify();
 }
 
 /** Reset to this role's defaults, discarding every override. */
 export function resetRoleSettings(userId: string, role: UserRole): RoleSettingsValues {
   currentUserId = userId;
+  currentRole = role;
   saveStoredRoleSettings(userId, {});
   current = roleSettingDefaults(role);
   notify();

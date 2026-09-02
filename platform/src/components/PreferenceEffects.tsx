@@ -13,27 +13,80 @@
  */
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/context';
-import { getUserPrefs, applyDensity, applyTheme, subscribeUserPrefs } from '@/lib/user-prefs';
+import {
+  getUserPrefs, applyDensity, applyTheme, subscribeUserPrefs,
+  initUserPrefs, clearUserPrefs, userPrefsStorageKey,
+} from '@/lib/user-prefs';
 import { initRoleSettings, clearRoleSettings } from '@/lib/settings/role-settings-store';
 import { messagesDB } from '@/lib/db';
 import type { MessageDoc } from '@/lib/db-types';
+import { setDisabledApps } from '@/lib/settings/disabled-apps';
+import { systemConfigScope } from '@/lib/services/system-config-service';
 
 export default function PreferenceEffects() {
   const { currentUser } = useAuth();
   const userId = currentUser?._id;
   const role = currentUser?.role;
+  const orgId = currentUser?.orgId;
 
   // Role settings: hydrate the store for whoever is signed in, and re-hydrate
   // when another tab writes them (localStorage `storage` fires cross-tab only).
   useEffect(() => {
-    if (!userId || !role) { clearRoleSettings(); return; }
+    if (!userId || !role) { clearRoleSettings(); clearUserPrefs(); return; }
     initRoleSettings(userId, role);
+    initUserPrefs(userId);
     const onStorage = (event: StorageEvent) => {
-      if (event.key && event.key.endsWith(userId)) initRoleSettings(userId, role);
+      if (event.key === `tamamhealth.roleSettings.${userId}`) initRoleSettings(userId, role);
+      if (event.key === userPrefsStorageKey(userId)) initUserPrefs(userId);
+    };
+    const onOnline = () => {
+      void import('@/lib/settings/user-settings-sync')
+        .then(({ retryPendingUserPreferences }) => retryPendingUserPreferences(userId));
     };
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('online', onOnline);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('online', onOnline);
+    };
   }, [userId, role]);
+
+  // The users database is server-only, so account preference updates do not
+  // arrive through browser PouchDB replication. Pull the tiny preference bag
+  // periodically and on focus; pending offline changes still win in the
+  // hydrator until they have been accepted by the server.
+  useEffect(() => {
+    if (!userId || !role) return;
+    const pull = () => {
+      void import('@/lib/settings/user-settings-sync')
+        .then(({ pullUserPreferences }) => pullUserPreferences(userId, role));
+    };
+    const timer = window.setInterval(pull, 30_000);
+    window.addEventListener('focus', pull);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', pull);
+    };
+  }, [userId, role]);
+
+  // Organization/system module settings: load once and follow replicated
+  // changes so another administrator's update reaches active sessions.
+  useEffect(() => {
+    const scope = systemConfigScope(orgId, role);
+    if (!scope) { setDisabledApps({}); return; }
+    let cancelled = false;
+    const hydrate = async () => {
+      const { getSystemConfig } = await import('@/lib/services/system-config-service');
+      const config = await getSystemConfig(scope);
+      if (!cancelled) setDisabledApps(config.appOverrides);
+    };
+    void hydrate();
+    let stop = () => {};
+    void import('@/lib/services/system-config-service').then(({ subscribeSystemConfig }) => {
+      if (!cancelled) stop = subscribeSystemConfig(scope, () => { void hydrate(); });
+    });
+    return () => { cancelled = true; stop(); };
+  }, [orgId, role]);
 
   // Density: apply on mount and whenever it changes.
   useEffect(() => {

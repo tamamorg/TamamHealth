@@ -31,8 +31,19 @@ export interface SystemConfigDoc extends BaseDoc {
   propertyOverrides: Record<string, string>;
 }
 
-function systemConfigId(orgId: string): string {
+export function systemConfigId(orgId: string): string {
   return `system-config:${orgId}`;
+}
+
+export function subscribeSystemConfig(orgId: string, onChange: () => void): () => void {
+  const id = systemConfigId(orgId);
+  let feed: { cancel: () => void } | null = null;
+  try {
+    feed = hospitalsDB().changes({ since: 'now', live: true, include_docs: false })
+      .on('change', (change: { id?: string }) => { if (change.id === id) onChange(); })
+      .on('error', () => { /* best effort */ }) as unknown as { cancel: () => void };
+  } catch { feed = null; }
+  return () => { try { feed?.cancel(); } catch { /* noop */ } };
 }
 
 function emptyConfig(orgId: string): SystemConfigDoc {

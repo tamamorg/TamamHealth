@@ -26,6 +26,7 @@
  * hands them here, and the tests exercise the derivation directly.
  */
 import type { EncounterDoc, PrescriptionDoc } from '@/lib/db-types';
+import { shortenPersonName } from '@/lib/patient-utils';
 import { encounterVisitState } from '@/lib/clinical-flow/visit-state';
 import { isOwnedByViewer, type FeedViewer } from './notification-scope';
 import type { NotificationItem, NotificationSeverity } from './types';
@@ -49,14 +50,16 @@ function severityFor(status: EncounterDoc['status']): NotificationSeverity {
   return 'info';
 }
 
+// The title already leads with the patient's name, so the subtitle carries
+// only the description.
 function subtitleFor(encounter: EncounterDoc): string {
   switch (encounter.status) {
-    case 'ready_for_clinician': return `${encounter.patientName} · ready — call them in`;
-    case 'triaged_awaiting_destination': return `${encounter.patientName} · triage completed`;
-    case 'awaiting_pharmacy': return `${encounter.patientName} · prescription at pharmacy`;
-    case 'awaiting_labs': return `${encounter.patientName} · sample with the lab`;
-    case 'awaiting_imaging': return `${encounter.patientName} · with imaging`;
-    default: return `${encounter.patientName} · visit status update`;
+    case 'ready_for_clinician': return 'ready — call them in';
+    case 'triaged_awaiting_destination': return 'triage completed';
+    case 'awaiting_pharmacy': return 'prescription at pharmacy';
+    case 'awaiting_labs': return 'sample with the lab';
+    case 'awaiting_imaging': return 'with imaging';
+    default: return 'visit status update';
   }
 }
 
@@ -97,7 +100,9 @@ export function visitUpdateItems(
       id: `visit-${encounter._id}-${encounter.status}`,
       type: 'visit',
       severity: severityFor(encounter.status),
-      title: `${state.label} · ${encounter.patientName}`,
+      // WHO first, then the rung — "Nyandeng Deng · Awaiting consultation" —
+      // with the name on the two-name display rule like every list row.
+      title: `${shortenPersonName(encounter.patientName) || 'Patient'} · ${state.label}`,
       subtitle: subtitleFor(encounter),
       time: at,
       href: `/patients/${encodeURIComponent(encounter.patientId)}`,
@@ -130,8 +135,8 @@ export function dispensedItems(
       id: `visit-rx-${rx._id}`,
       type: 'visit',
       severity: 'info',
-      title: `Dispensed · ${rx.medication}`,
-      subtitle: `${rx.patientName} · collected from pharmacy`,
+      title: `${shortenPersonName(rx.patientName) || 'Patient'} · Dispensed`,
+      subtitle: `${rx.medication} · collected from pharmacy`,
       time: at,
       href: `/patients/${encodeURIComponent(rx.patientId)}?tab=medications`,
     });

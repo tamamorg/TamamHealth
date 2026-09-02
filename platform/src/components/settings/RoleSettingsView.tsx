@@ -220,6 +220,7 @@ export default function RoleSettingsView() {
     for (const section of spec.sections) {
       for (const row of section.rows) {
         if (row.kind !== 'toggle' && row.kind !== 'select' && row.kind !== 'text') continue;
+        if ('pending' in row && row.pending) continue;
         const def = rowDefault(row, wired);
         const isWiredRow = row.key === 'account.language' || row.key === 'account.density'
           || row.key === 'account.theme' || row.key === 'account.displayName';
@@ -250,6 +251,7 @@ export default function RoleSettingsView() {
     for (const section of spec.sections) {
       for (const row of section.rows) {
         if (row.kind !== 'toggle' && row.kind !== 'select' && row.kind !== 'text') continue;
+        if ('pending' in row && row.pending) continue;
         defaults[row.key] = rowDefault(row, wired) as boolean | string;
       }
     }
@@ -306,7 +308,7 @@ export default function RoleSettingsView() {
      rest of Settings writes to. Snapshotting them on open is what lets a
      cancelled dialog put them back instead of leaving the page dirty. */
   const [acctSnapshot, setAcctSnapshot] = useState<RoleSettingsValues>({});
-  useEffect(() => { setPinIsSet(hasLockPin()); }, [pinOpen]);
+  useEffect(() => { setPinIsSet(hasLockPin(currentUser?._id)); }, [pinOpen, currentUser?._id]);
 
   // ── Integration status (real: DHIS2 push log + offline sync state) ──
   // One owner for the sync log. This screen used to load it here AND inside
@@ -564,6 +566,8 @@ export default function RoleSettingsView() {
       // the new values to every live consumer (queue order, prescribing
       // prompts, MAR, notification filters) without a reload.
       replaceRoleSettings(currentUser._id, draft);
+      const { currentUserPreferences, persistUserPreferences } = await import('@/lib/settings/user-settings-sync');
+      await persistUserPreferences(currentUser._id, currentUserPreferences(draft, locale));
       setBaseline(draft);
       showToast('Settings saved', 'success');
     } catch {
@@ -574,9 +578,11 @@ export default function RoleSettingsView() {
   };
 
   const handleResetSettings = () => {
-    if (!window.confirm('Reset all settings on this device to their defaults?')) return;
+    if (!window.confirm('Reset your settings on every device to their defaults?')) return;
     const defaults = buildDefaultSettings();
     resetRoleSettings(currentUser._id, currentUser.role);
+    void import('@/lib/settings/user-settings-sync').then(({ currentUserPreferences, persistUserPreferences }) =>
+      persistUserPreferences(currentUser._id, currentUserPreferences(defaults, locale)));
     setDraft(defaults);
     setBaseline(defaults);
     showToast('Settings reset', 'success');
@@ -611,7 +617,7 @@ export default function RoleSettingsView() {
     if (pinForm.next !== pinForm.confirm) { showToast('PINs do not match', 'error'); return; }
     setPinSaving(true);
     try {
-      await setLockPin(pinForm.next);
+      await setLockPin(pinForm.next, currentUser._id);
       setPinIsSet(true);
       setPinForm({ next: '', confirm: '' });
       setPinOpen(false);
@@ -1315,7 +1321,7 @@ export default function RoleSettingsView() {
                   <button
                     type="button"
                     className="ehr-handoff-btn sm"
-                    onClick={() => { clearLockPin(); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast('Screen-lock PIN removed', 'success'); }}
+                    onClick={() => { clearLockPin(currentUser._id); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast('Screen-lock PIN removed', 'success'); }}
                   >
                     <Trash2 /> Remove
                   </button>

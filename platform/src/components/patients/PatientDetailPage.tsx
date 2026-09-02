@@ -1694,22 +1694,21 @@ export default function PatientDetailPage() {
             <div className="space-y-4">
               {/* Clinical notes are the encounter record now that the
                   consultation wizard is retired, so they lead this tab rather
-                  than being signposted off to the Activity feed. */}
-              <div className="card-elevated p-5">
-                <NotesList
-                  patientId={patient._id}
-                  patientName={patientFullName(patient)}
-                  mrn={patient.hospitalNumber}
-                  patientDob={patient.dateOfBirth}
-                  currentUser={currentUser}
-                  showCreate={canConsult}
-                  // Opening a note leaves the chart for /notes/[id]: the note
-                  // is a document to be read and signed in full, and the
-                  // drawer gave it a third of the screen next to the chart it
-                  // was already summarising.
-                  refreshToken={notesRefreshToken}
-                />
-              </div>
+                  than being signposted off to the Activity feed. NotesList
+                  brings its own ChartSection card, so no wrapper here. */}
+              <NotesList
+                patientId={patient._id}
+                patientName={patientFullName(patient)}
+                mrn={patient.hospitalNumber}
+                patientDob={patient.dateOfBirth}
+                currentUser={currentUser}
+                showCreate={canConsult}
+                // Opening a note leaves the chart for /notes/[id]: the note
+                // is a document to be read and signed in full, and the
+                // drawer gave it a third of the screen next to the chart it
+                // was already summarising.
+                refreshToken={notesRefreshToken}
+              />
               {/* Telephone contacts stay separate: they are care-team messages
                   about a patient, not documentation of an encounter. */}
               <div className="card-elevated p-5">

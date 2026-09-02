@@ -1,31 +1,36 @@
 'use client';
 
 /**
- * Notes list — the chart's Notes view and the standalone /notes queue.
+ * Notes list — the chart's Notes view, wearing the same ChartSection chrome
+ * as every other chart tab: title, search bar, and a right-aligned create
+ * action that opens the note-type menu (the Orders tab's "Add" pattern).
  *
- * Sorting defaults to date of service rather than last edit: a chart is read
- * chronologically by encounter, and "when did I see this patient" is the
- * question the list answers. Unsigned notes are called out because an unsigned
- * note is work in progress, not a record.
+ * Sorting is fixed to date of service: a chart is read chronologically by
+ * encounter, and "when did I see this patient" is the question the list
+ * answers. The old toolbar of dropdown filters (sort / user / display /
+ * type) is gone — the search box covers those lookups in one control.
+ * Unsigned notes are called out because an unsigned note is work in
+ * progress, not a record.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Trash2 } from '@/components/icons/lucide';
-import CreateNoteButton from './CreateNoteButton';
+import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
+import { noteTypeMenuOrder } from './CreateNoteButton';
 import { useToast } from '@/components/Toast';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
   listClinicalNotes, notePreview, deleteClinicalNote, createClinicalNote,
 } from '@/lib/clinical-notes/note-service';
 import {
-  NOTE_TYPE_ORDER, NOTE_TYPES, getNoteType, isNoteTypeId,
-  type NoteTypeId,
+  NOTE_TYPES, getNoteType, type NoteTypeId,
 } from '@/lib/clinical-notes/note-catalog';
-import type { ClinicalNoteDoc, NoteListFilters } from '@/lib/clinical-notes/types';
+import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import './clinical-notes.css';
-import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+
+const PAGE_SIZE = 10;
 
 interface NotesListProps {
   /** Omit for the cross-patient queue. */
@@ -34,8 +39,6 @@ interface NotesListProps {
   mrn?: string;
   patientDob?: string;
   currentUser: { _id: string; name?: string; username?: string; hospitalId?: string; hospitalName?: string; orgId?: string } | null;
-  /** Author/assignee options for the User filter. */
-  users?: Array<{ _id: string; name: string }>;
   /** Hides the create controls where the caller has its own. */
   showCreate?: boolean;
   /** Open a note in place (the chart's drawer) instead of the /notes route. */
@@ -53,7 +56,7 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
 };
 
 export default function NotesList({
-  patientId, patientName, mrn, patientDob, currentUser, users = [], showCreate = true,
+  patientId, patientName, mrn, patientDob, currentUser, showCreate = true,
   onOpenNote, refreshToken,
 }: NotesListProps) {
   const router = useRouter();
@@ -62,28 +65,26 @@ export default function NotesList({
 
   const [notes, setNotes] = useState<ClinicalNoteDoc[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<NoteListFilters['sortBy']>('service_date');
-  const [userId, setUserId] = useState('all');
-  const [display, setDisplay] = useState<NoteListFilters['display']>('active');
-  const [noteType, setNoteType] = useState<string>('all');
   const [creating, setCreating] = useState(false);
   const [newType, setNewType] = useState<NoteTypeId>('soap');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const rows = await listClinicalNotes({
         patientId,
-        userId,
-        display,
-        sortBy,
-        noteType: isNoteTypeId(noteType) ? noteType : undefined,
+        userId: 'all',
+        display: 'active',
+        sortBy: 'service_date',
       }, scope);
       setNotes(rows);
     } finally {
       setLoading(false);
     }
-  }, [patientId, userId, display, sortBy, noteType, scope]);
+  }, [patientId, scope]);
 
   useEffect(() => { void load(); }, [load, refreshToken]);
 
@@ -126,69 +127,60 @@ export default function NotesList({
     }
   };
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return notes;
+    return notes.filter(n => [
+      getNoteType(n.noteType).label,
+      notePreview(n),
+      n.signedByName, n.assignedToName, n.authorName,
+      n.serviceDate,
+      STATUS_LABEL[n.status]?.text,
+    ].some(field => field?.toLowerCase().includes(q)));
+  }, [notes, search]);
+
   const unsignedCount = useMemo(
     () => notes.filter(n => n.status === 'draft' || n.status === 'awaiting_cosign').length,
     [notes],
   );
 
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const canCreate = showCreate && Boolean(patientId);
+
   return (
-    <div>
-      <div className="cn-list-toolbar">
-        <label className="cn-field">
-          <span className="cn-label">Sort by</span>
-          <Select
-            className="cn-select"
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as NoteListFilters['sortBy'])}
+    <ChartSection
+      title="Notes"
+      addLabel="Create note"
+      onAdd={canCreate ? () => setAddMenuOpen(v => !v) : undefined}
+      searchValue={search}
+      searchPlaceholder="Search notes…"
+      onSearchChange={value => { setSearch(value); setPage(1); }}
+      pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
+    >
+      {canCreate && addMenuOpen && (
+        <div style={{ position: 'relative' }}>
+          <div
+            style={{ position: 'absolute', right: 0, top: -6, zIndex: 20, maxHeight: 420, overflowY: 'auto' }}
+            className="omrs-actions-menu"
+            role="menu"
           >
-            <option value="service_date">Date of Service</option>
-            <option value="last_update">Last update</option>
-          </Select>
-        </label>
-
-        <label className="cn-field">
-          <span className="cn-label">User</span>
-          <Select className="cn-select" value={userId} onChange={e => setUserId(e.target.value)}>
-            <option value="all">All</option>
-            {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-          </Select>
-        </label>
-
-        <label className="cn-field">
-          <span className="cn-label">Display</span>
-          <Select
-            className="cn-select"
-            value={display}
-            onChange={e => setDisplay(e.target.value as NoteListFilters['display'])}
-          >
-            <option value="active">Active</option>
-            <option value="unsigned">Unsigned</option>
-            <option value="signed">Signed</option>
-          </Select>
-        </label>
-
-        <label className="cn-field">
-          <span className="cn-label">Note type</span>
-          <Select className="cn-select" value={noteType} onChange={e => setNoteType(e.target.value)}>
-            <option value="all">All</option>
-            {NOTE_TYPE_ORDER.map(id => (
-              <option key={id} value={id}>{NOTE_TYPES[id].label}</option>
+            {/* Most recently used type first, rest alphabetical — the same
+                ordering the note editor's split button offers. */}
+            {noteTypeMenuOrder(newType).map(id => (
+              <button
+                key={id}
+                type="button"
+                role="menuitem"
+                disabled={creating}
+                title={NOTE_TYPES[id].description}
+                onClick={() => { setAddMenuOpen(false); setNewType(id); void handleCreate(id); }}
+              >
+                <FileText /> {NOTE_TYPES[id].label}
+              </button>
             ))}
-          </Select>
-        </label>
-
-        <div className="cn-footer-spacer" />
-
-        {showCreate && patientId && (
-          // The same split control the visit card uses, so starting a note
-          // looks and behaves identically wherever a clinician reaches for it.
-          <CreateNoteButton
-            defaultType={newType}
-            disabled={creating}
-            onCreate={(type) => { setNewType(type); void handleCreate(type); }}
-          />
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {unsignedCount > 0 && (
         <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
@@ -199,14 +191,22 @@ export default function NotesList({
 
       {loading && <div className="cn-empty">Loading notes…</div>}
 
-      {!loading && notes.length === 0 && (
-        <div className="cn-empty">
-          <FileText size={22} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
-          No notes match these filters.
-        </div>
+      {!loading && filtered.length === 0 && (
+        search.trim() ? (
+          <div className="cn-empty">
+            <FileText size={22} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
+            No notes match &ldquo;{search.trim()}&rdquo;.
+          </div>
+        ) : (
+          <OmrsEmptyState
+            itemLabel="notes"
+            actionLabel="Create clinical note"
+            onAction={canCreate ? () => setAddMenuOpen(true) : undefined}
+          />
+        )
       )}
 
-      {!loading && notes.map((note) => {
+      {!loading && pageRows.map((note) => {
         const status = STATUS_LABEL[note.status] ?? STATUS_LABEL.draft;
         const unsigned = note.status === 'draft' || note.status === 'awaiting_cosign';
         return (
@@ -248,6 +248,6 @@ export default function NotesList({
           </article>
         );
       })}
-    </div>
+    </ChartSection>
   );
 }

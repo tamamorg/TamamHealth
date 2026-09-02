@@ -124,12 +124,11 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
     try {
       await saveFacilitySettings(
         hospitalId,
-        {
-          clinicalPolicy: draft.clinicalPolicy,
-          reporting: draft.reporting,
-          reportingSchedule: draft.reportingSchedule,
-          itOperations: draft.itOperations,
-        },
+        panel === 'clinical'
+          ? { clinicalPolicy: draft.clinicalPolicy }
+          : panel === 'integrations'
+            ? { itOperations: { ...settings.itOperations, syncFailureAlertMinutes: draft.itOperations.syncFailureAlertMinutes } }
+            : {},
         orgId,
         hospitalId,
       );
@@ -141,17 +140,8 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
     }
   };
 
-  const hasIntegration = (key: FacilitySettings['itOperations']['integrations'][number]) =>
-    draft.itOperations.integrations.includes(key);
-  const setIntegration = (key: FacilitySettings['itOperations']['integrations'][number], on: boolean) =>
-    patch({
-      itOperations: {
-        ...draft.itOperations,
-        integrations: on
-          ? Array.from(new Set([...draft.itOperations.integrations, key]))
-          : draft.itOperations.integrations.filter(i => i !== key),
-      },
-    });
+  const unavailable = <span className="ehr-set-locked"><Lock /> Not available yet</span>;
+  const canSave = panel !== 'reporting';
 
   return (
     <section className="ehr-set-section">
@@ -161,7 +151,7 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
           <h3>{meta.title}</h3>
           <small>{meta.note}</small>
         </div>
-        <button
+        {canSave && <button
           type="button"
           className="ehr-set-btn primary"
           style={{ minHeight: 30, padding: '0 13px', fontSize: 12 }}
@@ -169,29 +159,16 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
           onClick={save}
         >
           {saving ? 'Saving…' : 'Save policy'}
-        </button>
+        </button>}
       </div>
 
       {panel === 'clinical' && (
         <>
           <Row label="Triage scale" hint="Acuity colours across every queue at this facility">
-            <Choice
-              label="Triage scale"
-              value={draft.clinicalPolicy.triageScale}
-              options={[
-                { value: '3-tier', label: '3-tier (Red/Yellow/Green)' },
-                { value: '5-tier', label: '5-tier (ESI)' },
-              ]}
-              onChange={v => patch({ clinicalPolicy: { ...draft.clinicalPolicy, triageScale: v as '3-tier' | '5-tier' } })}
-            />
+            {unavailable}
           </Row>
           <Row label="Diagnosis coding" hint="Required on every consultation">
-            <Choice
-              label="Diagnosis coding"
-              value={draft.clinicalPolicy.diagnosisCoding}
-              options={[{ value: 'ICD-11', label: 'ICD-11' }, { value: 'ICD-10', label: 'ICD-10' }]}
-              onChange={v => patch({ clinicalPolicy: { ...draft.clinicalPolicy, diagnosisCoding: v as 'ICD-11' | 'ICD-10' } })}
-            />
+            {unavailable}
           </Row>
           <Row label="Target door-to-clinician" hint="Waits past this are highlighted in every queue">
             <Choice
@@ -206,11 +183,7 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
             />
           </Row>
           <Row label="Witness required for controlled substances" hint="A second staff member co-signs at prescribing and dispensing">
-            <Toggle
-              label="Witness required for controlled substances"
-              on={draft.clinicalPolicy.requireControlledSubstanceWitness}
-              onChange={on => patch({ clinicalPolicy: { ...draft.clinicalPolicy, requireControlledSubstanceWitness: on } })}
-            />
+            {unavailable}
           </Row>
           <Row label="Allergy hard stop" hint="A documented allergy blocks the order instead of warning about it">
             <Toggle
@@ -223,81 +196,18 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
       )}
 
       {panel === 'reporting' && (
-        <>
-          <Row label="IDSR weekly report" hint="Submission day">
-            <Choice
-              label="IDSR weekly report"
-              value={draft.reportingSchedule.idsrDay}
-              options={[
-                { value: 'Monday', label: 'Monday' },
-                { value: 'Friday', label: 'Friday' },
-                { value: 'Sunday', label: 'Sunday' },
-              ]}
-              onChange={v => patch({ reportingSchedule: { ...draft.reportingSchedule, idsrDay: v as 'Monday' | 'Friday' | 'Sunday' } })}
-            />
-          </Row>
-          <Row label="HMIS monthly report" hint="Submission deadline">
-            <Choice
-              label="HMIS monthly report"
-              value={String(draft.reporting.monthlyDeadlineDay)}
-              options={[
-                { value: '1', label: '1st of the month' },
-                { value: '5', label: '5th of the month' },
-                { value: '10', label: '10th of the month' },
-              ]}
-              onChange={v => patch({ reporting: { ...draft.reporting, monthlyDeadlineDay: Number(v) } })}
-            />
-          </Row>
-          <Row label="Require completeness sign-off" hint="An administrator confirms the dataset before it goes out">
-            <Toggle
-              label="Require completeness sign-off"
-              on={draft.reporting.requireCompletenessSignoff}
-              onChange={on => patch({ reporting: { ...draft.reporting, requireCompletenessSignoff: on } })}
-            />
-          </Row>
-          <Row label="Auto-submit when complete" hint="Requires 100% data quality checks">
-            <Toggle
-              label="Auto-submit when complete"
-              on={draft.reportingSchedule.autoSubmitWhenComplete}
-              onChange={on => patch({ reportingSchedule: { ...draft.reportingSchedule, autoSubmitWhenComplete: on } })}
-            />
-          </Row>
-          <Row label="Alert on missed deadlines" hint="Notifies admins and the county">
-            <Toggle
-              label="Alert on missed deadlines"
-              on={draft.reportingSchedule.alertOnMissedDeadline}
-              onChange={on => patch({ reportingSchedule: { ...draft.reportingSchedule, alertOnMissedDeadline: on } })}
-            />
-          </Row>
-          <Row label="Full database export" hint="Requires Ministry authorisation code">
-            <span className="ehr-set-locked"><Lock /> Restricted</span>
-          </Row>
-        </>
+        <Row label="Reporting automation" hint="Deadlines, completeness sign-off, automatic submission, and missed-deadline alerts">
+          {unavailable}
+        </Row>
       )}
 
       {panel === 'integrations' && (
         <>
-          <Row label="DHIS2 national reporting" hint="HMIS and IDSR datasets">
-            <Toggle label="DHIS2 national reporting" on={hasIntegration('dhis2')} onChange={on => setIntegration('dhis2', on)} />
+          <Row label="Integration switches" hint="DHIS2, payments, SMS, lab devices, and barcode printers">
+            {unavailable}
           </Row>
-          <Row label="m-Gurush mobile money" hint="Payment confirmations post to billing">
-            <Toggle label="m-Gurush mobile money" on={hasIntegration('payments')} onChange={on => setIntegration('payments', on)} />
-          </Row>
-          <Row label="SMS gateway" hint="Patient reminders and critical-result alerts">
-            <Toggle label="SMS gateway" on={hasIntegration('sms')} onChange={on => setIntegration('sms', on)} />
-          </Row>
-          <Row label="Lab device interfaces" hint="Analyser results posted straight to the worklist">
-            <Toggle label="Lab device interfaces" on={hasIntegration('lab_devices')} onChange={on => setIntegration('lab_devices', on)} />
-          </Row>
-          <Row label="Barcode printers" hint="Sample and medication labels">
-            <Toggle label="Barcode printers" on={hasIntegration('barcode_printers')} onChange={on => setIntegration('barcode_printers', on)} />
-          </Row>
-          <Row label="Offline mode" hint="Staff may keep working through a connectivity outage">
-            <Toggle
-              label="Offline mode"
-              on={draft.itOperations.allowOfflineMode}
-              onChange={on => patch({ itOperations: { ...draft.itOperations, allowOfflineMode: on } })}
-            />
+          <Row label="Offline mode policy" hint="Blocking offline operation requires a complete continuity and emergency-access design">
+            {unavailable}
           </Row>
           <Row label="Sync failure alert" hint="Minutes without replication before IT is notified">
             <Choice

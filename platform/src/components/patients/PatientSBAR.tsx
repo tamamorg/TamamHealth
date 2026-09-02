@@ -11,23 +11,22 @@
  * This component composes the document from the live chart — no manual
  * entry. A nurse going off shift prints this; the night nurse reads it.
  *
- * Presentation is the chart's own: four `ChartSection` cards, the same chrome
- * Conditions/Allergies/Orders use, so the handoff reads as part of the chart
- * rather than as a document pasted into it. Deliberately absent: a title
- * repeating the patient's name (the sticky header above already names them,
- * and the printed copy carries its own identity block) and the row-divider
- * rules that turned four short facts into a ruled ledger.
+ * Presentation mirrors the triage form the way it was filled: the OpenMRS
+ * `omrs-reg` layout — a left step-nav rail (patient card + the same seven
+ * sections the nurse fills, in the same order) beside stacked field slabs —
+ * rendered read-only. So the handoff reads as the triage form itself rather
+ * than as a separate document, with the priority badge and allergy strip
+ * leading the way they do on the filled sheet.
  */
 
-import { useMemo } from 'react';
-import { Printer, ShieldAlert, Heart } from '@/components/icons/lucide';
-import ChartSection from '@/components/ehr/chart/ChartSection';
+import { useMemo, useState } from 'react';
+import { Printer, ShieldAlert } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type {
   PatientDoc, MedicalRecordDoc, LabResultDoc, PrescriptionDoc, TriageDoc, ProblemDoc,
 } from '@/lib/db-types';
 import { formatDateTime , formatRxSig } from '@/lib/format-utils';
-import { patientAge, patientFullName } from '@/lib/patient-utils';
+import { patientAge, patientFullName, initials } from '@/lib/patient-utils';
 import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { formatPhoneDisplay } from '@/lib/field-formats';
@@ -48,17 +47,6 @@ interface PatientSBARProps {
   triages: TriageDoc[];
   problems: ProblemDoc[];
   latestShiftHandoff?: PatientShiftHandoff | null;
-}
-
-/** A labelled fact on one line. No rule under it — the label carries the
- *  separation, and a divider per fact was reading as a table of one column. */
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="sbar-fact">
-      <span className="sbar-fact-label">{label}</span>
-      <span className="sbar-fact-value">{children}</span>
-    </div>
-  );
 }
 
 /** A heading inside a section body, for the sub-lists (vitals, critical labs). */
@@ -124,6 +112,32 @@ function TriageField({ label, value }: { label: string; value?: React.ReactNode 
       <span>{label}</span>
       <strong>{value || '—'}</strong>
     </div>
+  );
+}
+
+/**
+ * A read-only field rendered to look like a filled triage-form input: a small
+ * label above a value sitting on the same underlined field surface the form
+ * uses, so this handoff reads as the triage form the way it was entered.
+ */
+function RoField({ label, value, full }: { label: string; value?: React.ReactNode; full?: boolean }) {
+  return (
+    <div className={full ? 'sbar-ro-field sbar-ro-field--full' : 'sbar-ro-field'}>
+      <span className="sbar-ro-label">{label}</span>
+      <span className="sbar-ro-value">{value === undefined || value === null || value === '' ? '—' : value}</span>
+    </div>
+  );
+}
+
+/** One OpenMRS-styled form section: heading + description over the field slab. */
+function FormSection({ id, title, description, children }: {
+  id: string; title: string; description: string; children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="omrs-reg-section">
+      <div className="omrs-reg-sectionhead"><h2>{title}</h2><p>{description}</p></div>
+      <div className="omrs-reg-fields">{children}</div>
+    </section>
   );
 }
 
@@ -264,167 +278,129 @@ export default function PatientSBAR({
 
   const handlePrint = () => { printElementById('patient-sbar-print'); };
 
+  const genderAge = [patient.gender, age != null ? `${age}y` : null].filter(Boolean).join(' · ');
+  const dangerCount = (latestTriage?.redCriteria?.length || 0) + (latestTriage?.yellowCriteria?.length || 0);
+
+  // The same seven sections the triage form is filled in through, in the same
+  // order — so this read-only handoff reads as that form. Each rail item jumps
+  // to its section and carries a one-line summary the way the form's step-nav
+  // shows progress.
+  const sections = [
+    { id: 'patient', label: 'Patient & complaint', meta: latestTriage?.chiefComplaint || 'Identity' },
+    { id: 'assessment', label: 'ABCC assessment', meta: latestTriage ? `${priorityLabel(latestTriage.priority)} priority` : 'Not triaged' },
+    { id: 'danger', label: 'IITT danger signs', meta: dangerCount ? `${dangerCount} flagged` : latestTriage?.isolationRequired ? 'Isolation' : 'Screened' },
+    { id: 'vitals', label: 'Vitals', meta: latestVitals ? latestVitals.source : 'Not recorded' },
+    { id: 'context', label: 'Visit context', meta: allergies.length ? `${allergies.length} allergy` : 'Background' },
+    { id: 'handoff', label: 'Provider handoff', meta: latestTriage?.assignedProviderName || 'Assign later' },
+    { id: 'notes', label: 'Notes', meta: latestTriage?.notes ? 'Recorded' : 'Review' },
+  ] as const;
+  const [activeSection, setActiveSection] = useState<string>('patient');
+  const goToSection = (id: string) => {
+    setActiveSection(id);
+    document.getElementById(`sbar-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const priorityMeta = latestTriage ? priorityBadge(latestTriage.priority) : null;
+
   return (
-    <div id="patient-sbar-print" className="sbar-doc space-y-2">
-      {latestTriage && (
-        <section className="sbar-triage-header" aria-label="Completed triage handoff">
-          <div className="sbar-triage-header__top">
-            <div>
-              <span className="sbar-triage-kicker">Completed ETAT triage</span>
-              <h2>SBAR handoff</h2>
+    <div id="patient-sbar-print" className="sbar-doc sbar-as-form omrs-reg triage-reg">
+      {/* Left rail: patient card + the form's own step-nav, read-only. */}
+      <aside className="omrs-reg-rail" aria-label="Triage handoff sections">
+        <h1 className="omrs-reg-title">Patient triage</h1>
+        <div className="triage-rail-patient">
+          <div className="triage-patient-photo">
+            <div className="triage-patient-photo-frame">
+              {(patient as { photoUrl?: string }).photoUrl
+                // eslint-disable-next-line @next/next/no-img-element -- patient photo from the record; CSS-sized frame.
+                ? <img src={(patient as { photoUrl?: string }).photoUrl} alt={fullName} />
+                : <span className="text-3xl font-semibold" style={{ color: 'var(--accent-primary)' }}>{initials(fullName)}</span>}
             </div>
-            <button type="button" className="omrs-section-add" onClick={handlePrint}><Printer /> {t('action.print')}</button>
+            <span className="triage-patient-photo-label">Patient photo</span>
           </div>
-          <div
-            className="sbar-triage-priority"
-            style={{ color: priorityBadge(latestTriage.priority).color, background: priorityBadge(latestTriage.priority).bg }}
-          >
-            <strong>{priorityLabel(latestTriage.priority)}</strong>
-            <span>{latestTriage.priority} priority · {latestTriage.status}</span>
-          </div>
-          <div className="sbar-triage-meta">
-            <TriageField label="Triaged by" value={latestTriage.triagedByName || 'Unknown clinician'} />
-            <TriageField label="Date and time" value={formatDateTime(latestTriage.triagedAt)} />
-            <TriageField label="Facility" value={latestTriage.facilityName || patient.registrationHospital} />
-            <TriageField label="Assessment source" value={latestTriage.assessmentSource === 'clerical_checkin' ? 'Clerical check-in' : 'Clinician ETAT'} />
-          </div>
-        </section>
-      )}
-      {/* Allergies lead the handoff. They are the one line here that changes
-          what is safe to give, and SBAR convention puts them before the S. */}
-      <div className={allergies.length ? 'sbar-allergies is-alert' : 'sbar-allergies'}>
-        <ShieldAlert className="w-4 h-4 shrink-0" />
-        <span className="sbar-allergies-label">{t('patientNew.reviewAllergies')}</span>
-        {allergies.length === 0 ? (
-          <span className="sbar-allergies-none">{t('patient.noneKnown')}</span>
-        ) : (
-          <span className="sbar-allergies-list">
-            {allergies.map(a => <em key={a}>{a}</em>)}
-          </span>
-        )}
-      </div>
-
-      {latestShiftHandoff && (
-        <ChartSection
-          title="Latest shift handoff"
-          filterSlot={(
-            <span className="omrs-panel-badge omrs-panel-badge--muted">
-              {latestShiftHandoff.handoff.outgoingNurseName} · {latestShiftHandoff.handoff.shift} shift · {latestShiftHandoff.handoff.shiftDate}
-            </span>
-          )}
-        >
-          <div className="sbar-handoff-grid">
-            {([
-              ['Situation', latestShiftHandoff.entry.situation],
-              ['Background', latestShiftHandoff.entry.background],
-              ['Assessment', latestShiftHandoff.entry.assessment],
-              ['Recommendation', latestShiftHandoff.entry.recommendation],
-            ] as const).map(([label, value]) => value ? (
-              <div key={label} className="sbar-handoff-cell">
-                <span className="sbar-fact-label">{label}</span>
-                <p>{value}</p>
-              </div>
-            ) : null)}
-          </div>
-          {latestShiftHandoff.entry.tasks?.length ? (
-            <div className="sbar-block">
-              <SubHead>Outstanding tasks</SubHead>
-              <ul className="sbar-bullets">
-                {latestShiftHandoff.entry.tasks.map(task => <li key={task}>{task}</li>)}
-              </ul>
-            </div>
-          ) : null}
-        </ChartSection>
-      )}
-
-      {/* Print rides the first section's action slot rather than a header card
-          of its own — the same place every other chart section puts its verb. */}
-      <ChartSection
-        title={t('sbar.situationTitle')}
-        className="sbar-triage-section"
-        addLabel={latestTriage ? undefined : t('action.print')}
-        addIcon={latestTriage ? undefined : <Printer />}
-        onAdd={latestTriage ? undefined : handlePrint}
-      >
-        <p className="sbar-lede">
-          {/* The name stays in the sentence — it is the clinical statement a
-              nurse reads aloud at handoff — but no longer as a page title. */}
           <strong>{fullName}</strong>
-          {age != null && <>, {t('sbar.yearOld', { age })} {patient.gender.toLowerCase()}</>}
-          {patient.hospitalNumber && <span className="sbar-muted"> · {patient.hospitalNumber}</span>}
-        </p>
-        {latestTriage ? (
-          <>
-            <div className="sbar-triage-fields">
-              <TriageField label="Chief complaint" value={latestTriage.chiefComplaint} />
-              <TriageField label="Symptom duration" value={latestTriage.symptomDuration} />
-              <TriageField label="Mode of arrival" value={latestTriage.modeOfArrival?.replace('-', ' ')} />
-              <TriageField label="Referral source" value={latestTriage.referralSource} />
-            </div>
-          </>
-        ) : latestRecord?.chiefComplaint ? (
-          <p className="sbar-para">
-            {t('sbar.lastConsult')} ({formatDateTime(latestRecord.consultedAt || latestRecord.visitDate)}):{' '}
-            <em>{latestRecord.chiefComplaint}</em>
-          </p>
-        ) : (
-          <p className="sbar-para sbar-muted">{t('sbar.noActiveSituation')}</p>
-        )}
-      </ChartSection>
+          <span>{[patient.hospitalNumber, genderAge].filter(Boolean).join(' · ')}</span>
+        </div>
+        <p className="omrs-reg-railnote">The completed triage, laid out as it was filled.</p>
+        <p className="omrs-reg-jump">Assessment steps</p>
+        <nav className="omrs-reg-nav" aria-label="Triage sections">
+          {sections.map(section => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => goToSection(section.id)}
+              className={`omrs-reg-navitem${activeSection === section.id ? ' is-current' : ''}`}
+              aria-current={activeSection === section.id ? 'step' : undefined}
+            >
+              <span className="omrs-reg-navarrow" aria-hidden>↳</span>
+              <span className="omrs-reg-navlabel">{section.label}</span>
+              <span className="omrs-reg-navmeta">{section.meta}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="omrs-reg-railactions">
+          <button type="button" onClick={handlePrint} className="btn btn-secondary"><Printer /> {t('action.print')}</button>
+        </div>
+      </aside>
 
-      <ChartSection title={t('sbar.backgroundTitle')} className="sbar-triage-section">
-        <Fact label={t('patient.bloodType')}>
-          <strong>{patient.bloodType || t('consultation.unknown')}</strong>
-        </Fact>
-
-        {(activeProblems.length > 0 || chronic.length > 0) && (
-          <div className="sbar-block">
-            <SubHead>{t('sbar.activeProblems')}</SubHead>
-            <ul className="sbar-chips">
-              {(activeProblems.length ? activeProblems.map(p => p.name) : chronic).map(name => (
-                <li key={name}>{name}</li>
-              ))}
-            </ul>
+      {/* Right column: the triage record written out section by section. */}
+      <div className="omrs-reg-form triage-reg-form sbar-as-form-body">
+        {/* Priority and allergies lead — the two facts that change what is safe
+            to do next, sitting above the form the way the badge and the allergy
+            banner do on the filled sheet. */}
+        {priorityMeta && (
+          <div className="sbar-form-priority" style={{ color: priorityMeta.color, background: priorityMeta.bg }}>
+            <strong>{priorityLabel(latestTriage!.priority)}</strong>
+            <span>{latestTriage!.priority} priority · {latestTriage!.status}</span>
           </div>
         )}
+        <div className={allergies.length ? 'sbar-allergies is-alert' : 'sbar-allergies'}>
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span className="sbar-allergies-label">{t('patientNew.reviewAllergies')}</span>
+          {allergies.length === 0 ? (
+            <span className="sbar-allergies-none">{t('patient.noneKnown')}</span>
+          ) : (
+            <span className="sbar-allergies-list">{allergies.map(a => <em key={a}>{a}</em>)}</span>
+          )}
+        </div>
 
-        {activeRx.length > 0 && (
-          <div className="sbar-block">
-            <SubHead>{t('patient.medications')} · {activeRx.length}</SubHead>
-            <ul className="sbar-rows">
-              {activeRx.map(rx => (
-                <li key={rx._id}>
-                  <span className="sbar-row-main">{rx.medication}</span>
-                  <span className="sbar-muted">{formatRxSig(rx)}</span>
-                </li>
-              ))}
-            </ul>
+        <FormSection id="sbar-section-patient" title="Patient & complaint" description="Who the patient is and why they came in.">
+          <div className="sbar-ro-grid">
+            <RoField label="Patient" value={fullName} />
+            <RoField label="Hospital number" value={patient.hospitalNumber} />
+            <RoField label="Sex / Age" value={genderAge} />
+            <RoField label="Chief complaint" value={latestTriage?.chiefComplaint || latestRecord?.chiefComplaint} full />
+            <RoField label="Symptom duration" value={latestTriage?.symptomDuration} />
+            <RoField label="Mode of arrival" value={latestTriage?.modeOfArrival?.replace('-', ' ')} />
+            <RoField label="Referral source" value={latestTriage?.referralSource} />
+            {latestTriage && <RoField label="Triaged by" value={latestTriage.triagedByName || 'Unknown clinician'} />}
+            {latestTriage && <RoField label="Date and time" value={formatDateTime(latestTriage.triagedAt)} />}
+            {latestTriage && <RoField label="Assessment source" value={latestTriage.assessmentSource === 'clerical_checkin' ? 'Clerical check-in' : 'Clinician ETAT'} />}
           </div>
-        )}
+        </FormSection>
 
-        {patient.nokName && (
-          <Fact label={t('patient.nextOfKin')}>
-            {patient.nokName}
-            <span className="sbar-muted"> ({patient.nokRelationship}) · {formatPhoneDisplay(patient.nokPhone)}</span>
-          </Fact>
-        )}
-      </ChartSection>
-
-      <ChartSection title={t('sbar.assessmentTitle')} className="sbar-triage-section">
-        {latestTriage && (
-          <div className="sbar-block">
-            <SubHead>Latest triage assessment</SubHead>
+        <FormSection id="sbar-section-assessment" title="ABCC assessment" description="Airway, breathing, circulation, consciousness — and the priority they set.">
+          {latestTriage ? (
             <TriageAssessment triage={latestTriage} />
-            <TriagePriorityExplain triage={latestTriage} />
-            {latestTriage.notes && <p className="sbar-para"><strong>Clinical notes:</strong> {latestTriage.notes}</p>}
-          </div>
-        )}
+          ) : (
+            <p className="sbar-para sbar-muted">{t('sbar.noActiveSituation')}</p>
+          )}
+        </FormSection>
 
-        {latestVitals ? (
-          <div className="sbar-block">
-            <SubHead icon={<Heart className="w-3.5 h-3.5" />}>
-              {t('sbar.latestVitals')} · {latestVitals.source} · {formatDateTime(latestVitals.at)}
-            </SubHead>
+        <FormSection id="sbar-section-danger" title="IITT danger signs" description="Red and yellow criteria, the infection screen, and what set this priority.">
+          {latestTriage ? (
+            <>
+              <TriagePriorityExplain triage={latestTriage} />
+              {dangerCount === 0 && !latestTriage.isolationRequired && (
+                <p className="sbar-para sbar-muted">No danger signs recorded.</p>
+              )}
+            </>
+          ) : (
+            <p className="sbar-para sbar-muted">No triage danger-sign screen on file.</p>
+          )}
+        </FormSection>
+
+        <FormSection id="sbar-section-vitals" title="Vitals" description={latestVitals ? `Observations · ${latestVitals.source} · ${formatDateTime(latestVitals.at)}` : 'Observations recorded at triage.'}>
+          {latestVitals ? (
             <div className="sbar-tiles">
               <Tile label={t('sbar.vitalTemp')} value={displayVital(latestVitals.temperature, '°C')} />
               <Tile label={t('sbar.vitalBp')} value={latestVitals.systolic !== undefined && latestVitals.diastolic !== undefined ? `${latestVitals.systolic}/${latestVitals.diastolic}` : '—'} />
@@ -435,83 +411,109 @@ export default function PatientSBAR({
               {latestVitals.source === 'Triage' && latestTriage?.painScore && <Tile label="Pain" value={`${latestTriage.painScore}/10`} />}
               {latestVitals.source === 'Triage' && latestTriage?.gcs && <Tile label="GCS" value={latestTriage.gcs} />}
             </div>
-          </div>
-        ) : (
-          <p className="sbar-para sbar-muted">{t('sbar.noVitals')}</p>
-        )}
+          ) : (
+            <p className="sbar-para sbar-muted">{t('sbar.noVitals')}</p>
+          )}
+        </FormSection>
 
-        {recentCriticalLabs.length > 0 && (
-          <div className="sbar-block">
-            <SubHead tone="danger" icon={<ShieldAlert className="w-3.5 h-3.5" />}>
-              {t('sbar.criticalLabResults')}
-            </SubHead>
-            <ul className="sbar-rows">
-              {recentCriticalLabs.map(l => (
-                <li key={l._id}>
-                  <span className="sbar-row-main">
-                    {l.testName}
-                    <span className="sbar-muted"> · {t('sbar.refRange')} {l.referenceRange} · {formatDateTime(l.completedAt)}</span>
-                  </span>
-                  <span className="sbar-critical">{l.result} {l.unit}</span>
-                </li>
-              ))}
-            </ul>
+        <FormSection id="sbar-section-context" title="Visit context" description="Background that shapes care — history, medications, and next of kin.">
+          <div className="sbar-ro-grid">
+            <RoField label={t('patient.bloodType')} value={patient.bloodType || undefined} />
+            <RoField label="Known allergies" value={allergies.length ? allergies.join(', ') : t('patient.noneKnown')} full />
           </div>
-        )}
+          {(activeProblems.length > 0 || chronic.length > 0) && (
+            <div className="sbar-block">
+              <SubHead>{t('sbar.activeProblems')}</SubHead>
+              <ul className="sbar-chips">
+                {(activeProblems.length ? activeProblems.map(p => p.name) : chronic).map(name => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {activeRx.length > 0 && (
+            <div className="sbar-block">
+              <SubHead>{t('patient.medications')} · {activeRx.length}</SubHead>
+              <ul className="sbar-rows">
+                {activeRx.map(rx => (
+                  <li key={rx._id}>
+                    <span className="sbar-row-main">{rx.medication}</span>
+                    <span className="sbar-muted">{formatRxSig(rx)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {recentCriticalLabs.length > 0 && (
+            <div className="sbar-block">
+              <SubHead tone="danger" icon={<ShieldAlert className="w-3.5 h-3.5" />}>{t('sbar.criticalLabResults')}</SubHead>
+              <ul className="sbar-rows">
+                {recentCriticalLabs.map(l => (
+                  <li key={l._id}>
+                    <span className="sbar-row-main">{l.testName}<span className="sbar-muted"> · {t('sbar.refRange')} {l.referenceRange} · {formatDateTime(l.completedAt)}</span></span>
+                    <span className="sbar-critical">{l.result} {l.unit}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {patient.nokName && (
+            <div className="sbar-ro-grid">
+              <RoField label={t('patient.nextOfKin')} value={`${patient.nokName}${patient.nokRelationship ? ` (${patient.nokRelationship})` : ''}`} />
+              <RoField label="Contact" value={formatPhoneDisplay(patient.nokPhone)} />
+            </div>
+          )}
+        </FormSection>
 
-        {latestRecord?.diagnoses && latestRecord.diagnoses.length > 0 && (
-          <div className="sbar-block">
-            <SubHead>{t('sbar.latestDiagnoses')}</SubHead>
-            <ul className="sbar-rows">
-              {latestRecord.diagnoses.map((d, i) => (
-                <li key={i}>
-                  <span className="sbar-row-main">{d.name}</span>
-                  <span className="sbar-muted">{[d.icd10Code, d.certainty, d.severity].filter(Boolean).join(' · ')}</span>
-                </li>
-              ))}
-            </ul>
+        <FormSection id="sbar-section-handoff" title="Provider handoff" description="Where the patient goes next, who receives them, and what is still open.">
+          <div className="sbar-ro-grid">
+            <RoField label="Destination" value={latestTriage?.disposition?.replace(/_/g, ' ')} />
+            <RoField label="Clinic or service" value={latestTriage?.destinationClinic} />
+            <RoField label="Receiving provider" value={latestTriage?.assignedProviderName || (latestTriage ? 'Assign provider later' : undefined)} />
+            <RoField label="Handoff status" value={latestTriage?.handoffStatus?.replace(/_/g, ' ')} />
+            <RoField label="Handoff note" value={latestTriage?.handoffNote} full />
           </div>
-        )}
-      </ChartSection>
+          {(pendingLabs.length > 0 || latestRecord?.followUp?.date || latestRecord?.treatmentPlan) && (
+            <div className="sbar-ro-grid">
+              {pendingLabs.length > 0 && <RoField label={t('sbar.pendingLabsFollowUp')} value={pendingLabs.map(l => l.testName).join(', ')} full />}
+              {latestRecord?.followUp?.date && <RoField label={t('sbar.followUpScheduled')} value={`${latestRecord.followUp.date}${latestRecord.followUp.reason ? ` — ${latestRecord.followUp.reason}` : ''}`} full />}
+              {latestRecord?.treatmentPlan && <RoField label={t('sbar.activePlan')} value={latestRecord.treatmentPlan} full />}
+            </div>
+          )}
+          {latestShiftHandoff && (
+            <div className="sbar-block">
+              <SubHead>Latest shift handoff · {latestShiftHandoff.handoff.outgoingNurseName} · {latestShiftHandoff.handoff.shift} shift</SubHead>
+              <div className="sbar-handoff-grid">
+                {([
+                  ['Situation', latestShiftHandoff.entry.situation],
+                  ['Background', latestShiftHandoff.entry.background],
+                  ['Assessment', latestShiftHandoff.entry.assessment],
+                  ['Recommendation', latestShiftHandoff.entry.recommendation],
+                ] as const).map(([label, value]) => value ? (
+                  <div key={label} className="sbar-handoff-cell">
+                    <span className="sbar-fact-label">{label}</span>
+                    <p>{value}</p>
+                  </div>
+                ) : null)}
+              </div>
+            </div>
+          )}
+        </FormSection>
 
-      <ChartSection title={t('sbar.recommendationTitle')} className="sbar-triage-section">
-        {latestTriage && (
-          <div className="sbar-triage-fields sbar-triage-fields--handoff">
-            <TriageField label="Destination" value={latestTriage.disposition?.replace(/_/g, ' ')} />
-            <TriageField label="Clinic or service" value={latestTriage.destinationClinic} />
-            <TriageField label="Receiving provider" value={latestTriage.assignedProviderName || 'Assign provider later'} />
-            <TriageField label="Handoff status" value={latestTriage.handoffStatus?.replace(/_/g, ' ')} />
-            <TriageField label="Handoff note" value={latestTriage.handoffNote} />
-            <TriageField label="Triage notes" value={latestTriage.notes} />
+        <FormSection id="sbar-section-notes" title="Notes" description="Triage and clinical notes recorded with this assessment.">
+          <div className="sbar-ro-grid">
+            <RoField label="Triage notes" value={latestTriage?.notes} full />
+            {latestRecord?.diagnoses && latestRecord.diagnoses.length > 0 && (
+              <RoField label={t('sbar.latestDiagnoses')} full value={
+                <span>{latestRecord.diagnoses.map((d, i) => (
+                  <span key={i} className="sbar-inline-dx">{d.name}{[d.icd10Code, d.certainty, d.severity].filter(Boolean).length ? <em> ({[d.icd10Code, d.certainty, d.severity].filter(Boolean).join(' · ')})</em> : null}{i < latestRecord.diagnoses!.length - 1 ? '; ' : ''}</span>
+                ))}</span>
+              } />
+            )}
           </div>
-        )}
-        {pendingLabs.length > 0 && (
-          <Fact label={t('sbar.pendingLabsFollowUp')}>{pendingLabs.map(l => l.testName).join(', ')}</Fact>
-        )}
-        {latestRecord?.followUp?.date && (
-          <Fact label={t('sbar.followUpScheduled')}>
-            <strong>{latestRecord.followUp.date}</strong>
-            {latestRecord.followUp.reason && <span className="sbar-muted"> — {latestRecord.followUp.reason}</span>}
-          </Fact>
-        )}
-        {activeRx.length > 0 && (
-          <Fact label={t('sbar.continueMedications')}>
-            <span className="sbar-muted">
-              {activeRx.length === 1
-                ? t('sbar.activePrescriptionCount', { count: activeRx.length })
-                : t('sbar.activePrescriptionCountPlural', { count: activeRx.length })}
-            </span>
-          </Fact>
-        )}
-        {latestRecord?.treatmentPlan && (
-          <Fact label={t('sbar.activePlan')}>{latestRecord.treatmentPlan}</Fact>
-        )}
-        {pendingLabs.length === 0 && !latestRecord?.followUp?.date && activeRx.length === 0 && !latestRecord?.treatmentPlan && !latestTriage?.disposition && !latestTriage?.assignedProviderName && !latestTriage?.handoffNote && (
-          <p className="sbar-para sbar-muted">{t('sbar.noOutstandingActions')}</p>
-        )}
-      </ChartSection>
-
-      <p className="sbar-disclaimer">{t('sbar.disclaimer')}</p>
+          <p className="sbar-disclaimer">{t('sbar.disclaimer')}</p>
+        </FormSection>
+      </div>
     </div>
   );
 }

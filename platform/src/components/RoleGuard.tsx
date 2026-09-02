@@ -5,12 +5,15 @@ import { useAuth } from '@/lib/context';
 import { isRouteAllowed, getDefaultDashboard } from '@/lib/permissions';
 import { ShieldAlert, ArrowLeft, Loader2 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useSyncExternalStore } from 'react';
+import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/lib/settings/disabled-apps';
 
 export default function RoleGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { t } = useTranslation();
+  useSyncExternalStore(subscribeDisabledApps, getDisabledAppRoutes, getDisabledAppRoutes);
 
   if (!currentUser) {
     return (
@@ -20,7 +23,7 @@ export default function RoleGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isRouteAllowed(currentUser.role, pathname)) {
+  if (!isRouteAllowed(currentUser.role, pathname) || isAppDisabled(pathname)) {
     const defaultDash = getDefaultDashboard(currentUser.role);
     return (
       <div className="flex-1 flex items-center justify-center p-8" style={{ background: 'var(--bg-primary)' }}>

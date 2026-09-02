@@ -9,7 +9,7 @@ import RoleGuard from '@/components/RoleGuard';
 import { SettingsProvider } from '@/lib/settings/SettingsProvider';
 import PreferenceEffects from '@/components/PreferenceEffects';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
-import LockScreen, { PIN_SETUP_DISMISSED_KEY, shouldPromptPinSetup } from '@/components/LockScreen';
+import LockScreen, { pinSetupDismissedKey, shouldPromptPinSetup } from '@/components/LockScreen';
 import ConnectivityNotice from '@/components/ConnectivityNotice';
 
 import { TourProvider } from '@/lib/tour/tour-context';
@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // chain — see useAutoLock. It was displayed on /admin/security and read by
   // nothing until this was wired.
   const { isLocked, hasPin, lockEnabled, pinSupported, unlock, verifyPin, setPin } = useAutoLock(
-    isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes, platformPolicy,
+    isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes, platformPolicy, currentUser?._id,
   );
   // First-run PIN prompt: shown once per device after sign-in when the session
   // WILL lock but no PIN exists to unlock it with. This is what keeps the lock
@@ -43,12 +43,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // it is right here, while the user has just proven who they are.
   const [pinSetupDismissed, setPinSetupDismissed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
-    try { return localStorage.getItem(PIN_SETUP_DISMISSED_KEY) === '1'; } catch { return true; }
+    try { return localStorage.getItem(pinSetupDismissedKey(currentUser?._id)) === '1'; } catch { return true; }
   });
+  useEffect(() => {
+    try {
+      setPinSetupDismissed(localStorage.getItem(pinSetupDismissedKey(currentUser?._id)) === '1');
+    } catch { setPinSetupDismissed(true); }
+  }, [currentUser?._id]);
   const dismissPinSetup = useCallback(() => {
     setPinSetupDismissed(true);
-    try { localStorage.setItem(PIN_SETUP_DISMISSED_KEY, '1'); } catch { /* best-effort */ }
-  }, []);
+    try { localStorage.setItem(pinSetupDismissedKey(currentUser?._id), '1'); } catch { /* best-effort */ }
+  }, [currentUser?._id]);
   const showPinSetup = shouldPromptPinSetup({
     isAuthenticated,
     isLocked,

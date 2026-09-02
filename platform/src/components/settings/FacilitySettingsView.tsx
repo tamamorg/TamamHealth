@@ -32,7 +32,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import {
   Building2, FlaskConical, Trash2, Plus, ClipboardCheck, CalendarClock,
-  Layers, MapPin,
+  Layers, MapPin, Lock,
 } from '@/components/icons/lucide';
 import { useSettings, useSettingsContext } from '@/lib/settings/SettingsProvider';
 import { getFacilitySettings, saveFacilitySettings } from '@/lib/settings/settings-service';
@@ -504,10 +504,8 @@ export function FacilitySettingsView({
             </div>
 
             <p className="fs-grouplabel" style={{ marginTop: 16 }}>Direct service access</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <CheckRow label="Direct lab orders" checked={draft.directServiceAccess.lab} onToggle={() => setDraft({ ...draft, directServiceAccess: { ...draft.directServiceAccess, lab: !draft.directServiceAccess.lab } })} />
-              <CheckRow label="Direct radiology orders" checked={draft.directServiceAccess.radiology} onToggle={() => setDraft({ ...draft, directServiceAccess: { ...draft.directServiceAccess, radiology: !draft.directServiceAccess.radiology } })} />
-              <CheckRow label="Pharmacy refill without consult" checked={draft.directServiceAccess.pharmacyRefill} onToggle={() => setDraft({ ...draft, directServiceAccess: { ...draft.directServiceAccess, pharmacyRefill: !draft.directServiceAccess.pharmacyRefill } })} />
+            <div className="ehr-set-locked" style={{ justifyContent: 'flex-start', padding: '12px 0' }}>
+              <Lock /> Not available until lab, radiology, and refill entry points enforce this policy
             </div>
             <SaveBar
               saving={saving === 'workflow'}
@@ -516,7 +514,6 @@ export function FacilitySettingsView({
                 checkoutGateKeys: draft.checkoutGateKeys,
                 triageRequiredFor: draft.triageRequiredFor,
                 routingDefaults: draft.routingDefaults,
-                directServiceAccess: draft.directServiceAccess,
               }, 'workflow')}
             />
           </SectionCard>

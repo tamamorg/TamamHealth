@@ -65,10 +65,18 @@ describe('one fresh item per rung', () => {
       DOCTOR, NOW, 100);
     expect(before[0].id).toBe('visit-enc-1-triaged_awaiting_destination');
     expect(after[0].id).toBe('visit-enc-1-ready_for_clinician');
-    // The label is the ladder's own vocabulary — the same words the worklist
-    // chip shows — never a parallel notification phrasing that could drift.
-    expect(before[0].title).toBe('Triage completed · Nyandeng Deng');
-    expect(after[0].title).toBe('Awaiting consultation · Nyandeng Deng');
+    // Name first, then the rung — and the rung stays the ladder's own
+    // vocabulary (the same words the worklist chip shows), never a parallel
+    // notification phrasing that could drift.
+    expect(before[0].title).toBe('Nyandeng Deng · Triage completed');
+    expect(after[0].title).toBe('Nyandeng Deng · Awaiting consultation');
+  });
+
+  it('shortens a three-part patient name to first + last in the title', () => {
+    const [item] = visitUpdateItems(
+      [encounter({ assignedClinicianId: 'user-dr-1', patientName: 'Teny Gatluak Makuach' })],
+      DOCTOR, NOW, 100);
+    expect(item.title).toBe('Teny Makuach · Awaiting consultation');
   });
 
   it('stamps the item with the last transition time when the trail exists', () => {
@@ -136,7 +144,7 @@ describe('dispensedItems — the loop-closer', () => {
     const [item] = dispensedItems([rx({ _id: 'rx-1' })], DOCTOR, NOW, 100);
     expect(item.id).toBe('visit-rx-rx-1');
     expect(item.type).toBe('visit');
-    expect(item.title).toBe('Dispensed · Artemether/Lumefantrine');
+    expect(item.title).toBe('Nyandeng Deng · Dispensed');
     expect(item.href).toBe('/patients/patient-1?tab=medications');
   });
 

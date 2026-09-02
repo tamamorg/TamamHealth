@@ -8,12 +8,9 @@
  * something — the app's route (and everything under it) drops out of the
  * navigation for that organization.
  *
- * Navigation only. It is a configuration choice about what a tenant has bought
- * or turned on, NOT an access control: `lib/role-routes.ts` and the Edge proxy
- * remain the security boundary, and a disabled app's route still refuses
- * anyone whose role was never allowed there. Someone who types the URL of a
- * disabled-but-permitted app still gets in — which is the right behaviour for
- * a module toggle, and the reason this must never be relied on as a gate.
+ * This drives both navigation filtering and the dashboard-shell route guard.
+ * It remains a configuration choice, NOT an authorization boundary:
+ * `lib/role-routes.ts` and the Edge proxy still decide what each role may open.
  */
 import { SYSTEM_APP_DEFINITIONS } from '../admin/system-admin-registry';
 

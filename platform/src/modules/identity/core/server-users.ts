@@ -17,6 +17,7 @@ export interface ServerUser {
   _id: string;
   username: string;
   passwordHash: string;
+  preferences?: import('@/lib/db-types').UserPreferences;
   name: string;
   role: string;
   hospitalId?: string;
@@ -71,6 +72,7 @@ function serverUserFromDoc(doc: import('@/lib/db-types').UserDoc): ServerUser {
     _id: doc._id,
     username: doc.username,
     passwordHash: doc.passwordHash,
+    preferences: doc.preferences,
     name: doc.name,
     role: canonicalizeUserRole(doc.role),
     hospitalId: doc.hospitalId,

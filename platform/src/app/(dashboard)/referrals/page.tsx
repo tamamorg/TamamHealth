@@ -27,7 +27,7 @@ import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKe
 import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
-import { formatPhoneDisplay } from '@/lib/field-formats';
+import { formatPhoneShared } from '@/lib/field-formats';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
@@ -127,7 +127,7 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
             { l: t('referrals.demoHospitalNo'), v: demo.hospitalNumber },
             { l: t('referrals.demoDob'), v: demo.dateOfBirth },
             { l: t('patient.gender'), v: demo.gender },
-            { l: t('patient.phone'), v: formatPhoneDisplay(demo.phone) },
+            { l: t('patient.phone'), v: formatPhoneShared(demo.phone) },
             { l: t('patient.location'), v: `${demo.county}, ${demo.state}` },
             { l: t('patient.tribe'), v: demo.tribe },
             { l: t('patient.bloodType'), v: demo.bloodType },
