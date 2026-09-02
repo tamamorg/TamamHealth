@@ -5355,7 +5355,9 @@ html:has(.mobile-shell-offline-banner) {
   color: #B3BDC9;
 }
 
-.ehr-mini-calendar-grid button.has-events::after {
+/* A day that shows its own count badge does not also need the dot — the badge
+   already says "appointments here", and both at once crowd the cell. */
+.ehr-mini-calendar-grid button.has-events:not(:has(.ehr-mini-calendar-count))::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -5367,8 +5369,36 @@ html:has(.mobile-shell-offline-banner) {
   transform: translateX(-50%);
 }
 
-.ehr-mini-calendar-grid button.selected.has-events::after {
+.ehr-mini-calendar-grid button.selected.has-events:not(:has(.ehr-mini-calendar-count))::after {
   background: var(--bg-card-solid);
+}
+
+/* Appointment tally on a calendar day — a small count in the top-right corner
+   of the cell. Reads as a notification badge without stealing the day number. */
+.ehr-mini-calendar-grid button {
+  position: relative;
+}
+.ehr-mini-calendar-count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #0A6E4A;
+  border-radius: 999px;
+}
+.ehr-mini-calendar-grid button.selected .ehr-mini-calendar-count {
+  background: var(--bg-card-solid);
+  color: #0A6E4A;
 }
 
 .ehr-filter-group {

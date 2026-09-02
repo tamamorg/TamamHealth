@@ -19,7 +19,7 @@
  * component and inspecting the DOM — the same approach `useAutoLock.test.tsx`
  * documents for hook logic.
  */
-import { canOfferPinEntry } from '@/components/LockScreen';
+import { canOfferPinEntry, shouldPromptPinSetup } from '@/components/LockScreen';
 
 describe('canOfferPinEntry', () => {
   it('offers the PIN pad only when a PIN exists AND this context can hash one', () => {
@@ -38,5 +38,56 @@ describe('canOfferPinEntry', () => {
 
   it('refuses PIN entry when both a PIN is missing and hashing is unsupported', () => {
     expect(canOfferPinEntry(false, false)).toBe(false);
+  });
+});
+
+/**
+ * The authenticated first-run PIN prompt (LockScreen's 'setup' variant,
+ * mounted by the dashboard layout right after sign-in). This is the
+ * production-safe counterpart to the regression above: PIN creation is offered
+ * only to someone who has just proven who they are — never on the lock
+ * overlay itself.
+ */
+describe('shouldPromptPinSetup', () => {
+  const base = {
+    isAuthenticated: true,
+    isLocked: false,
+    lockEnabled: true,
+    hasPin: false,
+    pinSupported: true,
+    dismissed: false,
+    lockOverlayOffersSetup: false,
+  };
+
+  it('prompts a just-signed-in user when the session will lock and no PIN exists', () => {
+    expect(shouldPromptPinSetup(base)).toBe(true);
+  });
+
+  it('never prompts an unauthenticated session — PIN creation requires proven identity', () => {
+    expect(shouldPromptPinSetup({ ...base, isAuthenticated: false })).toBe(false);
+  });
+
+  it('yields to the lock overlay while the session is locked', () => {
+    expect(shouldPromptPinSetup({ ...base, isLocked: true })).toBe(false);
+  });
+
+  it('does not ask for a PIN nothing will ever request (lock disabled)', () => {
+    expect(shouldPromptPinSetup({ ...base, lockEnabled: false })).toBe(false);
+  });
+
+  it('does not prompt when a PIN is already registered', () => {
+    expect(shouldPromptPinSetup({ ...base, hasPin: true })).toBe(false);
+  });
+
+  it('does not prompt on a context that cannot hash a PIN (insecure origin)', () => {
+    expect(shouldPromptPinSetup({ ...base, pinSupported: false })).toBe(false);
+  });
+
+  it('respects an earlier "Skip for now" on this device', () => {
+    expect(shouldPromptPinSetup({ ...base, dismissed: true })).toBe(false);
+  });
+
+  it('stays out of demo/dev, where the lock overlay offers first-lock setup itself', () => {
+    expect(shouldPromptPinSetup({ ...base, lockOverlayOffersSetup: true })).toBe(false);
   });
 });

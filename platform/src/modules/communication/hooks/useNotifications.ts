@@ -123,7 +123,15 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const scopeKey = `${currentUser?._id ?? ''}|${currentUser?.orgId ?? ''}|${currentUser?.hospitalId ?? ''}|${currentUser?.role ?? ''}|${currentUser?.department ?? ''}`;
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Only the FIRST load shows the spinner. The live-changes feed re-runs this
+    // on every replicated write, and during a heavy sync those fire faster than
+    // one pass over ~8 databases completes — flipping `loading` back to true on
+    // each re-run left the bell panel stuck on "Loading…" indefinitely while
+    // documents streamed in, even though a previous pass had already produced a
+    // usable list. `seenIds` is null until the first pass finishes, so it is
+    // exactly the "have we ever loaded" flag: once we have data, later refreshes
+    // update it in place instead of blanking the panel.
+    if (seenIds.current === null) setLoading(true);
     const scope = currentUser
       ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
       : undefined;

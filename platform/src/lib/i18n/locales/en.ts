@@ -3247,6 +3247,7 @@ const en: TranslationMap = {
   'lock.pinsDoNotMatch': 'PINs do not match. Try again.',
   'lock.pinUnavailableInsecure': 'PIN unlock needs a secure connection, which this device does not have right now. Sign in again to continue.',
   'lock.setPin': 'Set a PIN',
+  'lock.skipForNow': 'Skip for now',
   'login.backToSite': 'Back to tamamhealth.org',
   'login.demoAccounts': 'Demo Accounts',
   'login.errorInvalidCredentials': 'Invalid credentials. Please try again.',

@@ -337,10 +337,20 @@ export function buildUnifiedPatientRows({
     });
   }
 
-  // "Show only patients assigned to me" hides the wider facility queue —
-  // the unclaimed rows that exist so any doctor can pick them up.
+  // "Show only patients assigned to me" hides the wider facility queue — the
+  // unclaimed triage rows that exist so any doctor can pick them up. It must
+  // NOT hide the clinician's own booked appointments: the caller already
+  // scoped the appointment list to this clinician (DoctorDashboardPage passes
+  // only providerId === me), so every appointment-backed row here is the
+  // viewer's own schedule. A standalone appointment row carries isAssigned:false
+  // and patient:null, so the old test dropped every one of them — a doctor with
+  // "only my patients" on (the default) saw their assigned patients but none of
+  // their scheduled appointments, even though the same bookings showed on their
+  // calendar.
   const visible = mineOnly
-    ? rows.filter(row => row.isAssigned && (row.patient?.assignedDoctor || row.patient?.assignmentStatus))
+    ? rows.filter(row =>
+        (row.isAssigned && (row.patient?.assignedDoctor || row.patient?.assignmentStatus))
+        || row.appointment != null)
     : rows;
 
   // Acuity rank for "Acuity first"; also the tiebreak nothing else resolves.
@@ -1721,6 +1731,14 @@ export default function EhrClinicalDashboard({
                   aria-pressed={cell.isSelected}
                 >
                   <span>{cell.day}</span>
+                  {/* The appointment tally as a visible badge — the dot alone
+                      said "something here" without saying how much. Capped at
+                      9+ so a busy day doesn't blow out the cell. */}
+                  {cell.count > 0 && (
+                    <span className="ehr-mini-calendar-count" aria-hidden="true">
+                      {cell.count > 9 ? '9+' : cell.count}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

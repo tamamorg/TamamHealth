@@ -7,6 +7,18 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 interface LockScreenProps {
   userName: string;
   hasPin: boolean;
+  /**
+   * 'lock' (default): the locked-session overlay — PIN entry only when a PIN
+   * already exists (plus the demo/dev `allowSetup` exception).
+   *
+   * 'setup': the authenticated first-run PIN prompt. Same keypad UI, but shown
+   * right after a successful sign-in (see the dashboard layout), which is what
+   * makes offering PIN *creation* safe here: the person at the keyboard just
+   * proved who they are. The security rule this component documents is about
+   * the UNauthenticated lock overlay, not about PIN setup as such. The bottom
+   * button becomes "Skip for now" (`onDismiss`) instead of "Switch User".
+   */
+  variant?: 'lock' | 'setup';
   /** Whether this device can hash a PIN at all right now (useAutoLock's
    *  `pinSupported` — false on a non-secure context, e.g. plain HTTP on a
    *  LAN). Defaults true so any other caller keeps today's behaviour. When
@@ -30,6 +42,8 @@ interface LockScreenProps {
   onSetPin?: (pin: string) => Promise<void>;
   onUnlock: () => void;
   onLogout: () => void;
+  /** 'setup' variant only: dismiss the prompt without setting a PIN. */
+  onDismiss?: () => void;
 }
 
 /**
@@ -66,7 +80,41 @@ export function canOfferPinSetup(hasPin: boolean, pinSupported: boolean, allowSe
   return !hasPin && pinSupported && allowSetup;
 }
 
-export default function LockScreen({ userName, hasPin, pinSupported = true, allowSetup = false, onVerifyPin, onSetPin, onUnlock, onLogout }: LockScreenProps) {
+/** localStorage flag: the user saw the first-run PIN prompt and skipped it.
+ *  Device-scoped, like the PIN itself — survives logout on purpose so a
+ *  returning user is not re-nagged; setting a PIN (here or in Settings) makes
+ *  the flag moot. */
+export const PIN_SETUP_DISMISSED_KEY = 'tamamhealth-pin-setup-dismissed';
+
+/**
+ * Whether to show the authenticated first-run PIN prompt (the 'setup' variant)
+ * after sign-in.
+ *
+ * This is the production path to a lock screen that can actually offer the
+ * digit pad: PIN registration must happen while authenticated (the lock
+ * overlay refuses it — see `canOfferPinEntry`), and burying it in Settings
+ * meant real deployments locked into a screen with no keypad at all. Only
+ * when the lock overlay does NOT already offer setup itself
+ * (`lockOverlayOffersSetup`, the demo/dev `allowSetup` case) — there the
+ * prompt would be a redundant second interstitial and would break every
+ * fresh-profile login flow the demo automation drives.
+ */
+export function shouldPromptPinSetup(opts: {
+  isAuthenticated: boolean;
+  isLocked: boolean;
+  /** Some layer (policy or the user's own switch) will actually lock this
+   *  session — no point prompting for a PIN that nothing ever asks for. */
+  lockEnabled: boolean;
+  hasPin: boolean;
+  pinSupported: boolean;
+  dismissed: boolean;
+  lockOverlayOffersSetup: boolean;
+}): boolean {
+  return opts.isAuthenticated && !opts.isLocked && opts.lockEnabled
+    && opts.pinSupported && !opts.hasPin && !opts.dismissed && !opts.lockOverlayOffersSetup;
+}
+
+export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupported = true, allowSetup = false, onVerifyPin, onSetPin, onUnlock, onLogout, onDismiss }: LockScreenProps) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -77,7 +125,10 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
   const [setupFirst, setSetupFirst] = useState<string | null>(null);
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setupMode = canOfferPinSetup(hasPin, pinSupported, allowSetup) && !!onSetPin;
+  // The 'setup' variant is rendered to a just-authenticated user, so it
+  // authorizes PIN creation the way `allowSetup` does for demo/dev — still
+  // through `canOfferPinSetup`, which keeps the pinSupported/hasPin guards.
+  const setupMode = canOfferPinSetup(hasPin, pinSupported, variant === 'setup' || allowSetup) && !!onSetPin;
 
   const triggerShake = () => {
     setShake(true);
@@ -153,7 +204,7 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
   // `canOfferPinSetup`.
   if (!canOfferPinEntry(hasPin, pinSupported) && !setupMode) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+      <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/tamamhealth-logo.svg" alt="TamamHealth" className="w-16 h-16" />
@@ -192,7 +243,7 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
     : t('lock.enterYourPin');
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+    <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
       <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6">
         {/* TamamHealth logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,7 +254,7 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
           <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{userName}</p>
           <div className="flex items-center gap-1.5 justify-center mt-1" style={{ color: 'var(--text-muted)' }}>
             <Lock className="w-3.5 h-3.5" />
-            <span className="text-xs">{t('auth.sessionLocked')}</span>
+            <span className="text-xs">{variant === 'setup' ? t('lock.setPin') : t('auth.sessionLocked')}</span>
           </div>
           <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{prompt}</p>
         </div>
@@ -256,14 +307,18 @@ export default function LockScreen({ userName, hasPin, pinSupported = true, allo
           </div>
         </div>
 
-        {/* Switch user */}
+        {/* Locked: switch user (full re-auth). Setup prompt: skip without a PIN. */}
         <button
-          onClick={onLogout}
+          onClick={variant === 'setup' ? (onDismiss ?? onLogout) : onLogout}
           className="flex items-center gap-2 text-xs font-bold mt-1 px-4 py-2.5 rounded-lg transition-colors"
           style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}
         >
-          <LogOut className="w-3.5 h-3.5" />
-          {t('auth.switchUser')}
+          {variant === 'setup' ? t('lock.skipForNow') : (
+            <>
+              <LogOut className="w-3.5 h-3.5" />
+              {t('auth.switchUser')}
+            </>
+          )}
         </button>
       </div>
 

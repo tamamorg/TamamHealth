@@ -3239,6 +3239,7 @@ const apd: TranslationMap = {
   'lock.pinsDoNotMatch': 'الأرقام السرية ما متطابقة. جرب تاني.',
   'lock.pinUnavailableInsecure': 'فتح القفل بالرقم السري محتاج اتصال آمن، وده مش متوفر هسة في الجهاز ده. سجل دخول تاني عشان تكمل.',
   'lock.setPin': 'حدد رقم سري',
+  'lock.skipForNow': 'خليهو لبعدين',
   'login.backToSite': 'رجوع لـ tamamhealth.org',
   'login.demoAccounts': 'حسابات تجريبية',
   'login.errorInvalidCredentials': 'بيانات الدخول غلط. حاول تاني من فضلك.',

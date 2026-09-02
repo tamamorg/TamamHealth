@@ -12,7 +12,8 @@ import type { RoleSettingsValues } from '@/lib/role-settings';
  *   - While enabled, locks immediately when the screen turns off / tab hides
  *   - Locks after configurable inactivity timeout (default 1 min)
  *   - Timeout is read from org config (lockTimeoutMinutes) or localStorage
- *   - PIN stored as SHA-256 hash on UserDoc.pinHash
+ *   - PIN stored device-locally in localStorage as a salted PBKDF2-SHA256
+ *     hash (see StoredPinHash) — it never leaves the device
  */
 
 const LOCK_TIMEOUT_KEY = 'tamamhealth-lock-timeout';
@@ -451,6 +452,10 @@ export function useAutoLock(
   return {
     isLocked,
     hasPin,
+    /** Whether any layer (policy, or the user's own switch) will actually
+     *  lock this session. The first-run PIN prompt keys off this — no point
+     *  asking for a PIN nothing will ever request. */
+    lockEnabled,
     /** Whether this device can hash a PIN at all right now. The lock screen
      *  uses this to decide whether to offer the PIN pad — false means "sign
      *  in again" is the only way to unlock, never a weaker check. */
