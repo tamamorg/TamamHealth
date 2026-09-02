@@ -25,6 +25,8 @@ import type { NavItem } from '@/lib/permissions';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useAppointments } from '@/lib/hooks/useAppointments';
+import { todayIso } from '@/lib/date-utils';
 
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
@@ -88,7 +90,7 @@ export default function EhrTopRail() {
     facilityName,
     roleLabel: currentUser ? getRoleConfig(currentUser.role).label : undefined,
   });
-  const { canRegisterPatients } = usePermissions();
+  const { canRegisterPatients, canConsult } = usePermissions();
   // Reception already carries "Register new patient" as a header action on its
   // own dashboard, so the rail's person-plus was the same act offered twice on
   // one screen. Roles whose workspace does NOT offer it keep the rail button —
@@ -105,7 +107,26 @@ export default function EhrTopRail() {
   const { organizations } = useOrganizations(isPlatformAdmin);
   const { users: platformUsers } = useUsers(isPlatformAdmin);
   const { items: notifications, unreadCount } = useNotifications();
-  const moduleBadges = useMemo(() => moduleBadgeCounts(notifications), [notifications]);
+  // Today's still-open bookings, shown as a count on the calendar shortcut.
+  // Clinicians count their own schedule (the number their dashboard board
+  // shows); scheduling and admin roles count the whole board they manage.
+  const { appointments } = useAppointments();
+  const todaysAppointmentCount = useMemo(() => {
+    const today = todayIso();
+    const closed = new Set(['completed', 'cancelled', 'no_show', 'rescheduled']);
+    const live = appointments.filter(a => a.appointmentDate === today && !closed.has(a.status));
+    return canConsult ? live.filter(a => a.providerId === currentUser?._id).length : live.length;
+  }, [appointments, canConsult, currentUser?._id]);
+  const moduleBadges = useMemo(() => {
+    const counts = moduleBadgeCounts(notifications);
+    // The calendar shortcut departs from the notification-derived counts on
+    // purpose: its badge is TODAY'S schedule size ("how many appointments
+    // today"), not unread booking notifications, so it is always on when the
+    // day has bookings.
+    if (todaysAppointmentCount > 0) counts['/appointments'] = todaysAppointmentCount;
+    else delete counts['/appointments'];
+    return counts;
+  }, [notifications, todaysAppointmentCount]);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -471,11 +492,16 @@ export default function EhrTopRail() {
           type="button"
           className="ehr-top-calendar-button"
           onClick={() => router.push('/appointments')}
-          aria-label="Open calendar"
-          title="Calendar"
+          aria-label={todaysAppointmentCount > 0 ? `Open calendar, ${todaysAppointmentCount} appointment${todaysAppointmentCount === 1 ? '' : 's'} today` : 'Open calendar'}
+          title={todaysAppointmentCount > 0 ? `Calendar · ${todaysAppointmentCount} today` : 'Calendar'}
           data-track="nav.calendar"
         >
           <Calendar className="w-4 h-4" />
+          {todaysAppointmentCount > 0 && (
+            <span className="ehr-top-action-badge" aria-hidden="true">
+              {todaysAppointmentCount > 99 ? '99+' : todaysAppointmentCount}
+            </span>
+          )}
         </button>
       )}
 

@@ -1731,14 +1731,6 @@ export default function EhrClinicalDashboard({
                   aria-pressed={cell.isSelected}
                 >
                   <span>{cell.day}</span>
-                  {/* The appointment tally as a visible badge — the dot alone
-                      said "something here" without saying how much. Capped at
-                      9+ so a busy day doesn't blow out the cell. */}
-                  {cell.count > 0 && (
-                    <span className="ehr-mini-calendar-count" aria-hidden="true">
-                      {cell.count > 9 ? '9+' : cell.count}
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
