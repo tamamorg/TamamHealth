@@ -318,6 +318,11 @@ export default function WardsPage() {
               <>
                 {canAdmit && <button
                   onClick={() => setAdmitOpen(true)}
+                  /* `text-white` is the globals.css escape hatch for icons on a
+                     coloured fill: the icon shim writes a literal brand-blue
+                     `stroke` attribute, so without it the Plus sat blue on the
+                     blue button — present but invisible. */
+                  className="text-white"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 999, background: 'var(--accent-primary)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
                   <Plus className="w-4 h-4" /> {t('ward.admitPatient')}
