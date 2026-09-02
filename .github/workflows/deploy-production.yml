@@ -289,6 +289,19 @@ jobs:
             fi
             sleep 10
           done
+          # The role-aware validate_doc_update function is part of this
+          # release. Install it from the running immutable image only after the
+          # whole container stack is healthy; never execute a host checkout
+          # that may lag behind the deployed SHA. Public health is checked
+          # again immediately below with the new policy active.
+          ssh "$USER@$HOST" "
+            set -eu
+            cd '${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}'
+            container=\$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform)
+            test -n \"\$container\"
+            docker exec \"\$container\" npm run setup:couchdb:validators
+          "
+          echo "CouchDB validators installed from immutable tag $expected_sha"
           curl -fsS -m 15 "$WEBSITE_HEALTH_URL" >/dev/null
           for i in $(seq 1 30); do
             STATUS="$(curl -sS -m 10 -o /tmp/health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"

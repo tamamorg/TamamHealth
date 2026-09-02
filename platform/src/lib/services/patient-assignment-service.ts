@@ -216,6 +216,92 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
   }
 }
 
+export interface ReconcileCareTeamInput {
+  appointmentId: string;
+  actor?: AssignmentActor;
+}
+
+/**
+ * Promote an appointment's booked care team onto the patient document.
+ *
+ * A clinician may book with a provider and supporting nurse on the slot, but
+ * only reception may write the patient's `assignedDoctor`/`assignedNurse`
+ * fields (the CouchDB validator enforces the same rule at replication), so a
+ * clinician-booked appointment carries names the patient document has never
+ * learned. This runs at reception's touchpoints — check-in, and any front-desk
+ * save of the booking — and stamps the patient through the two assignment
+ * functions above so both copies agree again.
+ *
+ * Promote-only, never clear: an empty slot on the booking proves nothing — the
+ * patient-level assignment may come from a triage handoff or another visit,
+ * and clearing it here would un-route a patient the desk never touched.
+ *
+ * Never throws: it runs after a check-in has already succeeded, and a stale
+ * booking (deactivated staff, wrong facility) must not fail the arrival. A
+ * half that cannot be promoted records a workflow repair instead.
+ */
+export async function reconcileCareTeamFromAppointment(input: ReconcileCareTeamInput): Promise<void> {
+  try {
+    if (!input.actor?.id) return;
+    const { getUserById } = await import('@/modules/identity/services/user-service');
+    // Resolve the role from the identity record when the caller has only an id
+    // — the walk-in check-in path carries no role. The cheap gate here just
+    // skips non-reception actors; assertCanAssign inside the assignment
+    // functions remains the authorization boundary.
+    const actorRole = input.actor.role ?? (await getUserById(input.actor.id))?.role;
+    if (!canAssignCareTeamRole(actorRole)) return;
+    const actor: AssignmentActor = { ...input.actor, role: actorRole };
+
+    const { getAppointmentById } = await import('./appointment-service');
+    const appointment = await getAppointmentById(input.appointmentId);
+    if (!appointment?.patientId || !appointment.orgId || !appointment.facilityId) return;
+    const { getPatientById } = await import('./patient-service');
+    const patient = await getPatientById(appointment.patientId);
+    if (!patient) return;
+
+    if (appointment.providerId && appointment.providerId !== patient.assignedDoctor) {
+      try {
+        const staff = await getUserById(appointment.providerId);
+        await assignProviderToPatient({
+          patientId: patient._id,
+          patientName: appointment.patientName,
+          provider: { id: appointment.providerId, name: staff?.name || appointment.providerName, role: staff?.role },
+          actor,
+          hospitalId: appointment.facilityId,
+          hospitalName: appointment.facilityName,
+          orgId: appointment.orgId,
+          appointmentId: appointment._id,
+        });
+      } catch (error) {
+        await recordAssignmentRepair(
+          { patientId: patient._id, hospitalId: appointment.facilityId, orgId: appointment.orgId },
+          'reconcile_provider', error, appointment._id,
+        );
+      }
+    }
+    if (appointment.staffId && appointment.staffId !== patient.assignedNurse) {
+      try {
+        const staff = await getUserById(appointment.staffId);
+        await assignNurseToPatient({
+          patientId: patient._id,
+          nurse: { id: appointment.staffId, name: staff?.name || appointment.staffName || 'Nurse' },
+          actor,
+          hospitalId: appointment.facilityId,
+          orgId: appointment.orgId,
+          appointmentId: appointment._id,
+        });
+      } catch (error) {
+        await recordAssignmentRepair(
+          { patientId: patient._id, hospitalId: appointment.facilityId, orgId: appointment.orgId },
+          'reconcile_nurse', error, appointment._id,
+        );
+      }
+    }
+  } catch {
+    // Lookup failures land here; each promotion half records its own repair.
+  }
+}
+
 async function assertCanAssign(
   actor?: AssignmentActor,
   hospitalId?: string,

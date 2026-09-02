@@ -504,7 +504,11 @@ export default function FrontDeskDashboardPage() {
         sourceId: a._id,
         encounterId: activeEncounter?._id,
         assignedDoctorName: a.providerName || doctorOf(a.patientId),
-        assignedNurseName: nurseOf(a.patientId),
+        // Same ladder as the doctor line above: the patient-level assignment
+        // when reception has stamped it, else the nurse named on the booking —
+        // a clinician-booked appointment carries staffName before the patient
+        // document learns it (reconciled at check-in / front-desk save).
+        assignedNurseName: nurseOf(a.patientId) || a.staffName || '',
         location: a.department || a.facilityName || locationOf(a.patientId),
       });
     }
@@ -1107,7 +1111,10 @@ export default function FrontDeskDashboardPage() {
         timeSecondary: isoDateKey(appointment.appointmentDate),
         timeAt: appointmentMoment(appointment.appointmentDate, appointment.appointmentTime),
         careTeam: appointment.providerName || patient?.assignedDoctorName || 'Doctor unassigned',
-        careTeamSecondary: patient?.assignedNurseName || 'Nurse unassigned',
+        // The nurse cell falls back to the booking exactly as the doctor cell
+        // above does — without this, an appointment whose staffName was set at
+        // booking read "Nurse unassigned" until reception stamped the patient.
+        careTeamSecondary: patient?.assignedNurseName || appointment.staffName || 'Nurse unassigned',
         careTeamLabel: 'Care team',
         location: appointment.department || appointment.facilityName || patientFacilityName(patient, currentUser?.hospitalName || 'Facility'),
         locationSecondary: appointment.department ? patientFacilityName(patient, currentUser?.hospitalName || 'Facility') : 'Location',

@@ -228,7 +228,12 @@ async function main() {
   );
 
   const options = {
-    tenantDatabasesEnabled: process.env.COUCHDB_TENANT_DATABASES_ENABLED === 'true',
+    // Compose exposes the browser/build flag in existing installations. Accept
+    // both names so the deployment policy cannot accidentally treat a tenant
+    // cutover as aggregate mode and preserve cross-tenant aggregate access.
+    tenantDatabasesEnabled:
+      (process.env.COUCHDB_TENANT_DATABASES_ENABLED ||
+        process.env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED) === 'true',
     memberOrgIds: memberOrgIds(),
   };
   const revokeUnlisted = revokeUnlistedMembers();

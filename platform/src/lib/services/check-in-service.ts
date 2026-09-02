@@ -7,7 +7,7 @@
  * checked_in in the same action. Full ETAT ABCC assessment is left to the nurse
  * triage station; the front desk captures arrival context + an acuity flag.
  */
-import type { AppointmentDoc, TriageDoc, TriagePriority, EncounterDoc } from '../db-types';
+import type { AppointmentDoc, TriageDoc, TriagePriority, EncounterDoc, UserRole } from '../db-types';
 import {
   createTriage, updateTriage, getTriageByEncounter, findActiveTriageForPatient, DuplicateActiveTriageError,
 } from './triage-service';
@@ -105,6 +105,16 @@ export async function checkInAppointment(input: {
         actorId: input.actorId,
       });
     }
+    // Check-in is reception's touchpoint on every booked visit, so it is also
+    // where the booking's care team is promoted onto the patient document — a
+    // clinician-booked appointment names a provider/nurse the patient document
+    // never learned, because only reception may write those fields (the CouchDB
+    // validator enforces the same). Never throws; skips non-reception actors.
+    const { reconcileCareTeamFromAppointment } = await import('./patient-assignment-service');
+    await reconcileCareTeamFromAppointment({
+      appointmentId: input.appointmentId,
+      actor: { id: input.actorId, name: input.actorName, role: input.actorRole as UserRole | undefined },
+    });
     await resolveWorkflowRepair(repairId);
   } catch (error) {
     await upsertWorkflowRepair(repairId, {
@@ -431,6 +441,14 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
     try {
       await updateAppointmentStatus(appointmentId, 'checked_in');
       appointmentCheckedIn = true;
+      // Same promotion as checkInAppointment: a matched scheduled booking may
+      // carry a care team the patient document never learned. The walk-in
+      // booking created above has neither, so only this branch reconciles.
+      const { reconcileCareTeamFromAppointment } = await import('./patient-assignment-service');
+      await reconcileCareTeamFromAppointment({
+        appointmentId,
+        actor: { id: input.checkedInById, name: input.checkedInByName },
+      });
     } catch (error) {
       await upsertWorkflowRepair(repairId, {
         ...repairBase, appointmentId, encounterId: encounter._id, triageId: triage._id,

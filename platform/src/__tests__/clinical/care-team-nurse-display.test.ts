@@ -107,4 +107,42 @@ describe('the nurse on a worklist row', () => {
     expect(callback).toBeGreaterThan(warning);
     expect(close).toBeGreaterThan(callback);
   });
+
+  test('the front-desk nurse cells fall back to the booking, matching the doctor cells', () => {
+    // A clinician-booked appointment carries staffName from the moment it is
+    // created, but the patient document only learns the assignment when
+    // reception stamps it. Reading the patient alone showed "Nurse unassigned"
+    // directly above an editor whose Staff dropdown named the nurse. Both
+    // front-desk mappers now use the same ladder the doctor cell always had:
+    // patient-level assignment first, the booking second.
+    const frontDesk = source('app/(dashboard)/dashboard/front-desk/page.tsx');
+    const pendingRow = frontDesk
+      .split('\n')
+      .find(l => l.includes('careTeamSecondary:') && l.includes('appointment.staffName'));
+    expect(pendingRow).toBeDefined();
+    expect(pendingRow).toContain("patient?.assignedNurseName || appointment.staffName");
+    expect(frontDesk).toContain('nurseOf(a.patientId) || a.staffName');
+  });
+
+  test('the appointment editor heals a record whose two copies disagree', () => {
+    // `nurseChanged` used to compare the dropdown against the appointment
+    // alone. On a diverged record (appointment names the nurse, patient
+    // document does not) the values matched, so Assign stayed disabled and the
+    // mirror never fired — the divergence was unrepairable from the editor.
+    const editor = source('components/appointments/AppointmentEditModal.tsx');
+    expect(editor).toContain("appointment.providerId !== (patient.assignedDoctor || '')");
+    expect(editor).toContain("appointment.staffId !== (patient.assignedNurse || '')");
+    expect(editor).toContain('|| providerDiverged;');
+    expect(editor).toContain('|| nurseDiverged;');
+  });
+
+  test('check-in promotes the booked care team onto the patient document', () => {
+    // Only reception may write the patient's assignment fields (the CouchDB
+    // validator enforces the same at replication), so reconciliation has to
+    // run at reception touchpoints. Both check-in paths — the appointment's
+    // own check-in and a walk-in check-in matched to a scheduled booking —
+    // call the promote-only reconcile in patient-assignment-service.
+    const checkIn = source('lib/services/check-in-service.ts');
+    expect(checkIn.match(/reconcileCareTeamFromAppointment\(\{/g)).toHaveLength(2);
+  });
 });

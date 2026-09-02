@@ -179,12 +179,29 @@ export default function AppointmentEditModal({
     setStatus(appointment.status);
   }
 
+  // The saved baseline for care-team fields is BOTH documents: the appointment
+  // (what the booking says) and the patient (what the clinicians' worklists
+  // read). A clinician-booked appointment names a provider/nurse the patient
+  // document never learned — only reception may write those fields — so when
+  // the two copies disagree the Assign buttons stay live and any save re-fires
+  // the assignment service, which stamps both documents. Promote-only: an
+  // empty slot on the booking is not a divergence, because the patient-level
+  // assignment may come from a triage handoff this booking knows nothing about.
+  const providerDiverged = Boolean(
+    canAssignCareTeam && patient && appointment.providerId
+    && appointment.providerId !== (patient.assignedDoctor || ''));
+  const nurseDiverged = Boolean(
+    canAssignCareTeam && patient && appointment.staffId
+    && appointment.staffId !== (patient.assignedNurse || ''));
+
   // The Cancel/Save bar only appears once the draft differs from the saved
   // appointment — a clean form has nothing to save and nothing to discard.
   // Compared against the same fallbacks the draft was seeded with, so opening
-  // the form never counts as a change. staffName follows staffId and is not
-  // its own signal.
+  // the form never counts as a change — except on a diverged record, where the
+  // bar appears immediately because the record genuinely needs committing.
+  // staffName follows staffId and is not its own signal.
   const dirty =
+    providerDiverged || nurseDiverged ||
     date !== appointment.appointmentDate ||
     time !== appointment.appointmentTime ||
     duration !== appointment.duration ||
@@ -216,9 +233,12 @@ export default function AppointmentEditModal({
 
       // Provider/staff are visit assignments, not merely calendar decoration.
       // Mirror changes into the encounter and patient compatibility fields so
-      // the assignee's worklist updates on every device.
-      const providerChanged = canAssignCareTeam && providerId !== (appointment.providerId || '');
-      const nurseChanged = canAssignCareTeam && detail.staffId !== (appointment.staffId || '');
+      // the assignee's worklist updates on every device. A diverged record
+      // (see providerDiverged/nurseDiverged above) re-fires the mirror even
+      // when the dropdown matches the appointment, so the patient document is
+      // healed by the very next front-desk save.
+      const providerChanged = (canAssignCareTeam && providerId !== (appointment.providerId || '')) || providerDiverged;
+      const nurseChanged = (canAssignCareTeam && detail.staffId !== (appointment.staffId || '')) || nurseDiverged;
       if (providerChanged) {
         const selected = providerOptions.find(option => option._id === providerId);
         const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
@@ -389,12 +409,12 @@ export default function AppointmentEditModal({
                       </option>
                     ))}
                   </Select>
-                  <button type="button" className="appt-assign-btn" onClick={save} disabled={saving || (providerId === (appointment.providerId || '') && provider === appointment.providerName)}>
+                  <button type="button" className="appt-assign-btn" onClick={save} disabled={saving || (providerId === (appointment.providerId || '') && provider === appointment.providerName && !providerDiverged)}>
                     {saving ? '…' : 'Assign'}
                   </button>
                 </span>
               </div>
-              <AppointmentDetailFields section="provider" {...detailProps} onAssignStaff={save} staffAssignDisabled={saving || detail.staffId === (appointment.staffId || '')} />
+              <AppointmentDetailFields section="provider" {...detailProps} onAssignStaff={save} staffAssignDisabled={saving || (detail.staffId === (appointment.staffId || '') && !nurseDiverged)} />
             </>
           ) : (
             <div className="appointment-billing-panel" aria-label="Assigned care team">

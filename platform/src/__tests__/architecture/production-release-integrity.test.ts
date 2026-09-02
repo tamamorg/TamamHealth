@@ -5,6 +5,7 @@ const workflow = readFileSync(
   resolve(process.cwd(), '..', '.github/workflows/deploy-production.yml'),
   'utf8',
 );
+const dockerfile = readFileSync(resolve(process.cwd(), 'Dockerfile'), 'utf8');
 
 describe('production release integrity', () => {
   it('deploys only immutable SHA image tags', () => {
@@ -19,5 +20,14 @@ describe('production release integrity', () => {
     expect(workflow).toContain('WEBSITE_HEALTH_URL');
     expect(workflow).toContain('previous_worker=absent');
     expect(workflow).toContain("rollback_services='platform website'");
+  });
+
+  it('installs CouchDB validators from the exact immutable platform image', () => {
+    expect(dockerfile).toContain(
+      '/app/scripts/install-validate-doc-updates.mjs ./scripts/install-validate-doc-updates.mjs',
+    );
+    expect(dockerfile).toContain('/app/src/lib/sync ./src/lib/sync');
+    expect(workflow).toContain('npm run setup:couchdb:validators');
+    expect(workflow).toContain('CouchDB validators installed from immutable tag $expected_sha');
   });
 });

@@ -81,6 +81,16 @@ COPY --from=builder /app/public ./public
 # the boot-time migration runner finds zero files and silently no-ops —
 # meaning a fresh deploy ships with an empty analytics schema.
 COPY --from=builder /app/src/lib/db/migrations ./src/lib/db/migrations
+# CouchDB's validate_doc_update policy is executable deployment state, not
+# merely application source. Keep the installer and its exact policy modules in
+# the immutable image so production never has to trust a stale host checkout.
+# `node_modules` above includes tsx, which loads these TypeScript modules when
+# `npm run setup:couchdb:validators` runs after the release health gate.
+COPY --from=builder /app/scripts/install-validate-doc-updates.mjs ./scripts/install-validate-doc-updates.mjs
+COPY --from=builder /app/src/lib/sync ./src/lib/sync
+COPY --from=builder /app/src/lib/services/patient-transfer-permissions.ts ./src/lib/services/patient-transfer-permissions.ts
+COPY --from=builder /app/src/lib/care-team-permissions.ts ./src/lib/care-team-permissions.ts
+COPY --from=builder /app/src/lib/db-types.ts ./src/lib/db-types.ts
 # Drop privileges. The `node` user (UID 1000) is shipped by node:20-alpine.
 # Required for the writable scratch dirs Next.js needs (.next/cache during
 # revalidation) so we chown those before switching.
