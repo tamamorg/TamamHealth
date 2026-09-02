@@ -43,8 +43,8 @@ export function subscribeDisabledApps(cb: (routes: string[]) => void): () => voi
  * `isHrefAllowed` reads a path, so disabling Laboratory also removes
  * `/lab/worklist`.
  */
-export function isAppDisabled(href: string): boolean {
-  if (!href || disabledRoutes.length === 0) return false;
+export function isAppDisabled(href: string, routes: readonly string[] = disabledRoutes): boolean {
+  if (!href || routes.length === 0) return false;
   const path = href.split('?')[0];
-  return disabledRoutes.some(route => path === route || path.startsWith(`${route}/`));
+  return routes.some(route => path === route || path.startsWith(`${route}/`));
 }

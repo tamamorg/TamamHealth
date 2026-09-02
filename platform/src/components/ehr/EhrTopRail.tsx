@@ -184,7 +184,7 @@ export default function EhrTopRail() {
   const navItems = useMemo(() => {
     if (!currentUser) return [];
     return uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
-      .filter(item => !isAppDisabled(item.href));
+      .filter(item => !isAppDisabled(item.href, disabledRoutes));
   }, [allowedRoutes, currentUser, roleConfig, disabledRoutes]);
 
   // Keep four high-frequency destinations visible in the header as shortcuts.

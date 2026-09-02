@@ -42,7 +42,7 @@ import type { SystemConfigDoc } from '@/lib/services/system-config-service';
 import { setDisabledApps } from '@/lib/settings/disabled-apps';
 import {
   Building2, ChevronRight, ClipboardCheck, ClipboardList, Database, KeyRound, Layers,
-  Pencil, Search, Settings, X, type LucideIcon,
+  Search, Settings, X, type LucideIcon,
 } from '@/components/icons/lucide';
 
 export type SystemAdminSectionId =

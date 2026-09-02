@@ -2026,7 +2026,7 @@ select.cn-select {
   color: transparent;
   font-size: 0;
 }
-.cn-section-nav-item[aria-current='true'] .cn-section-nav-badge { background: #fff; }
+.cn-section-nav-item[aria-current='true'] .cn-section-nav-badge { background: var(--color-white); }
 
 /* ── Sidebar row lists (patient notes, labs, documents) — the chart's panel
    rows (.omrs-panel-row-main / -sub) on soft hairlines, quiet hover. ── */
@@ -2197,4 +2197,3 @@ select.cn-select {
   border-radius: 6px;
   color: var(--cn-accent-deep);
 }
-
