@@ -221,7 +221,7 @@ jobs:
           [ -n "$PROD_SSH_USER" ] || missing="$missing PROD_SSH_USER"
           [ -n "$PROD_SSH_KEY" ] || missing="$missing PROD_SSH_KEY"
           if [ -n "$missing" ]; then
-            echo "::error title=Production deploy not configured::Image was tagged as production but no host can be deployed. Missing production-environment secrets:$missing"
+            echo "::error title=Production deploy not configured::Immutable images were built but no host can be deployed. Missing production-environment secrets:$missing"
             exit 1
           fi
 
@@ -241,11 +241,15 @@ jobs:
         run: |
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           ssh "$USER@$HOST" \
-            "cd $APP_DIR && \
-             previous_platform=\$(docker inspect \$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform) --format '{{.Image}}') && \
-             previous_website=\$(docker inspect \$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q website) --format '{{.Image}}') && \
-             previous_worker=\$(docker inspect \$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q sync-worker) --format '{{.Image}}') && \
-             test -n \"\$previous_platform\" && test -n \"\$previous_website\" && test -n \"\$previous_worker\" && \
+            "set -eu; \
+             cd '$APP_DIR'; \
+             platform_container=\$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform); \
+             website_container=\$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q website); \
+             worker_container=\$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q sync-worker); \
+             test -n \"\$platform_container\"; test -n \"\$website_container\"; \
+             previous_platform=\$(docker inspect \"\$platform_container\" --format '{{.Image}}'); \
+             previous_website=\$(docker inspect \"\$website_container\" --format '{{.Image}}'); \
+             if [ -n \"\$worker_container\" ]; then previous_worker=\$(docker inspect \"\$worker_container\" --format '{{.Image}}'); else previous_worker=absent; fi; \
              printf '%s\n%s\n%s\n' \"\$previous_platform\" \"\$previous_website\" \"\$previous_worker\" > '.tamamhealth-rollback-stack-$SHA' && \
              export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA' && \
              docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml pull && \
@@ -324,23 +328,33 @@ jobs:
              previous_website=\$(sed -n '2p' '.tamamhealth-rollback-stack-$SHA'); \
              previous_worker=\$(sed -n '3p' '.tamamhealth-rollback-stack-$SHA'); \
              test -n \"\$previous_platform\"; test -n \"\$previous_website\"; test -n \"\$previous_worker\"; \
-             printf 'services:\n  platform:\n    image: %s\n  website:\n    image: %s\n  sync-worker:\n    image: %s\n' \"\$previous_platform\" \"\$previous_website\" \"\$previous_worker\" > '.tamamhealth-rollback-$SHA.yml'; \
+             printf 'services:\n  platform:\n    image: %s\n  website:\n    image: %s\n' \"\$previous_platform\" \"\$previous_website\" > '.tamamhealth-rollback-$SHA.yml'; \
+             rollback_services='platform website'; \
+             if [ \"\$previous_worker\" != absent ]; then printf '  sync-worker:\n    image: %s\n' \"\$previous_worker\" >> '.tamamhealth-rollback-$SHA.yml'; rollback_services='platform website sync-worker'; fi; \
              export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA'; \
-             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml -f '.tamamhealth-rollback-$SHA.yml' up -d --no-deps --force-recreate platform website sync-worker; \
-             rm -f '.tamamhealth-rollback-$SHA.yml' '.tamamhealth-rollback-stack-$SHA'"
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml -f '.tamamhealth-rollback-$SHA.yml' up -d --no-deps --force-recreate \$rollback_services; \
+             if [ \"\$previous_worker\" = absent ]; then docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml stop sync-worker || true; docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml rm -f sync-worker || true; fi; \
+             rm -f '.tamamhealth-rollback-$SHA.yml'"
           for i in $(seq 1 18); do
             STACK_HEALTHY=false
             if ssh "$USER@$HOST" "
               set -eu
-              for service in platform website sync-worker; do
+              previous_worker=\$(sed -n '3p' '$APP_DIR/.tamamhealth-rollback-stack-$SHA')
+              services='platform website'
+              if [ \"\$previous_worker\" != absent ]; then services='platform website sync-worker'; fi
+              for service in \$services; do
                 container=\$(docker compose --profile analytics -f '$APP_DIR/docker-compose.yml' -f '$APP_DIR/docker-compose.ghcr.yml' ps -q \"\$service\")
                 test -n \"\$container\"
                 health=\$(docker inspect \"\$container\" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
                 test \"\$health\" = healthy
               done
+              if [ \"\$previous_worker\" = absent ]; then
+                test -z \"\$(docker compose --profile analytics -f '$APP_DIR/docker-compose.yml' -f '$APP_DIR/docker-compose.ghcr.yml' ps -q sync-worker)\"
+              fi
             "; then STACK_HEALTHY=true; fi
             STATUS="$(curl -sS -m 10 -o /tmp/rollback-health.json -w '%{http_code}' "$HEALTH_URL" || echo 000)"
             if [ "$STACK_HEALTHY" = true ] && [ "$STATUS" = "200" ]; then
+              ssh "$USER@$HOST" "rm -f '$APP_DIR/.tamamhealth-rollback-stack-$SHA'"
               echo "Rollback restored production after ${i} checks:"; cat /tmp/rollback-health.json; echo
               exit 0
             fi

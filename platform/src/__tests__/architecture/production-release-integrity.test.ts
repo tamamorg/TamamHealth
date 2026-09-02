@@ -15,7 +15,9 @@ describe('production release integrity', () => {
   it('health-checks and rolls back all application services as one release', () => {
     expect(workflow).toContain('for service in platform website sync-worker');
     expect(workflow).toContain("'.tamamhealth-rollback-stack-$SHA'");
-    expect(workflow).toContain('--force-recreate platform website sync-worker');
+    expect(workflow).toContain('--force-recreate \\$rollback_services');
     expect(workflow).toContain('WEBSITE_HEALTH_URL');
+    expect(workflow).toContain('previous_worker=absent');
+    expect(workflow).toContain("rollback_services='platform website'");
   });
 });
