@@ -401,6 +401,12 @@ export interface LabResultDoc extends BaseDoc {
   referenceRange: string;
   abnormal: boolean;
   critical: boolean;
+  /**
+   * Individual analytes/findings for panels such as a CBC, chemistry profile,
+   * urinalysis, or stool examination. `result` remains a concise summary for
+   * older readers and integrations; this array is the lossless bench record.
+   */
+  observations?: LabResultObservation[];
   orderedBy: string;
   /**
    * User `_id` of the ordering clinician. `orderedBy` is a free-text display
@@ -556,6 +562,17 @@ export interface LabResultDoc extends BaseDoc {
   amendedFrom?: string;
   /** Why it changed — required by the amend form. */
   amendmentReason?: string;
+}
+
+export interface LabResultObservation {
+  /** Stable catalogue key, e.g. `cbc.wbc` or `urine.pregnancy`. */
+  id: string;
+  /** Human-readable name captured at filing time for durable reports. */
+  label: string;
+  /** Logical group captured at filing time, e.g. CBC or Sediment microscopy. */
+  group: string;
+  value: string;
+  unit?: string;
 }
 
 export interface DiseaseAlertDoc extends BaseDoc, Omit<DiseaseAlert, 'id'> {

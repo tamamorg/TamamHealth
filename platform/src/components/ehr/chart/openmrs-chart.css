@@ -1153,6 +1153,25 @@
 .omrs-root .omrs-table col { width: auto !important; }
 
 .omrs-root .omrs-table--fixed { table-layout: fixed; }
+
+/* Notes list column rhythm. Set on the header cells rather than a <col>,
+   because the rule above forces every `col` to auto width. The note preview
+   is the column that earns the slack; Status only needs its pill.
+   In the chart (5 columns): Type · Note · Author · Date · Status. */
+.omrs-root .omrs-table--notes th:nth-child(1) { width: 16%; }
+.omrs-root .omrs-table--notes th:nth-child(2) { width: 38%; }
+.omrs-root .omrs-table--notes th:nth-child(3) { width: 20%; }
+.omrs-root .omrs-table--notes th:nth-child(4) { width: 15%; }
+.omrs-root .omrs-table--notes th:nth-child(5) { width: 11%; }
+
+/* Cross-patient queue (6 columns) — the Patient column lands third, so the
+   rest shift one place along. */
+.omrs-root .omrs-table--notes-queue th:nth-child(1) { width: 13%; }
+.omrs-root .omrs-table--notes-queue th:nth-child(2) { width: 30%; }
+.omrs-root .omrs-table--notes-queue th:nth-child(3) { width: 16%; }
+.omrs-root .omrs-table--notes-queue th:nth-child(4) { width: 17%; }
+.omrs-root .omrs-table--notes-queue th:nth-child(5) { width: 13%; }
+.omrs-root .omrs-table--notes-queue th:nth-child(6) { width: 11%; }
 .omrs-root .omrs-table--fixed th,
 .omrs-root .omrs-table--fixed td { overflow-wrap: anywhere; }
 

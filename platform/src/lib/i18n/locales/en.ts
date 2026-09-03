@@ -3587,7 +3587,6 @@ const en: TranslationMap = {
   'notesList.colAuthor': 'Author',
   'notesList.colPatient': 'Patient',
   'notesList.colDateOfService': 'Date of service',
-  'notesList.colActions': 'Actions',
   'notesList.colStatus': 'Status',
   'nurse.clearAllFilters': 'Clear all filters',
   'nurse.additionalObservations': 'Additional observations...',

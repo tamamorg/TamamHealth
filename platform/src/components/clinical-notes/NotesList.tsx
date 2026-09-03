@@ -15,14 +15,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Trash2 } from '@/components/icons/lucide';
+import { FileText } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import { noteTypeMenuOrder } from './CreateNoteButton';
 import { useToast } from '@/components/Toast';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { clickable } from '@/lib/a11y';
 import {
-  listClinicalNotes, notePreview, deleteClinicalNote, createClinicalNote,
+  listClinicalNotes, notePreview, createClinicalNote,
 } from '@/lib/clinical-notes/note-service';
 import {
   NOTE_TYPES, getNoteType, type NoteTypeId,
@@ -118,17 +119,6 @@ export default function NotesList({
     }
   };
 
-  const handleDelete = async (note: ClinicalNoteDoc) => {
-    if (!window.confirm(`Delete this unsigned ${getNoteType(note.noteType).label} note?`)) return;
-    try {
-      await deleteClinicalNote(note._id, currentUser?.name);
-      showToast('Draft deleted.', 'success');
-      void load();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not delete the note.', 'error');
-    }
-  };
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return notes;
@@ -208,13 +198,14 @@ export default function NotesList({
         )
       )}
 
-      {/* One column per fact — the chart's shared omrs-table shape, with the
-          Status pill in the final column like every other clinical table. */}
+      {/* One column per fact, Status last like every other clinical table.
+          There is no Actions column: the row itself opens the note, which is
+          what the buttons in it did. Column widths live in the stylesheet
+          (`.omrs-table--notes`), not a colgroup: the chart CSS forces
+          `col { width: auto !important }`, so colgroup widths are silently
+          dropped and every column comes out the same size. */}
       {!loading && filtered.length > 0 && (
-        <table className="omrs-table omrs-table--fixed">
-          <colgroup>
-            <col /><col /><col />{!patientId ? <col /> : null}<col /><col /><col />
-          </colgroup>
+        <table className={`omrs-table omrs-table--fixed omrs-table--notes${patientId ? '' : ' omrs-table--notes-queue'}`}>
           <thead>
             <tr>
               <th>{t('notesList.colType')}</th>
@@ -222,16 +213,21 @@ export default function NotesList({
               <th>{t('notesList.colAuthor')}</th>
               {!patientId && <th>{t('notesList.colPatient')}</th>}
               <th>{t('notesList.colDateOfService')}</th>
-              <th>{t('notesList.colActions')}</th>
               <th>{t('notesList.colStatus')}</th>
             </tr>
           </thead>
           <tbody>
             {pageRows.map((note) => {
               const status = STATUS_LABEL[note.status] ?? STATUS_LABEL.draft;
-              const unsigned = note.status === 'draft' || note.status === 'awaiting_cosign';
               return (
-                <tr key={note._id}>
+                <tr
+                  key={note._id}
+                  className="omrs-clickable-row"
+                  {...clickable(
+                    () => (onOpenNote ? onOpenNote(note._id) : router.push(`/notes/${note._id}`)),
+                    { label: `Open ${getNoteType(note.noteType).label} note — ${note.serviceDate}` },
+                  )}
+                >
                   <td className="omrs-cell-strong">{getNoteType(note.noteType).label}</td>
                   <td className="omrs-cell-note">{notePreview(note)}</td>
                   <td>{note.signedByName || note.assignedToName || note.authorName || '—'}</td>
@@ -239,28 +235,6 @@ export default function NotesList({
                   <td>
                     {note.serviceDate}
                     {note.serviceTime ? ` ${note.serviceTime}` : ''}
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-secondary"
-                        onClick={() => (onOpenNote ? onOpenNote(note._id) : router.push(`/notes/${note._id}`))}
-                      >
-                        {unsigned ? 'Open' : 'View'}
-                      </button>
-                      {unsigned && (
-                        <button
-                          type="button"
-                          className="btn btn-xs btn-secondary"
-                          onClick={() => handleDelete(note)}
-                          aria-label="Delete draft"
-                          title="Delete draft"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
                   </td>
                   <td><span className={`cn-badge ${status.cls}`}>{status.text}</span></td>
                 </tr>

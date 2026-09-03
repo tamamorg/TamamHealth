@@ -19622,6 +19622,11 @@ textarea.ehr-handoff-input {
     display: none;
   }
 
+  /* With no head to carry it, the top inset returns to the container. */
+  .appointment-card-surface {
+    padding-top: 10px;
+  }
+
   .appointment-card-row.ehr-appointment-row {
     grid-template-columns: 1fr minmax(110px, auto);
     gap: 8px 14px;
@@ -22577,10 +22582,22 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 .appointment-card-surface {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 10px;
+  /* No TOP padding: this is the scroll container, and a sticky child offsets
+     from the padding edge — so a 10px top padding left a 10px strip above the
+     column head that scrolling rows passed through in full view (a tinted row,
+     e.g. an overdue lab order, read as a coloured band above the labels). The
+     inset moves onto the head below, which is opaque and sticky, so it now
+     masks everything that scrolls beneath it. */
+  padding: 0 10px 10px;
   border-radius: 12px;
   background: var(--bg-card-solid);
   overflow: auto;
+}
+
+/* The head carries the surface's top inset now. Longhand, so the shared
+   `.appointment-card-head` rule keeps owning the side and bottom padding. */
+.appointment-card-surface .appointment-card-head {
+  padding-top: 10px;
 }
 
 /* Inset the patient registry like the laboratory and prescription tables,
