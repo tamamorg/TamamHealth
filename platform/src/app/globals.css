@@ -33418,15 +33418,17 @@ button.sadb-signal { cursor: pointer; }
 
 /* The admission, stated before the form that ends it. */
 .wdis-facts { margin: 0; padding: 10px 16px; background: var(--overlay-subtle); }
+/* Label column + start-aligned values, so Admitted / Diagnosis / Severity
+   read down one shared left edge instead of ping-ponging the eye to the far
+   right of the card for every value. */
 .wdis-facts > div {
-  display: flex;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 4px 0;
 }
 .wdis-facts dt {
-  flex: 0 0 auto;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
@@ -33437,7 +33439,6 @@ button.sadb-signal { cursor: pointer; }
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-primary);
-  text-align: end;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -33470,11 +33471,13 @@ button.sadb-signal { cursor: pointer; }
   .wdis-care-actions { grid-template-columns: 1fr; }
 }
 
+/* Header line above, controls on their own full-width row beneath: the old
+   side-by-side split (a 120px label column against the controls) left the
+   ward and bed selects ~90px each at the dialog's width, truncating both. */
 .wdis-placement {
-  display: grid;
-  grid-template-columns: minmax(120px, .7fr) minmax(0, 1.3fr);
-  gap: 12px;
-  align-items: end;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-light);
 }
@@ -33505,7 +33508,6 @@ button.sadb-signal { cursor: pointer; }
   border-bottom: 1px solid var(--border-light);
 }
 @media (max-width: 560px) {
-  .wdis-placement { grid-template-columns: 1fr; }
   .wdis-placement-controls { grid-template-columns: 1fr 1fr; }
   .wdis-placement-controls button { grid-column: 1 / -1; }
 }
