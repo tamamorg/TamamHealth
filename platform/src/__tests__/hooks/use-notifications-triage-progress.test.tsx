@@ -29,7 +29,7 @@ const CURRENT_USER = {
 jest.mock('@/lib/context', () => ({ useAuth: () => ({ currentUser: CURRENT_USER }) }));
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
-import { triageDB, consultationProgressDB } from '@/lib/db';
+import { triageDB, consultationProgressDB, conversationsDB, messagesDB } from '@/lib/db';
 import { useNotifications } from '@/modules/communication/hooks/useNotifications';
 
 function flush(): Promise<void> {
@@ -235,5 +235,39 @@ describe('useNotifications — consultation-progress source respects perSourceLi
     expect(capped).toHaveLength(1);
     // Newest-updated first (getAllConsultationProgress sorts by updatedAt desc).
     expect(capped[0].title).toContain('Patient p-newer');
+  });
+});
+
+describe('useNotifications — unread staff messages join the bell feed', () => {
+  it('surfaces an incoming message and links to its conversation', async () => {
+    const now = '2026-09-02T13:15:00.000Z';
+    await putDoc(conversationsDB(), {
+      _id: 'conv-notification', type: 'conversation', kind: 'dm',
+      participantIds: [CURRENT_USER._id, 'doctor-1'],
+      participantNames: [CURRENT_USER.name, 'Dr. Chinonye Adaeze Eze'],
+      createdByName: CURRENT_USER.name, pinnedBy: [],
+      orgId: CURRENT_USER.orgId, hospitalId: CURRENT_USER.hospitalId,
+      createdAt: now, updatedAt: now,
+    } as never);
+    await putDoc(messagesDB(), {
+      _id: 'msg-notification', type: 'message', recipientType: 'staff',
+      direction: 'staff_to_staff', conversationId: 'conv-notification',
+      patientId: '', patientName: '', patientPhone: '',
+      fromDoctorId: 'doctor-1', fromDoctorName: 'Dr. Chinonye Adaeze Eze',
+      fromHospitalName: 'Juba Teaching Hospital', fromHospitalId: CURRENT_USER.hospitalId,
+      recipientHospitalId: CURRENT_USER.hospitalId,
+      subject: '', body: 'Please review the new result.', channel: 'app', status: 'sent',
+      sentAt: now, readBy: ['doctor-1'], orgId: CURRENT_USER.orgId,
+      createdAt: now, updatedAt: now,
+    } as never);
+
+    await mountAndSettle();
+
+    expect(hook.state!.items.find(item => item.id === 'message-msg-notification')).toEqual(expect.objectContaining({
+      type: 'message',
+      title: 'Dr. Chinonye Eze · Message',
+      subtitle: 'Please review the new result.',
+      href: '/messages?conversation=conv-notification',
+    }));
   });
 });
