@@ -34,6 +34,23 @@ import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 const isImage = (mimeType: string) => mimeType.startsWith('image/');
 
+/**
+ * The route cell's age line: elapsed time ("2h 15m ago") while the referral is
+ * same-day, the full date once it is older — the point where "38h ago" stops
+ * meaning anything. `createdAt` supplies the clock time, but only when it
+ * falls on the referral's own date: a seeded or imported old referral carries
+ * a fresh `createdAt`, which read as "16s ago" on February rows. Date-only
+ * values are parsed as LOCAL midnight — a bare "2026-02-09" parses as UTC and
+ * renders a day early anywhere west of Greenwich.
+ */
+function referralAgeLabel(ref: { createdAt?: string; referralDate?: string }): string {
+  const raw = ref.createdAt && ref.createdAt.slice(0, 10) === (ref.referralDate || '').slice(0, 10)
+    ? ref.createdAt
+    : ref.referralDate;
+  if (!raw) return '';
+  return formatAppointmentTimeUntil(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00` : raw);
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -736,13 +753,7 @@ export default function ReferralsPage() {
                               referral's own date — a doc seeded or imported
                               later has a fresh createdAt on an old referral,
                               which read as "16s ago" on February rows. */}
-                          <small title={ref.referralDate}>
-                            {formatAppointmentTimeUntil(
-                              ref.createdAt && ref.createdAt.slice(0, 10) === (ref.referralDate || '').slice(0, 10)
-                                ? ref.createdAt
-                                : ref.referralDate,
-                            )}
-                          </small>
+                          <small title={ref.referralDate}>{referralAgeLabel(ref)}</small>
                         </div>
                       </td>
                       <td>

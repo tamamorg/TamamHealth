@@ -123,7 +123,7 @@ export default function LabPage() {
   const now = useNow(60_000);
   // Per-column filters (replace the old search + status-tabs top bar).
   const searchParams = useSearchParams();
-  const [colFilters, setColFilters] = useState({ patient: '', test: '', specimen: '', status: '', result: '', orderedBy: '', worklist: '' });
+  const [colFilters, setColFilters] = useState({ patient: '', test: '', specimen: '', status: '', orderedBy: '', worklist: '' });
   // Deep link from a patient chart: /lab?patient=<name> pre-filters the queue.
   useEffect(() => {
     const patientParam = searchParams?.get('patient');
@@ -135,7 +135,7 @@ export default function LabPage() {
   // existing per-column filter funnels below).
   const [quickSearch, setQuickSearch] = useState('');
   const anyFilterActive = anyColFilter || !!quickSearch;
-  const clearColFilters = () => { setColFilters({ patient: '', test: '', specimen: '', status: '', result: '', orderedBy: '', worklist: '' }); setQuickSearch(''); };
+  const clearColFilters = () => { setColFilters({ patient: '', test: '', specimen: '', status: '', orderedBy: '', worklist: '' }); setQuickSearch(''); };
   // Header "Filters" popover (test type + status) — mirrors the patients
   // registry's Filters pattern, separate from the per-column funnels. The
   // popover itself now belongs to the search field (EhrSearchFilter), so only
@@ -224,7 +224,6 @@ export default function LabPage() {
     if (f.test && !(o.testName || '').toLowerCase().includes(f.test.toLowerCase())) return false;
     if (f.specimen && !(o.specimen || '').toLowerCase().includes(f.specimen.toLowerCase())) return false;
     if (f.status && o.status !== f.status) return false;
-    if (f.result && !(o.result || '').toLowerCase().includes(f.result.toLowerCase())) return false;
     if (f.orderedBy && !(o.orderedBy || '').toLowerCase().includes(f.orderedBy.toLowerCase())) return false;
     if (f.worklist === 'send_out' && !isOpenSendOut(o)) return false;
     if (f.worklist === 'scheduled' && !isScheduledCollection(o)) return false;
@@ -272,17 +271,16 @@ export default function LabPage() {
   const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
   // `width` is a share, not a percentage — it is normalised against the row's
   // own total below, so the two shapes of this table (with and without the
-  // Action column) each add up without a second set of numbers. Sized to the
-  // content each column actually carries: Result holds a short value plus an
-  // "Abnormal" chip, not the widest column on the page. There is no Time
-  // column — the order time sits under the ordering clinician, and each
-  // status change reports its own time under the status pill.
+  // Action column) each add up without a second set of numbers. There is no
+  // Time column — the order time sits under the ordering clinician, and each
+  // status change reports its own time under the status pill. There is no
+  // Result column either: values are read on the patient chart's Labs tab
+  // (which every row click opens), not scanned across a worklist.
   const labCols: { key: string; label: string; width: number }[] = [
     { key: 'patient', label: t('lab.patient'), width: 22 },
     { key: 'test', label: t('lab.testName'), width: 21 },
     { key: 'specimen', label: t('lab.specimen'), width: 11 },
     { key: 'status', label: t('lab.status'), width: 14 },
-    { key: 'result', label: t('lab.result'), width: 15 },
     { key: 'orderedBy', label: t('lab.orderedByLabel'), width: 17 },
     ...(canEnterLabResults ? [{ key: 'action', label: t('lab.action'), width: 14 }] : []),
   ];
@@ -383,7 +381,7 @@ export default function LabPage() {
                 header) so this queue looks the same as every other module. */}
           <div className="ehr-list-scroll">
             {/* `table-layout: fixed` is what makes the colgroup binding: without
-                it the browser re-sizes from content and Result swallows the row. */}
+                it the browser re-sizes each column from its content. */}
             <table className="data-table" style={{ minWidth: 1040, tableLayout: 'fixed' }}>
               <colgroup>
                 {labCols.map(c => (
@@ -447,16 +445,6 @@ export default function LabPage() {
                           </div>
                         );
                       })()}
-                    </td>
-                    <td>
-                      {order.result ? (
-                        <div>
-                          <p className="text-sm" style={{ color: order.abnormal ? 'var(--color-danger-text)' : 'inherit', fontWeight: order.abnormal ? 600 : 400 }}>{order.result}</p>
-                          {order.abnormal && <Badge tone="danger" className="mt-0.5">{t('lab.abnormal')}</Badge>}
-                        </div>
-                      ) : (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
-                      )}
                     </td>
                     {/* The registry's primary/secondary stack: who ordered it,
                         and when, in the compact "Aug 27 · 19:42" form. */}
