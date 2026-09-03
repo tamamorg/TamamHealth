@@ -8056,7 +8056,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: 14px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: start;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -19005,8 +19005,9 @@ textarea.ehr-handoff-input {
   top: 0;
   z-index: 4;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 210px 110px 190px 190px 140px;
+  justify-content: space-between;
+  column-gap: 12px;
   align-items: center;
   /* Tracks the row's side padding so the column labels stay over their
      values. */
@@ -19023,17 +19024,16 @@ textarea.ehr-handoff-input {
 
 
 .appointment-card-head span:last-child {
-  /* Left-aligned with the STATUS pill below it, matching every other column
-     head, so the label sits over its column's content like the rest. */
-  justify-self: start;
+  justify-self: end;
 }
 
 /* 4px side padding, down from 16px: with the list gutter cut to 1px, the
    row's own inset was what still held the avatar and the status pill off the
    panel edges. Vertical stays at 9px — only the sides tighten. */
 .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 210px 110px 190px 190px 140px;
+  justify-content: space-between;
+  column-gap: 12px;
   min-height: 64px;
   padding: 9px 4px;
   border-radius: 14px;
@@ -19163,11 +19163,10 @@ textarea.ehr-handoff-input {
 .appointment-card-status {
   display: flex;
   flex-direction: column;
-  /* Left-aligned like every other column's content, so the gap between STATUS
-     and the column before it matches the gaps between the other columns —
-     anchoring it to the far right edge instead left a gulf after CONTEXT that
-     read as one oversized column. */
-  align-items: flex-start;
+  /* Anchored to the far right edge of its column, closing the table on the
+     right. The even gaps come from the grid spreading the columns
+     (justify-content: space-between), not from stretching this cell. */
+  align-items: flex-end;
   /* Centered (not bottom-hung) so the status pill sits on the same line as
      the stage/department pill in the neighbouring column. */
   justify-content: center;
@@ -19191,12 +19190,12 @@ textarea.ehr-handoff-input {
   /* Align the cue with the pill's inner TEXT (13px pill padding + 1px
      border), not the pill's border, so Routine/Urgent stacks directly
      under the status label. */
-  padding-inline-start: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: start;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -22570,8 +22569,9 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
      fifth share like the rest; its cell right-aligns (`align-items: flex-end`)
      so the pill closes the table hard against the far-right edge while the
      column itself stays the same width as the other four. */
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: 210px 110px 190px 190px 140px;
+  justify-content: space-between;
+  column-gap: 12px;
 }
 
 .appointment-card-surface {
