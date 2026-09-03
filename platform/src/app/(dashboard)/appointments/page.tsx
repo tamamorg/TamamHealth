@@ -269,7 +269,7 @@ export default function AppointmentsPage() {
   // that the standalone Check-In module is gone, and a just-registered patient
   // standing at the desk has none — so the walk-in booking IS their check-in.
   // Lives here rather than beside the other deep links because it writes the
-  // walk-in form state declared just above. Waits for `patients` to load.
+  // walk-in form state declared just above.
   const walkInParamRef = useRef(false);
   /**
    * True while the open walk-in dialog is the tail of "Register & check in".
@@ -283,17 +283,26 @@ export default function AppointmentsPage() {
     const params = new URLSearchParams(window.location.search);
     const walkInId = params.get('walkIn');
     if (!walkInId) return;
-    if (!patients.some(p => p._id === walkInId)) return;
+    // Auth hydrates after mount, and `canBookAppointments` is false until it
+    // does. This effect used to consume the param on its first pass regardless,
+    // so whenever the local patients list beat auth to hydration the hand-off
+    // was thrown away unopened — the clerk landed on the booking grid with
+    // nothing selected. Returning instead leaves the param for the re-run this
+    // dependency triggers once the role is known.
+    if (!canBookAppointments) return;
     walkInParamRef.current = true;
-    if (canBookAppointments) {
-      setWiPatient(walkInId);
-      setShowWalkIn(true);
-      walkInFromRegistrationRef.current = true;
-    }
+    // Opened without waiting for `patients` to contain the id: the dialog's
+    // patient select is controlled by `wiPatient`, so the name fills in the
+    // moment the local list hydrates, and holding the dialog closed until then
+    // (as this once did) just delayed — or with an out-of-scope id, silently
+    // dropped — the very hand-off registration promised the clerk.
+    setWiPatient(walkInId);
+    setShowWalkIn(true);
+    walkInFromRegistrationRef.current = true;
     params.delete('walkIn');
     const qs = params.toString();
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
-  }, [patients, canBookAppointments]);
+  }, [canBookAppointments]);
 
   // Africa/Juba "today" — NOT a UTC slice, which would roll to the next day
   // after ~21:00 local and put the date picker / highlights a day ahead.

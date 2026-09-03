@@ -44,6 +44,17 @@ const DISPOSITION_OPTIONS: ReferralDisposition[] = [
   'treated_discharged', 'admitted', 'referred_onward', 'did_not_arrive', 'deceased',
 ];
 
+/* The registry/appointments pill vocabulary, mapped onto the referral ladder:
+   sent = booked-and-waiting blue, received = active, seen = in progress,
+   completed/cancelled keep their semantic tones. */
+const STATUS_PILL_CLASS: Record<string, string> = {
+  sent: 'status-scheduled',
+  received: 'status-checked-in',
+  seen: 'status-in-progress',
+  completed: 'status-completed',
+  cancelled: 'status-cancelled',
+};
+
 /**
  * The transfer package a referral carries, rendered read-only in the detail
  * pane.
@@ -658,19 +669,20 @@ export default function ReferralsPage() {
               {/* Patient absorbs the old Hospital ID column (the ID now sits
                   under the name), so it takes that width back. */}
               <colgroup>
+                <col style={{ width: '28%' }} />
                 <col style={{ width: '26%' }} />
-                <col style={{ width: '24%' }} />
-                <col style={{ width: '15%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '18%' }} />
                 <col style={{ width: '12%' }} />
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '9%' }} />
               </colgroup>
               <thead>
                 <tr>
                   <th>Patient</th>
-                  <th>Route</th>
+                  {/* One side of the route is always the viewer's own
+                      facility, so the column names only the counterpart:
+                      who sent it (incoming) or where it went (outgoing). */}
+                  <th>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</th>
                   <th>Context</th>
-                  <th>Urgency</th>
                   <th>Status</th>
                   <th>Date</th>
                 </tr>
@@ -734,17 +746,13 @@ export default function ReferralsPage() {
                           secondaryText={hospitalNoFor(ref.patientId)}
                           nameClassName="font-semibold text-sm"
                         />
-                        {hasPatientChart && (
-                          <ExternalLink className="w-3 h-3 ms-1 opacity-50" aria-hidden="true" />
-                        )}
                       </td>
-                      {/* Destination on top, origin beneath — the same
-                          primary/secondary stack the rest of the row uses. As
-                          one "A → B" line it wrapped and left the rows ragged. */}
+                      {/* Only the OTHER facility: our own side of the route is
+                          the same on every row of the tab, so it says nothing.
+                          The tooltip keeps the full A → B for anyone checking. */}
                       <td>
                         <div className="ehr-list-main" title={`${ref.fromHospital} → ${ref.toHospital}`}>
-                          <strong>{ref.toHospital}</strong>
-                          <span>{t('frontDesk.from')} {ref.fromHospital}</span>
+                          <strong>{activeTab === 'incoming' ? ref.fromHospital : ref.toHospital}</strong>
                         </div>
                       </td>
                       <td>
@@ -753,20 +761,22 @@ export default function ReferralsPage() {
                           <span>Referral service</span>
                         </div>
                       </td>
+                      {/* The registry's trailing stack: status pill with the
+                          urgency as the small operational cue beneath it. */}
                       <td>
-                        <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
-                          {t(`referrals.urgency_${ref.urgency}`)}
-                        </span>
-                        </td>
-                        <td>
-                        <Badge tone={toneForStatus(ref.status)}>
-                          {getStatusLabel(ref.status)}
-                        </Badge>
-                        {tp && (
-                          <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold ms-1" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
-                            <Package className="w-3 h-3" /> {t('referrals.dataPackage')}
+                        <div className="flex flex-col items-start gap-1">
+                          <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
+                            {getStatusLabel(ref.status)}
                           </span>
-                        )}
+                          <small className="text-[11px] font-semibold whitespace-nowrap" style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
+                            {t(`referrals.urgency_${ref.urgency}`)}
+                          </small>
+                          {tp && (
+                            <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
+                              <Package className="w-3 h-3" /> {t('referrals.dataPackage')}
+                            </span>
+                          )}
+                        </div>
                         </td>
                         <td className="text-xs font-mono whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{ref.referralDate}</td>
                     </tr>

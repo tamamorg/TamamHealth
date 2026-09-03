@@ -43,8 +43,10 @@ export default function ReferralFilterFields({
         <input type="text" value={filters.patient} onChange={e => setFilter('patient', e.target.value)} placeholder={t('referrals.patient')} className="w-full text-sm py-2 px-3" style={fieldStyle} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Route</span>
-        <input type="text" value={filters.route} onChange={e => setFilter('route', e.target.value)} placeholder="From → To" className="w-full text-sm py-2 px-3" style={fieldStyle} />
+        {/* Matches EITHER hospital on the referral, so a name works whichever
+            tab (incoming/outgoing) is open. */}
+        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('referrals.filterFacility')}</span>
+        <input type="text" value={filters.route} onChange={e => setFilter('route', e.target.value)} placeholder={t('referrals.filterFacility')} className="w-full text-sm py-2 px-3" style={fieldStyle} />
       </label>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('referrals.department')}</span>

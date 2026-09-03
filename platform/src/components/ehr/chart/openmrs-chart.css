@@ -466,6 +466,14 @@
   color: #fff;
 }
 
+/* Deceased is stated in the chart's darkest ink, not danger red: red means
+   "act now", and there is nothing left to act on — but the fact must still
+   read before every other chip on the row. */
+.omrs-chip--deceased {
+  background: var(--ehr-text-title, #113055);
+  color: #fff;
+}
+
 .omrs-header-meta {
   margin-top: 4px;
   font-size: 12.5px;

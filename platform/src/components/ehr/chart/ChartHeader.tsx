@@ -34,6 +34,11 @@ interface ChartHeaderProps {
   onEdit: () => void;
   onStickyNote: () => void;
   onAssignProvider?: () => void;
+  /** Toggle the record's deceased status. The header renders the right verb
+   *  for the current state — "Mark patient deceased" on a living record,
+   *  "Mark patient alive" on one already marked — mirroring the O3 actions
+   *  menu; the page owns the confirm dialog and the write. */
+  onToggleDeceased?: () => void;
   /** Open the Allergies section. The banner names the allergens; the section
    *  carries severity, reaction and comments. */
   onShowAllergies?: () => void;
@@ -91,7 +96,7 @@ function AllergyBanner({ allergens, onShow }: { allergens?: string[]; onShow?: (
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
   onCollectPayment, onMessage, onPrint, onPatientEd, onNote, onScripts, onOrders, onExchange, onEdit, onStickyNote, onAssignProvider,
-  onShowAllergies,
+  onShowAllergies, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
   // up to 11 buttons in two rows, several of them duplicating the right-rail
@@ -131,6 +136,13 @@ export default function ChartHeader({
       <div className="omrs-header-body">
         <div className="omrs-header-name-row">
           <h1 className="omrs-header-name">{patientFullName(patient)}</h1>
+          {/* Death is a chart-critical fact — right beside the name, before
+              anything else on the row, the way the O3 banner tags it. */}
+          {patient.isDeceased && (
+            <span className="omrs-chip omrs-chip--deceased">
+              Deceased{patient.deceasedDate ? ` · ${formatDobOmrs(patient.deceasedDate)}` : ''}
+            </span>
+          )}
           {genderSymbol && (
             <span className={`omrs-gender ${genderClass}`}>
               <span className="omrs-gender-symbol" aria-hidden>{genderSymbol}</span>
@@ -221,6 +233,14 @@ export default function ChartHeader({
                 {canRegisterPatients && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEdit(); }}>
                     <DuotoneIcon name="edit" size={15} /> Edit details
+                  </button>
+                )}
+                {/* One slot, two verbs: the O3 actions menu offers "Mark
+                    patient deceased" on a living record and "Mark patient
+                    alive" on a deceased one — never both. */}
+                {onToggleDeceased && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onToggleDeceased(); }}>
+                    <DuotoneIcon name="heart" size={15} /> {patient.isDeceased ? 'Mark patient alive' : 'Mark patient deceased'}
                   </button>
                 )}
               </div>

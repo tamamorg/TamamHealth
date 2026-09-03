@@ -6318,13 +6318,16 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   outline: none;
 }
 
+/* Neutral counts are bare numbers — no grey plate; only the semantic tints
+   below carry a background. The 23px grid keeps the column aligned with the
+   tinted pills either side of it. */
 .ehr-side-card > button b {
   min-width: 23px;
   height: 23px;
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--color-slate-100);
+  background: transparent;
   color: var(--ehr-text);
   font-size: 12px;
 }
@@ -6407,8 +6410,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   line-height: 1.2;
 }
 
-/* Count badges use the design system's semantic tints: neutral, warning
-   (amber) and danger (red). */
+/* Count badges: neutral counts are bare numbers (no grey plate); only the
+   warning (amber) and danger (red) semantic tints carry a background. */
 .ehr-outstanding-chips button b {
   flex: 0 0 auto;
   min-width: 23px;
@@ -6417,7 +6420,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--color-slate-75);
+  background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -16436,6 +16439,8 @@ span:has(> svg:only-child) {
   padding: 12px;
 }
 
+/* Neutral counts are bare numbers — only the red/green tones below carry a
+   background, matching the side-card and outstanding-chip count badges. */
 .ehr-handoff-badge {
   min-width: 23px;
   height: 23px;
@@ -16443,7 +16448,7 @@ span:has(> svg:only-child) {
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--color-slate-75);
+  background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
@@ -22819,10 +22824,10 @@ table.patient-data-table.patient-data-table {
    The appointments board is the reference. It escapes the app-wide table
    theming only because it is a div grid rather than a <table>, which is why
    every other module read as a different product. This block reproduces its
-   metrics (16px gutters, 8px between rows, 64px rows, 14px radius, hairline
-   border that turns blue on hover) for a plain `.data-table`, so a page opts
-   in by putting `ehr-list-scroll` on its scroll container — no per-cell
-   classes, no markup rewrite.
+   FLAT metrics (`.ehr-appointment-row`: transparent rows meeting on one
+   hairline rule, 14px vertical rhythm, ink-tint hover, no card edges) for a
+   plain `.data-table`, so a page opts in by putting `ehr-list-scroll` on its
+   scroll container — no per-cell classes, no markup rewrite.
 
    `!important` and the `.tamam-ehr-app` prefix are both required: the role
    theme sets `border-collapse: collapse`, a tinted sentence-case header, and
@@ -22841,8 +22846,8 @@ table.patient-data-table.patient-data-table {
 .tamam-ehr-app .ehr-list-scroll .data-table,
 .ehr-list-scroll .data-table {
   border-collapse: separate !important;
-  /* The 8px gutter between rows the appointments board has. */
-  border-spacing: 0 8px;
+  /* Flat rev: rows meet on the hairline, no gutter between them. */
+  border-spacing: 0;
 }
 
 /* ── Column header: quiet sticky band, no tint ── */
@@ -22893,49 +22898,51 @@ table.patient-data-table.patient-data-table {
   padding-inline-end: 22px !important;
 }
 
-/* ── Rows: bordered cards, not ruled lines ── */
+/* ── Rows: ruled lines, not cards — `.ehr-appointment-row` flat rev, at the
+   patient registry's exact metrics (64px rows, 9px vertical inset). ── */
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td,
 .ehr-list-scroll .data-table tbody td {
   padding: 9px 16px;
-  border-top: 1px solid var(--ehr-border) !important;
-  border-bottom: 1px solid var(--ehr-border) !important;
-  background: var(--bg-card-solid, #FFFFFF);
+  border: 0 !important;
+  border-bottom: 1px solid var(--ehr-row-rule, var(--border-light)) !important;
+  background: transparent;
   color: var(--text-primary);
   font-size: 13px;
   vertical-align: middle;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: background 120ms ease;
 }
 
 .ehr-list-scroll .data-table tbody tr {
   height: 64px;
 }
 
+/* The hover tint takes the registry row's 14px rounded ends. Radius alone is
+   invisible on a transparent cell, so this only shows as the tint's shape. */
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td:first-child,
 .ehr-list-scroll .data-table tbody td:first-child {
-  border-inline-start: 1px solid var(--ehr-border) !important;
-  border-radius: 14px 0 0 14px;
+  border-start-start-radius: 14px;
+  border-end-start-radius: 14px;
 }
 
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td:last-child,
 .ehr-list-scroll .data-table tbody td:last-child {
-  border-inline-end: 1px solid var(--ehr-border) !important;
-  border-radius: 0 14px 14px 0;
+  border-start-end-radius: 14px;
+  border-end-end-radius: 14px;
 }
 
-/* The whole row lights up, not just the cell under the cursor — the row is
-   the card. `tr:hover` alone cannot paint a border because the border lives
-   on the cells. */
+/* The whole row lights up, not just the cell under the cursor — the tint has
+   to sit on the cells because a `background` on the <tr> never shows through
+   cells that paint their own. */
 .tamam-ehr-app .ehr-list-scroll .data-table tbody tr:hover td,
 .ehr-list-scroll .data-table tbody tr:hover td,
 .ehr-list-scroll .data-table tbody tr:focus-visible td {
-  border-color: var(--ehr-blue) !important;
-  background: var(--bg-card-solid);
+  background: color-mix(in srgb, var(--ehr-text, #113055) 4%, transparent);
 }
 
-/* `.data-table tbody tr:last-child td { border-bottom: none }` would clip the
-   final card's bottom edge. */
+/* The list ends where its content does, same as the appointments board. */
+.tamam-ehr-app .ehr-list-scroll .data-table tbody tr:last-child td,
 .ehr-list-scroll .data-table tbody tr:last-child td {
-  border-bottom: 1px solid var(--ehr-border) !important;
+  border-bottom: 0 !important;
 }
 
 /* Flagged rows (an overdue review, an expiring unit). The tint has to sit on

@@ -42,6 +42,21 @@ const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
   communicated_to_patient: 'Communicated',
 };
 
+/* The registry/appointments pill vocabulary mapped onto the bench ladder:
+   waiting stages read calm blue, active stages read active, a result awaiting
+   review takes the attention amber, closed stages go green, rejection red. */
+const STAGE_PILL_CLASS: Record<LabOrderStatus, string> = {
+  ordered: 'status-scheduled',
+  specimen_collected: 'status-checked-in',
+  received_at_lab: 'status-checked-in',
+  rejected_needs_recollection: 'status-cancelled',
+  in_process: 'status-in-progress',
+  resulted: 'status-arrived',
+  reviewed_by_clinician: 'status-completed',
+  acted_upon: 'status-completed',
+  communicated_to_patient: 'status-completed',
+};
+
 // Derive the granular stage for an order, defaulting older orders from status.
 function effOrderStatus(o: { orderStatus?: LabOrderStatus; status: 'pending' | 'in_progress' | 'completed' }): LabOrderStatus {
   if (o.orderStatus) return o.orderStatus;
@@ -455,9 +470,9 @@ export default function LabPage() {
                       )}
                     </td>
                     <td>
-                      <Badge tone={order.status === 'pending' ? 'warning' : order.status === 'in_progress' ? 'info' : 'neutral'}>
+                      <span className={`appointment-status-pill ${STAGE_PILL_CLASS[effOrderStatus(order)]}`}>
                         {ORDER_STAGE_LABEL[effOrderStatus(order)]}
-                      </Badge>
+                      </span>
                     </td>
                     <td>
                       {order.result ? (
