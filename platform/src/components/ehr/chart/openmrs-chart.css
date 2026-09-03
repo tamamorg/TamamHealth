@@ -66,17 +66,6 @@
 }
 .omrs-rail-card:last-child { margin-bottom: 0; }
 
-.omrs-rail-cardhead {
-  margin: 0;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ehr-muted, #5D728B);
-  border-bottom: 1px solid var(--ehr-border, var(--border-light));
-}
-
 .omrs-rail-cardbody {
   display: flex;
   flex-direction: column;
@@ -1181,17 +1170,17 @@
    block of text with hairlines through it. The vertical padding is what buys
    the scan; the horizontal keeps the first column off the card edge and the
    last column's control off the border. */
+/* Every cell top-aligns. These are scan-down data tables, and the row is only
+   as tall as its TALLEST cell: centring the short cells against a wrapped
+   neighbour dropped them half a row below the line they belong to — a date
+   floating beside the third line of a reason. The old rule top-aligned only
+   the cell that stacked a sub-line, which fixed that cell and left every
+   plain one in the same row still centred. Top for all is the alignment a
+   table of records wants. */
 .omrs-root .omrs-table tbody td {
   padding: 13px 0;
   color: var(--ehr-text, #113055);
   border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
-  vertical-align: middle;
-}
-
-/* Cells that stack a second line (a sub-label under a name) keep their content
-   top-aligned — centring a two-line cell against single-line neighbours drops
-   its first line below theirs. */
-.omrs-root .omrs-table tbody td:has(div) {
   vertical-align: top;
 }
 
@@ -2384,6 +2373,52 @@
   color: var(--ehr-muted, #5D728B);
 }
 .omrs-root .omrs-table .omrs-cell-actions { text-align: right; white-space: nowrap; }
+
+/* Long free text in a table cell — a referral reason, a note — is trimmed to
+   two lines with an ellipsis rather than growing the row to four. The full
+   text stays reachable: every use carries it in a `title`, and the record
+   itself is one click away. Without this a single verbose entry set the
+   height of a row whose other six columns hold a date and a badge. */
+.omrs-root .omrs-table .omrs-cell-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Referral rows: seven columns, and left to `auto` the date and the badges
+   took a full seventh each while the reason — the only column with real prose
+   — wrapped to four lines. Widths follow what each column actually holds. */
+.omrs-root .omrs-table--referrals { table-layout: fixed; }
+.omrs-root .omrs-table--referrals th:nth-child(1),
+.omrs-root .omrs-table--referrals td:nth-child(1) { width: 11%; }
+.omrs-root .omrs-table--referrals th:nth-child(2),
+.omrs-root .omrs-table--referrals td:nth-child(2) { width: 19%; }
+.omrs-root .omrs-table--referrals th:nth-child(3),
+.omrs-root .omrs-table--referrals td:nth-child(3) { width: 13%; }
+.omrs-root .omrs-table--referrals th:nth-child(4),
+.omrs-root .omrs-table--referrals td:nth-child(4) { width: 26%; }
+.omrs-root .omrs-table--referrals th:nth-child(5),
+.omrs-root .omrs-table--referrals td:nth-child(5) { width: 15%; }
+.omrs-root .omrs-table--referrals th:nth-child(6),
+.omrs-root .omrs-table--referrals td:nth-child(6) { width: 8%; }
+.omrs-root .omrs-table--referrals th:nth-child(7),
+.omrs-root .omrs-table--referrals td:nth-child(7) { width: 8%; }
+
+/* One-line columns that must not wrap mid-value: a date, a department, a
+   provider name. They ellipsize instead of stacking. */
+.omrs-root .omrs-table--referrals td:nth-child(1),
+.omrs-root .omrs-table--referrals td:nth-child(3),
+.omrs-root .omrs-table--referrals td:nth-child(5) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The badges sit hard against their column's edge, on the row's first line. */
+.omrs-root .omrs-table--referrals td:nth-child(6),
+.omrs-root .omrs-table--referrals td:nth-child(7) { white-space: nowrap; }
 
 /* A retired row is history: it stays legible (a resolved allergy is still
    clinical information) but recedes behind the active ones. Opacity on the

@@ -76,7 +76,7 @@ import {
 } from '@/lib/data/south-sudan-reference';
 import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
-import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
+import { patientFullName, patientInitials, patientAgeLabel, abbreviateProviderName } from '@/lib/patient-utils';
 import { usePatientAppointments } from '@/lib/hooks/useAppointments';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -906,39 +906,43 @@ export default function PatientDetailPage() {
   // `group` is the heading of the rail card a section sits under: the clinical
   // record a clinician works through, then the administrative tail that
   // describes the patient rather than their care.
-  const OMRS_RAIL_DEFS: { id: string; label: string; icon: typeof Heart; group: string; clinicalOnly?: boolean }[] = [
-    { id: 'overview', label: 'Patient summary', icon: Heart, group: 'Clinical' },
-    { id: 'vitals', label: 'Vitals & Biometrics', icon: Activity, group: 'Clinical' },
-    { id: 'prescriptions', label: 'Medications', icon: Pill, group: 'Clinical' },
-    { id: 'orders', label: 'Orders', icon: ClipboardList, group: 'Clinical' },
-    { id: 'labs', label: 'Results', icon: FlaskConical, group: 'Clinical' },
+  /* One flat rail, in reading order: the clinical sections first, then the
+     administrative tail. The list used to be split into "Clinical" and
+     "Record" cards; the order still carries that sense without a heading
+     breaking the list in half. */
+  const OMRS_RAIL_DEFS: { id: string; label: string; icon: typeof Heart; clinicalOnly?: boolean }[] = [
+    { id: 'overview', label: 'Patient summary', icon: Heart },
+    { id: 'vitals', label: 'Vitals & Biometrics', icon: Activity },
+    { id: 'prescriptions', label: 'Medications', icon: Pill },
+    { id: 'orders', label: 'Orders', icon: ClipboardList },
+    { id: 'labs', label: 'Results', icon: FlaskConical },
     // The timeline IS the visit history — encounters, with the labs, drugs and
     // referrals that hung off them.
-    { id: 'history', label: 'Visits', icon: History, group: 'Clinical' },
+    { id: 'history', label: 'Visits', icon: History },
     // The encounter notes themselves, next to the visits they document.
-    { id: 'notes', label: 'Notes', icon: Stethoscope, group: 'Clinical' },
+    { id: 'notes', label: 'Notes', icon: Stethoscope },
     // A shift-handoff summary, not a documentation flow of its own — sits
     // beside Notes since it's read the same way. Previously unreachable (no
     // rail slot); cheaper to surface it here than to delete a working view.
-    { id: 'sbar', label: 'SBAR handoff', icon: MessageSquare, group: 'Clinical' },
-    { id: 'allergies', label: 'Allergies', icon: ShieldAlert, group: 'Clinical' },
-    { id: 'problems', label: 'Conditions', icon: AlertTriangle, group: 'Clinical' },
-    { id: 'immunizations', label: 'Immunizations', icon: Syringe, group: 'Clinical' },
-    { id: 'procedures', label: 'Procedures', icon: Bandage, group: 'Clinical' },
-    { id: 'programs', label: 'Programs', icon: Layers, group: 'Clinical' },
+    { id: 'sbar', label: 'SBAR handoff', icon: MessageSquare },
+    { id: 'allergies', label: 'Allergies', icon: ShieldAlert },
+    { id: 'problems', label: 'Conditions', icon: AlertTriangle },
+    { id: 'immunizations', label: 'Immunizations', icon: Syringe },
+    { id: 'procedures', label: 'Procedures', icon: Bandage },
+    { id: 'programs', label: 'Programs', icon: Layers },
     // Screenings/reminders/assessments — the forward-looking follow-through
-    // half of the chart, closing out the Clinical group.
-    { id: 'careChecklist', label: 'Care plan', icon: ClipboardList, group: 'Clinical' },
-    { id: 'documents', label: 'Documents', icon: FileText, group: 'Record' },
-    { id: 'appointments', label: 'Appointments', icon: Calendar, group: 'Record' },
+    // half of the chart, closing out the clinical run.
+    { id: 'careChecklist', label: 'Care plan', icon: ClipboardList },
+    { id: 'documents', label: 'Documents', icon: FileText },
+    { id: 'appointments', label: 'Appointments', icon: Calendar },
     // Internal transfers and external referrals — who else is involved in
     // this patient's care, and the record of handing them off.
-    { id: 'referrals', label: 'Care coordination', icon: ArrowRightLeft, group: 'Record' },
+    { id: 'referrals', label: 'Care coordination', icon: ArrowRightLeft },
     // Who the patient is, as registered — contact details, address, next of
     // kin, payor. Sits with the administrative tail rather than the clinical
     // sections above it, and only appears for roles whose `tabs` include it.
-    { id: 'demographics', label: 'Demographics', icon: UserIcon, group: 'Record' },
-    { id: 'billing', label: 'Billing history', icon: Wallet, group: 'Record' },
+    { id: 'demographics', label: 'Demographics', icon: UserIcon },
+    { id: 'billing', label: 'Billing history', icon: Wallet },
   ];
   // Role restrictions still apply: a lab technician's rail is the two sections
   // LAB_TAB_IDS allows, not the full list.
@@ -2096,10 +2100,7 @@ export default function PatientDetailPage() {
                     onAction={canManageReferrals ? () => setShowReferModal(true) : undefined}
                   />
                 ) : (
-                  <table className="omrs-table omrs-table--fixed">
-                    <colgroup>
-                      <col /><col /><col /><col /><col /><col /><col />
-                    </colgroup>
+                  <table className="omrs-table omrs-table--referrals">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -2133,15 +2134,22 @@ export default function PatientDetailPage() {
                             <td className="omrs-cell-note">
                               {canViewClinical ? (
                                 <>
-                                  {ref.reason}
-                                  {ref.notes && <div className="omrs-cell-sub">Notes: {ref.notes}</div>}
+                                  {/* Two lines then an ellipsis, with the full
+                                      text on hover — one verbose referral used
+                                      to set the height of the whole row. */}
+                                  <div className="omrs-cell-clamp" title={ref.reason}>{ref.reason}</div>
+                                  {ref.notes && <div className="omrs-cell-sub omrs-cell-clamp" title={ref.notes}>Notes: {ref.notes}</div>}
                                   {extras && <div className="omrs-cell-sub">{extras}</div>}
                                 </>
                               ) : (
                                 <span className="italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</span>
                               )}
                             </td>
-                            <td>Dr. {ref.referringDoctor}</td>
+                            {/* `referringDoctor` is stored WITH its own title
+                                ("Dr. Achol Mayen Deng"), so prefixing one here
+                                printed "Dr. Dr. …". Shortened to first + last
+                                like every other provider cell. */}
+                            <td title={ref.referringDoctor}>{abbreviateProviderName(ref.referringDoctor)}</td>
                             <td>
                               <span className={`badge urgency-${ref.urgency} text-[10px]`}>
                                 {ref.urgency === 'emergency' && <AlertTriangle className="w-3 h-3" />}

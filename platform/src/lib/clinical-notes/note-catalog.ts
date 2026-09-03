@@ -220,7 +220,10 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     label: 'SOAP',
     description: 'Standard subjective/objective/assessment/plan encounter note.',
     sections: CORE_SOAP,
-    optionalSections: COMMON_OPTIONAL,
+    // Absorbs the retired Consultation type: a specialist answering a referral
+    // adds "Reason for Consultation" and "Recommendations" to a SOAP note
+    // instead of switching to a near-identical second type.
+    optionalSections: [...COMMON_OPTIONAL, 'reason_for_consultation', 'recommendations'],
   },
   hp: {
     id: 'hp',
@@ -233,6 +236,10 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     ],
     optionalSections: ['subjective', 'objective', 'mental_functional', 'patient_education', 'follow_up'],
   },
+  // Retired from the picker (see NOTE_TYPE_ORDER): it was SOAP with a
+  // different opening and closing section, and nothing ever auto-created it.
+  // The definition stays so every existing consultation note keeps rendering
+  // — and re-signing, amending — exactly as written.
   consultation: {
     id: 'consultation',
     label: 'Consultation',
@@ -385,9 +392,11 @@ const SECTION_RANK: Readonly<Record<NoteSectionId, number>> = {
   disposition: 33,
 };
 
-/** Stable display order for the note type picker. */
+/** Stable display order for the note type picker. 'consultation' is absent
+ *  deliberately — merged into SOAP (its two distinctive sections are SOAP
+ *  optionals now); existing consultation docs still resolve via NOTE_TYPES. */
 export const NOTE_TYPE_ORDER: readonly NoteTypeId[] = [
-  'soap', 'hp', 'consultation',
+  'soap', 'hp',
   'procedure', 'discharge_summary', 'nurse_visit', 'ob_evaluation', 'phone',
   'memo_to_record', 'office_form', 'amendment',
 ];

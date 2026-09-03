@@ -787,12 +787,12 @@ export default function ClinicalNoteEditor({
         <div className="cn-main">
       {/* Header */}
       <div className="cn-header">
-        {/* Patient identity lives in the sidebar; the header names the
-            document and its context, per the design. */}
+        {/* Patient identity lives in the sidebar — name included, so the
+            context line names only the document: its type and the facility. */}
         <div className="cn-header-id">
           <h1 className="cn-header-title">Encounter Note</h1>
           <p className="cn-header-context">
-            {[typeDef.label, note.patientName, note.hospitalName].filter(Boolean).join(' · ')}
+            {[typeDef.label, note.hospitalName].filter(Boolean).join(' · ')}
           </p>
         </div>
         <div className="cn-header-actions">
@@ -805,6 +805,13 @@ export default function ClinicalNoteEditor({
             disabled={locked}
             aria-label="Note type"
           >
+            {/* A retired type already on this note (e.g. an existing
+                Consultation doc) stays selectable as itself — a controlled
+                select whose value has no option silently displays the wrong
+                type. */}
+            {!NOTE_TYPE_ORDER.includes(note.noteType) && (
+              <option value={note.noteType}>{typeDef.label}</option>
+            )}
             {NOTE_TYPE_ORDER.map(id => (
               <option key={id} value={id}>{NOTE_TYPES[id].label}</option>
             ))}

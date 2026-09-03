@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, Fragment } from 'react';
 import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
-import PatientName from '@/components/PatientName';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';

@@ -37,11 +37,6 @@ export interface OmrsRailItem {
   id: string;
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
-  /**
-   * Heading of the card this section sits under. Items with no group fall into
-   * the first card, so a caller that passes a flat list still gets a rail.
-   */
-  group?: string;
 }
 
 interface DrawerPanelDef {
@@ -165,22 +160,6 @@ export default function OpenmrsChartShell({
   // to map onto OpenMRS's rail, which is our history, not their task. The
   // ordering still puts the mapped sections first.
   const allRailItems = [...railItems, ...moreItems];
-
-  // One card per heading, in first-seen order. Ungrouped items collect under an
-  // unlabelled card, so a caller that passes a flat list still renders a rail.
-  const railGroups = useMemo(() => {
-    const byHeading = new Map<string, OmrsRailItem[]>();
-    for (const item of allRailItems) {
-      const heading = item.group ?? '';
-      const bucket = byHeading.get(heading);
-      if (bucket) bucket.push(item);
-      else byHeading.set(heading, [item]);
-    }
-    return [...byHeading.entries()];
-    // allRailItems is rebuilt each render from props; keying on the props keeps
-    // this from regrouping on every unrelated state change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [railItems, moreItems]);
 
   // The editor autosaves as it goes, so "the note drawer went away" is the
   // moment the Notes tab under it may be stale — reuse onNoteSaved as that
@@ -347,30 +326,31 @@ export default function OpenmrsChartShell({
           sticky and only as tall as its own list. */}
       <div className="omrs-rail-col no-print">
       <nav className="omrs-left-rail" aria-label="Patient chart sections">
-        {railGroups.map(([heading, items]) => (
-          <div className="omrs-rail-card" key={heading || 'sections'}>
-            {heading && <p className="omrs-rail-cardhead">{heading}</p>}
-            <div className="omrs-rail-cardbody">
-              {items.map(item => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={isActive ? 'omrs-rail-item is-active' : 'omrs-rail-item'}
-                    onClick={() => setActiveTab(item.id)}
-                    onMouseDown={e => e.preventDefault()}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={item.label}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span className="omrs-rail-label">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+        {/* One flat list of sections. The rail used to split into "Clinical"
+            and "Record" cards, but the headings named where a tab came from
+            rather than anything a clinician chooses by, and the break in the
+            middle made the second half read as secondary. */}
+        <div className="omrs-rail-card">
+          <div className="omrs-rail-cardbody">
+            {allRailItems.map(item => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={isActive ? 'omrs-rail-item is-active' : 'omrs-rail-item'}
+                  onClick={() => setActiveTab(item.id)}
+                  onMouseDown={e => e.preventDefault()}
+                  aria-current={isActive ? 'page' : undefined}
+                  title={item.label}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span className="omrs-rail-label">{item.label}</span>
+                </button>
+              );
+            })}
           </div>
-        ))}
+        </div>
       </nav>
       </div>
 
