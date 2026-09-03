@@ -16,8 +16,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FileText, Save, Check, Copy, Send, ClipboardList, DollarSign,
-  Plus, AlertTriangle, Minus, Syringe, Activity,
+  Save, Check, Copy, Send, ClipboardList, DollarSign,
+  Plus, AlertTriangle, Minus,
 } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -613,33 +613,24 @@ export default function ClinicalNoteEditor({
               ? <img className="cn-patient-photo" src={patient.photoUrl} alt="" />
               : <span className="cn-patient-photo" aria-hidden>{nameInitials(note.patientName)}</span>}
             <div style={{ minWidth: 0 }}>
-              <h2 className="cn-ident-name">{note.patientName}</h2>
+              {/* The name is the way into the chart. It goes through
+                  navigateAway, not a plain link, so an unsaved section still
+                  gets its "you have unsaved changes" confirm first. */}
+              <h2 className="cn-ident-name">
+                <button
+                  type="button"
+                  className="cn-ident-name-link"
+                  onClick={() => navigateAway(`/patients/${note.patientId}`)}
+                  title={`Open ${note.patientName}'s chart`}
+                >
+                  {note.patientName}
+                </button>
+              </h2>
               <p className="cn-ident-line">
                 {[note.mrn, patient?.gender?.[0]?.toUpperCase(), dobWithAge(note.patientDob), patient?.phone ? formatPhoneDisplay(patient.phone) : null]
                   .filter(Boolean).join(' · ')}
               </p>
-              <div className="cn-ident-pills">
-                {(patient?.allergies?.length || 0) > 0 && (
-                  <span className="cn-pill cn-pill-danger">Allergies · {patient!.allergies!.length}</span>
-                )}
-                {locked
-                  ? <span className="cn-pill cn-pill-success">Signed</span>
-                  : <span className="cn-pill cn-pill-info">Draft</span>}
-              </div>
             </div>
-          </div>
-
-          {/* Chart shortcuts as icon tiles */}
-          <div className="cn-quick-links">
-            <button type="button" className="cn-quick-link" onClick={() => navigateAway(`/patients/${note.patientId}`)}>
-              <FileText size={16} aria-hidden /> Facesheet
-            </button>
-            <button type="button" className="cn-quick-link" onClick={() => navigateAway(`/patients/${note.patientId}?tab=immunizations`)}>
-              <Syringe size={16} aria-hidden /> Immunize
-            </button>
-            <button type="button" className="cn-quick-link" onClick={() => navigateAway(`/patients/${note.patientId}?tab=vitals`)}>
-              <Activity size={16} aria-hidden /> Flowsheets
-            </button>
           </div>
 
           {/* The patient's other notes, newest first */}

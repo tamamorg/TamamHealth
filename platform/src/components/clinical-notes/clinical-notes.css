@@ -1616,19 +1616,51 @@ select.cn-select {
   box-shadow: 0 10px 26px rgba(0, 29, 63, 0.14);
 }
 
+/* Reason For Rx sits beside Service Location, which is a .cn-select — so it
+   wears the same control shell (34px, subtle fill, control radius) instead of
+   reading as two loose runs of text. Value on the left, action on the right. */
 .cn-rx-reason {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 34px;
+  gap: 8px;
+  height: 34px;
+  padding: 0 5px 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background-color: var(--overlay-subtle);
 }
 .cn-rx-reason-chip {
-  font-size: 12.5px;
-  font-weight: 600;
-  background: var(--accent-light);
-  border-radius: 999px;
-  padding: 3px 10px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ehr-text, var(--text-primary));
 }
+/* Placeholder voice: the same muted weight a select shows before a choice. */
+.cn-rx-reason-empty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+/* Pushed to the trailing edge and given a button's shape, so the action is
+   distinguishable from the value it sits next to. */
+.cn-rx-reason-action {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--cn-accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cn-rx-reason-action:hover { background: var(--cn-panel); }
 
 .cn-rx-instructions { min-height: 64px; }
 
@@ -1944,54 +1976,26 @@ select.cn-select {
   letter-spacing: 0;
   color: var(--cn-ink);
 }
-.cn-ident-line { margin: 2px 0 0; font-size: 12px; color: var(--cn-muted); }
-.cn-ident-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-
-/* Chips carry the chart's chip metrics (.omrs-chip); the allergy pill wears
-   the allergy banner's alert colours (.omrs-allergy-banner--alert). */
-.cn-pill {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 9px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  line-height: 1;
+/* The name is the link into the chart — a button that inherits the heading's
+   type entirely, so it reads as the name and not as a control. */
+.cn-ident-name-link {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  overflow: hidden;
   white-space: nowrap;
-}
-.cn-pill-danger { background: var(--color-danger-bg); border-color: var(--color-danger-border); color: var(--color-danger-text); }
-.cn-pill-info { background: var(--cn-tint); border-color: var(--cn-tint-border); color: var(--cn-accent-deep); }
-.cn-pill-success { background: var(--ehr-success-bg, #E2F2EC); border-color: transparent; color: var(--ehr-success-text, #0A6E4A); }
-
-/* ── Quick links: Facesheet / Immunize / Flowsheets as three chart cards —
-   the .omrs-rail-card treatment (white panel, hairline, 10px corners) with a
-   muted-caps label like the chart's card heads, and the chart's linkable-chip
-   hover (border to --tb-blue-900). ── */
-.cn-quick-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.cn-quick-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 4px 10px;
-  background: var(--cn-panel);
-  border: 1px solid var(--cn-line);
-  border-radius: 10px;
-  color: var(--cn-muted);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
-.cn-quick-link:hover { background: var(--cn-hover); border-color: var(--tb-blue-900, #113055); color: var(--cn-ink); }
-/* The glyphs keep the duotone set's brand-blue, exactly as the chart's header
-   action buttons keep theirs. */
-.cn-quick-link svg { width: 18px; height: 18px; color: var(--cn-accent); }
+.cn-ident-name-link:hover { color: var(--cn-accent); text-decoration: underline; }
+
+.cn-ident-line { margin: 2px 0 0; font-size: 12px; color: var(--cn-muted); }
 
 /* ── Note sections: the chart's left-rail pills (.omrs-rail-cardbody /
    .omrs-rail-item) — 6px-radius rows on a 6px inset, accent-tint hover, the

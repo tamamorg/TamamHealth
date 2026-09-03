@@ -196,15 +196,17 @@ export default function DrugInfoSection({
           <span>Reason For Rx</span>
           <div className="cn-rx-reason">
             {draft.reason
-              ? <span className="cn-rx-reason-chip">{draft.reason}</span>
-              : <span className="cn-meds-row-meta">None recorded</span>}
+              ? <span className="cn-rx-reason-chip" title={draft.reason}>{draft.reason}</span>
+              : <span className="cn-rx-reason-empty">None recorded</span>}
+            {/* "Change" once a reason is cited — "Add Reason" next to a reason
+                that is already there reads as a second one. */}
             <button
               type="button"
-              className="cn-card-head-action"
+              className="cn-rx-reason-action"
               onClick={onToggleReasons}
               aria-expanded={showReasons}
             >
-              Add Reason
+              {draft.reason ? 'Change' : 'Add Reason'}
             </button>
           </div>
           {showReasons && (
