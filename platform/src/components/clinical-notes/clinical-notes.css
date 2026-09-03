@@ -1914,6 +1914,11 @@ select.cn-select {
 /* ── Body: white rail beside the banded canvas ── */
 .cn-body { grid-template-columns: minmax(240px, 292px) minmax(0, 1fr); }
 
+/* The patient-chart drawer already has the patient header and chart context.
+   Its note editor therefore uses a single content column instead of repeating
+   the standalone notes workspace's patient rail. */
+.cn-body.cn-body--without-sidebar { grid-template-columns: minmax(0, 1fr); }
+
 .cn-sidebar {
   display: flex;
   flex-direction: column;

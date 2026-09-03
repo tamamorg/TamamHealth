@@ -138,9 +138,9 @@ export default function TamamChartShell({
       if (panelRequest.startsWith('clinical-note:')) {
         setDrawerNoteId(panelRequest.slice('clinical-note:'.length));
         setOpenPanel('clinical-note');
-        // The editor is a full documentation workspace with its own section
-        // canvas — it opens wide by default rather than in the 420px drawer.
-        setDrawerMaximized(true);
+        // The editor opens in its wide workspace. The clinician can still use
+        // the header control to expand it to the full viewport.
+        setDrawerMaximized(false);
       } else {
         setOpenPanel(panelRequest);
         setDrawerMaximized(false);
@@ -269,6 +269,7 @@ export default function TamamChartShell({
           <div className="tamam-drawer-note-body">
             <ClinicalNoteEditor
               noteId={drawerNoteId}
+              showContextSidebar={false}
               // Without this the drawer's "Assigned to" picker has nobody to
               // offer — the standalone /notes route passes the same list.
               assignableUsers={assignableUsers}
@@ -388,7 +389,7 @@ export default function TamamChartShell({
           <div
             ref={drawerRef}
             tabIndex={-1}
-            className={`tamam-drawer no-print ${drawerMaximized ? 'is-maximized' : ''}`}
+            className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-label={activePanel.title}

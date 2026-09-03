@@ -88,11 +88,17 @@ interface ClinicalNoteEditorProps {
   currentUser: { _id: string; name?: string; username?: string; role?: string; orgId?: string } | null;
   /** Providers offered in "Assigned To". */
   assignableUsers?: Array<{ _id: string; name: string }>;
+  /**
+   * Patient context belongs in the sidebar on the standalone notes route. The
+   * patient chart already supplies that context, so its embedded editor can
+   * hide the duplicate rail and give the note the full workspace width.
+   */
+  showContextSidebar?: boolean;
   onClose?: () => void;
 }
 
 export default function ClinicalNoteEditor({
-  noteId, currentUser, assignableUsers = [], onClose,
+  noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose,
 }: ClinicalNoteEditorProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -603,8 +609,8 @@ export default function ClinicalNoteEditor({
     <div className="cn-editor">
       {/* The left rail runs the full height of the screen; the header and
           toolbar belong to the note column, not the page. */}
-      <div className="cn-body">
-        <aside className="cn-sidebar">
+      <div className={`cn-body${showContextSidebar ? '' : ' cn-body--without-sidebar'}`}>
+        {showContextSidebar && <aside className="cn-sidebar">
           {/* Patient identity — a bare block above the cards, per the design:
               photo plate, name, one id line, then the risk/status pills. */}
           <div className="cn-ident">
@@ -782,17 +788,18 @@ export default function ClinicalNoteEditor({
                 ))}
             </div>
           </div>
-        </aside>
+        </aside>}
 
         <div className="cn-main">
       {/* Header */}
       <div className="cn-header">
-        {/* Patient identity lives in the sidebar — name included, so the
-            context line names only the document: its type and the facility. */}
+        {/* When the editor is embedded in a patient chart the duplicate
+            sidebar is hidden, so keep the patient name in this compact context
+            line. The standalone route continues to show it in the sidebar. */}
         <div className="cn-header-id">
           <h1 className="cn-header-title">Encounter Note</h1>
           <p className="cn-header-context">
-            {[typeDef.label, note.hospitalName].filter(Boolean).join(' · ')}
+            {[!showContextSidebar ? note.patientName : null, typeDef.label, note.hospitalName].filter(Boolean).join(' · ')}
           </p>
         </div>
         <div className="cn-header-actions">

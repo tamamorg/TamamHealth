@@ -1627,9 +1627,16 @@
   transition: width 0.2s ease;
 }
 
-/* Maximized state (drawer header's expand toggle): near-full-width workspace. */
-.tamam-drawer.is-maximized {
+/* Documentation needs more canvas than the compact action panels, but still
+   leaves chart context visible until the clinician explicitly expands it. */
+.tamam-drawer.is-note-editor {
   width: min(960px, 92vw);
+}
+
+/* Maximized state (drawer header's expand toggle): a true full-page workspace,
+   so no strip of the patient chart remains beside the note. */
+.tamam-drawer.is-maximized {
+  width: 100vw;
 }
 
 .tamam-drawer-header {
@@ -1771,7 +1778,8 @@
     justify-content: center;
     padding: 9px 0;
   }
-  .tamam-drawer {
+  .tamam-drawer,
+  .tamam-drawer.is-note-editor {
     width: 100vw;
   }
 }
