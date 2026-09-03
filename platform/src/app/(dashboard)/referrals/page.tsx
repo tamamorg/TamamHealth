@@ -581,13 +581,19 @@ export default function ReferralsPage() {
               // The referral axes fold into the field beside them; free-text
               // match and structured narrowing are the same job.
               filters: {
-                activeCount: referralFilterCount(colFilters),
-                onClear: clearColFilters,
+                // The direction switch lives in this panel now; the outgoing
+                // view — the non-default one — reads as one applied filter,
+                // and Clear all brings the list back to incoming.
+                activeCount: referralFilterCount(colFilters) + (activeTab === 'outgoing' ? 1 : 0),
+                onClear: () => { clearColFilters(); setActiveTab('incoming'); },
                 label: t('patients.filtersTitle'),
                 children: (
                   <ReferralFilterFields
                     filters={colFilters}
                     setFilter={setColFilter}
+                    direction={activeTab}
+                    onDirectionChange={setActiveTab}
+                    newIncomingCount={newIncomingCount}
                     urgencyOptions={urgencyOptions}
                     statusOptions={[
                       { v: 'sent', l: getStatusLabel('sent') },
@@ -602,17 +608,9 @@ export default function ReferralsPage() {
             }}
             actions={
               <>
-                <Select
-                  value={activeTab}
-                  onChange={e => setActiveTab(e.target.value as 'incoming' | 'outgoing')}
-                  aria-label="Filter referrals by direction"
-                  /* 8px radius, not a 999px pill — matches the square icon
-                     buttons beside it and the appointments toolbar. */
-                  style={{ width: 'auto', height: 38, padding: '0 14px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 700, flexShrink: 0 }}
-                >
-                  <option value="incoming">{`Incoming referrals${newIncomingCount > 0 ? ` (${newIncomingCount} new)` : ''}`}</option>
-                  <option value="outgoing">Outgoing referrals</option>
-                </Select>
+                {/* The incoming/outgoing select moved into the filter panel
+                    (ReferralFilterFields `direction`), where it counts as one
+                    applied filter like every other axis. */}
                 {canManageReferrals && (
                   <button type="button" className="btn btn-primary" style={{ gap: 8, flexShrink: 0 }} onClick={() => setShowNewReferral(true)}>
                     <Plus size={16} /> {t('referrals.newReferral')}
@@ -641,15 +639,14 @@ export default function ReferralsPage() {
             <table className="data-table referral-table" style={{ minWidth: 1040 }}>
               {/* Patient absorbs the old Hospital ID column (the ID now sits
                   under the name), so it takes that width back. */}
-              {/* Five equal columns so the gutters between headers read
-                  evenly; Date is right-aligned so it closes the row instead
-                  of floating mid-column. */}
+              {/* Four equal columns; the referral date rides under the
+                  facility in the route cell, where its old dedicated column
+                  right-aligned one short value across a fifth of the table. */}
               <colgroup>
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '25%' }} />
               </colgroup>
               <thead>
                 <tr>
@@ -660,7 +657,6 @@ export default function ReferralsPage() {
                   <th>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</th>
                   <th>Context</th>
                   <th>Status</th>
-                  <th className="is-right">Date</th>
                 </tr>
               </thead>
               <tbody>

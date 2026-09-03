@@ -27,17 +27,36 @@ export default function ReferralFilterFields({
   setFilter,
   urgencyOptions,
   statusOptions,
+  direction,
+  onDirectionChange,
+  newIncomingCount = 0,
 }: {
   filters: ReferralFilterState;
   setFilter: (k: keyof ReferralFilterState, v: string) => void;
   urgencyOptions: { v: string; l: string }[];
   statusOptions: { v: string; l: string }[];
+  /** Incoming/outgoing view switch, folded in from the old toolbar select.
+   *  The page owns the state (it drives the whole list, not one column);
+   *  outgoing — the non-default view — counts as one applied filter. */
+  direction?: 'incoming' | 'outgoing';
+  onDirectionChange?: (d: 'incoming' | 'outgoing') => void;
+  /** Unseen incoming referrals, shown on the incoming option as "(n new)". */
+  newIncomingCount?: number;
 }) {
   const { t } = useTranslation();
   const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
   return (
     <div className="flex flex-col gap-3">
+      {direction !== undefined && onDirectionChange && (
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Direction</span>
+          <Select value={direction} onChange={e => onDirectionChange(e.target.value as 'incoming' | 'outgoing')} className="w-full text-sm py-2 px-3" style={fieldStyle}>
+            <option value="incoming">{`Incoming referrals${newIncomingCount > 0 ? ` (${newIncomingCount} new)` : ''}`}</option>
+            <option value="outgoing">Outgoing referrals</option>
+          </Select>
+        </label>
+      )}
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('referrals.patient')}</span>
         <input type="text" value={filters.patient} onChange={e => setFilter('patient', e.target.value)} placeholder={t('referrals.patient')} className="w-full text-sm py-2 px-3" style={fieldStyle} />
