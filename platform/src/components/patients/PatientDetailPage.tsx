@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/Modal';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 // Clean single-stroke Tailwind Labs Heroicons via the local compatibility shim.
 import {
@@ -383,7 +385,9 @@ export default function PatientDetailPage() {
     return () => { cancelled = true; };
   }, [showNurseVitals, id, currentUser]);
   const scope = useDataScope();
-  const { patients, loading, update: updatePatient } = usePatients();
+  const { patients, loading, update: updatePatient, reload: reloadPatients } = usePatients();
+  const confirmPrompt = useConfirmPrompt();
+  const { showToast } = useToast();
   const { hospitals } = useHospitals();
 
   const scopedPatient = patients.find(p => p._id === id);
@@ -571,6 +575,52 @@ export default function PatientDetailPage() {
   const openPaymentFromHeader = () => {
     selectTab('billing');
     setShowPaymentPanel(true);
+  };
+
+  // ── End assignment (header ⋯ menu) ───────────────────────────────────────
+  // Moved here from the dashboard worklist rows: closing accountability for a
+  // patient is a decision made looking at their record, not in passing from a
+  // queue. Offered to the assigned clinician/nurse themselves and to
+  // reception — the same set completePatientAssignment enforces — and only
+  // while a standing assignment exists.
+  const canEndAssignment = !!patient && !!currentUser
+    && patient.assignmentStatus !== 'completed'
+    && !!(patient.assignedDoctor || patient.assignedNurse)
+    && (patient.assignedDoctor === currentUser._id
+      || patient.assignedNurse === currentUser._id
+      || canAssignPatients
+      || currentUser.role === 'super_admin');
+
+  /** Same confirm-with-required-reason flow the dashboard used to run: this
+   *  closes accountability for a patient, and the audit entry is worthless
+   *  without the why. */
+  const handleEndAssignment = async () => {
+    if (!patient || !currentUser) return;
+    const displayName = patientFullName(patient);
+    const reason = await confirmPrompt({
+      title: `End the assignment for ${displayName}?`,
+      message: 'They will leave the assigned worklists; their record is unaffected. The reason is kept in the audit trail.',
+      confirmLabel: 'End assignment',
+      tone: 'danger',
+      inputLabel: 'Reason',
+      inputPlaceholder: 'e.g. Patient left and has not returned; care handed to the ward team…',
+      inputRequired: true,
+    });
+    if (reason === null) return;
+    try {
+      const { completePatientAssignment } = await import('@/lib/services/patient-assignment-service');
+      await completePatientAssignment({
+        patientId: patient._id,
+        patientName: displayName,
+        reason,
+        actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
+      });
+      showToast(`Assignment for ${displayName} ended.`, 'success');
+      // The header's care-team line and the ⋯ menu both read the patient doc.
+      await reloadPatients();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not end the assignment.', 'error');
+    }
   };
 
   // ── Deceased status (header ⋯ menu) ──────────────────────────────────────
@@ -1563,6 +1613,7 @@ export default function PatientDetailPage() {
                 onEdit={openEditModal}
                 onStickyNote={() => { if (canViewClinical) selectTab('notes'); }}
                 onShowAllergies={() => selectTab('allergies')}
+                onEndAssignment={canEndAssignment ? () => void handleEndAssignment() : undefined}
                 // Same gate as Edit details: the roles that may correct the
                 // record (all present in DOC_WRITE_ROLES.patient, so the write
                 // also replicates rather than dying at the validator).

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, HeartPulse, LogOut, RotateCcw, UserX, X } from '@/components/icons/lucide';
+import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, HeartPulse, LogOut, RotateCcw, X } from '@/components/icons/lucide';
 import CreateNoteButton, { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import Modal from '@/components/Modal';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
@@ -129,7 +129,6 @@ export default function EhrVisitPopup({
   onEscalate,
   onLwbs,
   onReturnToDesk,
-  onEndAssignment,
   onCreateNote,
   nurseActions,
   creatingNote = false,
@@ -185,7 +184,6 @@ export default function EhrVisitPopup({
    * visit) — the exit for a patient who left and never came back, otherwise
    * parked on the assigned clinician's worklist forever.
    */
-  onEndAssignment?: () => void;
   /**
    * Start a clinical note for this visit. Offered here because the appointment
    * card already carries the patient, provider and date the
@@ -316,16 +314,9 @@ export default function EhrVisitPopup({
                 <RotateCcw className="w-4 h-4" aria-hidden /> Return to desk
               </button>
             )}
-            {onEndAssignment && (
-              <button
-                type="button"
-                className="ehr-visit-pop-icon ehr-visit-pop-labelled"
-                onClick={onEndAssignment}
-                title="End this standing assignment — the patient is no longer under your care"
-              >
-                <UserX className="w-4 h-4" aria-hidden /> End assignment
-              </button>
-            )}
+            {/* "End assignment" deliberately absent: it lives in the patient
+                chart's ⋯ header menu, where the record being closed out is in
+                front of the clinician. */}
             {/* A plain split button now: the label creates the note the visit
                 most likely needs, the caret past the divider picks a different
                 type. */}

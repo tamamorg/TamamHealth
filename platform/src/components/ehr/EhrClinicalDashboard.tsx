@@ -1310,25 +1310,10 @@ export default function EhrClinicalDashboard({
     }
   };
 
-  /** End a standing care-team assignment — the exit for an assigned patient
-   *  who left and never came back. Allowed to the assigned clinician/nurse
-   *  themselves and to reception; the service enforces it. */
-  const endAssignment = async (row: UnifiedPatientRow) => {
-    if (!row.patientId || !currentUser) return;
-    if (!window.confirm(`End the assignment for ${row.name}? They will leave the assigned worklists; their record is unaffected.`)) return;
-    try {
-      const { completePatientAssignment } = await import('@/lib/services/patient-assignment-service');
-      await completePatientAssignment({
-        patientId: row.patientId,
-        patientName: row.name,
-        actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
-      });
-      showToast(`Assignment for ${row.name} ended.`, 'success');
-      setVisitRow(null);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not end the assignment.', 'error');
-    }
-  };
+  // "End assignment" moved to the patient chart's ⋯ header menu
+  // (PatientDetailPage.handleEndAssignment): closing accountability for a
+  // patient is a decision made looking at their record, not in passing from a
+  // queue row.
 
   const acknowledgeTriage = async (triage: TriageDoc) => {
     if (!currentUser) return;
@@ -2191,12 +2176,6 @@ export default function EhrClinicalDashboard({
                               && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               && columns.triage.handoffStatus !== 'returned_to_desk'
                               ? () => void returnVisitToDesk(columns.triage!)
-                              : undefined}
-                            onEndAssignment={row.patientId && currentUser
-                              && (row.patient?.assignedDoctor === currentUser._id
-                                || row.patient?.assignedNurse === currentUser._id)
-                              && row.patient?.assignmentStatus !== 'completed'
-                              ? () => void endAssignment(row)
                               : undefined}
                             creatingNote={creatingNote}
                             onCreateNote={row.patientId ? (noteType) => {

@@ -34,6 +34,12 @@ interface ChartHeaderProps {
   onEdit: () => void;
   onStickyNote: () => void;
   onAssignProvider?: () => void;
+  /** End the standing care-team assignment — the exit for an assigned patient
+   *  who left and never came back. Lives here in the chart's actions menu, not
+   *  on the dashboard worklist rows: closing accountability for a patient is a
+   *  decision made looking at their record, not in passing from a queue. The
+   *  page owns the confirm-with-reason dialog and the write. */
+  onEndAssignment?: () => void;
   /** Toggle the record's deceased status. The header renders the right verb
    *  for the current state — "Mark patient deceased" on a living record,
    *  "Mark patient alive" on one already marked — mirroring the O3 actions
@@ -96,7 +102,7 @@ function AllergyBanner({ allergens, onShow }: { allergens?: string[]; onShow?: (
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
   onCollectPayment, onMessage, onPrint, onPatientEd, onNote, onScripts, onOrders, onExchange, onEdit, onStickyNote, onAssignProvider,
-  onShowAllergies, onToggleDeceased,
+  onShowAllergies, onEndAssignment, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
   // up to 11 buttons in two rows, several of them duplicating the right-rail
@@ -228,6 +234,11 @@ export default function ChartHeader({
                 {onAssignProvider && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onAssignProvider(); }}>
                     <Stethoscope className="w-3.5 h-3.5" /> {patient.assignedDoctor ? 'Reassign provider' : 'Assign provider'}
+                  </button>
+                )}
+                {onEndAssignment && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEndAssignment(); }}>
+                    <DuotoneIcon name="userX" size={15} /> End assignment
                   </button>
                 )}
                 {canRegisterPatients && (
