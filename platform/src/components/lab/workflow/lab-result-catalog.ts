@@ -141,7 +141,7 @@ export const STOOL_PROFILE: LabResultProfile = {
         { id: 'stool.culture', label: 'Stool culture (bacterial)', kind: 'text' },
         { id: 'stool.exam', label: 'Stool exam', kind: 'text' },
         { id: 'stool.microscopy_concentration', label: 'Stool microscopy with concentration', kind: 'text' },
-        { id: 'stool.kinyoun', label: "Kinyoun's stain for coccidians", kind: 'text' },
+        { id: 'stool.kinyoun', label: "Kinyoun's stain for coccidian oocysts", kind: 'text' },
       ],
     },
     {

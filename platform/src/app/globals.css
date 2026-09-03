@@ -19622,11 +19622,6 @@ textarea.ehr-handoff-input {
     display: none;
   }
 
-  /* With no head to carry it, the top inset returns to the container. */
-  .appointment-card-surface {
-    padding-top: 10px;
-  }
-
   .appointment-card-row.ehr-appointment-row {
     grid-template-columns: 1fr minmax(110px, auto);
     gap: 8px 14px;
@@ -22599,6 +22594,13 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 .appointment-card-surface .appointment-card-head {
   padding-top: 10px;
 }
+
+/* Note: there is a `@media (max-width: 1100px) { .appointment-card-head {
+   display: none } }` further up, but it does not win at those widths — the
+   head measures `display: grid` at 1000px — so the head keeps carrying the
+   inset at every width. Do not "restore" a top padding on the container here
+   for narrow screens: that re-opens the strip above the sticky head and rows
+   become visible through it again. */
 
 /* Inset the patient registry like the laboratory and prescription tables,
    without changing the full-width dashboard worklists. */

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Select from '@/components/Select';
 import { CheckCircle2 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -17,10 +17,6 @@ export default function StructuredResultForm({
 }) {
   const { t } = useTranslation();
   const [activeSectionId, setActiveSectionId] = useState(profile.sections[0]?.id || '');
-
-  useEffect(() => {
-    setActiveSectionId(profile.sections[0]?.id || '');
-  }, [profile.id, profile.sections[0]?.id]);
 
   const allFields = useMemo(() => profile.sections.flatMap(section => section.fields), [profile]);
   const completed = allFields.filter(field => values[field.id]?.trim()).length;

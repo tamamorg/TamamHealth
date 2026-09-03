@@ -647,6 +647,7 @@
 
 .lab-result-report-table td span { display: block; font-weight: 600; }
 .lab-result-report-table td small { display: block; margin-top: 2px; color: var(--text-muted); }
+.lab-result-report-meta { margin-top: 16px; }
 
 @media (max-width: 720px) {
   .lab-result-workspace { grid-template-columns: 1fr; }

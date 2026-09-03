@@ -487,18 +487,31 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             </div>
           )}
           {order.observations?.length ? (
-            <table className="lab-result-report-table">
-              <thead><tr><th>{t('labStructured.investigation')}</th><th>{t('labFlow.value')}</th><th>{t('lab.unit')}</th></tr></thead>
-              <tbody>
-                {order.observations.map(observation => (
-                  <tr key={observation.id}>
-                    <td><span>{observation.label}</span><small>{observation.group}</small></td>
-                    <td>{observation.value}</td>
-                    <td>{observation.unit || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              <table className="lab-result-report-table">
+                <thead><tr><th>{t('labStructured.investigation')}</th><th>{t('labFlow.value')}</th><th>{t('lab.unit')}</th></tr></thead>
+                <tbody>
+                  {order.observations.map(observation => (
+                    <tr key={observation.id}>
+                      <td><span>{observation.label}</span><small>{observation.group}</small></td>
+                      <td>{observation.value}</td>
+                      <td>{observation.unit || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="labord-grid-2 lab-result-report-meta">
+                <Field label={t('labFlow.test')} value={order.testName} />
+                <Field label={t('labFlow.accession')} value={order.accessionNumber} />
+                <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
+                <Field label={t('lab.specimen')} value={order.specimen || '—'} />
+                <Field label={t('labOrder.orderingProvider')} value={order.orderedBy || '—'} />
+                <Field
+                  label={t('labFlow.interpretation')}
+                  value={order.critical ? t('lab.critical') : order.abnormal ? t('lab.abnormal') : t('labFlow.withinRange')}
+                />
+              </div>
+            </>
           ) : (
           <div className="labord-grid-2">
             <Field label={t('labFlow.test')} value={order.testName} />
@@ -514,7 +527,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             <Field label={t('lab.referenceRange')} value={order.referenceRange} />
             <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
             <Field label={t('lab.specimen')} value={order.specimen || '—'} />
-            <Field label="Ordered by" value={order.orderedBy || '—'} />
+            <Field label={t('labOrder.orderingProvider')} value={order.orderedBy || '—'} />
             <Field
               label={t('labFlow.interpretation')}
               value={order.critical ? t('lab.critical') : order.abnormal ? t('lab.abnormal') : t('labFlow.withinRange')}
