@@ -1892,6 +1892,30 @@ select.cn-select {
 .cn-header .cn-field select.cn-select { background-color: transparent !important; }
 .cn-header .cn-field .cn-input[type='date'],
 .cn-header .cn-field .cn-input[type='time'] { font-variant-numeric: tabular-nums; }
+
+/* The native date and time controls ship their own picker glyph — heavier and
+   darker than the chevrons on the select chips beside them, which made four
+   fields in one row read as three different control families. Sized and toned
+   to the chevron so the row is one set of chips. The indicator stays a real
+   button: only its weight changes, never its behaviour. */
+.cn-header .cn-field .cn-input::-webkit-calendar-picker-indicator {
+  width: 13px;
+  height: 13px;
+  margin-inline-start: 2px;
+  padding: 0;
+  opacity: 0.5;
+  cursor: pointer;
+}
+.cn-header .cn-field .cn-input::-webkit-calendar-picker-indicator:hover,
+.cn-header .cn-field .cn-input:focus-visible::-webkit-calendar-picker-indicator {
+  opacity: 0.85;
+}
+/* A disabled (signed) note greys its values; the glyph follows rather than
+   staying the one crisp mark on a read-only row. */
+.cn-header .cn-field .cn-input:disabled::-webkit-calendar-picker-indicator {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
 .cn-header .cn-field .cn-select:disabled,
 .cn-header .cn-field .cn-input:disabled,
 .cn-header .cn-field .cn-assign-trigger:disabled { background-color: transparent; }

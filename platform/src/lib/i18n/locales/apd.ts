@@ -4838,7 +4838,7 @@ const apd: TranslationMap = {
   'patients.allStates': 'كل الولايات',
   'patients.allergyBadge': 'حساسية',
   'patients.allergyTitle': 'حساسية: {{list}}',
-  'patients.assignedMe': 'أنا',
+  'patients.assignedMe': 'المخصصين لي',
   'patients.assignedUnassigned': 'ما مخصص',
   'patients.clear': 'امسح',
   'patients.colAgeGender': 'العمر / الجنس',

@@ -22,7 +22,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ChangeEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Filter, X } from '@/components/icons/lucide';
+import { ChevronDown, Filter, Search, X } from '@/components/icons/lucide';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 export interface EhrListHeaderStat {
@@ -481,6 +481,21 @@ export function EhrSearchFilter({
 
   return (
     <div ref={triggerRef} data-tour={dataTour} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+      {/* The magnifier every other search field in the app carries — the top
+          rail's, the worklist daybar's, the messages list's. This one, the
+          field ~30 list pages actually search from, was the only one without
+          it: a bare rounded box that read as a text input until you noticed
+          the placeholder. Decorative, so it stays out of the a11y tree; the
+          input keeps its own label. */}
+      <Search
+        className="w-4 h-4"
+        aria-hidden
+        style={{
+          position: 'absolute', insetInlineStart: 14, top: '50%',
+          transform: 'translateY(-50%)', pointerEvents: 'none',
+          color: 'var(--text-muted)',
+        }}
+      />
       <input
         type="text"
         value={value}
@@ -489,8 +504,9 @@ export function EhrSearchFilter({
         aria-label={ariaLabel || placeholder}
         style={{
           width: '100%', height: 38, borderRadius: 999,
-          // Trailing room for the disclosure, so typed text never runs under it.
-          padding: hasFilters ? '9px 44px 9px 18px' : '9px 18px',
+          // Leading room for the magnifier; trailing room for the disclosure,
+          // so typed text never runs under either.
+          padding: hasFilters ? '9px 44px 9px 38px' : '9px 18px 9px 38px',
           border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)',
           fontSize: 13, color: 'var(--text-primary)', outline: 'none',
         }}

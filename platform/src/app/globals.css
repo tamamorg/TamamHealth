@@ -27248,6 +27248,20 @@ table.patient-data-table.patient-data-table {
   padding: 14px;
 }
 
+/* A checkbox row inside a filter panel is a SENTENCE, not a micro-label.
+   The bare `label` selector near the top of this file force-uppercases and
+   bolds every <label> in the app — right for the 11px caps that head a
+   field, wrong for the option text beside a checkbox, which the trap was
+   rendering as "ALLERGIES FLAGGED", "VISITED · LAST 30D", "PENDING SYNC".
+   A row that wraps an <input> is that case, so it opts back out. The
+   field-heading labels (a <span> above their control) keep the caps. */
+.ehr-list-filters-body label:has(> input[type='checkbox']),
+.ehr-list-filters-body label:has(> input[type='radio']) {
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
 /* Hangs flush off the bottom of its trigger, so the flat top edge is what
    joins the two — a fully rounded panel butted against the button reads as a
    separate floating card resting on top of it. */

@@ -4846,7 +4846,7 @@ const en: TranslationMap = {
   'patients.allStates': 'All States',
   'patients.allergyBadge': 'Allergy',
   'patients.allergyTitle': 'Allergy: {{list}}',
-  'patients.assignedMe': 'Me',
+  'patients.assignedMe': 'Assigned to me',
   'patients.assignedUnassigned': 'Unassigned',
   'patients.clear': 'Clear',
   'patients.colAgeGender': 'Age / Gender',

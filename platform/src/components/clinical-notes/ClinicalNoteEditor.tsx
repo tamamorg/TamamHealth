@@ -793,13 +793,15 @@ export default function ClinicalNoteEditor({
         <div className="cn-main">
       {/* Header */}
       <div className="cn-header">
-        {/* When the editor is embedded in a patient chart the duplicate
-            sidebar is hidden, so keep the patient name in this compact context
-            line. The standalone route continues to show it in the sidebar. */}
+        {/* The context line states only what nothing else on this screen
+            already says: the facility. The note type sits in the "Note type"
+            field an inch below it, and the patient is named in the sidebar —
+            except when the editor is embedded in a chart, where that sidebar
+            is hidden and the name has nowhere else to appear. */}
         <div className="cn-header-id">
           <h1 className="cn-header-title">Encounter Note</h1>
           <p className="cn-header-context">
-            {[!showContextSidebar ? note.patientName : null, typeDef.label, note.hospitalName].filter(Boolean).join(' · ')}
+            {[!showContextSidebar ? note.patientName : null, note.hospitalName].filter(Boolean).join(' · ')}
           </p>
         </div>
         <div className="cn-header-actions">
