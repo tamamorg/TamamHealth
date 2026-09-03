@@ -66,6 +66,23 @@
 }
 .omrs-rail-card:last-child { margin-bottom: 0; }
 
+/* The first card runs all the way up and fuses with the shell's top edge —
+   the same line the patient header starts on. Its own top hairline would
+   double the shell's border there, so the card sheds it along with the top
+   corners. */
+.omrs-rail-card:first-child {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* The first row starts on the exact line the patient photo does: the header
+   opens with 14px of top padding, so the first card's body opens with the
+   same 14px above its first pill. */
+.omrs-rail-card:first-child .omrs-rail-cardbody {
+  padding-top: 14px;
+}
+
 .omrs-rail-cardbody {
   display: flex;
   flex-direction: column;
@@ -90,10 +107,10 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  /* The note editor sidebar's insets (.cn-sidebar): cards float inside the
-     column with a real top inset, rather than the first card fusing into the
-     header band above. */
-  padding: 16px 14px 22px 18px;
+  /* The note editor sidebar's side insets (.cn-sidebar); no top padding —
+     the first card fuses with the shell's top edge, level with the patient
+     header beside it. */
+  padding: 0 14px 22px 18px;
 }
 
 /* Rows are the top rail's modules dropdown: inset pills, 6px radius, filling
@@ -1938,6 +1955,17 @@
   cursor: pointer;
 }
 
+/* …and again at the specificity of the shared pill rule that was beating it.
+   That rule (`td:last-child :is(.omrs-status-picker, .badge, …)`) sets
+   `padding: 3px 9px` on every pill in a trailing cell, which reset the 16px
+   above to 9 — leaving the caret, drawn 6–13px in from the right edge,
+   sitting on top of the last letter ("Active" read as "Activ◂"). Measured at
+   a 3px overlap before this rule. */
+.omrs-root .omrs-table tbody td:last-child .omrs-status-picker,
+.omrs-root .omrs-table tbody td .omrs-status-picker {
+  padding-right: 18px;
+}
+
 /* The caret that says "this can change". */
 .omrs-status-picker::after {
   content: '';
@@ -2018,6 +2046,16 @@
    read-only field surface and the two lead banners.
    ═══════════════════════════════════════════════════════════════════════════ */
 .sbar-as-form { max-width: 100%; }
+
+/* The handoff has no left rail, so the record takes the whole width rather
+   than leaving the rail's 244px column standing empty. */
+.omrs-reg.sbar-as-form { grid-template-columns: minmax(0, 1fr); }
+
+/* Print sits above the record it prints, trailing edge. */
+.sbar-as-form .sbar-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 
 /* Stack the lead banners and the sections at one rhythm — the omrs section
    margin is neutralised here so the flex gap is the single source. */

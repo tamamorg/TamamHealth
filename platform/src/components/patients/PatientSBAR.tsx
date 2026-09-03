@@ -19,14 +19,14 @@
  * leading the way they do on the filled sheet.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Printer, ShieldAlert } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type {
   PatientDoc, MedicalRecordDoc, LabResultDoc, PrescriptionDoc, TriageDoc, ProblemDoc,
 } from '@/lib/db-types';
 import { formatDateTime , formatRxSig } from '@/lib/format-utils';
-import { patientAge, patientFullName, initials } from '@/lib/patient-utils';
+import { patientAge, patientFullName } from '@/lib/patient-utils';
 import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { formatPhoneDisplay } from '@/lib/field-formats';
@@ -281,69 +281,22 @@ export default function PatientSBAR({
   const genderAge = [patient.gender, age != null ? `${age}y` : null].filter(Boolean).join(' · ');
   const dangerCount = (latestTriage?.redCriteria?.length || 0) + (latestTriage?.yellowCriteria?.length || 0);
 
-  // The same seven sections the triage form is filled in through, in the same
-  // order — so this read-only handoff reads as that form. Each rail item jumps
-  // to its section and carries a one-line summary the way the form's step-nav
-  // shows progress.
-  const sections = [
-    { id: 'patient', label: 'Patient & complaint', meta: latestTriage?.chiefComplaint || 'Identity' },
-    { id: 'assessment', label: 'ABCC assessment', meta: latestTriage ? `${priorityLabel(latestTriage.priority)} priority` : 'Not triaged' },
-    { id: 'danger', label: 'IITT danger signs', meta: dangerCount ? `${dangerCount} flagged` : latestTriage?.isolationRequired ? 'Isolation' : 'Screened' },
-    { id: 'vitals', label: 'Vitals', meta: latestVitals ? latestVitals.source : 'Not recorded' },
-    { id: 'context', label: 'Visit context', meta: allergies.length ? `${allergies.length} allergy` : 'Background' },
-    { id: 'handoff', label: 'Provider handoff', meta: latestTriage?.assignedProviderName || 'Assign later' },
-    { id: 'notes', label: 'Notes', meta: latestTriage?.notes ? 'Recorded' : 'Review' },
-  ] as const;
-  const [activeSection, setActiveSection] = useState<string>('patient');
-  const goToSection = (id: string) => {
-    setActiveSection(id);
-    document.getElementById(`sbar-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   const priorityMeta = latestTriage ? priorityBadge(latestTriage.priority) : null;
 
   return (
     <div id="patient-sbar-print" className="sbar-doc sbar-as-form omrs-reg triage-reg">
-      {/* Left rail: patient card + the form's own step-nav, read-only. */}
-      <aside className="omrs-reg-rail" aria-label="Triage handoff sections">
-        <h1 className="omrs-reg-title">Patient triage</h1>
-        <div className="triage-rail-patient">
-          <div className="triage-patient-photo">
-            <div className="triage-patient-photo-frame">
-              {(patient as { photoUrl?: string }).photoUrl
-                // eslint-disable-next-line @next/next/no-img-element -- patient photo from the record; CSS-sized frame.
-                ? <img src={(patient as { photoUrl?: string }).photoUrl} alt={fullName} />
-                : <span className="text-3xl font-semibold" style={{ color: 'var(--accent-primary)' }}>{initials(fullName)}</span>}
-            </div>
-            <span className="triage-patient-photo-label">Patient photo</span>
-          </div>
-          <strong>{fullName}</strong>
-          <span>{[patient.hospitalNumber, genderAge].filter(Boolean).join(' · ')}</span>
-        </div>
-        <p className="omrs-reg-railnote">The completed triage, laid out as it was filled.</p>
-        <p className="omrs-reg-jump">Assessment steps</p>
-        <nav className="omrs-reg-nav" aria-label="Triage sections">
-          {sections.map(section => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => goToSection(section.id)}
-              className={`omrs-reg-navitem${activeSection === section.id ? ' is-current' : ''}`}
-              aria-current={activeSection === section.id ? 'step' : undefined}
-            >
-              <span className="omrs-reg-navarrow" aria-hidden>↳</span>
-              <span className="omrs-reg-navlabel">{section.label}</span>
-              <span className="omrs-reg-navmeta">{section.meta}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="omrs-reg-railactions">
-          <button type="button" onClick={handlePrint} className="btn btn-secondary"><Printer /> {t('action.print')}</button>
-        </div>
-      </aside>
-
-      {/* Right column: the triage record written out section by section. */}
+      {/* No left rail: the chart's own rail already names this section, and the
+          patient card repeated the header two rows above it. The record itself
+          reads top to bottom, so the step-nav had nothing to navigate that
+          scrolling doesn't. Print moves in beside the record it prints. */}
       <div className="omrs-reg-form triage-reg-form sbar-as-form-body">
+        {/* Print sits with the record now that the rail is gone. `no-print`
+            keeps the control itself out of the printed sheet. */}
+        <div className="sbar-form-actions no-print">
+          <button type="button" onClick={handlePrint} className="btn btn-secondary btn-sm">
+            <Printer /> {t('action.print')}
+          </button>
+        </div>
         {/* Priority and allergies lead — the two facts that change what is safe
             to do next, sitting above the form the way the badge and the allergy
             banner do on the filled sheet. */}
