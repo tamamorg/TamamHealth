@@ -39,8 +39,9 @@ Never rewrite `package-lock.json` casually; the repo regenerates lockfiles with 
 - `src/instrumentation.ts` — server boot: fail-closed config validation, Sentry, Postgres migrations.
 - `src/modules/<domain>/**` — **domain modules, and where new code goes.** The
   codebase is migrating from by-kind to by-domain (ADR 0003). `identity` (auth,
-  sessions, provisioning, MFA, account requests) and `communication` (messages,
-  announcements, the notification bell) have landed; ten domains remain.
+  sessions, provisioning, MFA, account requests), `communication` (messages,
+  announcements, the notification bell), `tenancy`, and the first `analytics`
+  route have landed; see the ADR for the remaining migration sequence.
 - `src/lib/services/**` (95 left) — business logic and DB access for domains that
   have not moved yet. `src/lib/hooks/**` — one hook per service area.
 - `src/lib/db.ts` — 76 `tamamhealth_*` PouchDB databases; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.

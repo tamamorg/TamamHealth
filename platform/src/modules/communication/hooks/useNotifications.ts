@@ -140,9 +140,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // exactly the "have we ever loaded" flag: once we have data, later refreshes
     // update it in place instead of blanking the panel.
     if (seenIds.current === null) setLoading(true);
-    const scope = currentUser
-      ? { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role }
-      : undefined;
+    if (!currentUser) {
+      setAllItems([]);
+      setLoading(false);
+      return;
+    }
+    const scope = { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role };
     const out: NotificationItem[] = [];
     // Whole sources that are not this role's job are skipped before their
     // database read — see KIND_RELEVANT_ROLES in lib/notification-scope.ts.
@@ -151,7 +154,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // Staff messaging is personal by construction: the service only returns
     // incoming unread messages from conversations this user belongs to, and
     // honors the conversation's mute setting before rows reach the bell.
-    if (relevant('message') && currentUser?._id) try {
+    if (relevant('message')) try {
       const { getUnreadStaffMessagesForUser } = await import('@/modules/communication/services/conversation-service');
       const { messageNotificationItems } = await import('@/modules/communication/notifications/message-items');
       const unreadMessages = await getUnreadStaffMessagesForUser(currentUser._id, scope);

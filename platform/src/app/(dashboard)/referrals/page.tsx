@@ -14,7 +14,6 @@ import {
   Stethoscope, Package, FileText, Image as ImageIcon,
   User, Activity, FlaskConical, Paperclip, XCircle, MessageSquarePlus,
   ClipboardCheck, RotateCcw,
-  ExternalLink,
 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useReferrals } from '@/lib/hooks/useReferrals';
@@ -22,7 +21,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
-import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import ReferralFilterFields, { referralFilterCount, type ReferralFilterState } from '@/components/referrals/ReferralFilters';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/referrals/RowActionsMenu';

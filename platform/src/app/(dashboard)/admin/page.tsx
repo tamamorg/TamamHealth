@@ -129,16 +129,16 @@ export default function AdminDashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [{ getAllUsers }, { getAllPatients }, { getAllEncounters }, { getRecentAuditLogs }, { getSyncEventStats }] =
+        const [{ getClientUsers }, { getAllPatients }, { getAllEncounters }, { getRecentAuditLogs }, { getSyncEventStats }] =
           await Promise.all([
-            import('@/modules/identity/services/user-service'),
+            import('@/modules/identity/services/user-client'),
             import('@/lib/services/patient-service'),
             import('@/lib/services/encounter-service'),
             import('@/lib/services/audit-service'),
             import('@/lib/services/sync-event-service'),
           ]);
         const [allUsers, allPatients, allEncounters, logs, sync, resolutions] = await Promise.all([
-          getAllUsers(), getAllPatients(), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(),
+          getClientUsers({ role: 'super_admin' }), getAllPatients(), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(),
           getRiskResolutions(),
         ]);
         if (cancelled) return;

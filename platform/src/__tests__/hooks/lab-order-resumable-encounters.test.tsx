@@ -9,7 +9,7 @@
  * (`LabResultDoc.encounterId`) without ever appearing in `labOrderIds` at all
  * (a side-channel order, or one placed before this fix existed).
  */
-import React, { act, useEffect } from 'react';
+import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

@@ -57,6 +57,11 @@ export default function AppointmentStatusPillSelect({
         onChange={event => {
           event.stopPropagation();
           const next = event.target.value as AppointmentStatus;
+          // A native <select> matches :focus-visible even for a mouse pick,
+          // so the pill kept its keyboard focus ring after every selection
+          // until the next click landed somewhere else. The ring's job ends
+          // with the choice; keyboard users tabbing through still get it.
+          event.target.blur();
           if (next !== current) void onChange(next);
         }}
       >

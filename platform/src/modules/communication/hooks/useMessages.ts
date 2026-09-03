@@ -13,6 +13,11 @@ export function useMessages() {
   const scope = useDataScope();
 
   const loadMessages = useCallback(async () => {
+    if (!scope) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const { getAllMessages } = await import('@/modules/communication/services/message-service');

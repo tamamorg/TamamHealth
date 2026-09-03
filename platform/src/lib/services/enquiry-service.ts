@@ -62,7 +62,7 @@ export function enquiryAssignee(message: Pick<MessageDoc, 'enquiryAssignedToName
 }
 
 /** Inbound patient enquiries, newest first. Scope is applied upstream. */
-export async function getPatientEnquiries(scope?: DataScope): Promise<MessageDoc[]> {
+export async function getPatientEnquiries(scope: DataScope): Promise<MessageDoc[]> {
   const { getInboundPatientMessages } = await import('@/modules/communication/services/message-service');
   return getInboundPatientMessages(scope);
 }

@@ -433,7 +433,7 @@ export async function createPrescription(
     // admission id. Resolve it once at write time so it appears on exactly one
     // MAR; never make the MAR guess from every pending outpatient prescription.
     try {
-      const { getActiveAdmissions } = await import('./ward-service');
+      const { getActiveAdmissions } = await import('./admission-query-service');
       admissionId = (await getActiveAdmissions()).find(admission =>
         admission.patientId === data.patientId
         && admission.facilityId === data.hospitalId

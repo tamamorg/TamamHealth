@@ -10,8 +10,8 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { getMessagesByPatient } = await import('@/modules/communication/services/message-service');
-    const messages = await getMessagesByPatient(auth.sub);
+    const { getPortalMessagesByPatient } = await import('@/modules/communication/services/message-service');
+    const messages = await getPortalMessagesByPatient(auth.sub);
     return NextResponse.json({ messages });
   } catch (err) {
     if (demoFallbackEnabled()) {

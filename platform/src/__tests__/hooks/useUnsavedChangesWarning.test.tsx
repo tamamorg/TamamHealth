@@ -1,4 +1,3 @@
-import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import Link from 'next/link';

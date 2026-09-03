@@ -53,7 +53,7 @@ describe('activation uses its own action', () => {
   test('the API keeps activation free of the organization check', () => {
     // The guard belongs on `update`, which changes org/hospital assignment —
     // not on a flag flip. If `reactivate` ever grows one, this fails.
-    const route = read('app/api/users/route.ts');
+    const route = read('modules/identity/api/users-route.ts');
     const start = route.indexOf("if (action === 'deactivate' || action === 'reactivate')");
     expect(start).toBeGreaterThan(-1);
     const handler = route.slice(start, route.indexOf("if (action === 'delete')", start));

@@ -7,7 +7,7 @@
  * repo) against a fully-populated TriageDoc and asserts the read side
  * actually surfaces what produced the priority.
  */
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import PatientSBAR from '@/components/patients/PatientSBAR';
 import type { PatientDoc, TriageDoc } from '@/lib/db-types';

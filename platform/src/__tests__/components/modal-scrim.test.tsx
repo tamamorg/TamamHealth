@@ -12,7 +12,7 @@
  * as the only live surface. It is deliberately near-neutral ink, and it is not
  * a brand slot.
  */
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import Modal from '@/components/Modal';
 

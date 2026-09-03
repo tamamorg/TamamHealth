@@ -167,6 +167,8 @@ export default function LabPage() {
   // The technician's own worklist settings (design 11, "Worklist").
   const labSort = useRoleChoice('lab.sort', 'Urgency, then oldest');
   const labStatTop = useRoleFlag('lab.statTop', true);
+  const labTat = useRoleChoice('lab.tat', '60 min');
+  const labTatMinutes = Number.parseInt(labTat, 10) || 60;
   // Analyzer import: paste a raw instrument payload (LIS-2A / HL7) and parse it
   // into structured results the tech can review before pre-filling an order.
   const [showImportModal, setShowImportModal] = useState(false);
@@ -397,13 +399,17 @@ export default function LabPage() {
                 const rowPatient = patientById.get(order.patientId);
                 const stage = effOrderStatus(order);
                 const changedAt = STAGE_CHANGED_AT[stage]?.(order);
+                const orderedAt = new Date(order.orderedAt || order.createdAt || '').getTime();
+                const turnaroundOverdue = order.status !== 'completed'
+                  && Number.isFinite(orderedAt)
+                  && now - orderedAt > labTatMinutes * 60_000;
                 const openChart = () => {
                   if (order.patientId) router.push(`/patients/${order.patientId}?tab=labs&focus=${order._id}`);
                 };
                 return (
                   <div
                     key={order._id}
-                    className="ehr-appointment-row appointment-card-row"
+                    className={`ehr-appointment-row appointment-card-row${turnaroundOverdue ? ' is-overdue' : ''}`}
                     role="button"
                     tabIndex={0}
                     onClick={openChart}
@@ -452,7 +458,9 @@ export default function LabPage() {
                       <span className={`appointment-status-pill ${STAGE_PILL_CLASS[stage]}`}>
                         {ORDER_STAGE_LABEL[stage]}
                       </span>
-                      {changedAt && <small>{formatCompactDateTime(changedAt)}</small>}
+                      {turnaroundOverdue
+                        ? <small className="lab-turnaround-overdue">{t('lab.tatOverdue')} · {labTat}</small>
+                        : changedAt && <small>{formatCompactDateTime(changedAt)}</small>}
                     </div>
 
                     {canEnterLabResults && (

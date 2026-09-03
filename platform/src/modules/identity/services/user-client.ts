@@ -1,5 +1,7 @@
 import { apiFetch } from '@/lib/api-fetch';
 import type { UserDoc, UserRole } from '@/lib/db-types';
+import type { DataScope } from '@/lib/services/data-scope';
+import { filterByScope } from '@/lib/services/data-scope';
 import type { InvitationOutcome } from '@/modules/identity/provisioning/invite-window';
 
 export interface CreateClientUserData {
@@ -33,6 +35,15 @@ async function usersRequest(
   return body;
 }
 
+export async function getClientUsers(scope: DataScope): Promise<UserDoc[]> {
+  const response = await apiFetch('/api/users', { cache: 'no-store' });
+  const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
+  if (!response.ok) throw new Error(body.error || 'Unable to load users');
+  // The API is authoritative; the second filter prevents an accidentally broad
+  // response from being displayed by a stale or compromised client session.
+  return filterByScope(body.users ?? [], scope);
+}
+
 export async function getClientUserById(id: string): Promise<UserDoc | null> {
   const response = await apiFetch('/api/users', { cache: 'no-store' });
   const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
@@ -50,7 +61,10 @@ export async function createClientUserWithInvitation(
   };
 }
 
-export async function updateClientUser(userId: string, changes: Partial<UserDoc>): Promise<UserDoc> {
+export async function updateClientUser(
+  userId: string,
+  changes: Omit<Partial<UserDoc>, 'photoUrl'> & { photoUrl?: string | null },
+): Promise<UserDoc> {
   const body = await usersRequest({ action: 'update', userId, ...changes });
   return body.user as UserDoc;
 }

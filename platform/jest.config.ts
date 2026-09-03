@@ -24,9 +24,12 @@ const buildConfig = async () => {
   jestConfig.testMatch = ['<rootDir>/src/**/*.test.ts', '<rootDir>/src/**/*.test.tsx'];
   jestConfig.collectCoverageFrom = [
     'src/lib/services/**/*.ts',
+    'src/lib/hooks/**/*.{ts,tsx}',
+    'src/modules/**/*.{ts,tsx}',
     'src/lib/validation.ts',
     'src/lib/db-seed.ts',
     '!src/**/*.d.ts',
+    '!src/modules/**/types.ts',
   ];
   return jestConfig;
 };

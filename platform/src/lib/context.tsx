@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { syncFlagAllowsSync } from './sync/sync-config';
 import type { HospitalDoc, OrganizationDoc, UserPreferences, UserRole, UserDoc } from './db-types';
 import type { OrgBranding } from './branding';

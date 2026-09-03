@@ -13,7 +13,7 @@
  *     busy facility's full progress backlog bypassed the cap that keeps the
  *     badge, the bell panel and /notifications reporting the same total.
  */
-import React, { act, useEffect } from 'react';
+import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

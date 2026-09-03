@@ -115,11 +115,12 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
   const loadRollup = useCallback(async () => {
     if (!orgId) return;
     try {
-      const [{ getAllUsers }, { getAllPatients }] = await Promise.all([
-        import('@/modules/identity/services/user-service'),
+      const [{ getClientUsers }, { getAllPatients }] = await Promise.all([
+        import('@/modules/identity/services/user-client'),
         import('@/lib/services/patient-service'),
       ]);
-      const [allUsers, allPatients] = await Promise.all([getAllUsers(), getAllPatients()]);
+      const orgScope = { role: 'org_admin' as const, orgId };
+      const [allUsers, allPatients] = await Promise.all([getClientUsers(orgScope), getAllPatients()]);
       const users = allUsers.filter(user => user.orgId === orgId);
       const patients = allPatients.filter(patient => patient.orgId === orgId);
       const staff = new Map<string, number>();

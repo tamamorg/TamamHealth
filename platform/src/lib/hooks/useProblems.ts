@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback, useMemo } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ProblemDoc, ProblemStatus } from '../db-types';
 import { problemsDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -29,23 +29,15 @@ export function useProblems(patientId?: string) {
     }
   }, [scope, patientId]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = problemsDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
-      .on('change', (change) => {
-        const doc = change.doc as ProblemDoc | undefined;
-        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
-      })
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load, patientId]);
+  const shouldReload = useCallback((change: { doc?: ProblemDoc; deleted?: boolean }) => (
+    !patientId || !change.doc || change.doc.patientId === patientId || change.deleted === true
+  ), [patientId]);
+  usePouchLiveReload({
+    load,
+    database: problemsDB,
+    includeDocs: Boolean(patientId),
+    shouldReload,
+  });
 
   const create = useCallback(async (data: Omit<ProblemDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createProblem } = await import('../services/problem-service');

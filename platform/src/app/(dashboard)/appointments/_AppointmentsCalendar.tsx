@@ -513,7 +513,7 @@ export default function AppointmentsCalendar({
     triggerRef.current = button;
   }, []);
 
-  const handleShowMore = React.useCallback((dayEvents: CalEvent[], date: Date, slot: number) => {
+  const handleShowMore = React.useCallback((_dayEvents: CalEvent[], date: Date, slot: number) => {
     // Clicking the open day again closes it, the way the link reads.
     if (expanded && expanded.date.getTime() === date.getTime()) { closeExpanded(); return; }
 
@@ -523,7 +523,8 @@ export default function AppointmentsCalendar({
     const geometry = measureAnchor();
     if (!geometry) return;
 
-    // `dayEvents` is only what react-big-calendar had for that cell; the panel
+    // The first callback argument is only what react-big-calendar had for that
+    // cell; the panel
     // reads the day off the events prop instead, so it keeps up with changes.
     setExpanded({ date, ...geometry });
   }, [expanded, closeExpanded, measureAnchor]);

@@ -137,6 +137,10 @@ export default function DocumentsPanel({
   // to the view: the sub-tab shows a count, and a count that only becomes
   // right after you click the tab is worse than one cheap patient-scoped read.
   const loadSentEducation = useCallback(async () => {
+    if (!scope) {
+      setSentEducation([]);
+      return;
+    }
     try {
       const { getMessagesByPatient } = await import('@/modules/communication/services/message-service');
       const all = await getMessagesByPatient(patient._id, scope);

@@ -13,7 +13,7 @@ describe('facility assignment contract', () => {
   });
 
   it('does not expose the legacy sync-wait error', () => {
-    const route = source('app/api/users/route.ts');
+    const route = source('modules/identity/api/users-route.ts');
     expect(route).toContain('FACILITY_NOT_ASSIGNABLE');
     expect(route).not.toContain('has not reached the server yet');
     expect(route).not.toContain('let sync finish');

@@ -14,6 +14,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import { getAllAdmissions } from './admission-query-service';
+
+export { getAllAdmissions, getActiveAdmissions } from './admission-query-service';
 
 const wardDB = () => getDB('tamamhealth_wards');
 
@@ -225,19 +228,6 @@ async function restoreBedClaimIfUnassigned(bedId: string, admission: AdmissionDo
 }
 
 // ===== Admission Operations =====
-
-export async function getAllAdmissions(scope?: DataScope): Promise<AdmissionDoc[]> {
-  const db = wardDB();
-  const all = await findByType<AdmissionDoc>(db, 'admission');
-  /* istanbul ignore next -- defensive null-safety in sort */
-  all.sort((a, b) => (b.admissionDate || '').localeCompare(a.admissionDate || ''));
-  return scope ? filterByScope(all, scope) : all;
-}
-
-export async function getActiveAdmissions(scope?: DataScope): Promise<AdmissionDoc[]> {
-  const all = await getAllAdmissions(scope);
-  return all.filter(a => a.status === 'admitted');
-}
 
 export async function getAdmissionById(id: string, scope?: DataScope): Promise<AdmissionDoc | null> {
   try {

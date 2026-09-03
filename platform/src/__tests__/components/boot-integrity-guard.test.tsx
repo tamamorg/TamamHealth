@@ -22,7 +22,7 @@
  * observe it. The DOM tests below cover the other half: which failures the
  * guard treats as its business at all.
  */
-import React, { act } from 'react';
+import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import BootIntegrityGuard, { recoveryAction } from '@/components/BootIntegrityGuard';
 

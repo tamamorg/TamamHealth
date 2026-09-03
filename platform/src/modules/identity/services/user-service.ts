@@ -101,27 +101,34 @@ async function postUsersApi(payload: Record<string, unknown>): Promise<Record<st
   return body;
 }
 
-export async function getAllUsers(scope?: DataScope): Promise<UserDoc[]> {
+async function loadVisibleUsers(): Promise<UserDoc[]> {
   if (isBrowserRuntime()) {
     const { apiFetch } = await import('@/lib/api-fetch');
     const response = await apiFetch('/api/users');
     const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
     if (!response.ok) throw new Error(body.error || `Failed to load staff directory (${response.status})`);
-    // The API has already applied the authenticated actor's data scope. A
-    // second client-side scope pass is harmless and keeps existing callers'
-    // expectations intact without trusting the browser as the boundary.
-    const users = body.users ?? [];
-    return scope ? filterByScope(users, scope) : users;
+    return body.users ?? [];
   }
   const db = usersDB();
-  const all = await findByType<UserDoc>(db, 'user');
-  /* istanbul ignore next -- scope filter: tested with and without */
-  return scope ? filterByScope(all, scope) : all;
+  return findByType<UserDoc>(db, 'user');
+}
+
+export async function getAllUsers(scope: DataScope): Promise<UserDoc[]> {
+  return filterByScope(await loadVisibleUsers(), scope);
+}
+
+/**
+ * Trusted internal directory read. The explicit name makes a system-wide read
+ * reviewable; omitting a scope from `getAllUsers` is no longer ambient authority.
+ * In a browser the authenticated API has already scoped the returned roster.
+ */
+export async function getAllUsersUnscoped(): Promise<UserDoc[]> {
+  return loadVisibleUsers();
 }
 
 export async function getUserById(id: string): Promise<UserDoc | null> {
   if (isBrowserRuntime()) {
-    const users = await getAllUsers();
+    const users = await getAllUsersUnscoped();
     return users.find(user => user._id === id) ?? null;
   }
   try {
@@ -683,7 +690,7 @@ export async function recordSuccessfulLogin(id: string, at: string = new Date().
  * for a day, that is not a small inconvenience.
  */
 export async function countRemainingOrgAdmins(orgId: string, excludingUserId: string): Promise<number> {
-  const users = await getAllUsers();
+  const users = await getAllUsersUnscoped();
   return users.filter(u =>
     u.orgId === orgId
     && u.role === 'org_admin'

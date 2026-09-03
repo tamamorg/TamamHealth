@@ -128,8 +128,8 @@ export function FacilityProfile({ hospital, canCreate, onEdit, onRetire }: {
   const loadStaff = useCallback(async () => {
     if (!scope) return;
     try {
-      const { getAllUsers } = await import('@/modules/identity/services/user-service');
-      const all = await getAllUsers(scope);
+      const { getClientUsers } = await import('@/modules/identity/services/user-client');
+      const all = await getClientUsers(scope);
       // `filterByScope` has already answered the tenant question; this is the
       // facility one — home site or covered site, the rule stated once in
       // `userWorksAtFacility` so every count of "who works here" agrees.

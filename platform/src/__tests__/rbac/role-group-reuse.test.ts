@@ -95,12 +95,13 @@ describe('the groups are usable from a route at all', () => {
   it('keeps at least the routes already migrated importing them', () => {
     // A regression here means somebody inlined a group back into a route.
     const migrated = [
-      'users/route.ts', 'prescriptions/route.ts', 'medical-records/route.ts',
-      'medical-records/[id]/route.ts',
-      'usage/events/route.ts', 'usage/summary/route.ts',
+      'modules/identity/api/users-route.ts',
+      'app/api/prescriptions/route.ts', 'app/api/medical-records/route.ts',
+      'app/api/medical-records/[id]/route.ts',
+      'app/api/usage/events/route.ts', 'app/api/usage/summary/route.ts',
     ];
     for (const rel of migrated) {
-      const src = readFileSync(path.join(API, rel), 'utf8');
+      const src = readFileSync(path.join(process.cwd(), 'src', rel), 'utf8');
       expect(src).toContain("from '@/lib/sync/write-permissions'");
     }
   });

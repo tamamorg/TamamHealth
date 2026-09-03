@@ -84,13 +84,13 @@ async function postHandler(request: NextRequest) {
       }
     }
 
-    const [{ getAllHospitals }, { getAllUsers }] = await Promise.all([
+    const [{ getAllHospitals }, { getAllUsersUnscoped }] = await Promise.all([
       import('@/lib/services/hospital-service'),
       import('@/modules/identity/services/user-service'),
     ]);
     const facilities = (await getAllHospitals())
       .filter(h => h.orgId === orgId && h.isActive !== false);
-    const existing = await getAllUsers();
+    const existing = await getAllUsersUnscoped();
 
     const parsed = parseUserImport(body.csv, {
       knownFacilities: facilities.map(h => h.name),

@@ -30,16 +30,16 @@ export async function GET(request: NextRequest) {
     if (!auth) return unauthorized();
     if (!hasRole(auth, READ_ROLES)) return forbidden();
     const { getAllMessages, getMessagesByPatient, getMessagesByDoctor } = await import('@/modules/communication/services/message-service');
-    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
     const scope = buildScopeFromAuth(auth);
     const url = new URL(request.url);
     const patientId = url.searchParams.get('patientId');
     const doctorId = url.searchParams.get('doctorId');
     let messages;
     if (patientId) {
-      messages = filterByScope(await getMessagesByPatient(patientId), scope);
+      messages = await getMessagesByPatient(patientId, scope);
     } else if (doctorId) {
-      messages = filterByScope(await getMessagesByDoctor(doctorId), scope);
+      messages = await getMessagesByDoctor(doctorId, scope);
     } else {
       messages = await getAllMessages(scope);
     }

@@ -34,7 +34,7 @@ export function useUsers(enabled = true) {
   const mayRead = enabled && canReadStaffDirectory(scope?.role);
 
   const loadUsers = useCallback(async () => {
-    if (!mayRead) {
+    if (!mayRead || !scope) {
       setUsers([]);
       setError(null);
       setLoading(false);
@@ -45,8 +45,8 @@ export function useUsers(enabled = true) {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     try {
-      const { getAllUsers } = await import('@/modules/identity/services/user-service');
-      const data = await getAllUsers(scope);
+      const { getClientUsers } = await import('@/modules/identity/services/user-client');
+      const data = await getClientUsers(scope);
       setUsers(data);
       setError(null);
       lastLoadedAtRef.current = Date.now();
@@ -95,9 +95,9 @@ export function useUsers(enabled = true) {
     department?: string;
     specialty?: string;
     phone?: string;
-  }, actorId?: string, actorUsername?: string) => {
-    const { createUser } = await import('@/modules/identity/services/user-service');
-    const user = await createUser(data, actorId, actorUsername);
+  }, _actorId?: string, _actorUsername?: string) => {
+    const { createClientUserWithInvitation } = await import('@/modules/identity/services/user-client');
+    const { user } = await createClientUserWithInvitation(data);
     await loadUsers();
     return user;
   }, [loadUsers]);
@@ -113,9 +113,9 @@ export function useUsers(enabled = true) {
     photoUrl?: string | null;
     department?: string;
     specialty?: string;
-  }, actorId?: string, actorUsername?: string) => {
-    const { updateUser } = await import('@/modules/identity/services/user-service');
-    const user = await updateUser(id, data, actorId, actorUsername);
+  }, _actorId?: string, _actorUsername?: string) => {
+    const { updateClientUser } = await import('@/modules/identity/services/user-client');
+    const user = await updateClientUser(id, data);
     await loadUsers();
     return user;
   }, [loadUsers]);
@@ -123,20 +123,20 @@ export function useUsers(enabled = true) {
   const resetPassword = useCallback(async (
     id: string,
     newPassword: string,
-    actorId?: string,
-    actorUsername?: string
+    _actorId?: string,
+    _actorUsername?: string
   ) => {
-    const { resetPassword: resetPw } = await import('@/modules/identity/services/user-service');
-    await resetPw(id, newPassword, actorId, actorUsername);
+    const { resetClientUserPassword } = await import('@/modules/identity/services/user-client');
+    await resetClientUserPassword(id, newPassword);
   }, []);
 
   const deactivate = useCallback(async (
     id: string,
-    actorId?: string,
-    actorUsername?: string
+    _actorId?: string,
+    _actorUsername?: string
   ) => {
-    const { deactivateUser } = await import('@/modules/identity/services/user-service');
-    await deactivateUser(id, actorId, actorUsername);
+    const { setClientUserActive } = await import('@/modules/identity/services/user-client');
+    await setClientUserActive(id, false);
     await loadUsers();
   }, [loadUsers]);
 
@@ -148,11 +148,11 @@ export function useUsers(enabled = true) {
    */
   const reactivate = useCallback(async (
     id: string,
-    actorId?: string,
-    actorUsername?: string
+    _actorId?: string,
+    _actorUsername?: string
   ) => {
-    const { reactivateUser } = await import('@/modules/identity/services/user-service');
-    await reactivateUser(id, actorId, actorUsername);
+    const { setClientUserActive } = await import('@/modules/identity/services/user-client');
+    await setClientUserActive(id, true);
     await loadUsers();
   }, [loadUsers]);
 

@@ -22,6 +22,14 @@ function apiPath(file: string): string {
   return `/api/${path.relative(API_ROOT, path.dirname(file)).split(path.sep).join('/')}`;
 }
 
+/** Follow a thin Next.js route adapter to the domain-owned implementation. */
+function routeSource(file: string): string {
+  const source = fs.readFileSync(file, 'utf8');
+  const adapter = source.match(/export\s+\{[^}]+\}\s+from\s+['"]@\/(.+)['"]/);
+  if (!adapter) return source;
+  return fs.readFileSync(path.join(process.cwd(), 'src', `${adapter[1]}.ts`), 'utf8');
+}
+
 const STATIC_PUBLIC = new Set([
   '/api/auth/login', '/api/auth/logout', '/api/auth/accept-invite',
   '/api/auth/forgot-password', '/api/auth/password-policy',
@@ -43,7 +51,7 @@ describe('API route authentication contract', () => {
     const unguarded = routeFiles(API_ROOT).flatMap(file => {
       const route = apiPath(file);
       if (STATIC_PUBLIC.has(route)) return [];
-      const source = fs.readFileSync(file, 'utf8');
+      const source = routeSource(file);
       return /(?:await\s+)?getAuthPayload\s*\(|verifySyncMachineRequest\s*\(/.test(source) ? [] : [route];
     });
 
@@ -59,7 +67,7 @@ describe('API route authentication contract', () => {
     const missingGuard = routeFiles(API_ROOT).flatMap(file => {
       const route = apiPath(file);
       if (!route.startsWith('/api/patient-portal/') && !route.startsWith('/api/webhooks/')) return [];
-      const source = fs.readFileSync(file, 'utf8');
+      const source = routeSource(file);
       const guarded = route.startsWith('/api/webhooks/')
         ? /verify\w*Signature\s*\(/.test(source)
         : /verifyPatientToken\s*\(|createPatientToken\s*\(|verifyOtp\s*\(|activatePortalAccount\s*\(/.test(source);

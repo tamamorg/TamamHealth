@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mount } from '../clinical-notes/test-utils';
 import AppointmentsCalendar, { stackedDayLayout, calendarRange, type CalEvent } from '@/app/(dashboard)/appointments/_AppointmentsCalendar';

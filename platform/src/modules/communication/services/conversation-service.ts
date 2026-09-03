@@ -21,7 +21,7 @@ export const EDIT_WINDOW_MS = 15 * 60 * 1000;
 /** All conversations a user participates in, pinned-first then most-recent. */
 export async function getConversationsForUser(
   userId: string,
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<ConversationDoc[]> {
   const db = conversationsDB();
   // Indexed on type; the participant test stays in JS because Mango's
@@ -29,7 +29,7 @@ export async function getConversationsForUser(
   // per-user conversation count is small once the type filter has run.
   let all = (await findByType<ConversationDoc>(db, 'conversation'))
     .filter(d => Array.isArray(d.participantIds) && d.participantIds.includes(userId));
-  if (scope) all = filterByScope(all, scope);
+  all = filterByScope(all, scope);
   return all.sort((a, b) => {
     const ap = a.pinnedBy?.includes(userId) ? 1 : 0;
     const bp = b.pinnedBy?.includes(userId) ? 1 : 0;
@@ -91,13 +91,13 @@ export function selectUnreadStaffMessages(
 /** Unread staff messages for the bell, already tenant- and participant-scoped. */
 export async function getUnreadStaffMessagesForUser(
   userId: string,
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<UnreadStaffMessageRow[]> {
   const conversations = await getConversationsForUser(userId, scope);
   if (conversations.length === 0) return [];
 
   let messages = await findByType<MessageDoc>(messagesDB(), 'message');
-  if (scope) messages = filterByScope(messages, scope);
+  messages = filterByScope(messages, scope);
   return selectUnreadStaffMessages(conversations, messages, userId);
 }
 

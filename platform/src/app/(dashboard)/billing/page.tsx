@@ -1,21 +1,25 @@
 'use client';
 
 /**
- * Billing Home — OpenMRS O3-style bill list. A cashier's landing view: filter
- * bills by status, search by patient name/identifier/invoice, and open a bill
- * to work it (finalize, collect, print) on /billing/[id].
+ * Billing Home — the cashier's bill registry. One row per invoice; open a
+ * bill to work it (finalize, collect, print) on /billing/[id]. The /payments
+ * page remains the patient-level A/R cockpit.
  *
- * This is invoice-level (one row per bill); the /payments page remains the
- * patient-level A/R cockpit.
+ * Restyled 2026-09 onto the shared registry surface (EhrListHeader +
+ * data-table) that patients / lab / referrals / deaths already wear — this
+ * page was the last list still carrying its own OpenMRS O3-style card, with
+ * a breadcrumb head, an inner "Bill List" card and its own pagination strip
+ * around a seven-row table.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useDataScope } from '@/lib/hooks/useDataScope';
-import { Receipt, Search, ChevronLeft, ChevronRight, Activity } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import { formatBillDate, STATUS_CHIP } from '@/components/billing/billing-utils';
 import type { BillingDoc } from '@/lib/db-types-billing';
+import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 
@@ -31,17 +35,29 @@ const FILTERS: { key: FilterKey; label: string; match: (b: BillingDoc) => boolea
   { key: 'all', label: 'All bills', match: () => true },
 ];
 
-const PER_PAGE_OPTIONS = [10, 20, 30, 50];
+/** Rows rendered before "Load more" — same guard the patients registry uses
+ *  so a busy facility's bill history doesn't render thousands of rows. */
+const PAGE_SIZE = 100;
+
+const BILL_COLS: { key: string; label: string; width: number }[] = [
+  { key: 'date', label: 'Bill date', width: 120 },
+  { key: 'invoice', label: 'Invoice', width: 170 },
+  { key: 'patient', label: 'Patient', width: 200 },
+  { key: 'items', label: 'Billed items', width: 320 },
+  { key: 'total', label: 'Total', width: 120 },
+  { key: 'status', label: 'Status', width: 110 },
+];
+const BILL_COL_TOTAL = BILL_COLS.reduce((sum, c) => sum + c.width, 0);
 
 export default function BillingHomePage() {
+  const router = useRouter();
   const scope = useDataScope();
   const [bills, setBills] = useState<BillingDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<FilterKey>('open');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const loadBills = useCallback(async () => {
     if (!scope) return;
@@ -73,151 +89,110 @@ export default function BillingHomePage() {
       );
     });
   }, [bills, filter, search]);
+  const visible = filtered.slice(0, visibleCount);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
-  const safePage = Math.min(page, pageCount);
-  const pageRows = filtered.slice((safePage - 1) * perPage, safePage * perPage);
-  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * perPage + 1;
-  const rangeEnd = Math.min(safePage * perPage, filtered.length);
+  // Header chips: the ledger's standing breakdown, independent of the filter —
+  // the same relationship every registry header keeps with its rows.
+  const stats = useMemo(() => {
+    const count = (match: (b: BillingDoc) => boolean) => bills.filter(match).length;
+    return [
+      { label: 'Open', value: count(b => b.status === 'pending' || b.status === 'partial'), color: LIST_STAT_COLORS.blue },
+      { label: 'Paid', value: count(b => b.status === 'paid'), color: LIST_STAT_COLORS.green },
+      { label: 'Waived', value: count(b => b.status === 'waived'), color: LIST_STAT_COLORS.amber },
+      { label: 'Cancelled', value: count(b => b.status === 'cancelled'), color: LIST_STAT_COLORS.muted },
+    ];
+  }, [bills]);
 
   return (
-    <main className="page-container page-enter">
-      <div className="bl-root">
-        <div className="bl-home-head">
-          <div className="bl-home-icon"><Receipt size={24} /></div>
-          <div>
-            <p className="bl-eyebrow">Billing</p>
-            <h1 className="bl-title">Home</h1>
-          </div>
-        </div>
-
-        <div className="bl-filter-row">
-          <span>Filter by:</span>
-          <Select
-            value={filter}
-            aria-label="Filter bills by status"
-            onChange={e => { setFilter(e.target.value as FilterKey); setPage(1); }}
-          >
-            {FILTERS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-          </Select>
-        </div>
-
-        {error && <div className="bl-card" style={{ padding: '14px 18px', color: 'var(--color-danger-text)' }}>{error}</div>}
-
-        <div className="bl-card">
-          <div className="bl-card-head">
-            <h2 className="bl-card-title">Bill List</h2>
-            <span className="bl-underline" />
-          </div>
-
-          <div className="bl-search">
-            <Search size={16} />
-            <input
-              type="text"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Filter bills by patient name or identifier"
-              aria-label="Filter bills by patient name or identifier"
-            />
-          </div>
-
-          {loading ? (
-            <div className="bl-loading">
-              <Activity size={30} style={{ animation: 'spin 1s linear infinite' }} />
-              <span>Loading bills…</span>
-            </div>
-          ) : pageRows.length === 0 ? (
-            <div className="bl-empty">
-              <Receipt size={34} />
-              <h3>No bills to display</h3>
-              <p>{search ? 'No bills match your search. Try a different name or identifier.' : 'Bills matching this filter will appear here as they are created.'}</p>
-            </div>
-          ) : (
-            <div className="bl-table-wrap">
-              <table className="bl-table">
-                <thead>
-                  <tr>
-                    <th>Bill date</th>
-                    <th>Invoice number</th>
-                    <th>Patient identifier</th>
-                    <th>Patient name</th>
-                    <th>Billed items</th>
-                    <th className="bl-right">Total</th>
-                    <th>Status</th>
+    <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+        <EhrListHeader
+          title="Billing"
+          count={bills.length}
+          stats={stats}
+          search={{
+            value: search,
+            onChange: v => { setSearch(v); setVisibleCount(PAGE_SIZE); },
+            placeholder: 'Search by patient, invoice, or identifier…',
+            ariaLabel: 'Search bills',
+          }}
+          actions={
+            <Select
+              value={filter}
+              aria-label="Filter bills by status"
+              onChange={e => { setFilter(e.target.value as FilterKey); setVisibleCount(PAGE_SIZE); }}
+            >
+              {FILTERS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+            </Select>
+          }
+        />
+        {error && (
+          <div style={{ padding: '10px 16px', color: 'var(--color-danger-text)', fontSize: 13 }}>{error}</div>
+        )}
+        <div className="ehr-list-scroll">
+          <table className="data-table" style={{ minWidth: 1040, tableLayout: 'fixed' }}>
+            <colgroup>
+              {BILL_COLS.map(c => (
+                <col key={c.key} style={{ width: `${(c.width / BILL_COL_TOTAL * 100).toFixed(2)}%` }} />
+              ))}
+            </colgroup>
+            <thead>
+              <tr>
+                {BILL_COLS.map(c => (
+                  <th key={c.key} className={c.key === 'total' ? 'text-right' : undefined}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={BILL_COLS.length} className="text-sm p-4" style={{ color: 'var(--text-muted)' }}>Loading bills…</td></tr>
+              )}
+              {!loading && visible.length === 0 && (
+                <tr>
+                  <td colSpan={BILL_COLS.length} className="text-sm p-4" style={{ color: 'var(--text-muted)' }}>
+                    {search ? 'No bills match your search. Try a different name or identifier.' : 'Bills matching this filter will appear here as they are created.'}
+                  </td>
+                </tr>
+              )}
+              {!loading && visible.map(bill => {
+                const chip = STATUS_CHIP[bill.status];
+                return (
+                  <tr
+                    key={bill._id}
+                    className="cursor-pointer hover:bg-[var(--table-row-hover)]"
+                    onClick={() => router.push(`/billing/${bill._id}`)}
+                  >
+                    <td className="text-xs" style={{ whiteSpace: 'nowrap' }}>{formatBillDate(bill.createdAt)}</td>
+                    <td>
+                      <Link href={`/billing/${bill._id}`} className="text-sm font-semibold" style={{ color: 'var(--accent-text)' }} data-tour="bill-open">
+                        {bill.invoiceNumber}
+                      </Link>
+                    </td>
+                    <td>
+                      <span className="text-sm font-semibold block truncate">{bill.patientName}</span>
+                      <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{bill.hospitalNumber || '—'}</span>
+                    </td>
+                    <td className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                      {bill.items.length > 0
+                        ? bill.items.map(i => i.description).slice(0, 3).join(', ') + (bill.items.length > 3 ? ` +${bill.items.length - 3} more` : '')
+                        : '—'}
+                    </td>
+                    <td className="text-sm font-mono text-right" style={{ whiteSpace: 'nowrap' }}>{formatMoney(bill.totalAmount, { currency: bill.currency })}</td>
+                    <td>{chip ? <span className={`bl-chip ${chip.cls}`}>{chip.label}</span> : bill.status}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {pageRows.map(bill => {
-                    const chip = STATUS_CHIP[bill.status];
-                    return (
-                      <tr key={bill._id}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{formatBillDate(bill.createdAt)}</td>
-                        <td>
-                          <Link href={`/billing/${bill._id}`} className="bl-link" data-tour="bill-open">{bill.invoiceNumber}</Link>
-                        </td>
-                        <td className="bl-num">{bill.hospitalNumber || '—'}</td>
-                        <td>{bill.patientName}</td>
-                        <td className="bl-muted">
-                          {bill.items.length > 0
-                            ? bill.items.map(i => i.description).slice(0, 3).join(', ') + (bill.items.length > 3 ? ` +${bill.items.length - 3} more` : '')
-                            : '—'}
-                        </td>
-                        <td className="bl-num bl-right">{formatMoney(bill.totalAmount, { currency: bill.currency })}</td>
-                        <td>{chip ? <span className={`bl-chip ${chip.cls}`}>{chip.label}</span> : bill.status}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {!loading && filtered.length > 0 && (
-            <div className="bl-pagination">
-              <div className="bl-page-group">
-                <span>Items per page:</span>
-                <Select
-                  value={perPage}
-                  aria-label="Items per page"
-                  onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-                >
-                  {PER_PAGE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
-                </Select>
-              </div>
-              <span>{rangeStart}–{rangeEnd} of {filtered.length} items</span>
-              <div className="bl-page-group">
-                <Select
-                  value={safePage}
-                  aria-label="Page"
-                  onChange={e => setPage(Number(e.target.value))}
-                >
-                  {Array.from({ length: pageCount }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                  ))}
-                </Select>
-                <span>of {pageCount} page{pageCount === 1 ? '' : 's'}</span>
-                <button
-                  type="button"
-                  className="bl-pager-btn"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={safePage <= 1}
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft size={15} />
-                </button>
-                <button
-                  type="button"
-                  className="bl-pager-btn"
-                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
-                  disabled={safePage >= pageCount}
-                  aria-label="Next page"
-                >
-                  <ChevronRight size={15} />
-                </button>
-              </div>
-            </div>
-          )}
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+        {!loading && filtered.length > visible.length && (
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Showing {visible.length} of {filtered.length} bills</span>
+            <button type="button" className="btn btn-secondary" style={{ height: 34 }} onClick={() => setVisibleCount(c => c + PAGE_SIZE)}>
+              Load more
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

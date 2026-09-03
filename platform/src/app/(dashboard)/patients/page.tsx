@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { patientFullName, patientDisplayName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { ScanLine, Hash, X, ArrowRight, Download, UserPlus, Search } from '@/components/icons/lucide';
+import { ScanLine, Hash, X, ArrowRight, UserPlus } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';

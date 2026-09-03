@@ -20,8 +20,13 @@
  *     so `apd.ts` (5,894 lines, the Juba Arabic translation) resolves to no
  *     static specifier and looks like the largest dead file in the repo.
  *
- * Deleting either would have been a bad day, which is why the allowlist below
- * is explicit about why each entry is there rather than being a list of paths.
+ * Deleting either would have been a bad day, which is why dynamic roots below
+ * are explicit about how the framework reaches them.
+ *
+ * This must walk from application entries, not merely ask whether each file is
+ * imported by something. An unused barrel can import an otherwise-dead subtree;
+ * direct-import counting would call that subtree live even though no route,
+ * test, or framework entry can reach it.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -55,11 +60,13 @@ function resolve(spec: string, from: string): string | null {
 /** Static imports, dynamic imports and re-exports, in either quote style. */
 const SPECIFIER = /(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g;
 
-const imported = new Set<string>();
+const imports = new Map<string, Set<string>>(
+  [...FILES.keys()].map(file => [file, new Set<string>()]),
+);
 for (const [file, source] of FILES) {
   for (const [, spec] of source.matchAll(SPECIFIER)) {
     const target = resolve(spec, file);
-    if (target) imported.add(target);
+    if (target) imports.get(file)?.add(target);
   }
 }
 
@@ -70,15 +77,9 @@ const FRAMEWORK_ENTRIES = new Set([
   'instrumentation-client.ts', 'sitemap.ts', 'robots.ts', 'manifest.ts',
 ]);
 
-/** Reachable, but not by a specifier this scanner can resolve. */
+/** Framework/dynamic entries not represented by a static specifier. */
 const REACHED_DYNAMICALLY = new Map([
   ['lib/i18n/locales/apd.ts', 'loaded by `import(`./locales/${locale}`)` in lib/i18n/index.ts'],
-]);
-
-/** Unused convenience barrels over live modules. Not dead features. */
-const UNUSED_BARRELS = new Map([
-  ['components/lab/order/index.ts', 're-exports the live lab-order modules'],
-  ['lib/clinical-flow/index.ts', 're-exports the live clinical-flow spec layer, and documents it'],
 ]);
 
 function isEntry(file: string): boolean {
@@ -90,10 +91,21 @@ function isEntry(file: string): boolean {
 }
 
 describe('every file is reachable', () => {
+  const roots = [...FILES.keys()].filter(file => (
+    isEntry(file) || REACHED_DYNAMICALLY.has(path.relative(SRC, file))
+  ));
+  const reachable = new Set<string>();
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const file = pending.pop()!;
+    if (reachable.has(file)) continue;
+    reachable.add(file);
+    for (const dependency of imports.get(file) ?? []) pending.push(dependency);
+  }
+
   const orphans = [...FILES.keys()]
-    .filter(f => !imported.has(f) && !isEntry(f))
-    .map(f => path.relative(SRC, f))
-    .filter(rel => !REACHED_DYNAMICALLY.has(rel) && !UNUSED_BARRELS.has(rel))
+    .filter(file => !reachable.has(file))
+    .map(file => path.relative(SRC, file))
     .sort();
 
   it('finds no unreachable source file', () => {
@@ -106,25 +118,14 @@ describe('every file is reachable', () => {
     // If `resolve` broke, everything would look dead and the assertion above
     // would fail loudly — but if the SPECIFIER regex broke the other way,
     // nothing would look dead and this suite would pass vacuously.
-    expect(imported.size).toBeGreaterThan(FILES.size * 0.5);
+    expect(reachable.size).toBeGreaterThan(FILES.size * 0.9);
   });
 });
 
-describe('the allowlists stay honest', () => {
+describe('the dynamic roots stay honest', () => {
   it('keeps every dynamically-reached file present', () => {
     for (const rel of REACHED_DYNAMICALLY.keys()) {
       expect(FILES.has(path.join(SRC, rel))).toBe(true);
-    }
-  });
-
-  it('keeps every allowlisted barrel genuinely unimported', () => {
-    // If something starts importing a barrel it stops being an exception, and
-    // the entry should go rather than sit there implying a rule that no longer
-    // applies.
-    for (const rel of UNUSED_BARRELS.keys()) {
-      const full = path.join(SRC, rel);
-      if (!FILES.has(full)) continue;
-      expect(imported.has(full)).toBe(false);
     }
   });
 });

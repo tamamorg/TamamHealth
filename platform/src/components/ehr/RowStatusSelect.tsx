@@ -83,6 +83,10 @@ export default function RowStatusSelect({
         onChange={event => {
           event.stopPropagation();
           const next = event.target.value;
+          // Matches AppointmentStatusPillSelect: a focused <select> shows the
+          // :focus-visible ring even after a mouse pick, so drop focus once
+          // the choice is committed rather than leaving the pill outlined.
+          event.target.blur();
           if (next !== value) onSelect(next);
         }}
       >

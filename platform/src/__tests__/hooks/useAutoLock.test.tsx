@@ -17,7 +17,6 @@
  * required hook, and a component tree built from one React copy cannot use
  * hooks whose dispatcher lives in a different copy ("Invalid hook call").
  */
-import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import {

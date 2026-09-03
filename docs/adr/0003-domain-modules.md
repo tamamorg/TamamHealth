@@ -1,7 +1,7 @@
 # ADR 0003 — Domain modules with enforced boundaries
 
-- **Status:** Accepted (migration in progress — `identity` and `communication` landed;
-  10 domains remain)
+- **Status:** Accepted (migration in progress — `identity`, `communication`,
+  `tenancy`, and the first `analytics` route have landed)
 - **Supersedes:** nothing
 - **Interacts with:** ADR 0001 (tenant scoping), `docs/ARCHITECTURE.md`
 
@@ -181,12 +181,15 @@ independence, so the pattern is proven before it meets the tangled parts:
 2. ~~**communication**~~ — landed. Messages, announcements, the notification
    bell. 11 files, and the mirror image of identity: client-heavy, so its
    `client.ts` is the main surface.
-3. `platform` — tenants, config, policy, audit, usage. Server-heavy, high
-   fan-in; the third shape the tooling needs to handle.
-4. `revenue`, `scheduling`, `pharmacy`, `diagnostics`.
-5. `patients`, `clinical` — the tangled core, done last with the most edges
+3. **platform** — partially landed as `tenancy`; config, policy, audit, and
+   usage remain. Server-heavy, high fan-in; the third shape the tooling needs
+   to handle.
+4. **analytics** — started with the `/api/sync` ingestion and projection
+   handler. Reporting and export ownership remain.
+5. `revenue`, `scheduling`, `pharmacy`, `diagnostics`.
+6. `patients`, `clinical` — the tangled core, done last with the most edges
    already resolved.
-6. `maternal-child`, `public-health`, `facility-ops`.
+7. `maternal-child`, `public-health`, `facility-ops`.
 
 Until a domain has moved, its code stays where it is and the boundary rules
 simply do not match it. The lint config therefore lists modules explicitly

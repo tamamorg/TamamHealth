@@ -953,8 +953,8 @@ async function resolvePrescriberId(prescribedBy: string, orgId?: string): Promis
   const wanted = (prescribedBy || '').trim().toLowerCase();
   if (!wanted) return prescribedBy;
   try {
-    const { getAllUsers } = await import('@/modules/identity/services/user-service');
-    const users = await getAllUsers();
+    const { getAllUsersUnscoped } = await import('@/modules/identity/services/user-service');
+    const users = await getAllUsersUnscoped();
     // Constrained to the prescription's own org: the local directory holds
     // every tenant's users, and an unconstrained unique-name match could
     // deliver this PHI-bearing task to a same-named clinician elsewhere.

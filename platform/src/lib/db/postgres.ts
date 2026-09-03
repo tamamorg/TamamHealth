@@ -586,7 +586,6 @@ export function buildUpsertSql(
  */
 export async function upsertDocument(
   table: string,
-  id: string,
   data: Record<string, unknown>
 ): Promise<UpsertResult> {
   assertSafeTable(table);

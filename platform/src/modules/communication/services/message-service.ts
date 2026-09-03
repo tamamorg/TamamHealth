@@ -28,15 +28,18 @@ function encryptMessageFields<T extends Partial<MessageDoc>>(data: T): T {
   return out;
 }
 
-export async function getAllMessages(scope?: DataScope): Promise<MessageDoc[]> {
+async function getAllMessagesUnscoped(): Promise<MessageDoc[]> {
   const db = messagesDB();
-  const all = (await findByType<MessageDoc>(db, 'message'))
+  return (await findByType<MessageDoc>(db, 'message'))
     .map(decryptMessage)
     .sort((a, b) => new Date(b.sentAt || '').getTime() - new Date(a.sentAt || '').getTime());
-  return scope ? filterByScope(all, scope) : all;
 }
 
-export async function getMessagesByPatient(patientId: string, scope?: DataScope): Promise<MessageDoc[]> {
+export async function getAllMessages(scope: DataScope): Promise<MessageDoc[]> {
+  return filterByScope(await getAllMessagesUnscoped(), scope);
+}
+
+export async function getMessagesByPatient(patientId: string, scope: DataScope): Promise<MessageDoc[]> {
   const all = await getAllMessages(scope);
   // Exclude internal staff chat only. A patient→staff message legitimately has
   // recipientType 'staff' (the recipient is staff), so we must NOT filter on
@@ -45,9 +48,15 @@ export async function getMessagesByPatient(patientId: string, scope?: DataScope)
   return all.filter(m => m.patientId === patientId && m.direction !== 'staff_to_staff');
 }
 
-export async function getMessagesByDoctor(doctorId: string): Promise<MessageDoc[]> {
-  const all = await getAllMessages();
+export async function getMessagesByDoctor(doctorId: string, scope: DataScope): Promise<MessageDoc[]> {
+  const all = await getAllMessages(scope);
   return all.filter(m => m.fromDoctorId === doctorId);
+}
+
+/** Patient-portal read: authentication already fixes the query to this patient. */
+export async function getPortalMessagesByPatient(patientId: string): Promise<MessageDoc[]> {
+  const all = await getAllMessagesUnscoped();
+  return all.filter(m => m.patientId === patientId && m.direction !== 'staff_to_staff');
 }
 
 /**
@@ -56,7 +65,7 @@ export async function getMessagesByDoctor(doctorId: string): Promise<MessageDoc[
  * (and the legacy fallback of `fromDoctorId === 'patient'` for messages saved
  * before the direction field existed).
  */
-export async function getInboundPatientMessages(scope?: DataScope): Promise<MessageDoc[]> {
+export async function getInboundPatientMessages(scope: DataScope): Promise<MessageDoc[]> {
   const all = await getAllMessages(scope);
   return all.filter(m =>
     m.direction === 'patient_to_staff' || m.fromDoctorId === 'patient'
@@ -68,7 +77,7 @@ export async function getInboundPatientMessages(scope?: DataScope): Promise<Mess
  * for the staff inbox at a specific hospital. Matches both patient-originated
  * messages targeting this facility and staff-authored messages from/to it.
  */
-export async function getMessagesForFacility(hospitalId: string, scope?: DataScope): Promise<MessageDoc[]> {
+export async function getMessagesForFacility(hospitalId: string, scope: DataScope): Promise<MessageDoc[]> {
   const all = await getAllMessages(scope);
   return all.filter(m =>
     m.recipientHospitalId === hospitalId ||

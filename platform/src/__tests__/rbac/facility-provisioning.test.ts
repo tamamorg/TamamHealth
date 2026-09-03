@@ -261,7 +261,7 @@ describe('the scope a staff account must carry', () => {
     // create form moved into the shared CreateUserModal — which is on the
     // list in its place.
     for (const file of [
-      'app/api/users/route.ts',
+      'modules/identity/api/users-route.ts',
       'modules/identity/services/user-service.ts',
       'components/admin/UserForm.tsx',
     ]) {
@@ -272,7 +272,7 @@ describe('the scope a staff account must carry', () => {
       // surface or (inside the module) the policy file that defines it. What
       // the assertion is really guarding is that it comes from SOMEWHERE
       // shared rather than being retyped here.
-      expect(text).toMatch(/@\/modules\/identity(\/client|\/policy\/user-scope-rules)?['"]/);
+      expect(text).toMatch(/@\/modules\/identity(\/client|\/policy\/user-scope-rules)?['"]|\.\.\/policy\/user-scope-rules['"]/);
     }
     // Pages that delegate must not quietly grow their own list back.
     for (const file of [

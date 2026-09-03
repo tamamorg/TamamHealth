@@ -22608,6 +22608,19 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 0.7fr);
 }
 
+/* The technician's configured turnaround target is operational, not merely a
+   preference stored by Settings. Mark overdue open orders on the worklist and
+   repeat the signal in text so colour is never the only carrier. */
+.lab-list-surface .appointment-card-row.is-overdue {
+  box-shadow: inset 3px 0 0 var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 7%, var(--bg-card-solid));
+}
+
+.lab-list-surface .lab-turnaround-overdue {
+  color: var(--color-danger-text);
+  font-weight: 700;
+}
+
 @media (max-width: 720px) {
   .patients-list-surface {
     width: 100%;

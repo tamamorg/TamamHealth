@@ -53,12 +53,13 @@
 # matter — the modules do not overlap, which is the point of them.
 /platform/src/modules/identity/       @makuachteny
 /platform/src/modules/communication/  @makuachteny
+/platform/src/modules/analytics/      @makuachteny
 
 # --- Data & sync -----------------------------------------------------------
 # Patient data, CouchDB→Postgres projection and the offline sync engine.
 # Changes here can silently corrupt or drop PHI — keep a second pair of eyes.
 /sync-worker/                    @makuachteny
-/platform/src/app/api/sync/      @makuachteny
+/platform/src/modules/analytics/api/  @makuachteny
 /platform/src/lib/db/            @makuachteny
 /platform/src/lib/db.ts          @makuachteny
 /platform/src/lib/sync/          @makuachteny

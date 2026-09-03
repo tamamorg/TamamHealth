@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const { getAllUsers } = await import('@/modules/identity/services/user-service');
-      const users = await getAllUsers();
+      const { getAllUsersUnscoped } = await import('@/modules/identity/services/user-service');
+      const users = await getAllUsersUnscoped();
       // Matched on username OR email, because the person who has forgotten
       // their password has often also forgotten which of the two they used.
       const match = users.find(user =>

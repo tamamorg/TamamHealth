@@ -129,6 +129,14 @@ export default function FacilityWorkQueuePage() {
   const facilityId = currentUser?.hospitalId;
 
   useEffect(() => {
+    if (!scope) {
+      setEnquiries([]);
+      setLeave([]);
+      setSchedules([]);
+      setAvailableProviderIds(new Set());
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
 
     const loadAvailability = async () => {

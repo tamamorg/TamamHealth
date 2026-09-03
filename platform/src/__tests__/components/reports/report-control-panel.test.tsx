@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BarChart3, List } from '@/components/icons/lucide';
 import { click, mount } from '../clinical-notes/test-utils';
 import ReportControlPanel, { type ReportView } from '@/app/(dashboard)/reports/_ReportControlPanel';
@@ -58,4 +58,3 @@ it('applies a chart form immediately and reflects the visible selection', () => 
   expect(bar.classList.contains('is-on')).toBe(true);
   mounted.unmount();
 });
-
