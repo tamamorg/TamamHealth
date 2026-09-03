@@ -136,7 +136,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
                 <Fragment key={n._id}>
                   <tr>
                     <td className="omrs-cell-strong">{n.subject}</td>
-                    <td className="omrs-cell-note">{n.message}</td>
+                    <td className="omrs-cell-note"><div className="omrs-cell-clamp" title={n.message}>{n.message}</div></td>
                     <td>
                       {n.callerName || 'Caller'}
                       {(n.recordedByName || n.routedToName) && (

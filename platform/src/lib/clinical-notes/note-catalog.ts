@@ -216,9 +216,12 @@ const COMMON_OPTIONAL: readonly NoteSectionId[] = [
 
 export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
   soap: {
+    // The id stays 'soap' — it is stamped on every existing note doc — but the
+    // merged type wears the app's own vocabulary: the flow that creates it is
+    // "Start consultation", so the picker calls it Consultation too.
     id: 'soap',
-    label: 'SOAP',
-    description: 'Standard subjective/objective/assessment/plan encounter note.',
+    label: 'Consultation',
+    description: 'Standard consultation note — subjective/objective/assessment/plan.',
     sections: CORE_SOAP,
     // Absorbs the retired Consultation type: a specialist answering a referral
     // adds "Reason for Consultation" and "Recommendations" to a SOAP note

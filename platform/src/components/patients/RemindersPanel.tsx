@@ -119,7 +119,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
               const muted = r.status !== 'queued';
               return (
                 <tr key={r._id} style={muted ? { opacity: 0.6 } : undefined}>
-                  <td className="omrs-cell-note">{r.message}</td>
+                  <td className="omrs-cell-note"><div className="omrs-cell-clamp" title={r.message}>{r.message}</div></td>
                   <td>{CHANNELS.find(c => c.v === r.channel)?.label || r.channel}</td>
                   <td>{r.sendDate}</td>
                   <td>
