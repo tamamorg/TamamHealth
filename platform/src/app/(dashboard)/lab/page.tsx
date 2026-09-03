@@ -57,6 +57,22 @@ const STAGE_PILL_CLASS: Record<LabOrderStatus, string> = {
   communicated_to_patient: 'status-completed',
 };
 
+/* The timestamp that belongs to the stage the status pill names — when the
+   order last changed state. `ordered` has no entry on purpose: the order time
+   lives under the ordering clinician, and arriving in the queue is not a
+   change. Stages whose moment was never stamped show no time rather than a
+   borrowed one. */
+const STAGE_CHANGED_AT: Partial<Record<LabOrderStatus, (o: LabResultDoc) => string | undefined>> = {
+  specimen_collected: o => o.specimenCollectedAt,
+  received_at_lab: o => o.specimenReceivedAt,
+  rejected_needs_recollection: o => o.specimenRejectedAt,
+  in_process: o => o.specimenReceivedAt,
+  resulted: o => o.completedAt,
+  reviewed_by_clinician: o => o.reviewedAt,
+  acted_upon: o => o.reviewedAt,
+  communicated_to_patient: o => o.reviewedAt || o.completedAt,
+};
+
 // Derive the granular stage for an order, defaulting older orders from status.
 function effOrderStatus(o: { orderStatus?: LabOrderStatus; status: 'pending' | 'in_progress' | 'completed' }): LabOrderStatus {
   if (o.orderStatus) return o.orderStatus;
@@ -258,17 +274,16 @@ export default function LabPage() {
   // own total below, so the two shapes of this table (with and without the
   // Action column) each add up without a second set of numbers. Sized to the
   // content each column actually carries: Result holds a short value plus an
-  // "Abnormal" chip, not the widest column on the page, while Time needs a
-  // full "2026-07-28 12:11" on one line.
+  // "Abnormal" chip, not the widest column on the page. There is no Time
+  // column — the order time sits under the ordering clinician, and each
+  // status change reports its own time under the status pill.
   const labCols: { key: string; label: string; width: number }[] = [
-    { key: 'patient', label: t('lab.patient'), width: 19 },
-    { key: 'test', label: t('lab.testName'), width: 19 },
-    { key: 'specimen', label: t('lab.specimen'), width: 10 },
-    { key: 'status', label: t('lab.status'), width: 11 },
-    { key: 'result', label: t('lab.result'), width: 14 },
-    { key: 'orderedBy', label: t('lab.orderedByLabel'), width: 13 },
-    // Wide enough for "Aug 27 · 03:42 PM" plus the "Done:" line beneath it.
-    { key: 'time', label: t('lab.time'), width: 14 },
+    { key: 'patient', label: t('lab.patient'), width: 22 },
+    { key: 'test', label: t('lab.testName'), width: 21 },
+    { key: 'specimen', label: t('lab.specimen'), width: 11 },
+    { key: 'status', label: t('lab.status'), width: 14 },
+    { key: 'result', label: t('lab.result'), width: 15 },
+    { key: 'orderedBy', label: t('lab.orderedByLabel'), width: 17 },
     ...(canEnterLabResults ? [{ key: 'action', label: t('lab.action'), width: 14 }] : []),
   ];
   const labColTotal = labCols.reduce((sum, c) => sum + c.width, 0);
@@ -416,9 +431,22 @@ export default function LabPage() {
                       </div>
                     </td>
                     <td>
-                      <span className={`appointment-status-pill ${STAGE_PILL_CLASS[effOrderStatus(order)]}`}>
-                        {ORDER_STAGE_LABEL[effOrderStatus(order)]}
-                      </span>
+                      {(() => {
+                        const stage = effOrderStatus(order);
+                        const changedAt = STAGE_CHANGED_AT[stage]?.(order);
+                        return (
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`appointment-status-pill ${STAGE_PILL_CLASS[stage]}`}>
+                              {ORDER_STAGE_LABEL[stage]}
+                            </span>
+                            {changedAt && (
+                              <small className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>
+                                {formatCompactDateTime(changedAt)}
+                              </small>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td>
                       {order.result ? (
@@ -430,17 +458,12 @@ export default function LabPage() {
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
-                    <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{order.orderedBy}</td>
-                    {/* Compact "Aug 27 · 19:42", not the raw ISO stamp: the
-                        stamp wrapped onto three lines and made every resulted
-                        row twice the height of an ordered one, which is the
-                        ragged rhythm the appointments board doesn't have. */}
+                    {/* The registry's primary/secondary stack: who ordered it,
+                        and when, in the compact "Aug 27 · 19:42" form. */}
                     <td>
                       <div className="ehr-list-main">
-                        <strong>{formatCompactDateTime(order.orderedAt)}</strong>
-                        {order.completedAt && (
-                          <small>{t('lab.donePrefix', { time: formatCompactDateTime(order.completedAt) })}</small>
-                        )}
+                        <strong>{order.orderedBy}</strong>
+                        <small>{formatCompactDateTime(order.orderedAt)}</small>
                       </div>
                     </td>
                     {canEnterLabResults && (

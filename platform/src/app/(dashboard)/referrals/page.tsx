@@ -27,6 +27,7 @@ import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
 import { formatPhoneShared } from '@/lib/field-formats';
+import { formatAppointmentTimeUntil } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
@@ -725,10 +726,23 @@ export default function ReferralsPage() {
                       <td>
                         <div className="ehr-list-main" title={`${ref.fromHospital} → ${ref.toHospital}`}>
                           <strong>{activeTab === 'incoming' ? ref.fromHospital : ref.toHospital}</strong>
-                          {/* The referral date rides under the facility — it
-                              replaces the dedicated Date column, which spent a
-                              fifth of the table right-aligning one short value. */}
-                          <small>{ref.referralDate}</small>
+                          {/* The referral's age rides under the facility — it
+                              replaces the dedicated Date column. Fresh rows
+                              read as elapsed time ("2h 15m ago"); once the
+                              referral is a day or more old the label becomes
+                              the full date, which is the point where "38h ago"
+                              stops meaning anything. `createdAt` carries the
+                              clock time, but only when it falls on the
+                              referral's own date — a doc seeded or imported
+                              later has a fresh createdAt on an old referral,
+                              which read as "16s ago" on February rows. */}
+                          <small title={ref.referralDate}>
+                            {formatAppointmentTimeUntil(
+                              ref.createdAt && ref.createdAt.slice(0, 10) === (ref.referralDate || '').slice(0, 10)
+                                ? ref.createdAt
+                                : ref.referralDate,
+                            )}
+                          </small>
                         </div>
                       </td>
                       <td>

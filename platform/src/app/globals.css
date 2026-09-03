@@ -19005,7 +19005,7 @@ textarea.ehr-handoff-input {
   top: 0;
   z-index: 4;
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(96px, max-content);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   align-items: center;
   /* Tracks the row's side padding so the column labels stay over their
@@ -19031,7 +19031,7 @@ textarea.ehr-handoff-input {
    row's own inset was what still held the avatar and the status pill off the
    panel edges. Vertical stays at 9px — only the sides tighten. */
 .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(96px, max-content);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   min-height: 64px;
   padding: 9px 4px;
@@ -22563,12 +22563,11 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
    width (names stay two words, so they fit). */
 .appointment-card-flow .appointment-card-head,
 .appointment-card-flow .appointment-card-row.ehr-appointment-row {
-  /* Four even data columns; STATUS hugs its content against the table's
-     right edge instead of owning a fifth full share — a full share left a
-     gulf between CONTEXT and the pill on wide screens. Everything in the
-     status track right-aligns to the shared edge, so the track's left
-     boundary wobbling per row is invisible. */
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(96px, max-content);
+  /* Five EQUAL columns spanning the table end to end. STATUS owns a full
+     fifth share like the rest; its cell right-aligns (`align-items: flex-end`)
+     so the pill closes the table hard against the far-right edge while the
+     column itself stays the same width as the other four. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
