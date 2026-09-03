@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { patientAgeLabel } from '@/lib/patient-utils';
+import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
 import EmptyState from '@/components/EmptyState';
 import Badge, { toneForStatus } from '@/components/Badge';
 import {
@@ -684,15 +684,11 @@ export default function ReferralsPage() {
                 {filteredReferrals.map(ref => {
                 const tp = ref.transferPackage as TransferPackage | undefined;
                 const hasPatientChart = isRealPatient(ref.patientId) && !!patientById.get(ref.patientId);
-                // Status-driven actions, collapsed into a single kebab menu.
+                // Status-driven actions. Opened from the STATUS PILL only —
+                // the row itself navigates to the chart, so the menu no longer
+                // pops up from a click anywhere on the row. No "open chart"
+                // entry for the same reason.
                 const rowActions: RowAction[] = [
-                  ...(hasPatientChart ? [{
-                    key: 'chart',
-                    label: t('referrals.openPatientChart'),
-                    tone: 'default' as const,
-                    icon: <ExternalLink className="w-4 h-4" />,
-                    onClick: () => router.push(`/patients/${ref.patientId}?tab=referrals`),
-                  }] : []),
                   {
                     key: 'view-details',
                     label: 'View referral details',
@@ -718,14 +714,31 @@ export default function ReferralsPage() {
                     { key: 'note', label: t('action.addNote'), tone: 'default' as const, icon: <MessageSquarePlus className="w-4 h-4" />, onClick: () => { setNoteModalId(ref._id); setNoteText(''); } },
                   ] : []),
                 ];
+                // Does this viewer have anything to change here? "View details"
+                // alone is not a status update, so a read-only viewer keeps a
+                // plain pill rather than a caret promising an action they
+                // cannot take.
+                const canUpdateStatus = rowActions.some(a => a.key !== 'view-details');
                 return (
                   <div
                     key={ref._id}
                     className="ehr-appointment-row appointment-card-row"
                     role="button"
                     tabIndex={0}
-                    onClick={e => setRowMenu(rowActionsAt(e, rowActions))}
-                    onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions)); } }}
+                    // The row IS the patient: clicking it opens the chart on
+                    // its Referrals tab. Referrals whose patient has no chart
+                    // (seeded demo ids) fall back to the details dialog.
+                    onClick={() => {
+                      if (hasPatientChart) router.push(`/patients/${ref.patientId}?tab=referrals`);
+                      else setExpandedReferral(ref._id);
+                    }}
+                    onKeyDown={e => {
+                      if (isRowActivationKey(e.key)) {
+                        e.preventDefault();
+                        if (hasPatientChart) router.push(`/patients/${ref.patientId}?tab=referrals`);
+                        else setExpandedReferral(ref._id);
+                      }
+                    }}
                   >
                     {/* The registry's identity cell: avatar plate, linked
                         name, ID · age · gender beneath. */}
@@ -737,9 +750,9 @@ export default function ReferralsPage() {
                       )}
                       <div className="ehr-appointment-main appointment-card-patient">
                         {hasPatientChart ? (
-                          <Link href={`/patients/${ref.patientId}?tab=referrals`} {...stopsClickPropagation}>{ref.patientName}</Link>
+                          <Link href={`/patients/${ref.patientId}?tab=referrals`} {...stopsClickPropagation}>{shortenPersonName(ref.patientName)}</Link>
                         ) : (
-                          <strong>{ref.patientName}</strong>
+                          <strong>{shortenPersonName(ref.patientName)}</strong>
                         )}
                         <p>
                           {[hospitalNoFor(ref.patientId),
@@ -772,9 +785,31 @@ export default function ReferralsPage() {
                     {/* The registry's trailing stack: status pill with the
                         urgency as the small operational cue beneath it. */}
                     <div className="appointment-card-status">
-                      <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
-                        {getStatusLabel(ref.status)}
-                      </span>
+                      {/* The pill is the status control: clicking it opens the
+                          Accept / Decline / Complete menu right where the
+                          status reads, instead of a popup from anywhere on
+                          the row. `--select` is the same caret + hover
+                          affordance the appointment board's status pill uses,
+                          so an updatable status looks updatable. */}
+                      {canUpdateStatus ? (
+                        <button
+                          type="button"
+                          className={`appointment-status-pill appointment-status-pill--select ${STATUS_PILL_CLASS[ref.status] ?? ''}`}
+                          title={t('referrals.updateStatus')}
+                          aria-haspopup="menu"
+                          /* Stops the row's own click in the same handler — the
+                             stopsClickPropagation spread also carries an onClick,
+                             and two onClicks on one element means one is lost. */
+                          onClick={e => { e.stopPropagation(); setRowMenu(rowActionsAt(e, rowActions)); }}
+                          onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); e.stopPropagation(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions)); } }}
+                        >
+                          {getStatusLabel(ref.status)}
+                        </button>
+                      ) : (
+                        <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
+                          {getStatusLabel(ref.status)}
+                        </span>
+                      )}
                       <small style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
                         {t(`referrals.urgency_${ref.urgency}`)}
                       </small>

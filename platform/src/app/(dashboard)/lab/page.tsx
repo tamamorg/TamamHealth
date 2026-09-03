@@ -7,7 +7,7 @@ import { formatCompactDateTime } from '@/lib/format-utils';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { patientAgeLabel } from '@/lib/patient-utils';
+import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
 import Badge from '@/components/Badge';
 import { useRouter } from 'next/navigation';
 import { X, Plus, Radio } from '@/components/icons/lucide';
@@ -418,10 +418,10 @@ export default function LabPage() {
                       <div className="ehr-appointment-main appointment-card-patient">
                         {order.patientId ? (
                           <Link href={`/patients/${order.patientId}?tab=labs&focus=${order._id}`} {...stopsClickPropagation}>
-                            {order.patientName}
+                            {shortenPersonName(order.patientName)}
                           </Link>
                         ) : (
-                          <strong>{order.patientName}</strong>
+                          <strong>{shortenPersonName(order.patientName)}</strong>
                         )}
                         <p>
                           {[order.hospitalNumber || 'ID not recorded',

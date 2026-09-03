@@ -50,10 +50,14 @@ export default function ReferralFilterFields({
     <div className="flex flex-col gap-3">
       {direction !== undefined && onDirectionChange && (
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Direction</span>
+          <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('referrals.filterDirection')}</span>
           <Select value={direction} onChange={e => onDirectionChange(e.target.value as 'incoming' | 'outgoing')} className="w-full text-sm py-2 px-3" style={fieldStyle}>
-            <option value="incoming">{`Incoming referrals${newIncomingCount > 0 ? ` (${newIncomingCount} new)` : ''}`}</option>
-            <option value="outgoing">Outgoing referrals</option>
+            <option value="incoming">
+              {newIncomingCount > 0
+                ? t('referrals.directionIncomingNew', { count: newIncomingCount })
+                : t('referrals.directionIncoming')}
+            </option>
+            <option value="outgoing">{t('referrals.directionOutgoing')}</option>
           </Select>
         </label>
       )}
