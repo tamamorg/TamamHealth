@@ -24,7 +24,8 @@ describe('module directory wiring', () => {
     '%s applies both organization app settings and catalog cutovers',
     (_surface, source) => {
       expect(source).toContain('isAppDisabled(item.href, disabledRoutes)');
-      expect(source).toContain('applyFeatureCatalogToNavigation(authorized, platformConfig?.featureCatalog)');
+      expect(source).toContain('applyFeatureCatalogToNavigation(');
+      expect(source).toContain('href => isHrefAllowed(href, allowedRoutes)');
     },
   );
 });

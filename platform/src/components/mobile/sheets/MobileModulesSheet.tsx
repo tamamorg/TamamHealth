@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { getRoleConfig } from '@/lib/permissions';
-import { uniqueAllowedNavItems, groupNavItemsBySection, navItemLabel } from '@/components/ehr/ehr-navigation';
+import { uniqueAllowedNavItems, groupNavItemsBySection, isHrefAllowed, navItemLabel } from '@/components/ehr/ehr-navigation';
 import MobileBottomSheet from '../MobileBottomSheet';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/lib/settings/disabled-apps';
@@ -27,7 +27,11 @@ export default function MobileModulesSheet({ open, onClose }: MobileModulesSheet
   const navItems = useMemo(() => {
     const authorized = uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
       .filter(item => !isAppDisabled(item.href, disabledRoutes));
-    return applyFeatureCatalogToNavigation(authorized, platformConfig?.featureCatalog);
+    return applyFeatureCatalogToNavigation(
+      authorized,
+      platformConfig?.featureCatalog,
+      href => isHrefAllowed(href, allowedRoutes),
+    );
   }, [roleConfig, allowedRoutes, disabledRoutes, platformConfig?.featureCatalog]);
   const groups = useMemo(() => groupNavItemsBySection(navItems), [navItems]);
 

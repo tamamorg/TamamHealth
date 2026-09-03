@@ -20,6 +20,7 @@ const basePath = (href: string): string => href.split('?')[0].split('#')[0];
 export function applyFeatureCatalogToNavigation<T extends NavigationEntry>(
   items: readonly T[],
   config?: FeatureCatalogInput,
+  canNavigate: (href: string) => boolean = href => items.some(item => basePath(item.href) === basePath(href)),
 ): T[] {
   const seen = new Set<string>();
   const output: T[] = [];
@@ -38,7 +39,9 @@ export function applyFeatureCatalogToNavigation<T extends NavigationEntry>(
       if (visible.length === 0) continue;
 
       const replacement = visible.find(state => state.source === 'replacement');
-      if (replacement?.route && replacement.route !== path) {
+      // A replacement has its own authorization check. Passing RBAC for the
+      // current route must never grant a newly introduced path implicitly.
+      if (replacement?.route && replacement.route !== path && canNavigate(replacement.route)) {
         next = { ...item, href: replacement.route };
       }
     }

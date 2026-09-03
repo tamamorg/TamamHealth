@@ -188,7 +188,11 @@ export default function EhrTopRail() {
     if (!currentUser) return [];
     const authorized = uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
       .filter(item => !isAppDisabled(item.href, disabledRoutes));
-    return applyFeatureCatalogToNavigation(authorized, platformConfig?.featureCatalog);
+    return applyFeatureCatalogToNavigation(
+      authorized,
+      platformConfig?.featureCatalog,
+      href => isHrefAllowed(href, allowedRoutes),
+    );
   }, [allowedRoutes, currentUser, roleConfig, disabledRoutes, platformConfig?.featureCatalog]);
 
   // Keep four high-frequency destinations visible in the header as shortcuts.
