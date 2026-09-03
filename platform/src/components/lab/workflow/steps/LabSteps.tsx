@@ -15,6 +15,8 @@ import { containersFor, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types
 import type { LabWorkflowController } from '../useLabWorkflow';
 import Select from '@/components/Select';
 import { printElementById } from '@/lib/safe-html';
+import StructuredResultForm from '../StructuredResultForm';
+import { resolveLabResultProfile } from '../lab-result-catalog';
 
 const SPECIMEN_CONDITIONS: { value: NonNullable<LabResultDoc['specimenCondition']>; label: string }[] = [
   { value: 'acceptable', label: 'Acceptable' },
@@ -330,6 +332,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
   const { t } = useTranslation();
   const filed = ctrl.doneThrough >= 4;
   const draft = ctrl.resultDraft;
+  const structuredProfile = resolveLabResultProfile(order.testName, order.specimen);
 
   return (
     <div>
@@ -343,57 +346,69 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           )}
         </div>
         <div className="labord-section-body">
-          <div className="labord-grid-2">
-            <div>
-              <label htmlFor="labflow-value">{t('labFlow.value')}</label>
-              <input
-                id="labflow-value"
-                type="text"
-                value={draft.result}
-                onChange={e => ctrl.setResultValue(e.target.value)}
-                placeholder={t('lab.enterValue')}
-                autoFocus={!filed}
-              />
-            </div>
-            <div>
-              <label htmlFor="labflow-unit">{t('lab.unit')}</label>
-              <input
-                id="labflow-unit"
-                type="text"
-                value={draft.unit}
-                onChange={e => ctrl.setResultDraft({ ...draft, unit: e.target.value })}
-                placeholder={t('lab.unitExamplePlaceholder')}
-              />
-            </div>
-            <div>
-              <label htmlFor="labflow-range">{t('lab.referenceRange')}</label>
-              <input
-                id="labflow-range"
-                type="text"
-                value={draft.referenceRange}
-                onChange={e => ctrl.setResultDraft({ ...draft, referenceRange: e.target.value })}
-              />
-            </div>
-            <div>
-              <span className="labord-field-label">{t('labFlow.flags')}</span>
-              <div style={{ display: 'flex', gap: 16, paddingTop: 4 }}>
-                <label className="labord-check" style={{ width: 'auto', padding: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={draft.abnormal}
-                    onChange={e => ctrl.setResultDraft({ ...draft, abnormal: e.target.checked, critical: e.target.checked ? draft.critical : false })}
-                  />
-                  <span>{t('lab.abnormal')}</span>
-                </label>
-                <label className="labord-check" style={{ width: 'auto', padding: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={draft.critical}
-                    onChange={e => ctrl.setResultDraft({ ...draft, critical: e.target.checked, criticalManual: true, abnormal: e.target.checked ? true : draft.abnormal })}
-                  />
-                  <span>{t('lab.criticalLabel')}</span>
-                </label>
+          {structuredProfile ? (
+            <StructuredResultForm
+              profile={structuredProfile}
+              values={draft.observations}
+              onChange={(id, value) => ctrl.setResultDraft({
+                ...draft,
+                observations: { ...draft.observations, [id]: value },
+              })}
+            />
+          ) : (
+            <div className="labord-grid-2">
+              <div>
+                <label htmlFor="labflow-value">{t('labFlow.value')}</label>
+                <input
+                  id="labflow-value"
+                  type="text"
+                  value={draft.result}
+                  onChange={e => ctrl.setResultValue(e.target.value)}
+                  placeholder={t('lab.enterValue')}
+                  autoFocus={!filed}
+                />
               </div>
+              <div>
+                <label htmlFor="labflow-unit">{t('lab.unit')}</label>
+                <input
+                  id="labflow-unit"
+                  type="text"
+                  value={draft.unit}
+                  onChange={e => ctrl.setResultDraft({ ...draft, unit: e.target.value })}
+                  placeholder={t('lab.unitExamplePlaceholder')}
+                />
+              </div>
+              <div>
+                <label htmlFor="labflow-range">{t('lab.referenceRange')}</label>
+                <input
+                  id="labflow-range"
+                  type="text"
+                  value={draft.referenceRange}
+                  onChange={e => ctrl.setResultDraft({ ...draft, referenceRange: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="lab-result-flags">
+            <span className="labord-field-label">{t('labFlow.flags')}</span>
+            <div style={{ display: 'flex', gap: 16, paddingTop: 4 }}>
+              <label className="labord-check" style={{ width: 'auto', padding: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={draft.abnormal}
+                  onChange={e => ctrl.setResultDraft({ ...draft, abnormal: e.target.checked, critical: e.target.checked ? draft.critical : false })}
+                />
+                <span>{t('lab.abnormal')}</span>
+              </label>
+              <label className="labord-check" style={{ width: 'auto', padding: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={draft.critical}
+                  onChange={e => ctrl.setResultDraft({ ...draft, critical: e.target.checked, criticalManual: true, abnormal: e.target.checked ? true : draft.abnormal })}
+                />
+                <span>{t('lab.criticalLabel')}</span>
+              </label>
             </div>
           </div>
 
@@ -471,6 +486,20 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
               <strong>{t('labFlow.amendedResult')}</strong> — {t('labFlow.previousValue')}: {order.amendedFrom || '—'} · {t('labFlow.reason')}: {order.amendmentReason || '—'} · {t('labFlow.amendedBy')}: {order.amendedBy || '—'}
             </div>
           )}
+          {order.observations?.length ? (
+            <table className="lab-result-report-table">
+              <thead><tr><th>{t('labStructured.investigation')}</th><th>{t('labFlow.value')}</th><th>{t('lab.unit')}</th></tr></thead>
+              <tbody>
+                {order.observations.map(observation => (
+                  <tr key={observation.id}>
+                    <td><span>{observation.label}</span><small>{observation.group}</small></td>
+                    <td>{observation.value}</td>
+                    <td>{observation.unit || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
           <div className="labord-grid-2">
             <Field label={t('labFlow.test')} value={order.testName} />
             <Field label={t('labFlow.accession')} value={order.accessionNumber} />
@@ -491,6 +520,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
               value={order.critical ? t('lab.critical') : order.abnormal ? t('lab.abnormal') : t('labFlow.withinRange')}
             />
           </div>
+          )}
         </div>
       </div>
 

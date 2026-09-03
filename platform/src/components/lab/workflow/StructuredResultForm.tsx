@@ -20,7 +20,7 @@ export default function StructuredResultForm({
 
   useEffect(() => {
     setActiveSectionId(profile.sections[0]?.id || '');
-  }, [profile.id, profile.sections]);
+  }, [profile.id, profile.sections[0]?.id]);
 
   const allFields = useMemo(() => profile.sections.flatMap(section => section.fields), [profile]);
   const completed = allFields.filter(field => values[field.id]?.trim()).length;

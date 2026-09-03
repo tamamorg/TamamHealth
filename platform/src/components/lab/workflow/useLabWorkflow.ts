@@ -22,6 +22,12 @@ import {
   stepForStage,
   type LabWorkflowStepKey,
 } from './lab-workflow-types';
+import {
+  buildLabObservations,
+  resolveLabResultProfile,
+  summarizeLabObservations,
+  valuesFromObservations,
+} from './lab-result-catalog';
 
 export interface CollectDraft {
   container: string;
@@ -40,6 +46,7 @@ export interface ResultDraft {
   result: string;
   unit: string;
   referenceRange: string;
+  observations: Record<string, string>;
   abnormal: boolean;
   critical: boolean;
   /** Once the tech overrides the critical flag by hand, stop deriving it. */
@@ -88,6 +95,7 @@ export function useLabWorkflow(
       result: value,
       unit: seedResult?.unit || order.unit || '',
       referenceRange: seedResult?.referenceRange || order.referenceRange || '',
+      observations: valuesFromObservations(order.observations),
       abnormal: !!order.abnormal || seededCritical,
       critical: seededCritical,
       criticalManual: !seedResult?.value && !!order.critical,
@@ -176,13 +184,17 @@ export function useLabWorkflow(
    * blocked save.
    */
   const fileResult = useCallback(() => run(async () => {
-    if (!resultDraft.result.trim()) throw new Error('labFlow.errResultValue');
+    const profile = resolveLabResultProfile(order.testName, order.specimen);
+    const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
+    const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
+    if (!result) throw new Error('labFlow.errResultValue');
     await update(order._id, {
       status: 'completed',
       orderStatus: 'resulted',
-      result: resultDraft.result.trim(),
-      unit: resultDraft.unit.trim(),
-      referenceRange: resultDraft.referenceRange.trim(),
+      result,
+      unit: profile ? '' : resultDraft.unit.trim(),
+      referenceRange: profile ? '' : resultDraft.referenceRange.trim(),
+      observations: profile ? observations : order.observations,
       abnormal: resultDraft.abnormal,
       critical: resultDraft.critical,
       completedAt: new Date().toISOString(),
@@ -200,7 +212,7 @@ export function useLabWorkflow(
           fromDoctorName: currentUser?.name || 'Laboratory',
           fromHospitalName: currentUser?.hospitalName || order.hospitalName || '',
           subject: `CRITICAL: ${order.testName} for ${order.patientName}`,
-          body: `Critical lab result for ${order.patientName} — ${order.testName}: ${resultDraft.result.trim()}${resultDraft.unit.trim() ? ` ${resultDraft.unit.trim()}` : ''}${resultDraft.referenceRange.trim() ? ` (reference range: ${resultDraft.referenceRange.trim()})` : ''}. Please review immediately.`,
+          body: `Critical lab result for ${order.patientName} — ${order.testName}: ${result}${!profile && resultDraft.unit.trim() ? ` ${resultDraft.unit.trim()}` : ''}${!profile && resultDraft.referenceRange.trim() ? ` (reference range: ${resultDraft.referenceRange.trim()})` : ''}. Please review immediately.`,
           channel: 'app',
           sentAt: new Date().toISOString(),
           orgId: currentUser?.orgId || order.orgId,
@@ -222,13 +234,17 @@ export function useLabWorkflow(
    */
   const amendResult = useCallback(() => run(async () => {
     const reason = amendReason;
-    if (!resultDraft.result.trim()) throw new Error('labFlow.errResultValue');
+    const profile = resolveLabResultProfile(order.testName, order.specimen);
+    const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
+    const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
+    if (!result) throw new Error('labFlow.errResultValue');
     if (!reason.trim()) throw new Error('labFlow.errAmendReason');
     const previous = `${order.result || '—'}${order.unit ? ` ${order.unit}` : ''}`;
     await update(order._id, {
-      result: resultDraft.result.trim(),
-      unit: resultDraft.unit.trim(),
-      referenceRange: resultDraft.referenceRange.trim(),
+      result,
+      unit: profile ? '' : resultDraft.unit.trim(),
+      referenceRange: profile ? '' : resultDraft.referenceRange.trim(),
+      observations: profile ? observations : order.observations,
       abnormal: resultDraft.abnormal,
       critical: resultDraft.critical,
       amended: true,
