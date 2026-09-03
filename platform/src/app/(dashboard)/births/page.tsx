@@ -101,26 +101,52 @@ export default function BirthsPage() {
    * dialog whose header repeated the certificate number and child name that
    * the row it came from already shows.
    */
+  /* Same expanded-row language as the doctor dashboard's visit dropdown
+     (`.ehr-visit-pop-*`): one label/value list, sentence-case labels in the
+     left column, no nested grids or boxes of its own. Related facts share a
+     row rather than each claiming one, so the panel stays short. */
   const renderBirthDetail = (selectedBirth: NonNullable<typeof births>[number]) => (
-    <div className="grid gap-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Certificate #</span>{selectedBirth.certificateNumber}</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Birth Type</span><span className="capitalize">{selectedBirth.birthType}</span></div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Delivery Type</span><span className="capitalize">{selectedBirth.deliveryType}</span></div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Birth Weight</span>{selectedBirth.birthWeight}g</div>
+    <div className="ehr-visit-pop ehr-visit-pop--inline">
+      <div className="ehr-visit-pop-body">
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Certificate</span>
+          <div>
+            <strong>{selectedBirth.certificateNumber}</strong>
+            <p className="capitalize">{selectedBirth.birthType} · {selectedBirth.deliveryType} · {selectedBirth.birthWeight}g</p>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Mother</span>{selectedBirth.motherName} (Age: {selectedBirth.motherAge || 'N/A'})</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Mother Nationality</span>{selectedBirth.motherNationality || 'N/A'}</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Father</span>{selectedBirth.fatherName || 'N/A'}</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Father Nationality</span>{selectedBirth.fatherNationality || 'N/A'}</div>
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Mother</span>
+          <div>
+            <strong>{selectedBirth.motherName}</strong>
+            <p>
+              {selectedBirth.motherAge ? `Age ${selectedBirth.motherAge}` : 'Age not recorded'}
+              {selectedBirth.motherNationality ? ` · ${selectedBirth.motherNationality}` : ''}
+            </p>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Place of Birth</span>{selectedBirth.placeOfBirth || selectedBirth.facilityName}</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Attended By</span>{selectedBirth.attendedBy || 'N/A'}</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>Registered By</span>{selectedBirth.registeredBy || 'N/A'}</div>
-          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>County</span>{selectedBirth.county || 'N/A'}, {selectedBirth.state}</div>
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Father</span>
+          <div>
+            <strong>{selectedBirth.fatherName || 'Not recorded'}</strong>
+            {selectedBirth.fatherNationality && <p>{selectedBirth.fatherNationality}</p>}
+          </div>
         </div>
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Place</span>
+          <div>
+            <strong>{selectedBirth.placeOfBirth || selectedBirth.facilityName}</strong>
+            <p>{selectedBirth.county || 'County not recorded'}, {selectedBirth.state}</p>
+          </div>
+        </div>
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">Recorded by</span>
+          <div>
+            <strong>{selectedBirth.attendedBy || 'Attendant not recorded'}</strong>
+            <p>Registered by {selectedBirth.registeredBy || 'not recorded'}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 

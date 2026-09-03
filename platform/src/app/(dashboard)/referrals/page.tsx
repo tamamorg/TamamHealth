@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
+import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
 import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
 import EmptyState from '@/components/EmptyState';
 import Badge, { toneForStatus } from '@/components/Badge';
@@ -34,19 +35,6 @@ import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 const isImage = (mimeType: string) => mimeType.startsWith('image/');
-
-/** Initials plate for a row whose patient doc is outside this device's scope
- *  (PatientAvatar needs the doc) — same fallback the transfers queue draws. */
-const INITIALS_PLATE_STYLE = {
-  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  background: 'var(--overlay-subtle)', color: 'var(--text-secondary)',
-  fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
-} as const;
-
-function nameInitials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-}
 
 /**
  * The route cell's age line: elapsed time ("2h 15m ago") while the referral is

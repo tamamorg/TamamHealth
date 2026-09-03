@@ -22597,10 +22597,13 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-/* Laboratory on the registry card grid: five data columns, and for the roles
-   that work the bench a sixth Action track holding the next-step button. */
+/* Laboratory and the pharmacy queue on the registry card grid: five data
+   columns; the lab additionally grows a sixth Action track for the roles
+   that work the bench. */
 .lab-list-surface .appointment-card-head,
-.lab-list-surface .appointment-card-row.ehr-appointment-row {
+.lab-list-surface .appointment-card-row.ehr-appointment-row,
+.pharm-list-surface .appointment-card-head,
+.pharm-list-surface .appointment-card-row.ehr-appointment-row {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .lab-list-surface.has-actions .appointment-card-head,

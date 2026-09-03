@@ -7,6 +7,7 @@ import { formatCompactDateTime } from '@/lib/format-utils';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
+import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
 import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
 import Badge from '@/components/Badge';
 import { useRouter } from 'next/navigation';
@@ -107,19 +108,6 @@ function isScheduledCollection(o: LabResultDoc): boolean {
 
 function isCollectionDue(o: LabResultDoc): boolean {
   return isScheduledCollection(o) && new Date(o.scheduledCollectionAt!).getTime() <= Date.now();
-}
-
-/** Initials plate for a row whose patient doc is outside this device's scope
- *  (PatientAvatar needs the doc) — same fallback the transfers queue draws. */
-const INITIALS_PLATE_STYLE = {
-  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  background: 'var(--overlay-subtle)', color: 'var(--text-secondary)',
-  fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
-} as const;
-
-function nameInitials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
 function fallbackAccessionNumber(order: Pick<LabResultDoc, '_id' | 'accessionNumber' | 'orderedAt'>): string {

@@ -5,6 +5,10 @@ import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import TableCols from '@/components/TableCols';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
+import Link from 'next/link';
+import PatientAvatar from '@/components/patients/PatientAvatar';
+import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
+import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
 import { Pill, AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download, Check, ExternalLink } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -19,7 +23,7 @@ import { medications } from '@/lib/data/formulary';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { formatMoney } from '@/lib/format-utils';
+import { formatCompactDateTime, formatMoney } from '@/lib/format-utils';
 import { isActivePharmacyStage, pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
 import { usePatientBalances } from '@/lib/hooks/usePatientBalances';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
@@ -45,6 +49,24 @@ type PharmacyTab = 'queue' | 'inventory' | 'reorder' | 'expiry' | 'overview' | '
  * the Dosage column the widest one on the page. Only append a part the dose
  * does not already state.
  */
+/* The registry/appointments pill vocabulary mapped onto the pharmacy ladder,
+   exactly as the lab queue maps its bench stages: waiting reads calm blue,
+   active reads active, cleared reads ready, closed goes green, holds and
+   recalls take the attention/danger tones. */
+const RX_STAGE_PILL_CLASS: Record<PrescriptionStatus, string> = {
+  prescribed: 'status-scheduled',
+  received_in_pharmacy_queue: 'status-scheduled',
+  under_review: 'status-checked-in',
+  clinician_consultation_in_progress: 'status-in-progress',
+  cleared_for_dispensing: 'status-confirmed',
+  dispensed: 'status-completed',
+  counseled: 'status-completed',
+  complete: 'status-completed',
+  stockout_partial_referred: 'status-attention',
+  held_awaiting_clarification: 'status-attention',
+  dispensing_error_recalled: 'status-cancelled',
+};
+
 function prescriptionSig(rx: { dose?: string; frequency?: string; duration?: string }): string {
   const dose = (rx.dose || '').trim();
   const stated = dose.toLowerCase();
@@ -438,48 +460,62 @@ export default function PharmacyPage() {
     ];
 
     return (
-      <div className="space-y-4">
-        <div className="rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Ordered</span><strong>{rx.medication}</strong></div>
-            <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Dose</span><strong>{prescriptionSig(rx)}</strong></div>
-            <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Payment</span><strong style={{ color: paymentClear ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>{paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}</strong></div>
-            <div><span className="block font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Stage</span><strong>{pharmacyStageLabel(stage)}</strong></div>
+      /* The doctor dashboard's expanded visit row, exactly: one label/value
+         list in `.ehr-visit-pop-*`, no nested cards or boxes of its own. The
+         workflow steps are rows in the same list rather than a second, louder
+         language stacked underneath it. */
+      <div className="ehr-visit-pop ehr-visit-pop--inline">
+        <div className="ehr-visit-pop-body">
+          <div className="ehr-visit-pop-row">
+            <span className="ehr-visit-pop-label">Ordered</span>
+            <div>
+              <strong>{rx.medication}</strong>
+              <p>{prescriptionSig(rx)}</p>
+            </div>
           </div>
-          {rx.patientId && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm mt-3"
-              onClick={() => router.push(`/patients/${rx.patientId}?tab=prescriptions`)}
-              title={`Open ${rx.patientName}'s chart`}
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Open patient chart
-            </button>
-          )}
-        </div>
-        <div className="space-y-2">
+          <div className="ehr-visit-pop-row">
+            <span className="ehr-visit-pop-label">Payment</span>
+            <div>
+              <strong style={{ color: paymentClear ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>
+                {paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}
+              </strong>
+            </div>
+          </div>
+          <div className="ehr-visit-pop-row">
+            <span className="ehr-visit-pop-label">Stage</span>
+            <div><strong>{pharmacyStageLabel(stage)}</strong></div>
+          </div>
           {steps.map((step, index) => {
             const isCurrent = step.key === currentKey;
             return (
-              <div key={step.key} className="flex items-start gap-3 rounded-xl p-3" style={{
-                background: isCurrent ? 'var(--bg-card)' : 'var(--overlay-subtle)',
-                border: `1px solid ${isCurrent ? 'var(--accent-primary)' : 'var(--border-light)'}`,
-              }}>
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold" style={{
-                  background: step.done ? 'var(--color-success)' : isCurrent ? 'var(--accent-primary)' : 'var(--overlay-medium)',
-                  color: step.done || isCurrent ? '#fff' : 'var(--text-muted)',
-                }}>
-                  {step.done ? <Check className="w-3.5 h-3.5" /> : index + 1}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{step.label}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{step.note}</p>
+              <div key={step.key} className="ehr-visit-pop-row">
+                <span className="ehr-visit-pop-label">Step {index + 1}</span>
+                <div>
+                  {/* State is carried by the text itself — done reads muted
+                      with a tick, the step in hand reads in the accent. */}
+                  <strong style={{
+                    color: step.done ? 'var(--ehr-muted)' : isCurrent ? 'var(--accent-text)' : undefined,
+                  }}>
+                    {step.done && <Check className="w-3.5 h-3.5" style={{ display: 'inline', verticalAlign: '-2px', marginInlineEnd: 4 }} aria-hidden />}
+                    {step.label}
+                  </strong>
+                  <p>{step.note}</p>
                 </div>
               </div>
             );
           })}
         </div>
+        {rx.patientId && (
+          <button
+            type="button"
+            className="ehr-visit-pop-link"
+            onClick={() => router.push(`/patients/${rx.patientId}?tab=prescriptions`)}
+            title={`Open ${rx.patientName}'s chart`}
+          >
+            <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+            Open patient chart
+          </button>
+        )}
         {action.label && action.disabled && (
           <div className="space-y-1">
             <button type="button" className="btn btn-primary w-full" disabled title={action.disabledReason}>
@@ -930,112 +966,99 @@ export default function PharmacyPage() {
               <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-muted)' }} />
             </div>
           ) : (
-            // Padded to the card's own 16px gutter so the first column lines up
-            // with the search box above it, and given explicit column shares —
-            // on auto layout Dosage grew to nearly a third of the row while
-            // Time was squeezed onto two lines.
-            <div className="ehr-list-scroll">
-              <table className="data-table" style={{ minWidth: 900, tableLayout: 'fixed' }}>
-                <colgroup>
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '21%' }} />
-                  <col style={{ width: '19%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '9%' }} />
-                </colgroup>
-                <thead className="appointment-table-head">
-                  <tr>
-                    <th>{t('pharmacy.patient')}</th>
-                    <th>{t('pharmacy.medication')}</th>
-                    <th>{t('pharmacy.dosage')}</th>
-                    <th>{t('pharmacy.prescribedBy')}</th>
-                    <th>{t('pharmacy.time')}</th>
-                    <th>{t('pharmacy.statusLabel')}</th>
-                    <th>Payment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredQueue.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {t('pharmacy.noPrescriptionsFound')}
-                      </td>
-                    </tr>
-                  ) : filteredQueue.map(rx => {
-                    const stage = pharmacyStage(rx);
-                    const balance = balanceFor(rx.patientId);
-                    const balanceKnown = isKnownFor(rx.patientId);
-                    const paymentClear = isClearedFor(rx.patientId);
-                    return (
-                      <Fragment key={rx._id}>
-                      <tr
-                        className="cursor-pointer hover:bg-[var(--table-row-hover)]"
+            // The lab queue's card grid (see lab/page.tsx): identical head,
+            // row anatomy, and column spacing. The dosage rides under the
+            // medication and the order time under the prescriber, the way the
+            // lab stacks the accession under the specimen and the order date
+            // under the ordering clinician. The row still unfolds the
+            // dispensing workflow beneath itself, as a full-width flow row.
+            <div className="appointment-card-surface patients-list-surface pharm-list-surface">
+              <div className="appointment-card-flow">
+                <div className="appointment-card-head" aria-hidden="true">
+                  <span>{t('pharmacy.patient')}</span>
+                  <span>{t('pharmacy.medication')}</span>
+                  <span>{t('pharmacy.prescribedBy')}</span>
+                  <span>Payment</span>
+                  <span>{t('pharmacy.statusLabel')}</span>
+                </div>
+                {filteredQueue.length === 0 && (
+                  <div className="appointment-card-empty">{t('pharmacy.noPrescriptionsFound')}</div>
+                )}
+                {filteredQueue.map(rx => {
+                  const stage = pharmacyStage(rx);
+                  const balance = balanceFor(rx.patientId);
+                  const balanceKnown = isKnownFor(rx.patientId);
+                  const paymentClear = isClearedFor(rx.patientId);
+                  const rowPatient = patientById.get(rx.patientId);
+                  const toggleWorkflow = () => setWorkflowRxId(current => (current === rx._id ? null : rx._id));
+                  return (
+                    <Fragment key={rx._id}>
+                      <div
+                        className="ehr-appointment-row appointment-card-row"
+                        role="button"
+                        tabIndex={0}
                         aria-expanded={workflowRxId === rx._id}
-                        onClick={() => setWorkflowRxId(current => (current === rx._id ? null : rx._id))}
+                        onClick={toggleWorkflow}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleWorkflow(); } }}
                       >
-                        <td>
-                          <PatientName
-                            patient={patientById.get(rx.patientId)}
-                            patientId={rx.patientId}
-                            name={rx.patientName}
-                            showAvatar
-                            size={40}
-                            secondaryText={patientById.get(rx.patientId)?.hospitalNumber || 'ID not recorded'}
-                            nameClassName="text-sm"
-                          />
-                        </td>
-                        <td className="text-sm">
-                          {/* No per-row pill glyph: it was identical on every
-                              row, so it carried no information and just pushed
-                              the drug name off the column edge. */}
-                          <div className="flex items-center gap-2">
-                            {rx.medication}
-                            {rx.urgency === 'immediate' && (
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(230, 114, 0,0.12)', color: 'var(--color-warning-text)' }}>Immediate</span>
+                        <div className="ehr-appointment-identity">
+                          {rowPatient ? (
+                            <PatientAvatar patient={rowPatient} size={40} />
+                          ) : (
+                            <span aria-hidden="true" style={INITIALS_PLATE_STYLE}>{nameInitials(rx.patientName)}</span>
+                          )}
+                          <div className="ehr-appointment-main appointment-card-patient">
+                            {rx.patientId ? (
+                              <Link href={`/patients/${rx.patientId}?tab=prescriptions`} {...stopsClickPropagation}>
+                                {shortenPersonName(rx.patientName)}
+                              </Link>
+                            ) : (
+                              <strong>{shortenPersonName(rx.patientName)}</strong>
                             )}
+                            <p>
+                              {[rowPatient?.hospitalNumber || 'ID not recorded',
+                                rowPatient && patientAgeLabel(rowPatient),
+                                rowPatient?.gender].filter(Boolean).join(' \u00b7 ')}
+                            </p>
                           </div>
-                        </td>
-                        <td className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                          {prescriptionSig(rx)}
-                        </td>
-                        <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{rx.prescribedBy}</td>
-                        <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                          <div className="flex items-center gap-1.5">
-                            {rx.createdAt ? new Date(rx.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`badge text-[10px] ${
-                            stage === 'cleared_for_dispensing' ? 'badge-normal' :
-                            stage === 'dispensed' || stage === 'counseled' ? 'badge-normal' :
-                            stage === 'held_awaiting_clarification' || stage === 'stockout_partial_referred' ? 'badge-warning' :
-                            'badge-warning'
-                          }`}>
-                            {pharmacyStageLabel(stage)}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge text-[10px] ${paymentClear ? 'badge-normal' : 'badge-warning'}`}>
+                        </div>
+
+                        <div className="appointment-card-provider">
+                          <strong>{rx.medication}</strong>
+                          <span className="font-mono">{prescriptionSig(rx)}</span>
+                        </div>
+
+                        <div className="appointment-card-provider">
+                          <strong>{rx.prescribedBy}</strong>
+                          <span>{rx.createdAt ? formatCompactDateTime(rx.createdAt) : '\u2014'}</span>
+                        </div>
+
+                        {/* Payment sits mid-table, so it aligns under its own
+                            head instead of anchoring to the table's far edge. */}
+                        <div className="appointment-card-status appointment-card-status--start">
+                          <span className={`appointment-status-pill ${paymentClear ? 'status-completed' : balanceKnown ? 'status-attention' : 'status-scheduled'}`}>
                             {paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}
                           </span>
-                        </td>
-                      </tr>
+                        </div>
+
+                        <div className="appointment-card-status">
+                          <span className={`appointment-status-pill ${RX_STAGE_PILL_CLASS[stage] ?? 'status-scheduled'}`}>
+                            {pharmacyStageLabel(stage)}
+                          </span>
+                          {rx.urgency === 'immediate' && (
+                            <small style={{ color: 'var(--color-warning-text)' }}>Immediate</small>
+                          )}
+                        </div>
+                      </div>
                       {workflowRxId === rx._id && (
-                        <tr className="ehr-table-detail-row">
-                          <td colSpan={8}>
-                            <div className="ehr-row-detail ehr-row-detail--table" role="region" aria-label={`${rx.patientName} — ${rx.medication}`}>
-                              {renderWorkflowPopup(rx)}
-                            </div>
-                          </td>
-                        </tr>
+                        <div className="ehr-row-detail ehr-row-detail--table" role="region" aria-label={`${rx.patientName} \u2014 ${rx.medication}`}>
+                          {renderWorkflowPopup(rx)}
+                        </div>
                       )}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </Fragment>
+                  );
+                })}
+              </div>
             </div>
           )
         )}
