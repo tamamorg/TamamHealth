@@ -826,8 +826,12 @@ export default function PharmacyPage() {
       <div className="card-elevated overflow-hidden">
         <EhrListHeader
           title={sectionTitles[activeTab]}
+          // On the queue tab the title IS the queue, so the total rides the
+          // title; on every other tab the queue size stays as a chip instead,
+          // since the title (and its count) belong to that tab's own list.
+          count={activeTab === 'queue' ? rxQueue.length : undefined}
           stats={[
-            { label: t('pharmacy.prescriptionQueue'), value: rxQueue.length, color: LIST_STAT_COLORS.muted },
+            ...(activeTab === 'queue' ? [] : [{ label: t('pharmacy.prescriptionQueue'), value: rxQueue.length, color: LIST_STAT_COLORS.muted }]),
             { label: t('pharmacy.pending'), value: pendingRx, color: LIST_STAT_COLORS.blue },
             { label: 'Payment due', value: paymentDueCount, color: LIST_STAT_COLORS.amber },
             { label: 'Ready', value: readyCount, color: LIST_STAT_COLORS.green },

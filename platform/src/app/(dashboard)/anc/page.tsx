@@ -303,8 +303,8 @@ export default function ANCPage() {
           <div className="lg:col-span-2 card-elevated overflow-hidden">
             <EhrListHeader
               title={t('anc.title')}
+              count={motherSummaries.length}
               stats={[
-                { label: 'Mothers enrolled', value: motherSummaries.length, color: LIST_STAT_COLORS.muted },
                 { label: 'High risk', value: highRiskCount, color: LIST_STAT_COLORS.blue },
                 { label: 'Visits this month', value: visitsThisMonth, color: LIST_STAT_COLORS.amber },
                 { label: 'Due soon', value: dueSoonCount, color: LIST_STAT_COLORS.green },

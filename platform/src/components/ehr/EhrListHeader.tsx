@@ -22,7 +22,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type ChangeEvent, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, X } from '@/components/icons/lucide';
+import { ChevronDown, Filter, X } from '@/components/icons/lucide';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 export interface EhrListHeaderStat {
@@ -59,6 +59,7 @@ export const LIST_STAT_COLORS = {
 
 export default function EhrListHeader({
   title,
+  count,
   stats = [],
   search,
   actions,
@@ -69,6 +70,13 @@ export default function EhrListHeader({
   className = '',
 }: {
   title: ReactNode;
+  /**
+   * The list's total, printed inside the title itself — "Laboratory (24)".
+   * This replaces the lead stat-chip that used to restate the total under a
+   * second name ("Orders (24)" beside a page called Laboratory): the number
+   * belongs to the title, and the chips are for the breakdown.
+   */
+  count?: number;
   stats?: EhrListHeaderStat[];
   /** Omit to render no search row; pass `actions` alone to get a right-aligned action row. */
   search?: {
@@ -112,7 +120,14 @@ export default function EhrListHeader({
   return (
     <div className={`px-4 pt-4 pb-3 flex-shrink-0 ${className}`}>
       <div className={`flex items-end justify-between gap-3 flex-wrap ${hasSecondRow || hasTabs ? 'mb-3' : ''}`}>
-        <EhrPageTitle>{title}</EhrPageTitle>
+        <EhrPageTitle>
+          {title}
+          {count != null && (
+            <span className="tabular-nums" style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+              {' '}({count.toLocaleString()})
+            </span>
+          )}
+        </EhrPageTitle>
         {stats.length > 0 && (
           <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
             {stats.map(s => (
@@ -500,7 +515,9 @@ export function EhrSearchFilter({
           {activeCount > 0 && (
             <span className="text-[11px] font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{activeCount}</span>
           )}
-          <ChevronDown className="w-4 h-4" style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+          {/* A filter glyph, not a chevron: the chevron said "something opens
+              here" without saying what — the funnel names the job. */}
+          <Filter className="w-4 h-4" />
         </button>
       )}
       {open && coords && typeof document !== 'undefined' && (

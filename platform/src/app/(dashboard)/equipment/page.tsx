@@ -161,8 +161,8 @@ export default function AssetsPage() {
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="equipment-list">
           <EhrListHeader
             title={t('equipment.topBarTitle')}
+            count={summary?.total}
             stats={summary ? [
-              { label: t('equipment.kpiTotal'), value: summary.total, color: LIST_STAT_COLORS.muted },
               { label: t('equipment.kpiOperational'), value: summary.operational, color: LIST_STAT_COLORS.green },
               { label: t('equipment.kpiNeedsService'), value: summary.needsService, color: LIST_STAT_COLORS.amber },
               { label: t('equipment.kpiUnderRepair'), value: summary.underRepair, color: LIST_STAT_COLORS.blue },

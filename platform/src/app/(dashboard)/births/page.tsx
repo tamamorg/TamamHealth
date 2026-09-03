@@ -130,8 +130,8 @@ export default function BirthsPage() {
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('nav.births')}
+            count={birthStats.total}
             stats={[
-              { label: 'Registered', value: birthStats.total, color: LIST_STAT_COLORS.muted },
               { label: 'This month', value: birthStats.thisMonth, color: LIST_STAT_COLORS.blue },
               { label: 'Male', value: birthStats.male, color: LIST_STAT_COLORS.amber },
               { label: 'Female', value: birthStats.female, color: LIST_STAT_COLORS.green },

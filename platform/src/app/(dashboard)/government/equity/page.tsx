@@ -150,8 +150,8 @@ export default function EquityPlanningPage() {
       <div data-tour="gov-equity-header" className="dash-card mb-3">
         <EhrListHeader
           title="Equity & planning"
+          count={rows.length}
           stats={[
-            { label: 'States', value: rows.length, color: LIST_STAT_COLORS.muted },
             { label: 'Facilities', value: rows.reduce((sum, r) => sum + r.facilities, 0), color: LIST_STAT_COLORS.blue },
           ]}
           search={{ value: search, onChange: setSearch, placeholder: 'Search a state…', ariaLabel: 'Search states' }}

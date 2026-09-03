@@ -264,8 +264,8 @@ export default function DeathsPage() {
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('deaths.title')}
+            count={deathStats.total}
             stats={[
-              { label: 'Registered', value: deathStats.total, color: LIST_STAT_COLORS.muted },
               { label: 'This month', value: deathStats.thisMonth, color: LIST_STAT_COLORS.blue },
               { label: 'Certified', value: deathStats.certified, color: LIST_STAT_COLORS.amber },
               { label: 'Uncertified', value: deathStats.uncertified, color: LIST_STAT_COLORS.green },

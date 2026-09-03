@@ -9,7 +9,7 @@ import PatientName from '@/components/PatientName';
 import Badge from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { useRouter } from 'next/navigation';
-import { FlaskConical, AlertTriangle, X, Plus, Radio, Download } from '@/components/icons/lucide';
+import { FlaskConical, X, Plus, Radio } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
@@ -137,7 +137,6 @@ export default function LabPage() {
   // The technician's own worklist settings (design 11, "Worklist").
   const labSort = useRoleChoice('lab.sort', 'Urgency, then oldest');
   const labStatTop = useRoleFlag('lab.statTop', true);
-  const labTatTarget = useRoleChoice('lab.tat', '60 min');
   // Analyzer import: paste a raw instrument payload (LIS-2A / HL7) and parse it
   // into structured results the tech can review before pre-filling an order.
   const [showImportModal, setShowImportModal] = useState(false);
@@ -232,17 +231,6 @@ export default function LabPage() {
     return orderedAtMs(a) - orderedAtMs(b);
   });
 
-  // Turnaround target: a still-open order past it is running late. Separate
-  // from `overdueReviews`, which is about a RESULT nobody has looked at.
-  const tatMinutes = Number(/^(\d+)/.exec(labTatTarget)?.[1] ?? 60);
-  const overTatIds = new Set(
-    sortedFiltered
-      .filter(o => o.status !== 'completed'
-        && (now - orderedAtMs(o)) / 60_000 > tatMinutes
-        && orderedAtMs(o) > 0)
-      .map(o => o._id),
-  );
-
   // KPI stat cards — scoped to the full lab queue (not narrowed by the table's
   // own filters, so the header numbers stay a stable "whole queue" summary).
   const labStats = {
@@ -260,31 +248,6 @@ export default function LabPage() {
 
   // Distinct test names present in the queue, for the header's "test type" filter.
   const testTypeOptions = Array.from(new Set(labResults.map(o => o.testName).filter(Boolean))).sort();
-
-  // Export the currently filtered/visible orders to CSV.
-  const handleDownloadCsv = () => {
-    const header = ['Patient', 'Hospital number', 'Test', 'Specimen', 'Status', 'Result', 'Ordered by', 'Ordered at', 'Completed at'];
-    const rows = sortedFiltered.map(o => [
-      o.patientName || '',
-      o.hospitalNumber || '',
-      o.testName || '',
-      o.specimen || '',
-      ORDER_STAGE_LABEL[effOrderStatus(o)],
-      o.result || '',
-      o.orderedBy || '',
-      o.orderedAt || '',
-      o.completedAt || '',
-    ]);
-    const csv = [header, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'lab-orders.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
 
   // Column config — plain labels; filtering lives in the header search +
   // Filters popover (matching the patients registry), not per-column funnels.
@@ -324,12 +287,11 @@ export default function LabPage() {
           <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
             <EhrListHeader
               title={t('lab.laboratory')}
+              count={labStats.total}
               stats={[
-                { label: 'Orders', value: labStats.total, color: LIST_STAT_COLORS.muted },
                 { label: 'Pending', value: labStats.pending, color: LIST_STAT_COLORS.blue },
                 { label: 'In progress', value: labStats.inProgress, color: LIST_STAT_COLORS.amber },
                 { label: 'Completed', value: labStats.completed, color: LIST_STAT_COLORS.green },
-                { label: 'Critical', value: labStats.critical, color: LIST_STAT_COLORS.bronze },
                 // Only shown when there is something to act on — a lab that
                 // never sends out should not carry a permanent "Send-outs 0".
                 ...(labStats.sendOut > 0 ? [{ label: 'Send-outs', value: labStats.sendOut, color: LIST_STAT_COLORS.muted }] : []),
@@ -388,9 +350,6 @@ export default function LabPage() {
                       <X className="w-4 h-4" />
                     </EhrListHeaderButton>
                   )}
-                  <EhrListHeaderButton onClick={handleDownloadCsv} ariaLabel="Download">
-                    <Download className="w-4 h-4" />
-                  </EhrListHeaderButton>
                   {canEnterLabResults && (
                     <EhrListHeaderButton onClick={() => setShowImportModal(true)} ariaLabel="Import from analyzer">
                       <Radio className="w-4 h-4" />
@@ -427,14 +386,10 @@ export default function LabPage() {
               </thead>
               <tbody>
                 {sortedFiltered.map(order => {
-                  // Two different lateness signals: a result nobody has
-                  // reviewed past its SLA, and an open order past this
-                  // technician's turnaround target.
-                  const overdue = overdueIds.has(order._id) || overTatIds.has(order._id);
                   return (
                   <tr
                     key={order._id}
-                    className={`cursor-pointer${overdue ? ' is-danger' : ''}`}
+                    className="cursor-pointer"
                     onClick={() => { if (order.patientId) router.push(`/patients/${order.patientId}?tab=labs&focus=${order._id}`); }}
                   >
                     <td>
@@ -447,12 +402,6 @@ export default function LabPage() {
                         secondaryText={order.hospitalNumber || 'ID not recorded'}
                         nameClassName="text-sm"
                       />
-                      {overdue && (
-                        <p className="text-[10px] font-semibold flex items-center gap-1 mt-0.5" style={{ color: 'var(--color-danger-text)' }}>
-                          <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                          {order.critical ? 'Critical — review overdue' : 'Review overdue'}
-                        </p>
-                      )}
                     </td>
                     <td className="font-semibold text-sm">
                       {order.testName}
@@ -465,9 +414,6 @@ export default function LabPage() {
                       <div className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
                         {order.accessionNumber || fallbackAccessionNumber(order)}
                       </div>
-                      {order.specimenRejectionReason && (
-                        <Badge tone="danger" className="mt-1">{order.specimenRejectionReason}</Badge>
-                      )}
                     </td>
                     <td>
                       <span className={`appointment-status-pill ${STAGE_PILL_CLASS[effOrderStatus(order)]}`}>

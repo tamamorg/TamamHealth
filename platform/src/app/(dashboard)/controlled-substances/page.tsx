@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/Modal';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { Pill, Plus, X, UserCheck } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -161,9 +161,7 @@ export default function ControlledSubstancesPage() {
         <div className="dash-card flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title="Controlled Substances"
-            stats={[
-              { label: movements.length === 1 ? 'entry' : 'entries', value: movements.length, color: LIST_STAT_COLORS.muted },
-            ]}
+            count={movements.length}
             actions={
               <button data-tour="csub-record-movement" onClick={openModal} className="btn btn-primary">
                 <Plus className="w-4 h-4" /> Record movement

@@ -368,8 +368,8 @@ export default function ImmunizationsPage() {
       {/* ═══ Page header — compact title, dot stats, one controls row ═══ */}
       <EhrListHeader
         title={t('immun.title')}
+        count={totalDosesGiven}
         stats={[
-          { label: 'Doses given', value: totalDosesGiven, color: LIST_STAT_COLORS.muted },
           { label: 'Given today', value: givenToday, color: LIST_STAT_COLORS.blue },
           { label: 'Overdue', value: defaulters.length, color: LIST_STAT_COLORS.amber },
           { label: 'Fully immunized', value: Math.max((stats?.totalChildren || 0) - (defaulterStats?.uniqueChildren || 0), 0), color: LIST_STAT_COLORS.green },

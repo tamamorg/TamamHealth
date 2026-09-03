@@ -259,8 +259,8 @@ export default function AlertsPage() {
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
           title="All alerts"
+          count={counts.all}
           stats={[
-            { label: 'Total',    value: counts.all,      color: 'var(--text-muted)' },
             { label: 'Critical', value: counts.critical, color: 'var(--color-danger)' },
             { label: 'Warning',  value: counts.warning,  color: 'var(--color-warning-text)' },
             { label: 'Info',     value: counts.info,     color: 'var(--accent-primary)' },

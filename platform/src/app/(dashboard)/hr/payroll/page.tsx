@@ -94,13 +94,13 @@ export default function HrPayrollPage() {
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-payroll-list">
         <EhrListHeader
           title="Payroll register"
+          count={summary ? summary.total : payroll.length}
           stats={summary ? [
-            { label: t('hr.pillEntries'), value: summary.total, color: 'var(--text-muted)' },
             { label: t('hr.pillGross'), value: formatMoney(summary.totalGross), color: 'var(--accent-primary)' },
             { label: t('hr.pillDeductions'), value: formatMoney(summary.totalDeductions), color: 'var(--color-warning-text)' },
             { label: t('hr.pillNet'), value: formatMoney(summary.totalNet), color: 'var(--color-success)' },
             { label: t('hr.pillPaid'), value: `${summary.paid}/${summary.total}`, color: 'var(--color-success)' },
-          ] : [{ label: t('hr.pillEntries'), value: payroll.length, color: 'var(--text-muted)' }]}
+          ] : []}
           actions={
             <>
               <input

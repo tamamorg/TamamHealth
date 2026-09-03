@@ -212,29 +212,6 @@ export default function PatientsPage() {
     return { total: patients.length, male, female, newThisMonth, unassigned, outstanding, pendingSync };
   }, [patients, balanceByPatient, MS30, now]);
 
-  // Export the currently filtered/sorted registry to CSV.
-  const handleDownloadCsv = () => {
-    const header = ['Name', 'Hospital number', 'Gender', 'Age', 'Location', 'Assigned doctor', 'Assigned nurse'];
-    const rows = sorted.map(p => [
-      patientFullName(p),
-      p.hospitalNumber || '',
-      p.gender || '',
-      patientAgeLabel(p),
-      [p.county, p.state].filter(Boolean).join(', '),
-      p.assignedDoctorName || '',
-      p.assignedNurseName || '',
-    ]);
-    const csv = [header, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'patients.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const formatRegistryDate = (value?: string) => {
     if (!value) return '—';
     const date = new Date(value);
@@ -255,10 +232,17 @@ export default function PatientsPage() {
               {/* Title + patient stats (inline, right-aligned — mirrors the wards
                   "Current Admissions" header instead of separate stat cards). */}
               <div className="flex items-end justify-between gap-3 mb-3 flex-wrap">
-                <EhrPageTitle>{t('nav.patients')}</EhrPageTitle>
+                <EhrPageTitle>
+                  {t('nav.patients')}
+                  {/* The registry total rides the title — same treatment as
+                      EhrListHeader's `count`, which this hand-rolled header
+                      predates; the "Registered (n)" chip it replaces is gone. */}
+                  <span className="tabular-nums" style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {' '}({patientKpis.total.toLocaleString()})
+                  </span>
+                </EhrPageTitle>
                 <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
                   {[
-                    { label: t('patients.statRegistered'), value: patientKpis.total, color: 'var(--text-muted)' },
                     { label: t('patient.male'), value: patientKpis.male, color: 'var(--accent-primary)' },
                     { label: t('patient.female'), value: patientKpis.female, color: 'var(--color-warning-text)' },
                     { label: t('patients.statNewThisMonth'), value: patientKpis.newThisMonth, color: 'var(--color-success-text)' },
@@ -357,42 +341,6 @@ export default function PatientsPage() {
                     </div>
                   </div>
                 </EhrSearchFilter>
-                {/* Hospital-number/geocode/national-ID lookup plus QR and
-                    fingerprint identify — the modal existed but had no way to
-                    open it (KAN-118): `showFindPatient` was never set true
-                    anywhere in this file. */}
-                <button
-                  type="button"
-                  onClick={() => setShowFindPatient(true)}
-                  aria-label={t('boma.findPatient')}
-                  title={t('boma.findPatient')}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    height: 38, padding: '0 14px',
-                    borderRadius: 999, background: 'var(--bg-card-solid)', color: 'var(--text-secondary)',
-                    border: '1px solid var(--border-light)',
-                    fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
-                    cursor: 'pointer', flexShrink: 0,
-                  }}
-                >
-                  <Search className="w-4 h-4" />
-                  {t('boma.findPatient')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadCsv}
-                  aria-label="Download"
-                  title="Download"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 38, height: 38, padding: 0,
-                    borderRadius: 999, background: 'var(--bg-card-solid)', color: 'var(--text-secondary)',
-                    border: '1px solid var(--border-light)',
-                    cursor: 'pointer', flexShrink: 0,
-                  }}
-                >
-                  <Download className="w-4 h-4" />
-                </button>
                 {/* Registration is the one thing a reader of this list starts
                     rather than finds, so it sits at the end of the toolbar as
                     the only filled control. A link, not a button — the desk
@@ -402,6 +350,11 @@ export default function PatientsPage() {
                   <Link
                     href="/patients/new"
                     data-tour="patients-register"
+                    /* `text-white` is the globals.css escape hatch for icons on
+                       a coloured fill: the icon shim writes a literal brand-blue
+                       `stroke`, so without it the UserPlus sat blue on the blue
+                       pill — present but invisible (same fix as the admit button). */
+                    className="text-white"
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       height: 38, padding: '0 16px',

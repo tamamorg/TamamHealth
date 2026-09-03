@@ -105,8 +105,8 @@ export default function HrLeavePage() {
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-leave-list">
         <EhrListHeader
           title="Leave requests"
+          count={leave.length}
           stats={[
-            { label: 'Total', value: leave.length, color: 'var(--text-muted)' },
             { label: 'Pending', value: leave.filter(r => r.status === 'pending').length, color: 'var(--color-warning-text)' },
             { label: 'Approved', value: leave.filter(r => r.status === 'approved').length, color: 'var(--color-success)' },
             { label: 'Rejected', value: leave.filter(r => r.status === 'rejected').length, color: 'var(--color-danger)' },

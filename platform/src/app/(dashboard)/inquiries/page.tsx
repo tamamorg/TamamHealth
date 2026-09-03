@@ -274,8 +274,8 @@ export default function InquiriesPage() {
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="inquiries-list">
         <EhrListHeader
           title="Patient Inquiries"
+          count={summary.total}
           stats={[
-            { label: 'Total', value: summary.total, color: LIST_STAT_COLORS.muted },
             { label: ENQUIRY_STATUS_LABELS.new, value: summary.byStatus.new, color: LIST_STAT_COLORS.amber },
             { label: ENQUIRY_STATUS_LABELS.contacted, value: summary.byStatus.contacted, color: LIST_STAT_COLORS.blue },
             { label: ENQUIRY_STATUS_LABELS.appointment_scheduled, value: summary.byStatus.appointment_scheduled, color: LIST_STAT_COLORS.purple },

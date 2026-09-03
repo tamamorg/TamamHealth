@@ -109,14 +109,16 @@ export default function PriorityAlertsPage() {
         <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-end justify-between gap-3 mb-1 flex-wrap">
             <div>
-              <span style={SECTION_TITLE_STYLE}>Priority alerts</span>
+              <span style={SECTION_TITLE_STYLE}>
+                Priority alerts
+                <span className="tabular-nums" style={{ color: 'var(--text-muted)', fontWeight: 600 }}> ({counts.total})</span>
+              </span>
               <p className="text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>All active alerts · National</p>
             </div>
             <StatDots stats={[
               { label: 'Emergency', value: counts.emergency, color: LEVEL_COLORS.emergency },
               { label: 'Warning', value: counts.warning, color: LEVEL_COLORS.warning },
               { label: 'Watch', value: counts.watch, color: LEVEL_COLORS.watch },
-              { label: 'Total', value: counts.total, color: 'var(--text-muted)' },
             ]} />
           </div>
           <div className="relative mt-3" style={{ maxWidth: 360 }}>

@@ -122,20 +122,19 @@ export default function DataQualityPage() {
   // not the summary counts. Only completeness/timeliness carry a "Below 80%"
   // pill — scores has no comparable threshold and outliers is a different
   // (alert-based) row shape entirely.
+  // The view's own row total rides the title ("Facility data quality (N)");
+  // only the breakdown chips remain in the stats row.
+  const listHeaderCount =
+    view === 'completeness' ? completenessRows.length
+    : view === 'timeliness' ? timelinessRows.length
+    : view === 'scores' ? scoreRows.length
+    : outliers.length;
   const listHeaderStats =
     view === 'completeness'
-      ? [
-          { label: 'Facilities', value: completenessRows.length, color: LIST_STAT_COLORS.muted },
-          { label: 'Below 80%', value: belowCompleteness80, color: LIST_STAT_COLORS.amber },
-        ]
+      ? [{ label: 'Below 80%', value: belowCompleteness80, color: LIST_STAT_COLORS.amber }]
       : view === 'timeliness'
-      ? [
-          { label: 'Facilities', value: timelinessRows.length, color: LIST_STAT_COLORS.muted },
-          { label: 'Below 80%', value: belowTimeliness80, color: LIST_STAT_COLORS.amber },
-        ]
-      : view === 'scores'
-      ? [{ label: 'Facilities', value: scoreRows.length, color: LIST_STAT_COLORS.muted }]
-      : [{ label: 'Outliers flagged', value: outliers.length, color: LIST_STAT_COLORS.amber }];
+      ? [{ label: 'Below 80%', value: belowTimeliness80, color: LIST_STAT_COLORS.amber }]
+      : [];
 
   const listHeaderSearch =
     view === 'outliers'
@@ -215,6 +214,7 @@ export default function DataQualityPage() {
         <div className="dash-card overflow-hidden" data-tour="dq-facility-table">
           <EhrListHeader
             title="Facility data quality"
+            count={listHeaderCount}
             stats={listHeaderStats}
             search={listHeaderSearch}
             actions={

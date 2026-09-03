@@ -105,8 +105,8 @@ export default function HrSchedulePage() {
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-schedule-list">
         <EhrListHeader
           title="Shift schedule"
+          count={schedules.length}
           stats={[
-            { label: 'Shifts', value: schedules.length, color: 'var(--text-muted)' },
             ...SHIFT_TYPES.map(shift => ({
               label: t(`hr.shiftType_${shift}`),
               value: schedules.filter(s => s.shiftType === shift).length,

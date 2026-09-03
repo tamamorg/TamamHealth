@@ -410,8 +410,8 @@ export default function BloodBankPage() {
         <div className="dash-card flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title="Blood units"
+            count={unitStats.total}
             stats={[
-              { label: 'Units', value: unitStats.total, color: LIST_STAT_COLORS.muted },
               { label: 'Available', value: unitStats.available, color: LIST_STAT_COLORS.blue },
               { label: 'Reserved', value: unitStats.reserved, color: LIST_STAT_COLORS.amber },
               { label: 'Expiring ≤7d', value: unitStats.expiringSoon, color: LIST_STAT_COLORS.green },

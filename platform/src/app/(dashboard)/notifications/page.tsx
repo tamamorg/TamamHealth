@@ -110,8 +110,8 @@ function NotificationsPageInner() {
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
           title="Notifications"
+          count={count}
           stats={[
-            { label: 'Total', value: count, color: LIST_STAT_COLORS.muted },
             { label: 'Unread', value: unreadCount, color: LIST_STAT_COLORS.blue },
             { label: 'Critical', value: severityCounts.critical, color: 'var(--color-danger)' },
             { label: 'Needs action', value: severityCounts.warning, color: LIST_STAT_COLORS.bronze },

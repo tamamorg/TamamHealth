@@ -12,7 +12,6 @@ import {
   Stethoscope, Package, FileText, Image as ImageIcon,
   User, Activity, FlaskConical, Paperclip, XCircle, MessageSquarePlus,
   ClipboardCheck, RotateCcw,
-  Download,
   ExternalLink,
 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -496,29 +495,6 @@ export default function ReferralsPage() {
   const pendingCount = activeReferrals.filter(r => r.status === 'sent' || r.status === 'received').length;
   const completedCount = activeReferrals.filter(r => r.status === 'completed').length;
 
-  // Export the currently filtered rows (tab + search + structured filters applied)
-  // to CSV, modeled on the patients/appointments list-page download.
-  const handleDownloadCsv = () => {
-    const header = ['Patient', 'Hospital ID', 'Route', 'Department', 'Urgency', 'Status', 'Date'];
-    const rows = filteredReferrals.map(ref => [
-      ref.patientName,
-      hospitalNoFor(ref.patientId),
-      `${ref.fromHospital} → ${ref.toHospital}`,
-      ref.department,
-      t(`referrals.urgency_${ref.urgency}`),
-      getStatusLabel(ref.status),
-      ref.referralDate,
-    ]);
-    const csv = [header, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `referrals-${activeTab}-${todayIso()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
 
   const handleDecline = async () => {
     if (!declineModalId || !declineReason.trim()) return;
@@ -592,8 +568,8 @@ export default function ReferralsPage() {
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
             title={t('referrals.pageTitle')}
+            count={activeReferrals.length}
             stats={[
-              { label: 'Total referrals', value: activeReferrals.length, color: LIST_STAT_COLORS.muted },
               { label: 'Accepted', value: acceptedCount, color: LIST_STAT_COLORS.blue },
               { label: 'Declined', value: declinedCount, color: LIST_STAT_COLORS.amber },
               { label: 'Pending / awaiting response', value: pendingCount, color: LIST_STAT_COLORS.green },
@@ -637,9 +613,6 @@ export default function ReferralsPage() {
                   <option value="incoming">{`Incoming referrals${newIncomingCount > 0 ? ` (${newIncomingCount} new)` : ''}`}</option>
                   <option value="outgoing">Outgoing referrals</option>
                 </Select>
-                <EhrListHeaderButton onClick={handleDownloadCsv} ariaLabel="Download">
-                  <Download className="w-4 h-4" />
-                </EhrListHeaderButton>
                 {canManageReferrals && (
                   <button type="button" className="btn btn-primary" style={{ gap: 8, flexShrink: 0 }} onClick={() => setShowNewReferral(true)}>
                     <Plus size={16} /> {t('referrals.newReferral')}
@@ -668,12 +641,15 @@ export default function ReferralsPage() {
             <table className="data-table referral-table" style={{ minWidth: 1040 }}>
               {/* Patient absorbs the old Hospital ID column (the ID now sits
                   under the name), so it takes that width back. */}
+              {/* Five equal columns so the gutters between headers read
+                  evenly; Date is right-aligned so it closes the row instead
+                  of floating mid-column. */}
               <colgroup>
-                <col style={{ width: '28%' }} />
-                <col style={{ width: '26%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '12%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
               </colgroup>
               <thead>
                 <tr>
@@ -684,7 +660,7 @@ export default function ReferralsPage() {
                   <th>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</th>
                   <th>Context</th>
                   <th>Status</th>
-                  <th>Date</th>
+                  <th className="is-right">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -753,6 +729,10 @@ export default function ReferralsPage() {
                       <td>
                         <div className="ehr-list-main" title={`${ref.fromHospital} → ${ref.toHospital}`}>
                           <strong>{activeTab === 'incoming' ? ref.fromHospital : ref.toHospital}</strong>
+                          {/* The referral date rides under the facility — it
+                              replaces the dedicated Date column, which spent a
+                              fifth of the table right-aligning one short value. */}
+                          <small>{ref.referralDate}</small>
                         </div>
                       </td>
                       <td>
@@ -778,7 +758,6 @@ export default function ReferralsPage() {
                           )}
                         </div>
                         </td>
-                        <td className="text-xs font-mono whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{ref.referralDate}</td>
                     </tr>
 
                   </Fragment>
