@@ -198,7 +198,7 @@ export const SYSTEM_APP_DEFINITIONS: SystemAppDefinition[] = [
     level: 'facility',
     route: '/system-admin',
     ownerRoles: RECORDS_ADMIN_ROLES,
-    description: 'OpenMRS-style hub for apps, extensions, accounts, privileges, metadata, and style guide.',
+    description: 'Tamam-style hub for apps, extensions, accounts, privileges, metadata, and style guide.',
   },
 ];
 

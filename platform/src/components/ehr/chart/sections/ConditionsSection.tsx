@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Conditions tab content — OpenMRS-style table (Condition / Date of onset /
+ * Conditions tab content — Tamam-style table (Condition / Date of onset /
  * Status). Reuses the SAME `useProblems` hook and service calls ProblemList
  * uses internally, and the SAME ICD-11 coded-search add pattern
  * (CodedSearchField + COMMON_ICD11_CODES) — no new data layer.
@@ -27,10 +27,10 @@ import type { ProblemStatus } from '@/lib/db-types';
 import Select from '@/components/Select';
 
 const STATUS_BADGE: Record<ProblemStatus, string> = {
-  active: 'omrs-panel-badge omrs-panel-badge--active',
-  chronic: 'omrs-panel-badge omrs-panel-badge--active',
-  resolved: 'omrs-panel-badge omrs-panel-badge--done',
-  inactive: 'omrs-panel-badge omrs-panel-badge--muted',
+  active: 'tamam-panel-badge tamam-panel-badge--active',
+  chronic: 'tamam-panel-badge tamam-panel-badge--active',
+  resolved: 'tamam-panel-badge tamam-panel-badge--done',
+  inactive: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
 const STATUS_OPTIONS: ProblemStatus[] = ['active', 'chronic', 'inactive', 'resolved'];
@@ -138,7 +138,7 @@ export default function ConditionsSection({
         {/* Attested at a problem review in a note: an empty list means nobody
             has asked, this means someone asked and the answer was none. */}
         {(reconciledAt || (ordered.length === 0 && noKnownProblems)) && (
-          <p className="omrs-attestation">
+          <p className="tamam-attestation">
             {ordered.length === 0 && noKnownProblems && <strong>No known problems. </strong>}
             {reconciledAt && <>Problem reconciliation performed · {formatDate(reconciledAt)}.</>}
           </p>
@@ -152,7 +152,7 @@ export default function ConditionsSection({
             disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
           />
         ) : ordered.length === 0 ? null : (
-          <table className="omrs-table omrs-table--conditions">
+          <table className="tamam-table tamam-table--conditions">
             {/* Explicit widths: the three columns used to be sized by their
                 content, which left the condition name hard against a date and
                 the status stranded off at the right edge. */}
@@ -174,7 +174,7 @@ export default function ConditionsSection({
                   <td>
                     {/* The badge IS the control: a condition is retired from the
                         row that records it, not from a separate edit screen. */}
-                    <span className={`omrs-status-picker ${STATUS_BADGE[p.status]}`}>
+                    <span className={`tamam-status-picker ${STATUS_BADGE[p.status]}`}>
                       {humanizeStatus(p.status)}
                       <Select
                         aria-label={`Status for ${p.name}`}

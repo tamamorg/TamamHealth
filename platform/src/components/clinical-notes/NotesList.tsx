@@ -153,7 +153,7 @@ export default function NotesList({
         <div style={{ position: 'relative' }}>
           <div
             style={{ position: 'absolute', right: 0, top: -6, zIndex: 20, maxHeight: 420, overflowY: 'auto' }}
-            className="omrs-actions-menu"
+            className="tamam-actions-menu"
             role="menu"
           >
             {/* Most recently used type first, rest alphabetical — the same
@@ -201,11 +201,11 @@ export default function NotesList({
       {/* One column per fact, Status last like every other clinical table.
           There is no Actions column: the row itself opens the note, which is
           what the buttons in it did. Column widths live in the stylesheet
-          (`.omrs-table--notes`), not a colgroup: the chart CSS forces
+          (`.tamam-table--notes`), not a colgroup: the chart CSS forces
           `col { width: auto !important }`, so colgroup widths are silently
           dropped and every column comes out the same size. */}
       {!loading && filtered.length > 0 && (
-        <table className={`omrs-table omrs-table--fixed omrs-table--notes${patientId ? '' : ' omrs-table--notes-queue'}`}>
+        <table className={`tamam-table tamam-table--fixed tamam-table--notes${patientId ? '' : ' tamam-table--notes-queue'}`}>
           <thead>
             <tr>
               <th>{t('notesList.colType')}</th>
@@ -222,14 +222,14 @@ export default function NotesList({
               return (
                 <tr
                   key={note._id}
-                  className="omrs-clickable-row"
+                  className="tamam-clickable-row"
                   {...clickable(
                     () => (onOpenNote ? onOpenNote(note._id) : router.push(`/notes/${note._id}`)),
                     { label: `Open ${getNoteType(note.noteType).label} note — ${note.serviceDate}` },
                   )}
                 >
-                  <td className="omrs-cell-strong">{getNoteType(note.noteType).label}</td>
-                  <td className="omrs-cell-note">{notePreview(note)}</td>
+                  <td className="tamam-cell-strong">{getNoteType(note.noteType).label}</td>
+                  <td className="tamam-cell-note">{notePreview(note)}</td>
                   <td>{note.signedByName || note.assignedToName || note.authorName || '—'}</td>
                   {!patientId && <td>{note.patientName}</td>}
                   <td>

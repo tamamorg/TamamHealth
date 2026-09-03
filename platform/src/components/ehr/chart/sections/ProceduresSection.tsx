@@ -163,7 +163,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
             disabledReason={canConsult ? undefined : 'Requires consultation permission'}
           />
         ) : (
-          <table className="omrs-table omrs-table--fixed">
+          <table className="tamam-table tamam-table--fixed">
             <colgroup>
               <col /><col /><col /><col /><col /><col />
             </colgroup>

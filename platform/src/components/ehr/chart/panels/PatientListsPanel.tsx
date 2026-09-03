@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Patient lists workspace panel — OpenMRS-style saved worklists. This app
+ * Patient lists workspace panel — Tamam-style saved worklists. This app
  * has no saved-list feature, so the two lists shown are derived live from
  * real data already used elsewhere in the app (usePatients) rather than
  * inventing a list-definition data layer: "My patients" (this clinician's
@@ -55,15 +55,15 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
   };
 
   return (
-    <div className="omrs-drawer-body">
+    <div className="tamam-drawer-body">
       {lists.map(list => (
-        <button key={list.id} type="button" className="omrs-panel-list-item" onClick={() => openList(list.href)}>
+        <button key={list.id} type="button" className="tamam-panel-list-item" onClick={() => openList(list.href)}>
           <Users />
           <div style={{ flex: 1 }}>
-            <div className="omrs-panel-row-main">{list.name}</div>
-            <div className="omrs-panel-row-sub">{list.type}</div>
+            <div className="tamam-panel-row-main">{list.name}</div>
+            <div className="tamam-panel-row-sub">{list.type}</div>
           </div>
-          <span className="omrs-panel-list-count">{list.count}</span>
+          <span className="tamam-panel-list-count">{list.count}</span>
           <ChevronRight />
         </button>
       ))}

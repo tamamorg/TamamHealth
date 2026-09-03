@@ -1,12 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { getRoleConfig } from '@/lib/permissions';
 import { uniqueAllowedNavItems, groupNavItemsBySection, navItemLabel } from '@/components/ehr/ehr-navigation';
 import MobileBottomSheet from '../MobileBottomSheet';
+import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
+import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/lib/settings/disabled-apps';
+import { applyFeatureCatalogToNavigation } from '@/modules/feature-catalog/client';
 
 interface MobileModulesSheetProps {
   open: boolean;
@@ -17,12 +20,15 @@ export default function MobileModulesSheet({ open, onClose }: MobileModulesSheet
   const { currentUser } = useAuth();
   const { t } = useTranslation();
   const router = useRouter();
+  const { config: platformConfig } = usePlatformConfig();
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : undefined;
   const allowedRoutes = useMemo(() => roleConfig?.allowedRoutes || [], [roleConfig]);
-  const navItems = useMemo(
-    () => uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes),
-    [roleConfig, allowedRoutes]
-  );
+  const disabledRoutes = useSyncExternalStore(subscribeDisabledApps, getDisabledAppRoutes, getDisabledAppRoutes);
+  const navItems = useMemo(() => {
+    const authorized = uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
+      .filter(item => !isAppDisabled(item.href, disabledRoutes));
+    return applyFeatureCatalogToNavigation(authorized, platformConfig?.featureCatalog);
+  }, [roleConfig, allowedRoutes, disabledRoutes, platformConfig?.featureCatalog]);
   const groups = useMemo(() => groupNavItemsBySection(navItems), [navItems]);
 
   return (

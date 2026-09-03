@@ -42,11 +42,11 @@ const STATUS_LABELS: Record<ProgramEnrollmentStatus, string> = {
 };
 
 const STATUS_BADGE: Record<ProgramEnrollmentStatus, string> = {
-  active: 'omrs-panel-badge omrs-panel-badge--active',
-  completed: 'omrs-panel-badge omrs-panel-badge--done',
-  transferred_out: 'omrs-panel-badge omrs-panel-badge--muted',
-  lost_to_follow_up: 'omrs-panel-badge omrs-panel-badge--muted',
-  discontinued: 'omrs-panel-badge omrs-panel-badge--muted',
+  active: 'tamam-panel-badge tamam-panel-badge--active',
+  completed: 'tamam-panel-badge tamam-panel-badge--done',
+  transferred_out: 'tamam-panel-badge tamam-panel-badge--muted',
+  lost_to_follow_up: 'tamam-panel-badge tamam-panel-badge--muted',
+  discontinued: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
 interface ProgramsSectionProps {
@@ -132,7 +132,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
             disabledReason={canConsult ? undefined : 'Requires consultation permission'}
           />
         ) : (
-          <table className="omrs-table omrs-table--fixed">
+          <table className="tamam-table tamam-table--fixed">
             <colgroup><col /><col /><col /><col /></colgroup>
             <thead>
               <tr>
@@ -156,7 +156,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                   <td>
                     {canConsult ? (
                       <Select
-                        className="omrs-section-filter"
+                        className="tamam-section-filter"
                         disabled={statusBusy === e._id}
                         value=""
                         onChange={ev => { if (ev.target.value) handleStatusChange(e._id, ev.target.value as ProgramEnrollmentStatus); }}

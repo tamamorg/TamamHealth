@@ -30,9 +30,9 @@ function tomorrowISO(): string {
 }
 
 function badgeClass(status: string): string {
-  if (status === 'sent') return 'omrs-panel-badge omrs-panel-badge--done';
-  if (status === 'cancelled') return 'omrs-panel-badge omrs-panel-badge--muted';
-  return 'omrs-panel-badge omrs-panel-badge--pending';
+  if (status === 'sent') return 'tamam-panel-badge tamam-panel-badge--done';
+  if (status === 'cancelled') return 'tamam-panel-badge tamam-panel-badge--muted';
+  return 'tamam-panel-badge tamam-panel-badge--pending';
 }
 
 export default function TaskListPanel({ patient, currentUser, onClose, onGoToRecall }: TaskListPanelProps) {
@@ -71,39 +71,39 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
 
   return (
     <>
-      <div className="omrs-drawer-body">
-        <div className="omrs-panel-section-head" style={{ cursor: 'default' }}>
-          <span className="omrs-panel-section-title">Tasks ({reminders.length})</span>
+      <div className="tamam-drawer-body">
+        <div className="tamam-panel-section-head" style={{ cursor: 'default' }}>
+          <span className="tamam-panel-section-title">Tasks ({reminders.length})</span>
           {!adding && (
-            <button type="button" className="omrs-panel-add-btn" onClick={() => setAdding(true)}>
+            <button type="button" className="tamam-panel-add-btn" onClick={() => setAdding(true)}>
               <Plus /> Add task
             </button>
           )}
         </div>
 
         {adding && (
-          <div className="omrs-panel-field" style={{ marginTop: 4 }}>
-            <label className="omrs-panel-label">Task</label>
+          <div className="tamam-panel-field" style={{ marginTop: 4 }}>
+            <label className="tamam-panel-label">Task</label>
             <textarea
-              className="omrs-panel-textarea"
+              className="tamam-panel-textarea"
               style={{ minHeight: 50 }}
               placeholder="e.g. Call patient about missed dose"
               value={message}
               onChange={e => setMessage(e.target.value)}
               autoFocus
             />
-            <label className="omrs-panel-label" style={{ marginTop: 8 }}>Due date</label>
+            <label className="tamam-panel-label" style={{ marginTop: 8 }}>Due date</label>
             <input
               type="date"
-              className="omrs-panel-input"
+              className="tamam-panel-input"
               value={sendDate}
               onChange={e => setSendDate(e.target.value)}
             />
             <div className="flex items-center gap-2" style={{ marginTop: 10 }}>
-              <button type="button" className="omrs-btn-ghost" style={{ background: 'var(--ehr-soft, #ECEEF1)', color: 'var(--ehr-text-body, #3C5574)' }} onClick={() => { setAdding(false); setMessage(''); }}>
+              <button type="button" className="tamam-btn-ghost" style={{ background: 'var(--ehr-soft, #ECEEF1)', color: 'var(--ehr-text-body, #3C5574)' }} onClick={() => { setAdding(false); setMessage(''); }}>
                 Cancel
               </button>
-              <button type="button" className="omrs-btn-primary" disabled={!message.trim() || submitting} onClick={handleAdd}>
+              <button type="button" className="tamam-btn-primary" disabled={!message.trim() || submitting} onClick={handleAdd}>
                 {submitting ? 'Adding…' : 'Add task'}
               </button>
             </div>
@@ -111,14 +111,14 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
         )}
 
         {!loading && reminders.length === 0 && !adding && (
-          <p className="omrs-panel-empty">No tasks yet.</p>
+          <p className="tamam-panel-empty">No tasks yet.</p>
         )}
 
         {reminders.map(r => (
-          <div className="omrs-panel-row" key={r._id}>
+          <div className="tamam-panel-row" key={r._id}>
             <div>
-              <div className="omrs-panel-row-main">{r.message}</div>
-              <div className="omrs-panel-row-sub" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="tamam-panel-row-main">{r.message}</div>
+              <div className="tamam-panel-row-sub" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Calendar className="w-3 h-3" /> Due {r.sendDate}
               </div>
             </div>
@@ -126,9 +126,9 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
           </div>
         ))}
       </div>
-      <div className="omrs-drawer-footer">
-        <button type="button" className="omrs-btn-ghost" onClick={onClose}>Close</button>
-        <button type="button" className="omrs-btn-primary" onClick={onGoToRecall}>View all in Recall</button>
+      <div className="tamam-drawer-footer">
+        <button type="button" className="tamam-btn-ghost" onClick={onClose}>Close</button>
+        <button type="button" className="tamam-btn-primary" onClick={onGoToRecall}>View all in Recall</button>
       </div>
     </>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ChartHeader — the sticky OpenMRS O3-style patient header. Stage 1: visual
+ * ChartHeader — the sticky Tamam O3-style patient header. Stage 1: visual
  * shell only. The triage badge / pregnancy pill are still owned by the page
  * (they carry their own popup state) and are passed in as rendered nodes so
  * that logic isn't duplicated or destabilized here.
@@ -78,16 +78,16 @@ function AllergyBanner({ allergens, onShow }: { allergens?: string[]; onShow?: (
       : 'No known allergies';
 
   const cls = [
-    'omrs-allergy-banner',
-    has ? 'omrs-allergy-banner--alert' : allergens === undefined ? 'omrs-allergy-banner--unknown' : '',
-    onShow ? 'omrs-allergy-banner--link' : '',
+    'tamam-allergy-banner',
+    has ? 'tamam-allergy-banner--alert' : allergens === undefined ? 'tamam-allergy-banner--unknown' : '',
+    onShow ? 'tamam-allergy-banner--link' : '',
   ].filter(Boolean).join(' ');
 
   const body = (
     <>
       <DuotoneIcon name={has ? 'alert' : 'shield'} size={14} />
-      <span className="omrs-allergy-label">Allergies</span>
-      <span className="omrs-allergy-value">{label}</span>
+      <span className="tamam-allergy-label">Allergies</span>
+      <span className="tamam-allergy-value">{label}</span>
     </>
   );
 
@@ -125,12 +125,12 @@ export default function ChartHeader({
   const patientIdDisplay = patient.hospitalNumber || patient.geocodeId || '—';
 
   return (
-    <div className="omrs-header">
+    <div className="tamam-header">
       {/* No tint plate here: the chart's surfaces are white, so the disc is an
           outline and the initials carry the identification cue on their own.
           `avatarTint` still colours avatars in the lists, where a wall of rows
           needs the extra separation. */}
-      <div className="omrs-avatar" aria-hidden>
+      <div className="tamam-avatar" aria-hidden>
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photoUrl} alt="" />
@@ -139,19 +139,19 @@ export default function ChartHeader({
         )}
       </div>
 
-      <div className="omrs-header-body">
-        <div className="omrs-header-name-row">
-          <h1 className="omrs-header-name">{patientFullName(patient)}</h1>
+      <div className="tamam-header-body">
+        <div className="tamam-header-name-row">
+          <h1 className="tamam-header-name">{patientFullName(patient)}</h1>
           {/* Death is a chart-critical fact — right beside the name, before
               anything else on the row, the way the O3 banner tags it. */}
           {patient.isDeceased && (
-            <span className="omrs-chip omrs-chip--deceased">
+            <span className="tamam-chip tamam-chip--deceased">
               Deceased{patient.deceasedDate ? ` · ${formatDobOmrs(patient.deceasedDate)}` : ''}
             </span>
           )}
           {genderSymbol && (
-            <span className={`omrs-gender ${genderClass}`}>
-              <span className="omrs-gender-symbol" aria-hidden>{genderSymbol}</span>
+            <span className={`tamam-gender ${genderClass}`}>
+              <span className="tamam-gender-symbol" aria-hidden>{genderSymbol}</span>
               {patient.gender}
             </span>
           )}
@@ -161,13 +161,13 @@ export default function ChartHeader({
               to prescribe. */}
           <AllergyBanner allergens={allergens} onShow={onShowAllergies} />
         </div>
-        <div className="omrs-header-meta">
+        <div className="tamam-header-meta">
           {patientAgeLabel(patient)} &middot; {formatDobOmrs(patient.dateOfBirth)} &middot; Facility ID: {patientIdDisplay}
         </div>
 
         {/* Contact line — always on. It is two short fields, not enough to be
             worth a collapse control. */}
-        <div className="omrs-header-details">
+        <div className="tamam-header-details">
           <span>Phone: <strong>{patient.phone || '—'}</strong></span>
           <span>Location: <strong>{patient.state || '—'}{patient.county ? `, ${patient.county}` : ''}</strong></span>
         </div>
@@ -179,28 +179,28 @@ export default function ChartHeader({
           with the actions rather than in the identity chips beside the name. */}
       {/* `no-print` sits on the action cluster, not the column, so the balance
           below still prints with the chart. */}
-      <div className="omrs-header-aside">
-      <div className="omrs-header-actions no-print">
+      <div className="tamam-header-aside">
+      <div className="tamam-header-actions no-print">
 
         {/* Primary clinical actions — one clear verb each. */}
         {canViewClinical && (
-          <button type="button" className="omrs-header-actions-btn" onClick={onNote}><DuotoneIcon name="prescription" size={15} /> + Note</button>
+          <button type="button" className="tamam-header-actions-btn" onClick={onNote}><DuotoneIcon name="prescription" size={15} /> + Note</button>
         )}
         {(canPrescribe || canDispense) && (
-          <button type="button" className="omrs-header-actions-btn" onClick={onScripts}><DuotoneIcon name="pill" size={15} /> Prescribe</button>
+          <button type="button" className="tamam-header-actions-btn" onClick={onScripts}><DuotoneIcon name="pill" size={15} /> Prescribe</button>
         )}
         {(canOrderLabs || canEnterLabResults) && (
-          <button type="button" className="omrs-header-actions-btn" onClick={onOrders}><DuotoneIcon name="flask" size={15} /> Order labs</button>
+          <button type="button" className="tamam-header-actions-btn" onClick={onOrders}><DuotoneIcon name="flask" size={15} /> Order labs</button>
         )}
         {canManageReferrals && (
-          <button type="button" className="omrs-header-actions-btn" onClick={onExchange}><DuotoneIcon name="arrowRightLeft" size={15} /> Refer</button>
+          <button type="button" className="tamam-header-actions-btn" onClick={onExchange}><DuotoneIcon name="arrowRightLeft" size={15} /> Refer</button>
         )}
 
         {/* Everything else behind one overflow menu. */}
-        <div className="omrs-header-overflow">
+        <div className="tamam-header-overflow">
           <button
             type="button"
-            className="omrs-header-actions-btn"
+            className="tamam-header-actions-btn"
             onClick={() => setMenuOpen(v => !v)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
@@ -211,8 +211,8 @@ export default function ChartHeader({
           </button>
           {menuOpen && (
             <>
-              <div className="omrs-header-overflow-backdrop" {...dismissBackdrop(() => setMenuOpen(false))} />
-              <div className="omrs-actions-menu" role="menu">
+              <div className="tamam-header-overflow-backdrop" {...dismissBackdrop(() => setMenuOpen(false))} />
+              <div className="tamam-actions-menu" role="menu">
                 {canSendMessages && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onMessage(); }}>
                     <DuotoneIcon name="message" size={15} /> Message patient
@@ -262,11 +262,11 @@ export default function ChartHeader({
 
         <button
           type="button"
-          className={patientBalance > 0 ? 'omrs-header-balance omrs-header-balance--due' : 'omrs-header-balance'}
+          className={patientBalance > 0 ? 'tamam-header-balance tamam-header-balance--due' : 'tamam-header-balance'}
           onClick={onCollectPayment}
         >
           <DuotoneIcon name="dollarSign" size={13} />
-          <span className="omrs-allergy-label">Balance</span>
+          <span className="tamam-allergy-label">Balance</span>
           <span>${patientBalance.toFixed(2)} due</span>
         </button>
       </div>

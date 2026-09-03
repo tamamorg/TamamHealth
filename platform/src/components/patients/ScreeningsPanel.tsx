@@ -78,7 +78,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
       {due.length === 0 && !adding ? (
         <OmrsEmptyState itemLabel="screenings due" actionLabel="Add screening" onAction={() => setAdding(true)} />
       ) : due.length > 0 && (
-        <table className="omrs-table omrs-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col />
           </colgroup>
@@ -96,7 +96,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
               const overdue = !!s.dueDate && s.dueDate < today;
               return (
                 <tr key={s.id}>
-                  <td className="omrs-cell-strong">{s.type}</td>
+                  <td className="tamam-cell-strong">{s.type}</td>
                   <td>{s.dueDate || '—'}</td>
                   <td>{s.intervalMonths ? `Every ${s.intervalMonths} months` : '—'}</td>
                   <td>
@@ -119,7 +119,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
                     </div>
                   </td>
                   <td>
-                    <span className={overdue ? 'omrs-panel-badge omrs-panel-badge--pending' : 'omrs-panel-badge omrs-panel-badge--active'}>
+                    <span className={overdue ? 'tamam-panel-badge tamam-panel-badge--pending' : 'tamam-panel-badge tamam-panel-badge--active'}>
                       {overdue ? 'Overdue' : 'Due'}
                     </span>
                   </td>

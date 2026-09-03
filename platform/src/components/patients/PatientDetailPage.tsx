@@ -104,7 +104,7 @@ import type {
 } from '@/lib/db-types';
 import { isValidPhone, normalizePhone, formatPhoneDisplay } from '@/lib/field-formats';
 import { useAuth } from '@/lib/context';
-import OpenmrsChartShell from '@/components/ehr/chart/OpenmrsChartShell';
+import TamamChartShell from '@/components/ehr/chart/TamamChartShell';
 import ChartHeader from '@/components/ehr/chart/ChartHeader';
 import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
@@ -352,7 +352,7 @@ export default function PatientDetailPage() {
     };
   }, [printSigned]);
 
-  // OpenMRS-style client-side pagination for the Appointments tab (Stage 3).
+  // Tamam-style client-side pagination for the Appointments tab (Stage 3).
   const [apptPage, setApptPage] = useState(1);
   const [apptSearch, setApptSearch] = useState('');
   const APPT_PAGE_SIZE = 8;
@@ -1573,7 +1573,7 @@ export default function PatientDetailPage() {
             <ArrowLeft className="w-4 h-4" /> {t('action.back')}
           </button>
 
-          <OpenmrsChartShell
+          <TamamChartShell
             activeTab={activeTab}
             setActiveTab={selectTab}
             railItems={omrsRailItems}
@@ -1708,7 +1708,7 @@ export default function PatientDetailPage() {
                       disabledReason={canBookAppointments ? undefined : 'Requires scheduling permission'}
                     />
                   ) : (
-                    <table className="omrs-table omrs-table--fixed">
+                    <table className="tamam-table tamam-table--fixed">
                       <colgroup>
                         <col /><col /><col /><col /><col />
                       </colgroup>
@@ -1774,7 +1774,7 @@ export default function PatientDetailPage() {
           )}
 
           {/* Problem List — longitudinal active/chronic/resolved */}
-          {/* Conditions — OpenMRS-style Conditions table (ChartSection), replacing
+          {/* Conditions — Tamam-style Conditions table (ChartSection), replacing
               the old ProblemList card-list layout for this tab specifically.
               The original ProblemList widget (with inline edit/resolve) still
               lives on the legacy facesheet view. */}
@@ -1791,7 +1791,7 @@ export default function PatientDetailPage() {
             </div>
           )}
 
-          {/* Allergies — OpenMRS-style Allergies table (ChartSection). Directives
+          {/* Allergies — Tamam-style Allergies table (ChartSection). Directives
               stay reachable here since they don't have their own rail slot. */}
           {activeTab === 'allergies' && patient && (
             <div className="space-y-4">
@@ -1988,7 +1988,7 @@ export default function PatientDetailPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}>
-                <table className="omrs-table" style={{ minWidth: 1140 }}>
+                <table className="tamam-table" style={{ minWidth: 1140 }}>
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -2100,7 +2100,7 @@ export default function PatientDetailPage() {
                     onAction={canManageReferrals ? () => setShowReferModal(true) : undefined}
                   />
                 ) : (
-                  <table className="omrs-table omrs-table--referrals">
+                  <table className="tamam-table tamam-table--referrals">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -2131,15 +2131,15 @@ export default function PatientDetailPage() {
                               </div>
                             </td>
                             <td>{ref.department}</td>
-                            <td className="omrs-cell-note">
+                            <td className="tamam-cell-note">
                               {canViewClinical ? (
                                 <>
                                   {/* Two lines then an ellipsis, with the full
                                       text on hover — one verbose referral used
                                       to set the height of the whole row. */}
-                                  <div className="omrs-cell-clamp" title={ref.reason}>{ref.reason}</div>
-                                  {ref.notes && <div className="omrs-cell-sub omrs-cell-clamp" title={ref.notes}>Notes: {ref.notes}</div>}
-                                  {extras && <div className="omrs-cell-sub">{extras}</div>}
+                                  <div className="tamam-cell-clamp" title={ref.reason}>{ref.reason}</div>
+                                  {ref.notes && <div className="tamam-cell-sub tamam-cell-clamp" title={ref.notes}>Notes: {ref.notes}</div>}
+                                  {extras && <div className="tamam-cell-sub">{extras}</div>}
                                 </>
                               ) : (
                                 <span className="italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</span>
@@ -2214,7 +2214,7 @@ export default function PatientDetailPage() {
             <ProgramsSection patientId={patient._id} patientName={patientFullName(patient)} canConsult={canConsult} />
           )}
           </section>
-          </OpenmrsChartShell>
+          </TamamChartShell>
       </main>
 
       {/* Edit Demographics Modal */}

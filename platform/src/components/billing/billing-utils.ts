@@ -1,5 +1,5 @@
 /**
- * Shared helpers for the OpenMRS O3-style billing module
+ * Shared helpers for the Tamam O3-style billing module
  * (/billing bill list + /billing/[id] bill detail).
  */
 

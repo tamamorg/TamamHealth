@@ -1,6 +1,11 @@
 import { platformConfigDB } from '../db';
 import type { PlatformConfigDoc } from '../db-types';
 import { BRAND_PRIMARY, BRAND_SECONDARY } from '../theme-colors';
+import {
+  DEFAULT_FEATURE_CATALOG_CONFIG,
+  TAMAM_FEATURE_IDS,
+  normalizeFeatureCatalogConfig,
+} from '@/modules/feature-catalog';
 
 const CONFIG_ID = 'platform-config';
 
@@ -13,6 +18,7 @@ const DEFAULT_CONFIG: Omit<PlatformConfigDoc, '_id' | '_rev' | 'createdAt' | 'up
     trialDays: 30,
     maxOrganizations: 100,
   },
+  featureCatalog: DEFAULT_FEATURE_CATALOG_CONFIG,
   defaultPrimaryColor: BRAND_PRIMARY,
   defaultSecondaryColor: BRAND_SECONDARY,
   superAdminPolicies: {
@@ -38,7 +44,11 @@ const DEFAULT_CONFIG: Omit<PlatformConfigDoc, '_id' | '_rev' | 'createdAt' | 'up
 export async function getPlatformConfig(): Promise<PlatformConfigDoc> {
   const db = platformConfigDB();
   try {
-    return await db.get(CONFIG_ID) as PlatformConfigDoc;
+    const stored = await db.get(CONFIG_ID) as PlatformConfigDoc;
+    return {
+      ...stored,
+      featureCatalog: normalizeFeatureCatalogConfig(stored.featureCatalog),
+    };
   } catch (error) {
     // Only a genuine miss should create the singleton. Authentication,
     // storage, and other read failures must remain visible to the caller.
@@ -74,10 +84,16 @@ export async function updatePlatformConfig(
 ): Promise<PlatformConfigDoc> {
   const db = platformConfigDB();
   const existing = await getPlatformConfig();
+  const normalizedData = data.featureCatalog === undefined
+    ? data
+    : {
+        ...data,
+        featureCatalog: normalizeFeatureCatalogConfig(data.featureCatalog),
+      };
 
   const updated: PlatformConfigDoc = {
     ...existing,
-    ...data,
+    ...normalizedData,
     _id: existing._id,
     _rev: existing._rev,
     updatedAt: new Date().toISOString(),
@@ -86,6 +102,27 @@ export async function updatePlatformConfig(
   const resp = await db.put(updated);
   updated._rev = resp.rev;
   const { logAudit } = await import('./audit-service');
-  await logAudit('platform_config_updated', actorId, actorUsername, 'Updated platform configuration', true);
+  if (data.featureCatalog !== undefined) {
+    const before = normalizeFeatureCatalogConfig(existing.featureCatalog);
+    const after = normalizeFeatureCatalogConfig(updated.featureCatalog);
+    const stageChanges = TAMAM_FEATURE_IDS.flatMap(id => {
+      const previous = before.cutovers[id] ?? 'default';
+      const next = after.cutovers[id] ?? 'default';
+      return previous === next ? [] : [`${id}: ${previous} -> ${next}`];
+    });
+    const changes = [
+      ...(before.mode === after.mode ? [] : [`mode: ${before.mode} -> ${after.mode}`]),
+      ...stageChanges,
+    ];
+    await logAudit(
+      'feature_catalog_updated',
+      actorId,
+      actorUsername,
+      changes.length > 0 ? `Updated Tamam capability rollout (${changes.join('; ')})` : 'Saved Tamam capability rollout without changes',
+      true,
+    );
+  } else {
+    await logAudit('platform_config_updated', actorId, actorUsername, 'Updated platform configuration', true);
+  }
   return updated;
 }

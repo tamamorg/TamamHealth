@@ -1,10 +1,10 @@
 /**
- * Billing module — OpenMRS O3-style bill list & bill detail.
+ * Billing module — Tamam O3-style bill list & bill detail.
  *
- * Scoped under the `bl-` namespace (same convention as the chart's `omrs-`
+ * Scoped under the `bl-` namespace (same convention as the chart's `tamam-`
  * classes) so the legacy globals.css cascade — force-uppercased labels, icon
  * color overrides — can't leak in. Reuses the shared --ehr-* palette tokens
- * with the same fallbacks as openmrs-chart.css.
+ * with the same fallbacks as tamam-chart.css.
  */
 
 .bl-root {
@@ -385,7 +385,7 @@
   font-size: 12.5px;
 }
 /* !important + .bl-root scoping: the legacy globals.css cascade paints table
-   heads white; this is the same escape hatch openmrs-chart.css uses. */
+   heads white; this is the same escape hatch tamam-chart.css uses. */
 /* `:not(.bl-right)` matters: this selector is (0,3,1) and `.bl-right` is
    (0,1,0), so a blanket `text-align: left` here silently overruled every
    right-aligned header. Numeric columns ended up with the label pinned to one

@@ -1,8 +1,8 @@
 import type { TourStep } from './types';
 
 // Walks a clinician through a full day end to end: the dashboard they land on
-// after login, the patient registry, a patient's chart (the OpenMRS O3-style
-// shell in src/components/ehr/chart/, scoped `omrs-` classes), writing a
+// after login, the patient registry, a patient's chart (the Tamam O3-style
+// shell in src/components/ehr/chart/, scoped `tamam-` classes), writing a
 // clinical note, and the alerts entry point.
 //
 // `/consultation` is a retired route now — it only redirects into a clinical
@@ -107,7 +107,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-header',
     route: '/patients/[id]',
-    target: '.omrs-header',
+    target: '.tamam-header',
     title: 'Every chart opens here',
     body: 'Name, hospital number, and allergy flag up top, with one-click actions — new note, prescribe, order labs, refer — that follow you to every tab.',
     placement: 'bottom',
@@ -115,7 +115,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-vitals-band',
     route: '/patients/[id]',
-    target: '.omrs-vitals-band',
+    target: '.tamam-vitals-band',
     title: 'Vitals at a glance',
     body: 'The latest recorded vitals stay pinned here no matter which tab you’re on, so an abnormal reading is never more than a glance away.',
     placement: 'bottom',
@@ -131,15 +131,15 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-rail',
     route: '/patients/[id]',
-    target: '.omrs-left-rail',
+    target: '.tamam-left-rail',
     title: 'Every section, one rail',
-    body: 'Conditions, medications, immunizations, vitals, notes, results, billing — organized like an OpenMRS chart so nothing is more than one click away.',
+    body: 'Conditions, medications, immunizations, vitals, notes, results, billing — organized like an Tamam chart so nothing is more than one click away.',
     placement: 'right',
   },
   {
     id: 'chart-workspace',
     route: '/patients/[id]',
-    target: '.omrs-right-rail',
+    target: '.tamam-right-rail',
     title: 'Workspace panels',
     body: 'Order basket, visit note, task list, clinical forms, and patient lists open here without ever leaving the chart you’re reading.',
     placement: 'left',
@@ -147,8 +147,8 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-problems',
     route: '/patients/[id]',
-    target: '.omrs-section-title',
-    preClickSelector: '.omrs-rail-item[title="Conditions"]',
+    target: '.tamam-section-title',
+    preClickSelector: '.tamam-rail-item[title="Conditions"]',
     title: 'Conditions',
     body: 'Every diagnosis, coded to ICD-11, with date of onset and status. Resolve or reactivate a condition right from its row.',
     placement: 'bottom',
@@ -156,8 +156,8 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-allergies',
     route: '/patients/[id]',
-    target: '.omrs-section-title',
-    preClickSelector: '.omrs-rail-item[title="Allergies"]',
+    target: '.tamam-section-title',
+    preClickSelector: '.tamam-rail-item[title="Allergies"]',
     title: 'Allergies',
     body: 'Active allergies and reactions — checked automatically against every new prescription.',
     placement: 'bottom',
@@ -165,8 +165,8 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-vitals-tab',
     route: '/patients/[id]',
-    target: '.omrs-section-title',
-    preClickSelector: '.omrs-rail-item[title="Vitals & Biometrics"]',
+    target: '.tamam-section-title',
+    preClickSelector: '.tamam-rail-item[title="Vitals & Biometrics"]',
     title: 'Vitals history',
     body: 'The full reading history for this patient, as a table or a flowsheet — switch views with the toggle above it.',
     placement: 'bottom',
@@ -175,7 +175,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     id: 'chart-notes-tab',
     route: '/patients/[id]',
     target: '.cn-list-toolbar',
-    preClickSelector: '.omrs-rail-item[title="Notes"]',
+    preClickSelector: '.tamam-rail-item[title="Notes"]',
     title: 'Documentation lives here',
     body: 'Every encounter note for this patient, sorted by date of service — notes are the record now, filterable by type, author, and signed status.',
     placement: 'bottom',

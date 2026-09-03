@@ -30,7 +30,7 @@
   --font-condensed: var(--font-barlow-condensed), 'Barlow Condensed', var(--font-platform);
   --font-platform-mono: var(--font-jetbrains-mono), 'JetBrains Mono', system-ui, sans-serif;
   --font-mono: var(--font-platform-mono);
-  /* Carbon's typeface, for the OpenMRS-styled surfaces only (`.omrs-reg`).
+  /* Carbon's typeface, for the Tamam-styled surfaces only (`.tamam-reg`).
      Never set this on body — the platform is Barlow. */
   --font-omrs: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
 
@@ -1733,7 +1733,7 @@ input::placeholder, textarea::placeholder {
 /* ══════════════════ Field state ══════════════════
    One convention for every form in the app, not one per page.
 
-   Before this, only the patient-registration namespace (`.omrs-reg`) styled an
+   Before this, only the patient-registration namespace (`.tamam-reg`) styled an
    invalid control; everywhere else a page set `borderColor` inline at whatever
    red it had to hand, or showed nothing at all and left the user to guess
    which field the toast was about.
@@ -7499,7 +7499,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   max-height: none;
   height: auto;
 }
-.ehr-registration-dialog .omrs-reg-rail {
+.ehr-registration-dialog .tamam-reg-rail {
   position: sticky;
   /* Exactly the embedded wrapper's padding. A sticky element travels until it
      reaches its offset and only then pins, so `top: 0` let the rail slide the
@@ -8973,7 +8973,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-chart-content .data-table tbody td,
-.ehr-chart-content table:not(.omrs-table) tbody td {
+.ehr-chart-content table:not(.tamam-table) tbody td {
   min-height: 46px;
   padding: 12px 14px !important;
   border-bottom: 1px solid var(--border-light) !important;
@@ -9903,7 +9903,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-chart-content .data-table tbody td,
-.ehr-chart-content table:not(.omrs-table) tbody td {
+.ehr-chart-content table:not(.tamam-table) tbody td {
   border-bottom: 1px solid var(--ehr-border-soft) !important;
   color: var(--ehr-text);
 }
@@ -17322,9 +17322,9 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-chart-content .data-table thead th,
-/* Legacy chart tables keep the tinted pill-row look; the OpenMRS chart
-   tables (`.omrs-table` — medications, results, activity) opt out via
-   :not() and use their own flat styling in openmrs-chart.css. Without the
+/* Legacy chart tables keep the tinted pill-row look; the Tamam chart
+   tables (`.tamam-table` — medications, results, activity) opt out via
+   :not() and use their own flat styling in tamam-chart.css. Without the
    exemption this `table tbody td` selector painted every one of them with
    the blue --overlay-subtle fill. */
 /* thead is NOT exempted: this rule is what keeps the column labels flat, and
@@ -17341,24 +17341,24 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-chart-content .data-table tbody td,
-.ehr-chart-content table:not(.omrs-table) tbody td {
+.ehr-chart-content table:not(.tamam-table) tbody td {
   border-bottom: 0 !important;
   background: var(--overlay-subtle, #F5F7F8);
   padding: 11px 14px !important;
 }
 
 .ehr-chart-content .data-table tbody td:first-child,
-.ehr-chart-content table:not(.omrs-table) tbody td:first-child {
+.ehr-chart-content table:not(.tamam-table) tbody td:first-child {
   border-radius: 10px 0 0 10px;
 }
 
 .ehr-chart-content .data-table tbody td:last-child,
-.ehr-chart-content table:not(.omrs-table) tbody td:last-child {
+.ehr-chart-content table:not(.tamam-table) tbody td:last-child {
   border-radius: 0 10px 10px 0;
 }
 
 .ehr-chart-content .data-table tbody tr:hover td,
-.ehr-chart-content table:not(.omrs-table) tbody tr:hover td {
+.ehr-chart-content table:not(.tamam-table) tbody tr:hover td {
   background: var(--ehr-blue-light) !important;
 }
 
@@ -25416,17 +25416,17 @@ table.patient-data-table.patient-data-table {
   padding: 0 12px;
 }
 
-/* ── Create new patient: OpenMRS O3 / Carbon ────────────────────────────────
+/* ── Create new patient: Tamam O3 / Carbon ────────────────────────────────
    A sticky left rail carrying the form's table of contents and its two
    actions, beside one long scrolling form. This replaces a six-step wizard:
    registration is a form a clerk fills top to bottom with the patient in
    front of them, and gating it a step at a time meant they could not answer
    a question out of order or see what was still to come.
 
-   Styled to the OpenMRS O3 registration screen, which is IBM Carbon. Carbon
+   Styled to the Tamam O3 registration screen, which is IBM Carbon. Carbon
    is a different design language from the rest of this platform and the
    difference is the point — so every token it needs is declared here on
-   `.omrs-reg` and nothing reaches outside it:
+   `.tamam-reg` and nothing reaches outside it:
 
      - square, never rounded (Carbon has no border-radius on fields, buttons
        or containers);
@@ -25434,39 +25434,39 @@ table.patient-data-table.patient-data-table {
        bottom rule instead of a box;
      - teal-60 for the primary action, gray-80 for the secondary, blue-60 for
        links, selection and focus;
-     - IBM Plex Sans throughout — OpenMRS set in anything else reads as an
-       imitation of OpenMRS.
+     - IBM Plex Sans throughout — Tamam set in anything else reads as an
+       imitation of Tamam.
 
    Where this deliberately differs from the reference: fields stay in the
    multi-column grid rather than O3's single ~420px column. This form carries
    roughly three times as many fields as the O3 screen and one column would
    run it to four screens. Set the two `--reg-cols` values to 1 to match O3
    exactly. */
-.omrs-reg {
-  /* Carbon's GEOMETRY in Tamam's palette. OpenMRS ships IBM's greys, teal-60
+.tamam-reg {
+  /* Carbon's GEOMETRY in Tamam's palette. Tamam ships IBM's greys, teal-60
      and blue-60; this platform is white and blue, so every Carbon slot below
      is filled from the Tamam ramp instead. The square edges, the field
      underline, the slab and the flush button stack are unchanged — the shape
-     is what makes it read as OpenMRS, not the colours. */
-  --omrs-ui-01: var(--tb-blue-50, #F2FCFF);        /* form slab */
-  --omrs-ui-02: var(--tb-blue-100, #C9F4FF);       /* slab edge */
-  --omrs-ui-03: var(--color-slate-150, #E2E6EB);   /* subtle divider */
-  --omrs-ui-04: var(--color-slate-300, #CFD6DD);   /* field underline */
-  --omrs-ui-05: var(--text-primary, #113055);      /* strong text */
-  --omrs-text-02: var(--text-muted, #5D728B);      /* labels, secondary text */
-  --omrs-field-01: var(--color-white, #fff);       /* field surface on the slab */
+     is what makes it read as Tamam, not the colours. */
+  --tamam-ui-01: var(--tb-blue-50, #F2FCFF);        /* form slab */
+  --tamam-ui-02: var(--tb-blue-100, #C9F4FF);       /* slab edge */
+  --tamam-ui-03: var(--color-slate-150, #E2E6EB);   /* subtle divider */
+  --tamam-ui-04: var(--color-slate-300, #CFD6DD);   /* field underline */
+  --tamam-ui-05: var(--text-primary, #113055);      /* strong text */
+  --tamam-text-02: var(--text-muted, #5D728B);      /* labels, secondary text */
+  --tamam-field-01: var(--color-white, #fff);       /* field surface on the slab */
   /* Accents — Tamam blue in every slot Carbon fills with blue-60 / teal-60. */
-  --omrs-interactive: var(--accent-primary, #015697);
-  --omrs-interactive-soft: var(--tb-blue-100, #C9F4FF);
-  --omrs-primary: var(--accent-primary, #015697);
-  --omrs-primary-hover: var(--accent-hover, #113055);
+  --tamam-interactive: var(--accent-primary, #015697);
+  --tamam-interactive-soft: var(--tb-blue-100, #C9F4FF);
+  --tamam-primary: var(--accent-primary, #015697);
+  --tamam-primary-hover: var(--accent-hover, #113055);
   /* Secondary is white-with-a-blue-edge rather than Carbon's charcoal slab:
      a dark grey button is the one thing in the reference that has no place in
      a white-and-blue theme. */
-  --omrs-secondary: var(--color-white, #fff);
-  --omrs-secondary-hover: var(--tb-blue-50, #F2FCFF);
-  --omrs-secondary-ink: var(--accent-primary, #015697);
-  --omrs-danger: var(--color-danger, #D92B20);
+  --tamam-secondary: var(--color-white, #fff);
+  --tamam-secondary-hover: var(--tb-blue-50, #F2FCFF);
+  --tamam-secondary-ink: var(--accent-primary, #015697);
+  --tamam-danger: var(--color-danger, #D92B20);
 
   --reg-cols-three: 3;
   --reg-cols-two: 2;
@@ -25477,7 +25477,7 @@ table.patient-data-table.patient-data-table {
   align-items: start;
   max-width: 1240px;
   font-family: var(--font-omrs);
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
 }
 
 /* Carbon's own typeface, loaded in layout.tsx.
@@ -25489,27 +25489,27 @@ table.patient-data-table.patient-data-table {
    Headings and labels are listed even though they would inherit: globals.css
    matches `h1`…`h6` and `label` DIRECTLY with `--font-platform`, and a direct
    match always beats an inherited value however specific the ancestor is. */
-.omrs-reg,
-.omrs-reg input,
-.omrs-reg select,
-.omrs-reg textarea,
-.omrs-reg button,
-.omrs-reg h1,
-.omrs-reg h2,
-.omrs-reg h3,
-.omrs-reg h4,
-.omrs-reg h5,
-.omrs-reg h6,
-.omrs-reg label {
+.tamam-reg,
+.tamam-reg input,
+.tamam-reg select,
+.tamam-reg textarea,
+.tamam-reg button,
+.tamam-reg h1,
+.tamam-reg h2,
+.tamam-reg h3,
+.tamam-reg h4,
+.tamam-reg h5,
+.tamam-reg h6,
+.tamam-reg label {
   font-family: var(--font-omrs) !important;
 }
 
 @media (max-width: 900px) {
-  .omrs-reg { grid-template-columns: minmax(0, 1fr); }
-  .omrs-reg-rail { position: static !important; }
+  .tamam-reg { grid-template-columns: minmax(0, 1fr); }
+  .tamam-reg-rail { position: static !important; }
 }
 
-.omrs-reg-rail {
+.tamam-reg-rail {
   position: sticky;
   top: 12px;
   display: flex;
@@ -25519,41 +25519,41 @@ table.patient-data-table.patient-data-table {
 
 /* ══════════════════ Left rail ══════════════════ */
 
-.omrs-reg-title {
+.tamam-reg-title {
   font-size: 20px;
   font-weight: 400;          /* Carbon productive-heading-03 is regular */
   letter-spacing: 0;
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
   margin: 0 0 6px;
   line-height: 1.4;
 }
 
-.omrs-reg-railnote {
+.tamam-reg-railnote {
   font-size: 12px;
   line-height: 1.34;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
   margin: 0 0 20px;
 }
 
-.omrs-reg-jump {
+.tamam-reg-jump {
   font-size: 14px;
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
   margin: 0 0 8px;
 }
 
 /* No spine, no nodes: O3's rail is a list of jump links marked with a corner
    arrow. Progress is not encoded here at all — the section that still needs
    something says so at the field, which is where it gets fixed. */
-.omrs-reg-nav {
+.tamam-reg-nav {
   display: flex;
   flex-direction: column;
   position: relative;
 }
 
-.omrs-reg-navitem {
+.tamam-reg-navitem {
   position: relative;
   display: flex;
   align-items: baseline;
@@ -25566,30 +25566,30 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   line-height: 1.29;
   text-align: start;
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
   text-decoration: none;
   cursor: pointer;
 }
-.omrs-reg-navitem:hover:not(:disabled) { color: var(--omrs-interactive); }
-.omrs-reg-navitem:focus-visible {
-  outline: 2px solid var(--omrs-interactive);
+.tamam-reg-navitem:hover:not(:disabled) { color: var(--tamam-interactive); }
+.tamam-reg-navitem:focus-visible {
+  outline: 2px solid var(--tamam-interactive);
   outline-offset: -2px;
 }
 
 /* The corner arrow. Lighter than the label so it reads as a bullet. */
-.omrs-reg-navarrow {
+.tamam-reg-navarrow {
   flex: none;
   font-size: 13px;
   font-weight: 400;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 
 /* Review stays out of reach until the form would actually submit — offering
    it earlier only produces a bounce back to the first missing field. */
-.omrs-reg-navitem:disabled { cursor: not-allowed; color: var(--color-slate-300, #CFD6DD); }
-.omrs-reg-navitem:disabled .omrs-reg-navarrow { color: var(--color-slate-300, #CFD6DD); }
+.tamam-reg-navitem:disabled { cursor: not-allowed; color: var(--color-slate-300, #CFD6DD); }
+.tamam-reg-navitem:disabled .tamam-reg-navarrow { color: var(--color-slate-300, #CFD6DD); }
 
-.omrs-reg-navlabel {
+.tamam-reg-navlabel {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -25600,29 +25600,29 @@ table.patient-data-table.patient-data-table {
 /* Where you are — carried by the label's colour alone. The blue bar that
    used to sit in the left margin is gone: it read as a scrollbar or a stray
    rule rather than as a marker. */
-.omrs-reg-navitem.is-current { color: var(--omrs-interactive); }
+.tamam-reg-navitem.is-current { color: var(--tamam-interactive); }
 
 /* Trailing mark — "optional", or the error flag. */
-.omrs-reg-navmeta {
+.tamam-reg-navmeta {
   flex: none;
   font-size: 12px;
   font-weight: 400;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
-.omrs-reg-navitem[data-state="optional"] .omrs-reg-navmeta { text-transform: lowercase; }
+.tamam-reg-navitem[data-state="optional"] .tamam-reg-navmeta { text-transform: lowercase; }
 
 /* A section the last submit couldn't accept. The rail is where the Register
    button lives, so the rail is where the answer to "why didn't it save?"
    belongs. */
-.omrs-reg-navitem.has-errors { color: var(--omrs-danger); }
-.omrs-reg-navitem.has-errors .omrs-reg-navarrow { color: var(--omrs-danger); }
+.tamam-reg-navitem.has-errors { color: var(--tamam-danger); }
+.tamam-reg-navitem.has-errors .tamam-reg-navarrow { color: var(--tamam-danger); }
 /* Scoped to the trailing badge only — as `.has-errors span` this also matched
    the arrow and the label, and rendered a section's own name as a red disc. */
-.omrs-reg-navitem.has-errors .omrs-reg-navmeta {
+.tamam-reg-navitem.has-errors .tamam-reg-navmeta {
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
-  background: var(--omrs-danger);
+  background: var(--tamam-danger);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
@@ -25633,17 +25633,17 @@ table.patient-data-table.patient-data-table {
 /* ══════════════════ Rail actions ══════════════════
    Carbon buttons: square, full-bleed in a rail, label left-aligned rather
    than centred, 48px tall. */
-.omrs-reg-railactions {
+.tamam-reg-railactions {
   display: flex;
   flex-direction: column;
   gap: 1px;                  /* Carbon button sets sit flush, hairline apart */
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid var(--omrs-ui-03);
+  border-top: 1px solid var(--tamam-ui-03);
 }
 
-.omrs-reg-railactions .btn,
-.omrs-reg-cancel {
+.tamam-reg-railactions .btn,
+.tamam-reg-cancel {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -25660,27 +25660,27 @@ table.patient-data-table.patient-data-table {
   cursor: pointer;
   transition: background 0.11s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
-.omrs-reg-railactions .btn:focus-visible,
-.omrs-reg-cancel:focus-visible {
-  outline: 2px solid var(--omrs-interactive);
+.tamam-reg-railactions .btn:focus-visible,
+.tamam-reg-cancel:focus-visible {
+  outline: 2px solid var(--tamam-interactive);
   outline-offset: -4px;
 }
 
-.omrs-reg-railactions .btn-primary {
-  background: var(--omrs-primary);
+.tamam-reg-railactions .btn-primary {
+  background: var(--tamam-primary);
   color: #fff;
 }
-.omrs-reg-railactions .btn-primary:hover:not(:disabled) { background: var(--omrs-primary-hover); }
+.tamam-reg-railactions .btn-primary:hover:not(:disabled) { background: var(--tamam-primary-hover); }
 
-.omrs-reg-railactions .btn-secondary {
-  background: var(--omrs-secondary);
-  color: var(--omrs-secondary-ink);
-  box-shadow: inset 0 0 0 1px var(--omrs-interactive);
+.tamam-reg-railactions .btn-secondary {
+  background: var(--tamam-secondary);
+  color: var(--tamam-secondary-ink);
+  box-shadow: inset 0 0 0 1px var(--tamam-interactive);
 }
-.omrs-reg-railactions .btn-secondary:hover:not(:disabled) { background: var(--omrs-secondary-hover); }
+.tamam-reg-railactions .btn-secondary:hover:not(:disabled) { background: var(--tamam-secondary-hover); }
 
-.omrs-reg-railactions .btn:disabled {
-  background: var(--omrs-ui-03);
+.tamam-reg-railactions .btn:disabled {
+  background: var(--tamam-ui-03);
   color: var(--text-muted);
   box-shadow: none;
   cursor: not-allowed;
@@ -25688,23 +25688,23 @@ table.patient-data-table.patient-data-table {
 
 /* Cancel is the last action in the set, so it takes the same slab treatment
    rather than reading as a link floating under the buttons. */
-.omrs-reg-cancel {
-  background: var(--omrs-secondary);
-  color: var(--omrs-secondary-ink);
-  box-shadow: inset 0 0 0 1px var(--omrs-interactive);
+.tamam-reg-cancel {
+  background: var(--tamam-secondary);
+  color: var(--tamam-secondary-ink);
+  box-shadow: inset 0 0 0 1px var(--tamam-interactive);
   font-family: var(--font-omrs);
 }
-.omrs-reg-cancel:hover {
-  background: var(--omrs-secondary-hover);
-  color: var(--omrs-secondary-ink);
+.tamam-reg-cancel:hover {
+  background: var(--tamam-secondary-hover);
+  color: var(--tamam-secondary-ink);
   text-decoration: none;
 }
 
 /* ══════════════════ Sections ══════════════════
    The numbered title and its note sit ON the page, above the container —
-   Carbon puts the heading outside the surface it introduces. `.omrs-reg-fields`
+   Carbon puts the heading outside the surface it introduces. `.tamam-reg-fields`
    is the container itself. */
-.omrs-reg-section {
+.tamam-reg-section {
   scroll-margin-top: 16px;
   display: block;
   background: none;
@@ -25714,47 +25714,47 @@ table.patient-data-table.patient-data-table {
   padding: 0;
 }
 
-.omrs-reg-sectionhead {
+.tamam-reg-sectionhead {
   margin: 0 0 10px;
   padding: 0;
   border: none;
 }
-.omrs-reg-sectionhead h2 {
+.tamam-reg-sectionhead h2 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1.4;
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
 }
-.omrs-reg-sectionhead p {
+.tamam-reg-sectionhead p {
   margin: 2px 0 0;
   font-size: 12px;
   line-height: 1.34;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 
 /* The gray-10 slab every field sits on. Square, no border, no shadow — the
    change of surface is the whole boundary. */
-.omrs-reg-fields {
+.tamam-reg-fields {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  background: var(--omrs-ui-01);
-  border: 1px solid var(--omrs-ui-02);
+  background: var(--tamam-ui-01);
+  border: 1px solid var(--tamam-ui-02);
   padding: 24px 20px 28px;
 }
 
-.omrs-reg-form .omrs-reg-section + .omrs-reg-section { margin-top: 32px; }
+.tamam-reg-form .tamam-reg-section + .tamam-reg-section { margin-top: 32px; }
 
 /* The shell is now just a column: the slabs carry the surface. */
-.omrs-reg-form.patient-registration-shell {
+.tamam-reg-form.patient-registration-shell {
   background: transparent;
   border: none;
   box-shadow: none;
   padding: 0;
 }
-.omrs-reg-form .patient-registration-card-body {
+.tamam-reg-form .patient-registration-card-body {
   display: block;
   padding: 0;
   background: transparent;
@@ -25765,66 +25765,66 @@ table.patient-data-table.patient-data-table {
 /* globals.css shouts every bare <label> in caps with letter-spacing. Carbon
    labels are 12px, regular weight, sentence case, gray-70. `display` is
    deliberately omitted so layout classes still outrank the global rule. */
-.omrs-reg label,
-.omrs-reg .registration-field label,
-.omrs-reg .registration-field > span {
+.tamam-reg label,
+.tamam-reg .registration-field label,
+.tamam-reg .registration-field > span {
   text-transform: none;
   letter-spacing: 0;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.34;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
   margin-bottom: 6px;
 }
 
 /* Carbon text input: white slab, one rule along the bottom, square, 40px. */
-.omrs-reg input:not([type="checkbox"]):not([type="radio"]),
-.omrs-reg select,
-.omrs-reg textarea {
+.tamam-reg input:not([type="checkbox"]):not([type="radio"]),
+.tamam-reg select,
+.tamam-reg textarea {
   height: 40px;
   padding: 0 16px;
   /* `background-color`, never the `background` shorthand: the shorthand also
      clears `background-image`, and that is where globals.css paints the
      <select> chevron. */
-  background-color: var(--omrs-field-01);
+  background-color: var(--tamam-field-01);
   border: none;
-  border-bottom: 1px solid var(--omrs-ui-04);
+  border-bottom: 1px solid var(--tamam-ui-04);
   /* `.tamam-ehr-app input { border-radius: 4px !important }` also matches
      here; Carbon fields are square, so this has to out-shout it. */
   border-radius: 0 !important;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.16px;
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
   transition: background 0.11s, outline 0.11s;
 }
-.omrs-reg textarea {
+.tamam-reg textarea {
   height: auto;
   min-height: 64px;
   padding: 11px 16px;
   line-height: 1.43;
 }
-.omrs-reg select { padding-inline-end: 40px; background-position: right 14px center; }
+.tamam-reg select { padding-inline-end: 40px; background-position: right 14px center; }
 
-.omrs-reg input::placeholder,
-.omrs-reg textarea::placeholder { color: var(--text-muted, #5D728B); opacity: 0.75; }
+.tamam-reg input::placeholder,
+.tamam-reg textarea::placeholder { color: var(--text-muted, #5D728B); opacity: 0.75; }
 
 /* Carbon focus is a 2px inset blue outline on the whole field, not a ring. */
-.omrs-reg input:focus,
-.omrs-reg select:focus,
-.omrs-reg textarea:focus {
-  outline: 2px solid var(--omrs-interactive);
+.tamam-reg input:focus,
+.tamam-reg select:focus,
+.tamam-reg textarea:focus {
+  outline: 2px solid var(--tamam-interactive);
   outline-offset: -2px;
   border-bottom-color: transparent;
   box-shadow: none !important;
-  background-color: var(--omrs-field-01);
+  background-color: var(--tamam-field-01);
 }
 
-.omrs-reg input:disabled,
-.omrs-reg select:disabled,
-.omrs-reg textarea:disabled {
-  background-color: var(--omrs-field-01);
-  border-bottom-color: var(--omrs-ui-03);
+.tamam-reg input:disabled,
+.tamam-reg select:disabled,
+.tamam-reg textarea:disabled {
+  background-color: var(--tamam-field-01);
+  border-bottom-color: var(--tamam-ui-03);
   color: var(--color-slate-300, #CFD6DD);
   cursor: not-allowed;
 }
@@ -25832,20 +25832,20 @@ table.patient-data-table.patient-data-table {
 /* Invalid: red rule plus red inline text, Carbon's pattern. The component
    sets `borderColor` inline, which only reaches the (absent) box border — the
    underline is what has to turn. */
-.omrs-reg input[aria-invalid="true"],
-.omrs-reg select[aria-invalid="true"],
-.omrs-reg textarea[aria-invalid="true"] {
-  outline: 2px solid var(--omrs-danger);
+.tamam-reg input[aria-invalid="true"],
+.tamam-reg select[aria-invalid="true"],
+.tamam-reg textarea[aria-invalid="true"] {
+  outline: 2px solid var(--tamam-danger);
   outline-offset: -2px;
   border-bottom-color: transparent;
 }
-.omrs-reg [role="alert"] { color: var(--omrs-danger) !important; font-size: 12px; }
+.tamam-reg [role="alert"] { color: var(--tamam-danger) !important; font-size: 12px; }
 
 /* A read-only computed value (the geocode ID) — Carbon greys the surface. */
-.omrs-reg input[readonly] {
-  background-color: var(--omrs-ui-01) !important;
-  color: var(--omrs-text-02);
-  border-bottom-color: var(--omrs-ui-04);
+.tamam-reg input[readonly] {
+  background-color: var(--tamam-ui-01) !important;
+  color: var(--tamam-text-02);
+  border-bottom-color: var(--tamam-ui-04);
 }
 
 /* ══════════════════ One field ══════════════════
@@ -25857,82 +25857,82 @@ table.patient-data-table.patient-data-table {
   min-width: 0;
 }
 
-.omrs-reg .registration-field-error {
+.tamam-reg .registration-field-error {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.34;
-  color: var(--omrs-danger);
+  color: var(--tamam-danger);
 }
 
 /* ══════════════════ Grids and groupings ══════════════════ */
 
-.omrs-reg .registration-section { display: block; }
-.omrs-reg .registration-field-grid { gap: 24px 32px; }
-.omrs-reg .registration-field-grid--three {
+.tamam-reg .registration-section { display: block; }
+.tamam-reg .registration-field-grid { gap: 24px 32px; }
+.tamam-reg .registration-field-grid--three {
   grid-template-columns: repeat(var(--reg-cols-three), minmax(0, 1fr));
 }
-.omrs-reg .registration-field-grid--two {
+.tamam-reg .registration-field-grid--two {
   grid-template-columns: repeat(var(--reg-cols-two), minmax(0, 1fr));
 }
 
 /* O3 has no nested cards inside a form container — a grouping is a bold
    heading and, at most, a hairline. The tinted, bordered, rounded panels
    these carried elsewhere in the platform read as boxes-in-boxes here. */
-.omrs-reg .registration-subsection,
-.omrs-reg .registration-contact-card,
-.omrs-reg .registration-inline-panel {
+.tamam-reg .registration-subsection,
+.tamam-reg .registration-contact-card,
+.tamam-reg .registration-inline-panel {
   background: none;
   border: none;
   border-radius: 0;
   padding: 0;
   gap: 20px;
 }
-.omrs-reg .registration-contact-card + .registration-contact-card,
-.omrs-reg .registration-inline-panel {
+.tamam-reg .registration-contact-card + .registration-contact-card,
+.tamam-reg .registration-inline-panel {
   padding-top: 20px;
-  border-top: 1px solid var(--omrs-ui-03);
+  border-top: 1px solid var(--tamam-ui-03);
 }
 
 /* Carbon productive-heading-02: the subsection titles ("Geographic
    Identifier", "Address", "Patient Photo"). */
-.omrs-reg .registration-subsection h4,
-.omrs-reg .registration-panel-heading h4 {
+.tamam-reg .registration-subsection h4,
+.tamam-reg .registration-panel-heading h4 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
   text-transform: none;
   letter-spacing: 0;
 }
-.omrs-reg .registration-panel-heading { margin-bottom: 16px; }
-.omrs-reg .registration-panel-heading span {
+.tamam-reg .registration-panel-heading { margin-bottom: 16px; }
+.tamam-reg .registration-panel-heading span {
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 
-.omrs-reg .registration-subsection > p,
-.omrs-reg .registration-section-note,
-.omrs-reg .registration-media-row p,
-.omrs-reg .fingerprint-capture-description {
+.tamam-reg .registration-subsection > p,
+.tamam-reg .registration-section-note,
+.tamam-reg .registration-media-row p,
+.tamam-reg .fingerprint-capture-description {
   font-size: 12px;
   line-height: 1.34;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 /* The caption belongs to the heading above it, not to the block below. */
-.omrs-reg .registration-subsection > h4 + p { margin-top: -12px; }
+.tamam-reg .registration-subsection > h4 + p { margin-top: -12px; }
 
-.omrs-reg .registration-info-note {
+.tamam-reg .registration-info-note {
   padding: 12px 16px;
   border: none;
-  border-inline-start: 3px solid var(--omrs-interactive);
+  border-inline-start: 3px solid var(--tamam-interactive);
   border-radius: 0;
-  background: var(--omrs-interactive-soft);
+  background: var(--tamam-interactive-soft);
 }
-.omrs-reg .registration-info-note p { font-size: 12px; color: var(--omrs-ui-05); }
+.tamam-reg .registration-info-note p { font-size: 12px; color: var(--tamam-ui-05); }
 
 /* Next-of-kin contact badges. These carried their colours as inline styles on
    the span, which no stylesheet could reach. */
@@ -25951,9 +25951,9 @@ table.patient-data-table.patient-data-table {
   background: var(--accent-light);
   color: var(--accent-text);
 }
-.omrs-reg .registration-contact-badge {
+.tamam-reg .registration-contact-badge {
   border-radius: 0;
-  background: var(--omrs-interactive-soft);
+  background: var(--tamam-interactive-soft);
   color: var(--accent-hover, #113055);
 }
 
@@ -25967,78 +25967,78 @@ table.patient-data-table.patient-data-table {
   transition: background 0.15s ease;
 }
 .registration-contact-remove:hover { background: var(--color-danger-bg); }
-.omrs-reg .registration-contact-remove { border-radius: 0; }
+.tamam-reg .registration-contact-remove { border-radius: 0; }
 
 /* The coverage tiles are a group of choices, so they get a real fieldset and
    legend — a <label> cannot point at four buttons. */
 .registration-option-fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
-.omrs-reg .registration-option-fieldset > legend {
+.tamam-reg .registration-option-fieldset > legend {
   padding: 0;
   margin-bottom: 6px;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.34;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 
 /* ══════════════════ Coverage tiles ══════════════════
    Carbon selectable tile: square, white, one-pixel edge; selection is a blue
    border with the label in blue, not a tint. */
-.omrs-reg .registration-option-grid { gap: 1px; margin-top: 8px; }
-.omrs-reg .registration-option-button {
+.tamam-reg .registration-option-grid { gap: 1px; margin-top: 8px; }
+.tamam-reg .registration-option-button {
   min-height: 88px;
   padding: 16px;
   border-radius: 0;
-  background-color: var(--omrs-field-01) !important;
-  border: 1px solid var(--omrs-ui-03) !important;
+  background-color: var(--tamam-field-01) !important;
+  border: 1px solid var(--tamam-ui-03) !important;
   transition: border-color 0.11s, background-color 0.11s;
 }
-.omrs-reg .registration-option-button:hover { transform: none; background-color: var(--omrs-ui-01) !important; }
-.omrs-reg .registration-option-button[data-selected="true"] {
-  border: 2px solid var(--omrs-interactive) !important;
-  background-color: var(--omrs-field-01) !important;
+.tamam-reg .registration-option-button:hover { transform: none; background-color: var(--tamam-ui-01) !important; }
+.tamam-reg .registration-option-button[data-selected="true"] {
+  border: 2px solid var(--tamam-interactive) !important;
+  background-color: var(--tamam-field-01) !important;
 }
-.omrs-reg .registration-option-label {
+.tamam-reg .registration-option-label {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.29;
-  color: var(--omrs-ui-05);
+  color: var(--tamam-ui-05);
 }
-.omrs-reg .registration-option-button[data-selected="true"] .registration-option-label {
-  color: var(--omrs-interactive);
+.tamam-reg .registration-option-button[data-selected="true"] .registration-option-label {
+  color: var(--tamam-interactive);
 }
-.omrs-reg .registration-option-desc {
+.tamam-reg .registration-option-desc {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.34;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 
 /* ══════════════════ Buttons inside the form ══════════════════
    "Add another contact", "Take photo", "Remove" — Carbon ghost/tertiary. */
-.omrs-reg .omrs-reg-fields .btn {
+.tamam-reg .tamam-reg-fields .btn {
   border-radius: 0;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.16px;
   min-height: 40px;
 }
-.omrs-reg .omrs-reg-fields .btn-secondary {
+.tamam-reg .tamam-reg-fields .btn-secondary {
   background: transparent;
-  border: 1px solid var(--omrs-interactive);
-  color: var(--omrs-interactive);
+  border: 1px solid var(--tamam-interactive);
+  color: var(--tamam-interactive);
 }
-.omrs-reg .omrs-reg-fields .btn-secondary:hover {
-  background: var(--omrs-interactive);
+.tamam-reg .tamam-reg-fields .btn-secondary:hover {
+  background: var(--tamam-interactive);
   color: #fff;
 }
 
 /* ══════════════════ Photo well ══════════════════
-   The OpenMRS shape: a plain bordered square holding the picture, with one
+   The Tamam shape: a plain bordered square holding the picture, with one
    dark action bar welded to its foot carrying "Edit" and a pencil. No dashed
    rounded drop zone, and no separate button beside it — the bar is the
    control. */
-.omrs-reg .registration-media-row {
+.tamam-reg .registration-media-row {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
   align-items: start;
@@ -26091,14 +26091,14 @@ table.patient-data-table.patient-data-table {
 .triage-rail-patient strong {
   max-width: 244px;
   overflow: hidden;
-  color: var(--omrs-ui-05, var(--text-primary));
+  color: var(--tamam-ui-05, var(--text-primary));
   font-size: 14px;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .triage-rail-patient > span:not(.triage-patient-photo-label) {
-  color: var(--omrs-text-02, var(--text-muted));
+  color: var(--tamam-text-02, var(--text-muted));
   font-size: 11px;
   line-height: 1.35;
 }
@@ -26107,80 +26107,80 @@ table.patient-data-table.patient-data-table {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--omrs-interactive, var(--accent-primary));
+  color: var(--tamam-interactive, var(--accent-primary));
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
 }
 
-.triage-reg-form .omrs-reg-fields input:not([type="checkbox"]):not([type="radio"]),
-.triage-reg-form .omrs-reg-fields select,
-.triage-reg-form .omrs-reg-fields textarea {
-  background: var(--omrs-field-01, #fff) !important;
+.triage-reg-form .tamam-reg-fields input:not([type="checkbox"]):not([type="radio"]),
+.triage-reg-form .tamam-reg-fields select,
+.triage-reg-form .tamam-reg-fields textarea {
+  background: var(--tamam-field-01, #fff) !important;
   border: 0 !important;
-  border-bottom: 1px solid var(--omrs-ui-04, #CFD6DD) !important;
+  border-bottom: 1px solid var(--tamam-ui-04, #CFD6DD) !important;
   border-radius: 0 !important;
   box-sizing: border-box;
   padding: 10px 12px !important;
   min-height: 44px;
 }
-.triage-reg-form .omrs-reg-fields input:focus,
-.triage-reg-form .omrs-reg-fields select:focus,
-.triage-reg-form .omrs-reg-fields textarea:focus {
-  border-bottom: 2px solid var(--omrs-interactive, #2191D0) !important;
+.triage-reg-form .tamam-reg-fields input:focus,
+.triage-reg-form .tamam-reg-fields select:focus,
+.triage-reg-form .tamam-reg-fields textarea:focus {
+  border-bottom: 2px solid var(--tamam-interactive, #2191D0) !important;
   box-shadow: none !important;
 }
-.triage-reg-form .omrs-reg-fields label {
+.triage-reg-form .tamam-reg-fields label {
   text-transform: none !important;
   letter-spacing: 0 !important;
   font-size: 12px !important;
   font-weight: 400 !important;
 }
-.triage-reg-form .omrs-reg-fields textarea {
+.triage-reg-form .tamam-reg-fields textarea {
   min-height: 88px;
   line-height: 1.45;
 }
-.triage-reg-form .omrs-reg-fields .rounded-xl {
+.triage-reg-form .tamam-reg-fields .rounded-xl {
   padding: 16px !important;
 }
-.triage-reg-form .omrs-reg-fields .rounded-xl input,
-.triage-reg-form .omrs-reg-fields .rounded-xl select {
+.triage-reg-form .tamam-reg-fields .rounded-xl input,
+.triage-reg-form .tamam-reg-fields .rounded-xl select {
   margin-top: 4px;
 }
-.triage-reg-form .omrs-reg-fields button:not(.btn) {
+.triage-reg-form .tamam-reg-fields button:not(.btn) {
   min-height: 40px;
   padding: 9px 12px !important;
   line-height: 1.25;
 }
 
-.omrs-reg-photo {
+.tamam-reg-photo {
   width: 168px;
-  border: 1px solid var(--omrs-ui-04);
-  background: var(--omrs-field-01);
+  border: 1px solid var(--tamam-ui-04);
+  background: var(--tamam-field-01);
 }
 
-.omrs-reg-photo-frame {
+.tamam-reg-photo-frame {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 168px;
   overflow: hidden;
-  background: var(--omrs-field-01);
+  background: var(--tamam-field-01);
 }
-.omrs-reg-photo-frame img { width: 100%; height: 100%; object-fit: cover; }
+.tamam-reg-photo-frame img { width: 100%; height: 100%; object-fit: cover; }
 
 /* The placeholder wraps mid-phrase in the reference ("No image / to display"),
    so the string carries its own newline and the box honours it. */
-.omrs-reg-photo-empty {
+.tamam-reg-photo-empty {
   white-space: pre-line;
   text-align: center;
   font-size: 14px;
   line-height: 1.43;
-  color: var(--omrs-text-02);
+  color: var(--tamam-text-02);
 }
 
-.omrs-reg-photo-edit {
+.tamam-reg-photo-edit {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -26200,35 +26200,35 @@ table.patient-data-table.patient-data-table {
   cursor: pointer;
   transition: background 0.11s;
 }
-.omrs-reg-photo-edit:hover { background: var(--omrs-primary); }
-.omrs-reg-photo-edit:focus-visible { outline: 2px solid var(--omrs-interactive); outline-offset: -3px; }
+.tamam-reg-photo-edit:hover { background: var(--tamam-primary); }
+.tamam-reg-photo-edit:focus-visible { outline: 2px solid var(--tamam-interactive); outline-offset: -3px; }
 /* The pencil is drawn by the shared Icon renderer, which hardcodes its own
    stroke unless told otherwise — see the icon trap in globals. */
-.omrs-reg-photo-edit svg.lucide { color: inherit; stroke: currentColor; }
+.tamam-reg-photo-edit svg.lucide { color: inherit; stroke: currentColor; }
 
-.omrs-reg-photo-aside {
+.tamam-reg-photo-aside {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
 }
-.omrs-reg-photo-remove {
+.tamam-reg-photo-remove {
   padding: 0;
   border: none;
   background: none;
   font-family: var(--font-omrs);
   font-size: 12px;
-  color: var(--omrs-danger);
+  color: var(--tamam-danger);
   text-decoration: underline;
   cursor: pointer;
 }
 
 @media (max-width: 1024px) {
-  .omrs-reg { --reg-cols-three: 2; }
+  .tamam-reg { --reg-cols-three: 2; }
 }
 @media (max-width: 640px) {
-  .omrs-reg { --reg-cols-three: 1; --reg-cols-two: 1; }
-  .omrs-reg-fields { padding: 20px 16px 24px; }
+  .tamam-reg { --reg-cols-three: 1; --reg-cols-two: 1; }
+  .tamam-reg-fields { padding: 20px 16px 24px; }
 }
 
 
@@ -26547,7 +26547,7 @@ table.patient-data-table.patient-data-table {
    the desk, so it stays denser and quieter than the form it summarises.
    ═══════════════════════════════════════════════════════════════════════ */
 
-.omrs-reg-reviewavatar {
+.tamam-reg-reviewavatar {
   width: 60px;
   height: 60px;
   border-radius: 12px;
@@ -26560,8 +26560,8 @@ table.patient-data-table.patient-data-table {
   justify-content: center;
   color: var(--text-muted);
 }
-.omrs-reg-reviewavatar img { width: 100%; height: 100%; object-fit: cover; }
-.omrs-reg-reviewavatar svg { opacity: 0.4; }
+.tamam-reg-reviewavatar img { width: 100%; height: 100%; object-fit: cover; }
+.tamam-reg-reviewavatar svg { opacity: 0.4; }
 
 /* ── Possible-duplicate warning (registration Review step) ────────────────
    Sits between the read-back heading and the field groups. Deliberately
@@ -26655,21 +26655,21 @@ table.patient-data-table.patient-data-table {
 
 .reg-dup-row > button { margin-inline-start: auto; flex-shrink: 0; }
 
-.omrs-reg-reviewgroups {
+.tamam-reg-reviewgroups {
   display: flex;
   flex-direction: column;
   gap: 14px;
   margin-top: 18px;
 }
 
-.omrs-reg-reviewgroup {
+.tamam-reg-reviewgroup {
   border: 1px solid var(--border-light, var(--border-light));
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-card-solid, #FFFFFF);
 }
 
-.omrs-reg-reviewgroup > header {
+.tamam-reg-reviewgroup > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -26679,7 +26679,7 @@ table.patient-data-table.patient-data-table {
   border-bottom: 1px solid var(--border-light, var(--border-light));
 }
 
-.omrs-reg-reviewgroup > header h4 {
+.tamam-reg-reviewgroup > header h4 {
   margin: 0;
   font-size: 11px;
   font-weight: 700;
@@ -26688,7 +26688,7 @@ table.patient-data-table.patient-data-table {
   color: var(--text-muted);
 }
 
-.omrs-reg-reviewgroup > header button {
+.tamam-reg-reviewgroup > header button {
   border: none;
   background: none;
   padding: 0;
@@ -26698,21 +26698,21 @@ table.patient-data-table.patient-data-table {
   color: var(--accent-text);
   cursor: pointer;
 }
-.omrs-reg-reviewgroup > header button:hover { text-decoration: underline; }
+.tamam-reg-reviewgroup > header button:hover { text-decoration: underline; }
 
 /* Two columns on a roomy screen, one when the pane narrows. The label column
    is fixed so values line up down the page and a missing one is obvious. */
-.omrs-reg-reviewgroup dl {
+.tamam-reg-reviewgroup dl {
   margin: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (max-width: 720px) {
-  .omrs-reg-reviewgroup dl { grid-template-columns: minmax(0, 1fr); }
+  .tamam-reg-reviewgroup dl { grid-template-columns: minmax(0, 1fr); }
 }
 
-.omrs-reg-reviewgroup dl > div {
+.tamam-reg-reviewgroup dl > div {
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -26723,10 +26723,10 @@ table.patient-data-table.patient-data-table {
 
 /* Last row of each column loses its rule; with an odd count the final cell
    spans both so the grid does not end on a half-drawn line. */
-.omrs-reg-reviewgroup dl > div:nth-last-child(-n+2):nth-child(odd),
-.omrs-reg-reviewgroup dl > div:last-child { border-bottom: none; }
+.tamam-reg-reviewgroup dl > div:nth-last-child(-n+2):nth-child(odd),
+.tamam-reg-reviewgroup dl > div:last-child { border-bottom: none; }
 
-.omrs-reg-reviewgroup dt {
+.tamam-reg-reviewgroup dt {
   flex: 0 0 42%;
   font-size: 11.5px;
   font-weight: 600;
@@ -26735,7 +26735,7 @@ table.patient-data-table.patient-data-table {
   letter-spacing: 0;
 }
 
-.omrs-reg-reviewgroup dd {
+.tamam-reg-reviewgroup dd {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -26746,7 +26746,7 @@ table.patient-data-table.patient-data-table {
 
 /* Left blank. Shown, not hidden — "not recorded" is worth seeing before the
    record is committed. */
-.omrs-reg-reviewgroup dl > div.is-empty dd { color: var(--text-muted); opacity: 0.7; }
+.tamam-reg-reviewgroup dl > div.is-empty dd { color: var(--text-muted); opacity: 0.7; }
 
 /* ── Side-card header rule ────────────────────────────────────────────────
    Every right-rail card (Reception / Clinic today / Today's triage, Patient
@@ -32373,7 +32373,7 @@ button.sadb-signal { cursor: pointer; }
    The register-patient page anatomy (/patients/new) in console clothes:
    the same centered column, back toolbar (.patient-registration-toolbar /
    -back are reused directly — they are generic chrome), and a sticky left
-   rail of jump links beside the form. Geometry mirrors .omrs-reg; fonts and
+   rail of jump links beside the form. Geometry mirrors .tamam-reg; fonts and
    colours stay the console's own tokens — Carbon's typeface and slab palette
    are the patient chart's identity, not the admin console's. */
 .sadb-regpage-shell {

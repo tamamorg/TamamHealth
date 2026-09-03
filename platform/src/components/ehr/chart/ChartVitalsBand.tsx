@@ -78,21 +78,21 @@ export default function ChartVitalsBand({
   ];
 
   return (
-    <div className="omrs-vitals-band">
-      <div className="omrs-vitals-head">
-        <span className="omrs-vitals-title">Vitals and biometrics</span>
-        {latestRecordDate && <span className="omrs-vitals-timestamp">{formatDateTime(latestRecordDate)}</span>}
-        {isStale && <span className="omrs-vitals-fresh-pill">These vitals are {freshnessLabel}</span>}
-        <button type="button" className="omrs-vitals-link" onClick={onViewVitalsHistory}>Vitals history</button>
-        <span className="omrs-vitals-info" title="Latest recorded vital signs for this patient">
+    <div className="tamam-vitals-band">
+      <div className="tamam-vitals-head">
+        <span className="tamam-vitals-title">Vitals and biometrics</span>
+        {latestRecordDate && <span className="tamam-vitals-timestamp">{formatDateTime(latestRecordDate)}</span>}
+        {isStale && <span className="tamam-vitals-fresh-pill">These vitals are {freshnessLabel}</span>}
+        <button type="button" className="tamam-vitals-link" onClick={onViewVitalsHistory}>Vitals history</button>
+        <span className="tamam-vitals-info" title="Latest recorded vital signs for this patient">
           <Info />
         </span>
-        <span className="omrs-vitals-spacer" />
+        <span className="tamam-vitals-spacer" />
         {/* The arrow used to double as the permission cue; the button now says
             so directly by being disabled when vitals cannot be recorded. */}
         <button
           type="button"
-          className="omrs-vitals-record-link"
+          className="tamam-vitals-record-link"
           onClick={onRecordVitals}
           disabled={!canRecordVitals}
           title={canRecordVitals ? undefined : 'Requires vitals-recording permission'}
@@ -100,13 +100,13 @@ export default function ChartVitalsBand({
           Record vitals
         </button>
       </div>
-      <div className="omrs-vitals-grid">
+      <div className="tamam-vitals-grid">
         {cells.map(cell => (
-          <div className="omrs-vitals-cell" key={cell.label}>
-            <div className="omrs-vitals-label">{cell.label}</div>
-            <div className="omrs-vitals-value">
+          <div className="tamam-vitals-cell" key={cell.label}>
+            <div className="tamam-vitals-label">{cell.label}</div>
+            <div className="tamam-vitals-value">
               {cell.value}
-              {cell.unit && <span className="omrs-vitals-unit">{cell.unit}</span>}
+              {cell.unit && <span className="tamam-vitals-unit">{cell.unit}</span>}
             </div>
           </div>
         ))}

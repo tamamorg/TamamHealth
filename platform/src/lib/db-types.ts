@@ -2247,6 +2247,16 @@ export interface PlatformConfigDoc extends BaseDoc {
     trialDays: number;
     maxOrganizations: number;
   };
+  /**
+   * Controls the incremental replacement of the current feature catalog.
+   * Configuration is pull-only and defaults to the current implementation;
+   * no replacement is primary until its individual cutover says so.
+   */
+  featureCatalog?: {
+    baselineId: string;
+    mode: 'tamam_current' | 'tamam_shadow' | 'tamam_replacement';
+    cutovers: Record<string, 'legacy' | 'shadow' | 'replacement' | 'parked'>;
+  };
   defaultPrimaryColor: string;
   defaultSecondaryColor: string;
   superAdminPolicies?: {

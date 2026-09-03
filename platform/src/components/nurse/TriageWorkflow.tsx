@@ -1129,10 +1129,10 @@ export default function TriageWorkflow({
   };
 
   return (
-    <div className={lockedPatientId ? 'omrs-reg triage-reg' : 'flex flex-col lg:flex-row gap-4'} style={{ flex: 1, minHeight: 0 }}>
+    <div className={lockedPatientId ? 'tamam-reg triage-reg' : 'flex flex-col lg:flex-row gap-4'} style={{ flex: 1, minHeight: 0 }}>
       {lockedPatientId && (
-        <aside className="omrs-reg-rail" aria-label="Triage progress">
-          <h1 className="omrs-reg-title">Patient triage</h1>
+        <aside className="tamam-reg-rail" aria-label="Triage progress">
+          <h1 className="tamam-reg-title">Patient triage</h1>
           {selectedTriagePatient && (
             <div className="triage-rail-patient">
               <div className="triage-patient-photo">
@@ -1151,9 +1151,9 @@ export default function TriageWorkflow({
               </button>
             </div>
           )}
-          <p className="omrs-reg-railnote">Complete the assessment from top to bottom, then save the triage record.</p>
-          <p className="omrs-reg-jump">Assessment steps</p>
-          <nav className="omrs-reg-nav" aria-label="Triage sections">
+          <p className="tamam-reg-railnote">Complete the assessment from top to bottom, then save the triage record.</p>
+          <p className="tamam-reg-jump">Assessment steps</p>
+          <nav className="tamam-reg-nav" aria-label="Triage sections">
             {triageSections.map(section => {
               const isCurrent = activeSection === section.id;
               return (
@@ -1161,17 +1161,17 @@ export default function TriageWorkflow({
                   key={section.id}
                   type="button"
                   onClick={() => goToTriageSection(section.id)}
-                  className={`omrs-reg-navitem${isCurrent ? ' is-current' : ''}`}
+                  className={`tamam-reg-navitem${isCurrent ? ' is-current' : ''}`}
                   aria-current={isCurrent ? 'step' : undefined}
                 >
-                  <span className="omrs-reg-navarrow" aria-hidden>↳</span>
-                  <span className="omrs-reg-navlabel">{section.label}</span>
-                  <span className="omrs-reg-navmeta">{section.detail}</span>
+                  <span className="tamam-reg-navarrow" aria-hidden>↳</span>
+                  <span className="tamam-reg-navlabel">{section.label}</span>
+                  <span className="tamam-reg-navmeta">{section.detail}</span>
                 </button>
               );
             })}
           </nav>
-          <div className="omrs-reg-railactions">
+          <div className="tamam-reg-railactions">
             <button
               type="button"
               onClick={handleSubmitTriage}
@@ -1187,7 +1187,7 @@ export default function TriageWorkflow({
         </aside>
       )}
 
-      <div data-tour="triage-form" className={lockedPatientId ? 'omrs-reg-form patient-registration-shell triage-reg-form' : 'lg:flex-[2] dash-card overflow-hidden flex flex-col'} style={{ padding: lockedPatientId ? 0 : undefined, minHeight: 0 }}>
+      <div data-tour="triage-form" className={lockedPatientId ? 'tamam-reg-form patient-registration-shell triage-reg-form' : 'lg:flex-[2] dash-card overflow-hidden flex flex-col'} style={{ padding: lockedPatientId ? 0 : undefined, minHeight: 0 }}>
         {!lockedPatientId && (
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderBottom: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2">
@@ -1207,9 +1207,9 @@ export default function TriageWorkflow({
           </div>
         )}
         <div className={lockedPatientId ? 'patient-registration-card-body' : 'p-4 space-y-4 flex-1 overflow-y-auto'}>
-          <div className={lockedPatientId ? 'omrs-reg-section' : 'space-y-4'}>
-            {lockedPatientId && <div className="omrs-reg-sectionhead"><h2>ETAT assessment</h2><p>Record the patient identity, immediate risk, observations, and handoff context.</p></div>}
-            <div className={lockedPatientId ? 'omrs-reg-fields space-y-4' : 'space-y-4'}>
+          <div className={lockedPatientId ? 'tamam-reg-section' : 'space-y-4'}>
+            {lockedPatientId && <div className="tamam-reg-sectionhead"><h2>ETAT assessment</h2><p>Record the patient identity, immediate risk, observations, and handoff context.</p></div>}
+            <div className={lockedPatientId ? 'tamam-reg-fields space-y-4' : 'space-y-4'}>
           {draftRestoredNotice && (
             <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33,145,208,0.25))' }}>
               <span className="text-[11px] font-semibold" style={{ color: ACCENT }}>

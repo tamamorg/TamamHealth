@@ -2,11 +2,11 @@
 
 /**
  * The registration form's table of contents — a list of jump links, one per
- * section, marked with OpenMRS's corner arrow.
+ * section, marked with Tamam's corner arrow.
  *
  * It was `RegistrationProgressRail` and it drew progress: a spine that filled
  * with the share of required fields answered, a conic sweep per section node,
- * and a running count beside every label. All of that went with the OpenMRS
+ * and a running count beside every label. All of that went with the Tamam
  * restyle, and the name outlived it. What is left answers one question —
  * WHERE YOU ARE — and marks the current section by colour alone. How much is
  * done is answered at the field, which is where it gets fixed.
@@ -55,7 +55,7 @@ export default function RegistrationJumpNav({
   optionalLabel,
 }: RegistrationJumpNavProps) {
   return (
-    <nav className="omrs-reg-nav">
+    <nav className="tamam-reg-nav">
       {sectionLabels.map((label, i) => {
         const { done, total } = sectionProgress[i];
         const hasErrors = errorSections.has(i);
@@ -73,17 +73,17 @@ export default function RegistrationJumpNav({
             type="button"
             onClick={() => (isReviewStep ? onOpenReview() : onSelectSection(i))}
             disabled={isLocked}
-            className={`omrs-reg-navitem${hasErrors ? ' has-errors' : ''}${i === activeSection ? ' is-current' : ''}`}
+            className={`tamam-reg-navitem${hasErrors ? ' has-errors' : ''}${i === activeSection ? ' is-current' : ''}`}
             data-state={isOptional ? 'optional' : undefined}
             aria-current={i === activeSection ? 'true' : undefined}
             // The count survives here, where a screen reader still hears the
             // progress the markers no longer draw.
             aria-label={total > 0 ? `${label} ${done}/${total}` : label}
           >
-            {/* OpenMRS marks a jump link with a corner arrow. */}
-            <span className="omrs-reg-navarrow" aria-hidden>↳</span>
-            <span className="omrs-reg-navlabel">{label}</span>
-            {meta && <span className="omrs-reg-navmeta" aria-hidden>{meta}</span>}
+            {/* Tamam marks a jump link with a corner arrow. */}
+            <span className="tamam-reg-navarrow" aria-hidden>↳</span>
+            <span className="tamam-reg-navlabel">{label}</span>
+            {meta && <span className="tamam-reg-navmeta" aria-hidden>{meta}</span>}
           </button>
         );
       })}

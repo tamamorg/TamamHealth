@@ -521,15 +521,15 @@ export function PatientRegistrationForm({
 
   /** Title, note and grey slab shared by every section on the page. */
   const renderSection = (index: number, anchor: string, children: React.ReactNode) => (
-    <section className="registration-section omrs-reg-section" id={`reg-${anchor}`}>
-      <header className="omrs-reg-sectionhead">
+    <section className="registration-section tamam-reg-section" id={`reg-${anchor}`}>
+      <header className="tamam-reg-sectionhead">
         <h2>{index + 1}. {sectionLabels[index]}</h2>
         {/* Only where there is something to mark: Biometrics and Payment
             Coverage require nothing, so the note would point at asterisks that
             are not there. */}
         {sectionProgress[index].total > 0 && <p className="field-required">{t('patientNew.requiredFieldsNote')}</p>}
       </header>
-      <div className="omrs-reg-fields">{children}</div>
+      <div className="tamam-reg-fields">{children}</div>
     </section>
   );
 
@@ -544,13 +544,13 @@ export function PatientRegistrationForm({
           </div>
         )}
 
-        <div className="omrs-reg">
+        <div className="tamam-reg">
           {/* Left rail: the form's table of contents and its two actions. */}
-          <aside className="omrs-reg-rail" aria-label={t('patientNew.registrationProgressAriaLabel')}>
-            <h1 className="omrs-reg-title">{t('patientNew.topBarTitle')}</h1>
+          <aside className="tamam-reg-rail" aria-label={t('patientNew.registrationProgressAriaLabel')}>
+            <h1 className="tamam-reg-title">{t('patientNew.topBarTitle')}</h1>
             {/* Said once, here, instead of under every section heading. */}
-            <p className="omrs-reg-railnote field-required">{t('patientNew.requiredFieldsNote')}</p>
-            <p className="omrs-reg-jump">{t('patientNew.jumpTo')}</p>
+            <p className="tamam-reg-railnote field-required">{t('patientNew.requiredFieldsNote')}</p>
+            <p className="tamam-reg-jump">{t('patientNew.jumpTo')}</p>
             <RegistrationJumpNav
               sectionLabels={sectionLabels}
               sectionProgress={sectionProgress}
@@ -561,7 +561,7 @@ export function PatientRegistrationForm({
               onOpenReview={openReview}
               optionalLabel={t('patientNew.optionalLabel')}
             />
-            <div className="omrs-reg-railactions">
+            <div className="tamam-reg-railactions">
               {/* Filling and committing are different moments, so they get
                   different buttons. While the form is open the primary action
                   is Review; the registering actions only appear on the
@@ -585,13 +585,13 @@ export function PatientRegistrationForm({
                   </button>
                 </>
               )}
-              <button type="button" onClick={handleCancel} className="omrs-reg-cancel">
+              <button type="button" onClick={handleCancel} className="tamam-reg-cancel">
                 {t('patientNew.cancel')}
               </button>
             </div>
           </aside>
 
-          <div className="patient-registration-shell omrs-reg-form">
+          <div className="patient-registration-shell tamam-reg-form">
             <div className="patient-registration-card-body">
               {/* The form's sections, or the read-back that replaces them —
                   never both, so the clerk never scrolls through a summary of

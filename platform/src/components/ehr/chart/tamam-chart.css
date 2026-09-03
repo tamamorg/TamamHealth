@@ -1,21 +1,21 @@
 /*
- * OpenMRS O3-style patient chart shell — scoped styles.
+ * Tamam O3-style patient chart shell — scoped styles.
  *
- * Everything here is prefixed `omrs-` so it never collides with the legacy
+ * Everything here is prefixed `tamam-` so it never collides with the legacy
  * `.ehr-chart-*` cascade in globals.css. Reuses existing `--ehr-*` / neutral
  * tokens for greys, borders and surfaces; introduces one new accent token
- * (`--omrs-teal`) for the OpenMRS-style active/accent color, since this app's
- * `--accent-primary` is blue and the OpenMRS reference uses teal.
+ * (`--tamam-teal`) for the Tamam-style active/accent color, since this app's
+ * `--accent-primary` is blue and the Tamam reference uses teal.
  *
  * Stage 1: visual shell only (left nav rail, sticky header, sticky vitals
  * band, right action rail + slide-in drawer). Tab CONTENT is untouched and
- * simply renders inside `.omrs-content`.
+ * simply renders inside `.tamam-content`.
  */
 
-.omrs-root {
-  --omrs-teal: #1174b4;
-  --omrs-teal-soft: rgba(17, 116, 180, 0.08);
-  --omrs-teal-border: rgba(17, 116, 180, 0.28);
+.tamam-root {
+  --tamam-teal: #1174b4;
+  --tamam-teal-soft: rgba(17, 116, 180, 0.08);
+  --tamam-teal-border: rgba(17, 116, 180, 0.28);
 
   display: flex;
   align-items: stretch;
@@ -45,7 +45,7 @@
    Those hairlines and the hover tint are the chart's own cool neutrals — the
    warm greys this rail used to run (#eceef1 canvas, #eceef1 borders) were
    pitched against the tint and read as dirt once it went. */
-.omrs-rail-col {
+.tamam-rail-col {
   /* Matches the clinical note editor's left panel (.cn-body's 292px sidebar
      track) so the chart and the note read as one surface when flipping
      between them — and it comfortably clears the longest label,
@@ -57,20 +57,20 @@
   border-right: 1px solid var(--ehr-border, var(--border-light));
 }
 
-.omrs-rail-card {
+.tamam-rail-card {
   border: 1px solid var(--ehr-border, var(--border-light));
   border-radius: 10px;
   background: var(--ehr-panel, #fff);
   overflow: hidden;
   margin-bottom: 12px;
 }
-.omrs-rail-card:last-child { margin-bottom: 0; }
+.tamam-rail-card:last-child { margin-bottom: 0; }
 
 /* The first card runs all the way up and fuses with the shell's top edge —
    the same line the patient header starts on. Its own top hairline would
    double the shell's border there, so the card sheds it along with the top
    corners. */
-.omrs-rail-card:first-child {
+.tamam-rail-card:first-child {
   border-top: none;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -79,11 +79,11 @@
 /* The first row starts on the exact line the patient photo does: the header
    opens with 14px of top padding, so the first card's body opens with the
    same 14px above its first pill. */
-.omrs-rail-card:first-child .omrs-rail-cardbody {
+.tamam-rail-card:first-child .tamam-rail-cardbody {
   padding-top: 14px;
 }
 
-.omrs-rail-cardbody {
+.tamam-rail-cardbody {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -94,7 +94,7 @@
    break the column, the active row is the only landmark, so it does the work
    the section headers used to: a solid teal edge, a tint, and the only
    coloured icon on the rail. */
-.omrs-left-rail {
+.tamam-left-rail {
   width: 100%;
   position: sticky;
   top: 0;
@@ -117,7 +117,7 @@
    solid blue with white ink. Hover and selection share that one treatment
    exactly as they do in the dropdown — no teal edge on the side, no separate
    selected style. */
-.omrs-rail-item {
+.tamam-rail-item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -143,8 +143,8 @@
    pointer down the rail made every section look selected in turn. */
 /* On the old warm canvas a #f1f3f5 hover was visible; on white it vanished.
    This is the tint the rest of the app hovers with (`--accent-light`). */
-.omrs-rail-item:hover { background: var(--accent-light, rgba(33, 145, 208, 0.08)); }
-.omrs-rail-item.is-active {
+.tamam-rail-item:hover { background: var(--accent-light, rgba(33, 145, 208, 0.08)); }
+.tamam-rail-item.is-active {
   /* --tb-blue-900 rather than --nav-active-bg, for the reason the dropdown's
      own rule gives: org branding rewrites the latter at runtime, and a light
      org primary renders white-on-white. */
@@ -155,7 +155,7 @@
 
 /* Keep the focus ring inside the row — at the global +2px offset it overlaps
    the rows above and below in a list this tight. */
-.omrs-rail-item:focus-visible {
+.tamam-rail-item:focus-visible {
   outline-offset: -2px;
 }
 
@@ -167,7 +167,7 @@
    beats the attribute. */
 /* 20px, the same glyph the app's top rail uses, so the two navigation surfaces
    read as one set rather than the chart's looking like a shrunken copy. */
-.omrs-left-rail .omrs-rail-item svg {
+.tamam-left-rail .tamam-rail-item svg {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
@@ -180,17 +180,17 @@
    would leave a blue glyph on a blue fill — the same trap the top rail's own
    icon rules document. The active row is NOT filled, so its glyph takes the
    teal ink; white there would erase it against the rail. */
-.omrs-left-rail .omrs-rail-item:hover svg {
+.tamam-left-rail .tamam-rail-item:hover svg {
   color: var(--ehr-muted, #5D728B);
   stroke: currentColor;
 }
 
-.omrs-left-rail .omrs-rail-item.is-active svg {
+.tamam-left-rail .tamam-rail-item.is-active svg {
   color: #fff;
   stroke: currentColor;
 }
 
-.omrs-rail-label {
+.tamam-rail-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -198,7 +198,7 @@
 
 /* ══════════════════ MAIN COLUMN ══════════════════ */
 
-.omrs-main-col {
+.tamam-main-col {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -206,7 +206,7 @@
   flex-direction: column;
 }
 
-.omrs-sticky-zone {
+.tamam-sticky-zone {
   position: sticky;
   top: 0;
   z-index: 15;
@@ -215,7 +215,7 @@
   box-shadow: 0 2px 8px rgba(17, 48, 85, 0.06);
 }
 
-.omrs-content {
+.tamam-content {
   flex: 1 1 auto;
   padding: 20px;
   min-width: 0;
@@ -247,9 +247,9 @@
 
 .tamam-activity-filters button:hover,
 .tamam-activity-filters button.is-active {
-  border-color: var(--omrs-teal-border);
-  background: var(--omrs-teal-soft);
-  color: var(--omrs-teal);
+  border-color: var(--tamam-teal-border);
+  background: var(--tamam-teal-soft);
+  color: var(--tamam-teal);
 }
 
 .tamam-activity-summary {
@@ -378,14 +378,14 @@
 
 /* ── Sticky patient header ── */
 
-.omrs-header {
+.tamam-header {
   padding: 14px 20px;
   display: flex;
   align-items: flex-start;
   gap: 14px;
 }
 
-.omrs-avatar {
+.tamam-avatar {
   flex-shrink: 0;
   width: 72px;
   height: 72px;
@@ -401,7 +401,7 @@
   letter-spacing: 0.5px;
 }
 
-.omrs-avatar img {
+.tamam-avatar img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -409,19 +409,19 @@
   object-fit: cover;
 }
 
-.omrs-header-body {
+.tamam-header-body {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.omrs-header-name-row {
+.tamam-header-name-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.omrs-header-name {
+.tamam-header-name {
   font-size: 17px;
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
@@ -430,7 +430,7 @@
 
 /* Symbol AND word, as the O3 banner writes it — the glyph alone is a guess for
    anyone who has not learned it. */
-.omrs-gender {
+.tamam-gender {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
@@ -439,17 +439,17 @@
   color: var(--ehr-text-body, #3C5574);
 }
 
-.omrs-gender-symbol {
+.tamam-gender-symbol {
   font-size: 15px;
   font-weight: 700;
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-gender.male .omrs-gender-symbol { color: var(--accent-text); }
-.omrs-gender.female .omrs-gender-symbol { color: var(--color-warning-text); }
+.tamam-gender.male .tamam-gender-symbol { color: var(--accent-text); }
+.tamam-gender.female .tamam-gender-symbol { color: var(--color-warning-text); }
 
 
-.omrs-chip {
+.tamam-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -461,7 +461,7 @@
   white-space: nowrap;
 }
 
-.omrs-chip--active-visit {
+.tamam-chip--active-visit {
   background: var(--accent-primary);
   color: #fff;
 }
@@ -469,12 +469,12 @@
 /* Deceased is stated in the chart's darkest ink, not danger red: red means
    "act now", and there is nothing left to act on — but the fact must still
    read before every other chip on the row. */
-.omrs-chip--deceased {
+.tamam-chip--deceased {
   background: var(--ehr-text-title, #113055);
   color: #fff;
 }
 
-.omrs-header-meta {
+.tamam-header-meta {
   margin-top: 4px;
   font-size: 12.5px;
   color: var(--ehr-muted, #5D728B);
@@ -484,9 +484,9 @@
    Its own line, always visible. Red only when there is something to react to;
    an assessed-and-clear patient should not wear an alarm colour, or the colour
    stops meaning anything on the charts that need it. */
-/* Shares its metrics with .omrs-header-balance so the two chips sitting side
+/* Shares its metrics with .tamam-header-balance so the two chips sitting side
    by side on the name row are the same height and ride the same centre line. */
-.omrs-allergy-banner {
+.tamam-allergy-banner {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -501,7 +501,7 @@
   text-align: left;
 }
 
-.omrs-allergy-banner svg {
+.tamam-allergy-banner svg {
   flex-shrink: 0;
   width: 14px;
   height: 14px;
@@ -509,50 +509,50 @@
   stroke: currentColor;
 }
 
-.omrs-allergy-label {
+.tamam-allergy-label {
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-allergy-label::after { content: ':'; }
+.tamam-allergy-label::after { content: ':'; }
 
 /* No ellipsis: the list is shown in full, and wraps inside the chip rather
    than hiding its tail behind a "+N more". */
-.omrs-allergy-value {
+.tamam-allergy-value {
   min-width: 0;
 }
 
-.omrs-allergy-banner--alert {
+.tamam-allergy-banner--alert {
   border-color: var(--color-danger-border);
   background: var(--color-danger-bg);
   color: var(--color-danger-text);
 }
 
-.omrs-allergy-banner--alert .omrs-allergy-label,
-.omrs-allergy-banner--alert svg {
+.tamam-allergy-banner--alert .tamam-allergy-label,
+.tamam-allergy-banner--alert svg {
   color: var(--color-danger, #D92B20);
 }
 
-.omrs-allergy-banner--alert .omrs-allergy-value {
+.tamam-allergy-banner--alert .tamam-allergy-value {
   font-weight: 700;
 }
 
 /* Never assessed is not the same as assessed-and-clear, and reading it as the
    latter is how a known allergy gets prescribed around. */
-.omrs-allergy-banner--unknown {
+.tamam-allergy-banner--unknown {
   border-style: dashed;
 }
 
-.omrs-allergy-banner--unknown .omrs-allergy-value {
+.tamam-allergy-banner--unknown .tamam-allergy-value {
   font-style: italic;
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-allergy-banner--link {
+.tamam-allergy-banner--link {
   cursor: pointer;
 }
 
-.omrs-allergy-banner--link:hover {
+.tamam-allergy-banner--link:hover {
   border-color: var(--tb-blue-900);
 }
 
@@ -560,7 +560,7 @@
    collect-payment flow, so it reads with the actions rather than with the
    identity chips. Neutral when settled; only an outstanding balance takes the
    danger colour. */
-.omrs-header-balance {
+.tamam-header-balance {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -574,7 +574,7 @@
   cursor: pointer;
 }
 
-.omrs-header-balance svg {
+.tamam-header-balance svg {
   flex-shrink: 0;
   width: 13px;
   height: 13px;
@@ -582,26 +582,26 @@
   stroke: currentColor;
 }
 
-.omrs-header-balance:hover {
+.tamam-header-balance:hover {
   border-color: var(--tb-blue-900);
 }
 
-.omrs-header-balance--due {
+.tamam-header-balance--due {
   border-color: var(--color-danger-border);
   background: var(--color-danger-bg);
   color: var(--color-danger-text);
   font-weight: 700;
 }
 
-.omrs-header-balance--due svg,
-.omrs-header-balance--due .omrs-allergy-label {
+.tamam-header-balance--due svg,
+.tamam-header-balance--due .tamam-allergy-label {
   color: var(--color-danger, #D92B20);
 }
 
 /* The contact line. Its labels are muted to match the age/DOB/ID line directly
    above it — in body ink they read heavier than the identity they sit under,
    which inverts the hierarchy. Only the values carry weight. */
-.omrs-header-details {
+.tamam-header-details {
   margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
@@ -611,14 +611,14 @@
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-header-details strong {
+.tamam-header-details strong {
   font-weight: 600;
   color: var(--ehr-text-body, #3C5574);
 }
 
 /* The banner's right column: actions on the first line, the balance chip on
    its own beneath them, both flush right. */
-.omrs-header-aside {
+.tamam-header-aside {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -627,7 +627,7 @@
   max-width: 540px;
 }
 
-.omrs-header-actions {
+.tamam-header-actions {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -640,11 +640,11 @@
 
 /* Icons are the duotone set (brand-blue stroke baked in); just keep them
    from squashing when a label wraps. */
-.omrs-header-actions-btn svg {
+.tamam-header-actions-btn svg {
   flex-shrink: 0;
 }
 
-.omrs-header-actions-btn {
+.tamam-header-actions-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -659,11 +659,11 @@
   white-space: nowrap;
 }
 
-.omrs-header-actions-btn:hover {
+.tamam-header-actions-btn:hover {
   background: var(--ehr-hover, #FAFBFC);
 }
 
-.omrs-header-actions-btn.omrs-link {
+.tamam-header-actions-btn.tamam-link {
   border-color: transparent;
   background: transparent;
   color: var(--accent-text);
@@ -671,7 +671,7 @@
 
 /* Dropdown action menu — no longer used by the chart header (its actions
    render inline), but still the popup for section row menus (e.g. Orders). */
-.omrs-actions-menu {
+.tamam-actions-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -685,7 +685,7 @@
   padding: 4px;
 }
 
-.omrs-actions-menu button {
+.tamam-actions-menu button {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -701,12 +701,12 @@
   cursor: pointer;
 }
 
-.omrs-actions-menu button:hover {
+.tamam-actions-menu button:hover {
   background: var(--ehr-hover, #FAFBFC);
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-actions-menu button svg {
+.tamam-actions-menu button svg {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
@@ -715,12 +715,12 @@
 
 /* ── Sticky vitals & biometrics band ── */
 
-.omrs-vitals-band {
+.tamam-vitals-band {
   padding: 12px 20px 16px;
   border-top: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
-.omrs-vitals-head {
+.tamam-vitals-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -728,18 +728,18 @@
   margin-bottom: 10px;
 }
 
-.omrs-vitals-title {
+.tamam-vitals-title {
   font-size: 13px;
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-vitals-timestamp {
+.tamam-vitals-timestamp {
   font-size: 11.5px;
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-vitals-fresh-pill {
+.tamam-vitals-fresh-pill {
   display: inline-flex;
   align-items: center;
   font-size: 10.5px;
@@ -750,7 +750,7 @@
   color: var(--ehr-danger-text, #B4180F);
 }
 
-.omrs-vitals-link {
+.tamam-vitals-link {
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-text);
@@ -763,18 +763,18 @@
   gap: 4px;
 }
 
-.omrs-vitals-link:hover { text-decoration: underline; }
+.tamam-vitals-link:hover { text-decoration: underline; }
 
-.omrs-vitals-info {
+.tamam-vitals-info {
   color: var(--ehr-muted, #5D728B);
   display: inline-flex;
 }
 
-.omrs-vitals-info svg { width: 14px; height: 14px; }
+.tamam-vitals-info svg { width: 14px; height: 14px; }
 
-.omrs-vitals-spacer { flex: 1 1 auto; }
+.tamam-vitals-spacer { flex: 1 1 auto; }
 
-.omrs-vitals-record-link {
+.tamam-vitals-record-link {
   font-size: 12.5px;
   font-weight: 700;
   color: var(--accent-text);
@@ -787,15 +787,15 @@
   white-space: nowrap;
 }
 
-.omrs-vitals-record-link:hover { text-decoration: underline; }
+.tamam-vitals-record-link:hover { text-decoration: underline; }
 
-.omrs-vitals-grid {
+.tamam-vitals-grid {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 10px;
 }
 
-.omrs-vitals-cell {
+.tamam-vitals-cell {
   background: var(--ehr-page-bg, #F5F8FB);
   border: 1px solid var(--ehr-border-soft, var(--border-light));
   border-radius: 7px;
@@ -803,7 +803,7 @@
   min-width: 0;
 }
 
-.omrs-vitals-label {
+.tamam-vitals-label {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -814,7 +814,7 @@
   text-overflow: ellipsis;
 }
 
-.omrs-vitals-value {
+.tamam-vitals-value {
   margin-top: 3px;
   font-size: 15px;
   font-weight: 700;
@@ -824,7 +824,7 @@
   text-overflow: ellipsis;
 }
 
-.omrs-vitals-value .omrs-vitals-unit {
+.tamam-vitals-value .tamam-vitals-unit {
   font-size: 10.5px;
   font-weight: 500;
   color: var(--ehr-muted, #5D728B);
@@ -832,22 +832,22 @@
 }
 
 /* ══════════════════ SECTION CARDS + TABLES (Stage 3) ══════════════════ */
-/* `.omrs-table` rules are scoped under `.omrs-root` so they only apply where
+/* `.tamam-table` rules are scoped under `.tamam-root` so they only apply where
  * a table explicitly opts in — they never touch the legacy
  * `.ehr-chart-content .data-table` cascade in globals.css. */
 
-.omrs-section {
+.tamam-section {
   background: var(--ehr-panel, #fff);
   border: 1px solid var(--ehr-border, var(--border-light));
   border-radius: 6px;
   overflow: hidden;
 }
 
-.omrs-section + .omrs-section {
+.tamam-section + .tamam-section {
   margin-top: 16px;
 }
 
-.omrs-section-head {
+.tamam-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -856,25 +856,25 @@
   padding: 16px 18px 0;
 }
 
-.omrs-section-title-wrap {
+.tamam-section-title-wrap {
   padding-bottom: 14px;
 }
 
-.omrs-section-title {
+.tamam-section-title {
   font-size: 14px;
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
   margin: 0 0 6px;
 }
 
-.omrs-section-underline {
+.tamam-section-underline {
   display: block;
   width: 28px;
   height: 2px;
-  background: var(--omrs-teal);
+  background: var(--tamam-teal);
 }
 
-.omrs-section-controls {
+.tamam-section-controls {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -882,7 +882,7 @@
   padding-bottom: 10px;
 }
 
-.omrs-section-add {
+.tamam-section-add {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -896,10 +896,10 @@
   padding: 7px 10px;
 }
 
-.omrs-section-add:hover { border-color: var(--accent-primary); background: var(--accent-light); }
-.omrs-section-add svg { width: 14px; height: 14px; }
+.tamam-section-add:hover { border-color: var(--accent-primary); background: var(--accent-light); }
+.tamam-section-add svg { width: 14px; height: 14px; }
 
-.omrs-section-filter {
+.tamam-section-filter {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -915,7 +915,7 @@
 }
 
 /* The caption half of the pill defers to the chosen value. */
-.omrs-section-filter .omrs-filter-caption {
+.tamam-section-filter .tamam-filter-caption {
   font-size: 11px;
   font-weight: 600;
   color: var(--ehr-muted, #5D728B);
@@ -927,8 +927,8 @@
    second box inside the pill — and its `background:` shorthand also wipes the
    global chevron image, leaving the value looking like a text box. Doubled
    selectors out-rank those rules regardless of stylesheet order. */
-.ehr-chart-page .omrs-section-filter select,
-.omrs-root .omrs-section-filter select {
+.ehr-chart-page .tamam-section-filter select,
+.tamam-root .tamam-section-filter select {
   width: auto;
   min-height: 0;
   border: none !important;
@@ -945,19 +945,19 @@
 }
 
 /* Focus lives on the pill, not the embedded select. */
-.ehr-chart-page .omrs-section-filter select:focus,
-.omrs-root .omrs-section-filter select:focus {
+.ehr-chart-page .tamam-section-filter select:focus,
+.tamam-root .tamam-section-filter select:focus {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
 }
 
-.omrs-section-filter:focus-within {
+.tamam-section-filter:focus-within {
   border-color: var(--ehr-blue, #0F62FE);
   box-shadow: 0 0 0 2px var(--ehr-focus-ring, rgba(15, 98, 254, 0.16));
 }
 
-.omrs-section-toggle {
+.tamam-section-toggle {
   display: inline-flex;
   gap: 6px;
   border: 0 !important;
@@ -965,7 +965,7 @@
   overflow: visible;
 }
 
-.omrs-section-toggle button {
+.tamam-section-toggle button {
   font-size: 11.5px;
   font-weight: 600;
   padding: 5px 10px;
@@ -975,18 +975,18 @@
   cursor: pointer;
 }
 
-.omrs-section-toggle button.is-active {
-  background: var(--omrs-teal);
+.tamam-section-toggle button.is-active {
+  background: var(--tamam-teal);
   color: #fff;
 }
 
 /* One control geometry across chart navigation, section actions, filters and
    segmented navigation. Labels differ; their physical affordance does not. */
-.omrs-root :is(
-  .omrs-section-add,
-  .omrs-section-filter,
-  .omrs-section-toggle button,
-  .omrs-header-actions-btn,
+.tamam-root :is(
+  .tamam-section-add,
+  .tamam-section-filter,
+  .tamam-section-toggle button,
+  .tamam-header-actions-btn,
   .tebra-panel-action,
   .tamam-activity-filters button
 ) {
@@ -1001,14 +1001,14 @@
   line-height: 1;
 }
 
-.omrs-root :is(.omrs-section-add, .tebra-panel-action) { color: var(--accent-text); }
-.omrs-root :is(.omrs-section-toggle button.is-active, .tamam-activity-filters button.is-active) {
+.tamam-root :is(.tamam-section-add, .tebra-panel-action) { color: var(--accent-text); }
+.tamam-root :is(.tamam-section-toggle button.is-active, .tamam-activity-filters button.is-active) {
   border-color: var(--accent-primary);
   background: var(--accent-primary);
   color: #fff;
 }
 
-.omrs-root .omrs-rail-item { min-height: 40px; }
+.tamam-root .tamam-rail-item { min-height: 40px; }
 
 .clinical-table-control {
   display: block;
@@ -1026,14 +1026,14 @@
 
 /* Status is the final visual punctuation on every clinical row. All status
    components share this geometry; semantic state changes only their colour. */
-.omrs-root .omrs-table tbody td:last-child :is(
-  .omrs-panel-badge,
-  .omrs-status-picker,
+.tamam-root .tamam-table tbody td:last-child :is(
+  .tamam-panel-badge,
+  .tamam-status-picker,
   .badge,
   .tamam-activity-badge,
   .clinical-status-pill
 ),
-.omrs-root .clinical-status-pill {
+.tamam-root .clinical-status-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1049,11 +1049,11 @@
   white-space: nowrap;
 }
 
-.omrs-section-body {
+.tamam-section-body {
   padding: 0 18px 18px;
 }
 
-.omrs-section-search {
+.tamam-section-search {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1066,18 +1066,18 @@
   color: var(--accent-text);
 }
 
-.omrs-section-search svg { width: 15px; height: 15px; flex: 0 0 auto; }
-/* NOT scoped to `.omrs-root`.
+.tamam-section-search svg { width: 15px; height: 15px; flex: 0 0 auto; }
+/* NOT scoped to `.tamam-root`.
    The label above is the search bar: it draws the border, the radius and the
    fill. globals.css gives every `input[type="search"]` its own border,
    background and 10px/16px padding, so without this reset the input paints a
    second bar inside the first — which is what the chart showed. The reset was
-   qualified with `.omrs-root`, and that class exists only on
-   `OpenmrsChartShell`; `ChartSection` is also rendered by PatientDetailPage,
+   qualified with `.tamam-root`, and that class exists only on
+   `TamamChartShell`; `ChartSection` is also rendered by PatientDetailPage,
    PatientTimeline, DocumentsPanel and PatientSBAR, and every one of those got
-   the doubled bar. `.omrs-section-search input[type='search']` is (0,2,1)
+   the doubled bar. `.tamam-section-search input[type='search']` is (0,2,1)
    against the global rule's (0,1,1), so it wins on its own. */
-.omrs-section-search input[type='search'] {
+.tamam-section-search input[type='search'] {
   width: 100%;
   min-width: 0;
   height: 100%;
@@ -1101,9 +1101,9 @@
   font-size: 12.5px;
   font-weight: 600;
 }
-.omrs-section-search input[type='search']::placeholder { color: var(--ehr-muted, #5D728B); }
+.tamam-section-search input[type='search']::placeholder { color: var(--ehr-muted, #5D728B); }
 
-.omrs-section-footer {
+.tamam-section-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1114,13 +1114,13 @@
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-section-pager {
+.tamam-section-pager {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.omrs-section-pager button {
+.tamam-section-pager button {
   width: 22px;
   height: 22px;
   display: flex;
@@ -1133,16 +1133,16 @@
   cursor: pointer;
 }
 
-.omrs-section-pager button:disabled {
+.tamam-section-pager button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.omrs-section-pager button svg { width: 13px; height: 13px; }
+.tamam-section-pager button svg { width: 13px; height: 13px; }
 
 /* ── Tables ── */
 
-.omrs-root .omrs-table {
+.tamam-root .tamam-table {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
@@ -1150,33 +1150,33 @@
   line-height: 1.45;
 }
 
-.omrs-root .omrs-table col { width: auto !important; }
+.tamam-root .tamam-table col { width: auto !important; }
 
-.omrs-root .omrs-table--fixed { table-layout: fixed; }
+.tamam-root .tamam-table--fixed { table-layout: fixed; }
 
 /* Notes list column rhythm. Set on the header cells rather than a <col>,
    because the rule above forces every `col` to auto width. The note preview
    is the column that earns the slack; Status only needs its pill.
    In the chart (5 columns): Type · Note · Author · Date · Status. */
-.omrs-root .omrs-table--notes th:nth-child(1) { width: 16%; }
-.omrs-root .omrs-table--notes th:nth-child(2) { width: 38%; }
-.omrs-root .omrs-table--notes th:nth-child(3) { width: 20%; }
-.omrs-root .omrs-table--notes th:nth-child(4) { width: 15%; }
-.omrs-root .omrs-table--notes th:nth-child(5) { width: 11%; }
+.tamam-root .tamam-table--notes th:nth-child(1) { width: 16%; }
+.tamam-root .tamam-table--notes th:nth-child(2) { width: 38%; }
+.tamam-root .tamam-table--notes th:nth-child(3) { width: 20%; }
+.tamam-root .tamam-table--notes th:nth-child(4) { width: 15%; }
+.tamam-root .tamam-table--notes th:nth-child(5) { width: 11%; }
 
 /* Cross-patient queue (6 columns) — the Patient column lands third, so the
    rest shift one place along. */
-.omrs-root .omrs-table--notes-queue th:nth-child(1) { width: 13%; }
-.omrs-root .omrs-table--notes-queue th:nth-child(2) { width: 30%; }
-.omrs-root .omrs-table--notes-queue th:nth-child(3) { width: 16%; }
-.omrs-root .omrs-table--notes-queue th:nth-child(4) { width: 17%; }
-.omrs-root .omrs-table--notes-queue th:nth-child(5) { width: 13%; }
-.omrs-root .omrs-table--notes-queue th:nth-child(6) { width: 11%; }
-.omrs-root .omrs-table--fixed th,
-.omrs-root .omrs-table--fixed td { overflow-wrap: anywhere; }
+.tamam-root .tamam-table--notes-queue th:nth-child(1) { width: 13%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(2) { width: 30%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(3) { width: 16%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(4) { width: 17%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(5) { width: 13%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(6) { width: 11%; }
+.tamam-root .tamam-table--fixed th,
+.tamam-root .tamam-table--fixed td { overflow-wrap: anywhere; }
 
-.omrs-root .omrs-clickable-row { cursor: pointer; }
-.omrs-root .omrs-clickable-row:focus-visible {
+.tamam-root .tamam-clickable-row { cursor: pointer; }
+.tamam-root .tamam-clickable-row:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: -2px;
 }
@@ -1188,7 +1188,7 @@
 /* Column labels sit clear of the first row rather than on top of it: the head
    has more space beneath it than above, so the rule below it reads as the top
    edge of the data instead of a line squeezed between two rows of text. */
-.omrs-root .omrs-table thead th {
+.tamam-root .tamam-table thead th {
   text-align: left;
   font-size: 10.5px;
   font-weight: 700;
@@ -1213,7 +1213,7 @@
    the cell that stacked a sub-line, which fixed that cell and left every
    plain one in the same row still centred. Top for all is the alignment a
    table of records wants. */
-.omrs-root .omrs-table tbody td {
+.tamam-root .tamam-table tbody td {
   padding: 13px 0;
   color: var(--ehr-text, #113055);
   border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
@@ -1225,27 +1225,27 @@
    cell padding is for the space BETWEEN columns; at the table's edges it was
    just inset, leaving the header and its own first column on two different
    left margins. */
-.omrs-root .omrs-table thead th:not(:first-child):not(:last-child),
-.omrs-root .omrs-table tbody td:not(:first-child):not(:last-child) { padding-left: 10px; padding-right: 10px; }
+.tamam-root .tamam-table thead th:not(:first-child):not(:last-child),
+.tamam-root .tamam-table tbody td:not(:first-child):not(:last-child) { padding-left: 10px; padding-right: 10px; }
 
-.omrs-root .omrs-table thead th:last-child,
-.omrs-root .omrs-table tbody td:last-child { text-align: right; }
+.tamam-root .tamam-table thead th:last-child,
+.tamam-root .tamam-table tbody td:last-child { text-align: right; }
 
-.omrs-root .omrs-table tbody tr:last-child td {
+.tamam-root .tamam-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.omrs-root .omrs-table tbody tr:hover td {
+.tamam-root .tamam-table tbody tr:hover td {
   background: var(--ehr-hover, #FAFBFC);
 }
 
-.omrs-root .omrs-table.omrs-table--zebra tbody tr:nth-child(even) td {
+.tamam-root .tamam-table.tamam-table--zebra tbody tr:nth-child(even) td {
   background: var(--ehr-page-bg, #F5F8FB);
 }
 
 /* ── Empty state ── */
 
-.omrs-empty-state {
+.tamam-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1254,20 +1254,20 @@
   padding: 36px 16px;
 }
 
-.omrs-empty-state svg {
+.tamam-empty-state svg {
   width: 34px;
   height: 34px;
   color: var(--ehr-muted, #5D728B);
   opacity: 0.5;
 }
 
-.omrs-empty-state p {
+.tamam-empty-state p {
   font-size: 12.5px;
   color: var(--ehr-muted, #5D728B);
   max-width: 320px;
 }
 
-.omrs-empty-action {
+.tamam-empty-action {
   font-size: 12.5px;
   font-weight: 700;
   color: var(--accent-text);
@@ -1277,9 +1277,9 @@
   padding: 0;
 }
 
-.omrs-empty-action:hover { text-decoration: underline; }
+.tamam-empty-action:hover { text-decoration: underline; }
 
-.omrs-empty-action--disabled {
+.tamam-empty-action--disabled {
   color: var(--ehr-muted, #5D728B);
   cursor: not-allowed;
   text-decoration: none;
@@ -1327,9 +1327,9 @@
 .clinical-row-dialog__actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 
 @media (max-width: 640px) {
-  .omrs-section-head { padding-inline: 14px; }
-  .omrs-section-body { padding-inline: 14px; overflow-x: auto; }
-  .omrs-root .omrs-table { min-width: 680px; }
+  .tamam-section-head { padding-inline: 14px; }
+  .tamam-section-body { padding-inline: 14px; overflow-x: auto; }
+  .tamam-root .tamam-table { min-width: 680px; }
   .clinical-row-dialog__facts { grid-template-columns: 1fr; }
   .clinical-row-dialog__fact--wide { grid-column: auto; }
   .clinical-row-dialog__actions > .btn { flex: 1 1 auto; }
@@ -1338,13 +1338,13 @@
 /* ══════════════════ WORKSPACE PANELS (Stage 2) ══════════════════ */
 /* Shared building blocks for the right-drawer panels: order basket, visit
  * note, task list, clinical forms, patient lists. Each panel renders its own
- * `.omrs-drawer-body` + optional `.omrs-drawer-footer` (defined above). */
+ * `.tamam-drawer-body` + optional `.tamam-drawer-footer` (defined above). */
 
-.omrs-panel-section + .omrs-panel-section {
+.tamam-panel-section + .tamam-panel-section {
   margin-top: 14px;
 }
 
-.omrs-panel-section-head {
+.tamam-panel-section-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1356,7 +1356,7 @@
   text-align: left;
 }
 
-.omrs-panel-section-head svg {
+.tamam-panel-section-head svg {
   width: 14px;
   height: 14px;
   color: var(--ehr-muted, #5D728B);
@@ -1364,18 +1364,18 @@
   transition: transform 0.15s ease;
 }
 
-.omrs-panel-section-head.is-collapsed svg.omrs-chevron {
+.tamam-panel-section-head.is-collapsed svg.tamam-chevron {
   transform: rotate(-90deg);
 }
 
-.omrs-panel-section-title {
+.tamam-panel-section-title {
   font-size: 12.5px;
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
   flex: 1 1 auto;
 }
 
-.omrs-panel-add-btn {
+.tamam-panel-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1388,10 +1388,10 @@
   padding: 2px 4px;
 }
 
-.omrs-panel-add-btn:hover { text-decoration: underline; }
-.omrs-panel-add-btn svg { width: 13px; height: 13px; color: var(--accent-text); }
+.tamam-panel-add-btn:hover { text-decoration: underline; }
+.tamam-panel-add-btn svg { width: 13px; height: 13px; color: var(--accent-text); }
 
-.omrs-panel-row {
+.tamam-panel-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1400,30 +1400,30 @@
   border-top: 1px solid var(--ehr-border-soft, var(--border-light));
 }
 
-.omrs-panel-section-head + .omrs-panel-row,
-.omrs-panel-row:first-of-type {
+.tamam-panel-section-head + .tamam-panel-row,
+.tamam-panel-row:first-of-type {
   border-top: none;
 }
 
-.omrs-panel-row-main {
+.tamam-panel-row-main {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-panel-row-sub {
+.tamam-panel-row-sub {
   font-size: 11px;
   color: var(--ehr-muted, #5D728B);
   margin-top: 1px;
 }
 
-.omrs-panel-empty {
+.tamam-panel-empty {
   font-size: 12px;
   color: var(--ehr-muted, #5D728B);
   padding: 10px 0;
 }
 
-.omrs-panel-permission-note {
+.tamam-panel-permission-note {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1434,11 +1434,11 @@
   font-size: 12.5px;
 }
 
-.omrs-panel-field {
+.tamam-panel-field {
   margin-bottom: 12px;
 }
 
-.omrs-panel-label {
+.tamam-panel-label {
   display: block;
   font-size: 10.5px;
   font-weight: 700;
@@ -1448,9 +1448,9 @@
   margin-bottom: 5px;
 }
 
-.omrs-panel-input,
-.omrs-panel-textarea,
-.omrs-panel-search {
+.tamam-panel-input,
+.tamam-panel-textarea,
+.tamam-panel-search {
   width: 100%;
   border: 1px solid var(--ehr-border, var(--border-light));
   border-radius: 6px;
@@ -1461,24 +1461,24 @@
   font-family: inherit;
 }
 
-.omrs-panel-textarea {
+.tamam-panel-textarea {
   resize: vertical;
   min-height: 70px;
 }
 
-.omrs-panel-picked-chip {
+.tamam-panel-picked-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
   border-radius: 6px;
-  background: var(--omrs-teal-soft);
-  border: 1px solid var(--omrs-teal-border);
+  background: var(--tamam-teal-soft);
+  border: 1px solid var(--tamam-teal-border);
   font-size: 12px;
 }
 
-.omrs-panel-picked-chip button {
+.tamam-panel-picked-chip button {
   font-size: 11px;
   font-weight: 700;
   color: var(--accent-text);
@@ -1488,7 +1488,7 @@
   flex-shrink: 0;
 }
 
-.omrs-panel-badge {
+.tamam-panel-badge {
   display: inline-flex;
   align-items: center;
   font-size: 10px;
@@ -1499,17 +1499,17 @@
   flex-shrink: 0;
 }
 
-.omrs-panel-badge--pending { background: var(--ehr-warning-bg, #FFF7DC); color: var(--ehr-warning-text, #B35900); }
-.omrs-panel-badge--active { background: var(--ehr-info-soft, #E1F9FF); color: var(--accent-text); }
-.omrs-panel-badge--done { background: var(--ehr-success-bg, #E2F2EC); color: var(--ehr-success-text, #0A6E4A); }
-.omrs-panel-badge--muted { background: var(--ehr-soft, #ECEEF1); color: var(--ehr-muted, #5D728B); }
+.tamam-panel-badge--pending { background: var(--ehr-warning-bg, #FFF7DC); color: var(--ehr-warning-text, #B35900); }
+.tamam-panel-badge--active { background: var(--ehr-info-soft, #E1F9FF); color: var(--accent-text); }
+.tamam-panel-badge--done { background: var(--ehr-success-bg, #E2F2EC); color: var(--ehr-success-text, #0A6E4A); }
+.tamam-panel-badge--muted { background: var(--ehr-soft, #ECEEF1); color: var(--ehr-muted, #5D728B); }
 
-.omrs-panel-search-wrap {
+.tamam-panel-search-wrap {
   position: relative;
   margin-bottom: 12px;
 }
 
-.omrs-panel-search-wrap svg {
+.tamam-panel-search-wrap svg {
   position: absolute;
   left: 9px;
   top: 50%;
@@ -1519,11 +1519,11 @@
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-panel-search-wrap input {
+.tamam-panel-search-wrap input {
   padding-left: 28px;
 }
 
-.omrs-panel-list-item {
+.tamam-panel-list-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1539,20 +1539,20 @@
   cursor: pointer;
 }
 
-.omrs-panel-list-item:first-of-type { border-top: none; }
+.tamam-panel-list-item:first-of-type { border-top: none; }
 
-.omrs-panel-list-item:hover .omrs-panel-row-main {
+.tamam-panel-list-item:hover .tamam-panel-row-main {
   color: var(--accent-text);
 }
 
-.omrs-panel-list-item svg {
+.tamam-panel-list-item svg {
   width: 14px;
   height: 14px;
   color: var(--ehr-muted, #5D728B);
   flex-shrink: 0;
 }
 
-.omrs-panel-list-count {
+.tamam-panel-list-count {
   font-size: 13px;
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
@@ -1561,7 +1561,7 @@
 
 /* ══════════════════ RIGHT ACTION RAIL ══════════════════ */
 
-.omrs-right-rail {
+.tamam-right-rail {
   flex: 0 0 56px;
   width: 56px;
   background: var(--ehr-panel, #fff);
@@ -1577,7 +1577,7 @@
   padding: 16px 0;
 }
 
-.omrs-right-rail-btn {
+.tamam-right-rail-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -1590,29 +1590,29 @@
   cursor: pointer;
 }
 
-.omrs-right-rail-btn:hover {
+.tamam-right-rail-btn:hover {
   background: var(--ehr-hover, #FAFBFC);
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-right-rail-btn.is-active {
-  background: var(--omrs-teal);
-  border-color: var(--omrs-teal);
+.tamam-right-rail-btn.is-active {
+  background: var(--tamam-teal);
+  border-color: var(--tamam-teal);
   color: #fff;
 }
 
-.omrs-right-rail-btn svg { width: 17px; height: 17px; }
+.tamam-right-rail-btn svg { width: 17px; height: 17px; }
 
 /* ══════════════════ RIGHT SLIDE-IN DRAWER ══════════════════ */
 
-.omrs-drawer-backdrop {
+.tamam-drawer-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(17, 48, 85, 0.28);
   z-index: 39;
 }
 
-.omrs-drawer {
+.tamam-drawer {
   position: fixed;
   top: 0;
   right: 0;
@@ -1628,11 +1628,11 @@
 }
 
 /* Maximized state (drawer header's expand toggle): near-full-width workspace. */
-.omrs-drawer.is-maximized {
+.tamam-drawer.is-maximized {
   width: min(960px, 92vw);
 }
 
-.omrs-drawer-header {
+.tamam-drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1642,19 +1642,19 @@
   background: var(--ehr-page-bg, #F5F8FB);
 }
 
-.omrs-drawer-title {
+.tamam-drawer-title {
   font-size: 13.5px;
   font-weight: 700;
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-drawer-controls {
+.tamam-drawer-controls {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.omrs-drawer-controls button {
+.tamam-drawer-controls button {
   width: 28px;
   height: 28px;
   display: flex;
@@ -1667,14 +1667,14 @@
   cursor: pointer;
 }
 
-.omrs-drawer-controls button:hover {
+.tamam-drawer-controls button:hover {
   background: var(--ehr-hover, #FAFBFC);
   color: var(--ehr-text-title, #113055);
 }
 
-.omrs-drawer-controls button svg { width: 15px; height: 15px; }
+.tamam-drawer-controls button svg { width: 15px; height: 15px; }
 
-.omrs-drawer-body {
+.tamam-drawer-body {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 20px 16px;
@@ -1684,20 +1684,20 @@
    toolbar/canvas/footer chrome — this body drops the drawer padding and hands
    the editor the remaining height instead of scrolling it as content, so the
    editor's Sign footer stays pinned the same way it is on /notes/[id]. */
-.omrs-drawer-note-body {
+.tamam-drawer-note-body {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.omrs-drawer-note-body .cn-editor {
+.tamam-drawer-note-body .cn-editor {
   height: auto;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.omrs-drawer-empty {
+.tamam-drawer-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1708,11 +1708,11 @@
   color: var(--ehr-muted, #5D728B);
 }
 
-.omrs-drawer-empty svg { width: 32px; height: 32px; opacity: 0.6; }
+.tamam-drawer-empty svg { width: 32px; height: 32px; opacity: 0.6; }
 
-.omrs-drawer-empty p { font-size: 12.5px; max-width: 240px; }
+.tamam-drawer-empty p { font-size: 12.5px; max-width: 240px; }
 
-.omrs-drawer-footer {
+.tamam-drawer-footer {
   padding: 12px 16px;
   background: var(--ehr-mission-bg, #015697);
   display: flex;
@@ -1721,7 +1721,7 @@
   gap: 8px;
 }
 
-.omrs-drawer-footer button {
+.tamam-drawer-footer button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1735,81 +1735,81 @@
 
 /* Icon-bearing footer actions (e.g. "Start consultation") — keep the glyph
    optically matched to the 12px label rather than the icon's native size. */
-.omrs-drawer-footer button svg {
+.tamam-drawer-footer button svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
 
-.omrs-drawer-footer .omrs-btn-ghost {
+.tamam-drawer-footer .tamam-btn-ghost {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
 
-.omrs-drawer-footer .omrs-btn-primary {
-  background: var(--omrs-teal);
+.tamam-drawer-footer .tamam-btn-primary {
+  background: var(--tamam-teal);
   color: #fff;
 }
 
 /* ══════════════════ RESPONSIVE ══════════════════ */
 
 @media (max-width: 1100px) {
-  .omrs-vitals-grid {
+  .tamam-vitals-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 900px) {
-  .omrs-rail-col {
+  .tamam-rail-col {
     flex-basis: 56px;
     width: 56px;
   }
-  .omrs-rail-label {
+  .tamam-rail-label {
     display: none;
   }
-  .omrs-rail-item {
+  .tamam-rail-item {
     justify-content: center;
     padding: 9px 0;
   }
-  .omrs-drawer {
+  .tamam-drawer {
     width: 100vw;
   }
 }
 
 @media (max-width: 640px) {
-  .omrs-header {
+  .tamam-header {
     flex-wrap: wrap;
   }
-  .omrs-vitals-grid {
+  .tamam-vitals-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .omrs-right-rail {
+  .tamam-right-rail {
     flex-basis: 44px;
     width: 44px;
   }
-  .omrs-right-rail-btn {
+  .tamam-right-rail-btn {
     width: 30px;
     height: 30px;
   }
 }
 
 /* ── Header overflow (⋯) menu ── secondary actions collapsed behind one
-   button; reuses .omrs-actions-menu for the popup itself. */
-.omrs-header-overflow {
+   button; reuses .tamam-actions-menu for the popup itself. */
+.tamam-header-overflow {
   position: relative;
   display: inline-flex;
 }
-.omrs-header-overflow > .omrs-header-actions-btn {
+.tamam-header-overflow > .tamam-header-actions-btn {
   font-size: 16px;
   line-height: 1;
   padding: 6px 9px;
 }
-.omrs-header-overflow-backdrop {
+.tamam-header-overflow-backdrop {
   position: fixed;
   inset: 0;
   z-index: 25;
 }
-.omrs-header-overflow .omrs-actions-menu {
+.tamam-header-overflow .tamam-actions-menu {
   width: 210px;
 }
 
@@ -1826,7 +1826,7 @@
  * hex fills that bypass the tokens are neutralised individually below.
  */
 
-.omrs-root {
+.tamam-root {
   --ehr-page-bg: var(--bg-card-solid);
   --ehr-panel: var(--bg-card-solid);
   --ehr-panel-soft: var(--bg-card-solid);
@@ -1843,74 +1843,74 @@
      page's hairline — and the shadow is the only lift on the page. */
   --ehr-border: var(--color-slate-300);
   --ehr-border-soft: var(--color-slate-200);
-  --omrs-card-shadow: 0 1px 2px rgba(17, 48, 85, 0.06);
-  --omrs-teal-soft: transparent;
+  --tamam-card-shadow: 0 1px 2px rgba(17, 48, 85, 0.06);
+  --tamam-teal-soft: transparent;
 }
 
 /* Literal fills that never went through a token. */
-.omrs-root .tebra-panel,
-.omrs-root .tebra-facesheet .tebra-panel,
-.omrs-root .omrs-content,
-.omrs-root .omrs-sticky-zone,
-.omrs-root .omrs-main-col,
-.omrs-root .omrs-vitals-band,
-.omrs-root .omrs-vitals-cell,
-.omrs-root .omrs-section,
-.omrs-root .omrs-section-body,
-.omrs-root .omrs-table thead th,
-.omrs-root .omrs-table tbody tr:nth-child(even),
-.omrs-root .omrs-panel-card {
+.tamam-root .tebra-panel,
+.tamam-root .tebra-facesheet .tebra-panel,
+.tamam-root .tamam-content,
+.tamam-root .tamam-sticky-zone,
+.tamam-root .tamam-main-col,
+.tamam-root .tamam-vitals-band,
+.tamam-root .tamam-vitals-cell,
+.tamam-root .tamam-section,
+.tamam-root .tamam-section-body,
+.tamam-root .tamam-table thead th,
+.tamam-root .tamam-table tbody tr:nth-child(even),
+.tamam-root .tamam-panel-card {
   background: var(--bg-card-solid);
 }
 
 /* Cards keep their shape without a fill: edge + a barely-there lift. */
-.omrs-root .tebra-panel,
-.omrs-root .omrs-section,
-.omrs-root .omrs-panel-card {
+.tamam-root .tebra-panel,
+.tamam-root .tamam-section,
+.tamam-root .tamam-panel-card {
   border: 1px solid var(--ehr-border);
-  box-shadow: var(--omrs-card-shadow);
+  box-shadow: var(--tamam-card-shadow);
 }
 
 /* A table head with no fill still needs to read as a head — give it a rule. */
-.omrs-root .omrs-table thead th,
-.omrs-root .tebra-panel table thead th {
+.tamam-root .tamam-table thead th,
+.tamam-root .tebra-panel table thead th {
   border-bottom: 1px solid var(--ehr-border);
 }
 
 /* Hover was a tint; make it an edge so rows still answer the pointer. */
-.omrs-root .omrs-table tbody tr:hover,
-.omrs-root .tebra-panel table tbody tr:hover {
+.tamam-root .tamam-table tbody tr:hover,
+.tamam-root .tebra-panel table tbody tr:hover {
   background: var(--bg-card-solid);
-  box-shadow: inset 2px 0 0 var(--omrs-teal);
+  box-shadow: inset 2px 0 0 var(--tamam-teal);
 }
 
 /* Selected states: the accent moves from the fill to the edge and the ink.
    The left nav rail is deliberately exempt — it follows the top rail's modules
    dropdown instead, where the selected row is a solid blue pill. */
-.omrs-root .omrs-right-rail-btn.is-active {
+.tamam-root .tamam-right-rail-btn.is-active {
   background: transparent;
-  border-color: var(--omrs-teal);
-  color: var(--omrs-teal);
+  border-color: var(--tamam-teal);
+  color: var(--tamam-teal);
 }
 
-.omrs-root .tamam-activity-filters button:hover,
-.omrs-root .tamam-activity-filters button.is-active {
+.tamam-root .tamam-activity-filters button:hover,
+.tamam-root .tamam-activity-filters button.is-active {
   background: transparent;
-  border-color: var(--omrs-teal);
-  color: var(--omrs-teal);
+  border-color: var(--tamam-teal);
+  color: var(--tamam-teal);
 }
 
 /* Status pills stay legible as outlines — the colour is the signal, the fill
    was only decoration. */
-.omrs-root .omrs-panel-badge {
+.tamam-root .tamam-panel-badge {
   background: transparent !important;
   border: 1px solid currentColor;
 }
 
-.omrs-root .omrs-panel-badge--pending { color: var(--ehr-warning-text, #B35900); }
-.omrs-root .omrs-panel-badge--active { color: var(--accent-text); }
-.omrs-root .omrs-panel-badge--done { color: var(--ehr-success-text, #0A6E4A); }
-.omrs-root .omrs-panel-badge--muted { color: var(--ehr-muted, #5D728B); }
+.tamam-root .tamam-panel-badge--pending { color: var(--ehr-warning-text, #B35900); }
+.tamam-root .tamam-panel-badge--active { color: var(--accent-text); }
+.tamam-root .tamam-panel-badge--done { color: var(--ehr-success-text, #0A6E4A); }
+.tamam-root .tamam-panel-badge--muted { color: var(--ehr-muted, #5D728B); }
 
 /* Exceptions — these are not surfaces:
  *   · buttons and chips that ARE the action (primary, active-visit)
@@ -1921,7 +1921,7 @@
 /* `.ehr-chart-content` re-declares the ledger tints for its own subtree, so
    they are re-pointed there too — a token set on the root alone never reaches
    past a descendant that redefines it. */
-.omrs-root .ehr-chart-content {
+.tamam-root .ehr-chart-content {
   --ehr-ledger-soft: var(--bg-card-solid);
   --ehr-ledger-softer: var(--bg-card-solid);
   --ehr-table-head: var(--bg-card-solid);
@@ -1933,16 +1933,16 @@
 /* The title strips are painted by `!important` rules in globals.css, which
    loads after this file — the repeated class outweighs them on specificity
    rather than relying on source order. */
-.omrs-root .tebra-section-title.tebra-section-title,
-.omrs-root .tebra-demo-title.tebra-demo-title,
-.omrs-root .tebra-demo-tabs.tebra-demo-tabs {
+.tamam-root .tebra-section-title.tebra-section-title,
+.tamam-root .tebra-demo-title.tebra-demo-title,
+.tamam-root .tebra-demo-tabs.tebra-demo-tabs {
   background: transparent !important;
 }
 
 /* The avatar disc loses its tint plate; the initials carry identity, and the
    edge gives the disc its shape. (`avatarTint` still colours list avatars,
    where a wall of rows needs the extra separation.) */
-.omrs-root .omrs-avatar {
+.tamam-root .tamam-avatar {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
   color: var(--ehr-text-title, #113055);
@@ -1951,7 +1951,7 @@
 /* Shared <Badge> sets its fill inline, so the chart's outline treatment has to
    override it. The tone colour survives as the ink and the edge — the signal
    is kept, the plate is not. */
-.omrs-root .tamam-badge {
+.tamam-root .tamam-badge {
   background: transparent !important;
   border: 1px solid currentColor;
 }
@@ -1965,7 +1965,7 @@
  * behaviour they expect for free.
  */
 
-.omrs-status-picker {
+.tamam-status-picker {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -1975,18 +1975,18 @@
 }
 
 /* …and again at the specificity of the shared pill rule that was beating it.
-   That rule (`td:last-child :is(.omrs-status-picker, .badge, …)`) sets
+   That rule (`td:last-child :is(.tamam-status-picker, .badge, …)`) sets
    `padding: 3px 9px` on every pill in a trailing cell, which reset the 16px
    above to 9 — leaving the caret, drawn 6–13px in from the right edge,
    sitting on top of the last letter ("Active" read as "Activ◂"). Measured at
    a 3px overlap before this rule. */
-.omrs-root .omrs-table tbody td:last-child .omrs-status-picker,
-.omrs-root .omrs-table tbody td .omrs-status-picker {
+.tamam-root .tamam-table tbody td:last-child .tamam-status-picker,
+.tamam-root .tamam-table tbody td .tamam-status-picker {
   padding-right: 18px;
 }
 
 /* The caret that says "this can change". */
-.omrs-status-picker::after {
+.tamam-status-picker::after {
   content: '';
   position: absolute;
   right: 6px;
@@ -1999,7 +1999,7 @@
   pointer-events: none;
 }
 
-.omrs-status-picker select {
+.tamam-status-picker select {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2012,26 +2012,26 @@
   margin: 0;
 }
 
-.omrs-status-picker select:disabled { cursor: progress; }
+.tamam-status-picker select:disabled { cursor: progress; }
 
-.omrs-status-picker:hover { filter: brightness(0.97); }
+.tamam-status-picker:hover { filter: brightness(0.97); }
 
 /* Keyboard focus has to land on the badge, since the control behind it is
    invisible. */
-.omrs-status-picker:focus-within {
+.tamam-status-picker:focus-within {
   outline: 2px solid var(--accent-primary);
   outline-offset: 1px;
 }
 
 /* Columns are sized by colgroup; keep the cells from re-negotiating it. */
-.omrs-table--conditions { table-layout: fixed; }
-.omrs-table--conditions td:first-child { white-space: normal; }
+.tamam-table--conditions { table-layout: fixed; }
+.tamam-table--conditions td:first-child { white-space: normal; }
 
 /* An attestation recorded during a note's medication / problem / allergy
    review: "no known drug allergies", "reconciliation performed". It is not an
    empty state — it is a positive clinical statement that someone asked and the
    answer was none, which is exactly what an empty list cannot tell you. */
-.omrs-attestation {
+.tamam-attestation {
   margin: 0 0 10px;
   padding: 9px 12px;
   border: 1px solid var(--ehr-border, var(--border-light));
@@ -2059,16 +2059,16 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   SBAR written out as the triage form was filled — the OpenMRS `omrs-reg`
+   SBAR written out as the triage form was filled — the Tamam `tamam-reg`
    layout (left step-nav rail + stacked field slabs), read-only. The rail and
-   slab styling come from globals.css (`.omrs-reg*`); these rules add the
+   slab styling come from globals.css (`.tamam-reg*`); these rules add the
    read-only field surface and the two lead banners.
    ═══════════════════════════════════════════════════════════════════════════ */
 .sbar-as-form { max-width: 100%; }
 
 /* The handoff has no left rail, so the record takes the whole width rather
    than leaving the rail's 244px column standing empty. */
-.omrs-reg.sbar-as-form { grid-template-columns: minmax(0, 1fr); }
+.tamam-reg.sbar-as-form { grid-template-columns: minmax(0, 1fr); }
 
 /* Print sits above the record it prints, trailing edge. */
 .sbar-as-form .sbar-form-actions {
@@ -2078,8 +2078,8 @@
 
 /* Stack the lead banners and the sections at one rhythm — the omrs section
    margin is neutralised here so the flex gap is the single source. */
-.omrs-reg-form.sbar-as-form-body { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
-.omrs-reg-form.sbar-as-form-body .omrs-reg-section + .omrs-reg-section { margin-top: 0; }
+.tamam-reg-form.sbar-as-form-body { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.tamam-reg-form.sbar-as-form-body .tamam-reg-section + .tamam-reg-section { margin-top: 0; }
 
 /* Priority slab, the same fact the filled form leads with. */
 .sbar-as-form .sbar-form-priority {
@@ -2098,26 +2098,26 @@
 .sbar-as-form .sbar-ro-field--full { grid-column: 1 / -1; }
 .sbar-as-form .sbar-ro-label {
   font-size: 12px; font-weight: 400; letter-spacing: 0;
-  color: var(--omrs-text-02, #5D728B);
+  color: var(--tamam-text-02, #5D728B);
 }
 .sbar-as-form .sbar-ro-value {
   display: flex; align-items: center; min-height: 40px;
   padding: 8px 12px; font-size: 14px; line-height: 1.4;
-  color: var(--omrs-ui-05, #113055);
-  background: var(--omrs-field-01, #fff);
-  border-bottom: 1px solid var(--omrs-ui-04, #CFD6DD);
+  color: var(--tamam-ui-05, #113055);
+  background: var(--tamam-field-01, #fff);
+  border-bottom: 1px solid var(--tamam-ui-04, #CFD6DD);
   overflow-wrap: anywhere;
 }
-.sbar-as-form .sbar-inline-dx em { font-style: normal; color: var(--omrs-text-02, #5D728B); }
+.sbar-as-form .sbar-inline-dx em { font-style: normal; color: var(--tamam-text-02, #5D728B); }
 
 /* The sub-lists (chips, rows, tiles, ABCC grid) keep their own styling but sit
    on the field slab, so a little top spacing separates them from a field grid
    above. */
-.sbar-as-form .omrs-reg-fields > .sbar-block:not(:first-child),
-.sbar-as-form .omrs-reg-fields > .sbar-ro-grid + .sbar-ro-grid { margin-top: 2px; }
+.sbar-as-form .tamam-reg-fields > .sbar-block:not(:first-child),
+.sbar-as-form .tamam-reg-fields > .sbar-ro-grid + .sbar-ro-grid { margin-top: 2px; }
 
 /* The disclaimer closes the last slab quietly. */
-.sbar-as-form .omrs-reg-fields .sbar-disclaimer { margin-top: 4px; }
+.sbar-as-form .tamam-reg-fields .sbar-disclaimer { margin-top: 4px; }
 
 @media (max-width: 900px) {
   .sbar-as-form .sbar-ro-grid { grid-template-columns: minmax(0, 1fr); }
@@ -2126,8 +2126,8 @@
 /* Print the document, not its navigation: the rail is a table of contents. */
 @media print {
   .sbar-as-form { display: block !important; }
-  .sbar-as-form .omrs-reg-rail { display: none !important; }
-  .sbar-as-form .omrs-reg-fields { break-inside: avoid; }
+  .sbar-as-form .tamam-reg-rail { display: none !important; }
+  .sbar-as-form .tamam-reg-fields { break-inside: avoid; }
 }
 
 .sbar-triage-header,
@@ -2157,7 +2157,7 @@
 .sbar-triage-field > span { color: var(--ehr-muted); font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
 .sbar-triage-field > strong { color: var(--ehr-text-strong); font-size: 12px; font-weight: 650; line-height: 1.4; text-transform: capitalize; overflow-wrap: anywhere; }
 .sbar-triage-fields--handoff .sbar-triage-field:nth-last-child(-n+2) { grid-column: 1 / -1; }
-.sbar-triage-section .omrs-section-body { padding-top: 0; }
+.sbar-triage-section .tamam-section-body { padding-top: 0; }
 
 .sbar-muted { color: var(--ehr-muted, #5D728B); font-weight: 400; }
 
@@ -2421,22 +2421,22 @@
    Named classes rather than inline styles, so every chart table renders the
    same kinds of cell the same way: a row's subject, a capitalised category, a
    secondary line under a value, and the trailing actions column. */
-.omrs-root .omrs-table .omrs-cell-strong { font-weight: 600; color: var(--ehr-text-strong, #113055); }
-.omrs-root .omrs-table .omrs-cell-cap { text-transform: capitalize; }
-.omrs-root .omrs-table .omrs-cell-note { text-transform: none; }
-.omrs-root .omrs-table .omrs-cell-sub {
+.tamam-root .tamam-table .tamam-cell-strong { font-weight: 600; color: var(--ehr-text-strong, #113055); }
+.tamam-root .tamam-table .tamam-cell-cap { text-transform: capitalize; }
+.tamam-root .tamam-table .tamam-cell-note { text-transform: none; }
+.tamam-root .tamam-table .tamam-cell-sub {
   margin-top: 3px;
   font-size: 12px;
   color: var(--ehr-muted, #5D728B);
 }
-.omrs-root .omrs-table .omrs-cell-actions { text-align: right; white-space: nowrap; }
+.tamam-root .tamam-table .tamam-cell-actions { text-align: right; white-space: nowrap; }
 
 /* Long free text in a table cell — a referral reason, a note — is trimmed to
    two lines with an ellipsis rather than growing the row to four. The full
    text stays reachable: every use carries it in a `title`, and the record
    itself is one click away. Without this a single verbose entry set the
    height of a row whose other six columns hold a date and a badge. */
-.omrs-root .omrs-table .omrs-cell-clamp {
+.tamam-root .tamam-table .tamam-cell-clamp {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -2447,48 +2447,48 @@
 /* Referral rows: seven columns, and left to `auto` the date and the badges
    took a full seventh each while the reason — the only column with real prose
    — wrapped to four lines. Widths follow what each column actually holds. */
-.omrs-root .omrs-table--referrals { table-layout: fixed; }
-.omrs-root .omrs-table--referrals th:nth-child(1),
-.omrs-root .omrs-table--referrals td:nth-child(1) { width: 11%; }
-.omrs-root .omrs-table--referrals th:nth-child(2),
-.omrs-root .omrs-table--referrals td:nth-child(2) { width: 19%; }
-.omrs-root .omrs-table--referrals th:nth-child(3),
-.omrs-root .omrs-table--referrals td:nth-child(3) { width: 13%; }
-.omrs-root .omrs-table--referrals th:nth-child(4),
-.omrs-root .omrs-table--referrals td:nth-child(4) { width: 26%; }
-.omrs-root .omrs-table--referrals th:nth-child(5),
-.omrs-root .omrs-table--referrals td:nth-child(5) { width: 15%; }
-.omrs-root .omrs-table--referrals th:nth-child(6),
-.omrs-root .omrs-table--referrals td:nth-child(6) { width: 8%; }
-.omrs-root .omrs-table--referrals th:nth-child(7),
-.omrs-root .omrs-table--referrals td:nth-child(7) { width: 8%; }
+.tamam-root .tamam-table--referrals { table-layout: fixed; }
+.tamam-root .tamam-table--referrals th:nth-child(1),
+.tamam-root .tamam-table--referrals td:nth-child(1) { width: 11%; }
+.tamam-root .tamam-table--referrals th:nth-child(2),
+.tamam-root .tamam-table--referrals td:nth-child(2) { width: 19%; }
+.tamam-root .tamam-table--referrals th:nth-child(3),
+.tamam-root .tamam-table--referrals td:nth-child(3) { width: 13%; }
+.tamam-root .tamam-table--referrals th:nth-child(4),
+.tamam-root .tamam-table--referrals td:nth-child(4) { width: 26%; }
+.tamam-root .tamam-table--referrals th:nth-child(5),
+.tamam-root .tamam-table--referrals td:nth-child(5) { width: 15%; }
+.tamam-root .tamam-table--referrals th:nth-child(6),
+.tamam-root .tamam-table--referrals td:nth-child(6) { width: 8%; }
+.tamam-root .tamam-table--referrals th:nth-child(7),
+.tamam-root .tamam-table--referrals td:nth-child(7) { width: 8%; }
 
 /* One-line columns that must not wrap mid-value: a date, a department, a
    provider name. They ellipsize instead of stacking. */
-.omrs-root .omrs-table--referrals td:nth-child(1),
-.omrs-root .omrs-table--referrals td:nth-child(3),
-.omrs-root .omrs-table--referrals td:nth-child(5) {
+.tamam-root .tamam-table--referrals td:nth-child(1),
+.tamam-root .tamam-table--referrals td:nth-child(3),
+.tamam-root .tamam-table--referrals td:nth-child(5) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 /* The badges sit hard against their column's edge, on the row's first line. */
-.omrs-root .omrs-table--referrals td:nth-child(6),
-.omrs-root .omrs-table--referrals td:nth-child(7) { white-space: nowrap; }
+.tamam-root .tamam-table--referrals td:nth-child(6),
+.tamam-root .tamam-table--referrals td:nth-child(7) { white-space: nowrap; }
 
 /* A retired row is history: it stays legible (a resolved allergy is still
    clinical information) but recedes behind the active ones. Opacity on the
    whole row washed out its status badge too, which is the one part that has
    to stay readable. */
-.omrs-root .omrs-table tbody tr.is-retired .omrs-cell-strong,
-.omrs-root .omrs-table tbody tr.is-retired td { color: var(--ehr-muted, #5D728B); }
+.tamam-root .tamam-table tbody tr.is-retired .tamam-cell-strong,
+.tamam-root .tamam-table tbody tr.is-retired td { color: var(--ehr-muted, #5D728B); }
 
 /* ── Allergy severity grades ──
    Severity is the field a prescriber acts on. Three steps, each with its own
    ink and a matching tinted plate, so "severe" is legible from across the row
    rather than being one grey word among four. */
-.omrs-sev {
+.tamam-sev {
   display: inline-block;
   padding: 2px 9px;
   border-radius: 999px;
@@ -2498,36 +2498,36 @@
   white-space: nowrap;
 }
 
-.omrs-sev--severe {
+.tamam-sev--severe {
   background: rgba(224, 49, 39, 0.10);
   color: var(--tamamhealth-red-text, #B4180F);
 }
 
-.omrs-sev--moderate {
+.tamam-sev--moderate {
   background: var(--ehr-warning-bg, #FFF7DC);
   color: var(--ehr-warning-text, #B35900);
 }
 
-.omrs-sev--mild {
+.tamam-sev--mild {
   background: var(--ehr-success-bg, #E2F2EC);
   color: var(--ehr-success-text, #0A6E4A);
 }
 
-.omrs-sev--unknown {
+.tamam-sev--unknown {
   background: var(--ehr-soft, #ECEEF1);
   color: var(--ehr-muted, #5D728B);
 }
 
 /* Allergen names wrap rather than ellipsise — a truncated allergen is worse
    than a tall row. */
-.omrs-table--allergies { table-layout: fixed; }
-.omrs-table--allergies td { white-space: normal; }
+.tamam-table--allergies { table-layout: fixed; }
+.tamam-table--allergies td { white-space: normal; }
 
 /* Directives wrap their detail line rather than truncating it — a consent
    reading "General consent to treat — signed at reg…" is not a consent record. */
-.omrs-table--directives { table-layout: fixed; }
-.omrs-table--directives td { white-space: normal; }
+.tamam-table--directives { table-layout: fixed; }
+.tamam-table--directives td { white-space: normal; }
 
 /* A badge with a glyph in it needs to sit its parts on one baseline. */
-.omrs-root .omrs-panel-badge { display: inline-flex; align-items: center; gap: 4px; }
-.omrs-root .omrs-panel-badge svg { width: 12px; height: 12px; }
+.tamam-root .tamam-panel-badge { display: inline-flex; align-items: center; gap: 4px; }
+.tamam-root .tamam-panel-badge svg { width: 12px; height: 12px; }

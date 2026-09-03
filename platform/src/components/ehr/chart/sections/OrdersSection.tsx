@@ -3,7 +3,7 @@
 /**
  * Orders tab content — a UNIFIED orders table merging this patient's drug
  * orders (usePrescriptions) and lab orders (useLabResults), matching the
- * OpenMRS Orders screenshot columns. "Add" reuses the same
+ * Tamam Orders screenshot columns. "Add" reuses the same
  * PrescribeModal/OrderLabModal triggers as the Medications/Results tabs and
  * the Order Basket drawer panel — no new order-creation flow.
  */
@@ -40,11 +40,11 @@ const ts = (x?: string): number => {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'omrs-panel-badge omrs-panel-badge--pending',
-  in_progress: 'omrs-panel-badge omrs-panel-badge--active',
-  dispensed: 'omrs-panel-badge omrs-panel-badge--done',
-  completed: 'omrs-panel-badge omrs-panel-badge--done',
-  discontinued: 'omrs-panel-badge omrs-panel-badge--muted',
+  pending: 'tamam-panel-badge tamam-panel-badge--pending',
+  in_progress: 'tamam-panel-badge tamam-panel-badge--active',
+  dispensed: 'tamam-panel-badge tamam-panel-badge--done',
+  completed: 'tamam-panel-badge tamam-panel-badge--done',
+  discontinued: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
 interface OrdersSectionProps {
@@ -122,8 +122,8 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
   const canAdd = canPrescribe || canOrderLabs;
 
   const filterSlot = (
-    <label className="omrs-section-filter">
-      <span className="omrs-filter-caption">Order type:</span>
+    <label className="tamam-section-filter">
+      <span className="tamam-filter-caption">Order type:</span>
       <Select value={typeFilter} onChange={e => { setTypeFilter(e.target.value as OrderTypeFilter); setPage(1); }}>
         <option value="all">All</option>
         <option value="drug">Drug</option>
@@ -144,7 +144,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
     >
       {canAdd && addMenuOpen && (
         <div style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', right: 0, top: -6, zIndex: 20 }} className="omrs-actions-menu" role="menu">
+          <div style={{ position: 'absolute', right: 0, top: -6, zIndex: 20 }} className="tamam-actions-menu" role="menu">
             {canPrescribe && (
               <button type="button" onClick={() => { setAddMenuOpen(false); onAddDrug(); }}><Pill /> Drug order</button>
             )}
@@ -163,7 +163,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
           disabledReason={canAdd ? undefined : 'Requires prescribing or lab-ordering permission'}
         />
       ) : (
-        <table className="omrs-table omrs-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -190,12 +190,12 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
                 <td>{r.orderType}</td>
                 <td>{r.description}</td>
                 <td>
-                  <span className={r.priority === 'STAT' ? 'omrs-panel-badge omrs-panel-badge--pending' : 'omrs-panel-badge omrs-panel-badge--muted'}>
+                  <span className={r.priority === 'STAT' ? 'tamam-panel-badge tamam-panel-badge--pending' : 'tamam-panel-badge tamam-panel-badge--muted'}>
                     {r.priority}
                   </span>
                 </td>
                 <td>{r.orderedBy}</td>
-                <td><span className={STATUS_BADGE[r.status] || 'omrs-panel-badge omrs-panel-badge--active'}>{humanizeStatus(r.status)}</span></td>
+                <td><span className={STATUS_BADGE[r.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{humanizeStatus(r.status)}</span></td>
               </tr>
             ))}
           </tbody>

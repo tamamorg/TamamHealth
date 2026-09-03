@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Results tab content — OpenMRS-style lab results table. Reads from the same
+ * Results tab content — Tamam-style lab results table. Reads from the same
  * `useLabResults()` collection the Order Basket drawer panel and
  * OrderLabModal already write to (switched from the legacy per-visit
  * `record.labResults` embed so newly-ordered labs actually show up here).
@@ -24,9 +24,9 @@ import { clickable } from '@/lib/a11y';
 const PAGE_SIZE = 8;
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'omrs-panel-badge omrs-panel-badge--pending',
-  in_progress: 'omrs-panel-badge omrs-panel-badge--active',
-  completed: 'omrs-panel-badge omrs-panel-badge--done',
+  pending: 'tamam-panel-badge tamam-panel-badge--pending',
+  in_progress: 'tamam-panel-badge tamam-panel-badge--active',
+  completed: 'tamam-panel-badge tamam-panel-badge--done',
 };
 
 /** Defensive sort key: an invalid/missing date sorts as oldest (0) rather
@@ -97,7 +97,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
       {patientLabs.length === 0 ? (
         <OmrsEmptyState itemLabel="results" actionLabel="Record results" onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
       ) : (
-        <table className="omrs-table omrs-table--fixed omrs-table--interactive">
+        <table className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
             <col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -117,7 +117,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 key={l._id}
                 id={`lab-row-${l._id}`}
                 {...(onSelect ? clickable(() => onSelect(l._id), { label: `Open result — ${l.testName}` }) : {})}
-                className={onSelect ? 'omrs-clickable-row' : undefined}
+                className={onSelect ? 'tamam-clickable-row' : undefined}
                 style={{
                   ...(l._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : {}),
                 }}
@@ -129,7 +129,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 <td>{l.referenceRange || '—'}</td>
                 <td>{t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))])}</td>
                 <td>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
-                <td><span className={STATUS_BADGE[l.status] || 'omrs-panel-badge omrs-panel-badge--pending'}>{humanizeStatus(l.status)}</span></td>
+                <td><span className={STATUS_BADGE[l.status] || 'tamam-panel-badge tamam-panel-badge--pending'}>{humanizeStatus(l.status)}</span></td>
               </tr>
             ))}
           </tbody>

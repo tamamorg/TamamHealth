@@ -7,7 +7,7 @@
  *
  * Restyled 2026-09 onto the shared registry surface (EhrListHeader +
  * data-table) that patients / lab / referrals / deaths already wear — this
- * page was the last list still carrying its own OpenMRS O3-style card, with
+ * page was the last list still carrying its own Tamam O3-style card, with
  * a breadcrumb head, an inner "Bill List" card and its own pagination strip
  * around a seven-row table.
  */

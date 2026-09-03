@@ -29,34 +29,34 @@ export default function BiometricsSection({
           <h4>{t('patientNew.patientPhotoHeading')}</h4>
           <span>{t('patientNew.optionalLabel')}</span>
         </div>
-        {/* The OpenMRS photo well: a plain bordered square holding the picture
+        {/* The Tamam photo well: a plain bordered square holding the picture
             (or the words that stand in for it), with one dark action bar
             welded to its foot. The bar IS the button — there is no separate
             "Take photo" control beside it. */}
         <div className="registration-media-row">
-          <div className="omrs-reg-photo">
-            <div className="omrs-reg-photo-frame">
+          <div className="tamam-reg-photo">
+            <div className="tamam-reg-photo-frame">
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={photoUrl} alt={t('patientNew.photoAlt')} />
               ) : (
-                <span className="omrs-reg-photo-empty">{t('patientNew.noImageToDisplay')}</span>
+                <span className="tamam-reg-photo-empty">{t('patientNew.noImageToDisplay')}</span>
               )}
             </div>
             <button
               type="button"
               onClick={onEditPhoto}
-              className="omrs-reg-photo-edit"
+              className="tamam-reg-photo-edit"
               aria-label={photoUrl ? t('patientNew.retakePhoto') : t('patientNew.takePhoto')}
             >
               <span>{t('action.edit')}</span>
               <Pencil className="w-4 h-4" aria-hidden />
             </button>
           </div>
-          <div className="omrs-reg-photo-aside">
+          <div className="tamam-reg-photo-aside">
             <p>{t('patientNew.photoHelp')}</p>
             {photoUrl && (
-              <button type="button" onClick={onClearPhoto} className="omrs-reg-photo-remove">
+              <button type="button" onClick={onClearPhoto} className="tamam-reg-photo-remove">
                 {t('action.remove')}
               </button>
             )}

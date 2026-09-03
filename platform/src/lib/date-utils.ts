@@ -73,7 +73,7 @@ export function endOfLocalDay(value: string): number {
 }
 
 /**
- * A date of birth as `dd-MMM-yyyy` — "17-Jun-1990", the OpenMRS convention the
+ * A date of birth as `dd-MMM-yyyy` — "17-Jun-1990", the Tamam convention the
  * patient chart and the printed bill both use. Distinct from the app's
  * general-purpose `formatDate` ("Jun 17, 1990").
  *

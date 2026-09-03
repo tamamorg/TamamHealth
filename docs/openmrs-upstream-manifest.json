@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "baselineId": "openmrs-refapp-81cd706",
+  "capturedAt": "2026-09-03",
+  "purpose": "Pinned source and test evidence for the specification-driven Tamam rewrite. These repositories are not runtime dependencies.",
+  "referenceDistribution": {
+    "repository": "https://github.com/openmrs/openmrs-distro-referenceapplication",
+    "revision": "81cd706",
+    "licenseReview": "No root license file found at the audited revision; review transitive component licenses before copying source."
+  },
+  "repositories": [
+    { "name": "openmrs-core", "url": "https://github.com/openmrs/openmrs-core", "revision": "a48d5d8", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-core", "url": "https://github.com/openmrs/openmrs-esm-core", "revision": "2edf609", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-patient-management", "url": "https://github.com/openmrs/openmrs-esm-patient-management", "revision": "5aa9030", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-patient-chart", "url": "https://github.com/openmrs/openmrs-esm-patient-chart", "revision": "69e629e", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-patient-list", "url": "https://github.com/openmrs/openmrs-esm-patient-list", "revision": "1964b12", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-form-entry", "url": "https://github.com/openmrs/openmrs-esm-form-entry", "revision": "c553a59", "license": "REVIEW_REQUIRED" },
+    { "name": "openmrs-esm-laboratory-app", "url": "https://github.com/openmrs/openmrs-esm-laboratory-app", "revision": "4859e01", "license": "MPL-2.0" },
+    { "name": "openmrs-esm-dispensing-app", "url": "https://github.com/openmrs/openmrs-esm-dispensing-app", "revision": "34ebf4f", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-stock-management", "url": "https://github.com/openmrs/openmrs-esm-stock-management", "revision": "9081793", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-billing-app", "url": "https://github.com/openmrs/openmrs-esm-billing-app", "revision": "c5bd613", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-esm-task-list", "url": "https://github.com/openmrs/openmrs-esm-task-list", "revision": "f22e24d", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-module-webservices.rest", "url": "https://github.com/openmrs/openmrs-module-webservices.rest", "revision": "4d6d9cc", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-module-fhir2", "url": "https://github.com/openmrs/openmrs-module-fhir2", "revision": "069deb7", "license": "MPL-2.0" },
+    { "name": "openmrs-module-queue", "url": "https://github.com/openmrs/openmrs-module-queue", "revision": "53c3803", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-module-bahmni-appointments", "url": "https://github.com/openmrs/openmrs-module-bahmni-appointments", "revision": "a9954a4", "license": "AGPL-3.0-or-later" },
+    { "name": "openmrs-module-bedmanagement", "url": "https://github.com/openmrs/openmrs-module-bedmanagement", "revision": "b90023c", "license": "AGPL-3.0-or-later; individual files contain additional OpenMRS/MPL notices" },
+    { "name": "openmrs-module-reporting", "url": "https://github.com/openmrs/openmrs-module-reporting", "revision": "45a4114", "license": "MPL-2.0 with Healthcare Disclaimer" },
+    { "name": "openmrs-module-stockmanagement", "url": "https://github.com/openmrs/openmrs-module-stockmanagement", "revision": "dc2a1f2", "license": "REVIEW_REQUIRED; audited source contains MPL/OpenMRS notices but no root license file" },
+    { "name": "openmrs-module-billing", "url": "https://github.com/openmrs/openmrs-module-billing", "revision": "2e21085", "license": "MPL-2.0" },
+    { "name": "openmrs-module-o3forms", "url": "https://github.com/openmrs/openmrs-module-o3forms", "revision": "b1a6e27", "license": "MPL-2.0" }
+  ]
+}

@@ -115,7 +115,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
             disabledReason={canManage ? undefined : 'Requires clinical or registration permission'}
           />
         ) : (
-          <table className="omrs-table omrs-table--fixed omrs-table--interactive omrs-table--directives">
+          <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--directives">
             <colgroup>
               <col /><col /><col /><col />
             </colgroup>
@@ -132,18 +132,18 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 <tr
                   key={d.id}
                   {...clickable(() => setSelectedDirective(d), { label: `Open directive — ${typeLabel(d.type)}` })}
-                  className="omrs-clickable-row"
+                  className="tamam-clickable-row"
                 >
-                  <td className="omrs-cell-strong">{typeLabel(d.type)}</td>
+                  <td className="tamam-cell-strong">{typeLabel(d.type)}</td>
                   <td>{d.description || '—'}</td>
                   <td>{d.startDate ? formatDate(d.startDate) : '—'}</td>
                   <td>
                     {d.signature ? (
                       <>
-                        <span className="omrs-panel-badge omrs-panel-badge--done">
+                        <span className="tamam-panel-badge tamam-panel-badge--done">
                           <Lock className="w-3 h-3" /> Signed
                         </span>
-                        <div className="omrs-cell-sub">
+                        <div className="tamam-cell-sub">
                           {d.signature.name}
                           {d.signature.signedBy !== 'patient' && ` (${d.signature.relationship || d.signature.signedBy})`}
                           {' · '}{formatDateTime(d.signature.signedAt)}
@@ -151,8 +151,8 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                       </>
                     ) : (
                       <>
-                        <span className="omrs-panel-badge omrs-panel-badge--pending">Unsigned</span>
-                        <div className="omrs-cell-sub">Recorded, not yet attested</div>
+                        <span className="tamam-panel-badge tamam-panel-badge--pending">Unsigned</span>
+                        <div className="tamam-cell-sub">Recorded, not yet attested</div>
                       </>
                     )}
                   </td>

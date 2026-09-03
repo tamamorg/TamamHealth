@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * OpenmrsChartShell — the visual shell for the OpenMRS O3-style patient
+ * TamamChartShell — the visual shell for the Tamam O3-style patient
  * chart. Owns the left nav rail, the right action icon rail + slide-in
  * workspace drawer, and the scrolling main column that hosts the sticky
  * header/vitals slots plus the (unmodified) tab content.
  *
  * Tab content itself is NOT touched here — callers pass it in as `children`
- * and it renders inside `.omrs-content` exactly as it did before this shell
+ * and it renders inside `.tamam-content` exactly as it did before this shell
  * existed.
  *
  * Stage 2: the right-rail drawer now renders real, functional workspace
@@ -30,7 +30,7 @@ import TaskListPanel from './panels/TaskListPanel';
 import ClinicalFormsPanel from './panels/ClinicalFormsPanel';
 import PatientListsPanel from './panels/PatientListsPanel';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
-import './openmrs-chart.css';
+import './tamam-chart.css';
 import { dismissBackdrop } from '@/lib/a11y';
 
 export interface OmrsRailItem {
@@ -80,12 +80,12 @@ export function visibleDrawerPanels(canViewClinical: boolean): DrawerPanelDef[] 
  */
 const CLINICAL_NOTE_PANEL: DrawerPanelDef = { id: 'clinical-note', title: 'Clinical note', icon: FileText };
 
-interface OpenmrsChartShellProps {
+interface TamamChartShellProps {
   activeTab: string;
   setActiveTab: (id: string) => void;
-  /** Primary OpenMRS-mapped rail items, already permission-filtered. */
+  /** Primary Tamam-mapped rail items, already permission-filtered. */
   railItems: OmrsRailItem[];
-  /** Existing tabs that don't have an OpenMRS-rail slot. They render straight
+  /** Existing tabs that don't have an Tamam-rail slot. They render straight
    *  after `railItems` in the same single list — the two arrays stay separate
    *  only to preserve that ordering. */
   moreItems: OmrsRailItem[];
@@ -113,12 +113,12 @@ interface OpenmrsChartShellProps {
   onPanelRequestHandled?: () => void;
 }
 
-export default function OpenmrsChartShell({
+export default function TamamChartShell({
   activeTab, setActiveTab, railItems, moreItems, header, vitalsBand, children,
   patient, currentUser, canPrescribe, canOrderLabs, canConsult, canViewClinical, router,
   onOpenPrescribeModal, onOpenOrderLabModal, onNoteSaved,
   panelRequest, onPanelRequestHandled,
-}: OpenmrsChartShellProps) {
+}: TamamChartShellProps) {
 
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   // Note being edited by the clinical-note panel, set by an id-carrying request.
@@ -157,7 +157,7 @@ export default function OpenmrsChartShell({
   // One list, not two. `moreItems` used to hide behind a collapsed "More
   // sections" toggle, which meant half the chart's sections were one click away
   // for no reason a clinician could see — the split reflects which tabs happen
-  // to map onto OpenMRS's rail, which is our history, not their task. The
+  // to map onto Tamam's rail, which is our history, not their task. The
   // ordering still puts the mapped sections first.
   const allRailItems = [...railItems, ...moreItems];
 
@@ -266,7 +266,7 @@ export default function OpenmrsChartShell({
         );
       case 'clinical-note':
         return drawerNoteId ? (
-          <div className="omrs-drawer-note-body">
+          <div className="tamam-drawer-note-body">
             <ClinicalNoteEditor
               noteId={drawerNoteId}
               // Without this the drawer's "Assigned to" picker has nobody to
@@ -318,34 +318,34 @@ export default function OpenmrsChartShell({
   };
 
   return (
-    <div className="omrs-root">
+    <div className="tamam-root">
       {/* ══ Left vertical nav rail ══
           The column and the nav are separate elements on purpose: the column
           stretches to the shell's full height so the rail's surface and its
           divider run the length of the chart, while the nav inside it stays
           sticky and only as tall as its own list. */}
-      <div className="omrs-rail-col no-print">
-      <nav className="omrs-left-rail" aria-label="Patient chart sections">
+      <div className="tamam-rail-col no-print">
+      <nav className="tamam-left-rail" aria-label="Patient chart sections">
         {/* One flat list of sections. The rail used to split into "Clinical"
             and "Record" cards, but the headings named where a tab came from
             rather than anything a clinician chooses by, and the break in the
             middle made the second half read as secondary. */}
-        <div className="omrs-rail-card">
-          <div className="omrs-rail-cardbody">
+        <div className="tamam-rail-card">
+          <div className="tamam-rail-cardbody">
             {allRailItems.map(item => {
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={isActive ? 'omrs-rail-item is-active' : 'omrs-rail-item'}
+                  className={isActive ? 'tamam-rail-item is-active' : 'tamam-rail-item'}
                   onClick={() => setActiveTab(item.id)}
                   onMouseDown={e => e.preventDefault()}
                   aria-current={isActive ? 'page' : undefined}
                   title={item.label}
                 >
                   <item.icon className="w-4 h-4" />
-                  <span className="omrs-rail-label">{item.label}</span>
+                  <span className="tamam-rail-label">{item.label}</span>
                 </button>
               );
             })}
@@ -355,23 +355,23 @@ export default function OpenmrsChartShell({
       </div>
 
       {/* ══ Main column: sticky header/vitals + scrolling tab content ══ */}
-      <div className="omrs-main-col">
-        <div className="omrs-sticky-zone no-print">
+      <div className="tamam-main-col">
+        <div className="tamam-sticky-zone no-print">
           {header}
           {vitalsBand}
         </div>
-        <div className="omrs-content">
+        <div className="tamam-content">
           {children}
         </div>
       </div>
 
       {/* ══ Right action icon rail ══ */}
-      <aside className="omrs-right-rail no-print" aria-label="Chart workspace panels">
+      <aside className="tamam-right-rail no-print" aria-label="Chart workspace panels">
         {railPanels.map(panel => (
           <button
             key={panel.id}
             type="button"
-            className={openPanel === panel.id ? 'omrs-right-rail-btn is-active' : 'omrs-right-rail-btn'}
+            className={openPanel === panel.id ? 'tamam-right-rail-btn is-active' : 'tamam-right-rail-btn'}
             onClick={() => togglePanel(panel.id)}
             title={panel.title}
             aria-pressed={openPanel === panel.id}
@@ -384,18 +384,18 @@ export default function OpenmrsChartShell({
       {/* ══ Slide-in workspace drawer ══ */}
       {activePanel && (
         <>
-          <div className="omrs-drawer-backdrop no-print" {...dismissBackdrop(closeDrawer)} />
+          <div className="tamam-drawer-backdrop no-print" {...dismissBackdrop(closeDrawer)} />
           <div
             ref={drawerRef}
             tabIndex={-1}
-            className={`omrs-drawer no-print ${drawerMaximized ? 'is-maximized' : ''}`}
+            className={`tamam-drawer no-print ${drawerMaximized ? 'is-maximized' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-label={activePanel.title}
           >
-            <div className="omrs-drawer-header">
-              <span className="omrs-drawer-title">{activePanel.title}</span>
-              <div className="omrs-drawer-controls">
+            <div className="tamam-drawer-header">
+              <span className="tamam-drawer-title">{activePanel.title}</span>
+              <div className="tamam-drawer-controls">
                 <button
                   type="button"
                   title={drawerMaximized ? 'Restore panel size' : 'Maximize'}

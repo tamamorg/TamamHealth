@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * ChartSection — the reusable OpenMRS O3 "section card" chrome used across
+ * ChartSection — the reusable Tamam O3 "section card" chrome used across
  * the patient chart's tab content: bold title with a short teal underline,
  * an optional right-aligned "Add +", an optional filter slot (e.g. "Show:
  * Active ▼"), an optional table/chart toggle slot, a body slot, and an
- * optional OpenMRS-style pagination footer ("{shown} / {total} items" +
+ * optional Tamam-style pagination footer ("{shown} / {total} items" +
  * "‹ of {N} pages ›").
  *
  * Purely presentational — callers own their own data, filtering, and
@@ -51,24 +51,24 @@ export default function ChartSection({
     : 0;
 
   return (
-    <section className={className ? `omrs-section ${className}` : 'omrs-section'}>
-      <header className="omrs-section-head">
-        <div className="omrs-section-title-wrap">
-          <h3 className="omrs-section-title">{title}</h3>
-          <span className="omrs-section-underline" aria-hidden />
+    <section className={className ? `tamam-section ${className}` : 'tamam-section'}>
+      <header className="tamam-section-head">
+        <div className="tamam-section-title-wrap">
+          <h3 className="tamam-section-title">{title}</h3>
+          <span className="tamam-section-underline" aria-hidden />
         </div>
-        <div className="omrs-section-controls">
+        <div className="tamam-section-controls">
           {filterSlot}
           {toggleSlot}
           {onAdd && (
-            <button type="button" className="omrs-section-add" onClick={onAdd}>
+            <button type="button" className="tamam-section-add" onClick={onAdd}>
               {addIcon ?? <Plus />} {addLabel}
             </button>
           )}
         </div>
       </header>
       {onSearchChange && (
-        <label className="omrs-section-search" aria-label={`Search ${title}`}>
+        <label className="tamam-section-search" aria-label={`Search ${title}`}>
           <Search aria-hidden />
           <input
             type="search"
@@ -78,12 +78,12 @@ export default function ChartSection({
           />
         </label>
       )}
-      <div className="omrs-section-body">{children}</div>
+      <div className="tamam-section-body">{children}</div>
       {pagination && pagination.total > 0 && (
-        <footer className="omrs-section-footer">
-          <span className="omrs-section-count">{shown} / {pagination.total} items</span>
+        <footer className="tamam-section-footer">
+          <span className="tamam-section-count">{shown} / {pagination.total} items</span>
           {pagination.total > pagination.pageSize && (
-            <div className="omrs-section-pager">
+            <div className="tamam-section-pager">
               <button
                 type="button"
                 disabled={pagination.page <= 1}
@@ -112,7 +112,7 @@ export default function ChartSection({
 /**
  * OmrsEmptyState — the "There are no {itemLabel} to display for this
  * patient" empty state shared by every ChartSection-wrapped tab, matching
- * OpenMRS's tone: centered clipboard glyph, one line of muted body copy, and
+ * Tamam's tone: centered clipboard glyph, one line of muted body copy, and
  * an optional blue "Record {itemLabel}" action.
  */
 export function OmrsEmptyState({
@@ -128,16 +128,16 @@ export function OmrsEmptyState({
   disabledReason?: string;
 }) {
   return (
-    <div className="omrs-empty-state">
+    <div className="tamam-empty-state">
       <ClipboardList />
       <p>There are no {itemLabel} to display for this patient</p>
       {onAction && (
-        <button type="button" className="omrs-empty-action" onClick={onAction}>
+        <button type="button" className="tamam-empty-action" onClick={onAction}>
           {actionLabel || `Record ${itemLabel}`}
         </button>
       )}
       {!onAction && disabledReason && (
-        <span className="omrs-empty-action omrs-empty-action--disabled" title={disabledReason}>
+        <span className="tamam-empty-action tamam-empty-action--disabled" title={disabledReason}>
           {actionLabel || `Record ${itemLabel}`}
         </span>
       )}

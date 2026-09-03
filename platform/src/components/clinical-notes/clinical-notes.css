@@ -1806,9 +1806,9 @@ select.cn-select {
 .cn-rx-warnings li[data-severity='moderate'] { color: var(--color-warning); }
 .cn-rx-note { color: var(--text-muted); font-style: italic; }
 
-/* ═══════════════ Design alignment — the patient chart (omrs- shell) ═══════════════
-   The note editor measured against the OpenMRS-style patient chart
-   (components/ehr/chart/openmrs-chart.css): the same --ehr-* ink/line/surface
+/* ═══════════════ Design alignment — the patient chart (tamam- shell) ═══════════════
+   The note editor measured against the Tamam-style patient chart
+   (components/ehr/chart/tamam-chart.css): the same --ehr-* ink/line/surface
    tokens, the platform face throughout (the condensed font is gone), white
    cards with muted-caps card heads, the chart's control geometry (6px corners
    on hairline chrome), rail rows as filled pills, and section titles in title
@@ -1817,8 +1817,8 @@ select.cn-select {
    specificity notes. */
 
 .cn-editor {
-  /* The chart's accent underline colour (--omrs-teal), which only exists on
-     .omrs-root — restated here rather than reached for. */
+  /* The chart's accent underline colour (--tamam-teal), which only exists on
+     .tamam-root — restated here rather than reached for. */
   --cn-teal: #1174b4;
   --cn-ink: var(--ehr-text-title, #113055);
   --cn-body: var(--ehr-text-body, #3C5574);
@@ -1837,7 +1837,7 @@ select.cn-select {
 }
 
 /* ── Header: document title left, chip-fields right — typed like the chart's
-   patient banner (.omrs-header-name / .omrs-header-meta). ── */
+   patient banner (.tamam-header-name / .tamam-header-meta). ── */
 .cn-header { padding: 12px 18px; border-bottom-color: var(--cn-line); }
 
 .cn-header-id { flex: 1 1 240px; min-width: 0; }
@@ -1861,7 +1861,7 @@ select.cn-select {
   color: var(--cn-muted);
 }
 
-/* Each field is one chip — the chart's filter pill (.omrs-section-filter):
+/* Each field is one chip — the chart's filter pill (.tamam-section-filter):
    page-tint fill, hairline, 6px corners, muted caption, bold value. The
    control inside sheds its own chrome so the chip reads as a single unit. */
 .cn-header .cn-field {
@@ -1896,7 +1896,7 @@ select.cn-select {
 .cn-header .cn-field .cn-input:disabled,
 .cn-header .cn-field .cn-assign-trigger:disabled { background-color: transparent; }
 
-/* Clear note: the chart's white bordered action (.omrs-header-actions-btn). */
+/* Clear note: the chart's white bordered action (.tamam-header-actions-btn). */
 .cn-header .cn-btn {
   height: 36px;
   min-height: 36px;
@@ -1925,7 +1925,7 @@ select.cn-select {
    flex-shrinking to the viewport and clipping their own rows. */
 .cn-sidebar > * { flex: 0 0 auto; }
 
-/* Rail cards are the chart's (.omrs-rail-card / .omrs-rail-cardhead): white
+/* Rail cards are the chart's (.tamam-rail-card / .tamam-rail-cardhead): white
    panel, hairline, 10px corners, and a muted-caps head with no tinted band. */
 .cn-sidebar-card { margin-bottom: 0; border-color: var(--cn-line); border-radius: 10px; }
 .cn-card-head {
@@ -1997,8 +1997,8 @@ select.cn-select {
 
 .cn-ident-line { margin: 2px 0 0; font-size: 12px; color: var(--cn-muted); }
 
-/* ── Note sections: the chart's left-rail pills (.omrs-rail-cardbody /
-   .omrs-rail-item) — 6px-radius rows on a 6px inset, accent-tint hover, the
+/* ── Note sections: the chart's left-rail pills (.tamam-rail-cardbody /
+   .tamam-rail-item) — 6px-radius rows on a 6px inset, accent-tint hover, the
    current row filled solid blue with white ink. ── */
 .cn-section-nav { gap: 1px; padding: 6px; }
 .cn-section-nav-row { gap: 0; }
@@ -2033,7 +2033,7 @@ select.cn-select {
 .cn-section-nav-item[aria-current='true'] .cn-section-nav-badge { background: var(--color-white); }
 
 /* ── Sidebar row lists (patient notes, labs, documents) — the chart's panel
-   rows (.omrs-panel-row-main / -sub) on soft hairlines, quiet hover. ── */
+   rows (.tamam-panel-row-main / -sub) on soft hairlines, quiet hover. ── */
 .cn-note-row {
   display: flex;
   flex-direction: column;
@@ -2072,7 +2072,7 @@ select.cn-select {
 /* Documents head filter reads as plain muted text, not a form control. */
 .cn-card-head-filter { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: var(--cn-muted); text-transform: none; letter-spacing: 0; margin: 0; }
 
-/* ── Canvas: page-tint ground, flat white section cards (.omrs-section) ── */
+/* ── Canvas: page-tint ground, flat white section cards (.tamam-section) ── */
 .cn-canvas { background: var(--cn-band); padding: 18px 22px 26px; }
 .cn-canvas > * { max-width: 980px; }
 
@@ -2087,7 +2087,7 @@ select.cn-select {
 }
 .cn-section.is-active { background: var(--cn-panel); border-color: var(--cn-tint-border); }
 
-/* Section heads are the chart's (.omrs-section-head): title ink over the teal
+/* Section heads are the chart's (.tamam-section-head): title ink over the teal
    underline, no band and no full-width hairline. */
 .cn-section-head {
   margin-bottom: 0;
@@ -2102,7 +2102,7 @@ select.cn-select {
   text-transform: none;
   color: var(--cn-ink);
 }
-/* The chart's teal title underline (.omrs-section-underline), drawn from CSS
+/* The chart's teal title underline (.tamam-section-underline), drawn from CSS
    so the markup stays untouched. */
 .cn-section-name::after {
   content: '';
@@ -2113,7 +2113,7 @@ select.cn-select {
   background: var(--cn-teal);
 }
 
-/* Section tools take the chart's control family (.omrs-section-add): white
+/* Section tools take the chart's control family (.tamam-section-add): white
    panel, hairline, 6px corners, bold accent label, accent hover. */
 .cn-tool {
   height: 30px;

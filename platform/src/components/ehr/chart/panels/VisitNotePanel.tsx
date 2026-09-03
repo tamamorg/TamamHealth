@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Visit note workspace panel — OpenMRS-style quick capture: primary/secondary
+ * Visit note workspace panel — Tamam-style quick capture: primary/secondary
  * diagnosis search + a free-text note. Diagnosis search reuses the same
  * CodedSearchField + COMMON_ICD11_CODES pairing as ProblemList's "Add
  * problem" flow.
@@ -80,8 +80,8 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
 
   if (!canConsult) {
     return (
-      <div className="omrs-drawer-body">
-        <div className="omrs-panel-permission-note">
+      <div className="tamam-drawer-body">
+        <div className="tamam-panel-permission-note">
           <p>You don&apos;t have permission to add visit notes for this patient.</p>
         </div>
       </div>
@@ -206,14 +206,14 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
 
   return (
     <>
-      <div className="omrs-drawer-body">
+      <div className="tamam-drawer-body">
         {/* No "For <patient>" line: this drawer only ever opens over the chart
             of the patient it writes to, and the banner behind it already names
             them. */}
-        <div className="omrs-panel-field">
-          <label className="omrs-panel-label">Primary diagnosis</label>
+        <div className="tamam-panel-field">
+          <label className="tamam-panel-label">Primary diagnosis</label>
           {primaryDx ? (
-            <div className="omrs-panel-picked-chip">
+            <div className="tamam-panel-picked-chip">
               <span>{primaryDx.title} <span style={{ color: 'var(--ehr-muted)' }}>· {primaryDx.code}</span></span>
               <button type="button" onClick={() => setPrimaryDx(null)}>Change</button>
             </div>
@@ -229,10 +229,10 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
           )}
         </div>
 
-        <div className="omrs-panel-field">
-          <label className="omrs-panel-label">Secondary diagnosis</label>
+        <div className="tamam-panel-field">
+          <label className="tamam-panel-label">Secondary diagnosis</label>
           {secondaryDx ? (
-            <div className="omrs-panel-picked-chip">
+            <div className="tamam-panel-picked-chip">
               <span>{secondaryDx.title} <span style={{ color: 'var(--ehr-muted)' }}>· {secondaryDx.code}</span></span>
               <button type="button" onClick={() => setSecondaryDx(null)}>Change</button>
             </div>
@@ -249,10 +249,10 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
           )}
         </div>
 
-        <div className="omrs-panel-field">
-          <label className="omrs-panel-label">Note</label>
+        <div className="tamam-panel-field">
+          <label className="tamam-panel-label">Note</label>
           <textarea
-            className="omrs-panel-textarea"
+            className="tamam-panel-textarea"
             placeholder="Assessment, plan, follow-up instructions…"
             value={note}
             onChange={e => setNote(e.target.value)}
@@ -260,10 +260,10 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
         </div>
 
         {images.length > 0 && (
-          <div className="omrs-panel-field">
-            <label className="omrs-panel-label">Images</label>
+          <div className="tamam-panel-field">
+            <label className="tamam-panel-label">Images</label>
             {images.map((file, i) => (
-              <div className="omrs-panel-picked-chip" key={`${file.name}-${i}`}>
+              <div className="tamam-panel-picked-chip" key={`${file.name}-${i}`}>
                 <span>{file.name} <span style={{ color: 'var(--ehr-muted)' }}>· {(file.size / 1024).toFixed(0)} KB</span></span>
                 <button type="button" onClick={() => setImages(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${file.name}`}>
                   <X size={12} /> Remove
@@ -280,18 +280,18 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
           style={{ display: 'none' }}
           onChange={handleImagesChosen}
         />
-        <button type="button" className="omrs-panel-add-btn" onClick={() => fileInputRef.current?.click()}>
+        <button type="button" className="tamam-panel-add-btn" onClick={() => fileInputRef.current?.click()}>
           <ImageIcon /> Add image
         </button>
       </div>
-      <div className="omrs-drawer-footer">
-        <button type="button" className="omrs-btn-ghost" onClick={onClose} disabled={submitting}>Discard</button>
-        <button type="button" className="omrs-btn-ghost" onClick={handleSave} disabled={!canSave || submitting}>
+      <div className="tamam-drawer-footer">
+        <button type="button" className="tamam-btn-ghost" onClick={onClose} disabled={submitting}>Discard</button>
+        <button type="button" className="tamam-btn-ghost" onClick={handleSave} disabled={!canSave || submitting}>
           {submitting ? 'Saving…' : 'Save note'}
         </button>
         {/* Primary: the note above is the short form — the full encounter
             (vitals, orders, prescriptions, signing) happens in /consultation. */}
-        <button type="button" className="omrs-btn-primary" onClick={handleStartConsultation} disabled={submitting}>
+        <button type="button" className="tamam-btn-primary" onClick={handleStartConsultation} disabled={submitting}>
           <Stethoscope className="w-3.5 h-3.5" /> Start consultation
         </button>
       </div>

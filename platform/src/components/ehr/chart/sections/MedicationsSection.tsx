@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Medications tab content — OpenMRS-style medication list. Reads from the
+ * Medications tab content — Tamam-style medication list. Reads from the
  * same `usePrescriptions()` collection the Order Basket drawer panel and
  * PrescribeModal already write to (switched from the legacy per-visit
  * `record.prescriptions` embed so newly-added orders actually show up here).
@@ -36,9 +36,9 @@ const RX_STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'omrs-panel-badge omrs-panel-badge--pending',
-  dispensed: 'omrs-panel-badge omrs-panel-badge--done',
-  discontinued: 'omrs-panel-badge omrs-panel-badge--muted',
+  pending: 'tamam-panel-badge tamam-panel-badge--pending',
+  dispensed: 'tamam-panel-badge tamam-panel-badge--done',
+  discontinued: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
 interface MedicationsSectionProps {
@@ -186,7 +186,7 @@ export default function MedicationsSection({
           Without this the chart cannot tell "nobody has asked" from "asked,
           and the patient takes nothing". */}
       {(reconciliation || (patientRx.length === 0 && noKnownMedications)) && (
-        <p className="omrs-attestation">
+        <p className="tamam-attestation">
           {patientRx.length === 0 && noKnownMedications && <strong>No known medications. </strong>}
           {reconciliation && (
             <>Medication reconciliation: {reconciliation}{reconciledAt ? ` · ${formatDate(reconciledAt)}` : ''}.</>
@@ -197,7 +197,7 @@ export default function MedicationsSection({
       {patientRx.length === 0 && !noKnownMedications ? (
         <OmrsEmptyState itemLabel="medications" actionLabel="Record medications" onAction={canPrescribe ? onAdd : undefined} disabledReason={canPrescribe ? undefined : 'Requires prescribing permission'} />
       ) : patientRx.length === 0 ? null : (
-        <table className="omrs-table omrs-table--interactive omrs-table--medications">
+        <table className="tamam-table tamam-table--interactive tamam-table--medications">
           <colgroup>
             <col /><col /><col /><col />
           </colgroup>
@@ -219,7 +219,7 @@ export default function MedicationsSection({
                   setShowStopReason(false);
                   setStopReason('');
                 }, { label: `Open medication — ${rx.medication}` })}
-                className="omrs-clickable-row"
+                className="tamam-clickable-row"
                 style={{
                   ...(rx._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : {}),
                 }}
@@ -227,7 +227,7 @@ export default function MedicationsSection({
                 <td style={{ fontWeight: 600 }}>{rx.medication}</td>
                 <td>{formatRxSig(rx)}</td>
                 <td>{formatDate(rx.createdAt)}</td>
-                <td><span className={STATUS_BADGE[rx.status] || 'omrs-panel-badge omrs-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
+                <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
               </tr>
             ))}
           </tbody>

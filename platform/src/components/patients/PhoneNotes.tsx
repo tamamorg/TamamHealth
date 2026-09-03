@@ -13,9 +13,9 @@ import { isClinicalAuthorRole } from '@/lib/clinical-roles';
 import Select from '@/components/Select';
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
-  open: { cls: 'omrs-panel-badge omrs-panel-badge--pending', label: 'Open' },
-  responded: { cls: 'omrs-panel-badge omrs-panel-badge--done', label: 'Responded' },
-  closed: { cls: 'omrs-panel-badge omrs-panel-badge--muted', label: 'Closed' },
+  open: { cls: 'tamam-panel-badge tamam-panel-badge--pending', label: 'Open' },
+  responded: { cls: 'tamam-panel-badge tamam-panel-badge--done', label: 'Responded' },
+  closed: { cls: 'tamam-panel-badge tamam-panel-badge--muted', label: 'Closed' },
 };
 
 /**
@@ -114,7 +114,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
       )}
 
       {notes.length > 0 && (
-        <table className="omrs-table omrs-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -135,12 +135,12 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
               return (
                 <Fragment key={n._id}>
                   <tr>
-                    <td className="omrs-cell-strong">{n.subject}</td>
-                    <td className="omrs-cell-note"><div className="omrs-cell-clamp" title={n.message}>{n.message}</div></td>
+                    <td className="tamam-cell-strong">{n.subject}</td>
+                    <td className="tamam-cell-note"><div className="tamam-cell-clamp" title={n.message}>{n.message}</div></td>
                     <td>
                       {n.callerName || 'Caller'}
                       {(n.recordedByName || n.routedToName) && (
-                        <div className="omrs-cell-sub">
+                        <div className="tamam-cell-sub">
                           {[n.recordedByName && `logged by ${n.recordedByName}`, n.routedToName && `routed to ${n.routedToName}`].filter(Boolean).join(' · ')}
                         </div>
                       )}

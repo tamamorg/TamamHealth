@@ -100,7 +100,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
       {reminders.length === 0 ? (
         !adding && <OmrsEmptyState itemLabel="reminders" actionLabel="Queue reminder" onAction={() => setAdding(true)} />
       ) : (
-        <table className="omrs-table omrs-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col />
           </colgroup>
@@ -119,7 +119,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
               const muted = r.status !== 'queued';
               return (
                 <tr key={r._id} style={muted ? { opacity: 0.6 } : undefined}>
-                  <td className="omrs-cell-note"><div className="omrs-cell-clamp" title={r.message}>{r.message}</div></td>
+                  <td className="tamam-cell-note"><div className="tamam-cell-clamp" title={r.message}>{r.message}</div></td>
                   <td>{CHANNELS.find(c => c.v === r.channel)?.label || r.channel}</td>
                   <td>{r.sendDate}</td>
                   <td>
@@ -132,12 +132,12 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
                   </td>
                   <td>
                     <span className={overdue
-                      ? 'omrs-panel-badge omrs-panel-badge--pending'
+                      ? 'tamam-panel-badge tamam-panel-badge--pending'
                       : r.status === 'queued'
-                        ? 'omrs-panel-badge omrs-panel-badge--active'
+                        ? 'tamam-panel-badge tamam-panel-badge--active'
                         : r.status === 'sent'
-                          ? 'omrs-panel-badge omrs-panel-badge--done'
-                          : 'omrs-panel-badge omrs-panel-badge--muted'}>
+                          ? 'tamam-panel-badge tamam-panel-badge--done'
+                          : 'tamam-panel-badge tamam-panel-badge--muted'}>
                       {overdue ? 'Overdue' : r.status.charAt(0).toUpperCase() + r.status.slice(1)}
                     </span>
                   </td>

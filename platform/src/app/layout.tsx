@@ -39,15 +39,15 @@ const jetBrainsMono = JetBrains_Mono({
   // browser fetch it only on a surface that actually paints mono text.
   preload: false,
 });
-// Carbon's typeface, used only by the OpenMRS-styled surfaces (`--font-omrs`
+// Carbon's typeface, used only by the Tamam-styled surfaces (`--font-omrs`
 // in globals.css). Scoped rather than global: the rest of the platform is DM
-// Sans, and OpenMRS in anything but Plex reads as an imitation of it.
+// Sans, and Tamam in anything but Plex reads as an imitation of it.
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "600"],
   variable: "--font-ibm-plex-sans",
   display: "swap",
-  // OpenMRS chart-only face. Preloading both weights on login and every
+  // Tamam chart-only face. Preloading both weights on login and every
   // dashboard wasted requests before a patient chart was opened.
   preload: false,
 });

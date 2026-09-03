@@ -84,7 +84,7 @@ enforced until the first, and review routing is not either until the second.
 **Styling.** `globals.css` owns the tokens: flat clinical look, blue for actions, ward-colour accent tints, no glassmorphism. Two traps live in it:
 - a bare `label` selector force-uppercases **every** `<label>` (display:block, bold, tracked);
 - `svg.lucide:not([style*="color"])` recolours icons globally, and several rules override `stroke` with `!important`.
-Escape both with a scoped namespace rather than fighting specificity. Existing namespaces: `ehr-*` (shared EHR), `omrs-*` (patient chart), `pp-*` (patient portal), `sa-*` / `sadb-*` (super-admin), `msgs-*` (messages), `lg-*` (login).
+Escape both with a scoped namespace rather than fighting specificity. Existing namespaces: `ehr-*` (shared EHR), `tamam-*` (patient chart), `pp-*` (patient portal), `sa-*` / `sadb-*` (super-admin), `msgs-*` (messages), `lg-*` (login).
 
 **Icons.** Import from `@/components/icons` (in-repo duotone set) or the name-compat shim `@/components/icons/lucide`. Do not add new direct `lucide-react` imports.
 

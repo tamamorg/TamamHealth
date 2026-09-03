@@ -343,7 +343,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
          in order", which the date column already says. Detail that used to
          sit under every title now lives behind a per-row disclosure, so the
          table stays scannable and only the row you ask about expands. */
-      <table className="omrs-table omrs-table--fixed tamam-activity-table">
+      <table className="tamam-table tamam-table--fixed tamam-activity-table">
         <colgroup>
           <col /><col /><col /><col />
         </colgroup>

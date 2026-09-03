@@ -11,6 +11,15 @@ import { SaTable, SaPill } from '@/components/admin/sa-ui';
 import {
   SadbPage, SadbSettingGroup, SadbSettingRow, SadbToggle, SadbKvRow, SadbHeadLink, SadbSearch,
 } from '@/components/admin/sadb-ui';
+import Select from '@/components/Select';
+import {
+  TAMAM_FEATURES,
+  TAMAM_REFERENCE_BASELINE_ID,
+  type FeatureCatalogMode,
+  type FeatureCutoverStage,
+  type TamamFeatureId,
+} from '@/modules/feature-catalog/client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type FlagKey = keyof OrganizationDoc['featureFlags'];
 
@@ -25,7 +34,21 @@ const TENANT_FLAGS: { key: FlagKey; label: string }[] = [
 const planTone = (plan: OrganizationDoc['subscriptionPlan']) =>
   plan === 'enterprise' ? 'info' as const : plan === 'professional' ? 'ok' as const : 'muted' as const;
 
+const CATALOG_MODES: { value: FeatureCatalogMode; labelKey: string }[] = [
+  { value: 'tamam_current', labelKey: 'featureCatalog.mode.current' },
+  { value: 'tamam_shadow', labelKey: 'featureCatalog.mode.shadow' },
+  { value: 'tamam_replacement', labelKey: 'featureCatalog.mode.replacement' },
+];
+
+const CUTOVER_STAGES: { value: FeatureCutoverStage; labelKey: string }[] = [
+  { value: 'legacy', labelKey: 'featureCatalog.stage.current' },
+  { value: 'shadow', labelKey: 'featureCatalog.stage.shadow' },
+  { value: 'replacement', labelKey: 'featureCatalog.stage.replacement' },
+  { value: 'parked', labelKey: 'featureCatalog.stage.parked' },
+];
+
 export default function AdminFlagsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
@@ -34,6 +57,7 @@ export default function AdminFlagsPage() {
 
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [matrixSearch, setMatrixSearch] = useState('');
+  const [catalogSearch, setCatalogSearch] = useState('');
   // Optimistic per-cell overrides so the matrix reads back instantly; cleared
   // on success (the store has caught up) and on failure (rolled back to the
   // store's actual value) so a failed write can never leave a cell drifted.
@@ -98,6 +122,48 @@ export default function AdminFlagsPage() {
     }
   };
 
+  const saveCatalog = async (
+    mode: FeatureCatalogMode,
+    cutovers: Record<string, FeatureCutoverStage>,
+    saving: string,
+  ) => {
+    setSavingKey(saving);
+    try {
+      await updateConfig({
+        featureCatalog: { baselineId: TAMAM_REFERENCE_BASELINE_ID, mode, cutovers },
+      }, currentUser?._id, currentUser?.username);
+      showToast(t('featureCatalog.toast.updated'), 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('featureCatalog.toast.failed'), 'error');
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const updateCatalogMode = (mode: FeatureCatalogMode) => {
+    if (!config) return;
+    void saveCatalog(mode, config.featureCatalog?.cutovers ?? {}, 'catalog-mode');
+  };
+
+  const updateCatalogStage = (id: TamamFeatureId, stage: FeatureCutoverStage) => {
+    if (!config) return;
+    void saveCatalog(
+      config.featureCatalog?.mode ?? 'tamam_current',
+      { ...(config.featureCatalog?.cutovers ?? {}), [id]: stage },
+      `catalog:${id}`,
+    );
+  };
+
+  const filteredFeatures = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase();
+    if (!query) return TAMAM_FEATURES;
+    return TAMAM_FEATURES.filter(feature =>
+      `${feature.capability} ${feature.ownerModule} ${feature.id} ${feature.currentRoutes.join(' ')}`
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [catalogSearch]);
+
   return (
     <SadbPage>
 
@@ -128,6 +194,87 @@ export default function AdminFlagsPage() {
           </>
         )}
       </SadbSettingGroup>
+
+      <div className="sadb-card" data-tour="admin-feature-catalog">
+        <div className="sadb-card-head" style={{ padding: '12px 16px' }}>
+          <div>
+            <h3 className="sadb-card-title">{t('featureCatalog.title')}</h3>
+            <p className="sadb-card-meta" style={{ margin: '3px 0 0' }}>
+              {t('featureCatalog.summary', { count: TAMAM_FEATURES.length })}
+            </p>
+          </div>
+          <Select
+            aria-label={t('featureCatalog.modeLabel')}
+            value={config?.featureCatalog?.mode ?? 'tamam_current'}
+            disabled={!config || savingKey === 'catalog-mode'}
+            onChange={event => updateCatalogMode(event.target.value as FeatureCatalogMode)}
+            style={{ width: 210 }}
+          >
+            {CATALOG_MODES.map(option => (
+              <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="sadb-search-row">
+          <SadbSearch
+            value={catalogSearch}
+            onChange={setCatalogSearch}
+            placeholder={t('featureCatalog.searchPlaceholder')}
+            ariaLabel={t('featureCatalog.searchLabel')}
+          />
+        </div>
+        <SaTable
+          columns={[
+            { label: t('featureCatalog.column.capability'), w: 2.2 },
+            { label: t('featureCatalog.column.owner'), w: 1.2 },
+            { label: t('featureCatalog.column.delivery'), w: 0.8 },
+            { label: t('featureCatalog.column.surface'), w: 1.8 },
+            { label: t('featureCatalog.column.rollout'), w: 1.2 },
+          ]}
+          empty={configLoading ? t('featureCatalog.loading') : t('featureCatalog.empty')}
+          minWidth={920}
+        >
+          {filteredFeatures.map(feature => {
+            const stage = config?.featureCatalog?.cutovers?.[feature.id] ?? feature.defaultStage;
+            const replacementReady = Boolean(feature.replacementRoute);
+            return (
+              <tr key={feature.id}>
+                <td>
+                  <strong>{t(`featureCatalog.capability.${feature.id}`)}</strong>{' '}
+                  <SaPill tone={feature.decision === 'reuse' ? 'ok' : feature.decision === 'development_only' ? 'muted' : 'info'}>
+                    {t(`featureCatalog.decision.${feature.decision}`)}
+                  </SaPill>
+                </td>
+                <td>{feature.ownerModule.replaceAll('-', ' ')}</td>
+                <td>{feature.deliveryWaves.map(wave => `W${wave}`).join(', ')}</td>
+                <td>{feature.currentRoutes.join(', ') || t('featureCatalog.notExposed')}</td>
+                <td>
+                  <Select
+                    aria-label={t('featureCatalog.stageLabel', { capability: t(`featureCatalog.capability.${feature.id}`) })}
+                    value={stage}
+                    disabled={!config || savingKey === `catalog:${feature.id}`}
+                    onChange={event => updateCatalogStage(feature.id, event.target.value as FeatureCutoverStage)}
+                    style={{ minWidth: 145 }}
+                  >
+                    {CUTOVER_STAGES.map(option => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                        disabled={(option.value === 'shadow' || option.value === 'replacement') && !replacementReady}
+                      >
+                        {t(option.labelKey)}
+                      </option>
+                    ))}
+                  </Select>
+                </td>
+              </tr>
+            );
+          })}
+        </SaTable>
+        <p className="sadb-card-meta" style={{ padding: '10px 14px', margin: 0, borderTop: '1px solid var(--border-light)' }}>
+          {t('featureCatalog.guidance')}
+        </p>
+      </div>
 
       {/* data-tour anchor: the shared "sadb-card" class also matches the
           "Platform gates" group above, so the tour needs an unambiguous hook

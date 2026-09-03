@@ -1,6 +1,6 @@
 /**
  * Minimum-necessary coverage for the patient chart's right-hand workspace rail
- * (`visibleDrawerPanels`, src/components/ehr/chart/OpenmrsChartShell.tsx).
+ * (`visibleDrawerPanels`, src/components/ehr/chart/TamamChartShell.tsx).
  *
  * The chart is reachable by roles that are deliberately denied the clinical
  * tabs — reception, cashiers, the lab bench, pharmacy — via ADMIN_TAB_IDS /
@@ -11,7 +11,7 @@
  * consultation, triage stop and ward admission, and the visit note writes a
  * diagnosis.
  */
-import { visibleDrawerPanels } from '@/components/ehr/chart/OpenmrsChartShell';
+import { visibleDrawerPanels } from '@/components/ehr/chart/TamamChartShell';
 
 const ids = (canViewClinical: boolean) => visibleDrawerPanels(canViewClinical).map(p => p.id);
 

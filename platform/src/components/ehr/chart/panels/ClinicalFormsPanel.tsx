@@ -2,7 +2,7 @@
 
 /**
  * Clinical forms workspace panel — a searchable list of this app's real
- * clinical entry points (OpenMRS calls these "form templates"; this app
+ * clinical entry points (Tamam calls these "form templates"; this app
  * doesn't have a form-template registry, so the list below points at the
  * actual pages/flows that create each kind of record). "Last completed" is
  * derived from the same hooks the rest of the chart already uses for this
@@ -151,12 +151,12 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
   const filtered = forms.filter(f => f.name.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
-    <div className="omrs-drawer-body">
-      <div className="omrs-panel-search-wrap">
+    <div className="tamam-drawer-body">
+      <div className="tamam-panel-search-wrap">
         <Search />
         <input
           type="text"
-          className="omrs-panel-search"
+          className="tamam-panel-search"
           placeholder="Search clinical forms…"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -164,14 +164,14 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
       </div>
 
       {filtered.length === 0 && (
-        <p className="omrs-panel-empty">No forms match &quot;{search}&quot;.</p>
+        <p className="tamam-panel-empty">No forms match &quot;{search}&quot;.</p>
       )}
 
       {filtered.map(f => (
         <button
           key={f.id}
           type="button"
-          className="omrs-panel-list-item"
+          className="tamam-panel-list-item"
           disabled={!f.enabled}
           title={f.enabled ? undefined : f.disabledReason}
           style={f.enabled ? undefined : { opacity: 0.5, cursor: 'not-allowed' }}
@@ -179,8 +179,8 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
         >
           <FileText />
           <div style={{ flex: 1 }}>
-            <div className="omrs-panel-row-main">{f.name}</div>
-            <div className="omrs-panel-row-sub">Last completed: {f.lastCompleted}</div>
+            <div className="tamam-panel-row-main">{f.name}</div>
+            <div className="tamam-panel-row-sub">Last completed: {f.lastCompleted}</div>
           </div>
           <ChevronRight />
         </button>

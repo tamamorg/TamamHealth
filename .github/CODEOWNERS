@@ -54,6 +54,7 @@
 /platform/src/modules/identity/       @makuachteny
 /platform/src/modules/communication/  @makuachteny
 /platform/src/modules/analytics/      @makuachteny
+/platform/src/modules/feature-catalog/ @makuachteny
 
 # --- Data & sync -----------------------------------------------------------
 # Patient data, CouchDB→Postgres projection and the offline sync engine.

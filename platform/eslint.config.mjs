@@ -18,7 +18,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
  * has not moved yet and turn every intermediate commit into a wall of errors.
  * Adding a name here is the last step of migrating that domain.
  */
-const MIGRATED_MODULES = ['identity', 'communication', 'tenancy', 'analytics'];
+const MIGRATED_MODULES = ['identity', 'communication', 'tenancy', 'analytics', 'feature-catalog'];
 
 /**
  * The directories inside a module that are private.

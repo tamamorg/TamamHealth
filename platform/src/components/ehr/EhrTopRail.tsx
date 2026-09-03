@@ -51,6 +51,8 @@ import {
 import { moduleBadgeCounts } from '@/lib/module-badges';
 import { useNotifications } from '@/modules/communication/client';
 import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/lib/settings/disabled-apps';
+import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
+import { applyFeatureCatalogToNavigation } from '@/modules/feature-catalog/client';
 
 export default function EhrTopRail() {
   const router = useRouter();
@@ -161,6 +163,7 @@ export default function EhrTopRail() {
   }, [mobileSearchOpen]);
 
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
+  const { config: platformConfig } = usePlatformConfig();
   const disabledRoutes = useSyncExternalStore(subscribeDisabledApps, getDisabledAppRoutes, getDisabledAppRoutes);
   const allowedRoutes = useMemo(() => roleConfig?.allowedRoutes || [], [roleConfig]);
   const homeHref = roleConfig?.defaultDashboard || '/dashboard';
@@ -183,9 +186,10 @@ export default function EhrTopRail() {
 
   const navItems = useMemo(() => {
     if (!currentUser) return [];
-    return uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
+    const authorized = uniqueAllowedNavItems(roleConfig?.navItems || [], allowedRoutes)
       .filter(item => !isAppDisabled(item.href, disabledRoutes));
-  }, [allowedRoutes, currentUser, roleConfig, disabledRoutes]);
+    return applyFeatureCatalogToNavigation(authorized, platformConfig?.featureCatalog);
+  }, [allowedRoutes, currentUser, roleConfig, disabledRoutes, platformConfig?.featureCatalog]);
 
   // Keep four high-frequency destinations visible in the header as shortcuts.
   // `homeHref` is passed so the role's own dashboard never takes one of the
@@ -209,19 +213,12 @@ export default function EhrTopRail() {
     return buildAddMenuEntries({ role: currentUser.role, allowedRoutes })
       .map(entry => ({ key: entry.key, label: entry.label, onSelect: () => router.push(entry.href) }));
   }, [currentUser, allowedRoutes, router, isFacilityConsole]);
-  const headerShortcutHrefs = useMemo(
-    () => new Set(headerShortcutItems.map(item => item.href)),
-    [headerShortcutItems],
-  );
-  // The menu drops what the rail already shows. These four sit in the row
-  // immediately to the right of the trigger on every page, so listing them
-  // again inside the panel it opens made the list longer without making
-  // anywhere new reachable — and the dashboard header below now carries the
-  // next five (getPageHeaderNavItems), so the shortest path to most
-  // destinations is already on screen before the menu is opened.
+  // This is the complete module directory. Rail shortcuts remain in the menu:
+  // a control labelled as the module menu must not silently omit destinations
+  // merely because another viewport happens to promote them nearby.
   const navGroups = useMemo(
-    () => groupNavItemsBySection(navItems.filter(item => !headerShortcutHrefs.has(item.href))),
-    [headerShortcutHrefs, navItems],
+    () => groupNavItemsBySection(navItems),
+    [navItems],
   );
 
   const navLabel = (item: NavItem): string => navItemLabel(item, t);

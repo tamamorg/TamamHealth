@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Allergies tab content — OpenMRS-style table (Allergen / Severity /
+ * Allergies tab content — Tamam-style table (Allergen / Severity /
  * Reaction / Comments). Reuses the SAME data derivation AllergyList uses
  * (`patient.structuredAllergies`, falling back to the legacy
  * `patient.allergies` string list) and the SAME service calls
@@ -42,10 +42,10 @@ const SEVERITY_LABEL: Record<string, string> = {
 /** Severity is the field a prescriber acts on, so it is graded rather than set
  *  in the same grey as everything else — severe reads as severe at a glance. */
 const SEVERITY_BADGE: Record<string, string> = {
-  severe: 'omrs-sev omrs-sev--severe',
-  moderate: 'omrs-sev omrs-sev--moderate',
-  mild: 'omrs-sev omrs-sev--mild',
-  unknown: 'omrs-sev omrs-sev--unknown',
+  severe: 'tamam-sev tamam-sev--severe',
+  moderate: 'tamam-sev tamam-sev--moderate',
+  mild: 'tamam-sev tamam-sev--mild',
+  unknown: 'tamam-sev tamam-sev--unknown',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -56,10 +56,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  active: 'omrs-panel-badge omrs-panel-badge--active',
-  inactive: 'omrs-panel-badge omrs-panel-badge--muted',
-  resolved: 'omrs-panel-badge omrs-panel-badge--done',
-  entered_in_error: 'omrs-panel-badge omrs-panel-badge--muted',
+  active: 'tamam-panel-badge tamam-panel-badge--active',
+  inactive: 'tamam-panel-badge tamam-panel-badge--muted',
+  resolved: 'tamam-panel-badge tamam-panel-badge--done',
+  entered_in_error: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
 const CLASSIFICATIONS: AllergyEntry['classification'][] = ['drug', 'food', 'environmental', 'biologic', 'other'];
@@ -194,7 +194,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   };
 
   const filterSlot = inactive.length > 0 ? (
-    <label className="omrs-section-filter">
+    <label className="tamam-section-filter">
       <input
         type="checkbox"
         checked={showInactive}
@@ -219,7 +219,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
           // means nobody has asked; NKDA means someone asked and the answer
           // was none — and a prescriber deciding on an antibiotic needs to
           // know which of the two they are looking at.
-          <p className="omrs-attestation">
+          <p className="tamam-attestation">
             <strong>No known drug allergies.</strong> Recorded at a medication review.
           </p>
         ) : rows.length === 0 ? (
@@ -230,7 +230,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
             disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
           />
         ) : (
-          <table className="omrs-table omrs-table--fixed omrs-table--interactive omrs-table--allergies">
+          <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--allergies">
             <colgroup>
               <col /><col /><col /><col /><col />
             </colgroup>
@@ -250,9 +250,9 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                   <tr
                     key={a.id}
                     {...clickable(() => setSelectedAllergy(a), { label: `Open allergy — ${a.substance}` })}
-                    className={`omrs-clickable-row${a.status === 'active' ? '' : ' is-retired'}`}
+                    className={`tamam-clickable-row${a.status === 'active' ? '' : ' is-retired'}`}
                   >
-                    <td className="omrs-cell-strong">{a.substance}</td>
+                    <td className="tamam-cell-strong">{a.substance}</td>
                     <td>
                       <span className={SEVERITY_BADGE[severity] || SEVERITY_BADGE.unknown}>
                         {SEVERITY_LABEL[severity]}
@@ -260,12 +260,12 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     </td>
                     <td>{a.reaction || '—'}</td>
                     <td>
-                      <span className="omrs-cell-cap">
+                      <span className="tamam-cell-cap">
                         {a.status !== 'active' && a.removalReason
-                          ? <span className="omrs-cell-note">Retired: {a.removalReason}</span>
+                          ? <span className="tamam-cell-note">Retired: {a.removalReason}</span>
                           : a.classification || '—'}
                       </span>
-                      {a.onsetDate && <div className="omrs-cell-sub">Onset {formatDate(a.onsetDate)}</div>}
+                      {a.onsetDate && <div className="tamam-cell-sub">Onset {formatDate(a.onsetDate)}</div>}
                     </td>
                     <td>
                       <span className={STATUS_BADGE[a.status] || STATUS_BADGE.inactive}>

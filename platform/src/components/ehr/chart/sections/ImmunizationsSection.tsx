@@ -178,7 +178,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
           />
         ) : (
           <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <table className="omrs-table omrs-table--fixed" style={{ minWidth: 840 }}>
+            <table className="tamam-table tamam-table--fixed" style={{ minWidth: 840 }}>
               <colgroup>
                 <col /><col /><col /><col /><col /><col /><col /><col />
               </colgroup>

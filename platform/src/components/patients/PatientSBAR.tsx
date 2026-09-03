@@ -11,8 +11,8 @@
  * This component composes the document from the live chart — no manual
  * entry. A nurse going off shift prints this; the night nurse reads it.
  *
- * Presentation mirrors the triage form the way it was filled: the OpenMRS
- * `omrs-reg` layout — a left step-nav rail (patient card + the same seven
+ * Presentation mirrors the triage form the way it was filled: the Tamam
+ * `tamam-reg` layout — a left step-nav rail (patient card + the same seven
  * sections the nurse fills, in the same order) beside stacked field slabs —
  * rendered read-only. So the handoff reads as the triage form itself rather
  * than as a separate document, with the priority badge and allergy strip
@@ -129,14 +129,14 @@ function RoField({ label, value, full }: { label: string; value?: React.ReactNod
   );
 }
 
-/** One OpenMRS-styled form section: heading + description over the field slab. */
+/** One Tamam-styled form section: heading + description over the field slab. */
 function FormSection({ id, title, description, children }: {
   id: string; title: string; description: string; children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="omrs-reg-section">
-      <div className="omrs-reg-sectionhead"><h2>{title}</h2><p>{description}</p></div>
-      <div className="omrs-reg-fields">{children}</div>
+    <section id={id} className="tamam-reg-section">
+      <div className="tamam-reg-sectionhead"><h2>{title}</h2><p>{description}</p></div>
+      <div className="tamam-reg-fields">{children}</div>
     </section>
   );
 }
@@ -284,12 +284,12 @@ export default function PatientSBAR({
   const priorityMeta = latestTriage ? priorityBadge(latestTriage.priority) : null;
 
   return (
-    <div id="patient-sbar-print" className="sbar-doc sbar-as-form omrs-reg triage-reg">
+    <div id="patient-sbar-print" className="sbar-doc sbar-as-form tamam-reg triage-reg">
       {/* No left rail: the chart's own rail already names this section, and the
           patient card repeated the header two rows above it. The record itself
           reads top to bottom, so the step-nav had nothing to navigate that
           scrolling doesn't. Print moves in beside the record it prints. */}
-      <div className="omrs-reg-form triage-reg-form sbar-as-form-body">
+      <div className="tamam-reg-form triage-reg-form sbar-as-form-body">
         {/* Print sits with the record now that the rail is gone. `no-print`
             keeps the control itself out of the printed sheet. */}
         <div className="sbar-form-actions no-print">

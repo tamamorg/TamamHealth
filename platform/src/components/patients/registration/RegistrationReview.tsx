@@ -46,13 +46,13 @@ export default function RegistrationReview({
   title, eyebrow, heading, photoUrl, photoAlt, groups, editLabel, onEdit, notice,
 }: RegistrationReviewProps) {
   return (
-    <section className="registration-section omrs-reg-section omrs-reg-review" id="reg-review">
-      <header className="omrs-reg-sectionhead">
+    <section className="registration-section tamam-reg-section tamam-reg-review" id="reg-review">
+      <header className="tamam-reg-sectionhead">
         <h2>{title}</h2>
       </header>
 
       <div className="registration-review-heading">
-        <div className="omrs-reg-reviewavatar">
+        <div className="tamam-reg-reviewavatar">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photoUrl} alt={photoAlt} />
@@ -68,9 +68,9 @@ export default function RegistrationReview({
 
       {notice}
 
-      <div className="omrs-reg-reviewgroups">
+      <div className="tamam-reg-reviewgroups">
         {groups.map(group => (
-          <section key={group.section} className="omrs-reg-reviewgroup">
+          <section key={group.section} className="tamam-reg-reviewgroup">
             <header>
               <h4>{group.title}</h4>
               <button type="button" onClick={() => onEdit(group.section)}>

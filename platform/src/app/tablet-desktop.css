@@ -471,10 +471,10 @@
   .cn-body { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
   .cn-sidebar { display: block !important; padding-inline: 8px; }
 
-  .omrs-rail-col { flex-basis: var(--tablet-rail) !important; width: var(--tablet-rail) !important; }
-  .omrs-rail-label { display: inline !important; }
-  .omrs-rail-item { justify-content: flex-start !important; padding: 9px 10px !important; }
-  .omrs-drawer { width: min(720px, 92vw) !important; }
+  .tamam-rail-col { flex-basis: var(--tablet-rail) !important; width: var(--tablet-rail) !important; }
+  .tamam-rail-label { display: inline !important; }
+  .tamam-rail-item { justify-content: flex-start !important; padding: 9px 10px !important; }
+  .tamam-drawer { width: min(720px, 92vw) !important; }
 
   .ehr-consult-workspace { flex-direction: row !important; overflow: hidden !important; }
   .ehr-consult-workspace > .ehr-consult-sidecar { width: clamp(210px, 28vw, 320px) !important; }

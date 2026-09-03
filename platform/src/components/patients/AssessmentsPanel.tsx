@@ -134,7 +134,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
       )}
 
       {assessments.length > 0 && (
-        <table className="omrs-table omrs-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -158,17 +158,17 @@ export default function AssessmentsPanel({ patient, focusId }: {
                   id={`assessment-${a._id}`}
                   style={a._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
                 >
-                  <td className="omrs-cell-strong">{a.instrumentName}</td>
+                  <td className="tamam-cell-strong">{a.instrumentName}</td>
                   <td>
                     <span className="font-bold" style={{ color: a.severity ? SEVERITY_COLOR[a.severity] : 'var(--text-secondary)' }}>
                       {a.totalScore}
                     </span>
-                    {a.interpretation ? <span className="omrs-cell-sub"> · {a.interpretation}</span> : null}
+                    {a.interpretation ? <span className="tamam-cell-sub"> · {a.interpretation}</span> : null}
                   </td>
                   <td>{a.answeredCount}/{a.questionCount}</td>
                   <td>
                     {a.enteredByName || '—'}
-                    {signed && a.signedByName && <div className="omrs-cell-sub">signed by {a.signedByName}</div>}
+                    {signed && a.signedByName && <div className="tamam-cell-sub">signed by {a.signedByName}</div>}
                   </td>
                   <td>{formatDateTime(a.createdAt)}</td>
                   <td>
@@ -179,7 +179,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
                     )}
                   </td>
                   <td>
-                    <span className={signed ? 'omrs-panel-badge omrs-panel-badge--done' : 'omrs-panel-badge omrs-panel-badge--pending'}>
+                    <span className={signed ? 'tamam-panel-badge tamam-panel-badge--done' : 'tamam-panel-badge tamam-panel-badge--pending'}>
                       {signed ? 'Signed' : 'Held'}
                     </span>
                   </td>

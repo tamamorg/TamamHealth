@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Bill detail — OpenMRS O3-style invoice workspace. Patient banner, bill
+ * Bill detail — Tamam O3-style invoice workspace. Patient banner, bill
  * actions (discount / add items / delete / finalize / print), the line-item
  * table, and the payments panel with a running totals sidebar.
  *

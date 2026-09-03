@@ -481,7 +481,7 @@ const MOVE_DESTINATIONS: { stage: QueueStage; label: string }[] = [
 ];
 
 /* Move dialog — destination, priority, and an audited comment. `Move` stays
-   disabled until something actually changes, mirroring the OpenMRS dialog. */
+   disabled until something actually changes, mirroring the Tamam dialog. */
 export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
   entry: QueueEntry;
   saving: boolean;
