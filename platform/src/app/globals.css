@@ -22587,6 +22587,24 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   margin-inline: auto;
 }
 
+/* Referrals on the registry card grid: four columns — the date rides under
+   the facility, so there is no Date track to hold. */
+.referrals-list-surface .appointment-card-head,
+.referrals-list-surface .appointment-card-row.ehr-appointment-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Laboratory on the registry card grid: five data columns, and for the roles
+   that work the bench a sixth Action track holding the next-step button. */
+.lab-list-surface .appointment-card-head,
+.lab-list-surface .appointment-card-row.ehr-appointment-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.lab-list-surface.has-actions .appointment-card-head,
+.lab-list-surface.has-actions .appointment-card-row.ehr-appointment-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 0.7fr);
+}
+
 @media (max-width: 720px) {
   .patients-list-surface {
     width: 100%;

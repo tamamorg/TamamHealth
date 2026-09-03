@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
-import PatientName from '@/components/PatientName';
+import Link from 'next/link';
+import PatientAvatar from '@/components/patients/PatientAvatar';
+import { patientAgeLabel } from '@/lib/patient-utils';
 import EmptyState from '@/components/EmptyState';
 import Badge, { toneForStatus } from '@/components/Badge';
 import {
@@ -33,6 +35,19 @@ import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 
 const isImage = (mimeType: string) => mimeType.startsWith('image/');
+
+/** Initials plate for a row whose patient doc is outside this device's scope
+ *  (PatientAvatar needs the doc) — same fallback the transfers queue draws. */
+const INITIALS_PLATE_STYLE = {
+  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  background: 'var(--overlay-subtle)', color: 'var(--text-secondary)',
+  fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+} as const;
+
+function nameInitials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
 
 /**
  * The route cell's age line: elapsed time ("2h 15m ago") while the referral is
@@ -638,10 +653,21 @@ export default function ReferralsPage() {
             }
           />
 
-          {/* `ehr-list-scroll` carries the shared worklist row language (the
-              appointments board's card rows, 16px gutter, sticky quiet header)
-              so this list looks the same as every other module. */}
-          <div className="ehr-list-scroll">
+          {/* The registry's card grid (see patients/page.tsx) — identical
+              head, row anatomy and trailing right-aligned Status column, so
+              referrals read in the same list language as the registry. */}
+          <div className="appointment-card-surface patients-list-surface referrals-list-surface">
+            <div className="appointment-card-flow">
+            {/* The column head is the list's frame, not a label for whichever
+                rows happen to be loaded — it stays put when nothing matches. */}
+            <div className="appointment-card-head" aria-hidden="true">
+              <span>Patient</span>
+              {/* One side of the route is always the viewer's own facility, so
+                  the column names only the counterpart. */}
+              <span>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</span>
+              <span>Context</span>
+              <span>Status</span>
+            </div>
             {filteredReferrals.length === 0 ? (
               <div className="p-8">
                 <EmptyState
@@ -654,30 +680,7 @@ export default function ReferralsPage() {
                 />
               </div>
             ) : (
-            <table className="data-table referral-table" style={{ minWidth: 1040 }}>
-              {/* Patient absorbs the old Hospital ID column (the ID now sits
-                  under the name), so it takes that width back. */}
-              {/* Four equal columns; the referral date rides under the
-                  facility in the route cell, where its old dedicated column
-                  right-aligned one short value across a fifth of the table. */}
-              <colgroup>
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '25%' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>Patient</th>
-                  {/* One side of the route is always the viewer's own
-                      facility, so the column names only the counterpart:
-                      who sent it (incoming) or where it went (outgoing). */}
-                  <th>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</th>
-                  <th>Context</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
                 {filteredReferrals.map(ref => {
                 const tp = ref.transferPackage as TransferPackage | undefined;
                 const hasPatientChart = isRealPatient(ref.patientId) && !!patientById.get(ref.patientId);
@@ -716,33 +719,40 @@ export default function ReferralsPage() {
                   ] : []),
                 ];
                 return (
-                  <Fragment key={ref._id}>
-                    <tr
-                      className="cursor-pointer hover:bg-[var(--table-row-hover)]"
-                      tabIndex={0}
-                      onClick={e => setRowMenu(rowActionsAt(e, rowActions))}
-                      onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions)); } }}
-                    >
-                      {/* Same identity cell the lab queue and the registry use:
-                          avatar, name, facility ID beneath — which is what the
-                          separate "Hospital ID" column used to carry. */}
-                      <td>
-                        <PatientName
-                          patient={patientById.get(ref.patientId)}
-                          patientId={isRealPatient(ref.patientId) ? ref.patientId : undefined}
-                          name={ref.patientName}
-                          showAvatar
-                          size={40}
-                          secondaryText={hospitalNoFor(ref.patientId)}
-                          nameClassName="font-semibold text-sm"
-                        />
-                      </td>
-                      {/* Only the OTHER facility: our own side of the route is
-                          the same on every row of the tab, so it says nothing.
-                          The tooltip keeps the full A → B for anyone checking. */}
-                      <td>
-                        <div className="ehr-list-main" title={`${ref.fromHospital} → ${ref.toHospital}`}>
-                          <strong>{activeTab === 'incoming' ? ref.fromHospital : ref.toHospital}</strong>
+                  <div
+                    key={ref._id}
+                    className="ehr-appointment-row appointment-card-row"
+                    role="button"
+                    tabIndex={0}
+                    onClick={e => setRowMenu(rowActionsAt(e, rowActions))}
+                    onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions)); } }}
+                  >
+                    {/* The registry's identity cell: avatar plate, linked
+                        name, ID · age · gender beneath. */}
+                    <div className="ehr-appointment-identity">
+                      {patientById.get(ref.patientId) ? (
+                        <PatientAvatar patient={patientById.get(ref.patientId)!} size={40} />
+                      ) : (
+                        <span aria-hidden="true" style={INITIALS_PLATE_STYLE}>{nameInitials(ref.patientName)}</span>
+                      )}
+                      <div className="ehr-appointment-main appointment-card-patient">
+                        {hasPatientChart ? (
+                          <Link href={`/patients/${ref.patientId}?tab=referrals`} {...stopsClickPropagation}>{ref.patientName}</Link>
+                        ) : (
+                          <strong>{ref.patientName}</strong>
+                        )}
+                        <p>
+                          {[hospitalNoFor(ref.patientId),
+                            patientById.get(ref.patientId) && patientAgeLabel(patientById.get(ref.patientId)!),
+                            patientById.get(ref.patientId)?.gender].filter(Boolean).join(' \u00b7 ')}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Only the OTHER facility: our own side of the route is
+                        the same on every row of the tab, so it says nothing.
+                        The tooltip keeps the full A → B for anyone checking. */}
+                    <div className="appointment-card-provider" title={`${ref.fromHospital} → ${ref.toHospital}`}>
+                      <strong>{activeTab === 'incoming' ? ref.fromHospital : ref.toHospital}</strong>
                           {/* The referral's age rides under the facility — it
                               replaces the dedicated Date column. Fresh rows
                               read as elapsed time ("2h 15m ago"); once the
@@ -753,41 +763,34 @@ export default function ReferralsPage() {
                               referral's own date — a doc seeded or imported
                               later has a fresh createdAt on an old referral,
                               which read as "16s ago" on February rows. */}
-                          <small title={ref.referralDate}>{referralAgeLabel(ref)}</small>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="appointment-card-provider">
-                          <strong>{ref.department || 'Department unassigned'}</strong>
-                          <span>Referral service</span>
-                        </div>
-                      </td>
-                      {/* The registry's trailing stack: status pill with the
-                          urgency as the small operational cue beneath it. */}
-                      <td>
-                        <div className="flex flex-col items-start gap-1">
-                          <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
-                            {getStatusLabel(ref.status)}
-                          </span>
-                          <small className="text-[11px] font-semibold whitespace-nowrap" style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
-                            {t(`referrals.urgency_${ref.urgency}`)}
-                          </small>
-                          {tp && (
-                            <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
-                              <Package className="w-3 h-3" /> {t('referrals.dataPackage')}
-                            </span>
-                          )}
-                        </div>
-                        </td>
-                    </tr>
-
-                  </Fragment>
+                      <span title={ref.referralDate}>{referralAgeLabel(ref)}</span>
+                    </div>
+                    <div className="appointment-card-provider">
+                      <strong>{ref.department || 'Department unassigned'}</strong>
+                      <span>Referral service</span>
+                    </div>
+                    {/* The registry's trailing stack: status pill with the
+                        urgency as the small operational cue beneath it. */}
+                    <div className="appointment-card-status">
+                      <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
+                        {getStatusLabel(ref.status)}
+                      </span>
+                      <small style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
+                        {t(`referrals.urgency_${ref.urgency}`)}
+                      </small>
+                      {tp && (
+                        <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--tamamhealth-blue)', border: '1px solid var(--accent-border)' }}>
+                          <Package className="w-3 h-3" /> {t('referrals.dataPackage')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
-              </tbody>
-            </table>
+            </>
             )}
             <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
+            </div>
           </div>
         </div>
 

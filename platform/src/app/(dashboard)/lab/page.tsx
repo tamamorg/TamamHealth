@@ -5,11 +5,12 @@ import TableCols from '@/components/TableCols';
 import { useSearchParams } from 'next/navigation';
 import { formatCompactDateTime } from '@/lib/format-utils';
 import Modal from '@/components/Modal';
-import PatientName from '@/components/PatientName';
+import Link from 'next/link';
+import PatientAvatar from '@/components/patients/PatientAvatar';
+import { patientAgeLabel } from '@/lib/patient-utils';
 import Badge from '@/components/Badge';
-import EmptyState from '@/components/EmptyState';
 import { useRouter } from 'next/navigation';
-import { FlaskConical, X, Plus, Radio } from '@/components/icons/lucide';
+import { X, Plus, Radio } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
@@ -106,6 +107,19 @@ function isScheduledCollection(o: LabResultDoc): boolean {
 
 function isCollectionDue(o: LabResultDoc): boolean {
   return isScheduledCollection(o) && new Date(o.scheduledCollectionAt!).getTime() <= Date.now();
+}
+
+/** Initials plate for a row whose patient doc is outside this device's scope
+ *  (PatientAvatar needs the doc) — same fallback the transfers queue draws. */
+const INITIALS_PLATE_STYLE = {
+  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  background: 'var(--overlay-subtle)', color: 'var(--text-secondary)',
+  fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+} as const;
+
+function nameInitials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
 function fallbackAccessionNumber(order: Pick<LabResultDoc, '_id' | 'accessionNumber' | 'orderedAt'>): string {
@@ -269,23 +283,6 @@ export default function LabPage() {
   // Field style for the selects inside the header's Filters popover (mirrors
   // the patients registry's Filters panel fields).
   const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
-  // `width` is a share, not a percentage — it is normalised against the row's
-  // own total below, so the two shapes of this table (with and without the
-  // Action column) each add up without a second set of numbers. There is no
-  // Time column — the order time sits under the ordering clinician, and each
-  // status change reports its own time under the status pill. There is no
-  // Result column either: values are read on the patient chart's Labs tab
-  // (which every row click opens), not scanned across a worklist.
-  const labCols: { key: string; label: string; width: number }[] = [
-    { key: 'patient', label: t('lab.patient'), width: 22 },
-    { key: 'test', label: t('lab.testName'), width: 21 },
-    { key: 'specimen', label: t('lab.specimen'), width: 11 },
-    { key: 'status', label: t('lab.status'), width: 14 },
-    { key: 'orderedBy', label: t('lab.orderedByLabel'), width: 17 },
-    ...(canEnterLabResults ? [{ key: 'action', label: t('lab.action'), width: 14 }] : []),
-  ];
-  const labColTotal = labCols.reduce((sum, c) => sum + c.width, 0);
-
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -376,123 +373,109 @@ export default function LabPage() {
                 </>
               }
             />
-            {/* `ehr-list-scroll` carries the shared worklist row language (the
-                appointments board's card rows, 16px gutter, sticky quiet
-                header) so this queue looks the same as every other module. */}
-          <div className="ehr-list-scroll">
-            {/* `table-layout: fixed` is what makes the colgroup binding: without
-                it the browser re-sizes each column from its content. */}
-            <table className="data-table" style={{ minWidth: 1040, tableLayout: 'fixed' }}>
-              <colgroup>
-                {labCols.map(c => (
-                  <col key={c.key} style={{ width: `${(c.width / labColTotal * 100).toFixed(2)}%` }} />
-                ))}
-              </colgroup>
-              <thead>
-                <tr>
-                  {labCols.map(c => (
-                    <th key={c.key} className={c.key === 'action' ? 'is-right' : undefined}>
-                      <span className="whitespace-nowrap">{c.label}</span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedFiltered.map(order => {
-                  return (
-                  <tr
+            {/* The registry's card grid (see patients/page.tsx) — identical
+                head, row anatomy, and trailing right-aligned Status column, so
+                the bench queue reads in the same list language as the rest of
+                the app. Result values are deliberately absent: they are read
+                on the chart's Labs tab, which every row click opens. */}
+          <div className={`appointment-card-surface patients-list-surface lab-list-surface${canEnterLabResults ? ' has-actions' : ''}`}>
+            <div className="appointment-card-flow">
+              <div className="appointment-card-head" aria-hidden="true">
+                <span>{t('lab.patient')}</span>
+                <span>{t('lab.testName')}</span>
+                <span>{t('lab.specimen')}</span>
+                <span>{t('lab.orderedByLabel')}</span>
+                <span>{t('lab.status')}</span>
+                {canEnterLabResults && <span>{t('lab.action')}</span>}
+              </div>
+              {!labLoading && sortedFiltered.length === 0 && (
+                <div className="appointment-card-empty">
+                  {anyFilterActive ? t('lab.noPatientsMatch') : t('lab.noPendingOrders')}
+                </div>
+              )}
+              {sortedFiltered.map(order => {
+                const rowPatient = patientById.get(order.patientId);
+                const stage = effOrderStatus(order);
+                const changedAt = STAGE_CHANGED_AT[stage]?.(order);
+                const openChart = () => {
+                  if (order.patientId) router.push(`/patients/${order.patientId}?tab=labs&focus=${order._id}`);
+                };
+                return (
+                  <div
                     key={order._id}
-                    className="cursor-pointer"
-                    onClick={() => { if (order.patientId) router.push(`/patients/${order.patientId}?tab=labs&focus=${order._id}`); }}
+                    className="ehr-appointment-row appointment-card-row"
+                    role="button"
+                    tabIndex={0}
+                    onClick={openChart}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChart(); } }}
                   >
-                    <td>
-                      <PatientName
-                        patient={patientById.get(order.patientId)}
-                        patientId={order.patientId}
-                        name={order.patientName}
-                        showAvatar
-                        size={40}
-                        secondaryText={order.hospitalNumber || 'ID not recorded'}
-                        nameClassName="text-sm"
-                      />
-                    </td>
-                    <td className="font-semibold text-sm">
-                      {order.testName}
-                      {order.tier && (
-                        <Badge tone={order.tier === 'special' ? 'accent' : 'neutral'} uppercase className="ms-2 align-middle">{order.tier}</Badge>
+                    <div className="ehr-appointment-identity">
+                      {rowPatient ? (
+                        <PatientAvatar patient={rowPatient} size={40} />
+                      ) : (
+                        <span aria-hidden="true" style={INITIALS_PLATE_STYLE}>{nameInitials(order.patientName)}</span>
                       )}
-                    </td>
-                    <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      <div>{order.specimen}</div>
-                      <div className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        {order.accessionNumber || fallbackAccessionNumber(order)}
+                      <div className="ehr-appointment-main appointment-card-patient">
+                        {order.patientId ? (
+                          <Link href={`/patients/${order.patientId}?tab=labs&focus=${order._id}`} {...stopsClickPropagation}>
+                            {order.patientName}
+                          </Link>
+                        ) : (
+                          <strong>{order.patientName}</strong>
+                        )}
+                        <p>
+                          {[order.hospitalNumber || 'ID not recorded',
+                            rowPatient && patientAgeLabel(rowPatient),
+                            rowPatient?.gender].filter(Boolean).join(' \u00b7 ')}
+                        </p>
                       </div>
-                    </td>
-                    <td>
-                      {(() => {
-                        const stage = effOrderStatus(order);
-                        const changedAt = STAGE_CHANGED_AT[stage]?.(order);
-                        return (
-                          <div className="flex flex-col items-start gap-1">
-                            <span className={`appointment-status-pill ${STAGE_PILL_CLASS[stage]}`}>
-                              {ORDER_STAGE_LABEL[stage]}
-                            </span>
-                            {changedAt && (
-                              <small className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-                                {formatCompactDateTime(changedAt)}
-                              </small>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    {/* The registry's primary/secondary stack: who ordered it,
-                        and when, in the compact "Aug 27 · 19:42" form. */}
-                    <td>
-                      <div className="ehr-list-main">
-                        <strong>{order.orderedBy}</strong>
-                        <small>{formatCompactDateTime(order.orderedAt)}</small>
-                      </div>
-                    </td>
+                    </div>
+
+                    <div className="appointment-card-provider">
+                      <strong>{order.testName}</strong>
+                      {order.tier && <span className="capitalize">{order.tier} tier</span>}
+                    </div>
+
+                    <div className="appointment-card-provider">
+                      <strong>{order.specimen}</strong>
+                      <span>{order.accessionNumber || fallbackAccessionNumber(order)}</span>
+                    </div>
+
+                    <div className="appointment-card-provider">
+                      <strong>{order.orderedBy}</strong>
+                      <span>{formatCompactDateTime(order.orderedAt)}</span>
+                    </div>
+
+                    {/* With an Action track holding the right edge, Status sits
+                        mid-table and aligns under its own head. */}
+                    <div className={`appointment-card-status${canEnterLabResults ? ' appointment-card-status--start' : ''}`}>
+                      <span className={`appointment-status-pill ${STAGE_PILL_CLASS[stage]}`}>
+                        {ORDER_STAGE_LABEL[stage]}
+                      </span>
+                      {changedAt && <small>{formatCompactDateTime(changedAt)}</small>}
+                    </div>
+
                     {canEnterLabResults && (
-                      <td className="is-right" {...stopsClickPropagation}>
-                        {(() => {
-                          // Lab work happens in the chart, not in a popup: the
-                          // technician needs the patient around the result
-                          // (allergies, problems, the rest of the panel), and
-                          // the six bench steps live there. This column just
-                          // names the next step and links straight to it.
-                          const step = stepForStage(effOrderStatus(order));
-                          const openWorkflow = () => {
-                            if (!order.patientId) return;
-                            router.push(`/patients/${order.patientId}?tab=labs&focus=${order._id}`);
-                          };
-                          return (
-                            <button
-                              className="btn btn-primary btn-sm"
-                              style={{ padding: '4px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                              onClick={openWorkflow}
-                              disabled={!order.patientId}
-                            >
-                              {t(LAB_WORKFLOW_STEP_LABEL[step])}
-                            </button>
-                          );
-                        })()}
-                      </td>
+                      <div className="appointment-card-status" {...stopsClickPropagation}>
+                        {/* Lab work happens in the chart, not in a popup: the
+                            technician needs the patient around the result, and
+                            the six bench steps live there. This button just
+                            names the next step and links straight to it. */}
+                        <button
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '4px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                          onClick={openChart}
+                          disabled={!order.patientId}
+                        >
+                          {t(LAB_WORKFLOW_STEP_LABEL[stepForStage(stage)])}
+                        </button>
+                      </div>
                     )}
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {!labLoading && sortedFiltered.length === 0 && (
-              <EmptyState
-                icon={FlaskConical}
-                title={t('lab.noPendingOrders')}
-                message={anyFilterActive ? t('lab.noPatientsMatch') : t('lab.infoSystemSubtitle')}
-              />
-            )}
+                  </div>
+                );
+              })}
             </div>
+          </div>
           </div>
 
           {/* Import from Analyzer Modal */}
