@@ -1614,7 +1614,14 @@
 
 .tamam-drawer {
   position: fixed;
-  top: 0;
+  /* Below the app's top rail, which is fixed at z-index 1200 — far above this
+     drawer. Anchored at 0 the drawer's own header (title, expand, close) and
+     the first 20px of the note header were painted underneath the rail, so
+     the editor opened with its title clipped and no visible way to close it.
+     `--app-overlay-top-inset` is the offset every fixed overlay (toasts, the
+     module menu) hangs from: it tracks the rail's rendered height, where the
+     older `--ehr-top-rail-height` alias still says 60px under a 72px rail. */
+  top: var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px));
   right: 0;
   bottom: 0;
   width: 420px;

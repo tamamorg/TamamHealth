@@ -468,7 +468,10 @@
 
   .ehr-chart-content { grid-column: 2 !important; padding-inline: 10px !important; }
 
-  .cn-body { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
+  /* Not the chart drawer's editor: it has no rail (`.cn-body--without-sidebar`),
+     and the tablet split gave its single column the rail's 196px, squeezing the
+     whole note into a strip a fifth of the drawer wide. */
+  .cn-body:not(.cn-body--without-sidebar) { grid-template-columns: var(--tablet-rail) minmax(0, 1fr) !important; }
   .cn-sidebar { display: block !important; padding-inline: 8px; }
 
   .tamam-rail-col { flex-basis: var(--tablet-rail) !important; width: var(--tablet-rail) !important; }

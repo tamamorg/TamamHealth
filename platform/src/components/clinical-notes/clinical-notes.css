@@ -101,7 +101,11 @@
   min-width: 0;
   border: 1px solid var(--cn-line);
   border-radius: 6px;
-  background: var(--cn-band);
+  /* A faint ink wash rather than `--cn-band`: inside the chart the page tint
+     resolves to plain white, and a white bar on a white header has nothing
+     for a hovered cell to lift out of. Mixed from the ink so it follows the
+     theme instead of pinning a literal grey. */
+  background: color-mix(in srgb, var(--cn-ink) 4%, var(--cn-panel));
   /* Clips a cell's hover/focus fill to the bar's rounded corners. The pickers
      the cells open are portalled to <body>, so nothing of theirs is cut. */
   overflow: hidden;
@@ -111,6 +115,7 @@
    margin reset matters — globals.css gives every label a 6px bottom margin,
    `display: block` and uppercase caps; the caption span resets the type. */
 .cn-header .cn-field {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -119,7 +124,7 @@
   margin: 0;
   padding: 0 12px;
   border-right: 1px solid var(--cn-line);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 .cn-header .cn-field:last-child { border-right: 0; }
 
@@ -135,11 +140,18 @@
 
 /* Interaction lives on the cell. Hover lifts it to white; focus adds the
    chart's accent underline (its section-title motif) instead of a ring around
-   the naked control inside. */
+   the naked control inside. The underline is a pseudo-element, not an inset
+   box-shadow: globals.css flattens the whole app with
+   `*, ::before, ::after { box-shadow: none !important }`. */
 .cn-header .cn-field:not(:has(:disabled)):hover { background: var(--cn-panel); }
-.cn-header .cn-field:focus-within {
-  background: var(--cn-panel);
-  box-shadow: inset 0 -2px 0 var(--cn-teal);
+.cn-header .cn-field:focus-within { background: var(--cn-panel); }
+.cn-header .cn-field:focus-within::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--cn-teal);
+  pointer-events: none;
 }
 
 /* The control dissolves into its cell. Everything that paints a box is stated
@@ -248,9 +260,11 @@
 }
 .cn-header .cn-field .cn-assign-trigger:disabled svg { display: none; }
 
-/* Narrow hosts (the chart drawer on a small screen, the standalone page next
-   to its rail) fold the strip to two cells a row. */
-@container (max-width: 640px) {
+/* Narrow hosts fold the strip to two cells a row. The four cells need about
+   800px before the assignee's flexible cell has room for a full name — the
+   chart drawer is 92vw on a laptop (720px at 1024 wide), and there the last
+   cell was 127px and read "D…". */
+@container (max-width: 819px) {
   .cn-header-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .cn-header .cn-field:nth-child(2n) { border-right: 0; }
   .cn-header .cn-field:nth-child(-n + 2) { border-bottom: 1px solid var(--cn-line); }
