@@ -1884,7 +1884,7 @@ export interface ANCVisitDoc extends BaseDoc {
   motherAge: number;
   gravida: number;
   parity: number;
-  visitNumber: number; // 1-8 (WHO recommends 8 contacts)
+  visitNumber: number; // Contact sequence; WHO recommends at least 8 contacts
   visitDate: string;
   gestationalAge: number; // weeks
   facilityId: string;

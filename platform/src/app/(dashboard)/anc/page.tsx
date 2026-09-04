@@ -11,6 +11,7 @@ import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useToast } from '@/components/Toast';
 import type { ANCVisitDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Modal from '@/components/Modal';
@@ -21,6 +22,12 @@ import {
 import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import {
+  createAncRegistrationForm,
+  deriveAncPatientPrefill,
+  missingAncRequiredFields,
+  type AncRiskLevel,
+} from '@/lib/forms/anc-form-policy';
 
 const RISK_FACTOR_OPTIONS = [
   'hypertension', 'anemia', 'previous_csection', 'multiple_pregnancy',
@@ -41,6 +48,7 @@ export default function ANCPage() {
   const { visits, stats, loading, register, update } = useANC();
   const { patients } = usePatients();
   const { canRecordVitalEvents } = usePermissions();
+  const { showToast } = useToast();
   // Programme analytics (summary cards + ANC continuum funnel) are a population
   // view for facility management and the Ministry of Health. Clinical roles keep
   // the data recordings, workflow, and the mother/visit data.
@@ -58,18 +66,19 @@ export default function ANCPage() {
   const [selectedMother, setSelectedMother] = useState<string | null>(null);
   const [patientLookup, setPatientLookup] = useState('');
 
-  const [form, setForm] = useState({
-    motherId: '', motherName: '', motherAge: 25, gravida: 1, parity: 0,
-    visitNumber: 1, visitDate: todayIso(), gestationalAge: 12,
-    bloodPressure: '', weight: 0, fundalHeight: 0, fetalHeartRate: 0,
-    hemoglobin: 0, urineProtein: 'Negative', bloodGroup: 'O', rhFactor: '+',
-    hivStatus: 'Not tested', malariaTest: 'Negative', syphilisTest: 'Non-reactive',
-    ironFolateGiven: true, tetanusVaccine: false, iptpDose: 0,
-    riskFactors: [] as string[], riskLevel: 'low' as 'low' | 'moderate' | 'high',
-    birthPlanFacility: '', birthPlanTransport: '', birthPlanBloodDonor: '',
-    nextVisitDate: '', notes: '',
-  });
+  const [form, setForm] = useState(() => createAncRegistrationForm(todayIso()));
   const [linkedPatientId, setLinkedPatientId] = useState<string | undefined>(undefined);
+
+  const resetRegistrationForm = () => {
+    setForm(createAncRegistrationForm(todayIso()));
+    setLinkedPatientId(undefined);
+    setPatientLookup('');
+  };
+
+  const closeRegistrationForm = () => {
+    setShowModal(false);
+    resetRegistrationForm();
+  };
 
   // Filter to female patients of childbearing age (10-55) for the lookup
   const patientMatches = useMemo(() => {
@@ -91,14 +100,13 @@ export default function ANCPage() {
   const selectAncPatient = (id: string) => {
     const p = patients.find(x => x._id === id);
     if (!p) return;
-    const age = patientAge(p) ?? form.motherAge;
+    const age = patientAge(p);
     setLinkedPatientId(p._id);
-    setForm(f => ({
-      ...f,
-      motherId: p._id, // re-use patient id so birth-service linkage works
-      motherName: `${p.firstName || ''} ${p.surname || ''}`.trim(),
-      motherAge: age || f.motherAge,
-    }));
+    setForm(current => deriveAncPatientPrefill(current, {
+      patientId: p._id,
+      patientName: `${p.firstName || ''} ${p.surname || ''}`.trim(),
+      age: age ?? undefined,
+    }, visits));
     setPatientLookup('');
   };
 
@@ -171,34 +179,38 @@ export default function ANCPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (missingAncRequiredFields(form).length > 0) {
+      showToast(t('patientNew.toastFillRequired'), 'error');
+      return;
+    }
     await register({
       motherId: form.motherId || `mother-new-${Date.now()}`,
       motherName: form.motherName,
-      motherAge: form.motherAge,
-      gravida: form.gravida,
-      parity: form.parity,
+      motherAge: Number(form.motherAge),
+      gravida: Number(form.gravida),
+      parity: Number(form.parity),
       visitNumber: form.visitNumber,
       visitDate: form.visitDate,
-      gestationalAge: form.gestationalAge,
+      gestationalAge: Number(form.gestationalAge),
       facilityId: currentUser?.hospitalId || '',
       facilityName: currentUser?.hospitalName || '',
       state: currentUser?.hospital?.state || '',
       bloodPressure: form.bloodPressure,
-      weight: form.weight,
-      fundalHeight: form.fundalHeight,
-      fetalHeartRate: form.fetalHeartRate,
-      hemoglobin: form.hemoglobin,
+      weight: Number(form.weight),
+      fundalHeight: Number(form.fundalHeight),
+      fetalHeartRate: Number(form.fetalHeartRate),
+      hemoglobin: Number(form.hemoglobin),
       urineProtein: form.urineProtein,
       bloodGroup: form.bloodGroup,
       rhFactor: form.rhFactor,
       hivStatus: form.hivStatus,
       malariaTest: form.malariaTest,
       syphilisTest: form.syphilisTest,
-      ironFolateGiven: form.ironFolateGiven,
-      tetanusVaccine: form.tetanusVaccine,
-      iptpDose: form.iptpDose,
+      ironFolateGiven: form.ironFolateGiven === true,
+      tetanusVaccine: form.tetanusVaccine === true,
+      iptpDose: Number(form.iptpDose),
       riskFactors: form.riskFactors,
-      riskLevel: form.riskLevel,
+      riskLevel: form.riskLevel as ANCVisitDoc['riskLevel'],
       birthPlan: { facility: form.birthPlanFacility, transport: form.birthPlanTransport, bloodDonor: form.birthPlanBloodDonor },
       nextVisitDate: form.nextVisitDate,
       notes: form.notes,
@@ -207,8 +219,7 @@ export default function ANCPage() {
       patientId: linkedPatientId,
     });
     setShowModal(false);
-    setLinkedPatientId(undefined);
-    setPatientLookup('');
+    resetRegistrationForm();
   };
 
   // Persist a correction to a saved ANC visit, then close the edit modal.
@@ -496,11 +507,11 @@ export default function ANCPage() {
 
         {/* Registration Modal */}
         {showModal && (
-          <Modal onClose={() => setShowModal(false)} width={672} labelledBy="anc-registration-title">
+          <Modal onClose={closeRegistrationForm} width={672} labelledBy="anc-registration-title">
             <div className="modal-panel p-6 w-full overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
                 <h3 id="anc-registration-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Register ANC Visit</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
+                <button type="button" onClick={closeRegistrationForm} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
                   <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                 </button>
               </div>
@@ -521,7 +532,7 @@ export default function ANCPage() {
                             <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{lp?.firstName} {lp?.surname}</p>
                             <p style={{ color: 'var(--text-muted)' }}>{lp?.hospitalNumber}{lp?.estimatedAge ? ` · ${lp.estimatedAge}y` : ''}</p>
                           </div>
-                          <button type="button" onClick={() => { setLinkedPatientId(undefined); setForm(f => ({ ...f, motherId: '' })); }} className="text-[10px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Unlink</button>
+                          <button type="button" onClick={resetRegistrationForm} className="text-[10px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Unlink</button>
                         </div>
                       );
                     })()
@@ -570,25 +581,25 @@ export default function ANCPage() {
                     </div>
                     <div>
                       <label>Age</label>
-                      <input type="number" min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: parseInt(e.target.value, 10) || 0 })} />
+                      <input type="number" required min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                     <div>
                       <label>Gravida</label>
-                      <input type="number" min={1} max={20} value={form.gravida} onChange={e => setForm({ ...form, gravida: parseInt(e.target.value, 10) || 0 })} />
+                      <input type="number" required min={1} max={20} value={form.gravida} onChange={e => setForm({ ...form, gravida: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                     <div>
                       <label>Parity</label>
-                      <input type="number" min={0} max={20} value={form.parity} onChange={e => setForm({ ...form, parity: parseInt(e.target.value, 10) || 0 })} />
+                      <input type="number" required min={0} max={20} value={form.parity} onChange={e => setForm({ ...form, parity: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                     <div>
                       <label>Visit #</label>
-                      <input type="number" min={1} max={8} value={form.visitNumber} onChange={e => setForm({ ...form, visitNumber: parseInt(e.target.value, 10) || 0 })} />
+                      <input type="number" min={1} max={20} value={form.visitNumber} onChange={e => setForm({ ...form, visitNumber: parseInt(e.target.value, 10) || 0 })} />
                     </div>
                     <div>
                       <label>GA (weeks)</label>
-                      <input type="number" min={4} max={44} value={form.gestationalAge} onChange={e => setForm({ ...form, gestationalAge: parseInt(e.target.value, 10) || 0 })} />
+                      <input type="number" required min={4} max={44} value={form.gestationalAge} onChange={e => setForm({ ...form, gestationalAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                 </div>
@@ -603,38 +614,38 @@ export default function ANCPage() {
                     </div>
                     <div>
                       <label>Weight (kg)</label>
-                      <input type="number" step="0.1" value={form.weight || ''} onChange={e => setForm({ ...form, weight: parseFloat(e.target.value) })} />
+                      <input type="number" step="0.1" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
                     </div>
                     <div>
                       <label>Fundal Height</label>
-                      <input type="number" value={form.fundalHeight || ''} onChange={e => setForm({ ...form, fundalHeight: parseInt(e.target.value) })} />
+                      <input type="number" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                     <div>
                       <label>Fetal HR (bpm)</label>
-                      <input type="number" value={form.fetalHeartRate || ''} onChange={e => setForm({ ...form, fetalHeartRate: parseInt(e.target.value) })} />
+                      <input type="number" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                     <div>
                       <label>Hemoglobin</label>
-                      <input type="number" step="0.1" value={form.hemoglobin || ''} onChange={e => setForm({ ...form, hemoglobin: parseFloat(e.target.value) })} />
+                      <input type="number" step="0.1" value={form.hemoglobin} onChange={e => setForm({ ...form, hemoglobin: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
                     </div>
                     <div>
                       <label>Urine Protein</label>
-                      <Select value={form.urineProtein} onChange={e => setForm({ ...form, urineProtein: e.target.value })}>
-                        <option>Negative</option><option>Trace</option><option>+</option><option>++</option><option>+++</option>
+                      <Select required value={form.urineProtein} onChange={e => setForm({ ...form, urineProtein: e.target.value })}>
+                        <option value="" disabled>{t('common.select')}</option><option value="Not tested">{t('anc.optNotTested')}</option><option value="Negative">{t('anc.optNegative')}</option><option value="Trace">{t('anc.optTrace')}</option><option>+</option><option>++</option><option>+++</option>
                       </Select>
                     </div>
                     <div>
                       <label>Blood Group</label>
-                      <Select value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value })}>
-                        <option>O</option><option>A</option><option>B</option><option>AB</option>
+                      <Select required value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value })}>
+                        <option value="" disabled>{t('common.select')}</option><option value="Unknown">{t('anc.optUnknown')}</option><option>O</option><option>A</option><option>B</option><option>AB</option>
                       </Select>
                     </div>
                     <div>
                       <label>Rh Factor</label>
-                      <Select value={form.rhFactor} onChange={e => setForm({ ...form, rhFactor: e.target.value })}>
-                        <option>+</option><option>-</option>
+                      <Select required value={form.rhFactor} onChange={e => setForm({ ...form, rhFactor: e.target.value })}>
+                        <option value="" disabled>{t('common.select')}</option><option value="Unknown">{t('anc.optUnknown')}</option><option>+</option><option>-</option>
                       </Select>
                     </div>
                   </div>
@@ -663,18 +674,22 @@ export default function ANCPage() {
                       </Select>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 mt-3">
-                    <label className="flex items-center gap-2 cursor-pointer" style={{ textTransform: 'none', fontSize: '0.875rem' }}>
-                      <input type="checkbox" checked={form.ironFolateGiven} onChange={e => setForm({ ...form, ironFolateGiven: e.target.checked })} className="w-4 h-4" />
-                      Iron/Folate given
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer" style={{ textTransform: 'none', fontSize: '0.875rem' }}>
-                      <input type="checkbox" checked={form.tetanusVaccine} onChange={e => setForm({ ...form, tetanusVaccine: e.target.checked })} className="w-4 h-4" />
-                      Tetanus vaccine
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <label style={{ textTransform: 'none', fontSize: '0.875rem', marginBottom: 0 }}>IPTp Dose:</label>
-                      <input type="number" min={0} max={5} value={form.iptpDose} onChange={e => setForm({ ...form, iptpDose: parseInt(e.target.value) })} style={{ width: '60px' }} />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                    <div>
+                      <label>{t('anc.ironFolate')}</label>
+                      <Select required value={form.ironFolateGiven === null ? '' : String(form.ironFolateGiven)} onChange={e => setForm({ ...form, ironFolateGiven: e.target.value === '' ? null : e.target.value === 'true' })}>
+                        <option value="" disabled>{t('common.select')}</option><option value="true">{t('anc.optGiven')}</option><option value="false">{t('anc.optNotGiven')}</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label>{t('anc.tetanusVaccine')}</label>
+                      <Select required value={form.tetanusVaccine === null ? '' : String(form.tetanusVaccine)} onChange={e => setForm({ ...form, tetanusVaccine: e.target.value === '' ? null : e.target.value === 'true' })}>
+                        <option value="" disabled>{t('common.select')}</option><option value="true">{t('anc.optGiven')}</option><option value="false">{t('anc.optNotGiven')}</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label>{t('anc.iptpDose')}</label>
+                      <input type="number" required min={0} max={5} value={form.iptpDose} onChange={e => setForm({ ...form, iptpDose: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                 </div>
@@ -684,7 +699,8 @@ export default function ANCPage() {
                   <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>Risk Assessment</p>
                   <div className="mb-3">
                     <label>Risk Level</label>
-                    <Select value={form.riskLevel} onChange={e => setForm({ ...form, riskLevel: e.target.value as 'low' | 'moderate' | 'high' })}>
+                    <Select required value={form.riskLevel} onChange={e => setForm({ ...form, riskLevel: e.target.value as AncRiskLevel })}>
+                      <option value="" disabled>{t('common.select')}</option>
                       <option value="low">Low</option>
                       <option value="moderate">Moderate</option>
                       <option value="high">High</option>

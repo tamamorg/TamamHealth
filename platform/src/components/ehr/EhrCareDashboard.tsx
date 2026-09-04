@@ -1021,9 +1021,14 @@ export default function EhrCareDashboard({
                                     filter box over seven known rungs is noise
                                     in front of the thing they came to click. */}
                                 <select
-                                  value={statusControl.value ? canonicalAppointmentStatus(statusControl.value as AppointmentStatus) : ''}
+                                  // A locked row picks from its own vocabulary
+                                  // (the lab bench's Tests ordered / In
+                                  // progress), so the appointment fold and its
+                                  // descriptions apply only where the ladder
+                                  // owns the pill.
+                                  value={statusControl.value ? (row.lockStatus ? statusControl.value : canonicalAppointmentStatus(statusControl.value as AppointmentStatus)) : ''}
                                   aria-label={`Status for ${row.title}`}
-                                  title={APPOINTMENT_STATUS_DESCRIPTIONS[statusControl.value as AppointmentStatus] || undefined}
+                                  title={row.lockStatus ? undefined : (APPOINTMENT_STATUS_DESCRIPTIONS[statusControl.value as AppointmentStatus] || undefined)}
                                   {...stopsClickPropagation}
                                   onPointerDown={event => event.stopPropagation()}
                                   onMouseDown={event => event.stopPropagation()}
@@ -1033,7 +1038,7 @@ export default function EhrCareDashboard({
                                     <option
                                       key={option.value}
                                       value={option.value}
-                                      title={APPOINTMENT_STATUS_DESCRIPTIONS[option.value as AppointmentStatus] || undefined}
+                                      title={row.lockStatus ? undefined : (APPOINTMENT_STATUS_DESCRIPTIONS[option.value as AppointmentStatus] || undefined)}
                                     >
                                       {option.label}
                                     </option>

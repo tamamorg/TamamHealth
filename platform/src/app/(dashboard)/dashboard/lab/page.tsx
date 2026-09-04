@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useLabResults } from '@/lib/hooks/useLabResults';
@@ -9,6 +10,7 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
 import Modal from '@/components/Modal';
+import { useToast } from '@/components/Toast';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
   Microscope,
@@ -80,12 +82,6 @@ const FLAG_COLORS = {
   ABNORMAL: { bg: 'rgba(255, 210, 166,0.12)', color: 'var(--color-warning)', border: 'rgba(255, 210, 166,0.25)' },
   CRITICAL: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', border: 'rgba(224, 49, 39,0.25)' },
 };
-
-function labStatusLabel(status: 'pending' | 'in_progress' | 'completed'): string {
-  if (status === 'completed') return 'Complete';
-  if (status === 'in_progress') return 'Processing';
-  return 'Pending';
-}
 
 // Juba is UTC+3 — a result filed in the first three hours of the local day has
 // a UTC instant that still reads as the previous day. `completedAt`/`orderedAt`
@@ -196,10 +192,58 @@ export default function LabDashboardPage() {
   const results = useMemo(() => allResults.filter(r => !isImagingStudy(r)), [allResults]);
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date()), []);
   // Work-queue status filter (shell tabs) + inline search bound to the shell's
-  // left rail. Station work queues use their own vocabulary: Queued =
-  // ordered/pending, In Progress = on the bench, Completed = resulted.
+  // left rail. The bench reads in its own vocabulary: Tests ordered =
+  // ordered/pending, In progress = on the bench, Completed = resulted.
   const [queueFilter, setQueueFilter] = useState<'scheduled' | 'in_office' | 'finished'>('scheduled');
   const [queueSearch, setQueueSearch] = useState('');
+
+  const router = useRouter();
+  const { showToast } = useToast();
+
+  // The bench workflow for one order: the row's full-page action, and where a
+  // "Completed" pick lands, since a result is what completes a test.
+  const benchHref = useCallback(
+    (order: Pick<LabResultDoc, '_id' | 'patientId'>) =>
+      `/patients/${encodeURIComponent(order.patientId)}?tab=labs&focus=${encodeURIComponent(order._id)}&returnTo=${encodeURIComponent('/dashboard/lab')}`,
+    [],
+  );
+
+  // The status pill on a queue row IS the picker, the same way reception moves
+  // a booking from its row: the technician takes an order onto the bench (or
+  // back off it) without opening the chart. The options are the three tabs, so
+  // what the pill says and where the row files can never disagree.
+  const benchStatusOptions = useMemo(() => [
+    { value: 'pending', label: t('lab.testsOrdered') },
+    { value: 'in_progress', label: t('lab.laneInProgress') },
+    { value: 'completed', label: t('workQueue.completed') },
+  ], [t]);
+  const benchStatusLabel = useCallback(
+    (status: LabResultDoc['status']) => benchStatusOptions.find(option => option.value === status)?.label ?? status,
+    [benchStatusOptions],
+  );
+
+  const handleBenchStatusChange = useCallback(async (order: LabResultDoc, next: string) => {
+    if (next === order.status) return;
+    if (next === 'completed') {
+      // Never written from a dropdown: a test is completed by its result,
+      // which is entered on the bench.
+      router.push(benchHref(order));
+      return;
+    }
+    if (next !== 'pending' && next !== 'in_progress') return;
+    try {
+      const { setLabBenchStatus } = await import('@/lib/services/lab-service');
+      await setLabBenchStatus(order._id, next, currentUser?.name);
+      showToast(
+        next === 'in_progress'
+          ? `${order.testName} for ${order.patientName} is now in progress.`
+          : `${order.testName} for ${order.patientName} moved back to tests ordered.`,
+        'success',
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not update the test status.', 'error');
+    }
+  }, [benchHref, currentUser, router, showToast]);
 
   // Feature 1: Result Entry Modal
   const [showResultModal, setShowResultModal] = useState(false);
@@ -371,8 +415,8 @@ export default function LabDashboardPage() {
           greetingName={currentUser?.name}
           dateLabel={dateLabel}
           tabs={[
-            { key: 'scheduled', label: t('workQueue.queued'), count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
-            { key: 'in_office', label: t('workQueue.inProgress'), count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'scheduled', label: t('lab.testsOrdered'), count: Math.min(scheduledMatches.length, LAB_QUEUE_ROW_CAP) },
+            { key: 'in_office', label: t('lab.laneInProgress'), count: Math.min(inOfficeMatches.length, LAB_QUEUE_ROW_CAP) },
             { key: 'finished', label: t('workQueue.completed'), count: Math.min(finishedMatches.length, LAB_QUEUE_ROW_CAP) },
           ]}
           activeTab={queueFilter}
@@ -428,7 +472,7 @@ export default function LabDashboardPage() {
               // The row opens a compact dashboard preview first; its full-page
               // action enters the bench workflow for this specific order.
               patientId: lab.patientId,
-              detailHref: `/patients/${encodeURIComponent(lab.patientId)}?tab=labs&focus=${encodeURIComponent(lab._id)}&returnTo=${encodeURIComponent('/dashboard/lab')}`,
+              detailHref: benchHref(lab),
               detailLabel: t('dashboard.viewPatientRecord'),
               // Complete/Abnormal/Critical IS this screen's whole point — a
               // same-day visit must not paint over a CRITICAL result's red
@@ -455,7 +499,10 @@ export default function LabDashboardPage() {
                 ? (order.completedAt ? localDatePart(order.completedAt) : 'Completed')
                 : (order.orderedAt ? localDatePart(order.orderedAt) : 'Ordered'),
               status: order.status,
-              statusLabel: labStatusLabel(order.status),
+              statusLabel: benchStatusLabel(order.status),
+              statusValue: order.status,
+              statusOptions: benchStatusOptions,
+              onStatusChange: value => { void handleBenchStatusChange(order, value); },
               statusSecondary: order.critical ? 'Critical' : order.abnormal ? 'Abnormal' : order.specimen,
               statusTone: order.critical ? 'danger' : order.abnormal ? 'warning' : order.status === 'completed' ? 'done' : order.status === 'in_progress' ? 'active' : 'scheduled',
               location: order.testName,
@@ -465,7 +512,7 @@ export default function LabDashboardPage() {
               // of the app uses for "needs attention now", not free text.
               priority: order.critical ? 'RED' : undefined,
               patientId: order.patientId,
-              detailHref: `/patients/${encodeURIComponent(order.patientId)}?tab=labs&focus=${encodeURIComponent(order._id)}&returnTo=${encodeURIComponent('/dashboard/lab')}`,
+              detailHref: benchHref(order),
               detailLabel: t('dashboard.viewPatientRecord'),
               // Pending/In Progress/Complete (and a CRITICAL flag) IS the
               // bench queue's whole point — a same-day visit must not paint

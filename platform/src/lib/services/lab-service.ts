@@ -72,6 +72,68 @@ export async function advanceLabOrder(
   return updateLabResult(id, { ...extra, orderStatus: to, status, completedAt, updatedAt: now } as Partial<LabResultDoc>);
 }
 
+/**
+ * The bench-side coarse status as the lab dashboard's queue tabs read it:
+ * Tests ordered (`pending`) → In progress (`in_progress`) → Completed. The
+ * queue's status pill lets the technician move an order between the first
+ * two from the row itself.
+ *
+ * `completed` is deliberately not settable here: a result is what completes
+ * a test, and results are entered on the bench (`useLabWorkflow.fileResult`,
+ * the batch modal), never picked from a dropdown.
+ *
+ * "In progress" walks the granular lifecycle forward through every hop the
+ * guard requires (ordered → specimen_collected → received_at_lab →
+ * in_process), stamping the specimen steps the bench would have stamped had
+ * the technician clicked through them, so the /lab stage columns and the
+ * chart's bench read the same record either way. A rejected specimen goes
+ * back through collection first, which clears the rejection exactly as a
+ * fresh collection on the bench does.
+ *
+ * "Tests ordered" from an in-process order is the undo for a stray pick. The
+ * lifecycle table has no backward hops, so this is the one write that steps
+ * outside `advanceLabOrder`: back to `received_at_lab` (the specimen is still
+ * in hand), audited like every other update. Nothing here moves a resulted
+ * order — that throws.
+ */
+export type LabBenchStatus = 'pending' | 'in_progress';
+
+export async function setLabBenchStatus(
+  id: string,
+  target: LabBenchStatus,
+  actor?: string,
+): Promise<LabResultDoc | null> {
+  const existing = decryptLabResult(await labResultsDB().get(id) as LabResultDoc);
+  let stage = effectiveOrderStatus(existing);
+  if (coarseFromOrderStatus(stage) === 'completed') {
+    throw new Error('A resulted test cannot be moved back onto the bench.');
+  }
+  if (target === 'pending') {
+    if (stage !== 'in_process') return existing;
+    return updateLabResult(id, { orderStatus: 'received_at_lab', status: 'pending' });
+  }
+  if (stage === 'in_process') return existing;
+  const by = actor || 'Lab';
+  const now = new Date().toISOString();
+  if (stage === 'ordered' || stage === 'rejected_needs_recollection') {
+    await advanceLabOrder(id, 'specimen_collected', {
+      specimenCollectedAt: now,
+      specimenCollectedBy: by,
+      specimenRejectionReason: '',
+      specimenRejectionNotes: '',
+    });
+    stage = 'specimen_collected';
+  }
+  if (stage === 'specimen_collected') {
+    await advanceLabOrder(id, 'received_at_lab', {
+      specimenReceivedAt: now,
+      specimenReceivedBy: by,
+      specimenCondition: 'acceptable',
+    });
+  }
+  return advanceLabOrder(id, 'in_process');
+}
+
 async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | undefined> {
   if (!hospitalId) return undefined;
   try {
