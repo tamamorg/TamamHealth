@@ -22557,11 +22557,8 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
    (doctor worklist, ward board, MAR, care dashboards). The flow wrapper
    carries the tighter centre-panel column template; the surface carries the
    appointments backdrop. */
-/* Header and rows adopt the flow's five shared tracks via subgrid: the columns
-   are sized once, on the parent, to the widest content across every row, and
-   spread with equal gaps. Because all rows read the SAME tracks, the columns
-   line up vertically and every gap — including the one before STATUS — is
-   identical. */
+/* Four even data columns; STATUS hugs its content against the table's right
+   edge instead of owning a fifth full share. */
 .appointment-card-flow .appointment-card-head,
 .appointment-card-flow .appointment-card-row.ehr-appointment-row {
   /* Content-fit columns (so the header labels and the row values line up on
