@@ -19005,9 +19005,8 @@ textarea.ehr-handoff-input {
   top: 0;
   z-index: 4;
   display: grid;
-  grid-template-columns: 200px 85px 165px 165px 150px;
-  justify-content: space-between;
-  column-gap: 12px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(96px, max-content);
+  gap: 12px;
   align-items: center;
   /* Tracks the row's side padding so the column labels stay over their
      values. */
@@ -19024,16 +19023,16 @@ textarea.ehr-handoff-input {
 
 
 .appointment-card-head span:last-child {
-  justify-self: start;
+  justify-self: end;
+  padding-inline-end: 6px;
 }
 
 /* 4px side padding, down from 16px: with the list gutter cut to 1px, the
    row's own inset was what still held the avatar and the status pill off the
    panel edges. Vertical stays at 9px — only the sides tighten. */
 .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: 200px 85px 165px 165px 150px;
-  justify-content: space-between;
-  column-gap: 12px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(96px, max-content);
+  gap: 12px;
   min-height: 64px;
   padding: 9px 4px;
   border-radius: 14px;
@@ -19056,11 +19055,6 @@ textarea.ehr-handoff-input {
 .appointment-card-patient.ehr-appointment-main {
   display: block;
 }
-
-/* Fill the TIME track instead of hugging the (short) time text, so the gap
-   after TIME matches every other column gap. The time text is block content
-   and stays left-aligned inside the stretched cell. */
-.appointment-card-row .ehr-appointment-time { justify-self: stretch; }
 
 .appointment-card-row .ehr-appointment-time strong {
   color: var(--text-strong);
@@ -19168,10 +19162,9 @@ textarea.ehr-handoff-input {
 .appointment-card-status {
   display: flex;
   flex-direction: column;
-  /* Content sits at the LEFT of the STATUS track like every other column, so
-     the gap before STATUS equals the others. space-between still carries this
-     column to the table's far-right edge. */
-  align-items: flex-start;
+  /* The five tracks are identical (even spacing); status alone anchors to
+     the far right edge, closing the table the way the design does. */
+  align-items: flex-end;
   /* Centered (not bottom-hung) so the status pill sits on the same line as
      the stage/department pill in the neighbouring column. */
   justify-content: center;
@@ -19195,12 +19188,12 @@ textarea.ehr-handoff-input {
   /* Align the cue with the pill's inner TEXT (13px pill padding + 1px
      border), not the pill's border, so Routine/Urgent stacks directly
      under the status label. */
-  padding-inline-start: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: start;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -22512,7 +22505,8 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   display: flex;
   flex-direction: column;
   gap: 0; /* continuous table — rows meet on their hairlines, per the design */
-  /* Floor so the columns never clip inside the narrow centre panel. */
+  /* Floor = the 5-column template's minimums (726px) + row padding, so the
+     Status column never clips inside the centre panel. */
   min-width: 740px;
 }
 
@@ -22576,9 +22570,8 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
      content — STATUS included — sits at the LEFT of its track, so the gap
      BEFORE a column is the same for all of them; space-between still carries
      the last column to the far-right edge. */
-  grid-template-columns: 200px 85px 165px 165px 150px;
-  justify-content: space-between;
-  column-gap: 16px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) minmax(96px, max-content);
+  gap: 12px;
 }
 
 .appointment-card-surface {
@@ -22831,12 +22824,12 @@ table.patient-data-table.patient-data-table {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-inline-start: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: start;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -23081,12 +23074,12 @@ table.patient-data-table.patient-data-table {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-inline-start: 14px;
+  padding-inline-end: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: start;
+  text-align: end;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
