@@ -11,6 +11,22 @@ import type { TranslationMap } from '../index';
  */
 
 const apd: TranslationMap = {
+  'clinicalForms.validation.required': 'الحقل دا مطلوب.',
+  'clinicalForms.validation.invalidType': 'نوع القيمة دي ما صحيح.',
+  'clinicalForms.validation.invalidOption': 'اختار واحد من الخيارات الموجودة.',
+  'clinicalForms.validation.minItems': 'أضف أقل عدد مطلوب من المدخلات.',
+  'clinicalForms.validation.maxItems': 'أحذف المدخلات الزيادة من الحد المسموح.',
+  'clinicalForms.validation.invalidDate': 'أدخل تاريخ صحيح.',
+  'clinicalForms.validation.minimum': 'القيمة أقل من الحد المسموح.',
+  'clinicalForms.validation.maximum': 'القيمة أكبر من الحد المسموح.',
+  'clinicalForms.validation.precision': 'القيمة فيها أرقام عشرية زيادة.',
+  'clinicalForms.validation.minLength': 'أدخل معلومات أكتر.',
+  'clinicalForms.validation.maxLength': 'قصّر القيمة دي.',
+  'clinicalForms.validation.pattern': 'القيمة ما ماشّة مع الشكل المطلوب.',
+  'clinicalForms.validation.duplicateSelection': 'أشيل الخيارات المكررة.',
+  'clinicalForms.validation.unresolvedValueSet': 'الخيارات الطبية المسموحة ما متوفرة.',
+  'clinicalForms.validation.hiddenField': 'امسح الإجابة دي عشان الحقل ما ظاهر هسع.',
+  'clinicalForms.validation.unknownField': 'الحقل دا ما جزء من النموذج المنشور.',
   'action.addNote': 'إضافة ملاحظة',
   'action.back': 'رجوع',
   'action.cancel': 'إلغاء',

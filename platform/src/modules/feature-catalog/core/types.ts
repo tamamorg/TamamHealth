@@ -69,12 +69,34 @@ export type FeatureDecision =
   | 'rebuild'
   | 'development_only';
 
+/**
+ * Product maturity is independent of routing and cutover state. A route can
+ * host several capabilities, so its presence is never evidence that each
+ * capability is complete. `planned` means the capability is not implemented.
+ */
+export type FeatureImplementationMaturity =
+  | 'complete'
+  | 'partial'
+  | 'planned'
+  | 'development_only';
+
+export interface FeatureAcceptanceEvidence {
+  readonly testPath: `src/__tests__/${string}.test.${'ts' | 'tsx'}`;
+  /** Exact assertion/describe text that demonstrates the claimed capability. */
+  readonly assertionText: string;
+}
+
 export interface TamamFeatureDefinition {
   readonly id: TamamFeatureId;
   readonly capability: string;
   readonly ownerModule: string;
   readonly deliveryWaves: readonly number[];
   readonly decision: FeatureDecision;
+  readonly implementationMaturity: FeatureImplementationMaturity;
+  /** Existing automated checks that support a `complete` maturity claim. */
+  readonly acceptanceTests: readonly FeatureAcceptanceEvidence[];
+  /** Required for every non-complete capability so the remaining gap is explicit. */
+  readonly gapSummary?: string;
   readonly currentRoutes: readonly `/${string}`[];
   /** Only top-level destinations belong in generated primary navigation. */
   readonly primaryNavigation?: boolean;

@@ -7,6 +7,7 @@
 import {
   DEFAULT_FEATURE_CATALOG_CONFIG,
   TAMAM_FEATURE_IDS,
+  TAMAM_FEATURE_MATURITY,
   TAMAM_FEATURE_REGISTRY,
   TAMAM_REFERENCE_BASELINE_ID,
   normalizeFeatureCatalogConfig,
@@ -30,7 +31,68 @@ describe('the Tamam reference catalog is complete', () => {
       expect(item.ownerModule).not.toHaveLength(0);
       expect(item.deliveryWaves.length).toBeGreaterThan(0);
       expect(item.deliveryWaves.every(wave => Number.isInteger(wave) && wave >= 0 && wave <= 9)).toBe(true);
+      expect(['complete', 'partial', 'planned', 'development_only']).toContain(item.implementationMaturity);
+      expect(item.implementationMaturity).toBe(TAMAM_FEATURE_MATURITY[item.id]);
+      if (item.implementationMaturity === 'complete') {
+        expect(item.acceptanceTests.length).toBeGreaterThan(0);
+        for (const evidence of item.acceptanceTests) {
+          const absolutePath = path.join(process.cwd(), evidence.testPath);
+          expect(fs.existsSync(absolutePath)).toBe(true);
+          expect(evidence.assertionText.trim()).toBeTruthy();
+          expect(fs.readFileSync(absolutePath, 'utf8')).toContain(evidence.assertionText);
+        }
+        expect(item.gapSummary).toBeUndefined();
+      } else {
+        expect(item.gapSummary?.trim()).toBeTruthy();
+      }
     }
+  });
+
+  test('marks unimplemented capabilities as planned and parked without borrowing unrelated routes', () => {
+    const plannedIds = Object.values(TAMAM_FEATURE_REGISTRY)
+      .filter(item => item.implementationMaturity === 'planned')
+      .map(item => item.id)
+      .sort();
+
+    expect(plannedIds).toEqual([
+      'cohort-builder',
+      'fast-data-entry',
+      'form-builder',
+      'form-engine',
+      'generic-patient-widgets',
+      'help-menu',
+      'metadata-export',
+      'open-concept-lab',
+      'patient-growth-chart',
+    ]);
+
+    for (const id of plannedIds) {
+      const definition = TAMAM_FEATURE_REGISTRY[id];
+      expect(definition.currentRoutes).toEqual([]);
+      expect(definition.defaultStage).toBe('parked');
+      expect(resolveFeature(id).source).toBe('none');
+      expect(resolveFeature(id).route).toBeNull();
+    }
+    expect(TAMAM_FEATURE_REGISTRY.devtools).toMatchObject({
+      implementationMaturity: 'development_only',
+      decision: 'development_only',
+      defaultStage: 'parked',
+      currentRoutes: [],
+    });
+  });
+
+  test('distinguishes routed partial implementations from complete capabilities', () => {
+    expect(TAMAM_FEATURE_REGISTRY.reports).toMatchObject({
+      implementationMaturity: 'partial',
+      currentRoutes: ['/reports'],
+    });
+    expect(TAMAM_FEATURE_REGISTRY['patient-forms']).toMatchObject({
+      implementationMaturity: 'partial',
+      currentRoutes: ['/patients'],
+    });
+    expect(TAMAM_FEATURE_REGISTRY['patient-flags'].implementationMaturity).toBe('partial');
+    expect(TAMAM_FEATURE_REGISTRY['patient-immunizations'].implementationMaturity).toBe('partial');
+    expect(TAMAM_FEATURE_REGISTRY.laboratory.implementationMaturity).toBe('complete');
   });
 
   test('does not advertise current routes that are absent from the application', () => {

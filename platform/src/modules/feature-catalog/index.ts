@@ -9,11 +9,13 @@ export {
   type FeatureCatalogMode,
   type FeatureCutoverStage,
   type FeatureDecision,
+  type FeatureImplementationMaturity,
+  type FeatureAcceptanceEvidence,
   type TamamFeatureDefinition,
   type TamamFeatureId,
   type ResolvedFeature,
 } from './core/types';
-export { TAMAM_FEATURE_REGISTRY, TAMAM_FEATURES } from './core/registry';
+export { TAMAM_FEATURE_MATURITY, TAMAM_FEATURE_REGISTRY, TAMAM_FEATURES } from './core/registry';
 export {
   DEFAULT_FEATURE_CATALOG_CONFIG,
   normalizeFeatureCatalogConfig,

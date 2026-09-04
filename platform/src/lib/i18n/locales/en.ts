@@ -1,6 +1,22 @@
 import type { TranslationMap } from '../index';
 
 const en: TranslationMap = {
+  'clinicalForms.validation.required': 'This field is required.',
+  'clinicalForms.validation.invalidType': 'This value has the wrong type.',
+  'clinicalForms.validation.invalidOption': 'Select one of the available options.',
+  'clinicalForms.validation.minItems': 'Add the minimum number of entries.',
+  'clinicalForms.validation.maxItems': 'Remove entries above the allowed maximum.',
+  'clinicalForms.validation.invalidDate': 'Enter a valid date.',
+  'clinicalForms.validation.minimum': 'The value is below the allowed minimum.',
+  'clinicalForms.validation.maximum': 'The value is above the allowed maximum.',
+  'clinicalForms.validation.precision': 'The value has too many decimal places.',
+  'clinicalForms.validation.minLength': 'Enter more information.',
+  'clinicalForms.validation.maxLength': 'Shorten this value.',
+  'clinicalForms.validation.pattern': 'The value does not match the required format.',
+  'clinicalForms.validation.duplicateSelection': 'Remove duplicate selections.',
+  'clinicalForms.validation.unresolvedValueSet': 'The allowed clinical choices are unavailable.',
+  'clinicalForms.validation.hiddenField': 'Clear this answer because the field is no longer visible.',
+  'clinicalForms.validation.unknownField': 'This field is not part of the published form.',
   'action.addNote': 'Add Note',
   'action.back': 'Back',
   'action.cancel': 'Cancel',
