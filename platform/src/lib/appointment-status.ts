@@ -255,8 +255,8 @@ export const APPOINTMENT_PENDING_STATUSES: AppointmentStatus[] = ['scheduled', '
 
 /**
  * The three-lane view every role dashboard files its queue into — the same
- * lanes the mobile shell shows: Upcoming (booked, patient not yet with us),
- * Checked In (visit open at the facility), Completed (the slot is closed —
+ * lanes the mobile shell shows: Waiting (booked, patient not yet with us),
+ * In service (visit open at the facility), Finished (the slot is closed —
  * checked out, cancelled, no-show or rescheduled, nothing further today).
  *
  * The keys stay `scheduled`/`in_office`/`finished` — they are persisted in
@@ -268,9 +268,9 @@ export type AppointmentStatusGroup = 'scheduled' | 'in_office' | 'finished';
 export const APPOINTMENT_STATUS_GROUPS: AppointmentStatusGroup[] = ['scheduled', 'in_office', 'finished'];
 
 export const APPOINTMENT_STATUS_GROUP_LABELS: Record<AppointmentStatusGroup, string> = {
-  scheduled: 'Upcoming',
-  in_office: 'In Facility',
-  finished: 'Completed',
+  scheduled: 'Waiting',
+  in_office: 'In service',
+  finished: 'Finished',
 };
 
 export function appointmentStatusGroup(status: AppointmentStatus): AppointmentStatusGroup {
