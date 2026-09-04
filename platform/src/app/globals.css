@@ -8056,7 +8056,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   font-size: 14px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: end;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -19005,7 +19005,7 @@ textarea.ehr-handoff-input {
   top: 0;
   z-index: 4;
   display: grid;
-  grid-template-columns: 210px 110px 190px 190px 140px;
+  grid-template-columns: 200px 85px 165px 165px 150px;
   justify-content: space-between;
   column-gap: 12px;
   align-items: center;
@@ -19024,14 +19024,14 @@ textarea.ehr-handoff-input {
 
 
 .appointment-card-head span:last-child {
-  justify-self: end;
+  justify-self: start;
 }
 
 /* 4px side padding, down from 16px: with the list gutter cut to 1px, the
    row's own inset was what still held the avatar and the status pill off the
    panel edges. Vertical stays at 9px — only the sides tighten. */
 .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: 210px 110px 190px 190px 140px;
+  grid-template-columns: 200px 85px 165px 165px 150px;
   justify-content: space-between;
   column-gap: 12px;
   min-height: 64px;
@@ -19056,6 +19056,11 @@ textarea.ehr-handoff-input {
 .appointment-card-patient.ehr-appointment-main {
   display: block;
 }
+
+/* Fill the TIME track instead of hugging the (short) time text, so the gap
+   after TIME matches every other column gap. The time text is block content
+   and stays left-aligned inside the stretched cell. */
+.appointment-card-row .ehr-appointment-time { justify-self: stretch; }
 
 .appointment-card-row .ehr-appointment-time strong {
   color: var(--text-strong);
@@ -19163,10 +19168,10 @@ textarea.ehr-handoff-input {
 .appointment-card-status {
   display: flex;
   flex-direction: column;
-  /* Anchored to the far right edge of its column, closing the table on the
-     right. The even gaps come from the grid spreading the columns
-     (justify-content: space-between), not from stretching this cell. */
-  align-items: flex-end;
+  /* Content sits at the LEFT of the STATUS track like every other column, so
+     the gap before STATUS equals the others. space-between still carries this
+     column to the table's far-right edge. */
+  align-items: flex-start;
   /* Centered (not bottom-hung) so the status pill sits on the same line as
      the stage/department pill in the neighbouring column. */
   justify-content: center;
@@ -19190,12 +19195,12 @@ textarea.ehr-handoff-input {
   /* Align the cue with the pill's inner TEXT (13px pill padding + 1px
      border), not the pill's border, so Routine/Urgent stacks directly
      under the status label. */
-  padding-inline-end: 14px;
+  padding-inline-start: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: end;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -22507,8 +22512,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   display: flex;
   flex-direction: column;
   gap: 0; /* continuous table — rows meet on their hairlines, per the design */
-  /* Floor = the 5-column template's minimums (726px) + row padding, so the
-     Status column never clips inside the centre panel. */
+  /* Floor so the columns never clip inside the narrow centre panel. */
   min-width: 740px;
 }
 
@@ -22559,19 +22563,22 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
    (doctor worklist, ward board, MAR, care dashboards). The flow wrapper
    carries the tighter centre-panel column template; the surface carries the
    appointments backdrop. */
-/* One shared column formula: five EVEN columns. The design's 1.7-share name
-   column read fine at 1440 but ballooned on wide monitors, leaving a gulf
-   between the name and TIME — evenly spaced columns hold their rhythm at any
-   width (names stay two words, so they fit). */
+/* Header and rows adopt the flow's five shared tracks via subgrid: the columns
+   are sized once, on the parent, to the widest content across every row, and
+   spread with equal gaps. Because all rows read the SAME tracks, the columns
+   line up vertically and every gap — including the one before STATUS — is
+   identical. */
 .appointment-card-flow .appointment-card-head,
 .appointment-card-flow .appointment-card-row.ehr-appointment-row {
-  /* Five EQUAL columns spanning the table end to end. STATUS owns a full
-     fifth share like the rest; its cell right-aligns (`align-items: flex-end`)
-     so the pill closes the table hard against the far-right edge while the
-     column itself stays the same width as the other four. */
-  grid-template-columns: 210px 110px 190px 190px 140px;
+  /* Content-fit columns (so the header labels and the row values line up on
+     the same tracks, row to row), with the leftover width dealt out as EQUAL
+     gaps between every column (justify-content: space-between). Each column's
+     content — STATUS included — sits at the LEFT of its track, so the gap
+     BEFORE a column is the same for all of them; space-between still carries
+     the last column to the far-right edge. */
+  grid-template-columns: 200px 85px 165px 165px 150px;
   justify-content: space-between;
-  column-gap: 12px;
+  column-gap: 16px;
 }
 
 .appointment-card-surface {
@@ -22824,12 +22831,12 @@ table.patient-data-table.patient-data-table {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-inline-end: 14px;
+  padding-inline-start: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: end;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -23074,12 +23081,12 @@ table.patient-data-table.patient-data-table {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  padding-inline-end: 14px;
+  padding-inline-start: 14px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
-  text-align: end;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

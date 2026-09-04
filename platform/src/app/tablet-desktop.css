@@ -388,7 +388,7 @@
   .appointment-card-row .ehr-appointment-time span,
   .appointment-card-status small { font-size: 9px; }
 
-  .appointment-card-status small { padding-inline-end: 5px; }
+  .appointment-card-status small { padding-inline-start: 5px; }
   .appointment-card-status .appointment-status-pill {
     max-width: 100%;
     min-height: 22px;
