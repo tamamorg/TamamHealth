@@ -804,7 +804,15 @@ export default function ClinicalNoteEditor({
             {[!showContextSidebar ? note.patientName : null, note.hospitalName].filter(Boolean).join(' · ')}
           </p>
         </div>
-        <div className="cn-header-actions">
+        {/* Note-level actions sit on the title line, top right; the identity
+            fields go in the strip beneath so the button never falls onto a
+            line of its own when the strip wraps. */}
+        <div className="cn-header-tools">
+          <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
+            Clear Note
+          </button>
+        </div>
+        <div className="cn-header-fields">
         <label className="cn-field">
           <span className="cn-label">Note type</span>
           <Select
@@ -869,10 +877,6 @@ export default function ClinicalNoteEditor({
             }}
           />
         </div>
-
-        <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
-          Clear Note
-        </button>
         </div>
       </div>
 
