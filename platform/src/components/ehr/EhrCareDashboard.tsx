@@ -4,7 +4,8 @@ import { Children, createContext, useCallback, useContext, useEffect, useMemo, u
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
-import { ClipboardList, Printer, Search, Stethoscope, X, type LucideIcon } from '@/components/icons/lucide';
+import { ClipboardList, Printer, Search, X, type LucideIcon } from '@/components/icons/lucide';
+import EhrMissionCard from './EhrMissionCard';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -246,6 +247,7 @@ export default function EhrCareDashboard({
   emptyActionLabel,
   onEmptyAction,
   showMissionCard = true,
+  missionIcon,
   hideRowList = false,
   autoOpenRowId,
   children,
@@ -324,6 +326,8 @@ export default function EhrCareDashboard({
   emptyActionLabel?: string;
   onEmptyAction?: () => void;
   showMissionCard?: boolean;
+  /** Icon in the mission card's head; the clinician's stethoscope by default. */
+  missionIcon?: LucideIcon;
   /** When the `children` workflow already renders its own patient list
    *  (e.g. the nurse stations' Ward/Triage/MAR workflows), set this to skip
    *  the generic row list so the workflow fills the center panel top-to-bottom
@@ -1122,13 +1126,7 @@ export default function EhrCareDashboard({
           <ProgressFeedCard />
 
           {showMissionCard && missionTitle && missionDescription && (
-            <div className="ehr-side-card ehr-mission-card">
-              <div className="ehr-side-card-head ehr-mission-head">
-                <Stethoscope className="w-5 h-5" />
-                <h2>{missionTitle}</h2>
-              </div>
-              <p>{missionDescription}</p>
-            </div>
+            <EhrMissionCard title={missionTitle} description={missionDescription} icon={missionIcon} />
           )}
         </aside>
         )}

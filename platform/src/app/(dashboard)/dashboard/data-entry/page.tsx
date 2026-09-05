@@ -482,8 +482,9 @@ export default function DataEntryDashboard() {
           { label: t('dataEntry.dailyCensus'), value: (!!latest && latest.date === today) ? t('patientPortal.done') : t('patientPortal.pending'), tone: (!!latest && latest.date === today) ? 'success' : 'warning', onClick: () => setShowForm(true) },
         ]}
         metricsTitle={t('dataEntry.title')}
-        missionTitle={myHospital?.name}
-        missionDescription={myHospital ? `${myHospital.state} · ${myHospital.county || myHospital.town} · ${myHospital.type?.replace(/_/g, ' ') ?? ''}` : undefined}
+        missionTitle={t('mission.dataEntry.title')}
+        missionDescription={t('mission.dataEntry.body')}
+        missionIcon={ClipboardCheck}
         centerSubtitle={savedReports.length === 0 ? t('dataEntry.noReportsDesc') : undefined}
         emptyTitle={t('dataEntry.noReportsYet')}
         emptyActionLabel={t('dataEntry.startDailyCensus')}

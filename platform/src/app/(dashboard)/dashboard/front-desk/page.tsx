@@ -26,6 +26,7 @@ import AppointmentEditModal from '@/components/appointments/AppointmentEditModal
 import { PatientRegistrationForm } from '@/components/patients/registration/PatientRegistrationForm';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { ClipboardList } from '@/components/icons/lucide';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 import { getRoleConfig } from '@/lib/permissions';
@@ -1710,8 +1711,9 @@ export default function FrontDeskDashboardPage() {
           metricsTitle="Reception"
           centerTitle={centerCopy.title}
           centerSubtitle=""
-          missionTitle="Keep the desk moving"
-          missionDescription="Show the next action clearly so reception can register, check in, route, and close visits."
+          missionTitle={t('mission.frontDesk.title')}
+          missionDescription={t('mission.frontDesk.body')}
+          missionIcon={ClipboardList}
           showMissionCard
           // Reception rows already open the patient detail on click, so the
           // per-row pencil is redundant.

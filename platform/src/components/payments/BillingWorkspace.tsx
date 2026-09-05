@@ -30,6 +30,7 @@ import { useAuth, useUi } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import EhrMissionCard from '@/components/ehr/EhrMissionCard';
 import { SearchInput, FilterTabs, type FilterOption } from '@/components/filters';
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import BillingOverviewCards from '@/components/payments/BillingOverviewCards';
@@ -665,6 +666,9 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               the flat "collected today" strip that used to sit here is folded
               into the middle card, with the per-method split one click away in
               the payment history. ── */}
+          {/* The overview cards share their row with the cashier's mission
+              card, kept at the right where every other landing screen has it. */}
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
           <BillingOverviewCards
             payments={data.payments}
             claims={visibleClaims}
@@ -675,6 +679,12 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
             unbilledEncounters={unbilledEncounters}
             showClaims={canSeeClaims}
           />
+          <EhrMissionCard
+            title={t('mission.payments.title')}
+            description={t('mission.payments.body')}
+            icon={Wallet}
+          />
+          </div>
 
           {/* Pending verification queue — payments awaiting a finance decision.
               Rendered only when something needs review, so the page stays clean. */}

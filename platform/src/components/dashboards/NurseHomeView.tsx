@@ -1,6 +1,8 @@
 'use client';
 
 import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { HeartPulse } from '@/components/icons/lucide';
 import EhrClinicalDashboard, {
   type WorklistPatient,
   type OutstandingItem,
@@ -403,6 +405,7 @@ export function assembleNurseWeekActivity(
 
 export default function NurseHomeView() {
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
   const { patients } = usePatients();
   const { triages } = useTriage();
   const { activeAdmissions } = useWards();
@@ -434,6 +437,11 @@ export default function NurseHomeView() {
         outstanding={worklist.outstanding}
         activityItems={worklist.activity}
         activitySeriesNames={['Admitted', 'Arrivals']}
+        // The nurse's own mission — the shell's default is the clinician's
+        // "sign notes, answer labs", which is not the nursing day.
+        missionTitle={t('mission.nurse.title')}
+        missionDescription={t('mission.nurse.body')}
+        missionIcon={HeartPulse}
       />
     </main>
   );

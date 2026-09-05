@@ -23450,6 +23450,10 @@ table.patient-data-table.patient-data-table {
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
+.gov-page-head .gov-mission-card {
+  max-width: 360px;
+  text-align: start;
+}
 .gov-page-head h1 {
   margin: 0;
   font-family: var(--font-condensed);

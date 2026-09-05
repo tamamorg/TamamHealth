@@ -13,7 +13,7 @@ import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/Ehr
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
 import { toIsoDate } from '@/lib/date-utils';
-import { Download } from '@/components/icons/lucide';
+import { Download, Globe } from '@/components/icons/lucide';
 import { formatClockTime } from '@/lib/format-utils';
 import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
 
@@ -234,10 +234,9 @@ export default function StateDashboardPage() {
             { label: t('state.immunizationsYtd'), value: immunizationsYtd },
           ]}
           metricsTitle={t('state.title')}
-          missionTitle={t('state.title')}
-          // Counties count already lives on the tab label above — the mission
-          // card only adds the facilities figure so the two don't repeat.
-          missionDescription={`${facilitiesInState.length} ${facilitiesInState.length === 1 ? 'facility' : 'facilities'} reporting`}
+          missionTitle={t('mission.state.title')}
+          missionDescription={t('mission.state.body')}
+          missionIcon={Globe}
           emptyTitle={mchLoading && counties.length === 0 ? t('status.loading') : t('state.noCountyData')}
         />
       </main>

@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
+import EhrMissionCard from '@/components/ehr/EhrMissionCard';
 import {
   Users, Stethoscope, HeartPulse, BedDouble,
   ClipboardCheck, Activity, AlertTriangle, SendHorizontal,
@@ -216,7 +217,10 @@ export default function SuperintendentDashboard() {
           ))}
         </div>
 
-        <div className="grid gap-4">
+        {/* The alerts card shares its row with the role's mission card, which
+            sits where the two dashboard shells put it: to the right of the
+            work, closing the screen with the day's one instruction. */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
           {/* ═══ SURVEILLANCE / ALERTS ═══ */}
           <div className="dash-card overflow-hidden">
             <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -254,6 +258,11 @@ export default function SuperintendentDashboard() {
               </div>
             )}
           </div>
+          <EhrMissionCard
+            title={t('mission.superintendent.title')}
+            description={t('mission.superintendent.body')}
+            icon={Activity}
+          />
         </div>
 
         {/* ═══ STAFF MIX + REFERRALS strip ═══ */}

@@ -45,7 +45,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Loader2, X, Maximize2,} from '@/components/icons/lucide';
+  Building2, Loader2, X, Maximize2,} from '@/components/icons/lucide';
+import EhrMissionCard from '@/components/ehr/EhrMissionCard';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -308,6 +310,7 @@ const TIER_CLASS: Record<string, string> = {
 };
 
 export default function FacilityManagementDashboard() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -623,6 +626,9 @@ export default function FacilityManagementDashboard() {
     >
 
       {/* ═══ KPI tiles — census & staffing totals, each opening its preview ═══ */}
+      {/* The role's mission card sits at the row's right, where every other
+           landing screen keeps it. */}
+      <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
       <div className="sadb-kpi-row">
         {TILE_KEYS.map(key => {
           const m = metricByKey(key);
@@ -638,6 +644,12 @@ export default function FacilityManagementDashboard() {
             />
           );
         })}
+      </div>
+      <EhrMissionCard
+        title={t('mission.facility.title')}
+        description={t('mission.facility.body')}
+        icon={Building2}
+      />
       </div>
 
       {/* ═══ Operational row: patient flow · cash · today ═══

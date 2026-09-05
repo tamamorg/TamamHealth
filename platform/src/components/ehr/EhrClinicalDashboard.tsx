@@ -20,6 +20,9 @@ import {
   Stethoscope,
   X,
 } from '@/components/icons/lucide';
+import type { ComponentType } from 'react';
+import EhrMissionCard from './EhrMissionCard';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
 import EhrStageDonut from '@/components/ehr/EhrStageDonut';
@@ -633,6 +636,9 @@ export default function EhrClinicalDashboard({
   outstanding,
   activityItems,
   activitySeriesNames,
+  missionTitle,
+  missionDescription,
+  missionIcon,
 }: {
   clinicianName: string;
   patients: WorklistPatient[];
@@ -648,10 +654,19 @@ export default function EhrClinicalDashboard({
    */
   activityItems?: DayStatsItem[];
   activitySeriesNames?: [string, string];
+  /**
+   * The role's mission card, the rail's closing instruction. Defaults to the
+   * clinician's "Close the loop"; the nurse workspace passes its own, since
+   * signing notes and answering labs is not what a nursing day is made of.
+   */
+  missionTitle?: string;
+  missionDescription?: string;
+  missionIcon?: ComponentType<{ className?: string }>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   const search = searchParams.toString();
   const { showToast } = useToast();
   // "My queue" settings (design 11). Read live, so changing them in Settings
@@ -2370,13 +2385,11 @@ export default function EhrClinicalDashboard({
           {/* The clinical mission card — the design closes the rail with the
               day's one instruction, same treatment as reception's "Keep the
               desk moving". */}
-          <div className="ehr-side-card ehr-mission-card">
-            <div className="ehr-side-card-head ehr-mission-head">
-              <Stethoscope className="w-5 h-5" />
-              <h2>Close the loop</h2>
-            </div>
-            <p>Sign what is waiting, answer the labs that came back, and finish the visits you started.</p>
-          </div>
+          <EhrMissionCard
+            title={missionTitle ?? t('mission.clinician.title')}
+            description={missionDescription ?? t('mission.clinician.body')}
+            icon={missionIcon}
+          />
         </aside>
         )}
       </section>

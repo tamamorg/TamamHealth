@@ -412,6 +412,9 @@ export default function LabDashboardPage() {
         <EhrCareDashboard
           title={t('lab.laboratory')}
           eyebrow={t('nav.lab')}
+          missionTitle={t('mission.lab.title')}
+          missionDescription={t('mission.lab.body')}
+          missionIcon={Microscope}
           greetingName={currentUser?.name}
           dateLabel={dateLabel}
           tabs={[

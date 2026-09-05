@@ -407,6 +407,9 @@ export default function NutritionDashboard() {
 
       <EhrCareDashboard
         title={t('nutrition.title')}
+        missionTitle={t('mission.nutrition.title')}
+        missionDescription={t('mission.nutrition.body')}
+        missionIcon={Utensils}
         greetingName={currentUser?.name}
         dateLabel={dateLabel}
         tabs={[]}

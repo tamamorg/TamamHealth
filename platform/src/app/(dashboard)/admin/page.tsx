@@ -41,7 +41,9 @@ import {
 } from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
-import { Maximize2 } from '@/components/icons/lucide';
+import { Maximize2, ShieldCheck } from '@/components/icons/lucide';
+import EhrMissionCard from '@/components/ehr/EhrMissionCard';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useNow } from '@/lib/hooks/useNow';
 import type {
   AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
@@ -97,6 +99,7 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
 
 
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const scope = useDataScope();
@@ -376,6 +379,9 @@ export default function AdminDashboardPage() {
       <div className="sadb-page" style={{ flex: '1 1 auto', minHeight: 0 }}>
 
         {/* ═══ KPI tile row ═══ */}
+        {/* The operator's mission card sits at the row's right, where every
+            other landing screen keeps it. */}
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
         <div className="sadb-kpi-row">
           {kpis.map(k => {
             const body = (
@@ -390,6 +396,12 @@ export default function AdminDashboardPage() {
               ? <button key={k.key} type="button" className="sadb-kpi" onClick={() => router.push(k.href!)}>{body}</button>
               : <div key={k.label} className="sadb-kpi">{body}</div>;
           })}
+        </div>
+        <EhrMissionCard
+          title={t('mission.admin.title')}
+          description={t('mission.admin.body')}
+          icon={ShieldCheck}
+        />
         </div>
 
         {/* ═══ ROW 2 — Readiness · Business snapshot · Sync & interop ═══ */}

@@ -3,6 +3,7 @@ import { useState, useMemo, useRef } from 'react';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { ScanLine } from '@/components/icons/lucide';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { addPatientDocument } from '@/lib/services/patient-document-service';
@@ -486,6 +487,9 @@ export default function RadiologyDashboard() {
 
       <EhrCareDashboard
         title={t('radiology.title')}
+        missionTitle={t('mission.radiology.title')}
+        missionDescription={t('mission.radiology.body')}
+        missionIcon={ScanLine}
         greetingName={currentUser?.name}
         dateLabel={dateLabel}
         // Station work-queue tabs, keyed by the study's own status values:

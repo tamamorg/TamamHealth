@@ -906,6 +906,9 @@ export default function PharmacyDashboardPage() {
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <EhrCareDashboard
           title={t('pharmacy.operations')}
+          missionTitle={t('mission.pharmacy.title')}
+          missionDescription={t('mission.pharmacy.body')}
+          missionIcon={Pill}
           eyebrow={t('nav.pharmacy')}
           greetingName={currentUser?.name}
           dateLabel={dateLabel}
