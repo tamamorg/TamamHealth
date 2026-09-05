@@ -72,7 +72,15 @@ const sel = (key: string, label: string, hint: string, def: string, options: str
 const lock = (label: string, hint: string, value: string): RoleSettingRow =>
   ({ kind: 'locked', label, hint, value });
 
-/** Sections every user gets — account, notifications, security. */
+/**
+ * Sections every user gets — account, notifications, security.
+ *
+ * Every spec defaults the start-up screen to "My dashboard": sign-in lands on
+ * the role's dashboard first, whatever the role. The pharmacist, lab and
+ * front-desk specs used to open on their worklists instead, so those roles
+ * never saw the dashboard unless they went looking for it. The worklists stay
+ * on offer for anyone who prefers to start there.
+ */
 function accountSection(landing: string, landingOptions: string[]): RoleSettingSection {
   return {
     id: 'account', title: 'My account', icon: 'user', note: 'Visible to facility admins',
@@ -173,7 +181,7 @@ const NURSE: RoleSettingsSpec = {
   scope: 'You can set your ward, rounding intervals, and alerts. Triage scales and medication policy are facility-wide.',
   chips: ['Ward & shift', 'Rounding intervals', 'MAR prompts', 'My alerts'],
   sections: [
-    accountSection('Nursing station', ['Nursing station', 'Ward board', 'Triage', 'Patients']),
+    accountSection('My dashboard', ['My dashboard', 'Ward board', 'Triage', 'Patients']),
     {
       id: 'ward', title: 'Ward & shift', icon: 'bed', note: 'Drives your station view and handoff',
       rows: [
@@ -205,7 +213,7 @@ const PHARMACIST: RoleSettingsSpec = {
   scope: 'You manage dispensing behaviour and stock alert levels. The national formulary and price list are facility-wide.',
   chips: ['Dispensing rules', 'Reorder levels', 'Register checks', 'My alerts'],
   sections: [
-    accountSection('Dispense queue', ['Dispense queue', 'Stock', 'My dashboard']),
+    accountSection('My dashboard', ['My dashboard', 'Dispense queue', 'Stock']),
     {
       id: 'stock', title: 'Stock & reorder', icon: 'list', note: 'Thresholds that drive the alerts',
       rows: [
@@ -234,7 +242,7 @@ const LAB: RoleSettingsSpec = {
   scope: 'You control worklist and verification behaviour. Test panels, reference ranges, and pricing are facility-wide.',
   chips: ['Worklist order', 'Sample rules', 'Verification', 'My alerts'],
   sections: [
-    accountSection('Lab worklist', ['Lab worklist', 'My dashboard']),
+    accountSection('My dashboard', ['My dashboard', 'Lab worklist']),
     {
       id: 'worklist', title: 'Worklist', icon: 'list', note: 'How orders are presented to you',
       rows: [
@@ -264,7 +272,7 @@ const FRONTDESK: RoleSettingsSpec = {
   scope: 'You control registration and payment-desk behaviour. Tariffs, exemptions, and insurance contracts are facility-wide.',
   chips: ['Registration rules', 'Check-in routing', 'Payment desk', 'My alerts'],
   sections: [
-    accountSection('Check-in', ['Check-in', 'Payments', 'Patients', 'Appointments', 'My dashboard']),
+    accountSection('My dashboard', ['My dashboard', 'Check-in', 'Payments', 'Patients', 'Appointments']),
     {
       id: 'registration', title: 'Registration', icon: 'users', note: 'New patient records',
       rows: [
