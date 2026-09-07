@@ -81,9 +81,18 @@
 .lg-topbar-link { display: flex; align-items: center; gap: 11px; text-decoration: none; }
 .lg-topbar-logo { height: 27px; width: auto; display: block; }
 
+/* The body takes whatever height is left between the logo bar and the
+   footer, and its one row sits in the middle of it. A browser tab is short
+   enough that the form fills the viewport either way; the installed app
+   (no tab strip, no address bar) is a few hundred pixels taller, and
+   without align-content the row hugged the top with an empty band above
+   the footer. align-items keeps the two columns level at their top edges;
+   align-content places the row. The row is never taller than the grid
+   (flex: 1 only grows it), so centring cannot push content above the fold. */
 .lg-grid {
   flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
-  max-width: 1320px; width: 100%; margin: 0 auto; padding: 64px 32px 60px; align-items: start;
+  max-width: 1320px; width: 100%; margin: 0 auto; padding: 64px 32px 60px;
+  align-items: start; align-content: center;
 }
 /* With the roster in the right column, trade headroom for roster room. */
 .lg-grid:has(.lg-demo) { padding-top: 24px; }

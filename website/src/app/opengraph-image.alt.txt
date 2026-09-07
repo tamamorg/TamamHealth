@@ -1,1 +1,1 @@
-TamamHealth — offline-first digital health records for South Sudan. A white card reading "Transforming fragmented records into connected care" sits over a photo of a doctor and a nurse reading a patient's paper file in a clinic, in front of a rack of paper folders.
+TamamHealth — care should never start from zero. The TamamHealth clinical dashboard appears behind a clinician holding a tablet, beside the message “The patient’s history stays within reach—even when power and networks are not.”

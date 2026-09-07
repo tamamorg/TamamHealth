@@ -11,7 +11,10 @@
  * Reuses the login page's `lg-*` styling so the first screen a new user sees
  * belongs to the same product as the second. The global `label` rule in
  * globals.css force-uppercases every label, which is why the fields are built
- * from the same classes rather than fresh ones.
+ * from the same classes rather than fresh ones. Those classes only exist on a
+ * route that imports `login-chrome` — its stylesheet is emitted per route,
+ * not globally — so the import below is what styles this page at all; before
+ * it, the invitation link opened on raw unstyled markup.
  *
  * The token is read from the URL and deliberately never rendered or logged:
  * it is a credential until it is redeemed.
@@ -20,6 +23,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
+import { Corners } from '@/components/login/login-chrome';
+
 function AcceptInviteForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -73,8 +78,9 @@ function AcceptInviteForm() {
         <h1 className="lg-h1">Your password is set</h1>
         <div className="lg-form">
           <p className="lg-lede">You can sign in with it now.</p>
-          <button type="button" className="lg-btn" onClick={() => router.push('/login')}>
+          <button type="button" className="lg-btn blueprint" onClick={() => router.push('/login')}>
             Go to sign in
+            <Corners />
           </button>
         </div>
       </>
@@ -149,8 +155,9 @@ function AcceptInviteForm() {
 
       {error && <p className="lg-error" role="alert">{error}</p>}
 
-        <button type="submit" className="lg-btn" disabled={busy}>
+        <button type="submit" className="lg-btn blueprint" disabled={busy}>
           {busy ? 'Setting your password…' : 'Set password'}
+          <Corners />
         </button>
       </form>
     </>

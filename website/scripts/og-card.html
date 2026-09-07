@@ -6,98 +6,117 @@
 <!--
   The 1200×630 card link previews show (opengraph-image.jpg / twitter-image.jpg).
 
-  It is the home hero, re-cut for a thumbnail: the same photograph, the same
-  blue scrim, the same white blueprint card with registration marks, the same
-  Barlow Condensed headline and amber chip. A share card is the site's first
-  frame — someone sees this before they see anything else — so it is drawn from
-  site-data's lead hero rather than invented alongside it.
+  This product-led composition uses Tamam's text-only wordmark, real clinical
+  interface, blueprint registration marks and offline/sync states. The photo
+  cutout supplies human context without replacing the product as the subject.
 
-  Regenerate with scripts/make-og-card.mjs after the hero copy or photograph
-  changes; the alt text beside each JPG has to change with it.
+  Regenerate with scripts/make-og-card.mjs after the copy or imagery changes;
+  the alt text beside each JPG has to change with it.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet" />
 <style>
-  /* Tokens lifted from src/app/globals.css — same values, so the card cannot
-     drift from the site it advertises. */
   :root {
-    --color-text: #0e2a4a;
-    --color-divider: rgba(14, 42, 74, 0.3);
-    --color-accent-700: #015697;
-    --color-neutral-800: #3d5166;
-    --color-cta: #e8863a;
-    --font-heading: "Barlow Condensed", system-ui, sans-serif;
-    --font-body: "Barlow", system-ui, sans-serif;
+    --ink: #001d3f;
+    --navy: #113055;
+    --deep: #015697;
+    --blue: #2191d0;
+    --ice: #c9f4ff;
+    --gold: #fdd95f;
+    --orange: #ff7f00;
+    --heading: "Barlow Condensed", system-ui, sans-serif;
+    --body: "Barlow", system-ui, sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { width: 1200px; height: 630px; overflow: hidden; font-family: var(--font-body); color: var(--color-text); }
-
-  .card { position: relative; width: 1200px; height: 630px; background: var(--color-accent-700); overflow: hidden; }
-  /* The hero anchors this photograph at 27%; a 1200×630 card is a far
-     shallower window and 27% cuts the doctor's head. 4% keeps both
-     clinicians and the paper file whole. */
-  .card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 4%; }
-  /* The hero's scrim, pulled a little heavier: a share card is read at a
-     third of this size in a feed, and the right edge has to stay quiet
-     behind the mark rather than merely tinted. */
-  .scrim {
-    position: absolute; inset: 0;
-    background: linear-gradient(90deg, rgba(1,86,151,0.62) 0%, rgba(1,86,151,0.24) 58%, rgba(1,86,151,0.34) 100%);
+  body { width: 1200px; height: 630px; overflow: hidden; font-family: var(--body); color: var(--navy); }
+  .card {
+    position: relative; width: 1200px; height: 630px; overflow: hidden;
+    background: linear-gradient(112deg, #fff 0%, #fff 42%, #f2fcff 42%, #f2fcff 100%);
   }
-
-  .wrap { position: relative; height: 100%; display: flex; align-items: center; padding: 0 52px; }
-
-  .panel {
-    position: relative; width: 668px; background: rgba(255,255,255,0.94);
-    border: 1px solid var(--color-divider); padding: 40px 46px 42px;
-    display: flex; flex-direction: column; gap: 20px;
+  .network {
+    position: absolute; inset: 0 0 0 auto; width: 600px; opacity: 0.46;
+    background-image: radial-gradient(rgba(1,86,151,0.24) 1.3px, transparent 1.3px);
+    background-size: 24px 24px;
+    mask-image: linear-gradient(100deg, transparent 2%, #000 52%, #000 100%);
   }
-  /* The blueprint frame's registration marks (globals.css `.blueprint > .corner`). */
-  .corner { position: absolute; width: 11px; height: 11px; color: rgba(14, 42, 74, 0.55); }
-  .corner::before, .corner::after { content: ""; position: absolute; background: currentColor; }
-  .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
-  .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
-  .corner.tl { top: -6px; left: -6px; }
-  .corner.tr { top: -6px; right: -6px; }
-  .corner.bl { bottom: -6px; left: -6px; }
-  .corner.br { bottom: -6px; right: -6px; }
+  .edge { position: absolute; right: 0; top: 0; width: 22px; height: 100%; background: var(--navy); }
+  .edge::after { content: ""; position: absolute; left: 0; top: 128px; width: 22px; height: 160px; background: var(--orange); }
 
-  .logo { height: 30px; width: auto; display: block; align-self: flex-start; }
-
+  .copy { position: absolute; z-index: 5; left: 62px; top: 46px; width: 485px; }
+  .brand { width: max-content; margin-bottom: 78px; }
+  .wordmark { display: block; width: 108px; height: auto; }
+  .wordmark-sub {
+    display: block; margin-top: 3px; color: var(--deep); font-size: 7.5px;
+    line-height: 1; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  }
+  .kicker { color: var(--deep); font-size: 21px; line-height: 1; font-weight: 600; margin-bottom: 19px; }
   h1 {
-    font-family: var(--font-heading); font-weight: 600; font-size: 55px; line-height: 1.05;
-    letter-spacing: -0.02em; margin: 0;
+    width: 480px; color: var(--navy); font-family: var(--heading); font-size: 72px;
+    font-weight: 600; letter-spacing: -0.03em; line-height: 0.96;
   }
-  .lede { font-size: 20px; line-height: 1.5; color: var(--color-neutral-800); max-width: 560px; }
-  .lede b { font-weight: 700; color: var(--color-text); }
+  .lede { width: 425px; margin-top: 25px; color: #3c5574; font-size: 21px; line-height: 1.43; font-weight: 500; }
 
-  .foot { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
-  .chip {
-    position: relative; display: inline-flex; align-items: center; background: var(--color-cta);
-    border: 1px solid var(--color-cta); color: var(--color-text);
-    font-family: var(--font-heading); font-weight: 600; font-size: 19px; letter-spacing: 0.01em;
-    padding: 11px 22px;
+  .states { display: flex; gap: 10px; margin-top: 29px; }
+  .state { display: flex; align-items: center; gap: 9px; padding: 10px 13px; border: 1px solid rgba(17,48,85,0.32); background: #fff; font-size: 15px; font-weight: 700; }
+  .state::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--orange); }
+  .state.sync::before { background: var(--blue); box-shadow: 0 0 0 3px rgba(33,145,208,0.16); }
+  .url { display: flex; align-items: center; gap: 11px; margin-top: 20px; color: var(--navy); font-size: 16px; font-weight: 700; }
+  .url::before { content: ""; width: 36px; height: 5px; background: var(--orange); }
+
+  .stage {
+    position: absolute; z-index: 2; left: 560px; top: 112px; width: 720px; height: 438px;
+    transform: rotate(-1.25deg); transform-origin: center;
   }
-  .foot-note { font-size: 15px; font-weight: 500; color: var(--color-neutral-800); }
+  .stage::before { content: ""; position: absolute; inset: 19px -12px -17px 18px; background: var(--orange); }
+  .screen {
+    position: absolute; inset: 0; overflow: hidden; background: #fff;
+    border: 11px solid #fff; outline: 1px solid rgba(17,48,85,0.28);
+    box-shadow: 0 22px 52px rgba(17,48,85,0.20);
+  }
+  .screen::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px rgba(17,48,85,0.10); pointer-events: none; }
+  .screen img { width: 100%; height: 100%; object-fit: cover; object-position: 27% top; }
+  .corner { position: absolute; z-index: 4; width: 17px; height: 17px; color: var(--navy); }
+  .corner::before, .corner::after { content: ""; position: absolute; background: currentColor; }
+  .corner::before { left: 8px; top: 0; width: 1px; height: 100%; }
+  .corner::after { left: 0; top: 8px; width: 100%; height: 1px; }
+  .tl { left: -9px; top: -9px; }
+  .tr { right: -9px; top: -9px; }
+  .bl { left: -9px; bottom: -9px; }
+  .br { right: -9px; bottom: -9px; }
+
+  .clinician {
+    position: absolute; z-index: 4; right: -26px; bottom: -148px; width: 478px; height: auto;
+    filter: drop-shadow(-14px 17px 19px rgba(17,48,85,0.18));
+  }
+  .record-tab {
+    position: absolute; z-index: 6; right: 54px; top: 83px; padding: 10px 16px 11px;
+    color: var(--ink); background: var(--gold); border: 1px solid var(--navy);
+    font-family: var(--heading); font-size: 17px; font-weight: 600;
+    transform: rotate(1.5deg);
+  }
 </style>
 </head>
 <body>
   <div class="card">
-    <img src="../public/assets/doctor-nurse-consultation.jpg" alt="" />
-    <div class="scrim"></div>
-    <div class="wrap">
-      <div class="panel">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <img class="logo" src="../public/assets/tamam-logo-full.svg" alt="" />
-        <h1>Transforming fragmented records into connected care</h1>
-        <p class="lede">Offline-first health records for South&nbsp;Sudan — <b>so care never starts from zero.</b></p>
-        <div class="foot">
-          <span class="chip">tamamhealth.org</span>
-          <span class="foot-note">Works with power shortage, no signal</span>
-        </div>
+    <div class="network"></div><div class="edge"></div>
+    <div class="copy">
+      <div class="brand">
+        <img class="wordmark" src="../public/assets/tamam-logo-type.svg" alt="" />
+        <span class="wordmark-sub">Healthcare System</span>
       </div>
+      <p class="kicker">One patient. One record.</p>
+      <h1>Care should never start from zero</h1>
+      <p class="lede">The patient’s history stays within reach—even when power and networks are not.</p>
+      <div class="states"><span class="state">Works offline</span><span class="state sync">Syncs when connected</span></div>
+      <span class="url">tamamhealth.org</span>
     </div>
+    <div class="stage">
+      <div class="screen"><img src="../public/assets/platform-doctor.png" alt="" /></div>
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    </div>
+    <span class="record-tab">The record follows the patient</span>
+    <img class="clinician" src="../public/assets/social-clinician-v2.png" alt="" />
   </div>
 </body>
 </html>

@@ -25,12 +25,11 @@ const headingFont = Barlow_Condensed({
  *  looked the same. It still runs in full in the description and the social
  *  card below, where there is room for it. */
 const TAB_TITLE = "TamamHealth";
-/** The full line, for search results and link previews. Matches the platform
- *  (`platform/src/app/layout.tsx`) verbatim, so the product and the site that
- *  sells it say the same thing. */
-const TITLE = "TamamHealth: Every Patient Deserves to Be Remembered";
+/** Short, category-first copy for search results and link previews. The title
+ *  says what the product is; the description says why that matters. */
+const TITLE = "TamamHealth — Care That Never Starts From Zero";
 const DESCRIPTION =
-  "South Sudan's clinics run on paper-based records that get lost, damaged, or destroyed. TamamHealth brings digital records that work offline, so care never starts from zero.";
+  "TamamHealth keeps each patient's history available from clinic to referral hospital—even when the power or network is not.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tamamhealth.org"),
