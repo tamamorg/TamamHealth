@@ -44,12 +44,11 @@
   .edge::after { content: ""; position: absolute; left: 0; top: 128px; width: 22px; height: 160px; background: var(--orange); }
 
   .copy { position: absolute; z-index: 5; left: 62px; top: 46px; width: 485px; }
-  .brand { width: max-content; margin-bottom: 78px; }
-  .wordmark { display: block; width: 108px; height: auto; }
-  .wordmark-sub {
-    display: block; margin-top: 3px; color: var(--deep); font-size: 7.5px;
-    line-height: 1; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
-  }
+  /* The source lockup includes the mark at x=0–24.37 and the complete type
+     lockup at x=34.25–122.9. Crop only the mark; scale the remaining original
+     artwork as one image so its word/subline proportions cannot drift. */
+  .brand { width: 112px; height: 34.84px; overflow: hidden; margin-bottom: 78px; }
+  .wordmark { display: block; width: 155.48px; max-width: none; height: 34.84px; transform: translateX(-43.34px); }
   .kicker { color: var(--deep); font-size: 21px; line-height: 1; font-weight: 600; margin-bottom: 19px; }
   h1 {
     width: 480px; color: var(--navy); font-family: var(--heading); font-size: 72px;
@@ -102,8 +101,7 @@
     <div class="network"></div><div class="edge"></div>
     <div class="copy">
       <div class="brand">
-        <img class="wordmark" src="../public/assets/tamam-logo-type.svg" alt="" />
-        <span class="wordmark-sub">Healthcare System</span>
+        <img class="wordmark" src="../public/assets/tamam-logo-full.svg" alt="" />
       </div>
       <p class="kicker">One patient. One record.</p>
       <h1>Care should never start from zero</h1>
