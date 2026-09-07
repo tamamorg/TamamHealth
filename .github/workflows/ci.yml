@@ -6,11 +6,13 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel an in-flight run if a new commit lands on the same ref. Saves
-# minutes and avoids a stale run reporting failure after a fix has merged.
+# Pull requests only need CI for their latest commit, but every push to main must
+# finish so branch protection and deployment gates receive a conclusive result.
+# A unique run-id fallback also prevents GitHub from replacing an older pending
+# main run when another push enters the concurrency group.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   platform:
