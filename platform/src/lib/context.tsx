@@ -83,6 +83,7 @@ interface AppUser {
    *  transfers to the right inbox — a transfer sent to "Paediatrics" with no
    *  named provider has nowhere to land without it. */
   department?: string;
+  specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
   orgId?: string;
   organization?: OrganizationDoc;
   /**

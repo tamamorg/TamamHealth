@@ -33,6 +33,7 @@ import EhrMiniCalendar, { parseIsoDate, startOfMonth, toIsoDate } from '@/compon
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import { calendarPeriodLabel, calendarPeriodRange, countInPeriod } from './_calendar-period';
 import { useAppointments } from '@/lib/hooks/useAppointments';
+import { useDepartments } from '@/lib/hooks/useDepartments';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName } from '@/lib/patient-utils';
 import { useAuth } from '@/lib/context';
@@ -42,6 +43,7 @@ import { useToast } from '@/components/Toast';
 import { withTimeout } from '@/lib/write-timeout';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AppointmentType, AppointmentPriority, AppointmentStatus } from '@/lib/db-types';
+import { appointmentBelongsToDepartment } from '@/modules/departments/client';
 import dynamic from 'next/dynamic';
 import PortalModal from '@/components/Modal';
 import { jubaDate } from '@/lib/time-juba';
@@ -140,7 +142,10 @@ export default function AppointmentsPage() {
   const { showToast } = useToast();
   const { t } = useTranslation();
   const { departments: facilityDepartments } = useSettings();
-  const departments = facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
+  const { departments: departmentEntities } = useDepartments();
+  const departments = departmentEntities.length
+    ? departmentEntities.map((item) => item.name)
+    : facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
   const visibleAppointments = useMemo(
     () => appointmentsVisibleToUser(appointments, currentUser),
     [appointments, currentUser],
@@ -174,6 +179,12 @@ export default function AppointmentsPage() {
   const [showAvailability, setShowAvailability] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const matchesDepartment = useCallback((appointment: typeof appointments[number]) => {
+    if (filterDepartment === 'all') return true;
+    const entity = departmentEntities.find(item => item._id === filterDepartment);
+    return entity ? appointmentBelongsToDepartment(appointment, entity) : appointment.department === filterDepartment;
+  }, [departmentEntities, filterDepartment]);
 
   // Deep link: TopBar "+ → Schedule appointment" routes here with ?new=1 to
   // open the booking form straight away. Read on the client to avoid needing a
@@ -320,7 +331,7 @@ export default function AppointmentsPage() {
    * month instead of two days), never the contents.
    */
   const calendarEvents = useMemo(() => {
-    let list = visibleAppointments;
+    let list = visibleAppointments.filter(matchesDepartment);
     if (filterStatus === 'pending_approval') {
       list = list.filter(a => isPendingApproval(a, today));
     } else if (filterStatus !== 'all') {
@@ -344,7 +355,7 @@ export default function AppointmentsPage() {
         resource: a,
       };
     });
-  }, [visibleAppointments, filterStatus, search, today]);
+  }, [visibleAppointments, filterStatus, search, today, matchesDepartment]);
 
   // The day bar's own number. `calendarEvents` is every appointment matching
   // the filter, across every month — printing that beside "Aug 20 – 21" put a
@@ -390,7 +401,7 @@ export default function AppointmentsPage() {
     const { start, end } = calendarPeriodRange(calView, calDate);
     const fromDate = toIsoDate(start);
     const untilDate = toIsoDate(end);
-    let list = visibleAppointments.filter(a => a.appointmentDate >= fromDate && a.appointmentDate < untilDate);
+    let list = visibleAppointments.filter(a => a.appointmentDate >= fromDate && a.appointmentDate < untilDate && matchesDepartment(a));
     const q = search.toLowerCase().trim();
     if (q) list = list.filter(a =>
       a.patientName.toLowerCase().includes(q) ||
@@ -399,7 +410,7 @@ export default function AppointmentsPage() {
       a.reason.toLowerCase().includes(q)
     );
     return list;
-  }, [visibleAppointments, search, calView, calDate]);
+  }, [visibleAppointments, search, calView, calDate, matchesDepartment]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: statusBaseList.length };
@@ -423,7 +434,7 @@ export default function AppointmentsPage() {
   }, [statusCounts, filterStatus, t, statusLabelKey]);
 
   // Pending approvals — see `isPendingApproval`.
-  const pendingApprovals = useMemo(() => visibleAppointments.filter(a => isPendingApproval(a, today)), [visibleAppointments, today]);
+  const pendingApprovals = useMemo(() => visibleAppointments.filter(a => isPendingApproval(a, today) && matchesDepartment(a)), [visibleAppointments, today, matchesDepartment]);
 
   /**
    * Dismissing the dialog also drops the "came from registration" hand-off:
@@ -463,6 +474,7 @@ export default function AppointmentsPage() {
             facilityName: currentUser?.hospitalName || '',
             orgId: currentUser?.orgId,
             department: wiDepartment,
+            departmentId: departmentEntities.find((item) => item.name === wiDepartment)?._id,
             chiefComplaint: wiReason,
             notes: wiNotes || undefined,
             // The dialog's own Routine/Urgent/Emergency picker → the service's
@@ -749,6 +761,18 @@ export default function AppointmentsPage() {
                   </button>
                 )}
               </div>
+
+              <Select
+                value={filterDepartment}
+                onChange={event => setFilterDepartment(event.target.value)}
+                aria-label={t('appointments.departmentWorklist')}
+                style={{ minWidth: 170 }}
+              >
+                <option value="all">{t('appointments.allDepartments')}</option>
+                {departmentEntities.length
+                  ? departmentEntities.map(department => <option key={department._id} value={department._id}>{department.name}</option>)
+                  : departments.map(department => <option key={department} value={department}>{department}</option>)}
+              </Select>
 
               <div className="ehr-day-tabs">
                 {CAL_VIEW_TABS.map(tab => (

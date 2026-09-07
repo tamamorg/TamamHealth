@@ -7,7 +7,19 @@ import type { BaseDoc, FacilityLevel } from './db-types';
 
 export type BillingStatus = 'draft' | 'pending' | 'partial' | 'paid' | 'waived' | 'cancelled' | 'insurance_pending' | 'insurance_approved' | 'insurance_rejected';
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank_transfer' | 'insurance' | 'credit' | 'waiver';
-export type ChargeCategory = 'consultation' | 'laboratory' | 'pharmacy' | 'radiology' | 'procedure' | 'bed_charge' | 'surgery' | 'ambulance' | 'other';
+export type ChargeCategory = 'consultation' | 'laboratory' | 'pharmacy' | 'radiology' | 'procedure' | 'bed_charge' | 'admission_deposit' | 'surgery' | 'ambulance' | 'dental' | 'dialysis' | 'optical' | 'cardiac_diagnostics' | 'mental_health' | 'theatre' | 'rehabilitation' | 'other';
+export type BillingUnit = 'each' | 'session' | 'night' | 'procedure' | 'item';
+
+/** Price-free starter catalogue: facilities set approved prices/effective dates. */
+export const SPECIALTY_BILLING_CATALOG: readonly { category: ChargeCategory; serviceCode: string; serviceName: string; billingUnit: BillingUnit }[] = [
+  { category: 'dental', serviceCode: 'DENT-CONSULT', serviceName: 'Dental consultation', billingUnit: 'each' },
+  { category: 'dialysis', serviceCode: 'DIAL-HD-SESSION', serviceName: 'Haemodialysis session', billingUnit: 'session' },
+  { category: 'optical', serviceCode: 'OPT-REFRACTION', serviceName: 'Refraction assessment', billingUnit: 'each' },
+  { category: 'cardiac_diagnostics', serviceCode: 'CARD-ECG', serviceName: '12-lead ECG', billingUnit: 'each' },
+  { category: 'mental_health', serviceCode: 'MH-ASSESS', serviceName: 'Mental health assessment', billingUnit: 'each' },
+  { category: 'theatre', serviceCode: 'THEATRE-USE', serviceName: 'Operating theatre use', billingUnit: 'procedure' },
+  { category: 'rehabilitation', serviceCode: 'REHAB-SESSION', serviceName: 'Physiotherapy session', billingUnit: 'session' },
+] as const;
 
 export interface BillLineItem {
   id: string;
@@ -15,6 +27,7 @@ export interface BillLineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  billingUnit?: BillingUnit;
   totalPrice: number;
   referenceId?: string;     // Links to lab order, prescription, etc.
   referenceType?: string;   // 'lab_result' | 'prescription' | 'appointment'
@@ -111,6 +124,7 @@ export interface FeeScheduleDoc extends BaseDoc {
   serviceCode: string;
   serviceName: string;
   unitPrice: number;
+  billingUnit?: BillingUnit;
   currency: string;
   isActive: boolean;
   effectiveFrom: string;

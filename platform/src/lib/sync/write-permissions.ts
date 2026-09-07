@@ -213,6 +213,8 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   // capability table the API route and the UI read, so this row cannot drift
   // from the route guard the way a hand-copied list can.
   patient_transfer: TRANSFER_WRITE_ROLES,
+  specialty_care_episode: NURSING_AND_CLINICIANS,
+  specialty_pathway_config: ['super_admin', 'org_admin', 'medical_superintendent', 'hospital_manager'],
   appointment: CARE_TEAM_ASSIGNMENT_ROLES,
   availability: [...ADMIN, ...CLINICIANS],
   assessment: NURSING_AND_CLINICIANS,
@@ -309,6 +311,9 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   // it, so a facility admin's policy changes stayed on their own device. Same
   // roles as hold the /facility-settings route.
   facility_settings: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
+  // Stable facility service directory. Operational staff read it; only roles
+  // that administer facility configuration may create or change entries.
+  department: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
   // Every role, without exception — see EVERY_ROLE. A role missing here still
   // writes its audit entry locally; it just never replicates.
   audit_log: EVERY_ROLE,

@@ -7,6 +7,7 @@
 import { getDB } from '../db';
 import type { WardDoc, BedDoc, AdmissionDoc, BedStatus } from '../db-types-ward';
 import type { UserRole } from '../db-types';
+import type { PaymentMethodType } from '../db-types-payments';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
@@ -256,6 +257,10 @@ export interface AdmitPatientInput {
   wardName: string;
   bedId?: string;
   bedNumber?: string;
+  roomClass?: AdmissionDoc['roomClass'];
+  nightlyTariff?: number;
+  tariffCurrency?: string;
+  admissionDepositRequired?: number;
   facilityId: string;
   facilityName: string;
   facilityLevel: AdmissionDoc['facilityLevel'];
@@ -324,6 +329,8 @@ export async function admitPatient(
     admissionDate: now,
     isolationRequired: data.isolationRequired || false,
     status: 'admitted',
+    admissionDepositPaid: 0,
+    admissionDepositStatus: data.admissionDepositRequired && data.admissionDepositRequired > 0 ? 'due' : 'not_required',
     followUpRequired: false,
     createdAt: now,
     updatedAt: now,
@@ -384,7 +391,139 @@ export async function admitPatient(
     }
   }
 
+  // A configured deposit becomes a real, linked bill. Billing failure must
+  // never roll back a clinically valid admission or release its bed, so this
+  // happens after the admission transaction and remains retryable through
+  // ensureAdmissionDepositBill().
+  if ((doc.admissionDepositRequired ?? 0) > 0) {
+    try { return await ensureAdmissionDepositBillForAdmission(doc); }
+    catch (error) { console.warn('[ward] admission saved but deposit bill could not be created:', error); }
+  }
   return doc;
+}
+
+/**
+ * Idempotently create/link the invoice for an admission deposit, then mirror
+ * its collected amount onto the admission for ward/reception visibility.
+ */
+async function ensureAdmissionDepositBillForAdmission(admission: AdmissionDoc): Promise<AdmissionDoc> {
+  const required = admission.admissionDepositRequired ?? 0;
+  if (required <= 0) {
+    if (admission.admissionDepositStatus === 'not_required') return admission;
+    const updated = { ...admission, admissionDepositStatus: 'not_required' as const, admissionDepositPaid: 0, admissionDepositReconciledAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const response = await wardDB().put(updated); updated._rev = response.rev; return updated;
+  }
+
+  const { createBill, getBillById, getBillsByPatient } = await import('./billing-service');
+  let bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId) : null;
+  if (!bill) {
+    const existing = (await getBillsByPatient(admission.patientId)).find((candidate) =>
+      candidate.items.some((item) => item.category === 'admission_deposit' && item.referenceId === admission._id));
+    bill = existing ?? await createBill({
+      patientId: admission.patientId,
+      patientName: admission.patientName,
+      hospitalNumber: admission.hospitalNumber,
+      facilityId: admission.facilityId,
+      facilityName: admission.facilityName,
+      facilityLevel: admission.facilityLevel,
+      encounterDate: admission.admissionDate,
+      encounterId: admission.encounterId,
+      items: [{
+        id: uuidv4(), category: 'admission_deposit', description: `${admission.roomClass?.replaceAll('_', ' ') || 'Inpatient'} admission deposit`,
+        quantity: 1, unitPrice: required, billingUnit: 'each', totalPrice: required,
+        referenceId: admission._id, referenceType: 'admission',
+      }],
+      currency: admission.tariffCurrency || 'SSP', generatedBy: admission.admittedBy,
+      generatedByName: admission.admittedByName, state: admission.state,
+      county: admission.county, orgId: admission.orgId,
+      notes: `Admission deposit for ${admission._id}`,
+    });
+  }
+  const paid = Math.max(0, Math.min(required, bill.amountPaid || 0));
+  const updated: AdmissionDoc = {
+    ...admission,
+    admissionDepositBillId: bill._id,
+    admissionDepositPaid: paid,
+    admissionDepositStatus: paid >= required ? 'paid' : paid > 0 ? 'partial' : 'due',
+    admissionDepositReconciledAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const response = await wardDB().put(updated);
+  updated._rev = response.rev;
+  emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+  return updated;
+}
+
+export async function ensureAdmissionDepositBill(admissionId: string, scope: DataScope): Promise<AdmissionDoc> {
+  const admission = await getAdmissionById(admissionId, scope);
+  if (!admission) throw new Error('Admission not found in your authorized scope');
+  return ensureAdmissionDepositBillForAdmission(admission);
+}
+
+/** Record the locally-authorized discharge decision; never assumes deposits are refundable. */
+export async function assessAdmissionDeposit(input: {
+  admissionId: string;
+  scope: DataScope;
+  decision: 'refund' | 'forfeit' | 'waive';
+  refundAmount?: number;
+  reason: string;
+  actor: { id: string; name: string };
+}): Promise<AdmissionDoc> {
+  const admission = await ensureAdmissionDepositBill(input.admissionId, input.scope);
+  const reason = input.reason.trim();
+  if (!reason) throw new Error('A deposit decision requires a reason');
+  const paid = admission.admissionDepositPaid ?? 0;
+  const alreadyRefunded = admission.admissionDepositRefunded ?? 0;
+  const available = Math.max(0, paid - alreadyRefunded);
+  const refundDue = input.decision === 'refund' ? input.refundAmount ?? available : 0;
+  if (!Number.isFinite(refundDue) || refundDue < 0 || refundDue > available) throw new Error('Refund amount exceeds the collected, unrefunded deposit');
+
+  const updated: AdmissionDoc = {
+    ...admission,
+    admissionDepositStatus: input.decision === 'refund' ? 'refund_due' : input.decision === 'forfeit' ? 'forfeited' : 'waived',
+    admissionDepositRefundDue: refundDue,
+    admissionDepositDecisionReason: reason,
+    admissionDepositReconciledAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const response = await wardDB().put(updated);
+  updated._rev = response.rev;
+  await logAuditSafe('ADMISSION_DEPOSIT_ASSESSED', input.actor.id, input.actor.name, `Admission ${admission._id} deposit marked ${updated.admissionDepositStatus}: ${reason}`);
+  emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+  return updated;
+}
+
+/** Issue a real payment refund, then close or reduce the admission's refund due. */
+export async function refundAdmissionDeposit(input: {
+  admissionId: string;
+  scope: DataScope;
+  paymentId: string;
+  amount: number;
+  method: PaymentMethodType;
+  reason: string;
+  actor: { id: string; name: string };
+}): Promise<AdmissionDoc> {
+  const admission = await getAdmissionById(input.admissionId, input.scope);
+  if (!admission) throw new Error('Admission not found in your authorized scope');
+  if (admission.admissionDepositStatus !== 'refund_due') throw new Error('The admission deposit has not been approved for refund');
+  const due = admission.admissionDepositRefundDue ?? 0;
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > due) throw new Error('Refund amount must be positive and no greater than the approved refund due');
+  const { issueRefund } = await import('./payment-service');
+  const refund = await issueRefund({ paymentId: input.paymentId, patientId: admission.patientId, patientName: admission.patientName, amount: input.amount, currency: admission.tariffCurrency || 'SSP', method: input.method, reason: input.reason, processedBy: input.actor.id, processedByName: input.actor.name, facilityId: admission.facilityId, orgId: admission.orgId });
+  const remaining = Math.max(0, due - input.amount);
+  const updated: AdmissionDoc = {
+    ...admission,
+    admissionDepositRefunded: (admission.admissionDepositRefunded ?? 0) + input.amount,
+    admissionDepositRefundDue: remaining,
+    admissionDepositRefundId: refund._id,
+    admissionDepositStatus: remaining === 0 ? 'refunded' : 'refund_due',
+    admissionDepositReconciledAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const response = await wardDB().put(updated);
+  updated._rev = response.rev;
+  emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+  return updated;
 }
 
 /** Move an admitted patient to another available ward bed. */

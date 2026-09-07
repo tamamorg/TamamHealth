@@ -125,7 +125,7 @@ export default function NotificationsPanel({
               <button
                 onClick={markAllRead}
                 title="Mark everything as read"
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold"
+                className="notifications-popover-action flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold"
                 style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}
               >
                 <Check className="w-4 h-4" style={{ stroke: 'currentColor' }} />
@@ -136,7 +136,7 @@ export default function NotificationsPanel({
               onClick={toggleAlertPref}
               aria-label={alertPref === 'sound' ? 'Mute notification sounds' : 'Enable notification sounds'}
               title={alertPref === 'sound' ? 'Sound on — new notifications chime. Click to mute.' : 'Muted — click to chime on new notifications.'}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold"
+              className="notifications-popover-action flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold"
               style={{
                 background: alertPref === 'sound' ? 'var(--accent-light)' : 'var(--overlay-subtle)',
                 color: alertPref === 'sound' ? 'var(--accent-primary)' : 'var(--text-muted)',
@@ -147,7 +147,7 @@ export default function NotificationsPanel({
                 : <BellOff className="w-4 h-4" style={{ stroke: 'currentColor' }} />}
               {alertPref === 'sound' ? 'Sound on' : 'Muted'}
             </button>
-            <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
+            <button onClick={onClose} aria-label="Close" className="notifications-popover-action p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
           </div>
         </div>
 
@@ -168,7 +168,7 @@ export default function NotificationsPanel({
                   <button
                     key={n.id}
                     onClick={() => { markRead(n.id); onClose(); router.push(n.href); }}
-                    className="w-full text-start flex items-start gap-3 px-5 py-3 border-b transition-colors hover:bg-[var(--overlay-subtle)]"
+                    className="notifications-popover-item w-full text-start flex items-start gap-3 px-5 py-3 border-b transition-colors hover:bg-[var(--overlay-subtle)]"
                     style={{ borderColor: 'var(--border-light)', opacity: n.read ? 0.62 : 1 }}
                   >
                     <span className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: m.bg, color: m.color }}>
@@ -195,7 +195,7 @@ export default function NotificationsPanel({
             search, and the full history the panel deliberately truncates. */}
         <button
           onClick={openAll}
-          className="flex items-center justify-center gap-1 px-5 py-3 border-t text-[12px] font-bold"
+          className="notifications-popover-footer flex items-center justify-center gap-1 px-5 py-3 border-t text-[12px] font-bold"
           style={{ borderColor: 'var(--border-light)', color: 'var(--accent-primary)', background: 'var(--bg-card-solid)' }}
         >
           {items.length > visible.length ? `View all ${items.length} notifications` : 'View all notifications'}

@@ -24,7 +24,7 @@ import {
 import {
   getFeeSchedule, createFee, updateFee, deleteFee, type FeeInput,
 } from '@/lib/services/fee-schedule-service';
-import type { FeeScheduleDoc, ChargeCategory } from '@/lib/db-types-billing';
+import type { FeeScheduleDoc, ChargeCategory, BillingUnit } from '@/lib/db-types-billing';
 import { formatMoney } from '@/lib/format-utils';
 import Select from '@/components/Select';
 
@@ -35,14 +35,22 @@ const CATEGORIES: { value: ChargeCategory; label: string }[] = [
   { value: 'radiology', label: 'Radiology / Imaging' },
   { value: 'procedure', label: 'Procedure' },
   { value: 'bed_charge', label: 'Bed / Ward charge' },
+  { value: 'admission_deposit', label: 'Admission deposit' },
   { value: 'surgery', label: 'Surgery' },
+  { value: 'dental', label: 'Dental' },
+  { value: 'dialysis', label: 'Dialysis' },
+  { value: 'optical', label: 'Optical' },
+  { value: 'cardiac_diagnostics', label: 'Cardiac diagnostics' },
+  { value: 'mental_health', label: 'Mental health' },
+  { value: 'theatre', label: 'Theatre' },
+  { value: 'rehabilitation', label: 'Physiotherapy / rehabilitation' },
   { value: 'ambulance', label: 'Ambulance' },
   { value: 'other', label: 'Other' },
 ];
 
 const emptyForm = (): FeeInput & { isActive: boolean } => ({
   facilityId: '', facilityName: '', category: 'consultation',
-  serviceCode: '', serviceName: '', unitPrice: 0, currency: 'SSP', isActive: true,
+  serviceCode: '', serviceName: '', unitPrice: 0, billingUnit: 'each', currency: 'SSP', isActive: true,
 });
 
 /* Service · Code · Category · Price · Status */
@@ -91,7 +99,7 @@ export default function ServicePricingPage() {
     setForm({
       facilityId: fee.facilityId, facilityName: fee.facilityName, category: fee.category,
       serviceCode: fee.serviceCode, serviceName: fee.serviceName, unitPrice: fee.unitPrice,
-      currency: fee.currency, isActive: fee.isActive,
+      billingUnit: fee.billingUnit || 'each', currency: fee.currency, isActive: fee.isActive,
     });
     setEditingId(fee._id);
     setShowForm(true);
@@ -207,12 +215,17 @@ export default function ServicePricingPage() {
                   <input className="sadb-modal-input" value={form.serviceCode} onChange={e => setForm({ ...form, serviceCode: e.target.value })} placeholder="e.g. CONS-GEN" />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <Field label="Price">
                   <input className="sadb-modal-input" type="number" min={0} value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: Number(e.target.value) })} />
                 </Field>
                 <Field label="Currency">
                   <input className="sadb-modal-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} />
+                </Field>
+                <Field label="Unit">
+                  <Select className="sadb-modal-input" value={form.billingUnit || 'each'} onChange={e => setForm({ ...form, billingUnit: e.target.value as BillingUnit })}>
+                    {(['each', 'session', 'night', 'procedure', 'item'] as BillingUnit[]).map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                  </Select>
                 </Field>
               </div>
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)', textTransform: 'none' }}>

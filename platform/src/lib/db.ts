@@ -309,6 +309,11 @@ export const providerReviewsDB = () => getDB('tamamhealth_provider_reviews');
 // facilities and ships a copy of the chart.
 export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 
+// Structured, reusable specialty episodes (dialysis, dental, theatre,
+// diagnostics and longitudinal specialty clinics). Sensitive narrative notes
+// do not belong here because this database participates in clinical sync.
+export const specialtyCareDB = () => getDB('tamamhealth_specialty_care');
+
 // Bump this version to force a re-seed (destroys all data and re-creates).
 // Bumped to 34: v2 demo deployment flipped to demo mode — force browsers that
 // previously seeded in production mode (admin-only) to re-seed the full demo
@@ -427,7 +432,10 @@ export const patientTransfersDB = () => getDB('tamamhealth_patient_transfers');
 // bump is what makes the two halves agree: `resetAllDatabases()` destroys the
 // local stores (destroy, not delete, so no tombstones propagate) and the seed
 // re-runs against the empty server.
-export const SEED_VERSION = 74;
+// Bumped to 75: refresh the standalone v6 demo so every seeded staff record is
+// login-capable and the community-health worker receives the assigned Boma
+// follow-up dataset. Demo-only builds reset and repopulate on the next load.
+export const SEED_VERSION = 75;
 
 /**
  * Delete local PouchDB databases whose IndexedDB backing is corrupt.
@@ -590,6 +598,11 @@ const NON_REPLICATING_LOCAL_DATABASES: readonly string[] = [
 export const LOCAL_DATABASE_NAMES: readonly string[] = [
   ...DATABASE_SYNC_CONFIGS.map(config => config.localName),
   ...NON_REPLICATING_LOCAL_DATABASES,
+];
+
+/** Server-only PHI stores that must never participate in browser replication. */
+export const SERVER_ONLY_DATABASE_NAMES: readonly string[] = [
+  'tamamhealth_restricted_clinical',
 ];
 
 /**

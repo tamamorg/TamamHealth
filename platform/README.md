@@ -146,6 +146,7 @@ Seeded usernames include:
 | `cashier.deng` / `biller.nyandeng` | Cashier / Medical Biller |
 | `supt.lado` / `manager.aluel` | Medical Superintendent / Hospital Manager |
 | `county.lopez` | County Health Director |
+| `bhw.akol` | Community Health Worker (nurse-scoped) |
 | `org.admin` / `dr.mercy` / `nurse.mercy` | Private-org accounts (Mercy General Hospital) |
 
 The full roster lives in `DEMO_USER_PROFILES` in

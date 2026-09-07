@@ -35,8 +35,16 @@ export const CATEGORY_LABELS: Record<ChargeCategory, string> = {
   radiology: 'Radiology',
   procedure: 'Procedure',
   bed_charge: 'Bed charge',
+  admission_deposit: 'Admission deposit',
   surgery: 'Surgery',
   ambulance: 'Ambulance',
+  dental: 'Dental',
+  dialysis: 'Dialysis',
+  optical: 'Optical',
+  cardiac_diagnostics: 'Cardiac diagnostics',
+  mental_health: 'Mental health',
+  theatre: 'Theatre',
+  rehabilitation: 'Physiotherapy / rehabilitation',
   other: 'Other',
 };
 

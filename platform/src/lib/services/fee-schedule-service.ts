@@ -10,7 +10,7 @@
  */
 import { getDB } from '../db';
 import { getSettings } from '../settings/settings-store';
-import type { FeeScheduleDoc, ChargeCategory, BillLineItem, BillingDoc } from '../db-types-billing';
+import type { FeeScheduleDoc, ChargeCategory, BillLineItem, BillingDoc, BillingUnit } from '../db-types-billing';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
@@ -28,6 +28,7 @@ export interface FeeInput {
   serviceCode: string;
   serviceName: string;
   unitPrice: number;
+  billingUnit?: BillingUnit;
   currency?: string;
   orgId?: string;
 }
@@ -57,6 +58,7 @@ export async function createFee(input: FeeInput, by: Actor = {}): Promise<FeeSch
     serviceCode: input.serviceCode,
     serviceName: input.serviceName,
     unitPrice: input.unitPrice,
+    billingUnit: input.billingUnit,
     currency: input.currency || 'SSP',
     isActive: true,
     effectiveFrom: now,

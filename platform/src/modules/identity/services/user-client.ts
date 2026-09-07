@@ -3,6 +3,7 @@ import type { UserDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import { filterByScope } from '@/lib/services/data-scope';
 import type { InvitationOutcome } from '@/modules/identity/provisioning/invite-window';
+import type { ClinicalSpecialty } from '@/modules/departments/client';
 
 export interface CreateClientUserData {
   username: string;
@@ -16,6 +17,8 @@ export interface CreateClientUserData {
   photoUrl?: string;
   department?: string;
   specialty?: string;
+  departmentId?: string;
+  specialtyCode?: ClinicalSpecialty;
   phone?: string;
   email?: string;
 }

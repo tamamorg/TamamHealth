@@ -57,6 +57,7 @@
 /platform/src/modules/feature-catalog/ @makuachteny
 /platform/src/modules/terminology/     @makuachteny
 /platform/src/modules/clinical-forms/  @makuachteny
+/platform/src/modules/departments/     @makuachteny
 
 # --- Data & sync -----------------------------------------------------------
 # Patient data, CouchDB→Postgres projection and the offline sync engine.

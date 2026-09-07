@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
      *  right inbox. Not a JWT claim, so it is only populated from the live user
      *  record; a JWT-only fallback leaves it undefined rather than stale. */
     department?: string;
+    specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
     preferences?: import('@/lib/db-types').UserPreferences;
   } = {
     name: payload.name,
@@ -143,6 +144,7 @@ export async function GET(request: NextRequest) {
         orgName: impersonating ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
         mustChangePassword: user.mustChangePassword,
         department: user.department,
+        specialtyCode: user.specialtyCode,
         preferences: user.preferences,
       };
     } else if (isProduction && payload.sub !== 'admin' && process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
@@ -169,6 +171,7 @@ export async function GET(request: NextRequest) {
       orgName: fresh.orgName,
       mustChangePassword: fresh.mustChangePassword,
       department: fresh.department,
+      specialtyCode: fresh.specialtyCode,
       preferences: fresh.preferences,
     },
     // Deployment-wide operational policy, sent with the session because every

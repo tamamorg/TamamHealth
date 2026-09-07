@@ -61,6 +61,7 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_consultation_progress', direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_handoffs',              direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_patient_transfers',     direction: 'both', orgScoped: true },
+  { localName: 'tamamhealth_specialty_care',        direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_order_sets',            direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_phone_notes',           direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_assessments',           direction: 'both', orgScoped: true },
@@ -188,7 +189,7 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   // services/system-config-service.ts, which writes through `hospitalsDB()`).
   // It was not listed, so the sync gateway refused it as a type "not permitted
   // in tamamhealth_hospitals".
-  tamamhealth_hospitals: ['hospital', 'system_config', 'facility_settings'],
+  tamamhealth_hospitals: ['hospital', 'system_config', 'facility_settings', 'department', 'specialty_pathway_config'],
   tamamhealth_problems: ['problem'],
   tamamhealth_program_enrollments: ['program_enrollment'],
   tamamhealth_procedures: ['procedure'],
@@ -203,6 +204,7 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   tamamhealth_consultation_progress: ['consultation_progress'],
   tamamhealth_handoffs: ['shift_handoff'],
   tamamhealth_patient_transfers: ['patient_transfer'],
+  tamamhealth_specialty_care: ['specialty_care_episode'],
   tamamhealth_order_sets: ['order_set'],
   tamamhealth_phone_notes: ['phone_note'],
   tamamhealth_assessments: ['assessment'],

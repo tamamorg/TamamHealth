@@ -387,6 +387,12 @@ async function postHandler(request: NextRequest) {
         return NextResponse.json({ error: `${field} cannot start or end with spaces` }, { status: 400 });
       }
     }
+    if (body.specialtyCode !== undefined) {
+      const { isClinicalSpecialty } = await import('@/modules/departments');
+      if (!isClinicalSpecialty(body.specialtyCode)) {
+        return NextResponse.json({ error: 'specialtyCode must be a supported clinical specialty' }, { status: 400 });
+      }
+    }
     const action = body.action as string;
     const { getUserById } = await import('@/modules/identity/services/user-service');
 
@@ -408,8 +414,6 @@ async function postHandler(request: NextRequest) {
           name: body.name as string | undefined,
           phone: body.phone as string | undefined,
           photoUrl: selfPhoto.value,
-          department: body.department as string | undefined,
-          specialty: body.specialty as string | undefined,
         },
         auth.sub,
         auth.username
@@ -618,6 +622,17 @@ async function postHandler(request: NextRequest) {
         : { ids: [] };
       if ('response' in additionalFacilities) return additionalFacilities.response;
 
+      let routedDepartment: { _id: string; name: string; facilityId: string } | null = null;
+      if (body.departmentId !== undefined) {
+        const { getDepartment } = await import('@/modules/departments/services/department-service');
+        routedDepartment = await getDepartment(body.departmentId as string, {
+          role: auth.role, orgId: canonicalOrgId, hospitalId: requestedHospitalId,
+        });
+        if (!routedDepartment || routedDepartment.facilityId !== requestedHospitalId) {
+          return NextResponse.json({ error: 'departmentId must belong to the assigned facility' }, { status: 400 });
+        }
+      }
+
       const updated = await updateUser(
         body.userId as string,
         {
@@ -631,8 +646,10 @@ async function postHandler(request: NextRequest) {
           orgName: await resolveOrgName(canonicalOrgId),
           isActive: body.isActive as boolean | undefined,
           photoUrl: adminPhoto.value,
-          department: body.department as string | undefined,
+          departmentId: routedDepartment?._id,
+          department: routedDepartment?.name ?? body.department as string | undefined,
           specialty: body.specialty as string | undefined,
+          specialtyCode: body.specialtyCode as import('@/modules/departments').ClinicalSpecialty | undefined,
         },
         auth.sub,
         auth.username
@@ -710,6 +727,16 @@ async function postHandler(request: NextRequest) {
         })
       : { ids: [] };
     if ('response' in additionalFacilities) return additionalFacilities.response;
+    let routedDepartment: { _id: string; name: string; facilityId: string } | null = null;
+    if (body.departmentId !== undefined) {
+      const { getDepartment } = await import('@/modules/departments/services/department-service');
+      routedDepartment = await getDepartment(body.departmentId as string, {
+        role: auth.role, orgId: body.orgId as string | undefined, hospitalId: body.hospitalId as string | undefined,
+      });
+      if (!routedDepartment || routedDepartment.facilityId !== body.hospitalId) {
+        return NextResponse.json({ error: 'departmentId must belong to the assigned facility' }, { status: 400 });
+      }
+    }
     const newPhoto = normalisePhoto(body.photoUrl);
     if ('error' in newPhoto) {
       return NextResponse.json({ error: newPhoto.error }, { status: 400 });
@@ -727,8 +754,10 @@ async function postHandler(request: NextRequest) {
         orgId: body.orgId as string | undefined,
         orgName: await resolveOrgName(body.orgId as string | undefined),
         photoUrl: newPhoto.value ?? undefined,
-        department: body.department as string | undefined,
+        departmentId: routedDepartment?._id,
+        department: routedDepartment?.name ?? body.department as string | undefined,
         specialty: body.specialty as string | undefined,
+        specialtyCode: body.specialtyCode as import('@/modules/departments').ClinicalSpecialty | undefined,
         phone: body.phone as string | undefined,
         email: body.email as string | undefined,
       },

@@ -139,6 +139,9 @@ export interface UserDoc extends BaseDoc {
   department?: string;
   /** Staff directory: clinical specialty (e.g. "Cardiologist"). */
   specialty?: string;
+  /** Administrator-managed stable routing fields; display strings remain for legacy records. */
+  departmentId?: string;
+  specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
   /** Staff directory: contact phone for messaging. */
   phone?: string;
   /**
@@ -2511,6 +2514,8 @@ export interface AppointmentDoc extends BaseDoc {
   /** Exam room or bay this visit is booked into. */
   room?: string;
   department: string;
+  /** Stable facility department id. Optional on legacy appointments. */
+  departmentId?: string;
   // Clinical context
   reason: string;             // Chief complaint or reason for visit
   notes?: string;

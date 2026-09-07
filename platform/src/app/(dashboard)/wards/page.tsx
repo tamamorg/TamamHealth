@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import PatientName from '@/components/PatientName';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { Plus, X, CheckCircle2, Pill, ArrowRightLeft } from '@/components/icons/lucide';
+import { Plus, X, CheckCircle2, Pill, ArrowRightLeft, ClipboardList } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
@@ -18,6 +18,7 @@ import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
+import { useSettings } from '@/lib/settings/SettingsProvider';
 
 /* The admissions list is the shared appointment/worklist card row — the same
    surface, grid, type scale and status pill the patient registry uses, so a
@@ -55,6 +56,7 @@ export default function WardsPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const facilitySettings = useSettings();
   const { patients } = usePatients();
   const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, admit, discharge, reassignBed, markBedReady } = useWards();
   const { showToast } = useToast();
@@ -181,6 +183,8 @@ export default function WardsPage() {
     }
     if (!currentUser) return;
     const bed = admitForm.bedId ? beds.find(b => b._id === admitForm.bedId) : undefined;
+    const roomClassCode = bed?.roomClass ?? ward.roomClass ?? 'standard';
+    const configuredClass = facilitySettings.roomClasses.find(item => item.code === roomClassCode && item.active);
     try {
       await admit({
         patientId: patient._id,
@@ -194,6 +198,10 @@ export default function WardsPage() {
         wardName: ward.name,
         bedId: bed?._id,
         bedNumber: bed?.bedNumber,
+        roomClass: roomClassCode,
+        nightlyTariff: bed?.nightlyTariff ?? ward.nightlyTariff ?? configuredClass?.nightlyTariff,
+        tariffCurrency: bed?.tariffCurrency ?? ward.tariffCurrency ?? configuredClass?.currency,
+        admissionDepositRequired: bed?.admissionDeposit ?? ward.admissionDeposit ?? configuredClass?.admissionDeposit,
         facilityId: ward.facilityId,
         facilityName: ward.facilityName,
         facilityLevel: ward.facilityLevel,
@@ -494,7 +502,7 @@ export default function WardsPage() {
                     <Select value={admitForm.bedId} onChange={e => setAdmitForm({ ...admitForm, bedId: e.target.value })} disabled={!admitForm.wardId}>
                       <option value="">{admitForm.wardId ? t('ward.optional') : t('ward.selectWardFirst')}</option>
                       {availableBedsForWard.map(b => (
-                        <option key={b._id} value={b._id}>{b.bedNumber}</option>
+                        <option key={b._id} value={b._id}>{b.bedNumber} · {t(`facilitySettings.roomClass.${b.roomClass ?? 'standard'}`)}</option>
                       ))}
                     </Select>
                   </div>
@@ -569,9 +577,17 @@ export default function WardsPage() {
                     </span>
                   </dd>
                 </div>
+                {(dischargeFor.admissionDepositRequired ?? 0) > 0 && <div>
+                  <dt>{t('ward.admissionDeposit')}</dt>
+                  <dd>{dischargeFor.admissionDepositPaid ?? 0} / {dischargeFor.admissionDepositRequired} {dischargeFor.tariffCurrency || 'SSP'} · {t(`ward.depositStatus.${dischargeFor.admissionDepositStatus || 'due'}`)}</dd>
+                </div>}
               </dl>
 
               <nav className="wdis-care-actions" aria-label={t('ward.careActions')}>
+                {(dischargeFor.admissionDepositRequired ?? 0) > 0 && <button type="button" onClick={() => router.push(`/billing?patientId=${encodeURIComponent(dischargeFor.patientId)}`)}>
+                  <ClipboardList className="w-4 h-4" />
+                  <span><b>{t('ward.openDepositBill')}</b><small>{t('ward.openDepositBillHint')}</small></span>
+                </button>}
                 <button type="button" onClick={() => router.push(`/wards/mar/${dischargeFor._id}`)}>
                   <Pill className="w-4 h-4" />
                   <span><b>{t('ward.openMar')}</b><small>{t('ward.openMarHint')}</small></span>

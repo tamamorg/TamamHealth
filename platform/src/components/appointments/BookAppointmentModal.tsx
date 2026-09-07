@@ -28,6 +28,7 @@ import AppointmentStatusSelect from '@/components/appointments/AppointmentStatus
 import WeekSlotGrid, { type GridProvider } from '@/components/booking/WeekSlotGrid';
 import BookingSummaryHeader, { BookingStepDots } from '@/components/booking/BookingSummaryHeader';
 import { useAppointments } from '@/lib/hooks/useAppointments';
+import { useDepartments } from '@/lib/hooks/useDepartments';
 import { useBookingSlots } from '@/lib/hooks/useBookingSlots';
 import { useVisitReasons } from '@/lib/hooks/useVisitReasons';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -128,9 +129,12 @@ export default function BookAppointmentModal({
   const { users } = useUsers();
   const { currentUser } = useAuth();
   const { departments: facilityDepartments } = useSettings();
+  const { departments: departmentEntities } = useDepartments();
   const { showToast } = useToast();
   const { canBookAppointments, canAssignCareTeam } = usePermissions();
-  const departments = facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
+  const departments = departmentEntities.length
+    ? departmentEntities.map((item) => item.name)
+    : facilityDepartments.length ? facilityDepartments : FALLBACK_DEPARTMENTS;
   const today = jubaDate();
 
   const [step, setStep] = useState(0);
@@ -338,6 +342,7 @@ export default function BookAppointmentModal({
         appointmentType: type,
         priority,
         department,
+        departmentId: departmentEntities.find((item) => item.name === department)?._id,
         reason,
         notes: notes || undefined,
         // A clinician's own booking starts at Scheduled and waits for the

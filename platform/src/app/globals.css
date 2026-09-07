@@ -4278,6 +4278,39 @@ html:has(.mobile-shell-offline-banner) {
   background: var(--bg-card-solid);
 }
 
+/* The popover lives inside `.ehr-top-actions`, but its controls are content
+   controls, not rail icon buttons. Keep this namespace more specific than the
+   rail's responsive button rules so notification rows remain a vertical list
+   instead of being collapsed into circular 28–44px controls. */
+.ehr-top-actions .notifications-popover .notifications-popover-action {
+  width: auto;
+  height: auto;
+  display: inline-flex;
+}
+
+.ehr-top-actions .notifications-popover .notifications-popover-item {
+  width: 100%;
+  height: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.ehr-top-actions .notifications-popover .notifications-popover-footer {
+  width: 100%;
+  height: auto;
+  display: flex;
+  border-radius: 0 0 14px 14px;
+}
+
+.ehr-top-actions .notifications-popover button svg.lucide {
+  width: 16px;
+  height: 16px;
+}
+
 /* Icon quick-nav sitting next to the module dropdown (Referrals, Appointments).
    Same 38px circular icon button as the rest of the top rail. Hidden on narrow
    screens where the mobile tab bar takes over. */

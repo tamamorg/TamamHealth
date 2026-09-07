@@ -44,6 +44,14 @@ export const DEMO_USER_PROFILES: SeedUserProfile[] = [
   { username: 'admin',           name: 'Ministry of Health',         role: 'government',             orgId: PUBLIC_ORG_ID },
   { username: 'dr.wani',         name: 'Dr. James Wani Igga',        role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
   { username: 'dr.achol',        name: 'Dr. Achol Mayen Deng',       role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.abuk',         name: 'Dr. Abuk Ayen Malual',       role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.ajang',        name: 'Dr. Ajang Kuol Deng',        role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.alier',        name: 'Dr. Alier Chol Wol',         role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.awut',         name: 'Dr. Awut Mayom Jok',         role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.bol',          name: 'Dr. Bol Garang Akech',       role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.chol',         name: 'Dr. Chol Atem Puok',         role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'dr.nyamal',       name: 'Dr. Nyamal Koang Lado',      role: 'doctor',                 hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
+  { username: 'clinician.akech', name: 'Dr. Akech Deng Mawien',      role: 'clinician',              hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
   { username: 'co.deng',         name: 'CO Deng Mabior Kuol',        role: 'clinical_officer',       hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital',         orgId: PUBLIC_ORG_ID },
   { username: 'dr.wau',          name: 'Dr. Mary Akuol Deng',        role: 'doctor',                 hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital',         orgId: PUBLIC_ORG_ID },
   { username: 'nurse.wau',       name: 'Nurse Grace Achai Lual',     role: 'nurse',                  hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital',         orgId: PUBLIC_ORG_ID },
@@ -64,6 +72,10 @@ export const DEMO_USER_PROFILES: SeedUserProfile[] = [
   { username: 'midwife.nyakong', name: 'Midwife Nyakong Gatkuoth',    role: 'nurse',                  hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital',  orgId: PUBLIC_ORG_ID },
   { username: 'cashier.deng',    name: 'Deng Akec Ring',             role: 'cashier',                hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
   { username: 'county.lopez',    name: 'Dr. Lopez Lokai Modi',       role: 'county_health_director',                                                                     orgId: PUBLIC_ORG_ID },
+  // The dedicated Boma role is not part of the active RBAC model. This demo
+  // account therefore uses the existing nurse scope: it can work the seeded
+  // community follow-up queue without receiving org-wide oversight access.
+  { username: 'bhw.akol',        name: 'Community Health Worker Akol Deng Mading', role: 'nurse', hospitalId: 'phcu-001', hospitalName: 'Kajo-keji Boma PHCU', orgId: PUBLIC_ORG_ID },
   { username: 'reg.clerk',       name: 'Grace Poni Lukudu',          role: 'central_registration_clerk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'clinic.clerk',    name: 'Joseph Taban Lado',          role: 'clinic_clerk',           hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },
   { username: 'triage.mary',     name: 'Mary Nyaruai Gai',           role: 'nurse',                  hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',     orgId: PUBLIC_ORG_ID },

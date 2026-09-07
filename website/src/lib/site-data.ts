@@ -36,10 +36,11 @@ export const PRODUCTS: Product[] = [
       "A connected facility platform for OPD, IPD, ward management, laboratory, imaging, pharmacy, billing, HR, and reporting, all tied to the same patient record.",
     highlights: [
       "One patient record across OPD, IPD and every department",
+      "Facility-scoped department worklists and clinic schedules",
       "Wards, laboratory, imaging and pharmacy on the same chart",
       "Billing and DHIS2 reporting drawn from the same visit",
     ],
-    modules: ["Patient Registry", "Outpatient & Inpatient", "Ward & Bed Management", "Laboratory", "Imaging", "Pharmacy", "Billing & Payments", "Reporting & BI", "DHIS2 Sync"],
+    modules: ["Patient Registry", "Department Worklists", "Clinic Schedules", "Outpatient & Inpatient", "Ward & Bed Management", "Laboratory", "Imaging", "Pharmacy", "Billing & Payments", "Reporting & BI", "DHIS2 Sync", "Specialty workflows (planned)"],
     image: "/assets/doctor-at-workstation.jpg",
     imageAlt: "A doctor at a workstation, reading a patient's record on screen",
     imageCaption: "Hospital floor",
@@ -96,7 +97,7 @@ export const PRODUCTS: Product[] = [
       "Structured findings captured at the workstation",
       "Reports delivered back to the ordering clinician",
     ],
-    modules: ["Modality Scheduling", "Study Worklist", "Structured Reporting", "PACS Integration", "DICOM Export"],
+    modules: ["Modality Scheduling", "Study Worklist", "Structured Reporting", "PACS Integration (planned)", "DICOM Export (planned)"],
     image: "/assets/doctor-tablet-review.jpg",
     imageAlt: "Radiologist reviewing imaging on a workstation",
     imageCaption: "Imaging suite",
@@ -128,10 +129,10 @@ export const PRODUCTS: Product[] = [
     sector: "Patients",
     tagline: "Patients' window into their own care",
     description:
-      "Patients see their own records, prescriptions, lab results, and visit history (on a phone, by SMS, or at a kiosk) and share feedback that flows back to the facility.",
+      "Patients use a separate web portal to see their own records, prescriptions, lab results and visit history, and to share feedback with the facility. SMS can be configured for login codes and reminders; it does not carry the full record.",
     highlights: [
       "Records, prescriptions and results on a phone",
-      "Reachable by app, SMS or a facility kiosk",
+      "Web portal with optional SMS login codes and reminders",
       "Patient feedback flows back to the facility",
     ],
     modules: ["My Records", "Prescriptions & Results", "Visit History", "Appointment Reminders", "Feedback & Follow-up"],
@@ -287,7 +288,7 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
   },
   PPS: {
     intro:
-      "The patient's own window into their care (on a phone, by SMS, or at a kiosk), separate from staff login and read-only where it should be.",
+      "The patient's own web window into their care, separate from staff login and read-only where it should be. SMS is limited to configured login codes and reminders.",
     stepsTitle: "What a patient can do",
     steps: [
       { t: "Sign in", b: "With a hospital ID and phone number, or name, date of birth and phone. The session is separate from staff login and clears on sign out." },
@@ -301,9 +302,9 @@ export const PRODUCT_DETAIL: Record<string, ProductDetail> = {
     lifecycle: ["requested", "confirmed", "checked_in", "in_progress", "completed"],
     roles: ["Patients", "Caregivers", "Front Desk (confirming)", "Cashier (verifying payments)"],
     safeguards: [
-      { t: "Nothing new to install", b: "Reached from a phone browser, by SMS reminder, or at a facility kiosk: no app store, no smartphone requirement." },
+      { t: "Nothing new to install", b: "Reached from a phone or facility browser. Optional SMS reminders can point patients back to the portal; no app store is required." },
       { t: "Payments are verified, not assumed", b: "Portal payments arrive pending and are approved or rejected by a cashier before they post to the ledger." },
-      { t: "Intake before arrival", b: "Form packets sent by SMS come back for staff review, then merge into the chart field by field on approval." },
+      { t: "Booking before arrival", b: "Patients can request an appointment before arrival. Staff review the request before it becomes a confirmed booking." },
     ],
   },
 };

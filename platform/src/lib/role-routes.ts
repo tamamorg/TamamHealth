@@ -29,7 +29,7 @@ const NURSE_MODULE_ROUTES = [
   // the same ETAT assessment, pinned to one patient.
   '/dashboard', '/patients', '/triage', '/rooming', '/referrals', '/messages',
   '/lab', '/immunizations', '/anc', '/births', '/deaths',
-  '/settings', '/appointments',
+  '/settings', '/appointments', '/departments',
   // The retired station's redirect stubs. Station dashboards are explicit
   // grants now (see `stationDashboardGrant`), so without this entry the proxy
   // would bounce an old /dashboard/nurse bookmark to the role's home before
@@ -70,7 +70,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/epidemic-intelligence', '/mch-analytics', '/government',
       '/vital-statistics', '/facility-assessments', '/data-quality',
       '/dhis2-export', '/public-stats',
-      '/appointments',
+      '/appointments', '/departments',
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
@@ -103,7 +103,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // `isPathAllowed(role, '/system-admin')`.
       '/admin/organizations', '/admin/facilities', '/reports', '/settings', '/settings/manage',
       '/patients', '/pharmacy', '/messages',
-      '/appointments',
+      '/appointments', '/departments',
       '/billing', '/payments', '/payments/claims',
       '/wards', '/equipment', '/hr', '/dashboard/hr', '/inquiries',
       '/blood-bank', '/controlled-substances', '/emergency-preparedness',
@@ -130,7 +130,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/settings',
-      '/appointments',
+      '/appointments', '/departments',
       '/wards', '/alerts', '/blood-bank',
       '/transfers',
     ],
@@ -145,7 +145,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
       '/settings',
-      '/appointments',
+      '/appointments', '/departments',
       '/wards', '/alerts', '/blood-bank',
       '/transfers',
     ],
@@ -173,7 +173,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // midwife's old /dashboard/nurse bookmark has to reach the redirect.
       '/dashboard/nurse',
       '/anc', '/births', '/deaths', '/immunizations',
-      '/wards', '/referrals', '/appointments',
+      '/wards', '/referrals', '/appointments', '/departments',
       '/notes', '/settings',
       '/transfers',
     ],
@@ -213,7 +213,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // appointment, not a module of its own.
       '/dashboard/front-desk', '/patients', '/referrals', '/messages',
       '/settings',
-      '/appointments',
+      '/appointments', '/departments',
 
     ],
     defaultDashboard: '/dashboard/front-desk',
@@ -291,7 +291,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/facility-settings',
       '/it', '/system-admin',
       '/epidemic-intelligence', '/mch-analytics', '/my-facility', '/facility-overview',
-      '/appointments', '/facility-assessments', '/data-quality',
+      '/appointments', '/departments', '/facility-assessments', '/data-quality',
       // The aggregate register view, which is what replaces the four raw
       // registers above for an oversight role — the same surface the sibling
       // hospital_manager console has carried all along.
@@ -367,7 +367,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // Clinical context (read). Lab/pharmacy are operational service queues run
       // by lab techs/pharmacists; the manager sees utilisation via reports, not
       // the live work queues.
-      '/patients', '/wards', '/referrals', '/appointments', '/messages',
+      '/patients', '/wards', '/referrals', '/appointments', '/departments', '/messages',
       '/settings', '/settings/manage',
       '/transfers',
     ],
@@ -387,7 +387,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
   // ───────── Clinical-flow workflow stations (EHR Clinical Flow doc §4) ─────────
   central_registration_clerk: {
     allowed: [
-      '/patients', '/appointments', '/referrals', '/messages',
+      '/patients', '/appointments', '/departments', '/referrals', '/messages',
       '/settings', '/dashboard/front-desk', '/payments', '/billing',
     ],
     defaultDashboard: '/dashboard/front-desk',
@@ -395,7 +395,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
 
   clinic_clerk: {
     allowed: [
-      '/patients', '/appointments', '/messages',
+      '/patients', '/appointments', '/departments', '/messages',
       '/settings', '/dashboard/front-desk',
     ],
     defaultDashboard: '/dashboard/front-desk',
@@ -417,7 +417,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
     allowed: [
       '/dashboard', '/patients', '/triage', '/consultation', '/notes', '/referrals', '/messages',
       '/lab', '/pharmacy', '/immunizations', '/anc', '/births', '/deaths',
-      '/appointments', '/wards', '/alerts', '/settings',
+      '/appointments', '/departments', '/wards', '/alerts', '/settings',
       '/blood-bank',
       '/transfers',
     ],

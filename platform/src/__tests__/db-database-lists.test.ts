@@ -13,7 +13,7 @@
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { LOCAL_DATABASE_NAMES } from '@/lib/db';
+import { LOCAL_DATABASE_NAMES, SERVER_ONLY_DATABASE_NAMES } from '@/lib/db';
 import { DATABASE_SYNC_CONFIGS, DATABASE_DOCUMENT_TYPES } from '@/lib/sync/sync-config';
 
 const SYNCED = DATABASE_SYNC_CONFIGS.map(config => config.localName);
@@ -71,7 +71,9 @@ describe('databases opened anywhere in the tree are wipeable', () => {
   }
 
   it('lists every database the code actually opens', () => {
-    const unlisted = openedDatabaseNames().filter(name => !LOCAL_DATABASE_NAMES.includes(name));
+    const known = new Set([...LOCAL_DATABASE_NAMES, ...SERVER_ONLY_DATABASE_NAMES]);
+    const unlisted = openedDatabaseNames().filter(name => !known.has(name));
     expect(unlisted).toEqual([]);
+    expect(SERVER_ONLY_DATABASE_NAMES.some(name => LOCAL_DATABASE_NAMES.includes(name))).toBe(false);
   });
 });

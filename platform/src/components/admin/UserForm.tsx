@@ -31,6 +31,8 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { UserDoc, UserRole } from '@/lib/db-types';
+import { useDepartments } from '@/lib/hooks/useDepartments';
+import { CLINICAL_SPECIALTIES, specialtyLabel, type ClinicalSpecialty } from '@/modules/departments/client';
 
 /** Credentials the host shows exactly once — see the note above. */
 export interface UserCredentialHandoff {
@@ -62,6 +64,7 @@ const ROLE_OPTIONS: UserRole[] = [
 const EMPTY = {
   name: '', username: '', email: '', password: '',
   role: 'nurse' as UserRole, orgId: '', hospitalId: '', facilityIds: [] as string[],
+  departmentId: '', specialtyCode: '' as ClinicalSpecialty | '',
 };
 
 export interface UserFormProps {
@@ -94,6 +97,7 @@ export function UserForm({
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(true);
   const [showAddFacility, setShowAddFacility] = useState(false);
+  const { departments } = useDepartments(form.hospitalId || undefined, form.orgId || undefined);
 
   const roleLabel = (role: string) => t(`adminUsers.role_${role}`);
   const needsOrg = roleNeedsOrganization(form.role);
@@ -169,6 +173,10 @@ export function UserForm({
         hospitalId: form.hospitalId || undefined,
         hospitalName: hospital?.name,
         facilityIds: form.facilityIds,
+        departmentId: form.departmentId || undefined,
+        department: departments.find(item => item._id === form.departmentId)?.name,
+        specialtyCode: form.specialtyCode || undefined,
+        specialty: specialtyLabel(form.specialtyCode),
       });
       onSaved({ user, handoff: { username: user.username, password: form.password, invitation } });
     } catch (err) {
@@ -285,7 +293,7 @@ export function UserForm({
                 <Select
                   value={form.hospitalId} className="uf-input"
                   disabled={lockFacility}
-                  onChange={e => setForm(f => ({ ...f, hospitalId: e.target.value }))}
+                  onChange={e => setForm(f => ({ ...f, hospitalId: e.target.value, departmentId: '' }))}
                 >
                   <option value="">{t('adminUsers.selectFacility')}</option>
                   {facilityChoices.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
@@ -309,6 +317,35 @@ export function UserForm({
                   )}
                 </div>
               )}
+            </div>
+          )}
+          {needsFacility && form.hospitalId && (
+            <div className="uf-field">
+              <span className="uf-label">{t('adminUsers.department')}</span>
+              <Select
+                className="uf-input" value={form.departmentId}
+                onChange={event => setForm(current => ({ ...current, departmentId: event.target.value }))}
+              >
+                <option value="">{t('adminUsers.selectDepartment')}</option>
+                {departments.map(department => (
+                  <option key={department._id} value={department._id}>{department.name}</option>
+                ))}
+              </Select>
+              <small className="uf-hint">{t('adminUsers.departmentHint')}</small>
+            </div>
+          )}
+          {(['doctor', 'clinical_officer', 'clinician', 'radiologist'] as UserRole[]).includes(form.role) && (
+            <div className="uf-field">
+              <span className="uf-label">{t('adminUsers.specialty')}</span>
+              <Select
+                className="uf-input" value={form.specialtyCode}
+                onChange={event => setForm(current => ({ ...current, specialtyCode: event.target.value as ClinicalSpecialty | '' }))}
+              >
+                <option value="">{t('adminUsers.selectSpecialty')}</option>
+                {CLINICAL_SPECIALTIES.map(specialty => (
+                  <option key={specialty.value} value={specialty.value}>{t(`specialty.${specialty.value}`)}</option>
+                ))}
+              </Select>
             </div>
           )}
           {needsFacility && form.hospitalId && facilityChoices.some(h => h._id !== form.hospitalId) && (

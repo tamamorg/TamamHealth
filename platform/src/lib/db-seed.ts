@@ -146,6 +146,10 @@ const defaultUsers: SeedUserProfile[] = [
   { username: 'midwife.nyakong', name: 'Midwife Nyakong Gatkuoth', role: 'nurse', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'cashier.deng', name: 'Deng Akec Ring', role: 'cashier', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'county.lopez', name: 'Dr. Lopez Lokai Modi', role: 'county_health_director', orgId: PUBLIC_ORG_ID },
+  // Community-health work uses the active nurse permission envelope. The
+  // seeded follow-ups below already target user-bhw.akol; this corresponding
+  // staff record makes that assignment and demo login real end to end.
+  { username: 'bhw.akol', name: 'Community Health Worker Akol Deng Mading', role: 'nurse', hospitalId: 'phcu-001', hospitalName: 'Kajo-keji Boma PHCU', orgId: PUBLIC_ORG_ID },
   // Clinical-flow workflow stations (EHR Clinical Flow doc §4)
   { username: 'reg.clerk', name: 'Grace Poni Lukudu', role: 'central_registration_clerk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'clinic.clerk', name: 'Joseph Taban Lado', role: 'clinic_clerk', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: PUBLIC_ORG_ID },

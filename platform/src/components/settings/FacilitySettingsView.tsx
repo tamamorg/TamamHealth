@@ -25,6 +25,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
@@ -48,6 +49,11 @@ import NetworkDefaultsView, { NETWORK_MODULES, type NetworkModuleKey } from '@/c
 import {
   SectionCard, Field, SaveBar, CheckRow, TagListEditor, toggleKey, orderByReference,
 } from '@/components/settings/settings-controls';
+
+const DepartmentDirectoryEditor = dynamic(
+  () => import('@/modules/departments/components/DepartmentDirectoryEditor'),
+  { ssr: false },
+);
 
 const STATION_LABELS: Record<EncounterStationKey, string> = {
   registration: 'Registration',
@@ -358,11 +364,31 @@ export function FacilitySettingsView({
                 onChange={rooms => setDraft({ ...draft, rooms })}
               />
             </div>
+            <div className="mt-6 overflow-x-auto">
+              <p className="fs-hint">{t('facilitySettings.roomClassHint')}</p>
+              <table className="w-full" style={{ minWidth: 620 }}>
+                <thead><tr style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  {[t('facilitySettings.roomClass'), t('facilitySettings.nightlyTariff'), t('facilitySettings.admissionDeposit'), t('facilitySettings.currency')].map(label => (
+                    <th key={label} className="px-3 py-2 text-start text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</th>
+                  ))}
+                </tr></thead>
+                <tbody>{draft.roomClasses.map((roomClass, index) => (
+                  <tr key={roomClass.code} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <td className="px-3 py-2 text-sm font-semibold">{t(`facilitySettings.roomClass.${roomClass.code}`)}</td>
+                    <td className="px-3 py-2"><input className="fs-input" type="number" min={0} value={roomClass.nightlyTariff ?? ''} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, nightlyTariff: event.target.value === '' ? undefined : Number(event.target.value) } : item) })} /></td>
+                    <td className="px-3 py-2"><input className="fs-input" type="number" min={0} value={roomClass.admissionDeposit ?? ''} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, admissionDeposit: event.target.value === '' ? undefined : Number(event.target.value) } : item) })} /></td>
+                    <td className="px-3 py-2"><input className="fs-input" value={roomClass.currency} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, currency: event.target.value.toUpperCase() } : item) })} /></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <DepartmentDirectoryEditor facilityId={effectiveHospitalId} orgId={selectedHospital?.orgId || orgId} />
             <SaveBar
               saving={saving === 'operations'}
               onSave={() => saveSection({
                 departments: draft.departments.filter(Boolean),
                 rooms: draft.rooms.filter(Boolean),
+                roomClasses: draft.roomClasses,
               }, 'operations')}
             />
           </SectionCard>

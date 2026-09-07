@@ -11,6 +11,8 @@
  * SettingsProvider/useSettings hook makes them reactive in components.
  */
 
+import type { RoomClass } from '../db-types-ward';
+
 /** A single lab investigation the facility offers. */
 export interface LabTestDef {
   name: string;
@@ -37,6 +39,15 @@ export type PayorKey =
   | 'out_of_pocket' | 'gov_moh' | 'ngo_donor' | 'pepfar' | 'global_fund'
   | 'private_insurance' | 'cbhi' | 'exemption_waiver' | 'sliding_scale';
 
+export interface RoomClassDef {
+  code: RoomClass;
+  name: string;
+  nightlyTariff?: number;
+  admissionDeposit?: number;
+  currency: string;
+  active: boolean;
+}
+
 export interface FacilitySettings {
   // ── General ─────────────────────────────────────────────────────────────
   /** ISO-ish currency code used for all charges/prices (e.g. 'SSP', 'USD'). */
@@ -59,6 +70,8 @@ export interface FacilitySettings {
   rooms: string[];
   /** Departments / clinics offered (drives routing + reporting buckets). */
   departments: string[];
+  /** Facility-approved accommodation terms. Blank amounts mean unconfigured. */
+  roomClasses: RoomClassDef[];
 
   // ── Workflow ────────────────────────────────────────────────────────────
   /** Ordered stations in the facility's default outpatient journey. */
@@ -227,6 +240,12 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   ],
   rooms: ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Room 6', 'Bay A', 'Bay B', 'Bay C', 'Bay D'],
   departments: ['General Medicine', 'Maternity', 'Emergency', 'Pediatrics', 'Ophthalmology', 'Dental', 'Dermatology', 'OPD'],
+  roomClasses: [
+    { code: 'standard', name: 'Standard', currency: 'SSP', active: true },
+    { code: 'semi_private', name: 'Semi-private', currency: 'SSP', active: true },
+    { code: 'private', name: 'Private', currency: 'SSP', active: true },
+    { code: 'vip', name: 'VIP', currency: 'SSP', active: true },
+  ],
   stationSequence: ['registration', 'triage', 'rooming', 'consultation', 'lab', 'radiology', 'cashier', 'pharmacy', 'clinic_checkout', 'facility_checkout'],
   checkoutGateKeys: ['all_clinic_visits_closed', 'prescriptions_dispensed', 'critical_labs_reviewed', 'in_clinic_procedures_complete', 'required_documentation_generated', 'payment_status_determined', 'pending_items_flagged'],
   triageRequiredFor: ['child', 'pregnant', 'emergency'],
@@ -320,7 +339,7 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
  */
 export function mergeFacilitySettings(partial?: Partial<FacilitySettings> | null): FacilitySettings {
   const d = DEFAULT_FACILITY_SETTINGS;
-  if (!partial) return { ...d, labCatalog: [...d.labCatalog], rooms: [...d.rooms], departments: [...d.departments], paymentMethods: [...d.paymentMethods], payors: [...d.payors] };
+  if (!partial) return { ...d, labCatalog: [...d.labCatalog], rooms: [...d.rooms], departments: [...d.departments], roomClasses: d.roomClasses.map(item => ({ ...item })), paymentMethods: [...d.paymentMethods], payors: [...d.payors] };
   return {
     currency: partial.currency ?? d.currency,
     hospitalNumberPrefix: partial.hospitalNumberPrefix ?? d.hospitalNumberPrefix,
@@ -330,6 +349,7 @@ export function mergeFacilitySettings(partial?: Partial<FacilitySettings> | null
     labCatalog: partial.labCatalog?.length ? partial.labCatalog : [...d.labCatalog],
     rooms: partial.rooms?.length ? partial.rooms : [...d.rooms],
     departments: partial.departments?.length ? partial.departments : [...d.departments],
+    roomClasses: partial.roomClasses?.length ? partial.roomClasses.map(item => ({ ...item })) : d.roomClasses.map(item => ({ ...item })),
     stationSequence: partial.stationSequence?.length ? partial.stationSequence : [...d.stationSequence],
     checkoutGateKeys: partial.checkoutGateKeys?.length ? partial.checkoutGateKeys : [...d.checkoutGateKeys],
     triageRequiredFor: partial.triageRequiredFor?.length ? partial.triageRequiredFor : [...d.triageRequiredFor],

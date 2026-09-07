@@ -226,6 +226,8 @@ describe('facility clinical policy', () => {
     const merged = mergeFacilitySettings({ currency: 'USD' });
     expect(merged.currency).toBe('USD');
     expect(merged.userPolicy.deactivateAfterIdleDays).toBe(60);
+    expect(merged.roomClasses.map(item => item.code)).toEqual(['standard', 'semi_private', 'private', 'vip']);
+    expect(merged.roomClasses.every(item => item.nightlyTariff === undefined && item.admissionDeposit === undefined)).toBe(true);
   });
 });
 

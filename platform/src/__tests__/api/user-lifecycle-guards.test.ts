@@ -30,7 +30,7 @@ jest.mock('@/modules/identity/core/api-auth', () => ({
   getAuthPayload: jest.fn(async () => actor),
   unauthorized: jest.fn(() => Response.json({ error: 'unauthorized' }, { status: 401 })),
   forbidden: jest.fn((error = 'forbidden') => Response.json({ error }, { status: 403 })),
-  hasRole: jest.fn(() => true),
+  hasRole: jest.fn((auth: { role: string }, roles: string[]) => roles.includes(auth.role)),
   serverError: jest.fn(() => Response.json({ error: 'server' }, { status: 500 })),
   logApiError: jest.fn(),
 }));
@@ -66,7 +66,7 @@ jest.mock('@/lib/services/tenant-control-service', () => ({
 }));
 
 import { POST } from '@/app/api/users/route';
-import { deactivateUser, deleteUser } from '@/modules/identity/services/user-service';
+import { deactivateUser, deleteUser, updateUser } from '@/modules/identity/services/user-service';
 import { deliverAccountInvite } from '@/modules/identity/services/invite-delivery';
 
 const post = (body: Record<string, unknown>) => new NextRequest('https://app.example.org/api/users', {
@@ -79,6 +79,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   auditActions.length = 0;
   remainingAdmins = 1;
+  actor.sub = 'user-org.admin';
+  actor.username = 'org.admin';
+  actor.role = 'org_admin';
   users['user-org.admin'] = {
     _id: 'user-org.admin', username: 'org.admin', name: 'Org Admin',
     role: 'org_admin', orgId: 'org-a', isActive: true, email: 'admin@example.org',
@@ -91,6 +94,25 @@ beforeEach(() => {
     _id: 'user-other.admin', username: 'other.admin', name: 'Other Admin',
     role: 'org_admin', orgId: 'org-a', isActive: true,
   };
+});
+
+describe('staff self-service profile updates', () => {
+  it('ignores administrator-managed department and specialty routing fields', async () => {
+    actor.sub = 'user-nurse';
+    actor.username = 'nurse.one';
+    actor.role = 'nurse';
+    const response = await POST(post({
+      action: 'update', userId: 'user-nurse', name: 'Nurse One', phone: '0912345678',
+      department: 'Administration', departmentId: 'department:hosp-1:administration',
+      specialty: 'Administrator', specialtyCode: 'cardiology',
+    }));
+    expect(response.status).toBe(200);
+    expect(updateUser).toHaveBeenCalledWith(
+      'user-nurse',
+      { name: 'Nurse One', phone: '0912345678', photoUrl: undefined },
+      'user-nurse', 'nurse.one',
+    );
+  });
 });
 
 describe('you cannot lock yourself out', () => {

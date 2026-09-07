@@ -175,6 +175,32 @@ export default async function PlatformPage() {
         </div>
       </section>
 
+      <section id="delivery-status" style={{ padding: "70px 32px", background: "var(--color-surface)" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+          <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("Delivery status")}</span>
+          <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "10px 0 12px" }}>{t("What is available now, and what is still being built")}</h2>
+          <p style={{ margin: "0 0 28px", maxWidth: 820, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
+            {t("A named hospital department is not presented as a complete specialist module until its clinical forms, permissions, safety controls and reports are ready for use.")}
+          </p>
+          <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <article className="blueprint" style={{ padding: "24px 26px" }}>
+              <Corners />
+              <h3 style={{ margin: "0 0 12px", fontSize: 20 }}>{t("Available now")}</h3>
+              <p style={{ margin: 0, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
+                {t("Patient registration, appointment and triage queues, department-linked worklists, consultation, laboratory and radiology order-to-result workflows, pharmacy, inpatient wards, billing, referrals, audit logs and offline-first synchronization.")}
+              </p>
+            </article>
+            <article className="blueprint" style={{ padding: "24px 26px" }}>
+              <Corners />
+              <h3 style={{ margin: "0 0 12px", fontSize: 20 }}>{t("In delivery — not yet a complete specialist module")}</h3>
+              <p style={{ margin: 0, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
+                {t("Admission-deposit collection and refunds, haemodialysis sessions, dental charting, theatre and anaesthesia workflows, optical dispensing, cardiac diagnostics, restricted mental-health notes, and dermatology photography and procedures.")}
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section id="offline" style={{ padding: "66px 32px 90px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 26px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>{t("Built for power cuts and network gaps")}</h2>

@@ -49,6 +49,18 @@ const APPOINTMENT_COMPLETE_ROLES: UserRole[] = [
   ...APPOINTMENT_CLINICAL_ROLES,
 ];
 
+async function linkedDepartmentId(data: Pick<AppointmentDoc, 'department' | 'facilityId' | 'orgId'>): Promise<string | undefined> {
+  if (!data.department || !data.facilityId || !data.orgId) return undefined;
+  try {
+    const { resolveDepartmentByName } = await import('@/modules/departments/services/department-service');
+    return (await resolveDepartmentByName(data.department, data.facilityId, {
+      role: 'front_desk', orgId: data.orgId, hospitalId: data.facilityId,
+    }))?._id;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getAllAppointments(scope?: DataScope): Promise<AppointmentDoc[]> {
   const db = appointmentsDB();
   const all = (await findByType<AppointmentDoc>(db, 'appointment'))
@@ -263,10 +275,13 @@ export async function createAppointment(
 
   await assertNoBookingConflicts(data);
 
+  const departmentId = data.departmentId || await linkedDepartmentId(data);
+
   const doc: AppointmentDoc = withPendingOfflineSync({
     _id: `apt-${uuidv4()}`,
     type: 'appointment',
     ...data,
+    departmentId,
     createdAt: now,
     updatedAt: now,
   }, now);
@@ -516,7 +531,13 @@ export async function updateAppointment(
     if (movesSlot) {
       await assertNoBookingConflicts({ ...existing, ...updates }, id);
     }
-    const updated = withPendingOfflineSync({ ...existing, ...updates, updatedAt: new Date().toISOString() });
+    const departmentContextChanged = ['department', 'facilityId', 'orgId']
+      .some(key => key in updates && updates[key as keyof AppointmentDoc] !== existing[key as keyof AppointmentDoc]);
+    const normalizedUpdates = { ...updates };
+    if (departmentContextChanged) {
+      normalizedUpdates.departmentId = await linkedDepartmentId({ ...existing, ...updates });
+    }
+    const updated = withPendingOfflineSync({ ...existing, ...normalizedUpdates, updatedAt: new Date().toISOString() });
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('UPDATE_APPOINTMENT', undefined, undefined, `Appointment ${id} updated`);

@@ -178,6 +178,8 @@ interface CreateUserData {
   photoUrl?: string;
   department?: string;
   specialty?: string;
+  departmentId?: string;
+  specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
   phone?: string;
   email?: string;
 }
@@ -201,6 +203,8 @@ async function provisionViaApi(data: CreateUserData): Promise<Record<string, unk
     photoUrl: data.photoUrl,
     department: data.department,
     specialty: data.specialty,
+    departmentId: data.departmentId,
+    specialtyCode: data.specialtyCode,
     phone: data.phone,
     email: data.email,
   });
@@ -303,6 +307,8 @@ export async function createUser(
     photoUrl: data.photoUrl,
     department: data.department,
     specialty: data.specialty,
+    departmentId: data.departmentId,
+    specialtyCode: data.specialtyCode,
     phone: data.phone,
     isActive: true,
     // The admin-set password is temporary — force a change at first login so
@@ -334,6 +340,8 @@ interface UpdateUserData {
   photoUrl?: string | null;
   department?: string;
   specialty?: string;
+  departmentId?: string;
+  specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
   orgId?: string;
   /** See `CreateUserData.orgName` — server-stamped, never client-supplied. */
   orgName?: string;

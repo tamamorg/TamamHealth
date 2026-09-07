@@ -171,6 +171,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
       { href: '/wards', label: 'Bed Management', icon: BedDouble, section: 'FACILITIES & OPERATIONS' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'FACILITIES & OPERATIONS' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
       // One nav home for the money, same as every other role: /payments and
       // /payments/claims are the SAME workspace (BillingWorkspace, opened on a
       // different tab), so a separate Claims entry put two adjacent glyphs on
@@ -238,6 +239,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'SERVICES' },
@@ -273,6 +275,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'SERVICES' },
@@ -301,6 +304,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/wards/handoff', label: 'Shift Handoff', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/lab', label: 'Lab Results', icon: Microscope, section: 'CLINICAL' },
       { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'CARE PROGRAMS' },
@@ -548,6 +552,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       // stopped being a destination of its own. Removed 2026-08-22.
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
       { href: '/controlled-substances', label: 'Controlled Substances', icon: ClipboardCheck, section: 'SERVICES' },
       { href: '/lab', label: 'Laboratory', icon: Microscope, section: 'SERVICES' },
       { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },
@@ -656,6 +661,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
     ],
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
@@ -770,6 +776,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
       { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
       { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
+      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
       { href: '/alerts', label: 'Alerts', icon: Siren, section: 'CLINICAL' },
       { href: '/lab', label: 'Laboratory', icon: Microscope, section: 'SERVICES' },
       { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },

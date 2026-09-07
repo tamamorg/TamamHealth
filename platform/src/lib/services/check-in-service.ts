@@ -168,6 +168,8 @@ export interface CheckInInput {
   notes?: string;
   /** The walk-in booking's department. Defaults to 'OPD' when omitted. */
   department?: string;
+  /** Stable facility department id when the service directory is configured. */
+  departmentId?: string;
   /**
    * New case vs re-attendance. When omitted, auto-derived via
    * `deriveAttendanceType` from the patient's history.
@@ -299,6 +301,7 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
         // triage record) is read from.
         priority: acuity === 'emergency' ? 'emergency' : acuity === 'priority' ? 'urgent' : 'routine',
         department: input.department || 'OPD',
+        departmentId: input.departmentId,
         reason: input.chiefComplaint || 'Walk-in visit',
         orgId: input.orgId,
         createdBy: input.checkedInById,

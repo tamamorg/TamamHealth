@@ -8,6 +8,7 @@ import type { BaseDoc, FacilityLevel } from './db-types';
 export type WardType = 'general_male' | 'general_female' | 'paediatric' | 'maternity' | 'surgical' | 'icu' | 'isolation' | 'emergency' | 'neonatal' | 'private';
 export type BedStatus = 'available' | 'occupied' | 'reserved' | 'maintenance' | 'cleaning';
 export type AdmissionStatus = 'admitted' | 'transferred' | 'discharged' | 'deceased' | 'absconded';
+export type RoomClass = 'standard' | 'semi_private' | 'private' | 'vip' | 'icu' | 'isolation';
 
 export interface WardDoc extends BaseDoc {
   type: 'ward';
@@ -24,6 +25,11 @@ export interface WardDoc extends BaseDoc {
   nurseInChargeName?: string;
   isActive: boolean;
   orgId?: string;
+  /** Default accommodation class; individual beds may override it. */
+  roomClass?: RoomClass;
+  nightlyTariff?: number;
+  tariffCurrency?: string;
+  admissionDeposit?: number;
 }
 
 export interface BedDoc extends BaseDoc {
@@ -39,6 +45,10 @@ export interface BedDoc extends BaseDoc {
   lastCleanedAt?: string;
   notes?: string;
   orgId?: string;
+  roomClass?: RoomClass;
+  nightlyTariff?: number;
+  tariffCurrency?: string;
+  admissionDeposit?: number;
 }
 
 export interface AdmissionDoc extends BaseDoc {
@@ -64,6 +74,19 @@ export interface AdmissionDoc extends BaseDoc {
   wardName: string;
   bedId?: string;
   bedNumber?: string;
+  /** Snapshot of approved accommodation terms when admission begins. */
+  roomClass?: RoomClass;
+  nightlyTariff?: number;
+  tariffCurrency?: string;
+  admissionDepositRequired?: number;
+  admissionDepositPaid?: number;
+  admissionDepositBillId?: string;
+  admissionDepositStatus?: 'not_required' | 'due' | 'partial' | 'paid' | 'refund_due' | 'refunded' | 'forfeited' | 'waived';
+  admissionDepositRefunded?: number;
+  admissionDepositRefundDue?: number;
+  admissionDepositRefundId?: string;
+  admissionDepositDecisionReason?: string;
+  admissionDepositReconciledAt?: string;
   // Facility
   facilityId: string;
   facilityName: string;
