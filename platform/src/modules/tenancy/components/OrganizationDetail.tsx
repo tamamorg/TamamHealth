@@ -28,7 +28,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from '@/components/icons/lucide';
+import { Hospital } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import { useToast } from '@/components/Toast';
@@ -332,7 +332,7 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
             data-tour="org-hospitals-add"
             onClick={() => { setEditingFacility(null); setShowFacilityEditor(true); }}
           >
-            <Plus className="w-4 h-4" /> {t('management.addFacility')}
+            <Hospital className="w-4 h-4" /> {t('management.addFacility')}
           </button>
         ) : undefined}
       >

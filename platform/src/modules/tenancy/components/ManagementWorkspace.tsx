@@ -24,7 +24,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from '@/components/icons/lucide';
+import { Building2 } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import { useAuth } from '@/lib/context';
@@ -173,7 +173,7 @@ function OrganizationRegistry() {
               data-tour="manage-add-organization"
               onClick={() => setShowOrgEditor(true)}
             >
-              <Plus className="w-4 h-4" /> {t('management.addOrganization')}
+              <Building2 className="w-4 h-4" /> {t('management.addOrganization')}
             </button>
           ) : undefined}
         >

@@ -735,7 +735,9 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
           {t('action.cancel')}
         </button>
         <button type="button" className="btn btn-primary btn-sm" onClick={handleSubmit} disabled={formLoading}>
-          {formLoading ? t('orgAdmin.saving') : editingId ? t('orgAdmin.updateOrganization') : t('orgAdmin.createOrganization')}
+          {formLoading
+            ? t('orgAdmin.saving')
+            : <><Building2 className="w-4 h-4" /> {editingId ? t('orgAdmin.updateOrganization') : t('orgAdmin.createOrganization')}</>}
         </button>
       </div>
     </div>

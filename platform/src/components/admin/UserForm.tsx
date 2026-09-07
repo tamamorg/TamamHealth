@@ -16,7 +16,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Building2, Eye, EyeOff, RefreshCw, ShieldCheck } from '@/components/icons/lucide';
+import { Hospital, Eye, EyeOff, RefreshCw, ShieldCheck, UserPlus } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import {
@@ -302,7 +302,7 @@ export function UserForm({
                           onClick={() => onAddFacility ? onAddFacility() : setShowAddFacility(true)}
                           data-action="add-facility-inline"
                         >
-                          <Building2 className="w-4 h-4" /> {t('adminUsers.addAFacility')}
+                          <Hospital className="w-4 h-4" /> {t('adminUsers.addAFacility')}
                         </button>
                       )}
                     </>
@@ -343,7 +343,7 @@ export function UserForm({
             {t('action.cancel')}
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={saving || (needsFacility && facilitiesLoading)}>
-            {saving ? t('adminUsers.creating') : t('adminUsers.createUser')}
+            {saving ? t('adminUsers.creating') : <><UserPlus className="w-4 h-4" /> {t('adminUsers.createUser')}</>}
           </button>
         </div>
       </div>

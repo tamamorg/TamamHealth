@@ -8,6 +8,7 @@
  */
 
 import { dashboardCreateActions } from '@/components/dashboard/DashboardCreateActions';
+import { Building2, Hospital, Users } from '@/components/icons/lucide';
 
 const keys = (role: string | undefined) => dashboardCreateActions(role).map(a => a.key);
 
@@ -48,5 +49,10 @@ describe('dashboardCreateActions', () => {
     for (const role of ['super_admin', 'org_admin']) {
       expect(dashboardCreateActions(role).filter(a => a.primary)).toHaveLength(1);
     }
+  });
+
+  it('uses a domain-specific icon for each create action', () => {
+    const actions = dashboardCreateActions('super_admin');
+    expect(actions.map(action => action.icon)).toEqual([Building2, Hospital, Users]);
   });
 });

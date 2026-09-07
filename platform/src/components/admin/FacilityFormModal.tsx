@@ -18,7 +18,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, AlertCircle, ChevronDown, Check } from '@/components/icons/lucide';
+import { Hospital, AlertCircle, ChevronDown, Check } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
@@ -422,7 +422,7 @@ export default function FacilityFormModal({
           >
             {saving
               ? t('orgHospitals.creating')
-              : <><Building2 className="w-4 h-4" /> {isEdit ? t('action.save') : t('orgHospitals.createFacility')}</>}
+              : <><Hospital className="w-4 h-4" /> {isEdit ? t('action.save') : t('orgHospitals.createFacility')}</>}
           </button>
         </div>
       </div>

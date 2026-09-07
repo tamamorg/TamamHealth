@@ -22,7 +22,7 @@
  */
 
 import { useState } from 'react';
-import { Plus } from '@/components/icons/lucide';
+import { Building2, Hospital, Users, type LucideIcon } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { canCreateFacilities, canCreateUsers } from '@/lib/people-nav';
 import { TenancyCreateDialogs, type TenancyCreateKind } from '@/modules/tenancy/client';
@@ -31,6 +31,8 @@ interface CreateAction {
   /** Doubles as the dialog this button opens. */
   key: TenancyCreateKind;
   label: string;
+  /** Domain-specific glyph; these actions should not all read as generic add. */
+  icon: LucideIcon;
   /** The one primary button, if any — the action that role opens most. */
   primary?: boolean;
 }
@@ -45,13 +47,13 @@ export function dashboardCreateActions(role: string | undefined): CreateAction[]
   if (!role) return [];
   return [
     ...(role === 'super_admin'
-      ? [{ key: 'organization', label: 'Create organization', primary: true } as CreateAction]
+      ? [{ key: 'organization', label: 'Create organization', icon: Building2, primary: true } as CreateAction]
       : []),
     ...(canCreateFacilities(role)
-      ? [{ key: 'facility', label: 'Add facility', primary: role !== 'super_admin' } as CreateAction]
+      ? [{ key: 'facility', label: 'Add facility', icon: Hospital, primary: role !== 'super_admin' } as CreateAction]
       : []),
     ...(canCreateUsers(role)
-      ? [{ key: 'staff', label: 'Add staff member' } as CreateAction]
+      ? [{ key: 'staff', label: 'Add staff member', icon: Users } as CreateAction]
       : []),
   ];
 }
@@ -65,17 +67,20 @@ export default function DashboardCreateActions() {
 
   return (
     <>
-      {actions.map(action => (
-        <button
-          key={action.key}
-          type="button"
-          className={`btn btn-sm ${action.primary ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setOpen(action.key)}
-          data-action={`dashboard-create-${action.key}`}
-        >
-          <Plus className="w-4 h-4" /> {action.label}
-        </button>
-      ))}
+      {actions.map(action => {
+        const ActionIcon = action.icon;
+        return (
+          <button
+            key={action.key}
+            type="button"
+            className={`btn btn-sm ${action.primary ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setOpen(action.key)}
+            data-action={`dashboard-create-${action.key}`}
+          >
+            <ActionIcon className="w-4 h-4" aria-hidden="true" /> {action.label}
+          </button>
+        );
+      })}
       {/* Keyed by kind so a different button always mounts a fresh dialog
           rather than re-using the last one's step and presets. */}
       {open && <TenancyCreateDialogs key={open} kind={open} onDone={() => setOpen(null)} />}
