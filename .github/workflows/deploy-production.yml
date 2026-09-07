@@ -120,19 +120,46 @@ jobs:
             exit 1
           fi
 
+      # This gate used to be a single lookup, so dispatching a deploy within a
+      # minute of pushing to main failed on "CI evidence missing" while that
+      # commit's CI run was still in progress (2026-09-07, #83). A running CI
+      # run is not missing evidence, it is pending evidence: wait for it,
+      # bounded, and only fail when the run has actually concluded without
+      # success or never existed. A re-run of failed jobs keeps its run id and
+      # flips status back to in_progress, so the same loop covers repairs too.
       - name: Require successful CI for the selected commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_SHA: ${{ steps.resolve.outputs.full_sha }}
+          CI_WAIT_MINUTES: '45'
         run: |
-          CI_RUN="$(gh run list --workflow ci.yml --commit "$FULL_SHA" --limit 10 \
-            --json databaseId,event,conclusion \
-            --jq '[.[] | select(.event == "push" and .conclusion == "success")][0].databaseId // empty')"
-          if [ -z "$CI_RUN" ]; then
-            echo "::error title=CI evidence missing::No successful main-push CI run exists for $FULL_SHA. Wait for CI or repair it before deploying."
-            exit 1
-          fi
-          echo "CI release evidence: run=$CI_RUN sha=$FULL_SHA"
+          deadline=$(( SECONDS + CI_WAIT_MINUTES * 60 ))
+          while :; do
+            RUNS="$(gh run list --workflow ci.yml --commit "$FULL_SHA" --limit 20 \
+              --json databaseId,event,status,conclusion \
+              --jq '[.[] | select(.event == "push")]')"
+            CI_RUN="$(jq -r '[.[] | select(.conclusion == "success")][0].databaseId // empty' <<<"$RUNS")"
+            if [ -n "$CI_RUN" ]; then
+              echo "CI release evidence: run=$CI_RUN sha=$FULL_SHA"
+              break
+            fi
+            PENDING="$(jq -r '[.[] | select(.status != "completed")][0].databaseId // empty' <<<"$RUNS")"
+            if [ -z "$PENDING" ]; then
+              if [ "$(jq length <<<"$RUNS")" = 0 ]; then
+                echo "::error title=CI evidence missing::No main-push CI run exists for $FULL_SHA. Push the commit to main and let CI finish before deploying."
+              else
+                SEEN="$(jq -r '[.[] | "\(.databaseId)=\(.conclusion)"] | join(", ")' <<<"$RUNS")"
+                echo "::error title=CI did not pass::The main-push CI run for $FULL_SHA concluded without success ($SEEN). Repair or re-run CI, then dispatch this workflow again."
+              fi
+              exit 1
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error title=CI still running::CI run $PENDING for $FULL_SHA has not finished after $CI_WAIT_MINUTES minutes. Check it, then dispatch this workflow again."
+              exit 1
+            fi
+            echo "CI run $PENDING for $FULL_SHA is still running; checking again in 30s"
+            sleep 30
+          done
 
       - uses: docker/setup-buildx-action@v4
 

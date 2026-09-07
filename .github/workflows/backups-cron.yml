@@ -1,9 +1,9 @@
 name: backups-restore-drill
 
-# Quarterly restore drill — proves the latest CouchDB + Postgres backups
-# decrypt and pass structural checks. Runs the FIRST day of each quarter at
-# 03:00 UTC (chosen to dodge the 02:15 UTC nightly backup window — we don't
-# want the drill colliding with a fresh upload).
+# Weekly restore drill — proves the latest CouchDB + Postgres backups
+# decrypt and pass structural checks. Runs every Monday at 03:00 UTC (chosen
+# to dodge the 02:15 UTC nightly backup window — we don't want the drill
+# colliding with a fresh upload).
 #
 # Manual trigger is also exposed (workflow_dispatch) so the operator can run
 # an out-of-band drill before any DR exercise.
@@ -82,12 +82,23 @@ jobs:
           BACKUP_PRIVKEY_GPG: ${{ secrets.BACKUP_PRIVKEY_GPG }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
         run: |
           missing=""
           for name in BACKUP_BUCKET BACKUP_PRIVKEY_GPG AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
             eval "value=\${$name:-}"
             [ -n "$value" ] || missing="$missing $name"
           done
+          # AWS regions are three-part (af-south-1, eu-central-1). Anything
+          # else (fra1, ams3, eu-central-003) is a DO Space, B2 or MinIO, and
+          # the aws CLI can only reach those through AWS_ENDPOINT_URL. Without
+          # it the drill fails later with a misleading "bucket not found" from
+          # AWS proper instead of naming the secret that is actually missing.
+          case "${AWS_REGION:-af-south-1}" in
+            *-*-*) ;;
+            *) [ -n "${AWS_ENDPOINT_URL:-}" ] || missing="$missing AWS_ENDPOINT_URL (AWS_REGION=$AWS_REGION is not an AWS region; on DO Spaces use https://$AWS_REGION.digitaloceanspaces.com)" ;;
+          esac
           if [ -n "$missing" ]; then
             echo "::error title=Backups are not provisioned::Missing on the production-cron environment:$missing. Set them THERE, not on production — this job deliberately avoids the reviewer-gated environment (see the note on the job above), so a secret set on production is invisible here. Until these are set there is no offsite backup to restore from — see docs/operations/backups.md."
             exit 1

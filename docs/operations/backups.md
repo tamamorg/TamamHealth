@@ -24,7 +24,7 @@
 |-----------------------|-----------|-----------------------------------|----------------------------------------------------------------|
 | CouchDB (clinical)    | Daily     | `scripts/backup-couchdb.sh`       | `s3://$BUCKET/YYYY/MM/DD/couchdb-$HOST-HHMM.tar.gz.gpg`        |
 | Postgres (analytics)  | Daily     | `scripts/backup-postgres.sh`      | `s3://$BUCKET/YYYY/MM/DD/postgres-$HOST-HHMM.dump.gpg`         |
-| Restore drill         | Quarterly | `.github/workflows/backups-cron.yml` (calls `backup-restore-drill.sh`) | n/a (read-only) |
+| Restore drill         | Weekly    | `.github/workflows/backups-cron.yml` (calls `backup-restore-drill.sh`) | n/a (read-only) |
 
 **What is NOT backed up here, and why:**
 
@@ -286,10 +286,10 @@ sudo systemctl start tamamhealth-offsite-postgres-backup.service
 journalctl -u tamamhealth-offsite-postgres-backup.service -n 50 --no-pager
 ```
 
-### 4. Wire the quarterly drill
+### 4. Wire the weekly drill
 
 The drill GitHub Action (`.github/workflows/backups-cron.yml`) runs every
-quarter and pages on failure.
+Monday at 03:00 UTC and opens/updates a `[automation]` issue on failure.
 
 **The secrets go on the `production-cron` environment, NOT `production`.** This
 document said `production` for months and the drill has never read a secret set

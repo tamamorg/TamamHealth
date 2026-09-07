@@ -191,7 +191,25 @@ jobs:
 
       - name: Terraform init (no backend)
         working-directory: infra/digitalocean/app-platform
-        run: terraform init -backend=false
+        # Provider install fetches the signature from github.com, which
+        # occasionally answers 504 (2026-09-07: "failed to retrieve
+        # cryptographic signature for provider ... 504 Gateway Timeout"). A
+        # single transient fetch failure must not turn a green main commit red:
+        # deploy-production refuses any commit whose CI run did not succeed, so
+        # a flaky init here blocks a production release. Retry with backoff.
+        run: |
+          for attempt in 1 2 3 4; do
+            if terraform init -backend=false -input=false; then
+              exit 0
+            fi
+            if [ "$attempt" = 4 ]; then
+              echo "::error title=terraform init failed::Provider install failed after $attempt attempts. If the log shows a registry/github.com timeout, re-run this job."
+              exit 1
+            fi
+            delay=$((attempt * 20))
+            echo "terraform init failed (attempt $attempt/4); retrying in ${delay}s"
+            sleep "$delay"
+          done
 
       - name: Terraform validate
         working-directory: infra/digitalocean/app-platform
