@@ -56,15 +56,15 @@ import TextareaAutoResize from "@/components/TextareaAutoResize";
 import BootIntegrityGuard from "@/components/BootIntegrityGuard";
 
 export const metadata: Metadata = {
-  title: "TamamHealth — Every Patient Deserves to Be Remembered",
+  title: "Tamam Health",
   description: "Offline-first health records for South Sudan and Africa, built to keep patient stories connected from the bedside to the nation.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "TamamHealth",
+    title: "Tamam Health",
   },
-  applicationName: "TamamHealth",
+  applicationName: "Tamam Health",
 };
 
 export const viewport: Viewport = {
