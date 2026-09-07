@@ -1260,8 +1260,6 @@ const apd: TranslationMap = {
   'mission.superintendent.body': 'راقب العنابر، فك الطوابير، وتصرف في النتائج الحرجة ونقص المخزون بتاع اليوم.',
   'mission.payments.title': 'سوّي حساب كل زيارة',
   'mission.payments.body': 'اقبض اللي مستحق، سوّي حساب اليوم، وخلّص المطالبات المنتظرة عند الدافع.',
-  'mission.government.title': 'شوف النظام كله',
-  'mission.government.body': 'تابع التبليغ في كل الولايات، تصرف في تنبيهات الرصد، ووجّه الموارد حسب ما البيانات تقول.',
   'dashboard.waiting': 'منتظر',
   'dashboard.wardRoomNo': 'رقم العنبر والغرفة',
   'dataEntry.achievements': 'الإنجازات',

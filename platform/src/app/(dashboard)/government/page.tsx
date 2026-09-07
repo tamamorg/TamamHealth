@@ -18,10 +18,8 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Siren, FileText, ChevronRight, ChevronDown, Check, Globe,
+  Siren, FileText, ChevronRight, ChevronDown, Check,
 } from '@/components/icons/lucide';
-import EhrMissionCard from '@/components/ehr/EhrMissionCard';
-import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { getRoleConfig } from '@/lib/permissions';
 import { abbreviateProviderName } from '@/lib/patient-utils';
@@ -183,7 +181,6 @@ const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
 };
 
 export default function GovernmentNationalDashboard() {
-  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { alerts } = useSurveillance();
@@ -454,10 +451,6 @@ export default function GovernmentNationalDashboard() {
           )}
           <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
         </div>
-        {/* Actions on top, the role's mission card under them: the head is the
-            only part of this viewport-fit page with room for the card, and
-            it flexes to auto height so the grid below simply takes less. */}
-        <div className="flex flex-col items-end gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <button type="button" className="btn btn-secondary" onClick={() => router.push('/government/briefing')}>
             <FileText className="w-4 h-4" /> Executive briefing
@@ -465,13 +458,6 @@ export default function GovernmentNationalDashboard() {
           <button type="button" className="btn btn-primary btn-alerts" onClick={() => router.push('/government/alerts')}>
             <Siren className="w-4 h-4" /> Priority alerts
           </button>
-        </div>
-        <EhrMissionCard
-          className="gov-mission-card"
-          title={t('mission.government.title')}
-          description={t('mission.government.body')}
-          icon={Globe}
-        />
         </div>
       </div>
 

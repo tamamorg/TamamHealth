@@ -1258,8 +1258,6 @@ const en: TranslationMap = {
   'mission.superintendent.body': 'Watch the wards, unblock the queues, and act on today\'s critical results and stock-outs.',
   'mission.payments.title': 'Settle every visit',
   'mission.payments.body': 'Collect what is due, reconcile the day, and clear the claims waiting on a payer.',
-  'mission.government.title': 'See the whole system',
-  'mission.government.body': 'Track reporting across every state, act on surveillance alerts, and steer resources where the data points.',
   'dashboard.waiting': 'Waiting',
   'dashboard.wardRoomNo': 'Ward-Room No.',
   'dataEntry.achievements': 'Achievements',
