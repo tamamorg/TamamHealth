@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
 import { Bell, BellOff, Check, ChevronRight, X } from '@/components/icons/lucide';
 import { NOTIFICATION_META, getNotificationAlertPref, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
 
@@ -13,8 +12,43 @@ import { NOTIFICATION_META, getNotificationAlertPref, relativeNotificationTime, 
  */
 const PANEL_LIMIT = 12;
 
-export default function NotificationsPanel({ onClose }: { onClose: () => void }) {
+export type NotificationPopoverPosition = {
+  left: number;
+  top: number;
+  width: number;
+  pointerLeft: number;
+};
+
+export function notificationPopoverPosition(
+  anchor: Pick<DOMRect, 'left' | 'right' | 'width'>,
+  viewportWidth: number,
+  railBottom: number,
+): NotificationPopoverPosition {
+  const gutter = 8;
+  const width = Math.max(0, Math.min(420, viewportWidth - gutter * 2));
+  const desiredLeft = anchor.right - width;
+  const left = Math.min(
+    Math.max(gutter, desiredLeft),
+    viewportWidth - width - gutter,
+  );
+  const pointerLeft = Math.min(
+    Math.max(18, anchor.left + anchor.width / 2 - left - 7),
+    width - 32,
+  );
+
+  return { left, top: railBottom, width, pointerLeft };
+}
+
+export default function NotificationsPanel({
+  anchorRef,
+  onClose,
+}: {
+  anchorRef: RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+}) {
   const router = useRouter();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<NotificationPopoverPosition | null>(null);
   const { items, unreadCount, loading, markRead, markAllRead } = useNotifications();
   // Sound-alert preference: 'sound' chimes when new notifications arrive,
   // 'muted' keeps the badge silent. Persisted per device.
@@ -29,13 +63,59 @@ export default function NotificationsPanel({ onClose }: { onClose: () => void })
 
   const openAll = () => { onClose(); router.push('/notifications'); };
 
+  useLayoutEffect(() => {
+    const placePanel = () => {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+
+      const anchorRect = anchor.getBoundingClientRect();
+      const railBottom = anchor.closest('.ehr-top-rail')?.getBoundingClientRect().bottom
+        ?? anchorRect.bottom;
+      setPosition(notificationPopoverPosition(anchorRect, window.innerWidth, railBottom));
+    };
+
+    placePanel();
+    window.addEventListener('resize', placePanel);
+    return () => window.removeEventListener('resize', placePanel);
+  }, [anchorRef]);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        anchorRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [anchorRef, onClose]);
+
   return (
-    <Modal onClose={onClose} width={520}>
-      <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 16, padding: 0, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+    <div
+      ref={panelRef}
+      id="notifications-popover"
+      role="dialog"
+      aria-labelledby="notifications-popover-title"
+      className="notifications-popover"
+      style={{
+        left: position?.left ?? 8,
+        top: position?.top ?? 0,
+        width: position?.width ?? 420,
+        maxHeight: position ? `calc(100vh - ${position.top + 10}px)` : undefined,
+        visibility: position ? 'visible' : 'hidden',
+      }}
+    >
+      <span
+        className="notifications-popover-pointer"
+        style={{ left: position?.pointerLeft ?? 0 }}
+        aria-hidden="true"
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: 'inherit', overflow: 'hidden' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Notifications</h2>
+            <h2 id="notifications-popover-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Notifications</h2>
             {unreadCount > 0 && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{unreadCount} new</span>
             )}
@@ -71,7 +151,7 @@ export default function NotificationsPanel({ onClose }: { onClose: () => void })
           </div>
         </div>
 
-        <div style={{ overflowY: 'auto' }}>
+        <div className="min-h-0 flex-1" style={{ overflowY: 'auto' }}>
           {loading ? (
             <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>
           ) : items.length === 0 ? (
@@ -122,6 +202,6 @@ export default function NotificationsPanel({ onClose }: { onClose: () => void })
           <ChevronRight className="w-3.5 h-3.5" style={{ stroke: 'currentColor' }} />
         </button>
       </div>
-    </Modal>
+    </div>
   );
 }

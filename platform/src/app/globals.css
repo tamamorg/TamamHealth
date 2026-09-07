@@ -4243,10 +4243,39 @@ html:has(.mobile-shell-offline-banner) {
 .ehr-top-modules button:hover,
 .ehr-top-actions button:hover,
 .ehr-top-calendar-button:hover,
-.ehr-top-modules button.active {
+.ehr-top-modules button.active,
+.ehr-top-actions button.active {
   border-color: transparent;
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
+}
+
+/* Notifications is a header popover, not a modal workflow. It begins exactly
+   below the fixed rail and points back to the bell so the source of the panel
+   remains obvious even when the panel is clamped to a narrow viewport. */
+.notifications-popover {
+  position: fixed;
+  z-index: 1260;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  border: 1px solid var(--ehr-border);
+  border-radius: 0 0 14px 14px;
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  box-shadow: 0 18px 40px rgba(0, 29, 63, 0.2);
+}
+
+.notifications-popover-pointer {
+  position: absolute;
+  top: -7px;
+  z-index: -1;
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
+  border-top: 1px solid var(--ehr-border);
+  border-left: 1px solid var(--ehr-border);
+  background: var(--bg-card-solid);
 }
 
 /* Icon quick-nav sitting next to the module dropdown (Referrals, Appointments).

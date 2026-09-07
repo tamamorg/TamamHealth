@@ -36,11 +36,16 @@ export default function QuickActions({ notificationCount }: {
   const { open: openTasks } = useTasks();
 
   const announceRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const notifButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Close the panel on outside click.
+  // Close header popovers on outside click. Both panels stay in their trigger
+  // wrappers even though notifications uses fixed positioning, so containment
+  // remains reliable without a backdrop over the clinical workspace.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (announceRef.current && !announceRef.current.contains(e.target as Node)) setAnnounceOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
@@ -51,7 +56,11 @@ export default function QuickActions({ notificationCount }: {
       {/* My Tasks */}
       <button
         type="button"
-        onClick={() => setTasksOpen(true)}
+        onClick={() => {
+          setTasksOpen(true);
+          setNotifOpen(false);
+          setAnnounceOpen(false);
+        }}
         aria-label={openTasks.length > 0 ? `My tasks (${openTasks.length} open)` : 'My tasks'}
         title="My tasks"
         className="relative"
@@ -66,27 +75,44 @@ export default function QuickActions({ notificationCount }: {
       {tasksOpen && <TasksPanel onClose={() => setTasksOpen(false)} />}
 
       {/* Notifications */}
-      <button
-        type="button"
-        onClick={() => setNotifOpen(true)}
-        aria-label={notifCount > 0 ? `Notifications (${notifCount} unread)` : 'Notifications'}
-        title="Notifications"
-        className="relative"
-      >
-        <Bell className="w-5 h-5" />
-        {notifCount > 0 && (
-          <span className="ehr-top-action-badge">
-            {notifCount > 99 ? '99+' : notifCount}
-          </span>
+      <div className="relative inline-flex" ref={notifRef}>
+        <button
+          ref={notifButtonRef}
+          type="button"
+          onClick={() => {
+            setNotifOpen(open => !open);
+            setAnnounceOpen(false);
+          }}
+          aria-label={notifCount > 0 ? `Notifications (${notifCount} unread)` : 'Notifications'}
+          aria-expanded={notifOpen}
+          aria-haspopup="dialog"
+          aria-controls="notifications-popover"
+          title="Notifications"
+          className={`relative ${notifOpen ? 'active' : ''}`}
+        >
+          <Bell className="w-5 h-5" />
+          {notifCount > 0 && (
+            <span className="ehr-top-action-badge">
+              {notifCount > 99 ? '99+' : notifCount}
+            </span>
+          )}
+        </button>
+        {notifOpen && (
+          <NotificationsPanel
+            anchorRef={notifButtonRef}
+            onClose={() => setNotifOpen(false)}
+          />
         )}
-      </button>
-      {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
+      </div>
 
       {/* Announcements */}
       <div className="relative" ref={announceRef}>
         <button
           type="button"
-          onClick={() => setAnnounceOpen(o => !o)}
+          onClick={() => {
+            setAnnounceOpen(open => !open);
+            setNotifOpen(false);
+          }}
           aria-label="Announcements"
           aria-expanded={announceOpen}
           title="Announcements"
