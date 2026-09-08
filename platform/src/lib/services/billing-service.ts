@@ -134,13 +134,20 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
   const db = billingDB();
   const now = new Date().toISOString();
 
-  // Ensure each line item has an ID and correct total
+  // Ensure each line item has an ID and correct total.
+  //
+  // Rounded to the cent, same as updateBillItems and chargeForServices — this
+  // used to recompute the raw `quantity * unitPrice` product, which discarded
+  // the cent-rounding chargeForServices already did and reintroduced binary
+  // floating-point noise (e.g. 333.335 × 3 landing on 1000.0049999999999
+  // instead of 1000) into every bill's subtotal/totalAmount, including every
+  // pharmacy dispense and lab charge created through it.
   /* istanbul ignore next -- defensive: data.items always provided by UI callers */
   const items: BillLineItem[] = (data.items || []).map(item => ({
     ...item,
     /* istanbul ignore next -- defensive: items may arrive without id from legacy clients */
     id: item.id || uuidv4(),
-    totalPrice: item.quantity * item.unitPrice,
+    totalPrice: Math.round(item.quantity * item.unitPrice * 100) / 100,
   }));
 
   const discount = data.discount || 0;

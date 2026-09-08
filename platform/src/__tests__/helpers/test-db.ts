@@ -74,6 +74,8 @@ export function createDBMock() {
     billingDB: () => getTestDB('test_tamamhealth_billing'),
     paymentsDB: () => getTestDB('test_tamamhealth_payments'),
     feeScheduleDB: () => getTestDB('test_tamamhealth_fee_schedule'),
+    controlledSubstanceLogDB: () => getTestDB('test_tamamhealth_controlled_substance_log'),
+    insurancePoliciesDB: () => getTestDB('test_tamamhealth_insurance_policies'),
     wardDB: () => getTestDB('test_tamamhealth_wards'),
     staffSchedulesDB: () => getTestDB('test_tamamhealth_staff_schedules'),
     bloodBankDB: () => getTestDB('test_tamamhealth_blood_bank'),
