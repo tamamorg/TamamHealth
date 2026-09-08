@@ -344,29 +344,7 @@ export default function MARPage() {
         )}
 
         {/* MAR grid */}
-        {patientRx.length === 0 ? (
-          <div className="card-elevated p-8 text-center" style={{ borderStyle: 'dashed' }}>
-            <div className="icon-box-lg mx-auto">
-              <Pill className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-            </div>
-            <p className="text-sm font-semibold mt-3" style={{ color: 'var(--text-secondary)' }}>
-              {t('mar.noPrescriptions')}
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              {t('mar.noPrescriptionsHint')}
-            </p>
-            {isPathAllowed(currentUser?.role || '', '/consultation') && (
-              <button
-                type="button"
-                className="btn btn-primary mt-4 inline-flex items-center gap-1.5"
-                onClick={() => router.push(`/consultation?patientId=${encodeURIComponent(admission.patientId)}`)}
-              >
-                <Plus className="w-4 h-4" /> {t('mar.orderMedication')}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="card-elevated overflow-hidden" data-tour="mar-grid">
+        <div className="card-elevated overflow-hidden" data-tour="mar-grid">
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 760 }}>
                 <thead>
@@ -404,7 +382,30 @@ export default function MARPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {patientRx.map((rx, idx) => (
+                  {patientRx.length === 0 ? (
+                    <tr>
+                      <td colSpan={1 + columns.length} className="p-8 text-center">
+                        <div className="icon-box-lg mx-auto">
+                          <Pill className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                        </div>
+                        <p className="text-sm font-semibold mt-3" style={{ color: 'var(--text-secondary)' }}>
+                          {t('mar.noPrescriptions')}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                          {t('mar.noPrescriptionsHint')}
+                        </p>
+                        {isPathAllowed(currentUser?.role || '', '/consultation') && (
+                          <button
+                            type="button"
+                            className="btn btn-primary mt-4 inline-flex items-center gap-1.5"
+                            onClick={() => router.push(`/consultation?patientId=${encodeURIComponent(admission.patientId)}`)}
+                          >
+                            <Plus className="w-4 h-4" /> {t('mar.orderMedication')}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ) : patientRx.map((rx, idx) => (
                     <tr key={rx._id} style={{
                       background: idx % 2 === 0 ? 'transparent' : 'var(--overlay-subtle)',
                     }}>
@@ -447,8 +448,7 @@ export default function MARPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+        </div>
 
         {/* Legend */}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">

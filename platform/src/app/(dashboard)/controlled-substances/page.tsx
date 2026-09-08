@@ -172,12 +172,6 @@ export default function ControlledSubstancesPage() {
           <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {loading ? (
             <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading log…</div>
-          ) : movements.length === 0 ? (
-            <EmptyState
-              icon={Pill}
-              title="No movements recorded yet"
-              message="Record the first controlled-substance movement to start the audit trail."
-            />
           ) : (
             <div className="ehr-list-scroll">
               <table className="data-table" style={{ minWidth: 960, tableLayout: 'fixed' }}>
@@ -204,7 +198,17 @@ export default function ControlledSubstancesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {movements.map(m => (
+                  {movements.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: 0 }}>
+                        <EmptyState
+                          icon={Pill}
+                          title="No movements recorded yet"
+                          message="Record the first controlled-substance movement to start the audit trail."
+                        />
+                      </td>
+                    </tr>
+                  ) : movements.map(m => (
                     <tr key={m._id}>
                       <td className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
                       <td>

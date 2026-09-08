@@ -124,15 +124,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
   return (
     <>
       <ChartSection title="Programs" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
-        {enrollments.length === 0 ? (
-          <OmrsEmptyState
-            itemLabel="program enrollments"
-            actionLabel="Record program enrollment"
-            onAction={canConsult ? () => setAdding(true) : undefined}
-            disabledReason={canConsult ? undefined : 'Requires consultation permission'}
-          />
-        ) : (
-          <table className="tamam-table tamam-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
             <colgroup><col /><col /><col /><col /></colgroup>
             <thead>
               <tr>
@@ -143,6 +135,18 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
               </tr>
             </thead>
             <tbody>
+              {enrollments.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
+                    <OmrsEmptyState
+                      itemLabel="program enrollments"
+                      actionLabel="Record program enrollment"
+                      onAction={canConsult ? () => setAdding(true) : undefined}
+                      disabledReason={canConsult ? undefined : 'Requires consultation permission'}
+                    />
+                  </td>
+                </tr>
+              )}
               {visibleEnrollments.map(e => (
                 <tr key={e._id}>
                   <td style={{ fontWeight: 600 }}>
@@ -174,7 +178,6 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
               ))}
             </tbody>
           </table>
-        )}
       </ChartSection>
 
       {adding && (

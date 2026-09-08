@@ -107,60 +107,63 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
         searchValue={search}
         onSearchChange={setSearch}
       >
-        {active.length === 0 ? (
-          <OmrsEmptyState
-            itemLabel="directives"
-            actionLabel="Record consent"
-            onAction={canManage ? () => { setAddForm(EMPTY_FORM); setAdding(true); } : undefined}
-            disabledReason={canManage ? undefined : 'Requires clinical or registration permission'}
-          />
-        ) : (
-          <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--directives">
-            <colgroup>
-              <col /><col /><col /><col />
-            </colgroup>
-            <thead>
+        <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--directives">
+          <colgroup>
+            <col /><col /><col /><col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Detail</th>
+              <th>Effective</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {active.length === 0 && (
               <tr>
-                <th>Type</th>
-                <th>Detail</th>
-                <th>Effective</th>
-                <th>Status</th>
+                <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState
+                    itemLabel="directives"
+                    actionLabel="Record consent"
+                    onAction={canManage ? () => { setAddForm(EMPTY_FORM); setAdding(true); } : undefined}
+                    disabledReason={canManage ? undefined : 'Requires clinical or registration permission'}
+                  />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {visibleEntries.map(d => (
-                <tr
-                  key={d.id}
-                  {...clickable(() => setSelectedDirective(d), { label: `Open directive — ${typeLabel(d.type)}` })}
-                  className="tamam-clickable-row"
-                >
-                  <td className="tamam-cell-strong">{typeLabel(d.type)}</td>
-                  <td>{d.description || '—'}</td>
-                  <td>{d.startDate ? formatDate(d.startDate) : '—'}</td>
-                  <td>
-                    {d.signature ? (
-                      <>
-                        <span className="tamam-panel-badge tamam-panel-badge--done">
-                          <Lock className="w-3 h-3" /> Signed
-                        </span>
-                        <div className="tamam-cell-sub">
-                          {d.signature.name}
-                          {d.signature.signedBy !== 'patient' && ` (${d.signature.relationship || d.signature.signedBy})`}
-                          {' · '}{formatDateTime(d.signature.signedAt)}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span className="tamam-panel-badge tamam-panel-badge--pending">Unsigned</span>
-                        <div className="tamam-cell-sub">Recorded, not yet attested</div>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            )}
+            {visibleEntries.map(d => (
+              <tr
+                key={d.id}
+                {...clickable(() => setSelectedDirective(d), { label: `Open directive — ${typeLabel(d.type)}` })}
+                className="tamam-clickable-row"
+              >
+                <td className="tamam-cell-strong">{typeLabel(d.type)}</td>
+                <td>{d.description || '—'}</td>
+                <td>{d.startDate ? formatDate(d.startDate) : '—'}</td>
+                <td>
+                  {d.signature ? (
+                    <>
+                      <span className="tamam-panel-badge tamam-panel-badge--done">
+                        <Lock className="w-3 h-3" /> Signed
+                      </span>
+                      <div className="tamam-cell-sub">
+                        {d.signature.name}
+                        {d.signature.signedBy !== 'patient' && ` (${d.signature.relationship || d.signature.signedBy})`}
+                        {' · '}{formatDateTime(d.signature.signedAt)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="tamam-panel-badge tamam-panel-badge--pending">Unsigned</span>
+                      <div className="tamam-cell-sub">Recorded, not yet attested</div>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </ChartSection>
 
       {selectedDirective && (

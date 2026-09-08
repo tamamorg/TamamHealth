@@ -710,58 +710,63 @@ export default function FacilityManagementDashboard() {
            whole row rather than keeping half of it warm for a card that is no
            longer here. It stays inside `sadb-lower-row` for that row's height
            cap: the list grows with the data, and uncapped it runs the page
-           into a scroll no dashboard should have. */}
-      {hospitals.length > 0 && (
-        <div className="sadb-lower-row">
-          <SadbCard
-            className="is-wide"
-            title="Facilities"
-            meta={`${hospitals.length}`}
-            action={<SadbHeadLink onClick={() => router.push('/facility-management/queue')}>Work queue</SadbHeadLink>}
-          >
-            <div className="sadb-search-row sadb-search-row--table-aligned">
-              <SadbSearch
-                value={facilitySearch}
-                onChange={setFacilitySearch}
-                placeholder="Search facility, type, location, or status…"
-                ariaLabel="Search facilities"
-              />
-            </div>
-            <div className="sadb-card-scroll">
-              <SadbGridList
-                template={FAC_GRID}
-                minWidth={840}
-                head={['Facility', 'Type', 'Location', 'Beds', 'Patients', 'Status']}
-                alignEndLast
-                empty={facilitySearch ? 'No facilities match this search.' : 'No facilities available.'}
-              >
-                {visibleFacilities.map((h: HospitalDoc) => (
-                  <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>
-                    <span className="min-w-0">
-                      <span className="sadb-tenant-name truncate">{h.name}</span>
+           into a scroll no dashboard should have.
+           The card is NOT gated on there being facilities: an org with none
+           registered yet still sees the list's frame (search + column head)
+           with the empty message under it, so the screen keeps its shape and
+           "Add facility" has somewhere visible to land — see the
+           list-header-always-visible rule. */}
+      <div className="sadb-lower-row">
+        <SadbCard
+          className="is-wide"
+          title="Facilities"
+          meta={`${hospitals.length}`}
+          action={<SadbHeadLink onClick={() => router.push('/facility-management/queue')}>Work queue</SadbHeadLink>}
+        >
+          <div className="sadb-search-row sadb-search-row--table-aligned">
+            <SadbSearch
+              value={facilitySearch}
+              onChange={setFacilitySearch}
+              placeholder="Search facility, type, location, or status…"
+              ariaLabel="Search facilities"
+            />
+          </div>
+          <div className="sadb-card-scroll">
+            <SadbGridList
+              template={FAC_GRID}
+              minWidth={840}
+              head={['Facility', 'Type', 'Location', 'Beds', 'Patients', 'Status']}
+              alignEndLast
+              empty={facilitySearch
+                ? 'No facilities match this search.'
+                : 'No facilities registered yet. Use “Add facility” to register the first one.'}
+            >
+              {visibleFacilities.map((h: HospitalDoc) => (
+                <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>
+                  <span className="min-w-0">
+                    <span className="sadb-tenant-name truncate">{h.name}</span>
+                  </span>
+                  <span>
+                    <span className={`fmfac-tier ${TIER_CLASS[h.facilityType] ?? ''}`.trim()}>
+                      {facilityLabel(h.facilityType)}
                     </span>
-                    <span>
-                      <span className={`fmfac-tier ${TIER_CLASS[h.facilityType] ?? ''}`.trim()}>
-                        {facilityLabel(h.facilityType)}
-                      </span>
-                    </span>
-                    <span className="truncate">{[h.town, h.county, h.state].filter(Boolean).join(', ') || '—'}</span>
-                    <span className="sadb-tenant-num">{h.totalBeds ?? 0}</span>
-                    <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).patients : '…'}</span>
-                    <span style={{ textAlign: 'end' }}>
-                      <SadbChip tone={h.isActive === false || ['non_functional', 'closed'].includes(h.operationalStatus ?? '')
-                        ? 'red'
-                        : h.operationalStatus === 'partially_functional' ? 'yellow' : 'green'}>
-                        {facilityStatus(h)}
-                      </SadbChip>
-                    </span>
-                  </SadbGridRow>
-                ))}
-              </SadbGridList>
-            </div>
-          </SadbCard>
-        </div>
-      )}
+                  </span>
+                  <span className="truncate">{[h.town, h.county, h.state].filter(Boolean).join(', ') || '—'}</span>
+                  <span className="sadb-tenant-num">{h.totalBeds ?? 0}</span>
+                  <span className="sadb-tenant-num">{facilityCensus ? censusFor(facilityCensus, h._id).patients : '…'}</span>
+                  <span style={{ textAlign: 'end' }}>
+                    <SadbChip tone={h.isActive === false || ['non_functional', 'closed'].includes(h.operationalStatus ?? '')
+                      ? 'red'
+                      : h.operationalStatus === 'partially_functional' ? 'yellow' : 'green'}>
+                      {facilityStatus(h)}
+                    </SadbChip>
+                  </span>
+                </SadbGridRow>
+              ))}
+            </SadbGridList>
+          </div>
+        </SadbCard>
+      </div>
 
       {metricPreview && (
         <FacilityMetricPreviewDialog

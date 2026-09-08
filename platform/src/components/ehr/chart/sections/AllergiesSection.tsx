@@ -222,13 +222,6 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
           <p className="tamam-attestation">
             <strong>No known drug allergies.</strong> Recorded at a medication review.
           </p>
-        ) : rows.length === 0 ? (
-          <OmrsEmptyState
-            itemLabel="allergies"
-            actionLabel="Record allergies"
-            onAction={canEditClinical ? () => setAdding(true) : undefined}
-            disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
-          />
         ) : (
           <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--allergies">
             <colgroup>
@@ -244,6 +237,18 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               </tr>
             </thead>
             <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
+                    <OmrsEmptyState
+                      itemLabel="allergies"
+                      actionLabel="Record allergies"
+                      onAction={canEditClinical ? () => setAdding(true) : undefined}
+                      disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
+                    />
+                  </td>
+                </tr>
+              )}
               {rows.map(a => {
                 const severity = a.criticality || 'unknown';
                 return (

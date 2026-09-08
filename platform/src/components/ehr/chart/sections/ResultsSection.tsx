@@ -94,10 +94,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
       onSearchChange={value => { setSearch(value); setPage(1); }}
       pagination={{ page, pageSize: PAGE_SIZE, total: filteredLabs.length, onPageChange: setPage }}
     >
-      {patientLabs.length === 0 ? (
-        <OmrsEmptyState itemLabel="results" actionLabel="Record results" onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
-      ) : (
-        <table className="tamam-table tamam-table--fixed tamam-table--interactive">
+      <table className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
             <col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -112,6 +109,13 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
             </tr>
           </thead>
           <tbody>
+            {patientLabs.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState itemLabel="results" actionLabel="Record results" onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
+                </td>
+              </tr>
+            )}
             {pageRows.map(l => (
               <tr
                 key={l._id}
@@ -134,7 +138,6 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
             ))}
           </tbody>
         </table>
-      )}
     </ChartSection>
   );
 }

@@ -800,6 +800,7 @@ export default function FrontDeskDashboardPage() {
         }
       } catch (e) {
         console.warn('Encounter discharge during checkout failed', e);
+        throw e;
       }
 
       // Both, never either/or: since check-in gives every walk-in a booking of

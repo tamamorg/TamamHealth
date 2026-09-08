@@ -290,66 +290,71 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
   return (
     <>
-      {visibleClaims.length === 0 ? (
-        <div className="bl-empty">
-          <AlertTriangle size={34} />
-          <h3>{claims.length === 0 ? t('claims.emptyTitle') : 'No claims match these filters'}</h3>
-          <p>{claims.length === 0 ? t('claims.emptyDescription') : 'Clear the status or payer filter to see the rest of the queue.'}</p>
-        </div>
-      ) : (
-        <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
-          <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 980 }}>
-            {/* `bl-table--even` is table-layout: fixed — equal shares of the
-                full width, stable as rows load. */}
-            <thead>
-              <tr>
-                {CLAIM_COLUMNS.map(c => ({ ...c, label: t(c.key) })).map(h => (
-                  <th
-                    key={h.label}
-                    className={h.align === 'right' ? 'bl-right' : undefined}
-                    style={{ position: 'sticky', top: 0, zIndex: 1 }}
-                  >
-                    {h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleClaims.map((claim) => (
-                <tr
-                  key={claim._id}
-                  onClick={() => setOpenClaim(claim)}
-                  tabIndex={0}
-                  aria-label={`Open claim ${claim.claimNumber || ''}`}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenClaim(claim); } }}
+      <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
+        <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 980 }}>
+          {/* `bl-table--even` is table-layout: fixed — equal shares of the
+              full width, stable as rows load. */}
+          <thead>
+            <tr>
+              {CLAIM_COLUMNS.map(c => ({ ...c, label: t(c.key) })).map(h => (
+                <th
+                  key={h.label}
+                  className={h.align === 'right' ? 'bl-right' : undefined}
+                  style={{ position: 'sticky', top: 0, zIndex: 1 }}
                 >
-                  <td style={{ fontWeight: 600 }}>{claim.claimNumber}</td>
-                  <td>
-                    {claim.patientId && !claim.patientId.startsWith('demo-') && !claim.patientId.includes('_demo') ? (
-                      <Link href={`/patients/${claim.patientId}?tab=billing`} {...stopsClickPropagation} className="bl-link">
-                        {shortenPersonName(claim.patientName)}
-                      </Link>
-                    ) : (
-                      claim.patientName
-                    )}
-                  </td>
-                  <td>{claim.payerName}</td>
-                  <td className="bl-muted">{t(PAYER_LABEL_KEYS[claim.payerType]) || claim.payerType}</td>
-                  <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
-                  <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
-                  <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
-                  <td>
-                    <span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span>
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString() : '—'}
-                  </td>
-                </tr>
+                  {h.label}
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleClaims.length === 0 ? (
+              // `bl-table--rows-open` makes every tbody row look clickable
+              // (cursor: pointer); this row has no click handler, so the
+              // cursor is pinned back to default here.
+              <tr style={{ cursor: 'default' }}>
+                <td colSpan={CLAIM_COLUMNS.length}>
+                  <div className="bl-empty">
+                    <AlertTriangle size={34} />
+                    <h3>{claims.length === 0 ? t('claims.emptyTitle') : 'No claims match these filters'}</h3>
+                    <p>{claims.length === 0 ? t('claims.emptyDescription') : 'Clear the status or payer filter to see the rest of the queue.'}</p>
+                  </div>
+                </td>
+              </tr>
+            ) : visibleClaims.map((claim) => (
+              <tr
+                key={claim._id}
+                onClick={() => setOpenClaim(claim)}
+                tabIndex={0}
+                aria-label={`Open claim ${claim.claimNumber || ''}`}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenClaim(claim); } }}
+              >
+                <td style={{ fontWeight: 600 }}>{claim.claimNumber}</td>
+                <td>
+                  {claim.patientId && !claim.patientId.startsWith('demo-') && !claim.patientId.includes('_demo') ? (
+                    <Link href={`/patients/${claim.patientId}?tab=billing`} {...stopsClickPropagation} className="bl-link">
+                      {shortenPersonName(claim.patientName)}
+                    </Link>
+                  ) : (
+                    claim.patientName
+                  )}
+                </td>
+                <td>{claim.payerName}</td>
+                <td className="bl-muted">{t(PAYER_LABEL_KEYS[claim.payerType]) || claim.payerType}</td>
+                <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
+                <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
+                <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
+                <td>
+                  <span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString() : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Claim detail — the row's popup. It carries the lifecycle actions that
           used to hang off a per-row pencil menu, so the queue itself is just

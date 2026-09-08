@@ -44,13 +44,6 @@ export default function PaymentHistoryTimeline({ patientId, limit = 20 }: Paymen
   // renders inside BillingTab's "Transaction Ledger" bl-card, so it should
   // read as one more row-striped table, not a bespoke card-free list.
   if (loading) return <div className="bl-muted" style={{ padding: 16, fontSize: 13 }}>{t('payments.loadingHistory')}</div>;
-  if (entries.length === 0) {
-    return (
-      <div className="bl-empty">
-        <p>{t('payments.noFinancialHistory')}</p>
-      </div>
-    );
-  }
 
   return (
     <div className="bl-table-wrap">
@@ -59,7 +52,13 @@ export default function PaymentHistoryTimeline({ patientId, limit = 20 }: Paymen
           <tr><th>Entry</th><th>Date</th><th className="bl-right">Amount</th><th className="bl-right">Balance</th></tr>
         </thead>
         <tbody>
-          {entries.map(entry => {
+          {entries.length === 0 ? (
+            <tr><td colSpan={4}>
+              <div className="bl-empty">
+                <p>{t('payments.noFinancialHistory')}</p>
+              </div>
+            </td></tr>
+          ) : entries.map(entry => {
             const isCredit = entry.amount < 0;
             const valueClass = entry.entryType === 'refund' ? '' : isCredit ? 'bl-stat-value--good' : '';
             const date = new Date(entry.createdAt);

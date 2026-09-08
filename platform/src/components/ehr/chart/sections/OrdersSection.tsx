@@ -155,15 +155,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <OmrsEmptyState
-          itemLabel="orders"
-          actionLabel="Record orders"
-          onAction={canAdd ? () => setAddMenuOpen(true) : undefined}
-          disabledReason={canAdd ? undefined : 'Requires prescribing or lab-ordering permission'}
-        />
-      ) : (
-        <table className="tamam-table tamam-table--fixed">
+      <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -179,6 +171,18 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
             </tr>
           </thead>
           <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState
+                    itemLabel="orders"
+                    actionLabel="Record orders"
+                    onAction={canAdd ? () => setAddMenuOpen(true) : undefined}
+                    disabledReason={canAdd ? undefined : 'Requires prescribing or lab-ordering permission'}
+                  />
+                </td>
+              </tr>
+            )}
             {pageRows.map(r => (
               <tr
                 key={r.id}
@@ -200,7 +204,6 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
             ))}
           </tbody>
         </table>
-      )}
     </ChartSection>
   );
 }

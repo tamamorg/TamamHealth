@@ -135,8 +135,6 @@ export default function PriorityAlertsPage() {
 
         {loading ? (
           <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading surveillance alerts…</div>
-        ) : activeAlerts.length === 0 ? (
-          <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No active disease alerts on file. All reporting facilities are at normal alert level.</div>
         ) : (
           <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
             <table className="w-full" style={{ minWidth: 840 }}>
@@ -153,10 +151,11 @@ export default function PriorityAlertsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {activeAlerts.length === 0 ? (
+                  <tr><td colSpan={8} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No active disease alerts on file. All reporting facilities are at normal alert level.</td></tr>
+                ) : filtered.length === 0 ? (
                   <tr><td colSpan={8} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No alerts match &ldquo;{search}&rdquo;.</td></tr>
-                )}
-                {filtered.map((a: DiseaseAlertDoc) => (
+                ) : filtered.map((a: DiseaseAlertDoc) => (
                   <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>
                     <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.county}, {a.state}</td>

@@ -242,6 +242,7 @@ export interface CheckoutGateItem {
 }
 
 export const FACILITY_CHECKOUT_GATE: readonly CheckoutGateItem[] = [
+  { key: 'post_consult_handoff', label: 'Post-consult nursing tasks completed or explicitly handed over', critical: true },
   { key: 'all_clinic_visits_closed', label: 'All clinic visits closed', critical: true },
   { key: 'prescriptions_dispensed', label: 'All prescriptions dispensed (or deferred/referred)', critical: true },
   { key: 'critical_labs_reviewed', label: 'All same-day critical labs resulted and reviewed (or pending with follow-up plan)', critical: true },

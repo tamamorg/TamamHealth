@@ -388,6 +388,16 @@ export async function updateAppointmentStatus(
   const db = appointmentsDB();
   try {
     const existing = await db.get(id) as AppointmentDoc;
+    if (status === 'completed') {
+      const linked = await findLinkedEncounterForAppointment(id);
+      const { postConsultReady } = await import('@/modules/post-consult');
+      const { isTerminal } = await import('../clinical-flow/encounter-journey');
+      if (linked && !isTerminal(linked.status) && !postConsultReady(linked.postConsult)) throw new Error('POST_CONSULT_PENDING');
+      if (linked?.postConsult && !isTerminal(linked.status)) {
+        const head = await encountersDB().get(linked._id, { conflicts: true }) as EncounterDoc & { _conflicts?: string[] };
+        if (head._conflicts?.length) throw new Error('POST_CONSULT_CONFLICT');
+      }
+    }
     const now = new Date().toISOString();
     const actorId = extra?.actorId;
     const actorName = extra?.actorName || extra?.cancelledByName || extra?.cancelledBy;

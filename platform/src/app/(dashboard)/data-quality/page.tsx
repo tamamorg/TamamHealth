@@ -296,13 +296,14 @@ export default function DataQualityPage() {
               </div>
               {alertsLoading ? (
                 <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading surveillance alerts…</div>
-              ) : filteredOutliers.length === 0 ? (
-                <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No outliers detected against this heuristic.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full" style={{ minWidth: 640 }}>
                     <thead><tr><Th>Disease</Th><Th>Location</Th><Th right>Cases</Th><Th>Reported</Th></tr></thead>
                     <tbody>
+                      {filteredOutliers.length === 0 && (
+                        <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No outliers detected against this heuristic.</td></tr>
+                      )}
                       {filteredOutliers.map(a => (
                         <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                           <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>

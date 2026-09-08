@@ -109,12 +109,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
         </div>
       )}
 
-      {notes.length === 0 && !adding && (
-        <OmrsEmptyState itemLabel="phone notes" actionLabel="Log call" onAction={() => setAdding(true)} />
-      )}
-
-      {notes.length > 0 && (
-        <table className="tamam-table tamam-table--fixed">
+      <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -129,6 +124,13 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
             </tr>
           </thead>
           <tbody>
+            {notes.length === 0 && !adding && (
+              <tr>
+                <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState itemLabel="phone notes" actionLabel="Log call" onAction={() => setAdding(true)} />
+                </td>
+              </tr>
+            )}
             {notes.map((n) => {
               const badge = STATUS_BADGE[n.status] || STATUS_BADGE.open;
               const responding = respondingId === n._id;
@@ -189,7 +191,6 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
             })}
           </tbody>
         </table>
-      )}
 
       {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </ChartSection>

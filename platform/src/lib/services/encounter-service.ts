@@ -9,6 +9,7 @@
  * move an encounter the way the architecture document allows.
  */
 import { v4 as uuidv4 } from 'uuid';
+import { newPostConsultHandoff, postConsultReady } from '@/modules/post-consult';
 import { encountersDB } from '../db';
 import type { EncounterDoc, UserRole } from '../db-types';
 import {
@@ -210,6 +211,8 @@ export async function updateEncounter(id: string, patch: Partial<EncounterDoc>):
   const db = encountersDB();
   try {
     const existing = await db.get(id) as EncounterDoc;
+    if (Object.prototype.hasOwnProperty.call(patch, 'postConsult')) throw new Error('USE_HANDOFF_SERVICE');
+    if ((patch.status === 'discharged' || patch.status === 'discharged_with_referral') && !postConsultReady(existing.postConsult)) throw new Error('POST_CONSULT_PENDING');
     // Any write re-stamps the version: the snapshot being persisted is
     // produced by *this* app version, whatever shape it was read in.
     const updated: EncounterDoc = {
@@ -243,6 +246,10 @@ export async function transitionEncounter(
   const existing = await db.get(id) as EncounterDoc;
   if (existing.status !== to && !canTransition(existing.status, to)) {
     throw new Error(`Illegal encounter transition: ${existing.status} → ${to}`);
+  }
+  if (to === 'discharged' || to === 'discharged_with_referral') {
+    const head = await db.get(id, { conflicts: true }) as EncounterDoc & { _conflicts?: string[] };
+    if (head._conflicts?.length || !postConsultReady(head.postConsult)) throw new Error('POST_CONSULT_PENDING');
   }
   // Capability check — WARN-ONLY for now (step 1 of the engine migration):
   // callers that pass `actorRole` get a recorded governance signal when the
@@ -278,6 +285,7 @@ export async function transitionEncounter(
   const updated: EncounterDoc = {
     ...existing,
     status: to,
+    postConsult: existing.postConsult ?? (to === 'ready_for_clinic_checkout' ? newPostConsultHandoff() : undefined),
     stageKey: stageOf(to),
     snapshot: opts?.snapshot ?? existing.snapshot,
     labOrderIds: opts?.labOrderIds ?? existing.labOrderIds,
@@ -797,6 +805,10 @@ export async function dischargeEncounter(
   if (isTerminal(enc.status)) return enc; // already closed — nothing to do
   const startIdx = FACILITY_DISCHARGE_CHAIN.indexOf(enc.status);
   if (startIdx === -1) return enc; // not in a checkout-eligible state — leave as-is
+  if (opts.disposition !== 'dismissed_without_formal_checkout' && opts.disposition !== 'discharged_with_pending_items' && !opts.pendingItems) {
+    const head = await encountersDB().get(id, { conflicts: true }) as EncounterDoc & { _conflicts?: string[] };
+    if (head._conflicts?.length || !postConsultReady(head.postConsult)) throw new Error('POST_CONSULT_PENDING');
+  }
 
   // Explicit disposition wins; the legacy pendingItems flag maps onto its
   // disposition so existing callers keep their behavior. Before dispositions

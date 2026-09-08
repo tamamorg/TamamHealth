@@ -129,12 +129,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
         </div>
       )}
 
-      {assessments.length === 0 && !adding && (
-        <OmrsEmptyState itemLabel="assessments" actionLabel="New assessment" onAction={() => { setAdding(true); setAnswers({}); }} />
-      )}
-
-      {assessments.length > 0 && (
-        <table className="tamam-table tamam-table--fixed">
+      <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -150,6 +145,13 @@ export default function AssessmentsPanel({ patient, focusId }: {
             </tr>
           </thead>
           <tbody>
+            {assessments.length === 0 && !adding && (
+              <tr>
+                <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState itemLabel="assessments" actionLabel="New assessment" onAction={() => { setAdding(true); setAnswers({}); }} />
+                </td>
+              </tr>
+            )}
             {assessments.map((a) => {
               const signed = a.documentStatus === 'signed';
               return (
@@ -188,7 +190,6 @@ export default function AssessmentsPanel({ patient, focusId }: {
             })}
           </tbody>
         </table>
-      )}
 
       {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </ChartSection>

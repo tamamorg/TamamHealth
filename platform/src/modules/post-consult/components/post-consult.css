@@ -1,0 +1,9 @@
+.ehr-post-consult label { display: block; text-transform: none; letter-spacing: normal; font-size: 13px; margin-block: 8px; }
+.ehr-post-consult textarea, .ehr-post-consult select, .ehr-post-consult input:not([type="checkbox"]) { width: 100%; max-width: 560px; display: block; padding: 8px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); }
+.ehr-post-consult textarea { min-height: 64px; }
+.ehr-post-consult fieldset { border: 0; padding: 8px; margin: 0; }
+.ehr-post-consult summary { cursor: pointer; padding-block: 6px; }
+.ehr-post-consult h2 { font-size: 20px; margin: 0 0 8px; }
+.ehr-post-consult h3 { font-size: 16px; margin: 6px 0; }
+.ehr-post-consult p { font-size: 13px; margin-block: 6px; overflow-wrap: anywhere; }
+.cn-editor > .ehr-post-consult { max-height: 40vh; overflow: auto; flex-shrink: 0; }

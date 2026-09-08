@@ -426,16 +426,6 @@ export default function BloodBankPage() {
           <div className="ehr-list-scroll">
           {loading ? (
             <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading…</div>
-          ) : units.length === 0 ? (
-            <EmptyState
-              icon={Droplets}
-              title="No blood units stocked yet"
-              message="Use “Add unit” to register one."
-            />
-          ) : visibleUnits.length === 0 ? (
-            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-              No units match “{unitSearch}”.
-            </div>
           ) : (
             <table className="data-table" style={{ minWidth: 960, tableLayout: 'fixed' }}>
               <colgroup>
@@ -460,7 +450,23 @@ export default function BloodBankPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleUnits.map(u => {
+                {units.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 0 }}>
+                      <EmptyState
+                        icon={Droplets}
+                        title="No blood units stocked yet"
+                        message="Use “Add unit” to register one."
+                      />
+                    </td>
+                  </tr>
+                ) : visibleUnits.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                      No units match “{unitSearch}”.
+                    </td>
+                  </tr>
+                ) : visibleUnits.map(u => {
                   const days = daysUntil(u.expiryDate);
                   const expired = u.status === 'expired' || days < 0;
                   const expiringSoon = !expired && days < 7;

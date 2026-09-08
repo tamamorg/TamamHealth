@@ -599,31 +599,30 @@ export default function BillDetailPage() {
                     </div>
                   )}
 
-                  {bill.payments.length > 0 ? (
-                    <div className="bl-table-wrap">
-                      <table className="bl-table">
-                        <thead>
-                          <tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th className="bl-right">Amount</th></tr>
-                        </thead>
-                        <tbody>
-                          {bill.payments.map(p => (
-                            <tr key={p.id}>
-                              <td style={{ whiteSpace: 'nowrap' }}>{formatBillDate(p.receivedAt)}</td>
-                              <td>{PAYMENT_METHOD_LABELS[p.method] || p.method}</td>
-                              <td className="bl-muted">{p.reference || '—'}</td>
-                              <td>{p.receivedByName}</td>
-                              <td className="bl-num bl-right">{money(p.amount)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : !payable && (
-                    <div className="bl-empty">
-                      <h3>No payments recorded</h3>
-                      <p>{bill.status === 'paid' ? 'This bill is settled.' : 'Payments recorded against this bill will appear here.'}</p>
-                    </div>
-                  )}
+                  <div className="bl-table-wrap">
+                    <table className="bl-table">
+                      <thead>
+                        <tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th className="bl-right">Amount</th></tr>
+                      </thead>
+                      <tbody>
+                        {bill.payments.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="bl-muted" style={{ textAlign: 'center', padding: 24 }}>
+                              {bill.status === 'paid' ? 'This bill is settled.' : 'Payments recorded against this bill will appear here.'}
+                            </td>
+                          </tr>
+                        ) : bill.payments.map(p => (
+                          <tr key={p.id}>
+                            <td style={{ whiteSpace: 'nowrap' }}>{formatBillDate(p.receivedAt)}</td>
+                            <td>{PAYMENT_METHOD_LABELS[p.method] || p.method}</td>
+                            <td className="bl-muted">{p.reference || '—'}</td>
+                            <td>{p.receivedByName}</td>
+                            <td className="bl-num bl-right">{money(p.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </>
               )}
             </div>

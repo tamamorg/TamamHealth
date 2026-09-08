@@ -578,6 +578,13 @@ export async function signClinicalNote(
   // visit thread cannot be advanced.
   if (existing.encounterId && !input.awaitingCosign) {
     try {
+      if (isProviderRole(input.signerRole)) {
+        const { ensurePostConsultHandoff } = await import('@/modules/post-consult/services/handoff-service');
+        await ensurePostConsultHandoff(existing.encounterId, {
+          userId: input.signedBy, role: input.signerRole as import('../db-types').UserRole,
+          orgId: existing.orgId, hospitalId: existing.hospitalId,
+        });
+      }
       const { getEncounter, transitionEncounter } = await import('../services/encounter-service');
       const encounter = await getEncounter(existing.encounterId);
       if (encounter?.status === 'with_clinician') {
@@ -651,6 +658,17 @@ export async function cosignClinicalNote(
   const resp = await db.put(updated);
   await logAuditSafe('CLINICAL_NOTE_COSIGNED', cosignedBy, cosignedByName,
     `Note ${id} countersigned for ${existing.patientName}`);
+  if (existing.encounterId && cosignedBy) {
+    const { ensurePostConsultHandoff } = await import('@/modules/post-consult/services/handoff-service');
+    const encounter = await ensurePostConsultHandoff(existing.encounterId, {
+      userId: cosignedBy, role: cosignerRole as import('../db-types').UserRole,
+      orgId: existing.orgId, hospitalId: existing.hospitalId,
+    });
+    if (encounter.status === 'with_clinician') {
+      const { transitionEncounter } = await import('../services/encounter-service');
+      await transitionEncounter(encounter._id, 'ready_for_clinic_checkout', { actorId: cosignedBy });
+    }
+  }
   return { ...updated, _rev: resp.rev };
 }
 

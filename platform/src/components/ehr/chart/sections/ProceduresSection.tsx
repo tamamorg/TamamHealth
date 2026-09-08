@@ -155,15 +155,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   return (
     <>
       <ChartSection title="Procedures" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
-        {procedures.length === 0 ? (
-          <OmrsEmptyState
-            itemLabel="procedures"
-            actionLabel="Record procedures"
-            onAction={canConsult ? () => setAdding(true) : undefined}
-            disabledReason={canConsult ? undefined : 'Requires consultation permission'}
-          />
-        ) : (
-          <table className="tamam-table tamam-table--fixed">
+        <table className="tamam-table tamam-table--fixed">
             <colgroup>
               <col /><col /><col /><col /><col /><col />
             </colgroup>
@@ -178,6 +170,18 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               </tr>
             </thead>
             <tbody>
+              {procedures.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
+                    <OmrsEmptyState
+                      itemLabel="procedures"
+                      actionLabel="Record procedures"
+                      onAction={canConsult ? () => setAdding(true) : undefined}
+                      disabledReason={canConsult ? undefined : 'Requires consultation permission'}
+                    />
+                  </td>
+                </tr>
+              )}
               {visibleProcedures.map(p => (
                 <tr key={p._id} style={p.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
                   <td style={{ fontWeight: 600 }}>
@@ -222,7 +226,6 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               ))}
             </tbody>
           </table>
-        )}
       </ChartSection>
 
       {adding && (

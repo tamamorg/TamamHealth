@@ -668,6 +668,33 @@ export function buildValidateDocUpdateFn(
   if (!actingRole) {
     throw({ forbidden: 'no role claim on the CouchDB user; cannot write ' + docType });
   }
+  // Post-consult outcomes are clinical attestations, not front-desk metadata.
+  if (!isDelete && docType === 'clinical_encounter') {
+    var previousHandoff = oldDoc && oldDoc.postConsult;
+    var handoff = newDoc.postConsult;
+    if (JSON.stringify(previousHandoff || null) !== JSON.stringify(handoff || null)) {
+      if (!contains(${JSON.stringify(NURSING_AND_CLINICIANS)}, actingRole)) {
+        throw({ forbidden: 'Only clinical staff may change post-consult handoff' });
+      }
+      if (previousHandoff && !handoff) throw({ forbidden: 'Post-consult handoff cannot be removed' });
+      if (handoff && handoff.bypass && !contains(${JSON.stringify(CLINICIANS)}, actingRole)) {
+        throw({ forbidden: 'Only clinicians may bypass a separate nursing step' });
+      }
+    }
+    if (handoff && (newDoc.status === 'discharged' || newDoc.status === 'discharged_with_referral')) {
+      var ready = handoff.bypass && handoff.bypass.actorId && handoff.bypass.reason;
+      if (!ready && handoff.ownerId && handoff.acceptedAt && handoff.tasks && handoff.tasks.length === 4) {
+        ready = true;
+        var requiredTasks = ['education', 'treatments', 'investigations', 'followup'];
+        for (var hi = 0; hi < requiredTasks.length; hi++) {
+          var foundTask = null;
+          for (var hj = 0; hj < handoff.tasks.length; hj++) if (handoff.tasks[hj].kind === requiredTasks[hi]) foundTask = handoff.tasks[hj];
+          if (!foundTask || !foundTask.recordedBy || !foundTask.recordedAt || (foundTask.status !== 'done' && !(foundTask.status === 'deferred' && foundTask.note && foundTask.ownerId && foundTask.dueAt))) ready = false;
+        }
+      }
+      if (!ready) throw({ forbidden: 'Post-consult handoff is outstanding' });
+    }
+  }
 
   // ── Facility boundary ──────────────────────────────────────────────────
   // The org check above stops a write crossing tenants. Nothing stopped it

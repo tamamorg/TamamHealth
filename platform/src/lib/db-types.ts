@@ -1537,6 +1537,7 @@ export interface ClinicianTaskDoc extends BaseDoc {
  * finalised, a normal `medical_record` is written and the encounter is closed.
  */
 export interface EncounterDoc extends BaseDoc {
+  postConsult?: import('@/modules/post-consult').PostConsultHandoff;
   type: 'clinical_encounter';
   patientId: string;
   patientName: string;

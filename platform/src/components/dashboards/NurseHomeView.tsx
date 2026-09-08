@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/context';
+import { PostConsultPanel } from '@/modules/post-consult/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { HeartPulse } from '@/components/icons/lucide';
 import EhrClinicalDashboard, {
@@ -427,6 +428,7 @@ export default function NurseHomeView() {
 
   return (
     <main className="page-container page-enter">
+      <PostConsultPanel />
       <EhrClinicalDashboard
         clinicianName={currentUser.name || 'nurse'}
         patients={worklist.patients}

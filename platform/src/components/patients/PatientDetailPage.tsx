@@ -1700,15 +1700,7 @@ export default function PatientDetailPage() {
                   onSearchChange={value => { setApptSearch(value); setApptPage(1); }}
                   pagination={{ page: apptPage, pageSize: APPT_PAGE_SIZE, total: filteredAppts.length, onPageChange: setApptPage }}
                 >
-                  {sortedAppts.length === 0 ? (
-                    <OmrsEmptyState
-                      itemLabel="appointments"
-                      actionLabel="Record appointments"
-                      onAction={canBookAppointments ? () => router.push(`/appointments?new=1&patientId=${patient._id}`) : undefined}
-                      disabledReason={canBookAppointments ? undefined : 'Requires scheduling permission'}
-                    />
-                  ) : (
-                    <table className="tamam-table tamam-table--fixed">
+                  <table className="tamam-table tamam-table--fixed">
                       <colgroup>
                         <col /><col /><col /><col /><col />
                       </colgroup>
@@ -1722,6 +1714,18 @@ export default function PatientDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
+                        {sortedAppts.length === 0 && (
+                          <tr>
+                            <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
+                              <OmrsEmptyState
+                                itemLabel="appointments"
+                                actionLabel="Record appointments"
+                                onAction={canBookAppointments ? () => router.push(`/appointments?new=1&patientId=${patient._id}`) : undefined}
+                                disabledReason={canBookAppointments ? undefined : 'Requires scheduling permission'}
+                              />
+                            </td>
+                          </tr>
+                        )}
                         {apptPageRows.map(appt => (
                           <tr key={appt._id}>
                             <td className="font-mono">{formatDate(appt.appointmentDate)}</td>
@@ -1751,7 +1755,6 @@ export default function PatientDetailPage() {
                         ))}
                       </tbody>
                     </table>
-                  )}
                 </ChartSection>
               </div>
             );
@@ -2093,14 +2096,7 @@ export default function PatientDetailPage() {
                   </button>
                 )}
               >
-                {patientReferrals.length === 0 ? (
-                  <OmrsEmptyState
-                    itemLabel="referrals"
-                    actionLabel="New referral"
-                    onAction={canManageReferrals ? () => setShowReferModal(true) : undefined}
-                  />
-                ) : (
-                  <table className="tamam-table tamam-table--referrals">
+                <table className="tamam-table tamam-table--referrals">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -2113,6 +2109,17 @@ export default function PatientDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
+                      {patientReferrals.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
+                            <OmrsEmptyState
+                              itemLabel="referrals"
+                              actionLabel="New referral"
+                              onAction={canManageReferrals ? () => setShowReferModal(true) : undefined}
+                            />
+                          </td>
+                        </tr>
+                      )}
                       {patientReferrals.map(ref => {
                         const tp = ref.transferPackage as { medicalRecords?: unknown[]; labResults?: unknown[]; attachments?: unknown[]; packageSizeBytes?: number } | undefined;
                         const refAtts = ref.referralAttachments as unknown[] | undefined;
@@ -2166,7 +2173,6 @@ export default function PatientDetailPage() {
                       })}
                     </tbody>
                   </table>
-                )}
               </ChartSection>
             </div>
           )}

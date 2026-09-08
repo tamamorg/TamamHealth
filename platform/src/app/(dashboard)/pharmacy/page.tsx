@@ -1304,23 +1304,26 @@ export default function PharmacyPage() {
               </div>
             </div>
 
-            {activeRxs.length === 0 ? (
-              <p className="text-center py-10 px-5 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.noPrescriptionsFound')}</p>
-            ) : (
-              <div className="overflow-auto" style={{ maxHeight: 'min(62vh, 520px)' }}>
-                <table className="data-table" style={{ minWidth: 640, tableLayout: 'fixed' }}>
-                  <TableCols widths={[1.9, 1.1, 1.3, 0.8, 0.9]} />
-                  <thead className="appointment-table-head">
+            <div className="overflow-auto" style={{ maxHeight: 'min(62vh, 520px)' }}>
+              <table className="data-table" style={{ minWidth: 640, tableLayout: 'fixed' }}>
+                <TableCols widths={[1.9, 1.1, 1.3, 0.8, 0.9]} />
+                <thead className="appointment-table-head">
+                  <tr>
+                    <th>{t('pharmacy.medication')}</th>
+                    <th>{t('pharmacy.dosage')}</th>
+                    <th>{t('pharmacy.prescribedBy')}</th>
+                    <th>{t('pharmacy.time')}</th>
+                    <th>{t('pharmacy.statusLabel')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeRxs.length === 0 ? (
                     <tr>
-                      <th>{t('pharmacy.medication')}</th>
-                      <th>{t('pharmacy.dosage')}</th>
-                      <th>{t('pharmacy.prescribedBy')}</th>
-                      <th>{t('pharmacy.time')}</th>
-                      <th>{t('pharmacy.statusLabel')}</th>
+                      <td colSpan={5} className="text-center py-10 px-5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                        {t('pharmacy.noPrescriptionsFound')}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {activeRxs.map(rx => {
+                  ) : activeRxs.map(rx => {
                       const stage = pharmacyStage(rx);
                       return (
                         <tr key={rx._id}>
@@ -1336,10 +1339,9 @@ export default function PharmacyPage() {
                         </tr>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </Modal>
       )}

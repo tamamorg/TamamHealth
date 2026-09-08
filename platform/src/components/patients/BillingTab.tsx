@@ -618,36 +618,36 @@ export default function BillingTab({
           </button>
         </div>
         <SuperbillDraft sb={superbill} />
-        {d.charges.length === 0 ? (
-          <div className="bl-empty">
-            <Receipt size={28} />
-            <p>{t('billing.noChargesRecorded')}</p>
-          </div>
-        ) : (
-          <div className="bl-table-wrap">
-            <table className="bl-table">
-              <thead>
-                <tr>
-                  <th>Number</th><th>Charge</th><th>Category</th><th>Status</th><th>Date</th><th className="bl-right">Amount</th>
+        <div className="bl-table-wrap">
+          <table className="bl-table">
+            <thead>
+              <tr>
+                <th>Number</th><th>Charge</th><th>Category</th><th>Status</th><th>Date</th><th className="bl-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.charges.length === 0 ? (
+                <tr><td colSpan={6}>
+                  <div className="bl-empty">
+                    <Receipt size={28} />
+                    <p>{t('billing.noChargesRecorded')}</p>
+                  </div>
+                </td></tr>
+              ) : visibleCharges.length === 0 ? (
+                <tr><td colSpan={6} className="bl-muted" style={{ textAlign: 'center', padding: 24 }}>No charges match your search.</td></tr>
+              ) : visibleCharges.map((charge, idx) => (
+                <tr key={charge._id}>
+                  <td className="bl-num">{idx + 1}</td>
+                  <td>{charge.description}</td>
+                  <td className="bl-muted">{charge.category}</td>
+                  <td><span className={statusChipClass(charge.status)}>{charge.status}</span></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(charge.serviceDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  <td className="bl-num bl-right">{formatMoney(charge.billedAmount)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {visibleCharges.length === 0 ? (
-                  <tr><td colSpan={6} className="bl-muted" style={{ textAlign: 'center', padding: 24 }}>No charges match your search.</td></tr>
-                ) : visibleCharges.map((charge, idx) => (
-                  <tr key={charge._id}>
-                    <td className="bl-num">{idx + 1}</td>
-                    <td>{charge.description}</td>
-                    <td className="bl-muted">{charge.category}</td>
-                    <td><span className={statusChipClass(charge.status)}>{charge.status}</span></td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{new Date(charge.serviceDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                    <td className="bl-num bl-right">{formatMoney(charge.billedAmount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ─── Payments ───
@@ -659,31 +659,31 @@ export default function BillingTab({
           <h2 className="bl-card-title">Payments</h2>
           <span className="bl-underline" />
 
-          {d.payments.length === 0 ? (
-            <div className="bl-empty">
-              <h3>{t('billing.noPaymentsRecorded')}</h3>
-              <p>Payments recorded for this patient will appear here.</p>
-            </div>
-          ) : (
-            <div className="bl-table-wrap">
-              <table className="bl-table">
-                <thead>
-                  <tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th className="bl-right">Amount</th></tr>
-                </thead>
-                <tbody>
-                  {d.payments.map(pmt => (
-                    <tr key={pmt._id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{new Date(pmt.processedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                      <td>{getMethodConfig(pmt.method).label}</td>
-                      <td className="bl-muted">{pmt.reference || '—'}</td>
-                      <td>{pmt.processedByName}</td>
-                      <td className="bl-num bl-right">{formatMoney(pmt.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="bl-table-wrap">
+            <table className="bl-table">
+              <thead>
+                <tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th className="bl-right">Amount</th></tr>
+              </thead>
+              <tbody>
+                {d.payments.length === 0 ? (
+                  <tr><td colSpan={5}>
+                    <div className="bl-empty">
+                      <h3>{t('billing.noPaymentsRecorded')}</h3>
+                      <p>Payments recorded for this patient will appear here.</p>
+                    </div>
+                  </td></tr>
+                ) : d.payments.map(pmt => (
+                  <tr key={pmt._id}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{new Date(pmt.processedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                    <td>{getMethodConfig(pmt.method).label}</td>
+                    <td className="bl-muted">{pmt.reference || '—'}</td>
+                    <td>{pmt.processedByName}</td>
+                    <td className="bl-num bl-right">{formatMoney(pmt.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

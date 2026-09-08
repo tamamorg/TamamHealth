@@ -14,6 +14,8 @@
  */
 
 import { useState } from 'react';
+import { useAuth } from '@/lib/context';
+import { useUsers } from '@/lib/hooks/useUsers';
 import Modal from '@/components/Modal';
 import { CalendarClock, X } from '@/components/icons/lucide';
 import { toIsoDate } from '@/lib/date-utils';
@@ -23,6 +25,7 @@ export interface FollowUpModalResult {
   condition: string;
   scheduledDate: string;
   assignedWorkerName: string;
+  assignedWorkerId?: string;
   notes: string;
 }
 
@@ -50,7 +53,10 @@ export default function FollowUpModal({
 }: FollowUpModalProps) {
   const [condition, setCondition] = useState('');
   const [scheduledDate, setScheduledDate] = useState(defaultScheduledDate);
-  const [assignedWorkerName, setAssignedWorkerName] = useState(defaultAssignedWorkerName);
+  const { currentUser } = useAuth();
+  const { users } = useUsers();
+  const workers = currentUser ? [{ ...currentUser, isActive: true }, ...users.filter(u => u._id !== currentUser._id)] : users;
+  const [assignedWorkerId, setAssignedWorkerId] = useState(currentUser?._id || '');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -58,13 +64,16 @@ export default function FollowUpModal({
   const handleSave = async () => {
     if (!condition.trim()) { setError('Enter the condition being followed up.'); return; }
     if (!scheduledDate) { setError('Pick a follow-up date.'); return; }
+    const worker = workers.find(u => u._id === assignedWorkerId && u.isActive);
+    if (!worker) { setError('Select an active responsible staff member.'); return; }
     setError('');
     setSaving(true);
     try {
       await onSchedule({
         condition: condition.trim(),
         scheduledDate,
-        assignedWorkerName: assignedWorkerName.trim() || defaultAssignedWorkerName,
+        assignedWorkerName: worker.name || defaultAssignedWorkerName,
+        assignedWorkerId: worker._id,
         notes: notes.trim(),
       });
       onClose();
@@ -113,13 +122,14 @@ export default function FollowUpModal({
 
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
           <span className="cn-label" style={{ minWidth: 96 }}>Assigned to</span>
-          <input
+          <select
             className="cn-input"
             style={{ flex: 1 }}
-            value={assignedWorkerName}
-            onChange={e => setAssignedWorkerName(e.target.value)}
-            placeholder="Worker responsible for this follow-up"
-          />
+            value={assignedWorkerId}
+            onChange={e => setAssignedWorkerId(e.target.value)}
+          >
+            {workers.filter(u => u.isActive).map(u => <option key={u._id} value={u._id}>{u.name || u.username}</option>)}
+          </select>
         </label>
 
         <label className="cn-field" style={{ marginBottom: 4, width: '100%', alignItems: 'flex-start' }}>

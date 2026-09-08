@@ -31,6 +31,7 @@
  */
 
 import type { EncounterDoc } from '../db-types';
+import { postConsultReady } from '@/modules/post-consult';
 import type { DataScope } from './data-scope';
 import { FACILITY_CHECKOUT_GATE, isTerminal, stageOf } from '../clinical-flow/encounter-journey';
 import type { EncounterStatus } from '../clinical-flow/encounter-journey';
@@ -136,6 +137,9 @@ export async function evaluateCheckoutGate(
   // Filled by the prescriptions check below; stays empty when that read fails,
   // which is safe because the gate item itself blocks in that case.
   let tier1Outstanding: { id: string; medication: string }[] = [];
+  push('post_consult_handoff', !!encounter && postConsultReady(encounter.postConsult),
+    encounter && !postConsultReady(encounter.postConsult) ? 'Post-consult nursing review is outstanding.' : undefined,
+    encounter ? `/consultation?encounterId=${encounter._id}&patientId=${patientId}` : undefined);
 
   // ── All clinic visits closed ──────────────────────────────────────────
   // Derived from the encounter's own stage rather than a tick box: a visit

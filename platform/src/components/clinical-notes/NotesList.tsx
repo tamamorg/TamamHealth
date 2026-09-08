@@ -183,28 +183,13 @@ export default function NotesList({
 
       {loading && <div className="cn-empty">Loading notes…</div>}
 
-      {!loading && filtered.length === 0 && (
-        search.trim() ? (
-          <div className="cn-empty">
-            <FileText size={22} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
-            No notes match &ldquo;{search.trim()}&rdquo;.
-          </div>
-        ) : (
-          <OmrsEmptyState
-            itemLabel="notes"
-            actionLabel="Create clinical note"
-            onAction={canCreate ? () => setAddMenuOpen(true) : undefined}
-          />
-        )
-      )}
-
       {/* One column per fact, Status last like every other clinical table.
           There is no Actions column: the row itself opens the note, which is
           what the buttons in it did. Column widths live in the stylesheet
           (`.tamam-table--notes`), not a colgroup: the chart CSS forces
           `col { width: auto !important }`, so colgroup widths are silently
           dropped and every column comes out the same size. */}
-      {!loading && filtered.length > 0 && (
+      {!loading && (
         <table className={`tamam-table tamam-table--fixed tamam-table--notes${patientId ? '' : ' tamam-table--notes-queue'}`}>
           <thead>
             <tr>
@@ -217,6 +202,24 @@ export default function NotesList({
             </tr>
           </thead>
           <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={patientId ? 5 : 6} style={{ cursor: 'default', background: 'transparent' }}>
+                  {search.trim() ? (
+                    <div className="cn-empty">
+                      <FileText size={22} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
+                      No notes match &ldquo;{search.trim()}&rdquo;.
+                    </div>
+                  ) : (
+                    <OmrsEmptyState
+                      itemLabel="notes"
+                      actionLabel="Create clinical note"
+                      onAction={canCreate ? () => setAddMenuOpen(true) : undefined}
+                    />
+                  )}
+                </td>
+              </tr>
+            )}
             {pageRows.map((note) => {
               const status = STATUS_LABEL[note.status] ?? STATUS_LABEL.draft;
               return (

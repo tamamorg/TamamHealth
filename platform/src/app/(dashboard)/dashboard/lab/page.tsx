@@ -602,7 +602,7 @@ export default function LabDashboardPage() {
                   })()}
 
                   {/* Batch Table */}
-                  {batchEntries.length > 0 ? (
+                  {batchTestType ? (
                     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
                       <div className="overflow-x-auto">
                       <table className="w-full" style={{ minWidth: 520 }}>
@@ -616,7 +616,16 @@ export default function LabDashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {batchEntries.map((entry) => {
+                          {batchEntries.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="py-8">
+                                <div className="flex flex-col items-center justify-center text-center">
+                                  <Table className="w-8 h-8 mb-2" style={{ color: 'var(--text-muted)', opacity: 0.15 }} />
+                                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('lab.noPendingForType')}</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : batchEntries.map((entry) => {
                             const ref = getRefRange(batchTestType);
                             return (
                               <tr key={entry.orderId} style={{ borderTop: '1px solid var(--border-light)' }}>
@@ -694,11 +703,6 @@ export default function LabDashboardPage() {
                         </tbody>
                       </table>
                       </div>
-                    </div>
-                  ) : batchTestType ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <Table className="w-8 h-8 mb-2" style={{ color: 'var(--text-muted)', opacity: 0.15 }} />
-                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('lab.noPendingForType')}</p>
                     </div>
                   ) : null}
                 </div>

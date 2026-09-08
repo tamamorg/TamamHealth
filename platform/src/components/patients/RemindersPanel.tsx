@@ -97,10 +97,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
         </div>
       )}
 
-      {reminders.length === 0 ? (
-        !adding && <OmrsEmptyState itemLabel="reminders" actionLabel="Queue reminder" onAction={() => setAdding(true)} />
-      ) : (
-        <table className="tamam-table tamam-table--fixed">
+      <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col />
           </colgroup>
@@ -114,6 +111,13 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
             </tr>
           </thead>
           <tbody>
+            {reminders.length === 0 && !adding && (
+              <tr>
+                <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState itemLabel="reminders" actionLabel="Queue reminder" onAction={() => setAdding(true)} />
+                </td>
+              </tr>
+            )}
             {reminders.map(r => {
               const overdue = r.status === 'queued' && r.sendDate < today;
               const muted = r.status !== 'queued';
@@ -146,7 +150,6 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
             })}
           </tbody>
         </table>
-      )}
 
       {error && <p className="text-[11px] mt-1" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
     </ChartSection>

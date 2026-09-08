@@ -301,14 +301,6 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     { id: 'anc', label: 'ANC' },
   ];
 
-  if (events.length === 0) {
-    return (
-      <ChartSection title="Activity">
-        <OmrsEmptyState itemLabel="activity" />
-      </ChartSection>
-    );
-  }
-
   return (
     <ChartSection
       title="Activity"
@@ -335,14 +327,11 @@ export default function PatientTimeline(props: PatientTimelineProps) {
         <span><strong>{visibleEvents.length}</strong> {filter === 'all' ? 'events' : 'matching events'}</span>
         <span>Most recent first</span>
       </div>
-      {visibleEvents.length === 0 ? (
-        <OmrsEmptyState itemLabel="matching activity" />
-      ) : (
-      /* One line per event. The timeline rail (dot + connector) is gone: it
+      {/* One line per event. The timeline rail (dot + connector) is gone: it
          cost a 30px column and ~34px of height per row to say only "these are
          in order", which the date column already says. Detail that used to
          sit under every title now lives behind a per-row disclosure, so the
-         table stays scannable and only the row you ask about expands. */
+         table stays scannable and only the row you ask about expands. */}
       <table className="tamam-table tamam-table--fixed tamam-activity-table">
         <colgroup>
           <col /><col /><col /><col />
@@ -356,6 +345,13 @@ export default function PatientTimeline(props: PatientTimelineProps) {
           </tr>
         </thead>
         <tbody>
+          {visibleEvents.length === 0 && (
+            <tr>
+              <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
+                <OmrsEmptyState itemLabel={events.length === 0 ? 'activity' : 'matching activity'} />
+              </td>
+            </tr>
+          )}
           {visibleEvents.map(e => {
             const cfg = CATEGORY_CONFIG[e.category];
             const dateLabel = (() => {
@@ -423,7 +419,6 @@ export default function PatientTimeline(props: PatientTimelineProps) {
           })}
         </tbody>
       </table>
-      )}
     </ChartSection>
   );
 }

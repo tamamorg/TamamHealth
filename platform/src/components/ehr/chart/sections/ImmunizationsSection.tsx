@@ -169,15 +169,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
   return (
     <>
       <ChartSection title="Immunizations" addLabel="Add" onAdd={canRecord ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
-        {rows.length === 0 ? (
-          <OmrsEmptyState
-            itemLabel="immunizations"
-            actionLabel="Record immunizations"
-            onAction={canRecord ? () => setAdding(true) : undefined}
-            disabledReason={canRecord ? undefined : 'Requires vitals-recording permission'}
-          />
-        ) : (
-          <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             <table className="tamam-table tamam-table--fixed" style={{ minWidth: 840 }}>
               <colgroup>
                 <col /><col /><col /><col /><col /><col /><col /><col />
@@ -192,6 +184,18 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 </tr>
               </thead>
               <tbody>
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={8} style={{ cursor: 'default', background: 'transparent' }}>
+                      <OmrsEmptyState
+                        itemLabel="immunizations"
+                        actionLabel="Record immunizations"
+                        onAction={canRecord ? () => setAdding(true) : undefined}
+                        disabledReason={canRecord ? undefined : 'Requires vitals-recording permission'}
+                      />
+                    </td>
+                  </tr>
+                )}
                 {visibleRows.map(im => {
                   const s = STATUS_STYLE[im.status] || STATUS_STYLE.scheduled;
                   return (
@@ -229,8 +233,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 })}
               </tbody>
             </table>
-          </div>
-        )}
+        </div>
       </ChartSection>
 
       {adding && (

@@ -564,7 +564,7 @@ export default function ImmunizationsPage() {
         )}
 
         {/* Coverage by Age Cohort heatmap */}
-        {activeTab === 'records' && canViewCoverage && cohortRows.length > 0 && (
+        {activeTab === 'records' && canViewCoverage && (
           <div className="card-elevated p-5 mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -586,7 +586,13 @@ export default function ImmunizationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.keys(cohortGrid).map(vaccine => (
+                  {cohortRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={1 + cohortKeys.length} className="text-center p-4" style={{ color: 'var(--text-muted)' }}>
+                        {t('immun.noCoverageRows')}
+                      </td>
+                    </tr>
+                  ) : Object.keys(cohortGrid).map(vaccine => (
                     <tr key={vaccine}>
                       <td className="font-semibold p-2" style={{ color: 'var(--text-primary)' }}>{vaccine}</td>
                       {cohortKeys.map(c => {

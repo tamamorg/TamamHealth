@@ -800,11 +800,6 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                 newClaimOpen={newClaimOpen}
                 setNewClaimOpen={setNewClaimOpen}
               />
-            ) : filteredAccounts.length === 0 ? (
-              <div className="bl-empty">
-                <Wallet size={34} />
-                <h3>{search || filtersActive ? t('payments.noPatientsMatch') : t('payments.noBillingActivity')}</h3>
-              </div>
             ) : (
               <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
                 <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 940 }}>
@@ -825,7 +820,19 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAccounts.map(line => {
+                    {filteredAccounts.length === 0 ? (
+                      // `bl-table--rows-open` makes every tbody row look clickable
+                      // (cursor: pointer); this row has no click handler, so the
+                      // cursor is pinned back to default here.
+                      <tr style={{ cursor: 'default' }}>
+                        <td colSpan={accountColumns.length}>
+                          <div className="bl-empty">
+                            <Wallet size={34} />
+                            <h3>{search || filtersActive ? t('payments.noPatientsMatch') : t('payments.noBillingActivity')}</h3>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredAccounts.map(line => {
                       const owing = line.outstanding > 0;
                       const status = accountStatus(line);
                       const isRealPatient = line.patientId && !line.patientId.startsWith('demo-') && !line.patientId.includes('_demo');

@@ -75,10 +75,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
 
   return (
     <ChartSection title="Screenings due" addLabel="Add" onAdd={() => setAdding(true)}>
-      {due.length === 0 && !adding ? (
-        <OmrsEmptyState itemLabel="screenings due" actionLabel="Add screening" onAction={() => setAdding(true)} />
-      ) : due.length > 0 && (
-        <table className="tamam-table tamam-table--fixed">
+      <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col />
           </colgroup>
@@ -92,6 +89,13 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
             </tr>
           </thead>
           <tbody>
+            {due.length === 0 && !adding && (
+              <tr>
+                <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
+                  <OmrsEmptyState itemLabel="screenings due" actionLabel="Add screening" onAction={() => setAdding(true)} />
+                </td>
+              </tr>
+            )}
             {due.map((s) => {
               const overdue = !!s.dueDate && s.dueDate < today;
               return (
@@ -128,7 +132,6 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
             })}
           </tbody>
         </table>
-      )}
 
       {adding && (
         <div className="mt-2 space-y-2">
