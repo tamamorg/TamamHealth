@@ -1,6 +1,17 @@
 import type { TranslationMap } from '../index';
 
 const en: TranslationMap = {
+  'postConsult.history': 'Earlier nursing reviews',
+  'postConsult.clinicianAuthorization': 'An exceptional discharge must be recorded by a signed-in clinician with a reason. Reception cannot authorize it by entering another person’s name.',
+  'postConsult.loading': 'Loading nursing handoffs…',
+  'postConsult.changed': 'Care records changed — review required',
+  'postConsult.changedHelp': 'Orders or signed documentation changed after the last review. Review the linked records before recording new outcomes. Earlier outcomes are preserved in the history.',
+  'postConsult.reopen': 'Review changed plan',
+  'postConsult.reviewed': 'Nursing review recorded',
+  'postConsult.progress': '{{completed}} of {{total}} tasks completed',
+  'postConsult.transfer': 'Transfer responsibility',
+  'postConsult.transferHelp': 'Completed work is preserved. The new owner must accept the handoff. Selecting another staff member requires a connection to the staff directory.',
+  'postConsult.lastTransfer': 'Last responsibility transfer',
   'postConsult.start': 'Create or recover nursing handoff',
   'postConsult.title': "Post-consultation nursing",
   'postConsult.help': "Review the plan with the patient or caregiver. This checklist does not replace treatment, medication administration, laboratory or appointment records.",

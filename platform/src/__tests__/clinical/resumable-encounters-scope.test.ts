@@ -15,6 +15,7 @@ jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { teardownTestDBs } from '../helpers/test-db';
+import { documentCheckout } from '../helpers/checkout';
 import {
   createEncounter, getResumableEncounters, dischargeEncounter, transitionEncounter,
 } from '@/lib/services/encounter-service';
@@ -77,7 +78,8 @@ describe('dischargeEncounter — clears the shared progress tracker', () => {
     });
     expect(tracker.currentStage).not.toBe('completed');
 
-    const discharged = await dischargeEncounter(enc._id, { actorId: 'user-frontdesk-1' });
+    await documentCheckout(enc);
+    const discharged = await dischargeEncounter(enc._id, { actorId: 'user-frontdesk-1', actorRole: 'front_desk' });
     expect(discharged?.status).toBe('discharged');
 
     const after = await getConsultationProgressByPatient('pat-00001');
@@ -110,7 +112,8 @@ describe('dischargeEncounter — clears the shared progress tracker', () => {
       startedAt: new Date().toISOString(),
     } as never);
 
-    const discharged = await dischargeEncounter(todaysEncounter._id, { actorId: 'user-frontdesk-1' });
+    await documentCheckout(todaysEncounter);
+    const discharged = await dischargeEncounter(todaysEncounter._id, { actorId: 'user-frontdesk-1', actorRole: 'front_desk' });
     expect(discharged?.status).toBe('discharged');
 
     const untouchedPriorTracker = await getConsultationProgressByPatient('pat-00001');

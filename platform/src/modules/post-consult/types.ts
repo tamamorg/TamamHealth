@@ -11,6 +11,9 @@ export interface PostConsultTask {
 }
 export interface PostConsultHandoff {
   createdAt: string;
+  reviewedPlan?: string;
+  history?: { at: string; actorId: string; reason: string; handoff: Omit<PostConsultHandoff, 'history'> }[];
+  transfers?: { at: string; actorId: string; from?: string; to: string; reason: string }[];
   ownerId?: string;
   acceptedAt?: string;
   tasks: PostConsultTask[];

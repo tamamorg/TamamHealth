@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     const { ensureCouchUser } = await import('@/lib/sync/couch-auth');
     await ensureCouchUser({
       username: auth.username,
+      userId: auth.sub,
       password: ephemeralPassword,
       orgId: auth.orgId,
       hospitalId: auth.hospitalId,

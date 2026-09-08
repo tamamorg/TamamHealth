@@ -47,6 +47,7 @@ describe('walk-out from inside facility checkout', () => {
 
     const done = await dischargeEncounter(enc._id, {
       disposition: 'dismissed_without_formal_checkout',
+      actorId: 'doctor', actorRole: 'doctor', reason: 'Patient left before checkout',
     });
 
     // `dismissed_without_formal_checkout` is illegal from here (the patient is
@@ -61,6 +62,7 @@ describe('walk-out from inside facility checkout', () => {
     const enc = await encounterAt('awaiting_facility_checkout');
     const done = await dischargeEncounter(enc._id, {
       disposition: 'dismissed_without_formal_checkout',
+      actorId: 'doctor', actorRole: 'doctor', reason: 'Patient left before checkout',
     });
     expect(done?.status).toBe('dismissed_without_formal_checkout');
   });

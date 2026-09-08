@@ -137,8 +137,15 @@ export async function evaluateCheckoutGate(
   // Filled by the prescriptions check below; stays empty when that read fails,
   // which is safe because the gate item itself blocks in that case.
   let tier1Outstanding: { id: string; medication: string }[] = [];
-  push('post_consult_handoff', !!encounter && postConsultReady(encounter.postConsult),
-    encounter && !postConsultReady(encounter.postConsult) ? 'Post-consult nursing review is outstanding.' : undefined,
+  let handoffReady = !!encounter && postConsultReady(encounter.postConsult);
+  if (encounter?.postConsult && handoffReady) {
+    try {
+      const { currentPlanRevision } = await import('@/modules/post-consult/services/plan-service');
+      handoffReady = !!scope && encounter.postConsult.reviewedPlan === await currentPlanRevision(encounter, scope);
+    } catch { handoffReady = false; }
+  }
+  push('post_consult_handoff', handoffReady,
+    !handoffReady ? 'Post-consult nursing review is outstanding or care records have changed.' : undefined,
     encounter ? `/consultation?encounterId=${encounter._id}&patientId=${patientId}` : undefined);
 
   // ── All clinic visits closed ──────────────────────────────────────────
@@ -304,9 +311,9 @@ export async function evaluateCheckoutGate(
  * NOTE: the engine operates on the richer `clinical-flow/encounter-types`
  * `EncounterDoc` (facilityId, stage, isWalkIn, history), which is a different
  * type from the `db-types` `EncounterDoc` the services read. The gate
- * evaluation only needs `_id`, `patientId` and `status`, so it is typed on
- * that structural minimum rather than forcing the two to unify — reconciling
- * those two definitions is a separate change with its own blast radius.
+ * accepts that structural minimum at this boundary, then loads the persisted
+ * encounter for its scoped clinical checks, including the nursing handoff.
+ * Reconciling those two definitions remains a separate change.
  */
 export async function attemptFacilityCheckout<E extends FlowEncounter>(
   encounter: E,
@@ -314,9 +321,13 @@ export async function attemptFacilityCheckout<E extends FlowEncounter>(
   actor: TransitionActor,
   options: { override?: boolean; reason?: string; authorizedBy?: string } = {},
 ): Promise<{ result: TransitionResult; evaluation: CheckoutGateEvaluation }> {
+  const stored = await (await import('./encounter-service')).getEncounter(encounter._id);
+  const { assertDischargeAllowed, DISCHARGE_STATUSES } = await import('@/modules/post-consult/services/discharge-service');
+  if (DISCHARGE_STATUSES.includes(to)) await assertDischargeAllowed(encounter._id, to, { actorId: actor.userId, actorRole: actor.role, reason: options.reason });
   const evaluation = await evaluateCheckoutGate(
     encounter.patientId,
-    { _id: encounter._id, patientId: encounter.patientId, status: encounter.status } as unknown as EncounterDoc,
+    stored ?? undefined,
+    { userId: actor.userId, role: actor.role, orgId: stored?.orgId, hospitalId: stored?.hospitalId },
   );
   const { transitionEncounter } = await import('../clinical-flow/encounter-engine');
   const result = transitionEncounter(encounter as never, to, actor, {

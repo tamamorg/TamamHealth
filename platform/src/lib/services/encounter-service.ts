@@ -9,7 +9,8 @@
  * move an encounter the way the architecture document allows.
  */
 import { v4 as uuidv4 } from 'uuid';
-import { newPostConsultHandoff, postConsultReady } from '@/modules/post-consult';
+import { newPostConsultHandoff } from '@/modules/post-consult';
+import { assertDischargeAllowed, DISCHARGE_STATUSES } from '@/modules/post-consult/services/discharge-service';
 import { encountersDB } from '../db';
 import type { EncounterDoc, UserRole } from '../db-types';
 import {
@@ -212,7 +213,7 @@ export async function updateEncounter(id: string, patch: Partial<EncounterDoc>):
   try {
     const existing = await db.get(id) as EncounterDoc;
     if (Object.prototype.hasOwnProperty.call(patch, 'postConsult')) throw new Error('USE_HANDOFF_SERVICE');
-    if ((patch.status === 'discharged' || patch.status === 'discharged_with_referral') && !postConsultReady(existing.postConsult)) throw new Error('POST_CONSULT_PENDING');
+    if (patch.status && DISCHARGE_STATUSES.includes(patch.status)) throw new Error('USE_DISCHARGE_SERVICE');
     // Any write re-stamps the version: the snapshot being persisted is
     // produced by *this* app version, whatever shape it was read in.
     const updated: EncounterDoc = {
@@ -247,10 +248,7 @@ export async function transitionEncounter(
   if (existing.status !== to && !canTransition(existing.status, to)) {
     throw new Error(`Illegal encounter transition: ${existing.status} → ${to}`);
   }
-  if (to === 'discharged' || to === 'discharged_with_referral') {
-    const head = await db.get(id, { conflicts: true }) as EncounterDoc & { _conflicts?: string[] };
-    if (head._conflicts?.length || !postConsultReady(head.postConsult)) throw new Error('POST_CONSULT_PENDING');
-  }
+  if (DISCHARGE_STATUSES.includes(to) && existing.status !== to) await assertDischargeAllowed(id, to, opts);
   // Capability check — WARN-ONLY for now (step 1 of the engine migration):
   // callers that pass `actorRole` get a recorded governance signal when the
   // move needs a capability the role does not hold, without breaking the
@@ -798,17 +796,14 @@ export type DischargeDisposition =
 
 export async function dischargeEncounter(
   id: string,
-  opts: { actorId?: string; pendingItems?: boolean; disposition?: DischargeDisposition } = {},
+  opts: { actorId?: string; actorRole?: UserRole; reason?: string; pendingItems?: boolean; disposition?: DischargeDisposition } = {},
 ): Promise<EncounterDoc | null> {
   const enc = await getEncounter(id);
   if (!enc) return null;
   if (isTerminal(enc.status)) return enc; // already closed — nothing to do
   const startIdx = FACILITY_DISCHARGE_CHAIN.indexOf(enc.status);
   if (startIdx === -1) return enc; // not in a checkout-eligible state — leave as-is
-  if (opts.disposition !== 'dismissed_without_formal_checkout' && opts.disposition !== 'discharged_with_pending_items' && !opts.pendingItems) {
-    const head = await encountersDB().get(id, { conflicts: true }) as EncounterDoc & { _conflicts?: string[] };
-    if (head._conflicts?.length || !postConsultReady(head.postConsult)) throw new Error('POST_CONSULT_PENDING');
-  }
+  await assertDischargeAllowed(id, opts.disposition ?? (opts.pendingItems ? 'discharged_with_pending_items' : 'discharged'), opts);
 
   // Explicit disposition wins; the legacy pendingItems flag maps onto its
   // disposition so existing callers keep their behavior. Before dispositions
@@ -837,9 +832,9 @@ export async function dischargeEncounter(
   let current = enc;
   // Step through the remaining chain hops, then the terminal discharge.
   for (let i = startIdx + 1; i < chainEnd; i++) {
-    current = await transitionEncounter(id, FACILITY_DISCHARGE_CHAIN[i], { actorId: opts.actorId });
+    current = await transitionEncounter(id, FACILITY_DISCHARGE_CHAIN[i], opts);
   }
-  current = await transitionEncounter(id, finalStatus, { actorId: opts.actorId });
+  current = await transitionEncounter(id, finalStatus, opts);
 
   // Close the booking with the visit — the other half of the bridge
   // appointment-service runs in the opposite direction. Without it a

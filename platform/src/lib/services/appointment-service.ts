@@ -346,6 +346,7 @@ async function bridgeEncounterOnAppointmentStatus(
   appointment: AppointmentDoc,
   status: AppointmentStatus,
   actorId: string | undefined,
+  actorRole?: UserRole,
 ): Promise<void> {
   if (status !== 'completed' && status !== 'no_show' && status !== 'cancelled') return;
   try {
@@ -360,7 +361,7 @@ async function bridgeEncounterOnAppointmentStatus(
       // leaves it untouched — a visit the clinician hasn't closed yet is
       // never force-discharged just because reception checked the appointment out.
       const { dischargeEncounter } = await import('./encounter-service');
-      await dischargeEncounter(encounter._id, { actorId });
+      await dischargeEncounter(encounter._id, { actorId, actorRole });
       return;
     }
 
@@ -390,8 +391,12 @@ export async function updateAppointmentStatus(
     const existing = await db.get(id) as AppointmentDoc;
     if (status === 'completed') {
       const linked = await findLinkedEncounterForAppointment(id);
-      const { postConsultReady } = await import('@/modules/post-consult');
       const { isTerminal } = await import('../clinical-flow/encounter-journey');
+      if (linked && !isTerminal(linked.status)) {
+        const { assertDischargeAllowed } = await import('@/modules/post-consult/services/discharge-service');
+        await assertDischargeAllowed(linked._id, 'discharged', extra);
+      }
+      const { postConsultReady } = await import('@/modules/post-consult');
       if (linked && !isTerminal(linked.status) && !postConsultReady(linked.postConsult)) throw new Error('POST_CONSULT_PENDING');
       if (linked?.postConsult && !isTerminal(linked.status)) {
         const head = await encountersDB().get(linked._id, { conflicts: true }) as EncounterDoc & { _conflicts?: string[] };
@@ -515,7 +520,7 @@ export async function updateAppointmentStatus(
       orgId: updated.orgId,
       hospitalId: updated.facilityId,
     });
-    await bridgeEncounterOnAppointmentStatus(updated, status, actorId);
+    await bridgeEncounterOnAppointmentStatus(updated, status, actorId, extra?.actorRole);
     return updated;
   } catch (err) {
     if (err instanceof BookingConflictError) throw err;

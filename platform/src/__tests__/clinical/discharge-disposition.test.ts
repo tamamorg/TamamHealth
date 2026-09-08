@@ -10,6 +10,7 @@ jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { putDoc, teardownTestDBs } from '../helpers/test-db';
+import { documentCheckout } from '../helpers/checkout';
 import { patientsDB } from '@/lib/db';
 import { getPatientById } from '@/lib/services/patient-service';
 import {
@@ -37,14 +38,15 @@ async function encounterAt(status: string) {
 describe('dischargeEncounter dispositions', () => {
   it('walks to discharged_with_referral when asked', async () => {
     const enc = await encounterAt('ready_for_clinic_checkout');
-    const done = await dischargeEncounter(enc._id, { disposition: 'discharged_with_referral' });
+    await documentCheckout(enc);
+    const done = await dischargeEncounter(enc._id, { actorId: 'doctor', actorRole: 'doctor', disposition: 'discharged_with_referral' });
     expect(done?.status).toBe('discharged_with_referral');
     expect(done?.closedAt).toBeTruthy();
   });
 
   it('records a walk-out as dismissed_without_formal_checkout, stopping before facility checkout', async () => {
     const enc = await encounterAt('ready_for_clinic_checkout');
-    const done = await dischargeEncounter(enc._id, { disposition: 'dismissed_without_formal_checkout' });
+    const done = await dischargeEncounter(enc._id, { actorId: 'doctor', actorRole: 'doctor', reason: 'Patient left before checkout', disposition: 'dismissed_without_formal_checkout' });
     expect(done?.status).toBe('dismissed_without_formal_checkout');
     // The trail must show the dismissal came FROM awaiting_facility_checkout —
     // the only status it is legal from.
@@ -57,7 +59,7 @@ describe('dischargeEncounter dispositions', () => {
 
   it('keeps the legacy pendingItems flag working', async () => {
     const enc = await encounterAt('ready_for_clinic_checkout');
-    const done = await dischargeEncounter(enc._id, { pendingItems: true });
+    const done = await dischargeEncounter(enc._id, { actorId: 'doctor', actorRole: 'doctor', reason: 'Follow-up arranged for pending items', pendingItems: true });
     expect(done?.status).toBe('discharged_with_pending_items');
   });
 
@@ -78,7 +80,8 @@ describe('dischargeEncounter dispositions', () => {
       startedAt: new Date().toISOString(),
     } as never);
 
-    await dischargeEncounter(enc._id, { actorId: 'user-frontdesk-1' });
+    await documentCheckout(enc);
+    await dischargeEncounter(enc._id, { actorId: 'user-frontdesk-1', actorRole: 'front_desk' });
     expect(await getPatientById('pat-00001')).toMatchObject({ assignmentStatus: 'completed' });
     expect((await getPatientById('pat-00001'))?.assignedDoctor).toBeUndefined();
     expect((await getPatientById('pat-00001'))?.assignedNurse).toBeUndefined();

@@ -15,7 +15,7 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClinicalNote, listClinicalNotes, type CreateNoteInput } from './note-service';
+import { createClinicalNote, listClinicalNotes, updateClinicalNote, type CreateNoteInput } from './note-service';
 import { type NoteTypeId } from './note-catalog';
 import { useDataScope } from '../hooks/useDataScope';
 import type { ClinicalNoteDoc } from './types';
@@ -114,18 +114,25 @@ export function useCreateNote(currentUser: CurrentUserLike | null) {
     const navigate = options.navigate ?? true;
     setCreating(true);
     try {
+      let encounterId = input.encounterId;
+      if (!encounterId && scope?.userId && scope.hospitalId && (!input.serviceDate || input.serviceDate === toIsoDate(new Date()))) {
+        const { resolveNoteEncounter } = await import('@/modules/post-consult/services/note-encounter-service');
+        encounterId = await resolveNoteEncounter(input.patientId, scope, input.appointmentId);
+      }
       // Reopen rather than fork: a second draft against one appointment splits
       // the encounter across two records.
       if (input.appointmentId) {
         const existing = await listClinicalNotes({ patientId: input.patientId }, scope);
         const draft = findReusableDraft(existing, input.appointmentId);
         if (draft) {
+          const linkedDraft = !draft.encounterId && encounterId
+            ? await updateClinicalNote(draft._id, { encounterId }) : draft;
           if (navigate) router.push(`/notes/${draft._id}`);
-          return draft;
+          return linkedDraft;
         }
       }
 
-      const note = await createClinicalNote(buildCreateNoteInput(input, currentUser, new Date()));
+      const note = await createClinicalNote(buildCreateNoteInput({ ...input, encounterId }, currentUser, new Date()));
 
       if (navigate) router.push(`/notes/${note._id}`);
       return note;

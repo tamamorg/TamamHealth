@@ -202,6 +202,7 @@ async function ensureReplication(doc: TenantReplicationDocument): Promise<void> 
  */
 export async function ensureCouchUser(input: {
   username: string;
+  userId?: string;
   password: string;
   orgId?: string;
   hospitalId?: string;
@@ -214,6 +215,7 @@ export async function ensureCouchUser(input: {
   const path = `/_users/${encodeURIComponent(docId)}`;
 
   const roles: string[] = [];
+  if (input.userId) roles.push(`user:${input.userId}`);
   if (input.orgId) roles.push(`org:${input.orgId}`);
   // One claim per facility. The write validator accepts a document whose
   // owning facility matches ANY of them, and the replication selector narrows
@@ -315,6 +317,7 @@ export async function ensureCouchGatewayUser(input: {
   if (!provisioning) {
     provisioning = ensureCouchUser({
       username,
+      userId: input.sub,
       password,
       // '' means "no tenant"; ensureCouchUser already skips the `org:` claim
       // for a falsy value, so the operator gets `role:super_admin` and nothing

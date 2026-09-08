@@ -11,6 +11,17 @@ import type { TranslationMap } from '../index';
  */
 
 const apd: TranslationMap = {
+  'postConsult.history': 'مراجعات التمريض السابقة',
+  'postConsult.clinicianAuthorization': 'الخروج الاستثنائي لازم يسجّلو طبيب داخل بحسابو مع السبب. الاستقبال ما بقدر يوافق بكتابة اسم زول تاني.',
+  'postConsult.loading': 'جاري تحميل تسليم التمريض…',
+  'postConsult.changed': 'سجلات الرعاية اتغيّرت — محتاجة مراجعة',
+  'postConsult.changedHelp': 'الطلبات أو التوثيق الموقّع اتغيّر بعد آخر مراجعة. راجع السجلات المربوطة قبل تسجيل نتائج جديدة. النتائج القديمة محفوظة في السجل.',
+  'postConsult.reopen': 'راجع الخطة المتغيّرة',
+  'postConsult.reviewed': 'مراجعة التمريض اتسجّلت',
+  'postConsult.progress': '{{completed}} من {{total}} مهام اكتملت',
+  'postConsult.transfer': 'حوّل المسؤولية',
+  'postConsult.transferHelp': 'الشغل المكتمل محفوظ. الموظف الجديد لازم يقبل التسليم. اختيار موظف تاني محتاج اتصال بدليل الموظفين.',
+  'postConsult.lastTransfer': 'آخر تحويل للمسؤولية',
   'postConsult.start': 'اعمل أو استرجع تسليم التمريض',
   'postConsult.title': "تمريض بعد مقابلة الدكتور",
   'postConsult.help': "راجع خطة العلاج مع المريض أو الزول البيرعاه. القائمة دي ما بديل لسجل العلاج والدواء والمعمل والمواعيد.",

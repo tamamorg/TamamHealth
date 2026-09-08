@@ -218,7 +218,9 @@ describe('updateAppointmentStatus bridges the linked encounter', () => {
       arrivalChannel: 'walk_in', appointmentId: appt._id,
     } as never);
 
-    await updateAppointmentStatus(appt._id, 'completed');
+    const { documentCheckout } = await import('../helpers/checkout');
+    await documentCheckout(enc);
+    await updateAppointmentStatus(appt._id, 'completed', { actorId: 'user-desk-1', actorRole: 'front_desk' });
 
     expect((await getEncounter(enc._id))?.status).toBe('discharged');
   });

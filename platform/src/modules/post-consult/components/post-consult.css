@@ -7,3 +7,12 @@
 .ehr-post-consult h3 { font-size: 16px; margin: 6px 0; }
 .ehr-post-consult p { font-size: 13px; margin-block: 6px; overflow-wrap: anywhere; }
 .cn-editor > .ehr-post-consult { max-height: 40vh; overflow: auto; flex-shrink: 0; }
+.ehr-post-consult-visit { padding-block: 16px; border-top: 1px solid var(--border-light); }
+.ehr-post-consult-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.ehr-post-consult-status { padding: 4px 10px; border: 1px solid var(--border-light); border-radius: 4px; font-size: 13px; font-weight: 600; }
+.ehr-post-consult-warning { padding: 12px; margin-block: 12px; border-inline-start: 3px solid #a15c00; background: var(--bg-card-hover); }
+.ehr-post-consult-transfer { margin-block: 12px; }
+.ehr-post-consult nav { padding-block: 8px 12px; }
+.ehr-post-consult summary { min-height: 44px; display: list-item; }
+.ehr-post-consult :is(button, a, summary, input, select, textarea):focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.ehr-post-consult fieldset { border-inline-start: 2px solid var(--border-light); padding-inline-start: 16px; }

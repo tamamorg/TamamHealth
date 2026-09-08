@@ -670,6 +670,9 @@ export function buildValidateDocUpdateFn(
   }
   // Post-consult outcomes are clinical attestations, not front-desk metadata.
   if (!isDelete && docType === 'clinical_encounter') {
+    var actorId = null;
+    for (var ai = 0; ai < roles.length; ai++) if (roles[ai].indexOf('user:') === 0) actorId = roles[ai].substring(5);
+    var isClinician = contains(${JSON.stringify(CLINICIANS)}, actingRole);
     var previousHandoff = oldDoc && oldDoc.postConsult;
     var handoff = newDoc.postConsult;
     if (JSON.stringify(previousHandoff || null) !== JSON.stringify(handoff || null)) {
@@ -680,6 +683,58 @@ export function buildValidateDocUpdateFn(
       if (handoff && handoff.bypass && !contains(${JSON.stringify(CLINICIANS)}, actingRole)) {
         throw({ forbidden: 'Only clinicians may bypass a separate nursing step' });
       }
+      if (!actorId) throw({ forbidden: 'Handoff writes require a provisioned user identity claim' });
+      function same(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
+      function validReason(value) { return typeof value === 'string' && value.trim().length > 0 && value.length <= 2000; }
+      if (!handoff.tasks || handoff.tasks.length !== 4) throw({ forbidden: 'Invalid handoff tasks' });
+      var oldHistory = previousHandoff && previousHandoff.history || [];
+      var history = handoff.history || [];
+      var reopening = history.length === oldHistory.length + 1;
+      if (reopening) {
+        var entry = history[history.length - 1];
+        var snapshot = JSON.parse(JSON.stringify(previousHandoff));
+        delete snapshot.history;
+        if (!same(history.slice(0, -1), oldHistory) || !same(entry.handoff, snapshot) || entry.actorId !== actorId || !validReason(entry.reason)
+          || (!isClinician && previousHandoff.ownerId !== actorId) || handoff.ownerId !== actorId || handoff.bypass) throw({ forbidden: 'Invalid handoff re-review' });
+      } else if (!same(history, oldHistory)) throw({ forbidden: 'Handoff history is immutable' });
+      var oldTransfers = previousHandoff && previousHandoff.transfers || [];
+      var transfers = handoff.transfers || [];
+      var transferring = !reopening && transfers.length === oldTransfers.length + 1;
+      if (transferring) {
+        var transfer = transfers[transfers.length - 1];
+        if (!same(transfers.slice(0, -1), oldTransfers) || transfer.actorId !== actorId || transfer.from !== previousHandoff.ownerId
+          || transfer.to !== handoff.ownerId || !transfer.to || !validReason(transfer.reason) || handoff.acceptedAt
+          || (!isClinician && previousHandoff.ownerId !== actorId)) throw({ forbidden: 'Invalid ownership transfer' });
+      } else if (!reopening && !same(transfers, oldTransfers)) throw({ forbidden: 'Transfer history is immutable' });
+      if (!reopening && !transferring && handoff.ownerId !== (previousHandoff && previousHandoff.ownerId)
+        && ((previousHandoff && previousHandoff.ownerId) || handoff.ownerId !== actorId)) throw({ forbidden: 'Cannot impersonate handoff owner' });
+      if (!reopening && !transferring && !same(handoff.acceptedAt, previousHandoff && previousHandoff.acceptedAt) && handoff.ownerId !== actorId) throw({ forbidden: 'Only the owner can accept' });
+      var kinds = ['education', 'treatments', 'investigations', 'followup'];
+      var hadOutcomes = false;
+      for (var ti = 0; ti < 4; ti++) {
+        var task = handoff.tasks[ti];
+        var oldTask = previousHandoff && previousHandoff.tasks[ti];
+        if (task.kind !== kinds[ti]) throw({ forbidden: 'Invalid task kind' });
+        if (oldTask && oldTask.status !== 'pending') hadOutcomes = true;
+        if (reopening) {
+          if (task.status !== 'pending' || task.recordedBy || task.recordedAt) throw({ forbidden: 'Re-review must reset outcomes' });
+        } else if (!same(task, oldTask)) {
+          if (task.status === 'pending' && !oldTask && !task.recordedBy && !task.recordedAt) continue;
+          if (transferring || task.recordedBy !== actorId || !task.recordedAt || !validReason(task.note)
+            || (handoff.ownerId !== actorId && !(oldTask && oldTask.status === 'deferred' && oldTask.ownerId === actorId))
+            || (task.status !== 'done' && task.status !== 'deferred')
+            || (task.status === 'deferred' && (!task.ownerId || !isFinite(Date.parse(task.dueAt))))) throw({ forbidden: 'Invalid task attestation' });
+        }
+      }
+      if (!reopening && hadOutcomes && !same(handoff.reviewedPlan, previousHandoff.reviewedPlan)) throw({ forbidden: 'Changed plan requires re-review' });
+      if (handoff.bypass && !same(handoff.bypass, previousHandoff && previousHandoff.bypass)
+        && (handoff.bypass.actorId !== actorId || !validReason(handoff.bypass.reason) || hadOutcomes)) throw({ forbidden: 'Invalid clinician exception' });
+    }
+    if ((!oldDoc || oldDoc.status !== newDoc.status) && (newDoc.status === 'discharged_with_pending_items' || newDoc.status === 'dismissed_without_formal_checkout')) {
+      var transitions = newDoc.statusHistory || [];
+      var last = transitions[transitions.length - 1];
+      if (!actorId || !isClinician || !last || last.byUserId !== actorId || last.to !== newDoc.status || typeof last.reason !== 'string' || !last.reason.trim() || last.reason.length > 2000)
+        throw({ forbidden: 'Exceptional discharge requires a clinician identity and reason' });
     }
     if (handoff && (newDoc.status === 'discharged' || newDoc.status === 'discharged_with_referral')) {
       var ready = handoff.bypass && handoff.bypass.actorId && handoff.bypass.reason;

@@ -795,6 +795,8 @@ export default function FrontDeskDashboardPage() {
               : disposition ?? 'discharged';
           await dischargeEncounter(enc._id, {
             actorId: currentUser?._id,
+            actorRole: currentUser?.role,
+            reason: override?.reason,
             disposition: finalDisposition,
           });
         }
@@ -816,10 +818,10 @@ export default function FrontDeskDashboardPage() {
       }
       showToast(`${target.patientName} checked out${gateNote}`, 'success');
       setCheckoutTarget(null);
-    } catch {
-      showToast('Failed to complete checkout', 'error');
+    } catch (error) {
+      showToast(error instanceof Error && error.message.includes('DISCHARGE_OVERRIDE') ? t('postConsult.clinicianAuthorization') : 'Failed to complete checkout', 'error');
     }
-  }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope]);
+  }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope, t]);
 
   // ── Appointment check-in: mark the patient as arrived → joins the queue ──
   // Also creates/joins the visit encounter (arrivalChannel: 'appointment',

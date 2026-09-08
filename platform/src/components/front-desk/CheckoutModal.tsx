@@ -7,6 +7,9 @@ import { LogOut, X, Wallet, CheckCircle } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import type { CheckoutTarget } from '@/lib/front-desk-utils';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { CLINICIANS } from '@/lib/sync/write-permissions';
 
 // ── Final-checkout modal: confirm balance settled, mark the visit complete ──
 export default function CheckoutModal({
@@ -27,6 +30,9 @@ export default function CheckoutModal({
   onCollectPayment: (patientId: string) => void;
 }) {
   const scope = useDataScope();
+  const { currentUser } = useAuth();
+  const { t } = useTranslation();
+  const canAuthorize = !!currentUser && CLINICIANS.includes(currentUser.role);
   const [balance, setBalance] = useState<number | null>(null);
   const [charges, setCharges] = useState<{ description: string; amount: number }[]>([]);
   const [completing, setCompleting] = useState(false);
@@ -37,7 +43,6 @@ export default function CheckoutModal({
   const [overrideReason, setOverrideReason] = useState('');
   // An override needs a named authorizer, not just a reason — "reason +
   // authorization, logged" is the documented gate rule (Principle 2.12).
-  const [overrideAuthorizedBy, setOverrideAuthorizedBy] = useState('');
   const [disposition, setDisposition] = useState<import('@/lib/services/encounter-service').DischargeDisposition>('discharged');
 
   useEffect(() => {
@@ -186,22 +191,6 @@ export default function CheckoutModal({
                   </li>
                 ))}
               </ul>
-              <input
-                type="text"
-                value={overrideReason}
-                onChange={e => setOverrideReason(e.target.value)}
-                placeholder="Override reason (required to check out anyway)"
-                className="mt-2.5 w-full rounded-lg px-3 py-2 text-[12px]"
-                style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)' }}
-              />
-              <input
-                type="text"
-                value={overrideAuthorizedBy}
-                onChange={e => setOverrideAuthorizedBy(e.target.value)}
-                placeholder="Authorized by (name of the approving clinician/manager)"
-                className="mt-2 w-full rounded-lg px-3 py-2 text-[12px]"
-                style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)' }}
-              />
             </div>
           )}
 
@@ -223,6 +212,16 @@ export default function CheckoutModal({
               <option value="dismissed_without_formal_checkout">Patient left without formal checkout</option>
             </select>
           </label>
+          {(!!gate?.blocking.length || disposition === 'dismissed_without_formal_checkout') && (
+            <div role="status">
+              <p className="text-sm">{t('postConsult.clinicianAuthorization')}</p>
+              {canAuthorize && <label style={{ textTransform: 'none', letterSpacing: 'normal' }}>
+                {t('postConsult.reason')}
+                <textarea value={overrideReason} maxLength={2000} onChange={e => setOverrideReason(e.target.value)} className="w-full rounded-lg p-2" />
+                <span>{currentUser?.name}</span>
+              </label>}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -232,15 +231,16 @@ export default function CheckoutModal({
           </button>
           {(() => {
             const blocked = !!gate && gate.blocking.length > 0;
-            const canSubmit = balance !== null && !completing
-              && (!blocked || (overrideReason.trim().length > 0 && overrideAuthorizedBy.trim().length > 0));
+            const needsAuthorization = blocked || disposition === 'dismissed_without_formal_checkout';
+            const canSubmit = !!gate && balance !== null && !completing
+              && (!needsAuthorization || (canAuthorize && overrideReason.trim().length > 0));
             return (
               <button
                 onClick={async () => {
                   setCompleting(true);
                   await onComplete(
                     target,
-                    blocked ? { reason: overrideReason.trim(), authorizedBy: overrideAuthorizedBy.trim() } : undefined,
+                    needsAuthorization ? { reason: overrideReason.trim(), authorizedBy: currentUser!._id } : undefined,
                     disposition,
                   );
                   setCompleting(false);

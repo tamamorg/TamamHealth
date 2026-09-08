@@ -2200,6 +2200,7 @@ export default function EhrClinicalDashboard({
                                 patientName: row.name,
                                 mrn: row.patient?.id,
                                 appointmentId: row.appointment?._id,
+                                encounterId: encounterForRow(row)?._id,
                                 serviceTime: row.appointment?.appointmentTime,
                               });
                             } : undefined}

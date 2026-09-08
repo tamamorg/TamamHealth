@@ -158,7 +158,7 @@ it('carries one visit from arrival to discharge without forking the encounter', 
 
   gate = await evaluateCheckoutGate('pat-00001', (await getEncounter(claimed._id))!);
   expect(gate.blocking.map(item => item.key)).toContain('post_consult_handoff');
-  await expect(dischargeEncounter(claimed._id, { actorId: 'user-frontdesk-1' })).rejects.toThrow('POST_CONSULT_PENDING');
+  await expect(dischargeEncounter(claimed._id, { actorId: 'user-frontdesk-1', actorRole: 'front_desk' })).rejects.toThrow('CHECKOUT_BLOCKED');
   const { updateHandoff } = await import('@/modules/post-consult/services/handoff-service');
   const nurseScope = { role: 'nurse' as const, userId: 'nurse-1', orgId: ORG, hospitalId: HOSP };
   let handed = (await getEncounter(claimed._id))!;
@@ -166,11 +166,11 @@ it('carries one visit from arrival to discharge without forking the encounter', 
   for (const task of handed.postConsult!.tasks) {
     handed = await updateHandoff(handed._id, handed._rev!, { type: 'task', kind: task.kind, status: 'done', note: 'Reviewed with patient; linked records checked.' }, nurseScope);
   }
-  gate = await evaluateCheckoutGate('pat-00001', handed);
+  gate = await evaluateCheckoutGate('pat-00001', handed, nurseScope);
   expect(gate.canDischarge).toBe(true);
 
   // ── Stage 10: facility checkout walks the legal chain to discharged ───
-  const discharged = await dischargeEncounter(claimed._id, { actorId: 'user-frontdesk-1' });
+  const discharged = await dischargeEncounter(claimed._id, { actorId: 'user-frontdesk-1', actorRole: 'front_desk' });
   expect(discharged?.status).toBe('discharged');
   expect(discharged?.closedAt).toBeTruthy();
 
