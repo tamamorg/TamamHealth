@@ -119,11 +119,17 @@ describe('the daybar search field cannot be moved by the day it is showing', () 
     }
   });
 
+  /** The `:has(.ehr-queue-search)` rules that set a template, minus the stacking
+   *  (`:not(`) split and the appointments `<select>` variant tested below. */
+  const withSearchRules = () => daybarColumnRules().filter(r =>
+    r.selector.includes(':has(.ehr-queue-search)')
+    && !r.selector.includes(':not(')
+    && !r.selector.includes(':has(> select)'));
+
   test('the winning rule for a daybar WITH a search box pins the centre track', () => {
     // Last one in source order wins among equal-specificity rules, and this
     // selector is the most specific set in the file.
-    const withSearch = daybarColumnRules().filter(r =>
-      r.selector.includes(':has(.ehr-queue-search)') && !r.selector.includes(':not('));
+    const withSearch = withSearchRules();
     expect(withSearch).not.toHaveLength(0);
 
     const winner = withSearch[withSearch.length - 1];
@@ -132,6 +138,35 @@ describe('the daybar search field cannot be moved by the day it is showing', () 
     expect(tracks(winner.columns)).toEqual([
       'minmax(148px, 1fr)', 'minmax(0, 330px)', 'max-content',
     ]);
+  });
+
+  test('a daybar with a department filter keeps those tracks and adds one for the filter', () => {
+    // The appointments page puts a native `<select>` between the field and the
+    // lanes. With three tracks the filter took the lanes' track and the tabs
+    // wrapped under the field (2026-09-08); the fourth track is for the filter,
+    // and the title / field / lane contract above must carry over unchanged.
+    const all = daybarColumnRules();
+    const withSelect = all.filter(r =>
+      r.selector.includes(':has(.ehr-queue-search)') && r.selector.includes(':has(> select)'));
+    expect(withSelect).toHaveLength(1);
+    const [rule] = withSelect;
+
+    // `:where()` keeps it at the winner's own specificity, so source order decides …
+    expect(rule.selector).toMatch(/:where\(:has\(> select\)\)$/);
+    expect(tracks(rule.columns)).toEqual([
+      'minmax(148px, 1fr)', 'minmax(0, 330px)', 'max-content', 'max-content',
+    ]);
+
+    // … which means it must sit AFTER the three-track winner (to beat it on the
+    // appointments page) and BEFORE the container-query stack (so a narrow panel
+    // still collapses to one column).
+    const winners = withSearchRules();
+    const winnerIndex = all.indexOf(winners[winners.length - 1]);
+    const stackIndex = all.findIndex((r, i) =>
+      i > winnerIndex && r.selector.includes(':has(.ehr-queue-search)') && tracks(r.columns).length === 1);
+    const ruleIndex = all.indexOf(rule);
+    expect(ruleIndex).toBeGreaterThan(winnerIndex);
+    expect(stackIndex).toBeGreaterThan(ruleIndex);
   });
 
   test('the stacking breakpoint is a container query, not a viewport one', () => {
