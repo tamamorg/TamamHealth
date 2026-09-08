@@ -11,6 +11,8 @@
 
 # next.js
 /.next/
+# Alternate build dirs from NEXT_DIST_DIR=… (see next.config.mjs + .vercelignore)
+/.next-*/
 /out/
 
 # production

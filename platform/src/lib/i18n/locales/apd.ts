@@ -7081,6 +7081,11 @@ const apd: TranslationMap = {
   'departments.weekday.4': 'الخميس',
   'departments.weekday.5': 'الجمعة',
   'departments.weekday.6': 'السبت',
+  'appointments.sectionVisit': 'تفاصيل الزيارة',
+  'appointments.sectionTime': 'اختار الزمن',
+  'appointments.sectionPatient': 'تفاصيل المريض',
+  'appointments.sectionInsurance': 'التأمين والملاحظات',
+  'appointments.scrollTimeHint': 'اختار الزمن تحت. لو اخترت ممرض، المواعيد بتكون بس لما الاتنين فاضيين.',
 };
 
 export default apd;

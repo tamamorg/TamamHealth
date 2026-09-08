@@ -114,11 +114,7 @@ export default function BookAppointmentModal({
   defaultPatientId?: string;
   /**
    * 'page' drops the dialog frame so `/appointments/new` can host the same
-   * four steps — this popup's Expand control routes there.
-   *
-   * The step bar stays in both. It is not dialog chrome: it carries Back and
-   * says which of the four steps you are on, and a wizard without that is
-   * lost on any surface.
+   * fields in a continuous scrollable form; the popup keeps its wizard.
    */
   presentation?: 'modal' | 'page';
 }) {
@@ -138,6 +134,15 @@ export default function BookAppointmentModal({
   const today = jubaDate();
 
   const [step, setStep] = useState(0);
+  const fullPage = presentation === 'page';
+  const sectionKeys = ['appointments.sectionVisit', 'appointments.sectionTime', 'appointments.sectionPatient', 'appointments.sectionInsurance'] as const;
+  const goToSection = (index: number) => {
+    if (fullPage) {
+      const section = document.getElementById(`booking-section-${index}`);
+      section?.scrollIntoView({ block: 'start' });
+      section?.focus({ preventScroll: true });
+    } else setStep(index);
+  };
   const [patientId, setPatientId] = useState(defaultPatientId || '');
   // Provider is a staff-directory pick (id + name), not free text — the id is
   // what arms the service's double-booking guard.
@@ -313,14 +318,19 @@ export default function BookAppointmentModal({
       showToast('Your role cannot book appointments', 'error');
       return;
     }
-    if (!patientId || !date || !time || !reason) {
+    if (stepped && (!visitReason || (!noAvailability && !slotChosen))) {
       showToast(t('appointments.toastFillRequired'), 'error');
-      setStep(patientId && reason.trim() ? 1 : 2);
+      goToSection(!visitReason ? 0 : 1);
+      return;
+    }
+    if (!patientId || !date || !time || !reason.trim()) {
+      showToast(t('appointments.toastFillRequired'), 'error');
+      goToSection(patientId && reason.trim() ? 1 : 2);
       return;
     }
     if (!patient) {
       showToast(t('appointments.toastSelectValidPatient'), 'error');
-      setStep(2);
+      goToSection(2);
       return;
     }
     setSubmitting(true);
@@ -437,7 +447,7 @@ export default function BookAppointmentModal({
     } catch (err) {
       // A clash is about the slot, so send the booker back to where slots are.
       showToast(err instanceof Error ? err.message : t('appointments.toastFailedBook'), 'error');
-      setStep(1);
+      goToSection(1);
     } finally {
       setSubmitting(false);
     }
@@ -486,7 +496,7 @@ export default function BookAppointmentModal({
         {/* ── Title bar ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, gap: 10, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            {stepped && step > 0 && (
+            {!fullPage && stepped && step > 0 && (
               <button
                 type="button"
                 onClick={() => setStep(step - 1)}
@@ -504,7 +514,7 @@ export default function BookAppointmentModal({
               <h2 className="truncate" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {t('appointments.bookAppointment')}
               </h2>
-              {stepped && (
+              {!fullPage && stepped && (
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
                   Step {step + 1} of {STEPS.length} · {STEPS[step]}
                 </p>
@@ -548,17 +558,23 @@ export default function BookAppointmentModal({
           )}
         </div>
 
+        {fullPage && (
+          <nav aria-label={t('appointments.bookAppointment')} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', paddingBottom: 20 }}>
+            {sectionKeys.map((key, index) => <a key={key} href={`#booking-section-${index}`} onClick={event => { event.preventDefault(); goToSection(index); }}>{t(key)}</a>)}
+          </nav>
+        )}
         <div
           style={{
             display: 'flex', flexDirection: 'column', gap: 14,
-            flex: 1, minHeight: 0, overflowY: 'auto',
+            flex: 1, minHeight: 0, overflowY: fullPage ? 'visible' : 'auto',
             // Room for the scrollbar so it never sits on top of a slot chip.
             paddingInlineEnd: 2,
           }}
         >
           {/* ═══ Step 1 — the visit: what it is, and who it needs ═══ */}
-          {stepped && step === 0 && (
+          {stepped && (fullPage || step === 0) && (
             <>
+              {fullPage && <h3 id="booking-section-0" tabIndex={-1}>{t(sectionKeys[0])}</h3>}
               <div>
                 <label>Reason for visit</label>
                 <Select
@@ -644,7 +660,7 @@ export default function BookAppointmentModal({
                   </div>
 
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                    {staffId
+                    {fullPage ? t('appointments.scrollTimeHint') : staffId
                       ? `Next you will see times when ${providerFilter ? 'the clinician' : 'a clinician'} and ${staffName || 'the second staff member'} are both free.`
                       : 'Next you will see when each clinician is free. Naming a nurse here narrows those times to when they are free too.'}
                   </p>
@@ -653,8 +669,9 @@ export default function BookAppointmentModal({
           )}
 
           {/* ═══ Step 2 — when ═══ */}
-          {stepped && step === 1 && (
+          {stepped && (fullPage || step === 1) && (
             <>
+              {fullPage && <h3 id="booking-section-1" tabIndex={-1} style={{ borderTop: '1px solid var(--border-light)', paddingTop: 24, marginTop: 16 }}>{t(sectionKeys[1])}</h3>}
               {visitReason && (
                 <div
                   style={{
@@ -724,16 +741,17 @@ export default function BookAppointmentModal({
           )}
 
           {/* ═══ Step 3 — patient details ═══ */}
-          {stepped && step === 2 && (
+          {stepped && (fullPage || step === 2) && (
             <>
-              <BookingSummaryHeader
+              {fullPage && <h3 id="booking-section-2" tabIndex={-1} style={{ borderTop: '1px solid var(--border-light)', paddingTop: 24, marginTop: 16 }}>{t(sectionKeys[2])}</h3>}
+              {!fullPage && <BookingSummaryHeader
                 providerName={provider}
                 date={date}
                 startTime={time}
                 durationMinutes={duration}
                 facilityName={currentUser?.hospitalName}
                 onChange={() => setStep(1)}
-              />
+              />}
 
               <div>
                 <label className="field-required">{t('appointments.labelPatient')}</label>
@@ -792,16 +810,17 @@ export default function BookAppointmentModal({
           )}
 
           {/* ═══ Step 4 — insurance ═══ */}
-          {stepped && step === 3 && (
+          {stepped && (fullPage || step === 3) && (
             <>
-              <BookingSummaryHeader
+              {fullPage && <h3 id="booking-section-3" tabIndex={-1} style={{ borderTop: '1px solid var(--border-light)', paddingTop: 24, marginTop: 16 }}>{t(sectionKeys[3])}</h3>}
+              {!fullPage && <BookingSummaryHeader
                 providerName={provider}
                 date={date}
                 startTime={time}
                 durationMinutes={duration}
                 facilityName={currentUser?.hospitalName}
                 onChange={() => setStep(1)}
-              />
+              />}
               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
                 Optional. Recording cover now is what lets eligibility be checked before the visit,
                 rather than at the desk on the day.
@@ -828,14 +847,14 @@ export default function BookAppointmentModal({
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button
               type="button"
-              onClick={() => (stepped && step > 0 ? setStep(step - 1) : onClose())}
+              onClick={() => (!fullPage && stepped && step > 0 ? setStep(step - 1) : onClose())}
               className="btn btn-secondary"
               style={{ flex: 1 }}
             >
-              {stepped && step > 0 ? 'Back' : t('action.cancel')}
+              {!fullPage && stepped && step > 0 ? 'Back' : t('action.cancel')}
             </button>
 
-            {stepped && step < STEPS.length - 1 ? (
+            {!fullPage && stepped && step < STEPS.length - 1 ? (
               <button
                 type="button"
                 onClick={() => setStep(step + 1)}
@@ -861,7 +880,7 @@ export default function BookAppointmentModal({
             )}
           </div>
 
-          {stepped && (
+          {!fullPage && stepped && (
             <div style={{ paddingTop: 2 }}>
               <BookingStepDots step={step} total={STEPS.length} />
             </div>

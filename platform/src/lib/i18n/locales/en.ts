@@ -520,6 +520,11 @@ const en: TranslationMap = {
   'appointments.saveChanges': 'Save Changes',
   'appointments.searchPlaceholder': 'Search patients, providers...',
   'appointments.selectPatient': 'Select patient...',
+  'appointments.sectionVisit': 'Visit details',
+  'appointments.sectionTime': 'Choose a time',
+  'appointments.sectionPatient': 'Patient details',
+  'appointments.sectionInsurance': 'Insurance and notes',
+  'appointments.scrollTimeHint': 'Choose a time below. Selecting a nurse limits availability to times when both staff members are free.',
   // Simplified vocabulary (2026-08): the fine-grained stored statuses wear
   // their merged rung's wording — reminder_sent/confirmed read as Scheduled,
   // arrived as Checked In, triaged as In Progress — matching

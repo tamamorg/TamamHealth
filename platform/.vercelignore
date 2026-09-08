@@ -11,3 +11,14 @@
 
 # Generated Next.js validation output; never ship local build artifacts.
 .next-demo-check
+
+# Alternate Next.js build dirs. next.config.mjs honours NEXT_DIST_DIR, so a
+# second dev server run with e.g. NEXT_DIST_DIR=.next-handoff-clean writes its
+# turbopack cache (single .sst files of 130–250 MB) beside `.next`. The CLI
+# only ignores `.next` itself, and one of those files alone trips Vercel's
+# 100 MB per-file limit ("File size limit exceeded"). Ignore every variant.
+.next-*
+.next.*
+
+# Jest coverage output is never part of a deploy.
+coverage
