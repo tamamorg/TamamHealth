@@ -27716,6 +27716,18 @@ table.patient-data-table.patient-data-table {
   align-items: center;
 }
 
+/* The appointments page adds a department filter — a native `<select>` — as a
+   fourth direct child between the field and the lanes. Three tracks have no
+   room for it: the filter took the lanes' `max-content` track and the lanes
+   wrapped onto a second row, auto-placed into the title column, where
+   `justify-self: end` parked them under the search field instead of hard
+   right. A fourth intrinsic track keeps the filter beside the field and the
+   lanes on the right edge. `:where()` keeps this at the rule above's own
+   specificity, so the container query below still stacks the row. */
+.ehr-center-panel .ehr-daybar:has(.ehr-queue-search):where(:has(> select)) {
+  grid-template-columns: minmax(148px, 1fr) minmax(0, 330px) max-content max-content;
+}
+
 .ehr-center-panel .ehr-daybar:not(:has(.ehr-queue-search)) {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
