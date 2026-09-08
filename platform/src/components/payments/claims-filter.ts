@@ -11,7 +11,7 @@ export const PAYER_LABEL_KEYS: Record<PayerType, string> = {
   employer: 'billing.payerEmployer',
 };
 
-const CLAIM_STATUSES: ClaimStatus[] = ['draft', 'submitted', 'accepted', 'partial', 'paid', 'denied', 'appealed'];
+const CLAIM_STATUSES: ClaimStatus[] = ['draft', 'queued', 'submitted', 'accepted', 'approved', 'partial', 'paid', 'denied', 'appealed'];
 
 export function filterClaims(
   claims: ClaimDoc[],

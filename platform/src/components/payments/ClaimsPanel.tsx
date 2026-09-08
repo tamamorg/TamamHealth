@@ -32,6 +32,7 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 import { formatMoney } from '@/lib/format-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { PAYER_LABEL_KEYS } from './claims-filter';
+import { ClaimEvidence } from '@/modules/insurance/client';
 
 // Claim status → bl-chip variant. Claim statuses are their own union (not
 // BillingStatus), so this maps onto the closest billing-module chip meaning:
@@ -39,6 +40,8 @@ import { PAYER_LABEL_KEYS } from './claims-filter';
 // accepted/paid as settled, denied as the alarm colour.
 const CLAIM_STATUS_CHIP: Record<ClaimStatus, string> = {
   draft: 'bl-chip--waived',
+  queued: 'bl-chip--partial',
+  approved: 'bl-chip--partial',
   submitted: 'bl-chip--partial',
   accepted: 'bl-chip--paid',
   denied: 'bl-chip--unpaid',
@@ -56,13 +59,14 @@ interface AdjudicationForm {
 }
 
 interface NewClaimForm {
+  currency: string;
   patientId: string;
   policyId: string;
   billingId: string;
   amount: string;
 }
 
-const EMPTY_CLAIM: NewClaimForm = { patientId: '', policyId: '', billingId: '', amount: '' };
+const EMPTY_CLAIM: NewClaimForm = { patientId: '', policyId: '', billingId: '', amount: '', currency: 'SSP' };
 
 export interface ClaimsPanelProps {
   claims: ClaimDoc[];
@@ -118,6 +122,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   const [patientPolicies, setPatientPolicies] = useState<InsurancePolicyDoc[]>([]);
   const [patientBills, setPatientBills] = useState<BillingDoc[]>([]);
   const [submittingClaim, setSubmittingClaim] = useState(false);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
   // When a patient is picked in the New-claim modal, load their insurance
   // policies and open bills so the claim can be raised against real data.
@@ -145,11 +150,12 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   }, [newClaim.patientId, scope]);
 
   const handleAppeal = async () => {
+    if (!scope) return;
     if (!appealFor || !appealNote.trim()) { showToast('An appeal needs a note for the payer', 'error'); return; }
     setLifecycleBusy(true);
     try {
       const { appealClaim } = await import('@/lib/services/payment-service');
-      await appealClaim(appealFor._id, appealNote.trim(), currentUser?._id || 'unknown', currentUser?.name || 'Unknown');
+      await appealClaim(appealFor._id, appealNote.trim(), currentUser?._id || 'unknown', currentUser?.name || 'Unknown', scope);
       showToast(`Claim ${appealFor.claimNumber} appealed`, 'success');
       setAppealFor(null);
       setAppealNote('');
@@ -163,11 +169,12 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   };
 
   const handleResubmit = async (claim: ClaimDoc) => {
+    if (!scope) return;
     setLifecycleBusy(true);
     try {
       const { resubmitClaim } = await import('@/lib/services/payment-service');
-      await resubmitClaim(claim._id, currentUser?._id || 'unknown', currentUser?.name || 'Unknown');
-      showToast(`Claim ${claim.claimNumber} resubmitted to ${claim.payerName}`, 'success');
+      await resubmitClaim(claim._id, currentUser?._id || 'unknown', currentUser?.name || 'Unknown', scope);
+      showToast(t('insuranceFlow.queued'), 'success');
       await onChanged();
     } catch (err) {
       console.error(err);
@@ -179,11 +186,13 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
   const resetNewClaim = () => {
     setNewClaim(EMPTY_CLAIM);
+    setRequestId(crypto.randomUUID());
     setPatientSearch('');
     setNewClaimOpen(false);
   };
 
   const handleSubmitNewClaim = async () => {
+    if (!scope) return;
     const policy = patientPolicies.find(p => p._id === newClaim.policyId);
     const patient = patients.find(p => p._id === newClaim.patientId);
     const bill = patientBills.find(b => b._id === newClaim.billingId);
@@ -194,7 +203,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
     setSubmittingClaim(true);
     try {
       const { submitClaim } = await import('@/lib/services/payment-service');
-      const doc = await submitClaim({
+      await submitClaim({
+        requestId,
+        currency: bill?.currency || newClaim.currency,
         patientId: patient._id,
         patientName: patientFullName(patient),
         policyId: policy._id,
@@ -208,8 +219,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
         facilityName: currentUser?.hospitalName || '',
         submittedBy: currentUser?.name || currentUser?.username || 'Unknown',
         orgId: currentUser?.orgId,
-      });
-      showToast(`Claim ${doc.claimNumber} submitted to ${policy.payerName}`, 'success');
+      }, scope);
+      showToast(t('insuranceFlow.queued'), 'success');
       resetNewClaim();
       await onChanged();
     } catch (err) {
@@ -243,6 +254,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   }, [adjForm]);
 
   const handleSaveAdjudication = async () => {
+    if (!scope) return;
     if (!adjForm) return;
     try {
       const { adjudicateClaim } = await import('@/lib/services/payment-service');
@@ -260,6 +272,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
           denialReasons: adjForm.denialReason?.trim() ? [adjForm.denialReason.trim()] : undefined,
           notes: adjForm.notes.trim() || undefined,
         },
+        scope,
       );
       await onChanged();
       setEditingId(null);
@@ -322,9 +335,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </td>
                   <td>{claim.payerName}</td>
                   <td className="bl-muted">{t(PAYER_LABEL_KEYS[claim.payerType]) || claim.payerType}</td>
-                  <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0)}</td>
-                  <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0)}</td>
-                  <td className="bl-num bl-right">{formatMoney(claim.totalApproved || 0)}</td>
+                  <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
+                  <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
+                  <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
                   <td>
                     <span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span>
                   </td>
@@ -355,26 +368,27 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             </div>
 
             <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              <ClaimEvidence key={openClaim._id} claim={openClaim} onChanged={onChanged} />
               <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
                 <div className="bl-stats" style={{ border: 'none', padding: 0 }}>
                   <div>
                     <span className="bl-stat-label">{t('claims.colBilled')}</span>
-                    <span className="bl-stat-value">{formatMoney(openClaim.totalBilled || 0)}</span>
+                    <span className="bl-stat-value">{formatMoney(openClaim.totalBilled || 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}</span>
                   </div>
                   <div>
                     <span className="bl-stat-label">{t('claims.colAllowed')}</span>
-                    <span className="bl-stat-value">{formatMoney(openClaim.totalAllowed || 0)}</span>
+                    <span className="bl-stat-value">{formatMoney(openClaim.totalAllowed || 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}</span>
                   </div>
                   <div>
                     <span className="bl-stat-label">{t('claims.colPaid')}</span>
                     <span className={`bl-stat-value${(openClaim.totalApproved || 0) > 0 ? ' bl-stat-value--good' : ''}`}>
-                      {formatMoney(openClaim.totalApproved || 0)}
+                      {formatMoney(openClaim.status === 'paid' ? openClaim.settlement?.amount ?? openClaim.totalApproved ?? 0 : 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}
                     </span>
                   </div>
                   {(openClaim.totalDenied || 0) > 0 && (
                     <div>
                       <span className="bl-stat-label">Denied</span>
-                      <span className="bl-stat-value bl-stat-value--danger">{formatMoney(openClaim.totalDenied || 0)}</span>
+                      <span className="bl-stat-value bl-stat-value--danger">{formatMoney(openClaim.totalDenied || 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}</span>
                     </div>
                   )}
                 </div>
@@ -444,7 +458,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   disabled={lifecycleBusy}
                   onClick={() => handleResubmit(openClaim)}
                 >
-                  {lifecycleBusy ? 'Working…' : 'Resubmit to payer'}
+                  {lifecycleBusy ? t('common.loading') : t('insuranceFlow.queueAgain')}
                 </button>
               )}
               {openClaim.status === 'denied' && (
@@ -456,7 +470,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   Appeal denial
                 </button>
               )}
-              {(openClaim.status === 'submitted' || openClaim.status === 'draft') && (
+              {(openClaim.status === 'accepted' && !!openClaim.payerReceipt) && (
                 <button
                   type="button"
                   className="bl-btn bl-btn--primary"
@@ -493,7 +507,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 >
                   <span className={`bl-chip ${CLAIM_STATUS_CHIP[adjPreview]}`}>{t(`claims.status_${adjPreview}`)}</span>
                   <span className="bl-muted" style={{ fontSize: 12.5 }}>
-                    Derived from the amounts below — set paid to 0 to deny the full allowed amount.
+                    {t('insuranceFlow.approvedAmount')}
                   </span>
                 </div>
               )}
@@ -510,7 +524,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             </div>
 
             <div className="bl-field">
-              <label htmlFor="adj-paid">{t('claims.labelPaidAmount')}</label>
+              <label htmlFor="adj-paid">{t('insuranceFlow.approvedAmount')}</label>
               <input
                 id="adj-paid"
                 type="number" step="any"
@@ -560,7 +574,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
               <button type="button" className="bl-row-menu-btn" onClick={() => !lifecycleBusy && setAppealFor(null)} aria-label="Close"><X size={16} /></button>
             </div>
             <p className="bl-modal-sub">
-              Denied by {appealFor.payerName} · billed {formatMoney(appealFor.totalBilled || 0)}
+              Denied by {appealFor.payerName} · billed {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || 'SSP', decimals: 2 })}
               {appealFor.denialReasons?.length ? ` · reason: ${appealFor.denialReasons.join(', ')}` : ''}
             </p>
             <div className="bl-field">
@@ -671,13 +685,17 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                     <option value="">No linked bill — enter amount manually</option>
                     {patientBills.map(b => (
                       <option key={b._id} value={b._id}>
-                        {formatMoney(b.balanceDue ?? 0)} outstanding · {(b.encounterDate || b.createdAt || '').slice(0, 10)}
+                        {formatMoney(b.balanceDue ?? 0, { currency: b.currency, decimals: 2 })} outstanding · {(b.encounterDate || b.createdAt || '').slice(0, 10)}
                       </option>
                     ))}
                   </Select>
                 </div>
                 {!newClaim.billingId && (
                   <div className="bl-field">
+                    <label htmlFor="claim-currency">{t('insuranceFlow.currency')}</label>
+                    <select id="claim-currency" value={newClaim.currency} onChange={e => setNewClaim(f => ({ ...f, currency: e.target.value }))}>
+                      {['SSP', 'USD', 'KES', 'UGX'].map(currency => <option key={currency} value={currency}>{currency}</option>)}
+                    </select>
                     <label htmlFor="claim-amount">Claim amount</label>
                     <input
                       id="claim-amount"
@@ -699,7 +717,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 disabled={submittingClaim || !newClaim.patientId || !newClaim.policyId || (!newClaim.billingId && !newClaim.amount)}
                 onClick={handleSubmitNewClaim}
               >
-                {submittingClaim ? 'Submitting…' : 'Submit claim'}
+                {submittingClaim ? t('common.loading') : t('insuranceFlow.queueClaim')}
               </button>
             </div>
           </div>

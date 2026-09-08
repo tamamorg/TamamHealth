@@ -8,3 +8,6 @@
 .env.*.local
 .env.production
 .env.development
+
+# Generated Next.js validation output; never ship local build artifacts.
+.next-demo-check

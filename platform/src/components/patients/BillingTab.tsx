@@ -11,6 +11,7 @@ import { PaymentPanel, PaymentPlanWizard } from '@/components/payments';
 import { useSuperbill, SuperbillPicker, SuperbillDraft } from '@/components/patients/SuperbillPanel';
 import '@/components/billing/billing.css';
 import InsurancePolicyModal from '@/components/payments/InsurancePolicyModal';
+import { PolicyEligibility } from '@/modules/insurance/client';
 import Modal from '@/components/Modal';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { apiFetch } from '@/lib/api-fetch';
@@ -514,6 +515,14 @@ export default function BillingTab({
           )}
         </div>
       </div>
+
+      {d.policies.filter(policy => policy.patientId === patient._id).map(policy => (
+        <section key={policy._id} className="bl-card p-4">
+          <h2 className="bl-card-title">{policy.payerName}</h2>
+          <PolicyEligibility key={`${patient._id}:${policy._id}`} patientId={patient._id} policyId={policy._id}
+            facilityId={policy.facilityId} orgId={policy.orgId} editable />
+        </section>
+      ))}
 
       {/* ─── Charges ─── */}
       <div className="bl-card">

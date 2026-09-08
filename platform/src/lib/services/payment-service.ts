@@ -44,6 +44,7 @@ import { createLedgerEntry, getPatientBalance } from './ledger-service';
 import { jubaDate } from '../time-juba';
 import { getSettings } from '../settings/settings-store';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { insurancePolicyForPatient, requireInsuranceWriter, scopedInsuranceDoc } from '@/modules/insurance/services/insurance-workflow-service';
 
 const COLLECTION_STAGE_DAYS = {
   followUp: Number(process.env.COLLECTION_STAGE_FOLLOWUP_DAYS) || 30,
@@ -935,25 +936,36 @@ export interface CheckEligibilityInput {
   checkedBy: string;
   facilityId: string;
   orgId?: string;
+  manualEvidence?: { reference: string; method: 'phone' | 'portal' | 'written'; decision: 'verified' | 'denied'; expiresAt: string };
 }
 
-export async function checkEligibility(input: CheckEligibilityInput): Promise<EligibilityCheckDoc> {
+export async function checkEligibility(input: CheckEligibilityInput, scope: DataScope): Promise<EligibilityCheckDoc> {
+  requireInsuranceWriter(scope);
   const db = eligibilityChecksDB();
   const now = new Date().toISOString();
 
   // Get the policy to pull payer details
-  const policy = await getPrimaryPolicy(input.patientId);
+  const policy = await insurancePolicyForPatient(input.policyId, input.patientId, input.facilityId, input.orgId, scope);
 
   // This is NOT an external payer verification — we have no EDI 270/271 or
   // payer-API integration here. We're producing a LOCAL ESTIMATE off the
   // stored policy terms. Be honest about that: report `unverified` (the doc's
   // status union has no `estimated` value) and record the basis in
   // `rawResponse` so downstream consumers/auditors don't mistake this for a
-  // confirmed payer response. Only when a real external source is explicitly
-  // passed in (api/edi271/donor_list) do we treat it as verified.
-  const isExternal = input.source === 'api' || input.source === 'edi271' || input.source === 'donor_list';
-  const status: EligibilityStatus = isExternal ? 'verified' : 'unverified';
-  const source: EligibilitySource = input.source || 'manual';
+  // confirmed payer response. A source label cannot establish verification;
+  // manual decisions require recorded evidence and expiry.
+  if (input.source && input.source !== 'manual') throw new Error('INSURANCE_CONNECTOR_NOT_CONFIGURED');
+  const evidence = input.manualEvidence;
+  if (evidence && (!evidence.reference?.trim() || evidence.reference.length > 160
+    || !['phone', 'portal', 'written'].includes(evidence.method)
+    || !['verified', 'denied'].includes(evidence.decision)
+    || !Number.isFinite(Date.parse(evidence.expiresAt)) || Date.parse(evidence.expiresAt) <= Date.now())) {
+    throw new Error('INSURANCE_INVALID_EVIDENCE');
+  }
+  const day = jubaDate();
+  const active = policy.isActive && policy.effectiveDate <= day && (!policy.terminationDate || policy.terminationDate >= day);
+  const status: EligibilityStatus = !active ? 'expired' : evidence?.decision || 'unverified';
+  const source: EligibilitySource = 'manual';
 
   const doc: EligibilityCheckDoc = {
     _id: `elig-${uuidv4()}`,
@@ -968,11 +980,12 @@ export async function checkEligibility(input: CheckEligibilityInput): Promise<El
     oopUsed: policy?.oopUsed,
     oopMax: policy?.oopMax,
     source,
-    rawResponse: isExternal
-      ? undefined
-      : JSON.stringify({ method: 'local_policy_estimate', note: 'Local estimate from stored policy terms; not confirmed with the payer.' }),
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    checkedBy: input.checkedBy,
+    rawResponse: evidence ? undefined : JSON.stringify({ method: 'local_policy_estimate' }),
+    expiresAt: evidence?.expiresAt || now,
+    verificationReference: evidence?.reference.trim(),
+    verificationMethod: evidence?.method,
+    serviceDate: day,
+    checkedBy: scope.userId,
     facilityId: input.facilityId,
     orgId: input.orgId,
     createdAt: now,
@@ -981,6 +994,7 @@ export async function checkEligibility(input: CheckEligibilityInput): Promise<El
 
   const resp = await db.put(doc);
   doc._rev = resp.rev;
+  await logAuditSafe('ELIGIBILITY_RECORDED', scope.userId, scope.userId, `Eligibility ${doc._id}: ${status}`);
   emitSyncEvent({
     resourceType: 'eligibility_check',
     resourceId: doc._id,
@@ -992,12 +1006,22 @@ export async function checkEligibility(input: CheckEligibilityInput): Promise<El
   return doc;
 }
 
-export async function getLatestEligibility(patientId: string, scope?: DataScope): Promise<EligibilityCheckDoc | null> {
+export async function getLatestEligibility(patientId: string, scope?: DataScope, policyId?: string): Promise<EligibilityCheckDoc | null> {
+  if (!scope) return null;
   const db = eligibilityChecksDB();
   const rows = await findByType<EligibilityCheckDoc>(db, 'eligibility_check', { patientId }, { indexFields: ['type', 'patientId'] });
-  const checks = (scope ? filterByScope(rows, scope) : rows)
+  const checks = filterByScope(rows, scope).filter(row => !policyId || row.policyId === policyId)
     .sort((a, b) => (b.checkDate || '').localeCompare(a.checkDate || ''));
-  return checks[0] || null;
+  const latest = checks[0];
+  if (!latest) return null;
+  const policy = await insurancePoliciesDB().get(latest.policyId).catch(() => null) as InsurancePolicyDoc | null;
+  if (!policy || !filterByScope([policy], scope).length || policy.patientId !== patientId) return null;
+  if (!policy.isActive || policy.effectiveDate > jubaDate() || (policy.terminationDate && policy.terminationDate < jubaDate())) return { ...latest, status: 'expired' };
+  if (latest.status === 'verified' || latest.status === 'cached') {
+    if (!latest.expiresAt || !Number.isFinite(Date.parse(latest.expiresAt)) || Date.parse(latest.expiresAt) <= Date.now()) return { ...latest, status: 'expired' };
+    if (latest.source === 'manual' && !latest.verificationReference) return { ...latest, status: 'unverified' };
+  }
+  return latest;
 }
 
 export function estimatePatientResponsibility(
@@ -1097,6 +1121,8 @@ export async function getChargesByPatient(patientId: string, scope?: DataScope):
 // ═══════════════════════════════════════════════════════════════════
 
 export interface SubmitClaimInput {
+  requestId?: string;
+  currency?: string;
   // Optional — see ClaimDoc.encounterId. Many claims raised from a
   // BillingDoc that has no linked clinical encounter still need to be
   // submittable.
@@ -1135,7 +1161,7 @@ async function syncBillInsuranceStatus(
     bill.insuranceClaimStatus = status;
     if (approvedAmount !== undefined) {
       bill.insuranceApprovedAmount = approvedAmount;
-    } else if (status === 'submitted') {
+    } else if (status === 'submitted' || status === 'queued') {
       // A freshly (re)submitted claim is pending adjudication — clear any
       // approved amount left over from a prior claim on the same bill, so the
       // bill never shows "submitted" alongside a stale approved figure.
@@ -1156,27 +1182,68 @@ async function syncBillInsuranceStatus(
   }
 }
 
-export async function submitClaim(input: SubmitClaimInput): Promise<ClaimDoc> {
+export async function submitClaim(input: SubmitClaimInput, scope: DataScope): Promise<ClaimDoc> {
+  requireInsuranceWriter(scope);
+  const policy = await insurancePolicyForPatient(input.policyId, input.patientId, input.facilityId, input.orgId, scope);
+  if (!Number.isFinite(input.totalBilled) || input.totalBilled <= 0) throw new Error('INSURANCE_INVALID_AMOUNT');
+  if (input.currency && !/^[A-Z]{3}$/.test(input.currency)) throw new Error('INSURANCE_CURRENCY_REQUIRED');
+  let linkedBill: BillingDoc | undefined;
+  if (input.billingId) {
+    const bill = await billingDB().get(input.billingId) as BillingDoc;
+    if (!filterByScope([bill], scope).length || bill.patientId !== input.patientId || bill.orgId !== input.orgId || bill.facilityId !== input.facilityId
+      || input.totalBilled > bill.totalAmount || (input.currency && input.currency !== bill.currency)) throw new Error('INSURANCE_LINK_MISMATCH');
+    linkedBill = bill;
+  }
+  if (input.encounterId) {
+    const encounter = await getDB('tamamhealth_encounters').get(input.encounterId) as { patientId: string; orgId: string; facilityId: string };
+    if (!filterByScope([encounter], scope).length || encounter.patientId !== input.patientId) throw new Error('INSURANCE_LINK_MISMATCH');
+  }
+  for (const id of input.chargeIds) {
+    const charge = await chargesDB().get(id) as ChargeDoc;
+    if (!filterByScope([charge], scope).length || charge.patientId !== input.patientId) throw new Error('INSURANCE_LINK_MISMATCH');
+  }
   const db = claimsDB();
   const now = new Date().toISOString();
 
   const doc: ClaimDoc = {
-    _id: `clm-${uuidv4()}`,
+    _id: input.billingId ? `clm-${encodeURIComponent(JSON.stringify([input.billingId, input.policyId]))}` : `clm-${input.requestId || uuidv4()}`,
     type: 'claim',
-    ...input,
-    claimNumber: `CLM-${Date.now().toString(36).toUpperCase()}`,
-    submittedDate: now,
-    status: 'submitted' as ClaimStatus,
+    patientId: input.patientId,
+    patientName: input.patientName,
+    policyId: input.policyId,
+    billingId: input.billingId,
+    encounterId: input.encounterId,
+    chargeIds: input.chargeIds,
+    totalBilled: input.totalBilled,
+    facilityId: input.facilityId,
+    facilityName: input.facilityName,
+    orgId: input.orgId,
+    submittedBy: scope.userId,
+    claimNumber: `CLM-${Date.now().toString(36).toUpperCase()}-${uuidv4().slice(0, 8)}`,
+    payerName: policy.payerName,
+    payerType: policy.payerType,
+    currency: linkedBill?.currency || input.currency || getSettings().currency || 'SSP',
+    billItems: linkedBill?.items,
+    queuedAt: now,
+    status: 'queued' as ClaimStatus,
     createdAt: now,
     updatedAt: now,
-    createdBy: input.submittedBy,
+    createdBy: scope.userId,
   };
 
-  const resp = await db.put(doc);
+  let resp;
+  try { resp = await db.put(doc); }
+  catch (error) {
+    if ((error as { status?: number }).status !== 409) throw error;
+    const existing = await scopedInsuranceDoc<ClaimDoc>('tamamhealth_claims', doc._id, scope);
+    if (existing.patientId !== input.patientId || existing.policyId !== input.policyId || existing.totalBilled !== input.totalBilled
+      || existing.facilityId !== input.facilityId || existing.orgId !== input.orgId || existing.currency !== doc.currency) throw new Error('INSURANCE_DUPLICATE_MISMATCH');
+    if (existing.status === 'queued') await syncBillInsuranceStatus(input.billingId, 'queued');
+    return existing;
+  }
   doc._rev = resp.rev;
 
-  await logAuditSafe('CLAIM_SUBMITTED', input.submittedBy, input.submittedBy,
-    `Claim ${doc.claimNumber}: ${input.totalBilled} to ${input.payerName}`);
+  await logAuditSafe('CLAIM_QUEUED', scope.userId, scope.userId, `Claim ${doc._id}: queued locally`);
 
   emitSyncEvent({
     resourceType: 'claim',
@@ -1187,7 +1254,7 @@ export async function submitClaim(input: SubmitClaimInput): Promise<ClaimDoc> {
     hospitalId: doc.facilityId,
   });
 
-  await syncBillInsuranceStatus(input.billingId, 'submitted');
+  await syncBillInsuranceStatus(input.billingId, 'queued');
 
   return doc;
 }
@@ -1199,15 +1266,14 @@ export async function submitClaim(input: SubmitClaimInput): Promise<ClaimDoc> {
  * could silently diverge from what gets persisted.
  *
  *   - Nothing approved, something denied  -> 'denied'
- *   - Something approved, nothing denied  -> 'paid' (write-offs are expected
- *     contractual reductions, not denials, so they don't block "paid")
+ *   - Something approved, nothing denied  -> 'approved', not payment received
  *   - A mix of approved and denied        -> 'partial'
  *   - Nothing approved or denied yet       -> 'partial' (fallback; e.g. only a
  *     write-off was recorded, or amounts are still all zero)
  */
 export function computeAdjudicatedStatus(approved: number, denied: number): ClaimStatus {
   if (approved <= 0 && denied > 0) return 'denied';
-  if (approved > 0 && denied <= 0) return 'paid';
+  if (approved > 0 && denied <= 0) return 'approved';
   return 'partial';
 }
 
@@ -1227,11 +1293,19 @@ export async function adjudicateClaim(
   writeOff: number,
   patientResponsibility: number,
   adjudicatedBy: string,
-  opts?: AdjudicateClaimOptions,
+  opts: AdjudicateClaimOptions | undefined,
+  scope: DataScope,
 ): Promise<ClaimDoc | null> {
+  requireInsuranceWriter(scope);
+  if ([approved, denied, writeOff, patientResponsibility, opts?.totalAllowed ?? 0].some(n => !Number.isFinite(n) || n < 0)) throw new Error('INSURANCE_INVALID_AMOUNT');
   const db = claimsDB();
   try {
-    const claim = await db.get(claimId) as ClaimDoc;
+    const claim = await scopedInsuranceDoc<ClaimDoc>('tamamhealth_claims', claimId, scope);
+    const replay = !!claim.adjudicationKey && claim.totalApproved === approved && claim.totalDenied === denied
+      && claim.totalWriteOff === writeOff && claim.patientResponsibility === patientResponsibility
+      && claim.totalAllowed === (opts?.totalAllowed ?? approved + denied);
+    if ((!replay && claim.status !== 'accepted') || !claim.payerReceipt || claim.settlement) throw new Error('INSURANCE_RECEIPT_REQUIRED');
+    if (approved + denied + writeOff + patientResponsibility > claim.totalBilled) throw new Error('INSURANCE_INVALID_AMOUNT');
     const now = new Date().toISOString();
     const status = computeAdjudicatedStatus(approved, denied);
 
@@ -1244,8 +1318,9 @@ export async function adjudicateClaim(
     claim.totalWriteOff = writeOff;
     claim.patientResponsibility = patientResponsibility;
     claim.adjudicatedDate = now;
+    claim.adjudicationKey ||= uuidv4();
     claim.status = status;
-    claim.adjudicatedBy = adjudicatedBy;
+    claim.adjudicatedBy = scope.userId;
     claim.adjudicationNotes = opts?.notes || undefined;
     // Only a denied/partial outcome carries denial reasons; a fully paid
     // claim shouldn't keep stale reasons from a prior adjudication pass.
@@ -1267,20 +1342,7 @@ export async function adjudicateClaim(
       hospitalId: claim.facilityId,
     });
 
-    // Create ledger entries for insurance payment and write-off
-    if (approved > 0) {
-      await createLedgerEntry({
-        patientId: claim.patientId,
-        encounterId: claim.encounterId,
-        entryType: 'insurance_payment',
-        amount: -approved,
-        description: `Insurance payment from ${claim.payerName}: ${approved}`,
-        referenceId: claim._id,
-        referenceType: 'claim',
-        facilityId: claim.facilityId,
-        orgId: claim.orgId,
-      });
-    }
+    // Approval is not receipt of money. Settlement is a separate evidenced operation.
     if (writeOff > 0) {
       await createLedgerEntry({
         patientId: claim.patientId,
@@ -1292,17 +1354,19 @@ export async function adjudicateClaim(
         referenceType: 'claim',
         facilityId: claim.facilityId,
         orgId: claim.orgId,
+        currency: claim.currency,
+        idempotencyKey: `insurance-writeoff-${claim.adjudicationKey}`,
       });
     }
 
     await syncBillInsuranceStatus(
       claim.billingId,
-      status === 'denied' ? 'rejected' : status === 'paid' ? 'approved' : 'partial',
+      status === 'denied' ? 'rejected' : status === 'approved' ? 'approved' : 'partial',
       approved,
     );
 
     return claim;
-  } catch { return null; }
+  } catch (error) { throw error; }
 }
 
 /**
@@ -1316,10 +1380,13 @@ export async function appealClaim(
   note: string,
   appealedBy: string,
   appealedByName: string,
+  scope: DataScope,
 ): Promise<ClaimDoc | null> {
+  requireInsuranceWriter(scope);
+  if (!note.trim() || note.length > 2000) throw new Error('INSURANCE_INVALID_EVIDENCE');
   const db = claimsDB();
   try {
-    const claim = await db.get(claimId) as ClaimDoc;
+    const claim = await scopedInsuranceDoc<ClaimDoc>('tamamhealth_claims', claimId, scope);
     if (claim.status !== 'denied') {
       throw new Error(`Claim ${claimId} is '${claim.status}' — only a denied claim can be appealed.`);
     }
@@ -1348,8 +1415,7 @@ export async function appealClaim(
 
     return claim;
   } catch (err) {
-    if (err instanceof Error && err.message.includes('only a denied claim')) throw err;
-    return null;
+    throw err;
   }
 }
 
@@ -1365,17 +1431,22 @@ export async function resubmitClaim(
   claimId: string,
   resubmittedBy: string,
   resubmittedByName: string,
+  scope: DataScope,
 ): Promise<ClaimDoc | null> {
+  requireInsuranceWriter(scope);
   const db = claimsDB();
   try {
-    const claim = await db.get(claimId) as ClaimDoc;
+    const claim = await scopedInsuranceDoc<ClaimDoc>('tamamhealth_claims', claimId, scope);
+    if (claim.settlement || (claim.totalWriteOff || 0) > 0) throw new Error('INSURANCE_ADJUSTMENT_REVIEW_REQUIRED');
     if (claim.status !== 'denied' && claim.status !== 'appealed') {
       throw new Error(`Claim ${claimId} is '${claim.status}' — only a denied or appealed claim can be resubmitted.`);
     }
 
     const now = new Date().toISOString();
-    claim.status = 'submitted';
-    claim.submittedDate = now;
+    claim.status = 'queued';
+    claim.queuedAt = now;
+    claim.submittedDate = undefined;
+    claim.payerReceipt = undefined;
     claim.resubmissionCount = (claim.resubmissionCount || 0) + 1;
     claim.lastResubmittedAt = now;
     claim.lastResubmittedBy = resubmittedBy;
@@ -1386,6 +1457,8 @@ export async function resubmitClaim(
     claim.totalWriteOff = undefined;
     claim.patientResponsibility = undefined;
     claim.adjudicatedDate = undefined;
+    claim.adjudicationKey = undefined;
+    claim.totalAllowed = undefined;
     claim.updatedAt = now;
 
     const resp = await db.put(claim);
@@ -1403,12 +1476,11 @@ export async function resubmitClaim(
       hospitalId: claim.facilityId,
     });
 
-    await syncBillInsuranceStatus(claim.billingId, 'submitted');
+    await syncBillInsuranceStatus(claim.billingId, 'queued');
 
     return claim;
   } catch (err) {
-    if (err instanceof Error && err.message.includes('only a denied or appealed')) throw err;
-    return null;
+    throw err;
   }
 }
 
@@ -1419,9 +1491,10 @@ export async function getClaimsByPatient(patientId: string): Promise<ClaimDoc[]>
 }
 
 export async function getAllClaims(scope?: DataScope): Promise<ClaimDoc[]> {
+  if (!scope) return [];
   const db = claimsDB();
   const all = await findByType<ClaimDoc>(db, 'claim');
-  all.sort((a, b) => (b.submittedDate || '').localeCompare(a.submittedDate || ''));
+  all.sort((a, b) => (b.queuedAt || b.submittedDate || '').localeCompare(a.queuedAt || a.submittedDate || ''));
   return scope ? filterByScope(all, scope) : all;
 }
 

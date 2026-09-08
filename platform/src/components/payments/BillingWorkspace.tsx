@@ -463,7 +463,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           t(PAYER_LABEL_KEYS[c.payerType]) || c.payerType,
           c.totalBilled || 0,
           c.totalAllowed || 0,
-          c.totalApproved || 0,
+          c.status === 'paid' ? c.settlement?.amount ?? c.totalApproved ?? 0 : 0,
           t(`claims.status_${c.status}`),
           c.submittedDate ? c.submittedDate.slice(0, 10) : '',
         ]),

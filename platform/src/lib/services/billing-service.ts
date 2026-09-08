@@ -181,7 +181,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
     insuranceProvider: data.insuranceProvider,
     insurancePolicyNumber: data.insurancePolicyNumber,
     insuranceCoveragePercent: data.insuranceCoveragePercent,
-    insuranceClaimStatus: data.insuranceProvider ? 'submitted' : 'none',
+    insuranceClaimStatus: 'none',
     status: amountPaid >= totalAmount ? 'paid' : 'pending',
     generatedBy: data.generatedBy,
     generatedByName: data.generatedByName,

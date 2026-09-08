@@ -11,7 +11,7 @@ import type { BaseDoc } from './db-types';
 export type PayerType = 'donor' | 'government' | 'nhis' | 'cbhi' | 'private' | 'employer' | 'self_pay';
 export type EligibilityStatus = 'verified' | 'unverified' | 'expired' | 'denied' | 'cached';
 export type EligibilitySource = 'edi271' | 'api' | 'cache' | 'manual' | 'donor_list';
-export type ClaimStatus = 'draft' | 'submitted' | 'accepted' | 'denied' | 'paid' | 'appealed' | 'partial';
+export type ClaimStatus = 'draft' | 'queued' | 'submitted' | 'accepted' | 'approved' | 'denied' | 'paid' | 'appealed' | 'partial';
 export type ChargeStatus = 'pending' | 'submitted' | 'approved' | 'denied' | 'appealed' | 'voided';
 export type AdjustmentType = 'contractual' | 'write_off' | 'charity' | 'denial' | 'correction' | 'bad_debt';
 export type PaymentStatus = 'pending' | 'posted' | 'reversed' | 'refunded' | 'failed';
@@ -75,6 +75,9 @@ export interface EligibilityCheckDoc extends BaseDoc {
   source: EligibilitySource;
   expiresAt?: string;           // Cache expiry
   checkedBy: string;
+  verificationReference?: string;
+  verificationMethod?: 'phone' | 'portal' | 'written';
+  serviceDate?: string;
   facilityId: string;
   orgId?: string;
 }
@@ -130,12 +133,18 @@ export interface ClaimDoc extends BaseDoc {
   submittedDate?: string;
   adjudicatedDate?: string;
   status: ClaimStatus;
+  queuedAt?: string;
+  payerReceipt?: { reference: string; recordedAt: string; recordedBy: string; method: 'portal' | 'written' };
+  settlement?: { reference: string; amount: number; recordedAt: string; recordedBy: string; ledgerKey: string };
+  currency?: string;
+  billItems?: import('./db-types-billing').BillLineItem[];
   denialReasons?: string[];
   remarkCodes?: string[];
   eraReference?: string;        // ERA/835 document reference
   // Adjudication accountability/notes — who decided and any free-text context
   // (distinct from denialReasons, which are payer-facing reason codes/text).
   adjudicatedBy?: string;
+  adjudicationKey?: string;
   adjudicationNotes?: string;
   // Appeal / resubmission lifecycle (denied -> appealed -> resubmitted).
   appealNote?: string;

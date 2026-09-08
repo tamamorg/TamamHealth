@@ -93,7 +93,7 @@ export interface BillingDoc extends BaseDoc {
   insuranceProvider?: string;
   insurancePolicyNumber?: string;
   insuranceCoveragePercent?: number;
-  insuranceClaimStatus?: 'none' | 'submitted' | 'approved' | 'rejected' | 'partial';
+  insuranceClaimStatus?: 'none' | 'queued' | 'submitted' | 'approved' | 'rejected' | 'partial';
   insuranceApprovedAmount?: number;
   // Status
   status: BillingStatus;

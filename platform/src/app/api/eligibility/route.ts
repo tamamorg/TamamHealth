@@ -24,9 +24,9 @@ interface EligibilityResult {
   patientId: string;
   policyId: string;
   serviceDate: string;
-  copayAmount: number;
-  coinsurancePct: number;
-  deductibleRemaining: number;
+  copayAmount: number | null;
+  coinsurancePct: number | null;
+  deductibleRemaining: number | null;
   notes: string;
 }
 
@@ -49,7 +49,7 @@ async function postHandler(req: NextRequest) {
     const { policyId, patientId, serviceDate } = body;
 
     // Validate required fields
-    if (!policyId || !patientId) {
+    if (typeof policyId !== 'string' || !policyId.trim() || policyId.length > 200 || typeof patientId !== 'string' || !patientId.trim() || patientId.length > 200) {
       return NextResponse.json(
         { error: 'policyId and patientId are required' },
         { status: 400 }
@@ -73,9 +73,9 @@ async function postHandler(req: NextRequest) {
       patientId,
       policyId,
       serviceDate: checkDate,
-      copayAmount: 0,
-      coinsurancePct: 0,
-      deductibleRemaining: 0,
+      copayAmount: null,
+      coinsurancePct: null,
+      deductibleRemaining: null,
       notes: 'Automated payer verification is not configured — confirm coverage manually with the payer before relying on it.',
     };
 
