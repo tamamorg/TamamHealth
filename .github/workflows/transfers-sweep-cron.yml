@@ -89,13 +89,19 @@ jobs:
           echo "::add-mask::$OIDC_TOKEN"
 
           # Diagnose a dead production ingress before presenting it as an
-          # endpoint failure. app.tamamhealth.org currently has no reachable
-          # deployment; without this guard curl waits until exit 28 and the
-          # run reveals neither the failed host nor the corrective action.
-          if ! curl -sS -o /dev/null \
+          # endpoint failure. Without this guard curl waits until exit 28 (host
+          # down) or reports a bare "curl: (22) 502" (ingress up, no platform
+          # container behind it — the 2026-09-08 outage), and the run reveals
+          # neither the failed host nor the corrective action.
+          HEALTH_STATUS="$(curl -sS -o /dev/null -w '%{http_code}' \
             --connect-timeout 10 --max-time 20 --retry 2 --retry-all-errors \
-            "$BASE_URL/api/health"; then
+            "$BASE_URL/api/health" || echo 000)"
+          if [ "$HEALTH_STATUS" = "000" ]; then
             echo "::error title=Production platform unreachable::$BASE_URL cannot be reached. Deploy/restore production or set the PLATFORM_BASE_URL repository variable to the canonical production origin. Do not point this clinical job at a demo deployment."
+            exit 1
+          fi
+          if [ "$HEALTH_STATUS" = "502" ] || [ "$HEALTH_STATUS" = "504" ]; then
+            echo "::error title=Production platform is down::$BASE_URL/api/health returned HTTP $HEALTH_STATUS — the ingress is up but no platform container answers behind it. Restore the stack on the host or re-run deploy-production; the sweep is idempotent and catches up on its next run."
             exit 1
           fi
 
@@ -104,16 +110,22 @@ jobs:
             URL="$URL?asOf=$(printf '%s' "$AS_OF" | jq -sRr @uri)"
           fi
 
-          # --fail-with-body so a non-2xx exits non-zero AND still shows the
-          # response, which is what makes a broken sweep visible here rather
-          # than silently "succeeding".
-          RESPONSE=$(curl -sS --fail-with-body \
+          # Capture the status and body separately: `--fail-with-body` inside a
+          # `$( )` under `set -e` exits before the body is ever echoed, so a
+          # failed sweep used to show only "curl: (22)" and nothing of what the
+          # platform actually said. Any non-200 is a failed sweep.
+          HTTP_STATUS="$(curl -sS -o "$RUNNER_TEMP/sweep-response.json" -w '%{http_code}' \
             --connect-timeout 10 --max-time 240 \
             -X POST \
             -H "authorization: Bearer $OIDC_TOKEN" \
             -H 'content-type: application/json' \
-            "$URL")
+            "$URL" || echo 000)"
+          RESPONSE="$(cat "$RUNNER_TEMP/sweep-response.json" 2>/dev/null || true)"
           echo "$RESPONSE"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error title=Transfer sweep request failed::$URL answered HTTP $HTTP_STATUS (000 = no response). See the response body above; a 401/403 means the platform no longer trusts this workflow's OIDC token, a 5xx means the platform or its CouchDB is unhealthy."
+            exit 1
+          fi
 
           COMPLETED=$(echo "$RESPONSE" | jq -r '.completedCount // 0')
           EXPIRED=$(echo "$RESPONSE" | jq -r '.expiredCount // 0')
