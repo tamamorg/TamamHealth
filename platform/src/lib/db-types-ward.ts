@@ -85,6 +85,7 @@ export interface AdmissionDoc extends BaseDoc {
   admissionDepositRefunded?: number;
   admissionDepositRefundDue?: number;
   admissionDepositRefundId?: string;
+  admissionDepositPendingRefund?: { id: string; paymentId: string; amount: number; method: import('./db-types-payments').PaymentMethodType; reason: string };
   admissionDepositDecisionReason?: string;
   admissionDepositReconciledAt?: string;
   // Facility

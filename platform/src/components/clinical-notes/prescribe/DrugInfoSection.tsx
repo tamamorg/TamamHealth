@@ -110,7 +110,7 @@ export default function DrugInfoSection({
           <span className="field-required">Quantity</span>
           <input
             className="cn-input"
-            type="number"
+            type="number" step="any"
             min={1}
             value={draft.quantity}
             onChange={e => onChange({ quantity: e.target.value })}
@@ -140,7 +140,7 @@ export default function DrugInfoSection({
           <span>Days Supply</span>
           <input
             className="cn-input"
-            type="number"
+            type="number" step="1"
             min={0}
             value={draft.daysSupply}
             onChange={e => onChange({ daysSupply: e.target.value })}

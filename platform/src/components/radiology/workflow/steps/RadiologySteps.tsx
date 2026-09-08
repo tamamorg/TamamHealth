@@ -323,7 +323,7 @@ export function AcquireStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
             <input
               id="img-count"
               className="labord-x"
-              type="number"
+              type="number" step="1"
               min={0}
               value={ctrl.acquireDraft.imageCount}
               onChange={e => ctrl.setAcquireDraft({ ...ctrl.acquireDraft, imageCount: Number(e.target.value) })}

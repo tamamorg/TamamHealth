@@ -1493,6 +1493,7 @@ export async function createAdjustment(input: {
 // ═══════════════════════════════════════════════════════════════════
 
 export async function issueRefund(input: {
+  idempotencyKey?: string;
   paymentId: string;
   patientId: string;
   patientName: string;
@@ -1508,8 +1509,8 @@ export async function issueRefund(input: {
   const db = refundsDB();
   const now = new Date().toISOString();
 
-  const doc: RefundDoc = {
-    _id: `ref-${uuidv4()}`,
+  let doc: RefundDoc = {
+    _id: input.idempotencyKey ? `ref-${encodeURIComponent(input.idempotencyKey)}` : `ref-${uuidv4()}`,
     type: 'refund',
     ...input,
     currency: input.currency || 'SSP',
@@ -1521,10 +1522,16 @@ export async function issueRefund(input: {
     createdBy: input.processedBy,
   };
 
-  const resp = await db.put(doc);
-  doc._rev = resp.rev;
+  try {
+    const resp = await db.put(doc);
+    doc._rev = resp.rev;
+  } catch (error) {
+    if (!input.idempotencyKey || (error as { status?: number }).status !== 409) throw error;
+    doc = await db.get(doc._id) as RefundDoc;
+    if (doc.paymentId !== input.paymentId || doc.amount !== input.amount || doc.patientId !== input.patientId || doc.orgId !== input.orgId || doc.currency !== (input.currency || 'SSP')) throw new Error('Refund retry does not match the original operation');
+  }
 
-  // Create ledger entry (positive = debit = balance increases because we gave money back)
+  // Resume the ledger write after a partial failure without duplicating it.
   await createLedgerEntry({
     patientId: input.patientId,
     entryType: 'refund',
@@ -1532,6 +1539,7 @@ export async function issueRefund(input: {
     description: `Refund: ${input.reason}`,
     referenceId: doc._id,
     referenceType: 'refund',
+    idempotencyKey: doc._id,
     method: input.method,
     currency: doc.currency,
     facilityId: input.facilityId,

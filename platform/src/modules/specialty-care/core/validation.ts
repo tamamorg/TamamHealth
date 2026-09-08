@@ -2,11 +2,20 @@ import { getSpecialtyPathway } from './catalog';
 import type { SpecialtyCareEpisodeDoc, SpecialtyFieldDefinition, SpecialtyFieldValue, SpecialtyValidationResult } from './types';
 
 function missing(value: SpecialtyFieldValue | undefined): boolean {
-  return value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
+  return value === undefined || value === null || (typeof value === 'string' && !value.trim()) || (Array.isArray(value) && value.length === 0);
 }
 
 function fieldError(field: SpecialtyFieldDefinition, value: SpecialtyFieldValue | undefined): string | null {
+  if (value === 'not_applicable' && field.allowNotApplicable) return null;
   if (field.requiredToComplete && missing(value)) return `${field.label} is required`;
+  if (missing(value)) return null;
+  const correctType = field.kind === 'number' ? typeof value === 'number'
+    : field.kind === 'boolean' ? typeof value === 'boolean'
+    : field.kind === 'multi_select' ? Array.isArray(value) && value.every(item => typeof item === 'string')
+    : typeof value === 'string';
+  if (!correctType) return `${field.label} has an invalid type`;
+  if (Array.isArray(value) && value.length > 1 && field.exclusiveOptions?.some(option => value.includes(option))) return `${field.label} contains mutually exclusive choices`;
+  if (field.kind === 'date' && typeof value === 'string' && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)) return `${field.label} must be a valid date`;
   if (field.kind === 'boolean' && field.requiredToComplete && value !== true) return `${field.label} must be confirmed`;
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return `${field.label} must be a valid number`;
@@ -31,6 +40,12 @@ export function validateSpecialtyEpisode(episode: Pick<SpecialtyCareEpisodeDoc, 
 
   const pathway = getSpecialtyPathway(episode.pathway);
   const allowedKeys = new Set(pathway.fields.map((item) => item.key));
+  if (episode.status !== 'completed') {
+    for (const definition of pathway.fields) {
+      const error = fieldError({ ...definition, requiredToComplete: false }, episode.values[definition.key]);
+      if (error) errors.push(error);
+    }
+  }
   if (Object.keys(episode.values).some((key) => key === 'restrictedNarrative' || key === 'psychotherapyNote')) {
     errors.push('Sensitive mental-health narrative cannot be stored in the replicated specialty-care record');
   }

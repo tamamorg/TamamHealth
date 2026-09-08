@@ -503,7 +503,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
               <label htmlFor="adj-allowed">{t('claims.labelAllowedAmount')}</label>
               <input
                 id="adj-allowed"
-                type="number"
+                type="number" step="any"
                 value={adjForm.allowedAmount}
                 onChange={(e) => setAdjForm({ ...adjForm, allowedAmount: parseFloat(e.target.value) })}
               />
@@ -513,7 +513,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
               <label htmlFor="adj-paid">{t('claims.labelPaidAmount')}</label>
               <input
                 id="adj-paid"
-                type="number"
+                type="number" step="any"
                 value={adjForm.paidAmount}
                 onChange={(e) => setAdjForm({ ...adjForm, paidAmount: parseFloat(e.target.value) })}
               />
@@ -681,7 +681,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                     <label htmlFor="claim-amount">Claim amount</label>
                     <input
                       id="claim-amount"
-                      type="number"
+                      type="number" step="any"
                       min="0"
                       value={newClaim.amount}
                       onChange={e => setNewClaim(f => ({ ...f, amount: e.target.value }))}

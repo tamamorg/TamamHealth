@@ -581,25 +581,25 @@ export default function ANCPage() {
                     </div>
                     <div>
                       <label>Age</label>
-                      <input type="number" required min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="1" required min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                     <div>
                       <label>Gravida</label>
-                      <input type="number" required min={1} max={20} value={form.gravida} onChange={e => setForm({ ...form, gravida: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="1" required min={1} max={20} value={form.gravida} onChange={e => setForm({ ...form, gravida: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                     <div>
                       <label>Parity</label>
-                      <input type="number" required min={0} max={20} value={form.parity} onChange={e => setForm({ ...form, parity: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="1" required min={0} max={20} value={form.parity} onChange={e => setForm({ ...form, parity: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                     <div>
                       <label>Visit #</label>
-                      <input type="number" min={1} max={20} value={form.visitNumber} onChange={e => setForm({ ...form, visitNumber: parseInt(e.target.value, 10) || 0 })} />
+                      <input type="number" step="1" min={1} max={20} value={form.visitNumber} onChange={e => setForm({ ...form, visitNumber: parseInt(e.target.value, 10) || 0 })} />
                     </div>
                     <div>
                       <label>GA (weeks)</label>
-                      <input type="number" required min={4} max={44} value={form.gestationalAge} onChange={e => setForm({ ...form, gestationalAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="1" required min={4} max={44} value={form.gestationalAge} onChange={e => setForm({ ...form, gestationalAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                 </div>
@@ -618,11 +618,11 @@ export default function ANCPage() {
                     </div>
                     <div>
                       <label>Fundal Height</label>
-                      <input type="number" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="any" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                     <div>
                       <label>Fetal HR (bpm)</label>
-                      <input type="number" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="1" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
@@ -689,7 +689,7 @@ export default function ANCPage() {
                     </div>
                     <div>
                       <label>{t('anc.iptpDose')}</label>
-                      <input type="number" required min={0} max={5} value={form.iptpDose} onChange={e => setForm({ ...form, iptpDose: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+                      <input type="number" step="1" required min={0} max={5} value={form.iptpDose} onChange={e => setForm({ ...form, iptpDose: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
                     </div>
                   </div>
                 </div>
@@ -788,7 +788,7 @@ export default function ANCPage() {
                   </div>
                   <div>
                     <label>GA (weeks)</label>
-                    <input type="number" min={4} max={44} value={editVisit.gestationalAge} onChange={e => setEditVisit({ ...editVisit, gestationalAge: parseInt(e.target.value, 10) || 0 })} />
+                    <input type="number" step="1" min={4} max={44} value={editVisit.gestationalAge} onChange={e => setEditVisit({ ...editVisit, gestationalAge: parseInt(e.target.value, 10) || 0 })} />
                   </div>
                 </div>
 
@@ -807,7 +807,7 @@ export default function ANCPage() {
                   </div>
                   <div>
                     <label>Fetal HR (bpm)</label>
-                    <input type="number" value={editVisit.fetalHeartRate || ''} onChange={e => setEditVisit({ ...editVisit, fetalHeartRate: parseInt(e.target.value) })} />
+                    <input type="number" step="1" value={editVisit.fetalHeartRate || ''} onChange={e => setEditVisit({ ...editVisit, fetalHeartRate: parseInt(e.target.value) })} />
                   </div>
                 </div>
 

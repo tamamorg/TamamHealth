@@ -728,7 +728,7 @@ export default function BillingTab({
                   <label htmlFor="bl-refund-amount">{t('billing.refundAmount')}</label>
                   <input
                     id="bl-refund-amount"
-                    type="number"
+                    type="number" step="any"
                     min={0}
                     max={selectedRefundPayment?.amount ?? 0}
                     value={refundAmount || ''}
@@ -771,7 +771,7 @@ export default function BillingTab({
             </div>
             <div className="bl-field">
               <label htmlFor="bl-adj-amount">{t('billing.amount')}</label>
-              <input id="bl-adj-amount" type="number" min={0} value={adjForm.amount || ''} onChange={e => setAdjForm({ ...adjForm, amount: parseFloat(e.target.value) || 0 })} />
+              <input id="bl-adj-amount" type="number" step="any" min={0} value={adjForm.amount || ''} onChange={e => setAdjForm({ ...adjForm, amount: parseFloat(e.target.value) || 0 })} />
             </div>
             <div className="bl-field">
               <label htmlFor="bl-adj-reasoncode">{t('billing.reasonCode')}</label>
@@ -824,7 +824,7 @@ export default function BillingTab({
                   <label htmlFor="bl-link-amount">{t('billing.amount')}</label>
                   <input
                     id="bl-link-amount"
-                    type="number" min={0} value={linkAmount || ''}
+                    type="number" step="any" min={0} value={linkAmount || ''}
                     onChange={e => setLinkAmount(parseFloat(e.target.value) || 0)}
                   />
                 </div>

@@ -1051,7 +1051,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               <label htmlFor="bl-plan-amount">{t('plans.paymentAmountLabel')}</label>
               <input
                 id="bl-plan-amount"
-                type="number"
+                type="number" step="any"
                 value={planAmount}
                 onChange={(e) => setPlanAmount(e.target.value)}
                 placeholder={t('plans.paymentAmountPlaceholder')}

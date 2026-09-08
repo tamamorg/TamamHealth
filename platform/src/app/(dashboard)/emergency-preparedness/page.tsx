@@ -347,11 +347,11 @@ export default function EmergencyPreparednessPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Surge beds</label>
-                    <input type="number" min={0} value={form.surgeBeds} onChange={e => setForm({ ...form, surgeBeds: Math.max(0, parseInt(e.target.value) || 0) })} />
+                    <input type="number" step="1" min={0} value={form.surgeBeds} onChange={e => setForm({ ...form, surgeBeds: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Est. capacity / day</label>
-                    <input type="number" min={0} value={form.estimatedCapacity} onChange={e => setForm({ ...form, estimatedCapacity: Math.max(0, parseInt(e.target.value) || 0) })} />
+                    <input type="number" step="1" min={0} value={form.estimatedCapacity} onChange={e => setForm({ ...form, estimatedCapacity: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>State</label>

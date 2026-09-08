@@ -145,7 +145,7 @@ export default function MyFacilityPage() {
   const numberField = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
     <SadbSettingRow key={label} label={label}>
       <input
-        type="number"
+        type="number" step="1"
         min={0}
         max={max}
         className="sadb-modal-input"

@@ -470,7 +470,7 @@ export default function PaymentPanel({
           {/* Amount */}
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.amountWithCurrency', { currency })}</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
+            <input type="number" step="any" value={amount} onChange={e => setAmount(e.target.value)}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 16, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
             />
           </div>

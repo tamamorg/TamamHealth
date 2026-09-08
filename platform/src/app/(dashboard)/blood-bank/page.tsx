@@ -538,7 +538,7 @@ export default function BloodBankPage() {
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Volume (ml)</label>
                     <input
-                      type="number"
+                      type="number" step="any"
                       min={1}
                       value={form.volume || ''}
                       onChange={e => setForm({ ...form, volume: parseInt(e.target.value) || 0 })}

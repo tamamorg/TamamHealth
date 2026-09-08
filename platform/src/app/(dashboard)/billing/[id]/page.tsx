@@ -17,6 +17,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import Modal from '@/components/Modal';
+import AdmissionDepositControls from '@/components/billing/AdmissionDepositControls';
 import {
   Receipt, Printer, Plus, Search, Activity, MoreVertical, ChevronLeft,
 } from '@/components/icons/lucide';
@@ -380,6 +381,7 @@ export default function BillDetailPage() {
   return (
     <main className="page-container page-enter">
       <div className="bl-root">
+        {bill.items.filter(item => item.category === 'admission_deposit' && item.referenceId).map(item => <AdmissionDepositControls key={item.referenceId} admissionId={item.referenceId!} />)}
         {/* ── Patient banner ── */}
         <div className="bl-banner">
           <div className="bl-avatar" style={avatarTint(displayName)} aria-hidden>
@@ -493,7 +495,7 @@ export default function BillDetailPage() {
                       {editingItemId === item.id ? (
                         <input
                           className="bl-qty-input"
-                          type="number"
+                          type="number" step="any"
                           min={1}
                           value={qtyDraft}
                           autoFocus
@@ -742,7 +744,7 @@ export default function BillDetailPage() {
                     </div>
                     <input
                       className="bl-qty-input"
-                      type="number"
+                      type="number" step="any"
                       min={1}
                       aria-label={`Quantity for ${item.description}`}
                       value={item.quantity}

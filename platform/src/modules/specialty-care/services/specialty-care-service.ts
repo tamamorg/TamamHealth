@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { hospitalsDB, specialtyCareDB } from '@/lib/db';
+import { hospitalsDB, specialtyCareDB, appointmentsDB, encountersDB } from '@/lib/db';
+import { getPatientById } from '@/lib/services/patient-service';
+import { patientDisplayName } from '@/lib/patient-utils';
 import type { DataScope } from '@/lib/services/data-scope';
 import { filterByScope } from '@/lib/services/data-scope';
 import { findByType } from '@/lib/services/db-query';
@@ -153,6 +155,22 @@ export async function createSpecialtyEpisode(input: {
 }): Promise<SpecialtyCareEpisodeDoc> {
   ensureWritableScope(input.scope, input.orgId, input.hospitalId);
   await assertPathwayEnabled(input.pathway, input.hospitalId, input.scope);
+  const patient = await getPatientById(input.patientId.trim(), input.scope);
+  if (!patient) throw new Error('Select a registered patient in your authorized scope');
+  let encounterId = input.encounterId;
+  if (!encounterId && input.appointmentId) {
+    const visits = await findByType<{ _id: string; type: string; patientId: string; orgId: string; hospitalId?: string; facilityId?: string }>(encountersDB(), 'clinical_encounter', { appointmentId: input.appointmentId });
+    encounterId = filterByScope(visits, input.scope).find(item => item.patientId === patient._id)?._id;
+  }
+  if (input.departmentId) {
+    const department = await hospitalsDB().get(input.departmentId) as { type?: string; orgId?: string; facilityId?: string };
+    if (department.type !== 'department' || department.orgId !== input.orgId || department.facilityId !== input.hospitalId) throw new Error('Department does not belong to this facility');
+  }
+  for (const [id, db] of [[input.appointmentId, appointmentsDB], [input.encounterId, encountersDB]] as const) {
+    if (!id) continue;
+    const linked = await db().get(id) as { patientId?: string; orgId?: string; hospitalId?: string; facilityId?: string };
+    if (linked.patientId !== patient._id || linked.orgId !== input.orgId || !filterByScope([linked], input.scope).length) throw new Error('Linked visit does not belong to this patient in your authorized scope');
+  }
   const now = new Date().toISOString();
   const doc: SpecialtyCareEpisodeDoc = {
     _id: `specialty-${uuidv4()}`,
@@ -160,13 +178,13 @@ export async function createSpecialtyEpisode(input: {
     pathway: input.pathway,
     status: 'planned',
     patientId: input.patientId.trim(),
-    patientName: input.patientName.trim(),
+    patientName: patientDisplayName(patient),
     hospitalId: input.hospitalId,
     facilityName: input.facilityName,
     orgId: input.orgId,
     departmentId: input.departmentId,
     appointmentId: input.appointmentId,
-    encounterId: input.encounterId,
+    encounterId,
     serviceRequestId: input.serviceRequestId,
     responsibleClinicianId: input.responsibleClinicianId,
     responsibleClinicianName: input.responsibleClinicianName,

@@ -164,7 +164,7 @@ export default function FacilityFormModal({
     <div key={String(key)}>
       {label(text)}
       <input
-        type="number" min="0" style={inputStyle}
+        type="number" step="1" min="0" style={inputStyle}
         data-field={`facility-${String(key)}`}
         value={form[key] as number}
         onChange={e => set(key, (parseInt(e.target.value, 10) || 0) as FacilityFormValues[typeof key])}

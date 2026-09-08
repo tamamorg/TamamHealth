@@ -91,6 +91,12 @@ export interface SpecialtyFieldDefinition {
   max?: number;
   options?: readonly { value: string; label: string }[];
   help?: string;
+  /** Optional quick-entry terms; free narrative remains supported. */
+  suggestions?: readonly string[];
+  step?: number | 'any';
+  allowNotApplicable?: boolean;
+  exclusiveOptions?: readonly string[];
+  referenceSource?: 'staff' | 'assets';
 }
 
 export interface SpecialtyPathwayDefinition {

@@ -150,7 +150,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
             </label>
             <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
               Recall (months, optional)
-              <input type="number" min="0" value={form.intervalMonths} onChange={(e) => setForm({ ...form, intervalMonths: e.target.value })} placeholder="e.g. 12"
+              <input type="number" step="1" min="0" value={form.intervalMonths} onChange={(e) => setForm({ ...form, intervalMonths: e.target.value })} placeholder="e.g. 12"
                 className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
             </label>
           </div>

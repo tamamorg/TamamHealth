@@ -1,4 +1,5 @@
 'use client';
+import DepartmentInput from '@/components/DepartmentInput';
 
 /**
  * Quick "Add availability" modal — lets a provider publish a bookable window
@@ -112,7 +113,7 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
             </Field>
           </div>
           <Field label="Department (optional)">
-            <input type="text" value={department} onChange={e => setDepartment(e.target.value)} placeholder="e.g. OPD, Pediatrics" className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+            <DepartmentInput type="text" value={department} onChange={e => setDepartment(e.target.value)} placeholder="e.g. OPD, Pediatrics" className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
           </Field>
           <Field label="Notes (optional)">
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />

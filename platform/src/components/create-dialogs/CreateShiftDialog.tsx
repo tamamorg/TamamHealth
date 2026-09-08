@@ -13,6 +13,7 @@ import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
+import { useDepartments } from '@/lib/hooks/useDepartments';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SHIFT_TYPES } from '@/app/(dashboard)/hr/hr-shared';
@@ -39,6 +40,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
   const router = useRouter();
   const { currentUser } = useAuth();
   const { users } = useUsers();
+  const { departments } = useDepartments(currentUser?.hospitalId);
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -122,7 +124,10 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
         </div>
         <div>
           <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDepartment')}</label>
-          <input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder={t('hr.departmentPlaceholder')} />
+          <Select value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}>
+            <option value="">{t('hr.departmentPlaceholder')}</option>
+            {departments.filter(item => item.isActive).map(item => <option key={item._id} value={item.name}>{item.name}</option>)}
+          </Select>
         </div>
         <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
           <input type="checkbox" checked={form.isOnCall} onChange={e => setForm({ ...form, isOnCall: e.target.checked })} />

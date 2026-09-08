@@ -271,7 +271,7 @@ export function DispenseStep({ rx, ctrl }: { rx: PrescriptionDoc; ctrl: Pharmacy
             <input
               id="rx-qty"
               className="labord-x"
-              type="number"
+              type="number" step="any"
               min={1}
               value={ctrl.dispenseDraft.quantity}
               onChange={e => ctrl.setDispenseDraft({ ...ctrl.dispenseDraft, quantity: Number(e.target.value) })}

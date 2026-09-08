@@ -46,6 +46,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Search } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface SelectOptionItem {
   value: string;
@@ -121,7 +122,7 @@ function nodeText(node: ReactNode): string {
  * them as rows. Recurses through fragments and `.map()` arrays; anything that
  * is not an option (a stray wrapper) is walked into rather than dropped.
  */
-function collectOptions(nodes: ReactNode, out: SelectOptionItem[]): void {
+function collectOptions(nodes: ReactNode, out: SelectOptionItem[], parentDisabled = false): void {
   Children.forEach(nodes, child => {
     if (!isValidElement(child)) return;
     const props = child.props as {
@@ -137,11 +138,11 @@ function collectOptions(nodes: ReactNode, out: SelectOptionItem[]): void {
         // control would have.
         value: props.value === undefined ? label : String(props.value),
         label,
-        disabled: Boolean(props.disabled),
+        disabled: parentDisabled || Boolean(props.disabled),
       });
       return;
     }
-    if (props?.children) collectOptions(props.children, out);
+    if (props?.children) collectOptions(props.children, out, parentDisabled || (child.type === 'optgroup' && Boolean(props.disabled)));
   });
 }
 
@@ -161,10 +162,12 @@ function commitValue(el: HTMLSelectElement, value: string): void {
 
 export default function Select({
   searchThreshold = 7,
-  searchPlaceholder = 'Search…',
+  searchPlaceholder: customSearchPlaceholder,
   children,
   ...selectProps
 }: SelectProps) {
+  const { t } = useTranslation();
+  const searchPlaceholder = customSearchPlaceholder || t('field.search');
   const selectRef = useRef<HTMLSelectElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -492,7 +495,7 @@ export default function Select({
         })}
         {filtered.length === 0 && (
           <p className="tsel-empty">
-            {query.trim() ? `No match for “${query.trim()}”` : 'Nothing to choose from.'}
+            {query.trim() ? t('field.noMatch', { query: query.trim() }) : t('field.noOptions')}
           </p>
         )}
       </div>

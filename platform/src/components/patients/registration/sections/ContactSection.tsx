@@ -71,7 +71,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
           </RegistrationField>
           <RegistrationField name="householdNumber" label={t('patientNew.householdNumber')}>
             {field => (
-              <input {...field} type="number" min={0} value={form.householdNumber}
+              <input {...field} type="number" step="1" min={0} value={form.householdNumber}
                 onChange={e => update('householdNumber', e.target.value)}
                 placeholder={t('patientNew.householdNumberPlaceholder')} />
             )}

@@ -523,11 +523,11 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
           </div>
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelMaxUsers')}</label>
-            <input type="number" min="1" value={form.maxUsers} onChange={e => setForm(p => ({ ...p, maxUsers: parseInt(e.target.value) || 1 }))} style={inputStyle} />
+            <input type="number" step="1" min="1" value={form.maxUsers} onChange={e => setForm(p => ({ ...p, maxUsers: parseInt(e.target.value) || 1 }))} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelMaxHospitals')}</label>
-            <input type="number" min="1" value={form.maxHospitals} onChange={e => setForm(p => ({ ...p, maxHospitals: parseInt(e.target.value) || 1 }))} style={inputStyle} />
+            <input type="number" step="1" min="1" value={form.maxHospitals} onChange={e => setForm(p => ({ ...p, maxHospitals: parseInt(e.target.value) || 1 }))} style={inputStyle} />
           </div>
         </div>
       </div>

@@ -191,7 +191,7 @@ export default function InsurancePolicyModal({
               {t('billing.copayAmount') || 'Copay amount'}
             </label>
             <input
-              type="number" min={0} value={form.copayAmount ?? ''}
+              type="number" step="any" min={0} value={form.copayAmount ?? ''}
               onChange={e => set('copayAmount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
             />
           </div>
@@ -200,7 +200,7 @@ export default function InsurancePolicyModal({
               {t('billing.coinsurancePct') || 'Coinsurance %'}
             </label>
             <input
-              type="number" min={0} max={100} value={form.coinsurancePct ?? ''}
+              type="number" step="any" min={0} max={100} value={form.coinsurancePct ?? ''}
               onChange={e => set('coinsurancePct', e.target.value === '' ? undefined : parseFloat(e.target.value))}
             />
           </div>

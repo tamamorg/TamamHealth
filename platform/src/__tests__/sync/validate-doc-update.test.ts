@@ -43,6 +43,13 @@ function reasonFor(
 }
 
 describe('org-scoped validate_doc_update', () => {
+  it('allows cashier deposit amendments without clinical admission edits', () => {
+    const actor = { name: 'cashier', roles: ['org:org-a', 'role:cashier', 'facility:h-1'] };
+    const doc = { _id: 'a-1', type: 'admission', orgId: 'org-a', facilityId: 'h-1', admissionDepositStatus: 'paid', wardId: 'ward-1' };
+    expect(reasonFor({ ...doc, admissionDepositStatus: 'refund_due' }, doc, actor)).toBeNull();
+    expect(reasonFor({ ...doc, wardId: 'ward-2' }, doc, actor)).toMatch(/may not amend/);
+    expect(reasonFor(doc, null, actor)).not.toBeNull();
+  });
   it('compiles as a function and uses no syntax CouchDB rejects', () => {
     expect(typeof validate).toBe('function');
     // The generated body must stay ES5 — CouchDB's SpiderMonkey build is the

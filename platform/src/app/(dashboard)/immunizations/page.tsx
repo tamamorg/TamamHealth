@@ -941,7 +941,7 @@ export default function ImmunizationsPage() {
                   </div>
                   <div>
                     <label>{t('immun.doseNumber')}</label>
-                    <input type="number" min={0} max={5} value={form.doseNumber} onChange={e => setForm({ ...form, doseNumber: parseInt(e.target.value, 10) || 0 })} />
+                    <input type="number" step="1" min={0} max={5} value={form.doseNumber} onChange={e => setForm({ ...form, doseNumber: parseInt(e.target.value, 10) || 0 })} />
                   </div>
                 </div>
 
@@ -1017,7 +1017,7 @@ export default function ImmunizationsPage() {
                   </div>
                   <div>
                     <label>{t('immun.doseNumber')}</label>
-                    <input type="number" min={0} max={5} value={editDose.doseNumber} onChange={e => setEditDose({ ...editDose, doseNumber: parseInt(e.target.value, 10) || 0 })} />
+                    <input type="number" step="1" min={0} max={5} value={editDose.doseNumber} onChange={e => setEditDose({ ...editDose, doseNumber: parseInt(e.target.value, 10) || 0 })} />
                   </div>
                 </div>
 

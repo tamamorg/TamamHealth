@@ -193,7 +193,7 @@ export function SuperbillDraft({ sb }: { sb: Superbill }) {
                   <td>{l.fee.serviceName}</td>
                   <td className="bl-center">
                     <input
-                      type="number"
+                      type="number" step="any"
                       min={1}
                       value={l.quantity}
                       onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, quantity: Math.max(1, parseInt(e.target.value) || 1) } : x))}

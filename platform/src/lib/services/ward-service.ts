@@ -444,7 +444,8 @@ async function ensureAdmissionDepositBillForAdmission(admission: AdmissionDoc): 
     ...admission,
     admissionDepositBillId: bill._id,
     admissionDepositPaid: paid,
-    admissionDepositStatus: paid >= required ? 'paid' : paid > 0 ? 'partial' : 'due',
+    admissionDepositStatus: ['refund_due', 'refunded', 'forfeited', 'waived'].includes(admission.admissionDepositStatus || '')
+      ? admission.admissionDepositStatus : paid >= required ? 'paid' : paid > 0 ? 'partial' : 'due',
     admissionDepositReconciledAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -469,7 +470,9 @@ export async function assessAdmissionDeposit(input: {
   reason: string;
   actor: { id: string; name: string };
 }): Promise<AdmissionDoc> {
+  if (!['super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent', 'cashier', 'medical_biller'].includes(input.scope.role)) throw new Error('Your role cannot assess deposits');
   const admission = await ensureAdmissionDepositBill(input.admissionId, input.scope);
+  if (admission.admissionDepositPendingRefund) throw new Error('Complete the pending refund before changing its decision');
   const reason = input.reason.trim();
   if (!reason) throw new Error('A deposit decision requires a reason');
   const paid = admission.admissionDepositPaid ?? 0;
@@ -503,19 +506,37 @@ export async function refundAdmissionDeposit(input: {
   reason: string;
   actor: { id: string; name: string };
 }): Promise<AdmissionDoc> {
-  const admission = await getAdmissionById(input.admissionId, input.scope);
+  let admission = await getAdmissionById(input.admissionId, input.scope);
   if (!admission) throw new Error('Admission not found in your authorized scope');
+  if (!['super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent', 'cashier', 'medical_biller'].includes(input.scope.role)) throw new Error('Your role cannot refund deposits');
   if (admission.admissionDepositStatus !== 'refund_due') throw new Error('The admission deposit has not been approved for refund');
   const due = admission.admissionDepositRefundDue ?? 0;
   if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > due) throw new Error('Refund amount must be positive and no greater than the approved refund due');
-  const { issueRefund } = await import('./payment-service');
-  const refund = await issueRefund({ paymentId: input.paymentId, patientId: admission.patientId, patientName: admission.patientName, amount: input.amount, currency: admission.tariffCurrency || 'SSP', method: input.method, reason: input.reason, processedBy: input.actor.id, processedByName: input.actor.name, facilityId: admission.facilityId, orgId: admission.orgId });
+  const { issueRefund, getRefundsByPatient } = await import('./payment-service');
+  const { getBillById } = await import('./billing-service');
+  if (!input.reason.trim()) throw new Error('A refund requires a reason');
+  const bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId) : null;
+  const payment = bill?.payments.find(item => item.id === input.paymentId);
+  if (!bill || !payment || bill.patientId !== admission.patientId || bill.orgId !== admission.orgId || bill.facilityId !== admission.facilityId || bill.currency !== (admission.tariffCurrency || 'SSP')) throw new Error('Select a payment recorded on this admission deposit invoice');
+  let pending = admission.admissionDepositPendingRefund;
+  if (pending && (pending.paymentId !== input.paymentId || pending.amount !== input.amount || pending.method !== input.method || pending.reason !== input.reason.trim())) throw new Error('Retry the pending refund with its original details');
+  const refunds = await getRefundsByPatient(admission.patientId, input.scope);
+  const refunded = refunds.filter(item => item.paymentId === payment.id && item._id !== (pending ? `ref-${encodeURIComponent(pending.id)}` : '')).reduce((sum, item) => sum + item.amount, 0);
+  if (input.amount > payment.amount - refunded) throw new Error('Refund exceeds the remaining amount of the selected payment');
+  if (!pending) {
+    pending = { id: uuidv4(), paymentId: input.paymentId, amount: input.amount, method: input.method, reason: input.reason.trim() };
+    const reserved = { ...admission, admissionDepositPendingRefund: pending };
+    const response = await wardDB().put(reserved);
+    admission = { ...reserved, _rev: response.rev };
+  }
+  const refund = await issueRefund({ idempotencyKey: pending.id, paymentId: pending.paymentId, patientId: admission.patientId, patientName: admission.patientName, amount: pending.amount, currency: admission.tariffCurrency || 'SSP', method: pending.method, reason: pending.reason, processedBy: input.actor.id, processedByName: input.actor.name, facilityId: admission.facilityId, orgId: admission.orgId });
   const remaining = Math.max(0, due - input.amount);
   const updated: AdmissionDoc = {
     ...admission,
     admissionDepositRefunded: (admission.admissionDepositRefunded ?? 0) + input.amount,
     admissionDepositRefundDue: remaining,
     admissionDepositRefundId: refund._id,
+    admissionDepositPendingRefund: undefined,
     admissionDepositStatus: remaining === 0 ? 'refunded' : 'refund_due',
     admissionDepositReconciledAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

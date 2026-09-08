@@ -293,7 +293,7 @@ export default function PatientsPage() {
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterOlderThan')}</span>
                       <div className="relative">
-                        <input type="number" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 ps-3 pe-12" style={fieldStyle} />
+                        <input type="number" step="1" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 ps-3 pe-12" style={fieldStyle} />
                         <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
                       </div>
                     </label>

@@ -180,7 +180,7 @@ export default function AdminConfigPage() {
                 <SadbSettingGroup title="Trial & capacity">
                   <SadbSettingRow label="Trial days" sub="Length of the free trial period for new organizations.">
                     <input
-                      type="number" min={1} max={365}
+                      type="number" step="1" min={1} max={365}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
                       value={draft.trialDays}
                       onChange={e => setField('trialDays', parseInt(e.target.value, 10) || 1)}
@@ -188,7 +188,7 @@ export default function AdminConfigPage() {
                   </SadbSettingRow>
                   <SadbSettingRow label="Max organizations" sub="Platform-wide ceiling on the number of tenant organizations.">
                     <input
-                      type="number" min={1}
+                      type="number" step="1" min={1}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
                       value={draft.maxOrganizations}
                       onChange={e => setField('maxOrganizations', parseInt(e.target.value, 10) || 1)}

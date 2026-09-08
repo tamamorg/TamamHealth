@@ -522,7 +522,7 @@ export default function PatientPortalPage() {
                 <label htmlFor="portal-amount">{t('portal.paymentAmountSsp')}</label>
                 <input
                   id="portal-amount"
-                  type="number"
+                  type="number" step="any"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   style={{ fontSize: 16, fontWeight: 700 }}

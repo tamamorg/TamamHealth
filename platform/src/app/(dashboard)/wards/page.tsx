@@ -8,6 +8,7 @@ import PatientAvatar from '@/components/patients/PatientAvatar';
 import { Plus, X, CheckCircle2, Pill, ArrowRightLeft, ClipboardList } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -56,6 +57,7 @@ export default function WardsPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const facilitySettings = useSettings();
   const { patients } = usePatients();
   const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, admit, discharge, reassignBed, markBedReady } = useWards();
@@ -584,7 +586,7 @@ export default function WardsPage() {
               </dl>
 
               <nav className="wdis-care-actions" aria-label={t('ward.careActions')}>
-                {(dischargeFor.admissionDepositRequired ?? 0) > 0 && <button type="button" onClick={() => router.push(`/billing?patientId=${encodeURIComponent(dischargeFor.patientId)}`)}>
+                {(dischargeFor.admissionDepositRequired ?? 0) > 0 && <button type="button" onClick={async () => { if (!scope) return; try { const { ensureAdmissionDepositBill } = await import('@/lib/services/ward-service'); const row = await ensureAdmissionDepositBill(dischargeFor._id, scope); if (row.admissionDepositBillId) router.push(`/billing/${encodeURIComponent(row.admissionDepositBillId)}`); } catch (error) { showToast(String(error), 'error'); } }}>
                   <ClipboardList className="w-4 h-4" />
                   <span><b>{t('ward.openDepositBill')}</b><small>{t('ward.openDepositBillHint')}</small></span>
                 </button>}

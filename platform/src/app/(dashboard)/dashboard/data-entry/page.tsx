@@ -218,7 +218,7 @@ export default function DataEntryDashboard() {
           {label}
         </label>
         <input
-          type="number" min={0}
+          type="number" step="1" min={0}
           value={census[field] as number}
           onChange={e => updateField(field, parseInt(e.target.value) || 0)}
           className="w-full px-3 py-2 rounded-md text-sm font-semibold"

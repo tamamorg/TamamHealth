@@ -10,6 +10,34 @@ function episode(pathway: SpecialtyCareEpisodeDoc['pathway'], values: SpecialtyC
 }
 
 describe('Tamam specialty-care foundation', () => {
+  it('provides populated unique options and numeric precision across every pathway', () => {
+    for (const pathway of SPECIALTY_PATHWAYS) for (const field of pathway.fields) {
+      if (field.kind === 'select' || field.kind === 'multi_select') {
+        expect(field.options?.length).toBeGreaterThan(0);
+        expect(new Set(field.options?.map(option => option.value)).size).toBe(field.options?.length);
+      }
+      if (field.kind === 'number') expect(field.step).toBeDefined();
+    }
+  });
+  it('rejects contradictory ETAT choices even in an unfinished record', () => {
+    expect(validateSpecialtyEpisode(episode('paediatrics', { etatDangerSigns: ['none', 'shock'] })).errors).toContain('ETAT emergency / priority signs contains mutually exclusive choices');
+  });
+  it('accepts explicit not-applicable only on eligible fields', () => {
+    expect(validateSpecialtyEpisode(episode('obstetrics_gynaecology', { gestationalAge: 'not_applicable' })).valid).toBe(true);
+    expect(validateSpecialtyEpisode(episode('paediatrics', { weightKg: 'not_applicable' })).valid).toBe(false);
+  });
+  it('rejects invalid calendar dates', () => {
+    expect(validateSpecialtyEpisode(episode('mental_health', { followUpDate: '2026-02-30' })).valid).toBe(false);
+  });
+  it('rejects incorrectly typed numbers in drafts and completed episodes', () => {
+    for (const status of ['in_progress', 'completed'] as const) {
+      const record = { ...episode('haemodialysis', { preWeightKg: 'heavy' }), status };
+      expect(validateSpecialtyEpisode(record).errors).toContain('Pre-treatment weight has an invalid type');
+    }
+  });
+  it('treats whitespace as missing required text', () => {
+    expect(validateSpecialtyEpisode({ ...episode('dental', { chiefConcern: '   ' }), status: 'completed' }).errors).toContain('Chief concern is required');
+  });
   it('defines a distinct structured pathway for every unfinished clinical domain', () => {
     expect(SPECIALTY_PATHWAYS.map((item) => item.code)).toEqual([
       'haemodialysis', 'dental', 'theatre', 'cardiac_diagnostics', 'ophthalmology_optical',

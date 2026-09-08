@@ -260,7 +260,7 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
               {t('pharmacy.quantityReceived', { unit })}
             </label>
             <input
-              type="number"
+              type="number" step="any"
               min={1}
               value={qty}
               onChange={(e) => setQty(e.target.value)}

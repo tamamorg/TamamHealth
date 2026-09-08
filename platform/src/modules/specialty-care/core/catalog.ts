@@ -1,7 +1,8 @@
 import type { SpecialtyFieldDefinition, SpecialtyPathwayDefinition, SpecialtyPathwayCode } from './types';
+import { withFieldGuidance } from './field-guidance';
 
 const yesNo = [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] as const;
-const field = (definition: SpecialtyFieldDefinition): SpecialtyFieldDefinition => definition;
+const field = withFieldGuidance;
 
 export const SPECIALTY_PATHWAYS: readonly SpecialtyPathwayDefinition[] = [
   {
@@ -114,7 +115,7 @@ export const SPECIALTY_PATHWAYS: readonly SpecialtyPathwayDefinition[] = [
     evidenceLabel: 'WHO mhGAP Intervention Guide 2.0', evidenceUrl: 'https://www.who.int/publications/i/item/9789241549790',
     safetyNote: 'Do not enter psychotherapy or sensitive narrative here. Local confidentiality, safeguarding and break-glass policy is required for the restricted-notes store.',
     fields: [
-      field({ key: 'presentingSyndrome', label: 'Priority condition / presenting syndrome', kind: 'multi_select', section: 'Assessment', requiredToComplete: true, options: [{ value: 'depression', label: 'Depression' }, { value: 'psychosis', label: 'Psychosis' }, { value: 'bipolar', label: 'Bipolar disorder' }, { value: 'epilepsy', label: 'Epilepsy/seizures' }, { value: 'substance_use', label: 'Substance use' }, { value: 'child_adolescent', label: 'Child/adolescent condition' }, { value: 'other', label: 'Other' }] }),
+      field({ key: 'presentingSyndrome', label: 'Priority condition / presenting syndrome', kind: 'multi_select', section: 'Assessment', requiredToComplete: true, options: [{ value: 'depression', label: 'Depression' }, { value: 'psychosis', label: 'Psychosis' }, { value: 'bipolar', label: 'Bipolar disorder' }, { value: 'epilepsy', label: 'Epilepsy/seizures' }, { value: 'substance_use', label: 'Substance use' }, { value: 'child_adolescent', label: 'Child/adolescent condition' }, { value: 'dementia', label: 'Dementia' }, { value: 'alcohol_use', label: 'Alcohol use disorder' }, { value: 'drug_use', label: 'Drug use disorder' }, { value: 'self_harm', label: 'Self-harm / suicide' }, { value: 'other_significant', label: 'Other significant mental-health complaints' }, { value: 'other', label: 'Other' }] }),
       field({ key: 'physicalCausesConsidered', label: 'Physical causes and medicines considered', kind: 'boolean', section: 'Assessment', requiredToComplete: true }),
       field({ key: 'selfHarmRisk', label: 'Self-harm / suicide risk', kind: 'select', section: 'Safety', requiredToComplete: true, options: [{ value: 'none', label: 'None identified' }, { value: 'low', label: 'Low' }, { value: 'moderate', label: 'Moderate' }, { value: 'high_imminent', label: 'High / imminent' }] }),
       field({ key: 'violenceOrSafeguardingRisk', label: 'Violence / abuse / safeguarding risk', kind: 'select', section: 'Safety', requiredToComplete: true, options: [{ value: 'none', label: 'None identified' }, { value: 'present', label: 'Present' }, { value: 'imminent', label: 'Imminent' }] }),

@@ -254,7 +254,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 <label htmlFor="imm-dose" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Dose number</label>
                 <input
                   id="imm-dose"
-                  type="number"
+                  type="number" step="1"
                   min={1}
                   value={doseNumber}
                   onChange={e => setDoseNumber(e.target.value)}

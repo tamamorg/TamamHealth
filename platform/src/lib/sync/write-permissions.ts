@@ -358,7 +358,7 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
     // Dispensing lifecycle: verify → clear → dispense.
     'pharmacist',
   ],
-  admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+  admission: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse', 'cashier', 'medical_biller', 'hospital_manager'],
   appointment: [
     'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician',
     'medical_superintendent', 'nurse', 'midwife', 'triage_nurse',
@@ -825,6 +825,9 @@ export function buildValidateDocUpdateFn(
       for (var n = 0; n < amenders.length; n++) {
         if (amenders[n] === actingRole) {
           var allowedFields = UPDATE_ONLY_FIELDS[docType] || [];
+          if (docType === 'admission' && contains(['cashier', 'medical_biller', 'hospital_manager'], actingRole)) {
+            allowedFields = ['admissionDepositBillId', 'admissionDepositPaid', 'admissionDepositStatus', 'admissionDepositRefunded', 'admissionDepositRefundDue', 'admissionDepositRefundId', 'admissionDepositPendingRefund', 'admissionDepositDecisionReason', 'admissionDepositReconciledAt', 'updatedAt', 'offlineSync'];
+          }
           for (var changed in newDoc) {
             if (!newDoc.hasOwnProperty(changed) || changed === '_rev') continue;
             if (JSON.stringify(newDoc[changed]) !== JSON.stringify(oldDoc[changed]) && !contains(allowedFields, changed)) {

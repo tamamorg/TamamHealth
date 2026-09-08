@@ -33,6 +33,7 @@ import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import type { PatientDoc, PrescriptionDoc } from '@/lib/db-types';
 import './clinical-notes.css';
 import Select from '@/components/Select';
+import { FORMULARY } from '@/lib/data/formulary';
 import { stopsClickPropagation } from '@/lib/a11y';
 
 /** Ordered but never given: held, stockout-referred, or recalled. */
@@ -341,8 +342,9 @@ export default function MedicationsModal({
               <div className="cn-meds-add">
                 <label className="cn-rx-field">
                   Medication
-                  <input className="cn-input" placeholder="e.g. Amoxicillin" value={addMed.medication}
+                  <input list="med-history-formulary" className="cn-input" placeholder="e.g. Amoxicillin" value={addMed.medication}
                     onChange={e => setAddMed(m => ({ ...m, medication: e.target.value }))} />
+                  <datalist id="med-history-formulary">{FORMULARY.map(drug => <option key={drug.name} value={drug.name} />)}</datalist>
                 </label>
                 <label className="cn-rx-field">
                   Dose
@@ -351,8 +353,9 @@ export default function MedicationsModal({
                 </label>
                 <label className="cn-rx-field">
                   Frequency
-                  <input className="cn-input" placeholder="TDS" value={addMed.frequency}
+                  <input list="med-history-frequency" className="cn-input" placeholder="TDS" value={addMed.frequency}
                     onChange={e => setAddMed(m => ({ ...m, frequency: e.target.value }))} />
+                  <datalist id="med-history-frequency">{['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 4 hours', 'Every 6 hours', 'Every 8 hours', 'Every 12 hours', 'Once weekly', 'As needed'].map(frequency => <option key={frequency} value={frequency} />)}</datalist>
                 </label>
                 <button type="button" className="cn-btn cn-btn-primary" onClick={handleAddMed} disabled={busy}>Add</button>
               </div>

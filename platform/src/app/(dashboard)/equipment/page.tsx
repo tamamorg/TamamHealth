@@ -1,4 +1,5 @@
 'use client';
+import DepartmentInput from '@/components/DepartmentInput';
 
 import { useState, useMemo } from 'react';
 import Modal from '@/components/Modal';
@@ -282,7 +283,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelDepartment')}</label>
-                  <input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder={t('equipment.placeholderDepartment')} />
+                  <DepartmentInput value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder={t('equipment.placeholderDepartment')} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelLocation')}</label>
@@ -294,7 +295,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCost', { currency: form.costCurrency })}</label>
-                  <input type="number" min={0} value={form.cost || ''} onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })} />
+                  <input type="number" step="any" min={0} value={form.cost || ''} onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelWarrantyExpires')}</label>
@@ -302,7 +303,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceInterval')}</label>
-                  <input type="number" min={0} value={form.serviceIntervalMonths || ''} onChange={e => setForm({ ...form, serviceIntervalMonths: parseInt(e.target.value) || 0 })} />
+                  <input type="number" step="1" min={0} value={form.serviceIntervalMonths || ''} onChange={e => setForm({ ...form, serviceIntervalMonths: parseInt(e.target.value) || 0 })} />
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelNotes')}</label>
@@ -343,7 +344,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceCost')}</label>
-                  <input type="number" min={0} value={serviceForm.cost || ''} onChange={e => setServiceForm({ ...serviceForm, cost: parseFloat(e.target.value) || 0 })} />
+                  <input type="number" step="any" min={0} value={serviceForm.cost || ''} onChange={e => setServiceForm({ ...serviceForm, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceNotes')}</label>
