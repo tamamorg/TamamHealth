@@ -132,7 +132,7 @@ function moduleBoundaryRules() {
 }
 
 const eslintConfig = [
-  { ignores: ['.next/**', 'node_modules/**', 'coverage/**', 'out/**', 'next-env.d.ts', 'public/sw.js', 'scripts/**'] },
+  { ignores: ['.next/**', '.next-*/**', 'node_modules/**', 'coverage/**', 'out/**', 'next-env.d.ts', 'public/sw.js', 'scripts/**'] },
   ...nextCoreWebVitals,
   ...nextTypescript,
   {

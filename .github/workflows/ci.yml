@@ -40,6 +40,12 @@ jobs:
         # once those are cleaned up.
         run: npm run lint
 
+      - name: Translation coverage
+        run: npm run i18n:check
+
+      - name: High-severity dependency gate
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Type-check
         run: npx tsc --noEmit
 

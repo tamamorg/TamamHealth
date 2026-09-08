@@ -10,7 +10,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
-import EhrMissionCard from '@/components/ehr/EhrMissionCard';
 import {
   Users, Stethoscope, HeartPulse, BedDouble,
   ClipboardCheck, Activity, AlertTriangle, SendHorizontal,
@@ -195,7 +194,7 @@ export default function SuperintendentDashboard() {
       <main className="page-container page-enter">
         <DashboardGreetingHeader module="Facility management" />
         {/* ═══ KPI ROW ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           {kpis.map(k => (
             <button
               key={k.id}
@@ -217,56 +216,8 @@ export default function SuperintendentDashboard() {
           ))}
         </div>
 
-        {/* The alerts card shares its row with the role's mission card, which
-            sits where the two dashboard shells put it: to the right of the
-            work, closing the screen with the day's one instruction. */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
-          {/* ═══ SURVEILLANCE / ALERTS ═══ */}
-          <div className="dash-card overflow-hidden">
-            <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('superintendent.surveillanceSignal')}</h3>
-              <button onClick={() => router.push('/surveillance')} className="text-[11px] font-bold inline-flex items-center gap-1" style={{ color: 'var(--accent-primary)' }}>
-                {t('hr.viewAll')} <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-            {activeAlerts.length === 0 ? (
-              <div className="p-10 text-center" style={{ color: 'var(--text-muted)' }}>
-                <Activity className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--color-success-text)', opacity: 0.6 }} />
-                {t('epidemic.noActiveDiseaseAlerts')}
-              </div>
-            ) : (
-              <div>
-                {activeAlerts.slice(0, 6).map((a, i) => (
-                  <button
-                    key={a._id || i}
-                    onClick={() => a._id && openPreview(`alert:${a._id}`)}
-                    className="data-row data-row--warning w-full"
-                    style={{ textAlign: 'start' }}
-                  >
-                    <div className="icon-box-sm flex-shrink-0">
-                      <AlertTriangle className="w-4 h-4" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning)' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.disease || t('superintendent.alertFallback')}</div>
-                      <div className="text-[11.5px] mt-0.5 capitalize" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning-text)' }}>
-                        {a.alertLevel} · {[a.county, a.state].filter(Boolean).join(', ') || t('superintendent.locationFallback')} · {t('dashboard.casesCount', { count: a.cases })}
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <EhrMissionCard
-            title={t('mission.superintendent.title')}
-            description={t('mission.superintendent.body')}
-            icon={Activity}
-          />
-        </div>
-
         {/* ═══ STAFF MIX + REFERRALS strip ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
           {staffingSummaries.map(s => (
             <button key={s.id} onClick={() => openPreview(`staffing:${s.id}`)} className="dash-card flex items-center gap-3" style={{ padding: '14px 16px', textAlign: 'start' }}>
               <div className="icon-box-sm">
@@ -276,6 +227,44 @@ export default function SuperintendentDashboard() {
               <span className="stat-value" style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{s.value}</span>
             </button>
           ))}
+        </div>
+
+        {/* ═══ SURVEILLANCE / ALERTS ═══ */}
+        <div className="dash-card overflow-hidden">
+          <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('superintendent.surveillanceSignal')}</h3>
+            <button onClick={() => router.push('/surveillance')} className="text-[11px] font-bold inline-flex items-center gap-1" style={{ color: 'var(--accent-primary)' }}>
+              {t('hr.viewAll')} <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          {activeAlerts.length === 0 ? (
+            <div className="p-10 text-center" style={{ color: 'var(--text-muted)' }}>
+              <Activity className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--color-success-text)', opacity: 0.6 }} />
+              {t('epidemic.noActiveDiseaseAlerts')}
+            </div>
+          ) : (
+            <div>
+              {activeAlerts.slice(0, 6).map((a, i) => (
+                <button
+                  key={a._id || i}
+                  onClick={() => a._id && openPreview(`alert:${a._id}`)}
+                  className="data-row data-row--warning w-full"
+                  style={{ textAlign: 'start' }}
+                >
+                  <div className="icon-box-sm flex-shrink-0">
+                    <AlertTriangle className="w-4 h-4" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.disease || t('superintendent.alertFallback')}</div>
+                    <div className="text-[11.5px] mt-0.5 capitalize" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning-text)' }}>
+                      {a.alertLevel} · {[a.county, a.state].filter(Boolean).join(', ') || t('superintendent.locationFallback')} · {t('dashboard.casesCount', { count: a.cases })}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </main>
       {preview && (

@@ -1254,8 +1254,6 @@ const en: TranslationMap = {
   'mission.dataEntry.body': 'File today\'s census, close the gaps the quality checks found, and report on time.',
   'mission.state.title': 'Keep the picture current',
   'mission.state.body': 'Chase the counties running behind, read the month\'s alerts, and brief the ministry on time.',
-  'mission.superintendent.title': 'Run the hospital by its numbers',
-  'mission.superintendent.body': 'Watch the wards, unblock the queues, and act on today\'s critical results and stock-outs.',
   'dashboard.waiting': 'Waiting',
   'dashboard.wardRoomNo': 'Ward-Room No.',
   'dataEntry.achievements': 'Achievements',

@@ -1256,8 +1256,6 @@ const apd: TranslationMap = {
   'mission.dataEntry.body': 'سجّل تعداد اليوم، سد الفجوات اللي طلعت في فحص الجودة، وبلّغ في الوقت.',
   'mission.state.title': 'خلي الصورة محدّثة',
   'mission.state.body': 'تابع المحليات المتأخرة، اقرأ تنبيهات الشهر، وبلّغ الوزارة في الوقت.',
-  'mission.superintendent.title': 'شغّل المستشفى بالأرقام',
-  'mission.superintendent.body': 'راقب العنابر، فك الطوابير، وتصرف في النتائج الحرجة ونقص المخزون بتاع اليوم.',
   'dashboard.waiting': 'منتظر',
   'dashboard.wardRoomNo': 'رقم العنبر والغرفة',
   'dataEntry.achievements': 'الإنجازات',

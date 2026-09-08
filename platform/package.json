@@ -23,7 +23,8 @@
     "db:strip-totp": "node --import tsx scripts/strip-totp-fields.mjs",
     "docs:api": "typedoc",
     "i18n:check": "node scripts/check-i18n.mjs",
-    "config:check:offline": "node --import tsx scripts/check-offline-deployment.mjs"
+    "config:check:offline": "node --import tsx scripts/check-offline-deployment.mjs",
+    "config:check:production": "node --import tsx scripts/check-production-readiness.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",
@@ -72,6 +73,7 @@
     "vercel": "^54.21.1"
   },
   "overrides": {
+    "fast-uri": "^3.1.6",
     "ajv": "^8.17.2",
     "eslint": {
       "ajv": "^6.14.0"
