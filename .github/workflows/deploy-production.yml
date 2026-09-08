@@ -317,6 +317,12 @@ jobs:
             fi
             if [ "$i" = 30 ]; then
               echo "::error title=Production stack unhealthy::One or more release containers never became healthy at $expected_sha"
+              # The only window into the host this run has: without these lines
+              # a failed deploy says "unhealthy" and nothing else, and diagnosing
+              # it needs an SSH session the operator may not have to hand.
+              echo "::group::Container state and recent logs on the host"
+              ssh "$USER@$HOST" "cd '${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}' && docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -a && docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml logs --tail 80 platform website sync-worker" || true
+              echo "::endgroup::"
               exit 1
             fi
             sleep 10
@@ -351,6 +357,9 @@ jobs:
           done
           echo "::error title=Production unhealthy::$HEALTH_URL never returned 200 after the deploy. Last body:"
           cat /tmp/health.json 2>/dev/null || true
+          echo "::group::Container state and recent logs on the host"
+          ssh "$USER@$HOST" "cd '${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}' && docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -a && docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml logs --tail 80 platform website sync-worker" || true
+          echo "::endgroup::"
           exit 1
 
       # A failed health gate is already an outage; reporting it without
@@ -373,7 +382,7 @@ jobs:
              previous_website=\$(sed -n '2p' '.tamamhealth-rollback-stack-$SHA'); \
              previous_worker=\$(sed -n '3p' '.tamamhealth-rollback-stack-$SHA'); \
              test -n \"\$previous_platform\"; test -n \"\$previous_website\"; test -n \"\$previous_worker\"; \
-             if [ \"\$previous_platform\" = absent ] || [ \"\$previous_website\" = absent ]; then echo '::error title=Nothing to roll back to::Production had no running platform/website container before this deploy, so the unhealthy release cannot be swapped for a previous one. Inspect the host (docker compose ps -a, docker compose logs platform, df -h, free -m) and restore it by hand.'; exit 1; fi; \
+             if [ \"\$previous_platform\" = absent ] || [ \"\$previous_website\" = absent ]; then echo '::error title=Nothing to roll back to::Production had no running platform/website container before this deploy, so the unhealthy release cannot be swapped for a previous one. Inspect the host output below and restore it by hand.'; docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -a; docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml logs --tail 80 platform website sync-worker; df -h; free -m; exit 1; fi; \
              printf 'services:\n  platform:\n    image: %s\n  website:\n    image: %s\n' \"\$previous_platform\" \"\$previous_website\" > '.tamamhealth-rollback-$SHA.yml'; \
              rollback_services='platform website'; \
              if [ \"\$previous_worker\" != absent ]; then printf '  sync-worker:\n    image: %s\n' \"\$previous_worker\" >> '.tamamhealth-rollback-$SHA.yml'; rollback_services='platform website sync-worker'; fi; \
