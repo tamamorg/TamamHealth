@@ -29,7 +29,6 @@ import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import type { NoteSectionActionId } from '@/lib/clinical-notes/section-actions';
 import MedicationsModal from './MedicationsModal';
 import { useDataScope } from '@/lib/hooks/useDataScope';
-import { PostConsultPanel } from '@/modules/post-consult/client';
 import IncludeProblemsModal from './assessment/IncludeProblemsModal';
 import AllergiesModal from './AllergiesModal';
 import CareCoordinationModal, {
@@ -608,7 +607,6 @@ export default function ClinicalNoteEditor({
 
   return (
     <div className="cn-editor">
-      {note.encounterId && (note.status === 'signed' || note.status === 'amended') && <PostConsultPanel encounterId={note.encounterId} />}
       {/* The left rail runs the full height of the screen; the header and
           toolbar belong to the note column, not the page. */}
       <div className={`cn-body${showContextSidebar ? '' : ' cn-body--without-sidebar'}`}>

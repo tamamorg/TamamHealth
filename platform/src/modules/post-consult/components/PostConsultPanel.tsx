@@ -14,7 +14,7 @@ import { currentPlanRevision } from '../services/plan-service';
 import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import './post-consult.css';
 
-export default function PostConsultPanel({ encounterId }: { encounterId?: string }) {
+export default function PostConsultPanel({ encounterId, patientId, embedded = false }: { encounterId?: string; patientId?: string; embedded?: boolean }) {
   const scope = useDataScope();
   const { t } = useTranslation();
   const [rows, setRows] = useState<EncounterDoc[]>([]);
@@ -27,14 +27,17 @@ export default function PostConsultPanel({ encounterId }: { encounterId?: string
     async function refresh() {
       try {
         const docs = encounterId ? [await getHandoffEncounter(encounterId, scope!)] : await getHandoffQueue(scope!);
-        if (!cancelled) { setRows(docs.filter(d => d.postConsult || encounterId)); setError(false); }
+        if (!cancelled) { setRows(docs.filter(d => (!patientId || d.patientId === patientId) && (d.postConsult || encounterId))); setError(false); }
       } catch { if (!cancelled) { setRows([]); setError(true); } }
       finally { if (!cancelled) setLoading(false); }
     }
     void refresh(); const timer = setInterval(() => void refresh(), 15000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [scope, encounterId, revision]);
-  return <section className="ehr-post-consult" style={{ padding: 16, marginBottom: 16, background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 8 }}>
+  }, [scope, encounterId, patientId, revision]);
+  // Keep an empty queue out of the dashboard; pending work and failures still
+  // surface here, and polling continues so new handoffs appear automatically.
+  if (!error && !rows.length) return null;
+  return <section id="post-consult" className="ehr-post-consult" style={embedded ? { marginBottom: 16 } : { padding: 16, marginBottom: 16, background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 8 }}>
     <h2>{t('postConsult.title')}</h2>
     <p>{t('postConsult.help')}</p>
     {error ? <p role="alert">{t('postConsult.error')}</p> : loading ? <p role="status">{t('postConsult.loading')}</p> : !rows.length ? <p>{t('postConsult.empty')}</p> : rows.map(row => row.postConsult

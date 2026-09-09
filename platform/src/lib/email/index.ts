@@ -19,25 +19,17 @@ import { logProvider } from './log-provider';
  * the provider SDK paths (including nodemailer) into the browser bundle.
  */
 
-const DEFAULT_FROM = process.env.FROM_EMAIL || 'support.tamam@gmail.com';
-
 let cached: EmailProvider | null = null;
 
 async function resolveProvider(): Promise<EmailProvider> {
   if (cached) return cached;
-  const choice = (process.env.EMAIL_PROVIDER || 'log').toLowerCase();
+  const choice = (process.env.EMAIL_PROVIDER || 'log').trim().toLowerCase();
   if (choice === 'log') {
     cached = logProvider;
     return cached;
   }
-  try {
-    const { remoteProvider } = await import('./remote-provider');
-    cached = remoteProvider(choice);
-  } catch {
-    // A misconfigured or unavailable provider must not swallow the message
-    // silently — fall back to logging it so it can be retried out-of-band.
-    cached = logProvider;
-  }
+  const { remoteProvider } = await import('./remote-provider');
+  cached = remoteProvider(choice);
   return cached;
 }
 
@@ -58,12 +50,13 @@ export async function sendEmail(input: EmailSendInput): Promise<EmailSendResult>
   }
   try {
     const provider = await resolveProvider();
-    return await provider.send({ ...input, to, from: input.from || DEFAULT_FROM });
-  } catch (err) {
+    return await provider.send({ ...input, to, from: input.from || process.env.FROM_EMAIL || '' });
+  } catch {
     return {
       ok: false,
       providerId: 'error',
-      error: err instanceof Error ? err.message : 'unknown_error',
+      // Transport errors can contain SMTP credentials or recipient addresses.
+      error: 'email_transport_failed',
     };
   }
 }

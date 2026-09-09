@@ -29,6 +29,23 @@ function button(name: string) {
   return Array.from(mounted.container.querySelectorAll('button')).find(el => el.textContent === name)!;
 }
 
+test('does not render an empty nursing panel', async () => {
+  delete mockEncounter.postConsult;
+  mounted = await mountAndFlush(<PostConsultPanel />);
+  expect(mounted.container.querySelector('.ehr-post-consult')).toBeNull();
+});
+
+test('the patient care plan excludes other patients handoffs', async () => {
+  mounted = await mountAndFlush(<PostConsultPanel patientId="another-patient" embedded />);
+  expect(mounted.container.querySelector('.ehr-post-consult')).toBeNull();
+});
+
+test('the patient care plan contains its handoff without a separate card frame', async () => {
+  mounted = await mountAndFlush(<PostConsultPanel patientId="patient" embedded />);
+  expect(mounted.container.textContent).toContain('Synthetic Patient');
+  expect(mounted.container.querySelector<HTMLElement>('.ehr-post-consult')!.style.border).toBe('');
+});
+
 test('shows staff names and requires a recipient and reason for transfer', async () => {
   mounted = await mountAndFlush(<PostConsultPanel />);
   expect(mounted.container.textContent).toContain('Nurse Mary');

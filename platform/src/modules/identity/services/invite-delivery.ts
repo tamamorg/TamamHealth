@@ -97,7 +97,7 @@ export async function deliverAccountInvite(
     // exists to avoid: the administrator would not hand over the temporary
     // password and the account would be unreachable.
     if (wasDelivered(result)) return { sent: true, to, expiresAt: invite.expiresAt };
-    return { sent: false, reason: result.ok ? 'not_configured' : 'send_failed' };
+    return { sent: false, reason: result.providerId === 'log' || result.error?.includes('not configured') ? 'not_configured' : 'send_failed' };
   } catch (err) {
     logApiError('[invite-delivery]', err);
     return { sent: false, reason: 'send_failed' };

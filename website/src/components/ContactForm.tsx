@@ -51,16 +51,19 @@ export default function ContactForm() {
   // Step 1's answers have to outlive the step switch: those inputs unmount when
   // step 2 renders, so a bare FormData read at submit time would lose them.
   const [who, setWho] = useState({ name: "", email: "", phone: "", organisation: "" });
+  const [message, setMessage] = useState('');
 
-  const step1Complete = who.name.trim() !== "" && who.email.trim() !== "" && who.organisation.trim() !== "";
+  const step1Complete = who.name.trim() !== "" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who.email.trim()) && who.organisation.trim() !== "";
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (state === "sending" || state === "sent") return;
+    if (step !== 2 || !step1Complete || !message.trim()) return;
     const data = new FormData(e.currentTarget);
     setState("sending");
     try {
       const res = await fetch("https://api.web3forms.com/submit", {
+        signal: AbortSignal.timeout(20000),
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
@@ -68,17 +71,19 @@ export default function ContactForm() {
           subject: `TamamHealth website: ${data.get("topic") || "Contact"}`,
           from_name: "tamamhealth.org contact form",
           name: who.name,
-          email: who.email,
+          email: who.email.trim(),
+          replyto: who.email.trim(),
+          botcheck: data.get('botcheck') === 'on',
           phone: who.phone,
           organisation: who.organisation,
           topic: data.get("topic"),
           level: data.get("level"),
           place: data.get("place"),
-          message: data.get("message"),
+          message: message.trim(),
         }),
       });
       const body = await res.json().catch(() => ({}));
-      if (res.ok && body.success !== false) setState("sent");
+      if (res.ok && body.success === true) setState("sent");
       else setState("error");
     } catch {
       setState("error");
@@ -98,6 +103,7 @@ export default function ContactForm() {
       style={{ background: "#FFFFFF", color: "var(--color-text)", padding: "40px 40px 42px", display: "flex", flexDirection: "column", gap: 8 }}
     >
       <Corners />
+      <input type="checkbox" name="botcheck" tabIndex={-1} aria-hidden="true" style={{ display: 'none' }} />
       <h2 style={{ fontSize: "clamp(24px, 2.7vw, 32px)", margin: 0 }}>{stepTitle}</h2>
       <p style={{ margin: "6px 0 0", fontSize: 15.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>{stepLead}</p>
 
@@ -148,6 +154,7 @@ export default function ContactForm() {
           </select>
           <textarea
             name="message" aria-label={t("Message")} rows={4} className="tm-cfield"
+            required maxLength={10000} value={message} onChange={event => setMessage(event.target.value)}
             placeholder={t("What you're building, or how you'd like to help.")}
             style={{ ...field, resize: "vertical" }}
           />
@@ -157,7 +164,7 @@ export default function ContactForm() {
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>
             <button
-              type="button" onClick={() => { setStep(1); setState("idle"); }} aria-label={t("Back")} className="blueprint"
+              type="button" disabled={state === 'sending' || state === 'sent'} onClick={() => { setStep(1); setState("idle"); }} aria-label={t("Back")} className="blueprint"
               style={{ appearance: "none", cursor: "pointer", fontSize: 18, padding: "16px 0", background: "transparent", border: "1px solid var(--color-neutral-400, #b3bdc9)", color: "var(--color-text)" }}
             >
               ←
