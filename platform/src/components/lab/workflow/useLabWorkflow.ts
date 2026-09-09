@@ -12,7 +12,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { useLabResults } from '@/lib/hooks/useLabResults';
-import { evaluateCritical } from '@/lib/services/lab-critical-flag';
+import {
+  evaluateCritical,
+  evaluateCriticalObservations,
+  type CriticalObservationHit,
+} from '@/lib/services/lab-critical-flag';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
@@ -51,6 +55,16 @@ export interface ResultDraft {
   critical: boolean;
   /** Once the tech overrides the critical flag by hand, stop deriving it. */
   criticalManual: boolean;
+}
+
+/**
+ * One shape for the live QC verdict whether the test is a plain single value
+ * or a structured panel — the panel adds `hits` (which analyte, value, and
+ * threshold tripped) so the UI can name what fired instead of only a boolean.
+ */
+export interface WorkflowCriticalVerdict {
+  isCriticalValue: boolean;
+  hits: CriticalObservationHit[];
 }
 
 export function useLabWorkflow(
@@ -102,11 +116,42 @@ export function useLabWorkflow(
     };
   });
 
-  /** Live QC verdict for the value being typed. */
-  const criticalVerdict = useMemo(
-    () => evaluateCritical(order.testName, resultDraft.result),
-    [order.testName, resultDraft.result],
+  /**
+   * The panel this order resolves to, if any — Full Blood Count, a chemistry
+   * panel, Urinalysis, Stool. Everything below that files or evaluates a
+   * structured result shares this one lookup rather than re-resolving it.
+   */
+  const resultProfile = useMemo(
+    () => resolveLabResultProfile(order.testName, order.specimen),
+    [order.testName, order.specimen],
   );
+
+  /** Turn the draft's {fieldId: value} map into what `evaluateCriticalObservations` needs. */
+  const structuredObservationInputs = useCallback((values: Record<string, string>) => {
+    if (!resultProfile) return [];
+    return resultProfile.sections.flatMap(section => section.fields.flatMap(field => {
+      const value = values[field.id]?.trim();
+      return value ? [{ id: field.id, label: field.label, unit: field.unit, value }] : [];
+    }));
+  }, [resultProfile]);
+
+  /**
+   * Live QC verdict for the value being entered — the plain result field for
+   * an ordinary test, or every analyte in the panel for a structured one.
+   * `evaluateCritical` alone used to be wired here, which left every panel
+   * test's DEFAULT_CRITICAL_VALUES analytes (Hemoglobin, WBC, Platelets,
+   * Glucose, Potassium, Sodium, Calcium, Creatinine) undetectable, since they
+   * are entered as observations, never the plain `result` field.
+   */
+  const criticalVerdict = useMemo<WorkflowCriticalVerdict>(() => {
+    if (resultProfile) {
+      const { isCriticalValue, hits } = evaluateCriticalObservations(
+        structuredObservationInputs(resultDraft.observations),
+      );
+      return { isCriticalValue, hits };
+    }
+    return { isCriticalValue: evaluateCritical(order.testName, resultDraft.result).isCriticalValue, hits: [] };
+  }, [resultProfile, structuredObservationInputs, resultDraft.observations, order.testName, resultDraft.result]);
 
   /** Typing a value re-derives the critical flag until the tech overrides it. */
   const setResultValue = useCallback((value: string) => {
@@ -121,6 +166,26 @@ export function useLabWorkflow(
       };
     });
   }, [order.testName]);
+
+  /**
+   * Entering an analyte in a structured panel re-derives the critical flag
+   * the same way `setResultValue` does for a plain result — this is the
+   * counterpart that was missing, which left the checkbox as the only way a
+   * panel test's critical values ever got flagged.
+   */
+  const setObservationValue = useCallback((id: string, value: string) => {
+    setResultDraft(prev => {
+      const observations = { ...prev.observations, [id]: value };
+      const verdict = evaluateCriticalObservations(structuredObservationInputs(observations));
+      const critical = prev.criticalManual ? prev.critical : verdict.isCriticalValue;
+      return {
+        ...prev,
+        observations,
+        critical,
+        abnormal: prev.abnormal || (critical && !prev.criticalManual),
+      };
+    });
+  }, [structuredObservationInputs]);
 
   const run = useCallback(async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -184,7 +249,7 @@ export function useLabWorkflow(
    * blocked save.
    */
   const fileResult = useCallback(() => run(async () => {
-    const profile = resolveLabResultProfile(order.testName, order.specimen);
+    const profile = resultProfile;
     const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
     const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
     if (!result) throw new Error('labFlow.errResultValue');
@@ -222,7 +287,7 @@ export function useLabWorkflow(
       }
     }
     setStep('report');
-  }), [currentUser, order, resultDraft, run, update]);
+  }), [currentUser, order, resultDraft, resultProfile, run, update]);
 
   /**
    * Correct a filed value without moving the order backwards in its lifecycle.
@@ -234,7 +299,7 @@ export function useLabWorkflow(
    */
   const amendResult = useCallback(() => run(async () => {
     const reason = amendReason;
-    const profile = resolveLabResultProfile(order.testName, order.specimen);
+    const profile = resultProfile;
     const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
     const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
     if (!result) throw new Error('labFlow.errResultValue');
@@ -256,7 +321,7 @@ export function useLabWorkflow(
       amendmentReason: reason.trim(),
     });
     setAmendReason('');
-  }), [amendReason, currentUser, order, resultDraft, run, update]);
+  }), [amendReason, currentUser, order, resultDraft, resultProfile, run, update]);
 
   /**
    * Close out the tail of the lifecycle.
@@ -315,7 +380,7 @@ export function useLabWorkflow(
     error,
     collectDraft, setCollectDraft,
     receiveDraft, setReceiveDraft,
-    resultDraft, setResultDraft, setResultValue, criticalVerdict,
+    resultDraft, setResultDraft, setResultValue, setObservationValue, criticalVerdict,
     amendReason, setAmendReason,
     collect, receive, reject, startProcessing, fileResult, amendResult, notifyClinician,
     markReviewed, markActedUpon, markCommunicated,

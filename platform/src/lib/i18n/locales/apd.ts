@@ -2831,6 +2831,7 @@ const apd: TranslationMap = {
   'labFlow.condition': 'حالة العينة',
   'labFlow.container': 'الوعاء',
   'labFlow.criticalNotice': 'حفظ نتيجة خطيرة بينبه الطبيب الطالب فورا. تأكد من القيمة الأول.',
+  'labFlow.criticalObservationLine': 'خطير: {{analyte}} {{value}} ({{comparison}})',
   'labFlow.errGeneric': 'الخطوة دي ما اتكملت',
   'labFlow.errRejectReason': 'اختار سبب الرفض',
   'labFlow.errResultValue': 'ادخل قيمة النتيجة',

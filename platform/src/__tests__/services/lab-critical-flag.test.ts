@@ -11,7 +11,7 @@
  * called back; a spurious flag is noise that teaches people to ignore flags,
  * which eventually costs the same thing.
  */
-import { matchCriticalRule, evaluateCritical } from '@/lib/services/lab-critical-flag';
+import { matchCriticalRule, evaluateCritical, evaluateCriticalObservations } from '@/lib/services/lab-critical-flag';
 
 describe('matching a free-text test name to a threshold rule', () => {
   it('matches the plain analyte name', () => {
@@ -111,5 +111,95 @@ describe('known limits of the name match', () => {
     // also means a very short name can match — the reason the empty-string
     // guard above exists.
     expect(matchCriticalRule('Hemoglob')?.testName).toBe('Hemoglobin (g/dL)');
+  });
+});
+
+/**
+ * `evaluateCritical` only ever sees the plain single-value result field.
+ * Every structured panel (Full Blood Count, chemistry panels, Urinalysis,
+ * Stool — see lab-result-catalog.ts) writes its analytes into an
+ * observations list instead, which is what `evaluateCriticalObservations`
+ * checks. This is the piece that used to not exist at all: a Hemoglobin of
+ * 4 g/dL entered through a Full Blood Count panel produced no flag, only a
+ * Hemoglobin entered through a bare single-value test did.
+ */
+describe('evaluating structured panel observations', () => {
+  it('flags a critical analyte inside a panel by its label', () => {
+    // The catalogue's WBC label carries the abbreviation in parens and a
+    // unit spelled differently to the QC table's ("10³/µL" vs "×10⁹/L") —
+    // both the name match and the unit-equivalence check have to hold.
+    const check = evaluateCriticalObservations([
+      { id: 'cbc.wbc', label: 'White blood cells (WBC)', value: '0.6', unit: '10³/µL' },
+    ]);
+    expect(check.isCriticalValue).toBe(true);
+    expect(check.hits).toHaveLength(1);
+    expect(check.hits[0].rule.testName).toBe('White Blood Cell (×10⁹/L)');
+    expect(check.hits[0].comparison).toBe('≤ 1');
+  });
+
+  it('is critical overall if ANY observation is, not only the first', () => {
+    const check = evaluateCriticalObservations([
+      { id: 'cbc.rbc', label: 'Red blood cells (RBC)', value: '5.1', unit: '10⁶/µL' },
+      { id: 'cbc.hemoglobin', label: 'Hemoglobin', value: '4.1', unit: 'g/dL' },
+      { id: 'cbc.platelets', label: 'Platelets', value: '250', unit: '10³/µL' },
+    ]);
+    expect(check.isCriticalValue).toBe(true);
+    expect(check.hits.map(h => h.id)).toEqual(['cbc.hemoglobin']);
+  });
+
+  it('leaves a panel of normal values alone', () => {
+    const check = evaluateCriticalObservations([
+      { id: 'cbc.hemoglobin', label: 'Hemoglobin', value: '12.8', unit: 'g/dL' },
+      { id: 'chem.potassium', label: 'Serum potassium', value: '4.2', unit: 'mmol/L' },
+    ]);
+    expect(check.isCriticalValue).toBe(false);
+    expect(check.hits).toHaveLength(0);
+  });
+
+  it('skips an observation whose analyte has no critical-value rule', () => {
+    // Amylase is a real chemistry-panel field with no entry in
+    // DEFAULT_CRITICAL_VALUES — it should be silently uninvolved, not
+    // mistaken for some other analyte.
+    const check = evaluateCriticalObservations([
+      { id: 'chem.amylase', label: 'Amylase', value: '9999', unit: 'U/L' },
+    ]);
+    expect(check.isCriticalValue).toBe(false);
+    expect(check.hits).toHaveLength(0);
+  });
+
+  it('does not compare a value against a rule whose unit does not match', () => {
+    // The chemistry panel's calcium field is entered in mg/dL; the QC
+    // table's Calcium rule is in mmol/L. Comparing the raw numbers would be
+    // wrong in both directions (a real critical value could read as normal,
+    // or vice versa) — with no conversion available, the safe move is not
+    // to flag it, not to guess.
+    const check = evaluateCriticalObservations([
+      { id: 'chem.calcium', label: 'Serum calcium', value: '1.0', unit: 'mg/dL' },
+    ]);
+    expect(check.isCriticalValue).toBe(false);
+    expect(check.hits).toHaveLength(0);
+  });
+
+  it('still evaluates the same analyte reported in the unit the rule expects', () => {
+    // Chemistry carries two "Serum glucose" fields — one in mg/dL, one in
+    // mmol/L. Only the one matching the rule's unit should ever fire.
+    const mismatched = evaluateCriticalObservations([
+      { id: 'chem.glucose_serum_mg', label: 'Serum glucose', value: '450', unit: 'mg/dL' },
+    ]);
+    expect(mismatched.isCriticalValue).toBe(false);
+
+    const matched = evaluateCriticalObservations([
+      { id: 'chem.glucose_serum_mmol', label: 'Serum glucose', value: '28', unit: 'mmol/L' },
+    ]);
+    expect(matched.isCriticalValue).toBe(true);
+    expect(matched.hits[0].comparison).toBe('≥ 25');
+  });
+
+  it('ignores a non-numeric or blank observation value', () => {
+    const check = evaluateCriticalObservations([
+      { id: 'cbc.hemoglobin', label: 'Hemoglobin', value: '', unit: 'g/dL' },
+      { id: 'chem.potassium', label: 'Serum potassium', value: 'clotted', unit: 'mmol/L' },
+    ]);
+    expect(check.isCriticalValue).toBe(false);
   });
 });

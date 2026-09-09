@@ -2836,6 +2836,7 @@ const en: TranslationMap = {
   'labFlow.condition': 'Specimen condition',
   'labFlow.container': 'Container',
   'labFlow.criticalNotice': 'Filing a critical result alerts the ordering clinician immediately. Verify the value first.',
+  'labFlow.criticalObservationLine': 'Critical: {{analyte}} {{value}} ({{comparison}})',
   'labFlow.errGeneric': 'That step could not be completed',
   'labFlow.errRejectReason': 'Choose a rejection reason',
   'labFlow.errResultValue': 'Enter a result value',

@@ -350,10 +350,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             <StructuredResultForm
               profile={structuredProfile}
               values={draft.observations}
-              onChange={(id, value) => ctrl.setResultDraft({
-                ...draft,
-                observations: { ...draft.observations, [id]: value },
-              })}
+              onChange={ctrl.setObservationValue}
             />
           ) : (
             <div className="labord-grid-2">
@@ -413,10 +410,25 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           </div>
 
           {ctrl.criticalVerdict.isCriticalValue && (
-            <p className="labord-help" style={{ color: 'var(--color-danger, #D92B20)', fontWeight: 600 }}>
-              <AlertTriangle className="w-3.5 h-3.5" aria-hidden style={{ display: 'inline', marginInlineEnd: 6 }} />
-              {t('lab.flagCriticalMsg')}
-            </p>
+            <div className="labord-help" style={{ color: 'var(--color-danger, #D92B20)', fontWeight: 600 }}>
+              <p style={{ margin: 0 }}>
+                <AlertTriangle className="w-3.5 h-3.5" aria-hidden style={{ display: 'inline', marginInlineEnd: 6 }} />
+                {t('lab.flagCriticalMsg')}
+              </p>
+              {ctrl.criticalVerdict.hits.length > 0 && (
+                <ul style={{ margin: '4px 0 0', paddingInlineStart: '1.25em' }}>
+                  {ctrl.criticalVerdict.hits.map(hit => (
+                    <li key={hit.id}>
+                      {t('labFlow.criticalObservationLine', {
+                        analyte: hit.label,
+                        value: hit.unit ? `${hit.value} ${hit.unit}` : hit.value,
+                        comparison: hit.comparison,
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           {draft.critical && (
             <p className="labord-help">{t('labFlow.criticalNotice')}</p>
