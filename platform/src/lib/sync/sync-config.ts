@@ -297,6 +297,29 @@ export function isSyncEnabled(): boolean {
   return typeof window !== 'undefined' && syncFlagAllowsSync();
 }
 
+/**
+ * Client-safe mirror of `isStandaloneDemo()`
+ * (`@/modules/identity/core/server-users`).
+ *
+ * That server-side check reads `COUCHDB_ADMIN_USER`/`COUCHDB_ADMIN_PASSWORD`,
+ * which are never `NEXT_PUBLIC_*` and so never reach the browser bundle. But
+ * the standalone demo deployment always pairs `NEXT_PUBLIC_DEMO_MODE=true`
+ * with sync switched off — see `syncFlagAllowsSync()`'s doc comment: either
+ * `NEXT_PUBLIC_SYNC_ENABLED=false` (the demo's stop switch) or no
+ * `NEXT_PUBLIC_COUCHDB_URL` at all — and both of those ARE `NEXT_PUBLIC_*`,
+ * inlined into the client bundle at build time.
+ *
+ * A hook or component should call this before assuming a write can be
+ * committed server-side (e.g. `PATCH /api/*`): on this deployment the
+ * browser's own PouchDB is the *only* copy of its documents, so a request
+ * for one of them 404s on the server no matter how healthy the network is.
+ * `navigator.onLine` alone cannot tell that story — the network can be
+ * perfectly up while the server simply has nothing to answer with.
+ */
+export function isStandaloneDemoDeployment(): boolean {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && !syncFlagAllowsSync();
+}
+
 /** Get the configured CouchDB base URL */
 export function getCouchDBUrl(): string {
   // Gateway mode is same-origin BY CONTRACT (config-validation refuses any

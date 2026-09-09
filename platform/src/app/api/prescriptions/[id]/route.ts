@@ -24,6 +24,25 @@ async function patchHandler(
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+    // A standalone demo deployment (NEXT_PUBLIC_DEMO_MODE='true', no CouchDB
+    // admin credentials — see `isStandaloneDemo`) has no server-side
+    // prescriptions database at all: every prescription lives only in the
+    // browser's own PouchDB (see `db-seed.ts`) and never replicates anywhere
+    // this route can read. `getPrescriptionById` below would answer "not
+    // found" for every single id, which used to surface here as a
+    // misleading 404 "Prescription not found" — indistinguishable from a
+    // caller passing a bad id — every time this route was hit at all. The
+    // client (`usePrescriptions.dispense`) now routes straight to the local
+    // transaction on this deployment and should never reach this PATCH, but
+    // answer honestly rather than 404 for any caller that still does (a
+    // stale tab, a direct API consumer).
+    const { isStandaloneDemo } = await import('@/modules/identity/core/server-users');
+    if (isStandaloneDemo()) {
+      return NextResponse.json(
+        { error: 'This deployment keeps prescriptions on the device; dispense from the pharmacy screen.' },
+        { status: 409 },
+      );
+    }
     // Tenant guard: only dispense/update a prescription the caller's
     // org/facility owns. Without this, a pharmacist could mark another tenant's
     // prescription dispensed (diversion) or rewrite dose/medication by id.
