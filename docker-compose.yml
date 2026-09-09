@@ -211,6 +211,17 @@ services:
     volumes:
       - couchdb_data:/opt/couchdb/data
     restart: unless-stopped
+    # CouchDB opens one loopback HTTP connection per continuous `_replicator`
+    # job (the tenant-database mirrors: ~2 per tenant DB), plus a file handle
+    # per open shard. With Docker's default soft limit of 1024 descriptors the
+    # process hit EMFILE on 2026-09-08 with 555 replicator sockets open: every
+    # new accept() failed, /_up timed out, the platform reported CouchDB
+    # "unavailable" and production returned 502/503 for hours. CouchDB's own
+    # guidance is a descriptor limit in the tens of thousands.
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     networks:
       - app-net
     healthcheck:
