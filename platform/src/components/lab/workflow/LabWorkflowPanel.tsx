@@ -39,7 +39,7 @@ export default function LabWorkflowPanel({
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const ctrl = useLabWorkflow(order, seedResult);
+  const ctrl = useLabWorkflow(order, seedResult, canWork);
 
   const index = LAB_WORKFLOW_STEPS.indexOf(ctrl.step);
   const onActiveStep = ctrl.step === ctrl.activeStep;
@@ -124,14 +124,14 @@ export default function LabWorkflowPanel({
       </nav>
 
       <div className="labord-main">
-        <div className="labord-scroll">
+        <fieldset className="labord-scroll" disabled={!canWork} style={{ border: 0, margin: 0, minWidth: 0 }}>
           {ctrl.step === 'order' && <OrderStep order={order} />}
           {ctrl.step === 'collect' && <CollectStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'receive' && <ReceiveStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'process' && <ProcessStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'result' && <ResultStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'report' && <ReportStep order={order} ctrl={ctrl} />}
-        </div>
+        </fieldset>
 
         <div className="labord-footer">
           <span className="labord-footer-note">

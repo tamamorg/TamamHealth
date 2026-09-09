@@ -125,12 +125,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Known notification ids — lets us chime only for genuinely new arrivals
   // (never on the first load of a session).
   const seenIds = useRef<Set<string> | null>(null);
+  const loadVersion = useRef(0);
   // Includes the user id + department: the transfer feed is per-user, so a
   // scope-only key would keep serving one user's inbox after a re-login in the
   // same tab.
   const scopeKey = `${currentUser?._id ?? ''}|${currentUser?.orgId ?? ''}|${currentUser?.hospitalId ?? ''}|${currentUser?.role ?? ''}|${currentUser?.department ?? ''}`;
 
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     // Only the FIRST load shows the spinner. The live-changes feed re-runs this
     // on every replicated write, and during a heavy sync those fire faster than
     // one pass over ~8 databases completes — flipping `loading` back to true on
@@ -479,6 +481,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
     } catch { /* offline */ }
 
+    // A slower, older refresh must not overwrite a newly received message.
+    if (version !== loadVersion.current) return;
     out.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
     if (seenIds.current === null) {
       seenIds.current = new Set(out.map(n => n.id));
@@ -495,7 +499,21 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey, perSourceLimit]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    seenIds.current = null;
+    void load();
+    // Recover after a dropped local changes feed or a sleeping browser tab.
+    const timer = window.setInterval(() => { if (!document.hidden) void load(); }, 30000);
+    const refresh = () => { if (!document.hidden) void load(); };
+    window.addEventListener('online', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      ++loadVersion.current;
+      window.clearInterval(timer);
+      window.removeEventListener('online', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
 
   // Read-state lives in localStorage, so a mark made in the bell panel has to
   // reach the page (and vice versa) — both mount their own copy of this hook.

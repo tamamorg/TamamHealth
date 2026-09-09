@@ -49,6 +49,26 @@ export default function SiteHeader() {
   const PORTAL_LINKS = content(PORTAL_LINKS_EN);
   const SEARCH_SUGGESTIONS = content(SEARCH_SUGGESTIONS_EN);
   const searchRef = useRef<HTMLInputElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!util) return;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) setUtil(null);
+    };
+    const scroll = (event: Event) => {
+      // Keep scrolling inside search results usable; page scrolling dismisses.
+      if (!(event.target instanceof Node) || !headerRef.current?.contains(event.target)) setUtil(null);
+    };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setUtil(null); };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('scroll', scroll, true);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('scroll', scroll, true);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [util]);
   // Search panel: what has been typed, and which result the keyboard is on.
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -155,6 +175,7 @@ export default function SiteHeader() {
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 5, background: "var(--color-accent)", zIndex: 60 }} />
       <header
+        ref={headerRef}
         onMouseLeave={() => setMenu(null)}
         /* --tm-bar is the nav row's current height. On phones the utility row
            is absolutely positioned over the bar, and it needs to stop there:

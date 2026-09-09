@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/context';
-import { PostConsultPanel } from '@/modules/post-consult/client';
+import { usePostConsultQueue } from '@/modules/post-consult/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { HeartPulse } from '@/components/icons/lucide';
 import EhrClinicalDashboard, {
@@ -415,6 +415,7 @@ export default function NurseHomeView() {
   const { handoffs } = useHandoffs();
   const { followUpsDue } = useFollowUpsDue();
   const { appointments } = useAppointments();
+  const postConsult = usePostConsultQueue();
 
   // DashboardPage only renders this view once currentUser is loaded and its
   // role has been checked — this guard is purely for TypeScript's benefit.
@@ -428,7 +429,6 @@ export default function NurseHomeView() {
 
   return (
     <main className="page-container page-enter">
-      <PostConsultPanel />
       <EhrClinicalDashboard
         clinicianName={currentUser.name || 'nurse'}
         patients={worklist.patients}
@@ -436,7 +436,15 @@ export default function NurseHomeView() {
         // schedules that were visible to the retired specialist roles but
         // absent from the shared nurse dashboard.
         appointments={myAppointments}
-        outstanding={worklist.outstanding}
+        outstanding={[...worklist.outstanding, {
+          label: t('postConsult.title'), count: postConsult.rows.length,
+          tone: postConsult.error ? 'danger' : postConsult.rows.length ? 'warning' : 'neutral',
+          entries: postConsult.error ? [{ id: 'post-consult-error', title: t('postConsult.error'), tone: 'danger' }] : postConsult.rows.map(encounter => ({
+            id: encounter._id, title: encounter.patientName,
+            subtitle: t('postConsult.status.pending'),
+            href: `/patients/${encodeURIComponent(encounter.patientId)}?tab=careChecklist#post-consult`,
+          })),
+        }]}
         activityItems={worklist.activity}
         activitySeriesNames={['Admitted', 'Arrivals']}
         // The nurse's own mission — the shell's default is the clinician's

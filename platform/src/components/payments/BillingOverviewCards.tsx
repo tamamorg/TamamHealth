@@ -213,7 +213,6 @@ export default function BillingOverviewCards({
           <StatRow
             icon={<Receipt className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
             label={<>Total <b>Invoices</b></>}
-            sub={`${counts.paid} paid`}
             value={counts.invoices}
           />
           <StatRow

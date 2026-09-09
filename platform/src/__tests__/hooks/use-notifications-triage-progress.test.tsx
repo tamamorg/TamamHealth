@@ -249,6 +249,8 @@ describe('useNotifications — unread staff messages join the bell feed', () => 
       orgId: CURRENT_USER.orgId, hospitalId: CURRENT_USER.hospitalId,
       createdAt: now, updatedAt: now,
     } as never);
+    // The notification hook is already mounted; no Messages page is opened.
+    await mountAndSettle();
     await putDoc(messagesDB(), {
       _id: 'msg-notification', type: 'message', recipientType: 'staff',
       direction: 'staff_to_staff', conversationId: 'conv-notification',
@@ -261,8 +263,7 @@ describe('useNotifications — unread staff messages join the bell feed', () => 
       createdAt: now, updatedAt: now,
     } as never);
 
-    await mountAndSettle();
-
+    await settle(() => !!hook.state?.items.some(item => item.id === 'message-msg-notification'));
     expect(hook.state!.items.find(item => item.id === 'message-msg-notification')).toEqual(expect.objectContaining({
       type: 'message',
       title: 'Dr. Chinonye Eze · Message',

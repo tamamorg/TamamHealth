@@ -1,4 +1,5 @@
 'use client';
+import { PostConsultPanel } from '@/modules/post-consult/client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/Modal';
@@ -1859,6 +1860,7 @@ export default function PatientDetailPage() {
 
           {activeTab === 'careChecklist' && patient && (
             <div className="space-y-4">
+              <PostConsultPanel key={patient._id} patientId={patient._id} embedded />
               <ScreeningsPanel patient={patient} />
               <RemindersPanel patient={patient} />
               <AssessmentsPanel patient={patient} focusId={focusId} />

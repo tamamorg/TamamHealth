@@ -13,6 +13,7 @@ async function sendgrid(input: Required<Pick<EmailSendInput, 'to' | 'from' | 'su
   const key = process.env.SENDGRID_API_KEY;
   if (!key) return { ok: false, providerId: 'sendgrid', error: 'SENDGRID_API_KEY not configured' };
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    signal: AbortSignal.timeout(15000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
@@ -33,6 +34,7 @@ async function resend(input: Required<Pick<EmailSendInput, 'to' | 'from' | 'subj
   const key = process.env.RESEND_API_KEY;
   if (!key) return { ok: false, providerId: 'resend', error: 'RESEND_API_KEY not configured' };
   const res = await fetch('https://api.resend.com/emails', {
+    signal: AbortSignal.timeout(15000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({ from: input.from, to: input.to, subject: input.subject, text: input.body }),
@@ -44,20 +46,17 @@ async function resend(input: Required<Pick<EmailSendInput, 'to' | 'from' | 'subj
 
 async function smtp(input: Required<Pick<EmailSendInput, 'to' | 'from' | 'subject' | 'body'>>): Promise<EmailSendResult> {
   if (!process.env.SMTP_URL) return { ok: false, providerId: 'smtp', error: 'SMTP_URL not configured' };
-  // nodemailer is an optional dependency — loaded dynamically so the bundle
-  // doesn't require it unless an SMTP deployment opts in.
-  let nodemailer: { createTransport: (url: string) => { sendMail: (o: Record<string, string>) => Promise<unknown> } };
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod: any = await import(/* webpackIgnore: true */ 'nodemailer' as string);
-    nodemailer = mod.default ?? mod;
-  } catch {
-    return { ok: false, providerId: 'smtp', error: 'nodemailer is not installed' };
-  }
-  await nodemailer.createTransport(process.env.SMTP_URL).sendMail({
+  // A literal import lets Next trace the dependency into the deployed image.
+  const { default: nodemailer } = await import('nodemailer');
+  const transport = nodemailer.createTransport(process.env.SMTP_URL);
+  Object.assign(transport.options, { connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000 });
+  const result = await transport.sendMail({
     from: input.from, to: input.to, subject: input.subject, text: input.body,
   });
-  return { ok: true, providerId: 'smtp' };
+  if (!result.accepted?.length || result.rejected?.length) {
+    return { ok: false, providerId: 'smtp', error: 'smtp_recipient_rejected' };
+  }
+  return { ok: true, providerId: 'smtp', providerMessageId: result.messageId };
 }
 
 /** Build a provider for one of the remote gateway keys. */
@@ -66,10 +65,12 @@ export function remoteProvider(choice: string): EmailProvider {
     : choice === 'resend' ? resend
       : choice === 'smtp' ? smtp
         : null;
-  if (!send) throw new Error(`Unknown EMAIL_PROVIDER "${choice}"`);
+  if (!send) return { name: 'invalid', send: async () => ({ ok: false, providerId: 'invalid', error: 'EMAIL_PROVIDER not configured correctly' }) };
   return {
     name: choice,
-    send: (input: EmailSendInput) => send({
+    send: (input: EmailSendInput) => !input.from?.trim()
+      ? Promise.resolve({ ok: false, providerId: choice, error: 'FROM_EMAIL not configured' })
+      : send({
       to: input.to,
       from: input.from || '',
       subject: input.subject,

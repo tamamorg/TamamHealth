@@ -14,8 +14,8 @@ import type { EmailProvider, EmailSendInput, EmailSendResult } from './provider'
 export const logProvider: EmailProvider = {
   name: 'log',
   async send(input: EmailSendInput): Promise<EmailSendResult> {
-    const preview = input.body.length > 80 ? `${input.body.slice(0, 80)}…` : input.body;
-    console.warn(`[email:log] would send to ${input.to} — "${input.subject}": ${preview}`);
+    void input;
+    console.warn('[email:log] Email delivery disabled; no message sent.');
     return { ok: true, providerId: 'log' };
   },
 };
