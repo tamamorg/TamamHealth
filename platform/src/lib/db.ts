@@ -435,7 +435,19 @@ export const specialtyCareDB = () => getDB('tamamhealth_specialty_care');
 // Bumped to 75: refresh the standalone v6 demo so every seeded staff record is
 // login-capable and the community-health worker receives the assigned Boma
 // follow-up dataset. Demo-only builds reset and repopulate on the next load.
-export const SEED_VERSION = 75;
+// Bumped to 76: fix the lab bench dead-ends from GitHub #85. `generatePatient`
+// (src/data/mock.ts) round-robins the roster across all four staffed
+// hospitals, but two seed blocks assumed every patient they touched lived at
+// hosp-001 — the hand-authored `labOrders` (lab-001..010) for core-roster
+// "showcase" patients (pat-00001..50), and the extended-roster's generated
+// lab/rx/appointment/triage records (pat-00087+). A patient scoped to a
+// different facility than the doc referencing them is invisible to a
+// single-facility viewer's patient list, so lab.gatluak's "Collect" rows
+// opened to "Patient not found" or an empty Results tab. Existing browsers
+// already hold the mismatched hospitalId/registrationHospital pairs under
+// the same document ids, so `safePut`'s skip-if-exists puts would never
+// correct them without this bump forcing a fresh seed.
+export const SEED_VERSION = 76;
 
 /**
  * Delete local PouchDB databases whose IndexedDB backing is corrupt.
