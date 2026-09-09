@@ -2793,10 +2793,26 @@ async function seedDatabaseExclusive(): Promise<void> {
   // Each new patient gets a lab order, prescription, appointment and triage
   // entry so they flow through the Lab, Pharmacy, Appointments and Triage lists
   // — not just the patient registry.
+  //
+  // Bugfix (GitHub #85): this used to stamp every generated record with
+  // hospitalId 'hosp-001' regardless of where the patient actually lives.
+  // `generatePatient` round-robins the extended roster across all four
+  // staffed hospitals (`STAFFED_HOSPITAL_IDS`), so ~3/4 of these lab/rx/
+  // appointment/triage docs referenced a patient registered at a DIFFERENT
+  // facility than the one the doc itself claimed. `filterByScope` scopes a
+  // patient by their own `registrationHospital`, so lab.gatluak's (hosp-001)
+  // bench queue showed a "Collect" row for a doc it could see, but opening the
+  // patient behind it 404'd ("Patient not found") for anyone scoped to a
+  // single facility — the chart's own `usePatients()`/`getPatientById`
+  // fallback can't find a patient whose home facility is elsewhere. Deriving
+  // every field below from the patient's OWN `registrationHospital` keeps the
+  // record and the patient in the same scope, so every generated row leads to
+  // a chart that actually opens for whichever facility it lands on.
   {
     const extraPatients = patients.slice(50); // pat-00087..pat-00136
     const genApptDB = appointmentsDB();
     const genTrDB = triageDB();
+    const hospitalNameById = new Map(hospitals.map(h => [h.id, h.name] as const));
     const GEN_TESTS = [
       { testName: 'Malaria RDT', specimen: 'Blood', result: 'Negative', ref: 'Negative', abnormal: false },
       { testName: 'Full Blood Count', specimen: 'Blood (EDTA)', result: 'Hb 11.8 g/dL, WBC 7.1×10³/μL', ref: '', abnormal: false },
@@ -2812,14 +2828,39 @@ async function seedDatabaseExclusive(): Promise<void> {
       { medication: 'Metformin', dose: '500mg BD x 30 days', frequency: 'BD', duration: '30 days' },
       { medication: 'Ferrous Sulfate + Folic Acid', dose: '200mg OD x 30 days', frequency: 'OD', duration: '30 days' },
     ];
-    const GEN_PROVIDERS = [
-      { id: 'user-dr.wani', name: 'Dr. James Wani Igga' },
-      { id: 'user-dr.achol', name: 'Dr. Achol Mayen Deng' },
-      { id: 'user-co.deng', name: 'CO Deng Mabior Kuol' },
-      // clinician.peter is the login picker's featured Juba doctor — without
-      // him in the rotation his dashboard calendar shows no bookings at all.
-      { id: 'user-clinician.peter', name: 'Dr. Peter Garang Deng' },
-    ];
+    // Per-facility staff, mirroring the same roster the "Visualization fill"
+    // block below (VIS_FACILITIES) already uses for this exact purpose — a
+    // provider genuinely on staff at the patient's own facility, not a Juba
+    // doctor ordering a test for someone three states away. hosp-004 (Bentiu)
+    // has no seeded doctor, so — same fallback VIS_FACILITIES makes — its
+    // "provider" is the lab tech, and its triager is the same lab tech.
+    type GenProvider = { id: string; name: string };
+    const GEN_FACILITY_PROVIDERS: Record<string, GenProvider[]> = {
+      'hosp-001': [
+        { id: 'user-dr.wani', name: 'Dr. James Wani Igga' },
+        { id: 'user-dr.achol', name: 'Dr. Achol Mayen Deng' },
+        // clinician.peter is the login picker's featured Juba doctor — without
+        // him in the rotation his dashboard calendar shows no bookings at all.
+        { id: 'user-clinician.peter', name: 'Dr. Peter Garang Deng' },
+      ],
+      'hosp-002': [
+        { id: 'user-co.deng', name: 'CO Deng Mabior Kuol' },
+        { id: 'user-dr.wau', name: 'Dr. Mary Akuol Deng' },
+      ],
+      'hosp-003': [
+        { id: 'user-dr.ochalla', name: 'Dr. Peter Ochalla Diu' },
+        { id: 'user-midwife.nyakong', name: 'Midwife Nyakong Gatkuoth' },
+      ],
+      'hosp-004': [
+        { id: 'user-lab.gatluak', name: 'Lab Tech Gatluak Puok' },
+      ],
+    };
+    const GEN_FACILITY_TRIAGER: Record<string, GenProvider> = {
+      'hosp-001': { id: 'user-triage.mary', name: 'Mary Nyaruai Gai' },
+      'hosp-002': { id: 'user-nurse.wau', name: 'Nurse Grace Achai Lual' },
+      'hosp-003': { id: 'user-nurse.stella', name: 'Nurse Stella Keji Lemi' },
+      'hosp-004': { id: 'user-lab.gatluak', name: 'Lab Tech Gatluak Puok' },
+    };
     const labStatuses = ['completed', 'in_progress', 'pending', 'completed', 'completed'];
     const apptStatuses = ['scheduled', 'confirmed', 'checked_in', 'completed', 'no_show'];
     const apptTypes = ['general', 'follow_up', 'specialist', 'lab', 'anc'];
@@ -2829,7 +2870,12 @@ async function seedDatabaseExclusive(): Promise<void> {
     for (let i = 0; i < extraPatients.length; i++) {
       const p = extraPatients[i];
       const name = `${p.firstName} ${p.middleName ? p.middleName + ' ' : ''}${p.surname}`.replace(/\s+/g, ' ').trim();
-      const prov = GEN_PROVIDERS[i % GEN_PROVIDERS.length];
+      const facilityId = p.registrationHospital || 'hosp-001';
+      const facilityName = hospitalNameById.get(facilityId) || 'Juba Teaching Hospital';
+      const facilityLevel = facilityId === 'hosp-001' || facilityId === 'hosp-003' ? 'national' : 'state';
+      const providers = GEN_FACILITY_PROVIDERS[facilityId] || GEN_FACILITY_PROVIDERS['hosp-001'];
+      const prov = providers[i % providers.length];
+      const triager = GEN_FACILITY_TRIAGER[facilityId] || GEN_FACILITY_TRIAGER['hosp-001'];
       const tst = GEN_TESTS[i % GEN_TESTS.length];
       const labStatus = labStatuses[i % labStatuses.length];
       const labOrder = daysAgo(i % 9);
@@ -2840,7 +2886,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         result: labStatus === 'completed' ? tst.result : '', unit: '', referenceRange: tst.ref,
         abnormal: labStatus === 'completed' ? tst.abnormal : false, critical: false,
         orderedBy: prov.name, orderedAt: labOrder.replace('T', ' ').slice(0, 16), completedAt: labDone ? labDone.replace('T', ' ').slice(0, 16) : '',
-        hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
+        hospitalId: facilityId, hospitalName: facilityName,
         createdAt: labOrder, updatedAt: labDone || labOrder, orgId: PUBLIC_ORG_ID,
       });
 
@@ -2851,7 +2897,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         _id: `rx-gen-${p.id}`, type: 'prescription', patientId: p.id, patientName: name,
         medication: med.medication, dose: med.dose, route: 'Oral', frequency: med.frequency, duration: med.duration,
         prescribedBy: prov.name, status: rxStatus,
-        hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
+        hospitalId: facilityId, hospitalName: facilityName,
         createdAt: rxCreated, updatedAt: rxCreated, ...(rxStatus === 'dispensed' ? { dispensedAt: rxCreated } : {}),
         orgId: PUBLIC_ORG_ID,
       });
@@ -2859,7 +2905,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       const hh = String(8 + (i % 8)).padStart(2, '0');
       await safePut(genApptDB, {
         _id: `appointment-gen-${p.id}`, type: 'appointment', patientId: p.id, patientName: name, patientPhone: p.phone || '',
-        providerId: prov.id, providerName: prov.name, facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national',
+        providerId: prov.id, providerName: prov.name, facilityId, facilityName, facilityLevel,
         appointmentDate: i % 2 === 0 ? dateFromNow((i % 14) + 1) : dateAgo(i % 10), appointmentTime: `${hh}:00`, endTime: `${hh}:30`, duration: 30,
         appointmentType: apptTypes[i % apptTypes.length], priority: 'routine', department: 'Outpatient', reason: 'Routine visit',
         status: apptStatuses[i % apptStatuses.length], reminderSent: false, isRecurring: false,
@@ -2874,8 +2920,8 @@ async function seedDatabaseExclusive(): Promise<void> {
         // 1–5 days back, never today: these are historical flow-through
         // records, and a same-day triage here would collide with the
         // one-visit-per-patient-per-day rule the VIS lanes below enforce.
-        chiefComplaint: `${tst.testName} workup`, triagedBy: 'user-nurse.stella', triagedByName: 'Nurse Stella Keji Lemi', triagedAt: daysAgo((i % 5) + 1),
-        facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', status: triageStat[i % triageStat.length],
+        chiefComplaint: `${tst.testName} workup`, triagedBy: triager.id, triagedByName: triager.name, triagedAt: daysAgo((i % 5) + 1),
+        facilityId, facilityName, status: triageStat[i % triageStat.length],
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo((i % 5) + 1), updatedAt: daysAgo((i % 5) + 1),
       });
     }

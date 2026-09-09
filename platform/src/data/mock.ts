@@ -2069,6 +2069,40 @@ if (_generatedPatients[21]) {
   };
 }
 
+// Pin the "core roster" patients db-seed.ts builds an extensive Juba Teaching
+// Hospital story around (admissions, beds/wards, billing, insurance claims,
+// triage, care assignments — see labOrders lab-001..010 and the surrounding
+// curated blocks in db-seed.ts) to hosp-001 (GitHub #85).
+//
+// `generatePatient`'s round-robin (`STAFFED_HOSPITAL_IDS[index % 4]`) had
+// otherwise scattered these SAME ids across all four staffed hospitals —
+// e.g. pat-00022 (index 21) generated as a Wau State Hospital patient while
+// db-seed.ts's admission-2/bed-2/ward-1/careAssignments/insurance/lab-005 all
+// narrate her as an admitted Juba inpatient. `filterByScope` scopes a patient
+// by their OWN `registrationHospital`, so a hosp-001 viewer's `usePatients()`
+// silently dropped her, and the chart's cross-facility fallback
+// (`getPatientById` with hospitalId intentionally omitted) still fails closed
+// for a single-facility role — the net effect was "Patient not found" for
+// exactly the patients the demo relies on most (dr.wani, lab.gatluak,
+// nurse.stella, the ward and billing dashboards). Pinning the generated
+// identity to match the curated story is the minimal fix: every OTHER
+// document for these ids already assumed hosp-001, so this makes the
+// generator agree with them rather than rewriting the curated content.
+//
+// pat-00001 (index 0) and pat-00005 (index 4) already resolve to hosp-001 —
+// one by explicit override above, the other by coincidence of the round-robin
+// — so they are not listed here.
+const CORE_ROSTER_JUBA_INDICES = [7, 11, 14, 17, 21, 29, 34, 39]; // pat-00008,12,15,18,22,30,35,40
+for (const idx of CORE_ROSTER_JUBA_INDICES) {
+  if (_generatedPatients[idx]) {
+    _generatedPatients[idx] = {
+      ..._generatedPatients[idx],
+      registrationHospital: 'hosp-001',
+      lastVisitHospital: 'hosp-001',
+    };
+  }
+}
+
 export const patients: Patient[] = _generatedPatients;
 
 // File attachments
