@@ -71,6 +71,7 @@ export function useLabWorkflow(
   order: LabResultDoc,
   /** A reading imported from an analyzer, offered for review rather than saved. */
   seedResult?: { value: string; unit: string; referenceRange: string },
+  canWork = true,
 ) {
   const { currentUser } = useAuth();
   const { advance, update } = useLabResults(order.patientId);
@@ -188,6 +189,10 @@ export function useLabWorkflow(
   }, [structuredObservationInputs]);
 
   const run = useCallback(async (fn: () => Promise<unknown>) => {
+    if (!canWork || currentUser?.role !== 'lab_tech') {
+      setError('labFlow.readOnly');
+      return false;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -200,7 +205,7 @@ export function useLabWorkflow(
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [canWork, currentUser?.role]);
 
   const collect = useCallback(() => run(async () => {
     await advance(order._id, 'specimen_collected', {

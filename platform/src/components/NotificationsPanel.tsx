@@ -59,7 +59,7 @@ export default function NotificationsPanel({
     setNotificationAlertPref(next);
   };
 
-  const visible = items.slice(0, PANEL_LIMIT);
+  const visible = [...items].sort((a, b) => Number(!!a.read) - Number(!!b.read)).slice(0, PANEL_LIMIT);
 
   const openAll = () => { onClose(); router.push('/notifications'); };
 

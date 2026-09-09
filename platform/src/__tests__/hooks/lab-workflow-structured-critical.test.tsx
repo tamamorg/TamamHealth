@@ -27,7 +27,7 @@ jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 const CURRENT_USER = {
-  _id: 'user-dr-wani', name: 'Dr. James Wani Igga', role: 'lab_technician' as const,
+  _id: 'user-dr-wani', name: 'Dr. James Wani Igga', role: 'lab_tech' as string,
   hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: 'org-moh-ss',
 };
 jest.mock('@/lib/context', () => ({ useAuth: () => ({ currentUser: CURRENT_USER }) }));
@@ -54,6 +54,7 @@ let root: Root;
 let container: HTMLDivElement;
 
 beforeEach(() => {
+  CURRENT_USER.role = 'lab_tech';
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -89,6 +90,19 @@ function baseFbcOrder(overrides: Partial<LabResultDoc> = {}) {
     ...overrides,
   };
 }
+
+it('refuses report actions when a nurse invokes the workflow directly', async () => {
+  CURRENT_USER.role = 'nurse';
+  const order = await createLabResult(baseFbcOrder() as never);
+  act(() => { root.render(<Harness order={order} />); });
+  await act(async () => { await flush(); });
+  await act(async () => {
+    expect(await harness.controller!.fileResult()).toBe(false);
+    expect(await harness.controller!.amendResult()).toBe(false);
+  });
+  expect((await getLabResultById(order._id))?.result).toBe('');
+  expect(harness.controller!.error).toBe('labFlow.readOnly');
+});
 
 it('flags a critically low Hemoglobin entered into a Full Blood Count panel and files with the flag', async () => {
   const order = await createLabResult(baseFbcOrder() as never);
