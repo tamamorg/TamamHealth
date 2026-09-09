@@ -109,6 +109,7 @@ const en: TranslationMap = {
   'action.newConsultation': 'New Consultation',
   'action.next': 'Next',
   'action.no': 'No',
+  'action.prescribe': 'Prescribe',
   'action.print': 'Print',
   'action.refer': 'Refer',
   'action.save': 'Save',

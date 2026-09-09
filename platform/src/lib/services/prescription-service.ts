@@ -58,6 +58,26 @@ function coarseFromRxStatus(s: PrescriptionStatus): PrescriptionDoc['status'] {
   return (s === 'dispensed' || s === 'counseled' || s === 'complete') ? 'dispensed' : 'pending';
 }
 
+/** Machine-readable reason `advancePrescription` refused a clearance. */
+export type PrescriptionClearanceErrorCode = 'ACTOR_NOT_FOUND' | 'NOT_A_PHARMACIST';
+
+/**
+ * Thrown by `advancePrescription` when a `cleared_for_dispensing` transition
+ * is refused. `ACTOR_NOT_FOUND` is an infrastructure/lookup failure (neither
+ * the local users store nor the API could resolve the signed-in actor at
+ * all) — distinct from `NOT_A_PHARMACIST`, a real safety refusal (the actor
+ * exists but is inactive or holds the wrong role). Collapsing the two used to
+ * mean a pharmacist got the same wording whether the offline caching layer
+ * ate their session or they genuinely lacked permission, and a raw fetch
+ * error from an unreachable `/api/users` could surface as neither.
+ */
+export class PrescriptionClearanceError extends Error {
+  constructor(message: string, public readonly code: PrescriptionClearanceErrorCode) {
+    super(message);
+    this.name = 'PrescriptionClearanceError';
+  }
+}
+
 /**
  * Advance a prescription to the next lifecycle stage, validated against
  * PRESCRIPTION_TRANSITIONS. Keeps the coarse `status` in sync. Throws on an
@@ -72,6 +92,14 @@ function coarseFromRxStatus(s: PrescriptionStatus): PrescriptionDoc['status'] {
  * resolved directory-first — same pattern as the witness/dispenser identity
  * checks in dispensing-service.ts — so the check can't be satisfied by a
  * caller-supplied role string.
+ *
+ * The actor lookup (`getUserById`) is itself local-first in the browser (the
+ * PouchDB users store, not a network round trip) precisely so this check
+ * keeps working when the API is unreachable — see the browser branch of
+ * `getUserById`. If neither the local store nor the API can resolve the
+ * actor at all, that is reported as `ACTOR_NOT_FOUND` rather than refusing
+ * with the same wording a genuine non-pharmacist gets, and never as a raw
+ * fetch/JSON error escaping this function.
  */
 export async function advancePrescription(
   id: string,
@@ -87,8 +115,17 @@ export async function advancePrescription(
   }
   if (to === 'cleared_for_dispensing') {
     const actor = actorId ? await getUserById(actorId) : null;
-    if (!actor || actor.isActive === false || !CLEARANCE_ROLES.includes(actor.role)) {
-      throw new Error('Only a pharmacist may clear a medication order for dispensing.');
+    if (!actor) {
+      throw new PrescriptionClearanceError(
+        'Could not verify the signed-in pharmacist. Check your connection and try again.',
+        'ACTOR_NOT_FOUND',
+      );
+    }
+    if (actor.isActive === false || !CLEARANCE_ROLES.includes(actor.role)) {
+      throw new PrescriptionClearanceError(
+        'Only a pharmacist may clear a medication order for dispensing.',
+        'NOT_A_PHARMACIST',
+      );
     }
   }
   return updatePrescription(id, { ...extra, orderStatus: to, status: coarseFromRxStatus(to) });
