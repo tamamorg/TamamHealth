@@ -16,6 +16,7 @@ import {
 } from '../policy/user-scope-rules';
 import { STAFF_DIRECTORY_READ_ROLES } from '../policy/staff-directory-access';
 import { withAuditLog, AUDIT_ACTION_HEADER } from '@/lib/audit/with-audit';
+import { canonicalizeUserRole } from '@/lib/user-role';
 
 import type { UserRole, UserDoc } from '@/lib/db-types';
 
@@ -347,12 +348,60 @@ export async function GET(request: NextRequest) {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
     if (!hasRole(auth, READ_ROLES)) return forbidden();
-    const { getAllUsers } = await import('@/modules/identity/services/user-service');
     const { redactUserForClient } = await import('@/modules/identity/services/user-service');
-    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
     const scope = buildScopeFromAuth(auth);
-    const users = await getAllUsers(scope);
-    return NextResponse.json({ users: users.map(redactUserForClient) });
+
+    // A standalone demo deployment (NEXT_PUBLIC_DEMO_MODE='true', no CouchDB
+    // admin credentials — see `isStandaloneDemo`) has no server-side users
+    // database at all: `usersDB()` refuses to build a handle rather than
+    // pretend one exists, and that refusal used to surface here as a bare 500
+    // "Internal server error" on every page that reads the staff directory
+    // (pharmacy's pharmacist-actor check, the org-admin dashboard tiles, the
+    // messages "to" picker, …). That absence IS the deployment, not an
+    // outage, so answer from the same seeded roster every browser on this
+    // deployment already carries in its local PouchDB (see `db-seed.ts`),
+    // scoped exactly as the normal path scopes a real roster.
+    const { isStandaloneDemo } = await import('@/modules/identity/core/server-users');
+    if (isStandaloneDemo()) {
+      const { DEMO_USER_PROFILES } = await import('@/modules/identity/core/seed-credentials');
+      const now = new Date(0).toISOString();
+      const demoUsers: UserDoc[] = DEMO_USER_PROFILES.map(profile => ({
+        _id: `user-${profile.username}`,
+        type: 'user',
+        username: profile.username,
+        // Never a real credential: nothing authenticates against this record
+        // (see `authenticateStandaloneDemoUser`) and `redactUserForClient`
+        // strips the field before it reaches a response body regardless.
+        passwordHash: '',
+        name: profile.name,
+        role: canonicalizeUserRole(profile.role as UserRole),
+        hospitalId: profile.hospitalId,
+        hospitalName: profile.hospitalName,
+        orgId: profile.orgId,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      }));
+      return NextResponse.json({ users: filterByScope(demoUsers, scope).map(redactUserForClient) });
+    }
+
+    try {
+      const { getAllUsers } = await import('@/modules/identity/services/user-service');
+      const users = await getAllUsers(scope);
+      return NextResponse.json({ users: users.map(redactUserForClient) });
+    } catch (err) {
+      // CouchDB IS configured here (isStandaloneDemo() said so above) but
+      // could not be read — an outage, not "no such data" and not a bug in
+      // this route. A bare 500 collapsed both, which is what made an
+      // infrastructure outage look identical to a broken endpoint on every
+      // caller (the org-admin dashboard's "Needs attention" tiles, the
+      // pharmacist clearance check's raw fetch error). 503 lets callers tell
+      // the two apart and degrade accordingly instead of treating it as a
+      // hard failure.
+      logApiError('[API /users GET]', err);
+      return NextResponse.json({ error: 'User directory unavailable' }, { status: 503 });
+    }
   } catch (err) {
     logApiError('[API /users GET]', err);
     return serverError();

@@ -220,7 +220,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
         <div className="flex gap-2 mt-5">
           <button onClick={close} className="btn btn-secondary flex-1" disabled={submitting}>{t('action.cancel')}</button>
           <button onClick={handleSubmit} className="btn btn-primary flex-1" disabled={submitting || !canSubmit}>
-            {submitting ? t('referrals.saving') : t('tab.prescriptions')}
+            {submitting ? t('referrals.saving') : t('action.prescribe')}
           </button>
         </div>
       </div>

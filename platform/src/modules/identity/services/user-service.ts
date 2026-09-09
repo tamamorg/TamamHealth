@@ -128,8 +128,36 @@ export async function getAllUsersUnscoped(): Promise<UserDoc[]> {
 
 export async function getUserById(id: string): Promise<UserDoc | null> {
   if (isBrowserRuntime()) {
-    const users = await getAllUsersUnscoped();
-    return users.find(user => user._id === id) ?? null;
+    // Local-first. The browser's PouchDB users store (`usersDB()`) is a
+    // pull-replica of the shared users database — seeded on first boot and
+    // kept current by sync — so it can answer without a network round trip.
+    // This matters because several CALLERS of this function are clinical
+    // safety gates (a pharmacist clearing an order for dispensing, a
+    // controlled-substance witness, a medication-administration witness): a
+    // check that exists to keep an unverified actor from doing something must
+    // not itself fail open — or fail with a raw fetch error — just because
+    // `/api/users` happens to be unreachable (a standalone demo server with no
+    // CouchDB is exactly this case; see `isStandaloneDemo` and
+    // `users-route.ts`). Only fall back to the API when the local replica
+    // does not have the document yet, e.g. an account created moments ago on
+    // another device that has not replicated down here.
+    try {
+      return await usersDB().get(id) as UserDoc;
+    } catch {
+      // Not found locally (or the local DB itself errored) — fall through.
+    }
+    try {
+      const users = await getAllUsersUnscoped();
+      return users.find(user => user._id === id) ?? null;
+    } catch {
+      // Neither the local replica nor the API could answer. Return null
+      // exactly as the "not found" case does, rather than let a raw
+      // fetch/JSON error escape a function whose contract is `UserDoc | null`
+      // — callers (safety checks and simple lookups alike) already handle a
+      // null actor; they should never have to also handle this function
+      // throwing.
+      return null;
+    }
   }
   try {
     const db = usersDB();

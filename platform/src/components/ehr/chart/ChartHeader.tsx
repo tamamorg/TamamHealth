@@ -15,6 +15,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
 import { formatDobOmrs } from '@/lib/date-utils';
+import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
 
@@ -267,7 +268,7 @@ export default function ChartHeader({
         >
           <DuotoneIcon name="dollarSign" size={13} />
           <span className="tamam-allergy-label">Balance</span>
-          <span>${patientBalance.toFixed(2)} due</span>
+          <span>{formatMoney(patientBalance)} due</span>
         </button>
       </div>
     </div>

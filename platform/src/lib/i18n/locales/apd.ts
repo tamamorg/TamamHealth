@@ -119,6 +119,7 @@ const apd: TranslationMap = {
   'action.newConsultation': 'كشف جديد',
   'action.next': 'التالي',
   'action.no': 'لا',
+  'action.prescribe': 'اكتب وصفة',
   'action.print': 'طباعة',
   'action.refer': 'تحويل',
   'action.save': 'حفظ',
