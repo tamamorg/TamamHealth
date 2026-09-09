@@ -6,6 +6,7 @@ import { medicationAdministrationsDB, prescriptionsDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useDataScope } from './useDataScope';
 import { useAuth } from '../context';
+import { isStandaloneDemoDeployment } from '../sync/sync-config';
 
 export function usePrescriptions(patientId?: string) {
   const [prescriptions, setPrescriptions] = useState<PrescriptionDoc[]>([]);
@@ -71,11 +72,18 @@ export function usePrescriptions(patientId?: string) {
    * workstations. A confirmed-offline device uses the same compensating
    * transaction locally and syncs later; an ambiguous network failure never
    * falls back locally because the server may already have committed it.
+   *
+   * On a standalone demo deployment there is no server-side data store at
+   * all — every prescription lives only in this browser's PouchDB — so the
+   * online branch is unreachable there regardless of `navigator.onLine`:
+   * the server would 409 (see `PATCH /api/prescriptions/[id]`) or, before
+   * that fix, 404 "Prescription not found" for every id. Route straight to
+   * the local transaction instead.
    */
   const dispense = useCallback(async (
     input: import('../services/dispensing-service').DispenseInput,
   ) => {
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
+    if (typeof navigator !== 'undefined' && navigator.onLine && !isStandaloneDemoDeployment()) {
       const { apiFetch } = await import('../api-fetch');
       let response: Response;
       try {
