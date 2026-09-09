@@ -110,7 +110,7 @@ describe('demo seed: lab order / patient scope consistency (GitHub #85)', () => 
     const byId = new Map(labDocs.map(l => [l._id as string, l]));
 
     // Patient + critical flag as described in db-seed.ts's own labOrders array
-    // (lab-005 — Kuol Akot Ajith's Hb 4.2 g/dL — is the one "already resulted,
+    // (lab-005 — pat-00022's Hb 4.2 g/dL — is the one "already resulted,
     // critical" order QA specifically flagged as unreachable).
     const expected: Record<string, { patientId: string; critical: boolean }> = {
       'lab-001': { patientId: 'pat-00001', critical: false },
@@ -137,5 +137,59 @@ describe('demo seed: lab order / patient scope consistency (GitHub #85)', () => 
       expect(patient).toBeDefined();
       expect(patient?.registrationHospital).toBe(doc?.hospitalId);
     }
+  }, 60000);
+
+  it('lab-001..010\'s patientName always matches the patient it references', async () => {
+    // The hand-authored `labOrders` literals used to be independent of the
+    // generated roster — e.g. lab-005 said "Kuol Akot Ajith" while pat-00022
+    // actually generates as "Anna Laku Bol" — so top-nav search for the name
+    // printed on the order found nothing, and the mismatch was invisible in
+    // this file because `safePut`'s `normalizePoolIdentity` silently
+    // overwrote `patientName` with the real one on write. Assert the literal
+    // itself (not just the post-write doc) stays truthful: both the raw
+    // array `db-seed.ts` exports and the doc actually stored in
+    // labResultsDB must equal the referenced patient's full name.
+    const { patientFullName } = await import('@/lib/patient-utils');
+    const { labOrders } = await import('@/lib/db-seed');
+    const { patientsById, labDocs } = await runSeedAndLoad();
+    const byId = new Map(labDocs.map(l => [l._id as string, l]));
+
+    for (const order of labOrders) {
+      const patient = patientsById.get(order.patientId);
+      expect(patient).toBeDefined();
+      const expectedName = patientFullName(patient as unknown as { firstName: string; middleName?: string; surname: string });
+
+      expect(order.patientName).toBe(expectedName);
+
+      const seededDoc = byId.get(order._id);
+      expect(seededDoc?.patientName).toBe(expectedName);
+    }
+  }, 60000);
+
+  it('a hosp-001 lab tech sees lab-005 (critical, resulted) on pat-00022\'s chart', async () => {
+    // GitHub #85 fixed the hospital/org SCOPE mismatch that hid this order.
+    // This test pins down the read path end to end — getLabResultsByPatient
+    // scoped exactly as the ResultsSection chart tab calls it for lab.gatluak
+    // (hosp-001, lab_tech) — so a regression in filterByScope or the query
+    // itself, not just the seed data, would be caught here.
+    await runSeedAndLoad();
+    const { getLabResultsByPatient } = await import('@/lib/services/lab-service');
+    const { patientsDB } = createDBMock() as unknown as { patientsDB: () => PouchDB.Database };
+    const pat22 = await patientsDB().get('pat-00022') as unknown as { orgId?: string };
+
+    const labTechScope = {
+      role: 'lab_tech' as const,
+      orgId: pat22.orgId,
+      hospitalId: 'hosp-001',
+      userId: 'user-lab.gatluak',
+    };
+
+    const results = await getLabResultsByPatient('pat-00022', labTechScope);
+    const lab005 = results.find(r => r._id === 'lab-005');
+
+    expect(lab005).toBeDefined();
+    expect(lab005?.critical).toBe(true);
+    expect(lab005?.status).toBe('completed');
+    expect(lab005?.patientName).toBe('Anna Laku Bol');
   }, 60000);
 });
