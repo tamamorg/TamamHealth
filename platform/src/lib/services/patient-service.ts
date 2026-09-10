@@ -614,25 +614,15 @@ export async function createPatient(
   }
   const hospitalNumber = data.hospitalNumber || await generateHospitalNumber(data.registrationHospital);
   const countryId = data.countryId || await inferCountryIdFromHospital(data.registrationHospital);
-  // Deliberately org-scoped only (hospitalId dropped), not the caller's full
-  // scope. `assignGeocodeId` counts existing siblings under the SAME boma +
-  // household to pick the next suffix, which must stay a global (org-wide)
-  // computation to avoid assigning the same geocodeId to two different
-  // households' members. Every non-admin CREATE role except
-  // `medical_superintendent` already only ever replicates its own facility's
-  // patients (see `MULTI_FACILITY_ROLES` in sync/facility-entitlements.ts),
-  // so full scoping and org-only scoping are equivalent for them in
-  // practice. `medical_superintendent` is the one CREATE role whose
-  // replication entitlement is org-wide but whose `filterByScope` treatment
-  // is facility-narrowed (it isn't in filterByScope's admin bypass) — passing
-  // their full scope here would artificially hide sibling records at the
-  // OTHER facilities they oversee and risk a real geocodeId collision, not
-  // just a display gap. Dropping hospitalId keeps the computation correct
-  // for that role while still not reading across org boundaries.
+  // Preserve facility entitlements when counting already-issued identifiers.
+  // Dropping hospitalId makes a facility-bound receptionist fail closed in
+  // filterByScope, hiding every existing patient and repeatedly issuing -1.
+  // Org-wide roles retain their broader entitlement without changing roles or
+  // exposing any additional records. Atomic claims below still guard races.
   const geocodeId = data.geocodeId
     || await assignGeocodeId(
       data as unknown as Record<string, unknown>,
-      scope ? { orgId: scope.orgId, role: scope.role } : undefined,
+      scope,
     );
 
   // Close the TOCTOU window between checkDuplicates() above and db.put() below
