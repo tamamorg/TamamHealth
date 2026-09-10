@@ -52,12 +52,13 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
   const requestSeq = useRef(0);
 
   const load = useCallback(async () => {
+    const seq = ++requestSeq.current;
     if (!enabled || !facilityId || !visitReason) {
       setSlots([]);
       setRange(null);
+      setLoading(false);
       return;
     }
-    const seq = ++requestSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -87,7 +88,18 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
     }
   }, [enabled, facilityId, orgId, visitReason, patientClass, channel, from, days, providerKey, secondaryStaffId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+    if (!enabled || !facilityId || !visitReason) return;
+    const timer = setInterval(() => { void load(); }, 15000);
+    const refresh = () => { void load(); };
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      requestSeq.current++;
+    };
+  }, [load, enabled, facilityId, visitReason]);
 
   /** The days that have at least one opening, ascending. */
   const availableDates = useMemo(

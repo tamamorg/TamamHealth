@@ -331,7 +331,8 @@ function occupancyFor(
   for (const block of blocks) {
     if (!overlaps(slotStart, slotEnd, block.start, block.end)) continue;
     const sameProvider = block.providerId === window.providerId;
-    const sameRoom = !!window.roomId && block.roomId === window.roomId;
+    const sameRoom = !!window.roomId && block.roomId === window.roomId
+      && block.facilityId === window.facilityId;
     const sameFacility = policy.singleSlotPerFacility && block.facilityId === window.facilityId;
     if (sameProvider || sameRoom || sameFacility) count++;
   }

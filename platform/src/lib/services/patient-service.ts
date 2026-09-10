@@ -418,7 +418,8 @@ function outOfScopeDuplicateMessage(descriptor: string): string {
 }
 
 /**
- * Check for potential duplicate patients by name+DOB, phone, geocodeId, or nationalId.
+ * Check for potential duplicate patients by name+DOB, geocodeId, or nationalId.
+ * A phone is a contact route, not a unique identity: families may share it.
  *
  * Duplicate detection itself always searches every patient this device
  * knows about, regardless of `scope` — a genuine cross-facility duplicate
@@ -446,7 +447,6 @@ async function checkDuplicates(data: Record<string, unknown>, scope?: DataScope)
   const firstName = ((data.firstName as string) || '').toLowerCase().trim();
   const surname = ((data.surname as string) || '').toLowerCase().trim();
   const dob = data.dateOfBirth as string | undefined;
-  const phone = data.phone as string | undefined;
   const geocodeId = data.geocodeId as string | undefined;
   const nationalId = data.nationalId as string | undefined;
 
@@ -460,15 +460,7 @@ async function checkDuplicates(data: Record<string, unknown>, scope?: DataScope)
         ? `A patient named "${p.firstName} ${p.surname}" with the same date of birth already exists (${p.hospitalNumber})`
         : outOfScopeDuplicateMessage('the same name and date of birth');
     }
-    // Match by phone. Compared on digits only so "0912 345 678" and
-    // "+211912345678" are recognised as the same number rather than as two
-    // patients — sharing a household phone is normal here, but the same string
-    // typed two ways is not a different person.
-    if (phone && digitsOf(phone).length >= MIN_PHONE_DIGITS && digitsOf(p.phone) === digitsOf(phone)) {
-      return isInScope(p)
-        ? `A patient with phone number ${phone} already exists (${p.firstName} ${p.surname}, ${p.hospitalNumber})`
-        : outOfScopeDuplicateMessage('this phone number');
-    }
+    // Shared household/guardian phones must not block distinct patients.
     // Match by geocode ID
     if (geocodeId && p.geocodeId === geocodeId) {
       return isInScope(p)
@@ -497,14 +489,6 @@ async function checkDuplicates(data: Record<string, unknown>, scope?: DataScope)
  * registration entirely.
  */
 const MIN_NATIONAL_ID_LENGTH = 6;
-
-/** Minimum digits before a phone number is treated as identifying. */
-const MIN_PHONE_DIGITS = 9;
-
-/** Digits only, so formatting differences don't read as different numbers. */
-function digitsOf(value: string | undefined): string {
-  return (value || '').replace(/\D/g, '');
-}
 
 /**
  * Atomically claim a strong identifier before writing the patient (KAN-15).
