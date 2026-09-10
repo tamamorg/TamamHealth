@@ -69,11 +69,13 @@ async function loadWindows(facilityId: string, orgId?: string): Promise<Availabi
     (!orgId || !w.orgId || w.orgId === orgId));
 }
 
-async function loadAppointments(facilityId: string, orgId: string | undefined, from: string, to: string): Promise<AppointmentDoc[]> {
+async function loadAppointments(_facilityId: string, orgId: string | undefined, from: string, to: string): Promise<AppointmentDoc[]> {
   const all = await findByType<AppointmentDoc>(appointmentsDB(), 'appointment');
   return all.filter(a =>
-    a.facilityId === facilityId &&
-    (!orgId || !a.orgId || a.orgId === orgId) &&
+    // Match the save guard: a clinician's commitments span the organization,
+    // including another facility and legacy rows without a facility ID.
+    // Only busy intervals reach the slot engine; patient details are not returned.
+    a.orgId === orgId &&
     a.appointmentDate >= from && a.appointmentDate <= to);
 }
 

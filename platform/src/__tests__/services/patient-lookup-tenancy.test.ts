@@ -80,14 +80,14 @@ function registration(overrides: Record<string, unknown> = {}) {
 }
 
 describe('checkDuplicates via createPatient: scoped disclosure', () => {
-  test('a duplicate INSIDE the caller\'s scope is still named in full (phone match)', async () => {
+  test('a duplicate INSIDE the caller\'s scope is still named in full (name and DOB match)', async () => {
     const existing = await seedPatient({
       _id: 'pat-inscope-phone', orgId: ORG_A, registrationHospital: HOSP_A1,
       firstName: 'Abuk', surname: 'Deng', dateOfBirth: '1975-03-03',
       phone: '+211912345678', hospitalNumber: 'JTH-000155AA',
     });
     await expect(createPatient(
-      registration({ phone: '+211912345678', firstName: 'Someone', surname: 'Else', dateOfBirth: '2000-01-01' }),
+      registration({ phone: '+211912345678', firstName: 'Abuk', surname: 'Deng', dateOfBirth: '1975-03-03' }),
       DESK_A1_SCOPE,
     )).rejects.toMatchObject({
       name: 'ValidationError',
@@ -97,7 +97,7 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
     });
     // The hospital number is disclosed too, not just the name.
     await expect(createPatient(
-      registration({ phone: '+211912345678', firstName: 'Someone', surname: 'Else', dateOfBirth: '2000-01-01' }),
+      registration({ phone: '+211912345678', firstName: 'Abuk', surname: 'Deng', dateOfBirth: '1975-03-03' }),
       DESK_A1_SCOPE,
     )).rejects.toMatchObject({
       fields: { duplicate: expect.stringContaining(existing.hospitalNumber!) },
@@ -111,7 +111,7 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
       phone: '+211977777777', hospitalNumber: 'BCH-000042AA',
     });
     const result = createPatient(
-      registration({ phone: '+211977777777', firstName: 'Someone', surname: 'Else', dateOfBirth: '2000-01-01' }),
+      registration({ phone: '+211977777777', firstName: 'Nyandeng', surname: 'Malual', dateOfBirth: '1988-08-08' }),
       DESK_A1_SCOPE,
     );
     await expect(result).rejects.toMatchObject({ name: 'ValidationError' });
@@ -182,7 +182,7 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
       phone: '+211900000001', hospitalNumber: 'MCY-000011AA',
     });
     const err = await createPatient(
-      registration({ phone: '+211900000001', firstName: 'Someone', surname: 'Else', dateOfBirth: '2000-01-01' }),
+      registration({ phone: '+211900000001', firstName: 'Malith', surname: 'Ayen', dateOfBirth: '1985-05-05' }),
       // no scope argument at all
     ).catch((e) => e);
     expect(err.fields.duplicate).toContain(existing.firstName);
@@ -202,14 +202,28 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
       phone: '+211900000099',
     });
     const withoutScope = await createPatient(
-      registration({ phone: '+211900000099', firstName: 'A', surname: 'B', dateOfBirth: '2000-01-01' }),
+      registration({ phone: '+211900000099', firstName: 'Wiring', surname: 'Check', dateOfBirth: '1960-06-06' }),
     ).catch((e) => e);
     const withScope = await createPatient(
-      registration({ phone: '+211900000099', firstName: 'A', surname: 'B', dateOfBirth: '2000-01-01' }),
+      registration({ phone: '+211900000099', firstName: 'Wiring', surname: 'Check', dateOfBirth: '1960-06-06' }),
       DESK_A1_SCOPE,
     ).catch((e) => e);
     expect(withoutScope.fields.duplicate).toContain('Wiring');
     expect(withScope.fields.duplicate).not.toContain('Wiring');
+  });
+});
+
+describe('shared family phone registration', () => {
+  test.each([HOSP_A1, HOSP_A2, HOSP_B1])('allows distinct family members with the same phone, existing facility %s', async (facility) => {
+    await seedPatient({ _id: 'parent', firstName: 'Parent', surname: 'Family',
+      orgId: facility === HOSP_B1 ? ORG_B : ORG_A, registrationHospital: facility,
+      phone: '+211912345678' });
+    const child = await createPatient(registration({ firstName: 'Child', surname: 'Family',
+      dateOfBirth: '2018-03-04', phone: '+211912345678' }), DESK_A1_SCOPE);
+    expect(child._id).not.toBe('parent');
+    expect(child.phone).toBe('+211912345678');
+    expect(await getPatientById(child._id, DESK_A1_SCOPE)).toMatchObject({ firstName: 'Child' });
+    expect((await getPatientById('parent'))?.firstName).toBe('Parent');
   });
 });
 

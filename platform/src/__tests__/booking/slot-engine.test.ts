@@ -99,6 +99,23 @@ const times = (slots: { startTime: string }[]) => slots.map(s => s.startTime);
 
 const NOW_ISO = '2026-09-01T08:00:00.000Z';
 
+describe('cross-facility commitments', () => {
+  it('blocks the same clinician at another facility', () => {
+    expect(times(computeSlots([window_()], [appointment({ facilityId: 'fac-2' })], [], policy(), query(), NOW_ISO)))
+      .not.toContain('09:00');
+  });
+  it('does not confuse identically named rooms at different facilities', () => {
+    expect(times(computeSlots([window_({ roomId: 'Room 1' })],
+      [appointment({ facilityId: 'fac-2', providerId: 'other-clinician', room: 'Room 1' })],
+      [], policy(), query(), NOW_ISO))).toContain('09:00');
+  });
+  it('still blocks the same room at the same facility', () => {
+    expect(times(computeSlots([window_({ roomId: 'Room 1' })],
+      [appointment({ providerId: 'other-clinician', room: 'Room 1' })],
+      [], policy(), query(), NOW_ISO))).not.toContain('09:00');
+  });
+});
+
 // ── Time helpers ────────────────────────────────────────────────────────────
 
 describe('wall-clock arithmetic', () => {

@@ -237,10 +237,13 @@ export default function BookAppointmentModal({
    */
   const stepped = reasons.length > 0;
 
-  const { slots, firstAvailableDate, loading: slotsLoading } = useBookingSlots({
+  const slotVisitReason = useMemo(() => visitReason
+    ? { ...visitReason, durationMinutes: duration }
+    : null, [visitReason, duration]);
+  const { slots, firstAvailableDate, loading: slotsLoading, reload: reloadSlots } = useBookingSlots({
     facilityId: myHospitalId,
     orgId: currentUser?.orgId,
-    visitReason,
+    visitReason: slotVisitReason,
     patientClass: 'returning',
     channel: 'staff',
     from: today,
@@ -447,6 +450,10 @@ export default function BookAppointmentModal({
     } catch (err) {
       // A clash is about the slot, so send the booker back to where slots are.
       showToast(err instanceof Error ? err.message : t('appointments.toastFailedBook'), 'error');
+      if (err instanceof Error && err.name === 'BookingConflictError') {
+        setTime('');
+        await reloadSlots();
+      }
       goToSection(1);
     } finally {
       setSubmitting(false);
