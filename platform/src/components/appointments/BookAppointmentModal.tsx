@@ -45,6 +45,7 @@ import { jubaDate } from '@/lib/time-juba';
 import { ArrowLeft, ArrowRight, Maximize2, X } from '@/components/icons/lucide';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import type { Slot } from '@/lib/booking/slot-engine';
+import { eligibleBookingSlots } from '@/lib/booking/eligible-slots';
 import type {
   AppointmentType, AppointmentPriority, AppointmentStatus, FacilityLevel,
 } from '@/lib/db-types';
@@ -122,7 +123,7 @@ export default function BookAppointmentModal({
   const router = useRouter();
   const { create, appointments } = useAppointments();
   const { patients } = usePatients();
-  const { users } = useUsers();
+  const { users, loading: usersLoading, error: usersError } = useUsers();
   const { currentUser } = useAuth();
   const { departments: facilityDepartments } = useSettings();
   const { departments: departmentEntities } = useDepartments();
@@ -240,7 +241,7 @@ export default function BookAppointmentModal({
   const slotVisitReason = useMemo(() => visitReason
     ? { ...visitReason, durationMinutes: duration }
     : null, [visitReason, duration]);
-  const { slots, firstAvailableDate, loading: slotsLoading, reload: reloadSlots } = useBookingSlots({
+  const { slots: publishedSlots, loading: slotsLoading, reload: reloadSlots } = useBookingSlots({
     facilityId: myHospitalId,
     orgId: currentUser?.orgId,
     visitReason: slotVisitReason,
@@ -252,6 +253,12 @@ export default function BookAppointmentModal({
     secondaryStaffId: staffId || undefined,
     enabled: stepped,
   });
+
+  // Published windows can outlive staff transfers or contain a misconfigured
+  // provider. Use the same facility directory as the assignment control;
+  // never offer a clinician who cannot access this facility's resulting visit.
+  const slots = useMemo(() => eligibleBookingSlots(publishedSlots, providerOptions), [publishedSlots, providerOptions]);
+  const firstAvailableDate = slots[0]?.date;
 
   // Open the grid on the first week that actually has something, rather than on
   // a run of empty days the reader has to page past.
@@ -306,7 +313,8 @@ export default function BookAppointmentModal({
    * missing roster is an admin task, not a reason to refuse a patient — so the
    * step falls back to entering a time by hand.
    */
-  const noAvailability = stepped && Boolean(visitReason) && !slotsLoading && slots.length === 0;
+  const directoryReady = !usersLoading && !usersError;
+  const noAvailability = stepped && Boolean(visitReason) && directoryReady && !slotsLoading && slots.length === 0;
 
   const canAdvance = step === 0
     ? Boolean(visitReason)
@@ -317,6 +325,12 @@ export default function BookAppointmentModal({
         : true;
 
   const handleSubmit = async () => {
+    if (!directoryReady || (providerId && !providerOptions.some(person => person._id === providerId))
+      || (staffId && !nurseOptions.some(person => person._id === staffId))) {
+      showToast(t('hospitals.errorLoadStaff'), 'error');
+      goToSection(0);
+      return;
+    }
     if (!canBookAppointments) {
       showToast('Your role cannot book appointments', 'error');
       return;
@@ -565,6 +579,7 @@ export default function BookAppointmentModal({
           )}
         </div>
 
+        {!directoryReady && <p role={usersError ? 'alert' : 'status'}>{t(usersError ? 'hospitals.errorLoadStaff' : 'hospitals.loadingStaff')}</p>}
         {fullPage && (
           <nav aria-label={t('appointments.bookAppointment')} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', paddingBottom: 20 }}>
             {sectionKeys.map((key, index) => <a key={key} href={`#booking-section-${index}`} onClick={event => { event.preventDefault(); goToSection(index); }}>{t(key)}</a>)}
@@ -865,7 +880,7 @@ export default function BookAppointmentModal({
               <button
                 type="button"
                 onClick={() => setStep(step + 1)}
-                disabled={!canAdvance}
+                disabled={!canAdvance || !directoryReady}
                 className="btn btn-primary"
                 style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -878,7 +893,7 @@ export default function BookAppointmentModal({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || !directoryReady}
                 className="btn btn-primary"
                 style={{ flex: 1, opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}
               >

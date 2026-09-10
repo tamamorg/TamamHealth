@@ -80,6 +80,15 @@ function registration(overrides: Record<string, unknown> = {}) {
 }
 
 describe('checkDuplicates via createPatient: scoped disclosure', () => {
+  test('sequential family registrations without geographic details receive distinct temporary IDs', async () => {
+    const parent = await createPatient(registration({ firstName: 'DemoParent', phone: '0990000101' }), DESK_A1_SCOPE);
+    const child = await createPatient(registration({ firstName: 'DemoChild', dateOfBirth: '2018-01-01', phone: '0990000101' }), DESK_A1_SCOPE);
+    expect(child._id).not.toBe(parent._id);
+    expect(parent.geocodeId).toMatch(/^UNKNOWN-/);
+    expect(child.geocodeId).not.toBe(parent.geocodeId);
+    expect((await getPatientById(parent._id, DESK_A1_SCOPE))?.phone).toBe(child.phone);
+  });
+
   test('a duplicate INSIDE the caller\'s scope is still named in full (name and DOB match)', async () => {
     const existing = await seedPatient({
       _id: 'pat-inscope-phone', orgId: ORG_A, registrationHospital: HOSP_A1,
