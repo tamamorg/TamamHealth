@@ -831,6 +831,100 @@
   margin-left: 3px;
 }
 
+/* ── Flagged readings ──
+   Three rungs, in the triage colours the rest of the app already teaches:
+   critical = acuity red, high risk = acuity amber, and "outside normal" as an
+   amber rule with no fill, so a mildly raised reading does not shout as loudly
+   as a dangerous one. Colour never carries it alone — every flagged cell also
+   has an arrow and its reason (title + the visually-hidden sentence). The
+   leading rule is a border, not an inset shadow: globals.css strips every
+   box-shadow in the app.
+
+   `.tamam-root .tamam-vitals-cell` (further down) repaints every cell white at
+   0-2-0; these carry the attribute, so they out-rank it without !important. */
+.tamam-root .tamam-vitals-cell[data-flag="critical"],
+.tamam-vitals-cell[data-flag="critical"] {
+  background: var(--acuity-red-bg);
+  border-color: var(--color-danger-border);
+  border-inline-start: 3px solid var(--acuity-red);
+  padding-inline-start: 8px;
+}
+
+.tamam-root .tamam-vitals-cell[data-flag="high_risk"],
+.tamam-vitals-cell[data-flag="high_risk"] {
+  background: var(--acuity-yellow-bg);
+  border-color: var(--color-warning-border);
+  border-inline-start: 3px solid var(--color-warning);
+  padding-inline-start: 8px;
+}
+
+.tamam-root .tamam-vitals-cell[data-flag="abnormal"],
+.tamam-vitals-cell[data-flag="abnormal"] {
+  border-inline-start: 3px solid var(--color-warning);
+  padding-inline-start: 8px;
+}
+
+.tamam-vitals-cell[data-flag="critical"] .tamam-vitals-value,
+.tamam-vitals-cell[data-flag="critical"] .tamam-vitals-label { color: var(--color-danger-text); }
+
+.tamam-vitals-cell[data-flag="high_risk"] .tamam-vitals-value,
+.tamam-vitals-cell[data-flag="high_risk"] .tamam-vitals-label,
+.tamam-vitals-cell[data-flag="abnormal"] .tamam-vitals-arrow { color: var(--color-warning-text); }
+
+.tamam-vitals-cell[data-flag] .tamam-vitals-unit { color: inherit; opacity: 0.8; }
+
+.tamam-vitals-arrow {
+  margin-inline-start: 5px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.tamam-vitals-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tamam-vitals-cell { position: relative; }
+
+/* The band's one-line verdict, beside the timestamp. */
+.tamam-vitals-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.tamam-vitals-alert svg { width: 12px; height: 12px; }
+.tamam-vitals-alert svg.lucide { color: inherit; stroke: currentColor; }
+
+.tamam-vitals-alert b {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: currentColor;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* The count sits on a currentColor plate, so its own ink is the pill's fill. */
+.tamam-vitals-alert[data-level="critical"] { background: var(--acuity-red-bg); color: var(--color-danger-text); }
+.tamam-vitals-alert[data-level="critical"] b > *,
+.tamam-vitals-alert[data-level="critical"] b { -webkit-text-fill-color: var(--acuity-red-bg); }
+.tamam-vitals-alert[data-level="high_risk"],
+.tamam-vitals-alert[data-level="abnormal"] { background: var(--acuity-yellow-bg); color: var(--color-warning-text); }
+.tamam-vitals-alert[data-level="high_risk"] b,
+.tamam-vitals-alert[data-level="abnormal"] b { -webkit-text-fill-color: var(--acuity-yellow-bg); }
+
 /* ══════════════════ SECTION CARDS + TABLES (Stage 3) ══════════════════ */
 /* `.tamam-table` rules are scoped under `.tamam-root` so they only apply where
  * a table explicitly opts in — they never touch the legacy

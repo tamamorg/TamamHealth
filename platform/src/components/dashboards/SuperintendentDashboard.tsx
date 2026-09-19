@@ -232,7 +232,10 @@ export default function SuperintendentDashboard() {
         {/* ═══ SURVEILLANCE / ALERTS ═══ */}
         <div className="dash-card overflow-hidden">
           <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('superintendent.surveillanceSignal')}</h3>
+            <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+              <span className="dashboard-panel-title-full">{t('superintendent.surveillanceSignal')}</span>
+              <span className="dashboard-panel-title-tablet">{t('superintendent.surveillanceTitle')}</span>
+            </h3>
             <button onClick={() => router.push('/surveillance')} className="text-[11px] font-bold inline-flex items-center gap-1" style={{ color: 'var(--accent-primary)' }}>
               {t('hr.viewAll')} <ChevronRight className="w-3 h-3" />
             </button>

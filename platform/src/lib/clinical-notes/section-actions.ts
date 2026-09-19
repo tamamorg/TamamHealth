@@ -52,7 +52,7 @@ export const NOTE_SECTION_ACTIONS: Readonly<Record<NoteSectionActionId, NoteSect
   },
   record_vitals: {
     id: 'record_vitals', label: 'Record Vitals',
-    description: 'Open the chart’s vitals flowsheet',
+    description: 'Record a new set of vitals here, without leaving the note',
   },
   order_lab: {
     id: 'order_lab', label: 'Labs/Studies',

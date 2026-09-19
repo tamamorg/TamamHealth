@@ -1730,7 +1730,7 @@ export default function FrontDeskDashboardPage() {
           onSearchChange={setQueueSearch}
           filters={[]}
           actions={actions}
-          chartSeriesNames={['Active', 'Completed']}
+          chartSeriesNames={['Active', 'Finished']}
           // The list below is one day's schedule, so charting it left a single
           // bar under a "This week" heading. The chart reads the whole booking
           // list instead — the same source the mini-calendar above it dots.

@@ -77,7 +77,7 @@ import {
 } from '@/lib/data/south-sudan-reference';
 import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
-import { patientFullName, patientInitials, patientAgeLabel, abbreviateProviderName } from '@/lib/patient-utils';
+import { patientFullName, patientInitials, patientAgeLabel, patientAgeYearsExact, abbreviateProviderName } from '@/lib/patient-utils';
 import { usePatientAppointments } from '@/lib/hooks/useAppointments';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -1639,6 +1639,11 @@ export default function PatientDetailPage() {
                 // stale (or no) vitals right after triage.
                 latestVitals={latestVitals}
                 latestRecordDate={latestVitalsEntry?.at}
+                // Fractional age + the ANC pregnancy signal: what the band
+                // needs to judge a reading against the right bands (a pulse
+                // of 73 is normal for an adult and dangerous for a neonate).
+                patientAgeYears={patientAgeYearsExact(patient) ?? undefined}
+                isPregnant={isPregnant}
                 onViewVitalsHistory={() => selectTab('vitals')}
                 onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}

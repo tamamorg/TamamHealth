@@ -349,25 +349,29 @@ export default function PrescribeModal({
       <div className="cn-meds">
         <div className="cn-meds-header">
           <h2 className="cn-meds-title" id="cn-rx-title">Prescribe Medications</h2>
-          {presentation === 'modal' && (
-            <button
-              type="button"
-              className="cn-meds-close"
-              onClick={() => {
-                onClose();
-                const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
-                router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
-              }}
-              aria-label="Open full page"
-              title="Open full page"
-              data-action="popup-expand"
-            >
-              <Maximize2 size={18} />
+          {/* One group, so the header's space-between has two children — left
+              loose, Expand was the middle of three and sat dead centre. */}
+          <div className="cn-meds-header-actions">
+            {presentation === 'modal' && (
+              <button
+                type="button"
+                className="cn-meds-close"
+                onClick={() => {
+                  onClose();
+                  const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
+                  router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
+                }}
+                aria-label="Open full page"
+                title="Open full page"
+                data-action="popup-expand"
+              >
+                <Maximize2 size={18} />
+              </button>
+            )}
+            <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close prescribe medications" title="Close" data-action="popup-close">
+              <X size={18} />
             </button>
-          )}
-          <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close prescribe medications" data-action="popup-close">
-            <X size={18} />
-          </button>
+          </div>
         </div>
 
         <div className="cn-meds-body">

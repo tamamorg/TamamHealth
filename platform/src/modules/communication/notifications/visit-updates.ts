@@ -142,6 +142,29 @@ export function returnedToDeskItems(
   if (!viewer?.role || !RECEPTION_ROLES.has(String(viewer.role))) return [];
   const items: NotificationItem[] = [];
   for (const encounter of encounters) {
+    // A visit closed as "left without being seen" lands on the desk too. It is
+    // terminal — there is nothing to re-route — but reception still owns what
+    // is left of it: the open bill, the rebooking, the call to the patient.
+    // Closing it from a clinical worklist used to tell the desk nothing.
+    if (encounter.status === 'lwbs') {
+      const trail = encounter.statusHistory;
+      const last = trail && trail.length > 0 ? trail[trail.length - 1] : undefined;
+      // The desk's own day-end close-out is not news to the clerk who did it.
+      if (last?.byUserId && last.byUserId === viewer._id) continue;
+      const at = last?.at || encounter.updatedAt || '';
+      const ms = Date.parse(at);
+      if (!Number.isNaN(ms) && nowMs - ms > CLOSURE_WINDOW_MS) continue;
+      items.push({
+        id: `visit-lwbs-${encounter._id}-${at}`,
+        type: 'visit',
+        severity: 'warning',
+        title: `${shortenPersonName(encounter.patientName) || 'Patient'} · Left without being seen`,
+        subtitle: last?.reason || 'visit closed by the clinical team — settle any open bill or rebook',
+        time: at,
+        href: `/patients/${encodeURIComponent(encounter.patientId)}`,
+      });
+      continue;
+    }
     if (encounter.status !== 'awaiting_next_station') continue;
     const trail = encounter.statusHistory;
     const last = trail && trail.length > 0 ? trail[trail.length - 1] : undefined;
