@@ -112,24 +112,23 @@ export default function NotificationsPanel({
         aria-hidden="true"
       />
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: 'inherit', overflow: 'hidden' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
+        <div className="notifications-popover-header" style={{ borderColor: 'var(--border-light)' }}>
+          <div className="notifications-popover-heading">
             <h2 id="notifications-popover-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Notifications</h2>
             {unreadCount > 0 && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{unreadCount} new</span>
+              <span className="notifications-popover-count" style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{unreadCount} new</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="notifications-popover-controls">
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
                 title="Mark everything as read"
+                aria-label="Mark all read"
                 className="notifications-popover-action flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold"
                 style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}
               >
                 <Check className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-                Mark all read
               </button>
             )}
             <button
@@ -145,7 +144,6 @@ export default function NotificationsPanel({
               {alertPref === 'sound'
                 ? <Bell className="w-4 h-4" style={{ stroke: 'currentColor' }} />
                 : <BellOff className="w-4 h-4" style={{ stroke: 'currentColor' }} />}
-              {alertPref === 'sound' ? 'Sound on' : 'Muted'}
             </button>
             <button onClick={onClose} aria-label="Close" className="notifications-popover-action p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
           </div>

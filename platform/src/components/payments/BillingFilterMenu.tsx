@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown } from '@/components/icons/lucide';
+import { Filter } from '@/components/icons/lucide';
 
 import Select from '@/components/Select';
 import type { FilterOption } from '@/components/filters';
@@ -93,7 +93,7 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
         aria-label={activeCount > 0 ? `Filters, ${activeCount} applied` : 'Filters'}
       >
         {activeCount > 0 && <span aria-hidden className="bl-search-filter-count">{activeCount}</span>}
-        <ChevronDown size={16} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 120ms' }} />
+        <Filter size={18} aria-hidden="true" />
       </button>
 
       {open && coords && typeof document !== 'undefined' && createPortal(

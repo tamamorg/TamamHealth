@@ -131,13 +131,12 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
 
   return (
     <div
-      className="absolute end-0 top-full mt-2 rounded-xl overflow-hidden z-50"
-      style={{ width: 380, maxWidth: '92vw', background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: '0 16px 48px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.06)' }}
+      style={{ background: 'var(--bg-card-solid)' }}
     >
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
         <div className="flex items-center gap-2">
           <Megaphone className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Announcements</span>
+          <span id="announcements-panel-title" className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Announcements</span>
         </div>
         <div className="flex items-center gap-1">
           {canPost && !composing && (

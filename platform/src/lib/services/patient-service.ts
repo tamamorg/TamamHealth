@@ -79,14 +79,25 @@ export async function getAllPatients(scope?: DataScope): Promise<PatientDoc[]> {
  * back as `null` — indistinguishable from "doesn't exist", which is the
  * correct response for both an IDOR probe and a genuine typo.
  */
+export class PatientRecordReadError extends Error {
+  constructor() {
+    super('The patient record could not be read. Retry after checking this device’s database and sync status.');
+    this.name = 'PatientRecordReadError';
+  }
+}
+
 export async function getPatientById(id: string, scope?: DataScope): Promise<PatientDoc | null> {
   try {
     const db = patientsDB();
     const doc = await db.get(id) as PatientDoc;
     if (scope && filterByScope([doc], scope).length === 0) return null;
     return doc;
-  } catch {
-    return null;
+  } catch (error) {
+    const failure = error as { status?: number; name?: string } | null;
+    if (failure?.status === 404 || failure?.name === 'not_found') return null;
+    // A storage outage is not evidence that the patient does not exist.
+    // Keep database internals out of user-facing errors.
+    throw new PatientRecordReadError();
   }
 }
 

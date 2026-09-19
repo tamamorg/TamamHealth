@@ -88,6 +88,33 @@ describe('signClinicalNote — attestation authority', () => {
 });
 
 describe('signClinicalNote — lock and visit close-out', () => {
+  it('catches up a chart-started consultation from clinic arrival and creates the nursing handoff', async () => {
+    const enc = await createEncounter({
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      clinicianId: 'user-dr-wani', clinicianName: 'Dr. Wani',
+      hospitalId: 'hosp-001', orgId: 'org-moh-ss',
+      status: 'routed_to_clinic', snapshot: {}, labOrderIds: [],
+      startedAt: new Date().toISOString(),
+    } as never);
+    const note = await draftNote({ encounterId: enc._id });
+    await signClinicalNote(note._id, { signedBy: 'user-dr-wani', signedByName: 'Dr. Wani', signerRole: 'doctor' });
+    const after = await getEncounter(enc._id);
+    expect(after?.status).toBe('ready_for_clinic_checkout');
+    expect(after?.postConsult?.tasks).toHaveLength(4);
+  });
+
+  it('does not advance clinic arrival when a nurse signs a nursing note', async () => {
+    const enc = await createEncounter({
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      clinicianId: 'user-dr-wani', clinicianName: 'Dr. Wani',
+      hospitalId: 'hosp-001', orgId: 'org-moh-ss',
+      status: 'routed_to_clinic', snapshot: {}, labOrderIds: [],
+      startedAt: new Date().toISOString(),
+    } as never);
+    const note = await draftNote({ encounterId: enc._id, noteType: 'nurse_visit', authorId: 'nurse-1', assignedToId: 'nurse-1' });
+    await signClinicalNote(note._id, { signedBy: 'nurse-1', signedByName: 'Nurse', signerRole: 'nurse' });
+    expect((await getEncounter(enc._id))?.status).toBe('routed_to_clinic');
+  });
   it('locks the note: edits after signing must go through an addendum', async () => {
     const note = await draftNote();
     await signClinicalNote(note._id, { signedBy: 'user-dr-wani', signedByName: 'Dr. Wani', signerRole: 'doctor' });

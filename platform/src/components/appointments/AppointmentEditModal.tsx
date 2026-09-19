@@ -19,6 +19,7 @@ import AppointmentStatusSelect from '@/components/appointments/AppointmentStatus
 import AppointmentDetailFields, { type AppointmentDetailFieldValues } from '@/components/appointments/AppointmentDetailFields';
 import { staffOptionLabel, type StaffSlotContext } from '@/lib/appointment-staff';
 import { useToast } from '@/components/Toast';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
@@ -93,6 +94,7 @@ export default function AppointmentEditModal({
   const { currentUser } = useAuth();
   const { canAssignCareTeam } = usePermissions();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const { departments } = useSettings();
   const { users } = useUsers();
   // Providers who can carry a visit at this facility.
@@ -106,6 +108,7 @@ export default function AppointmentEditModal({
       && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   /* In a row dropdown the form is tabbed, the way the doctor dashboard's visit
      panel is: one tab of fields at a time on the row's own line, instead of a
      column stack that runs past the fold. The dialog shows all three at once. */
@@ -152,6 +155,7 @@ export default function AppointmentEditModal({
   const [seededFor, setSeededFor] = useState(appointment._id);
   const [statusSeededFor, setStatusSeededFor] = useState(appointment.status);
   if (seededFor !== appointment._id) {
+    setSaveError(null);
     setSeededFor(appointment._id);
     setStatusSeededFor(appointment.status);
     setDate(appointment.appointmentDate);
@@ -219,7 +223,17 @@ export default function AppointmentEditModal({
 
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
+      // Resolve the linked records before the FIRST write. A visible row can
+      // contain a cached name while its patient has not replicated locally.
+      const { resolveAndValidateTargets } = await import('@/lib/services/patient-assignment-service');
+      await resolveAndValidateTargets({
+        patientId: appointment.patientId,
+        appointmentId: appointment._id,
+        hospitalId: appointment.facilityId || myHospitalId,
+        orgId: appointment.orgId || currentUser?.orgId,
+      });
       const { updateAppointment, updateAppointmentStatus } = await import('@/lib/services/appointment-service');
       const updated = await updateAppointment(appointment._id, {
         appointmentDate: date, appointmentTime: time, duration,
@@ -298,7 +312,14 @@ export default function AppointmentEditModal({
       onSaved?.();
       onClose();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the appointment', 'error');
+      const message = err instanceof Error && err.name === 'PatientRecordUnavailableError'
+        ? t('appointments.linkedPatientUnavailable')
+        : err instanceof Error && err.name === 'PatientRecordReadError'
+          ? t('appointments.linkedPatientReadFailed')
+          : err instanceof Error ? err.message : 'Could not save the appointment';
+      // A persistent, single alert preserves the draft and avoids a stack of
+      // identical toasts when reception retries an unavailable patient link.
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -320,6 +341,7 @@ export default function AppointmentEditModal({
 
   const body = (
       <div className={inline ? 'appt-edit-shell is-inline' : 'appt-edit-shell'}>
+      {saveError && <div role="alert" className="appointment-billing-panel">{saveError}</div>}
       {!inline && (
       <div className="appt-edit-head">
         <h2>Edit appointment</h2>

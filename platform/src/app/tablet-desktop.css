@@ -122,9 +122,9 @@
     min-width: 0;
   }
 
-  .ehr-top-modules button,
-  .ehr-top-actions button,
-  .ehr-top-navlinks button {
+  .ehr-top-modules > button,
+  .ehr-top-actions > button,
+  .ehr-top-navlinks > button {
     display: inline-flex !important;
     width: 36px !important;
     height: 36px !important;
@@ -619,9 +619,9 @@
     max-width: 94px !important;
   }
 
-  .ehr-top-modules button,
-  .ehr-top-actions button,
-  .ehr-top-navlinks button {
+  .ehr-top-modules > button,
+  .ehr-top-actions > button,
+  .ehr-top-navlinks > button {
     width: 32px !important;
     height: 32px !important;
     min-width: 32px;

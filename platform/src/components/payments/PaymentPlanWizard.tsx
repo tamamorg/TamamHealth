@@ -25,35 +25,51 @@ export default function PaymentPlanWizard({
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { t } = useTranslation();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [termMonths, setTermMonths] = useState(3);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [planId, setPlanId] = useState('');
   const [balance, setBalance] = useState(balanceProp);
+  const [loadingBalance, setLoadingBalance] = useState(true);
 
-  // Self-load balance if not provided
+  // Always verify the currency-specific account; a caller's scalar may mix SSP/USD.
   useEffect(() => {
-    if (balanceProp > 0 || !scope) return;
+    let active = true;
+    setLoadingBalance(true);
     (async () => {
       try {
-        const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const bal = await getPatientBalance(patientId, scope);
-        if (bal > 0) setBalance(bal);
-      } catch { /* offline fallback */ }
+        if (!scope) throw new Error('NO_SCOPE');
+        const { getPatientLedger } = await import('@/lib/services/ledger-service');
+        const entries = await getPatientLedger(patientId, undefined, scope);
+        const bal = entries.filter(entry => entry.currency === currency).reduce((sum, entry) => sum + entry.amount, 0);
+        if (active) setBalance(Math.round(bal * 100) / 100);
+      } catch {
+        if (active) { setBalance(0); setError(t('payments.planFailed')); }
+      } finally { if (active) setLoadingBalance(false); }
     })();
-  }, [patientId, balanceProp, scope]);
+    return () => { active = false; };
+  }, [patientId, currency, scope, t]);
 
   const monthlyAmount = Math.ceil((balance / termMonths) * 100) / 100;
   const terms = [3, 6, 9, 12];
 
   const handleCreate = async () => {
+    if (processing || loadingBalance) return;
+    if (!currentUser || !scope || !Number.isFinite(balance) || balance <= 0) {
+      setError(t('payments.planInvalid'));
+      return;
+    }
     setProcessing(true);
+    setError('');
     try {
       const { createPaymentPlan } = await import('@/lib/services/payment-service');
       const plan = await createPaymentPlan({
         patientId,
         patientName,
         totalBalance: balance,
+        currency,
         termMonths,
         encounterIds,
         createdByStaff: currentUser?._id || 'system',
@@ -61,10 +77,11 @@ export default function PaymentPlanWizard({
         facilityId: currentUser?.hospitalId || '',
         orgId: currentUser?.orgId,
       });
+      setPlanId(plan._id);
       setSuccess(true);
-      setTimeout(() => onComplete(plan._id), 1500);
     } catch (err) {
       console.error(err);
+      setError(t('payments.planFailed'));
     } finally {
       setProcessing(false);
     }
@@ -72,29 +89,30 @@ export default function PaymentPlanWizard({
 
   if (success) {
     return (
-      <Modal onClose={onCancel} width={360}>
+      <Modal onClose={() => onComplete(planId)} width={360}>
         <div className="modal-content" style={{ padding: 48, textAlign: 'center', maxWidth: 360 }}>
           <CheckCircle2 size={64} style={{ color: 'var(--success)', marginBottom: 16 }} />
           <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700 }}>{t('payments.planCreated')}</h3>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted)' }}>
             {t('payments.planCreatedSummary', { amount: monthlyAmount.toLocaleString(), currency, months: termMonths })}
           </p>
+          <button type="button" onClick={() => onComplete(planId)} className="btn btn-primary" style={{ marginTop: 20 }}>{t('action.close')}</button>
         </div>
       </Modal>
     );
   }
 
   return (
-    <Modal onClose={onCancel} width={440}>
-      <div className="modal-content" style={{ maxWidth: 440 }} {...stopsClickPropagation}>
+    <Modal onClose={() => { if (!processing) onCancel(); }} width={560} disableBackdropClose={processing}>
+      <div className="modal-content ehr-finance-dialog" {...stopsClickPropagation}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-medium)' }}>
+        <div className="ehr-finance-dialog__header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-medium)' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t('payments.paymentPlan')}</h3>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('payments.patientStep', { name: patientName, step })}</p>
           </div>
-          <button onClick={onCancel} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-            <X size={44} />
+          <button className="ehr-finance-dialog__close" onClick={onCancel} disabled={processing} aria-label={t('action.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <X size={20} style={{ color: 'inherit', stroke: 'currentColor' }} />
           </button>
         </div>
 
@@ -104,13 +122,15 @@ export default function PaymentPlanWizard({
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>{formatMoney(balance, { currency })}</div>
         </div>
 
-        <div style={{ padding: 20 }}>
+        <div className="ehr-finance-dialog__body" style={{ padding: 20 }}>
+          {error && <p role="alert" style={{ color: 'var(--error)', marginBottom: 12 }}>{error}</p>}
+          {!loadingBalance && !error && balance <= 0 && <p role="status" style={{ color: 'var(--text-muted)', marginBottom: 12 }}>{t('payments.planNoBalance')}</p>}
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{t('payments.chooseTermLength')}</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              <div className="ehr-finance-dialog__terms" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                 {terms.map(term => (
-                  <button key={term} onClick={() => setTermMonths(term)} style={{
+                  <button key={term} aria-pressed={termMonths === term} onClick={() => setTermMonths(term)} style={{
                     padding: '16px 8px', borderRadius: 12, textAlign: 'center', cursor: 'pointer',
                     border: termMonths === term ? '2px solid var(--accent)' : '1px solid var(--border-medium)',
                     background: termMonths === term ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
@@ -123,7 +143,7 @@ export default function PaymentPlanWizard({
                   </button>
                 ))}
               </div>
-              <button onClick={() => setStep(2)} style={{
+              <button className="ehr-finance-dialog__primary" disabled={loadingBalance || !Number.isFinite(balance) || balance <= 0} onClick={() => setStep(2)} style={{
                 marginTop: 8, padding: '12px 0', borderRadius: 10, border: 'none',
                 background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -151,17 +171,17 @@ export default function PaymentPlanWizard({
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('payments.firstPaymentDue')}</span>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>
-                    {(() => { const d = new Date(); d.setMonth(d.getMonth() + 1); d.setDate(1); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); })()}
+                    {(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 1); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); })()}
                   </span>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setStep(1)} style={{
+              <div className="ehr-finance-dialog__actions" style={{ display: 'flex', gap: 10 }}>
+                <button disabled={processing} onClick={() => setStep(1)} style={{
                   flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--border-medium)',
                   background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>{t('action.back')}</button>
-                <button onClick={handleCreate} disabled={processing} style={{
+                <button className="ehr-finance-dialog__primary" onClick={handleCreate} disabled={processing} style={{
                   flex: 2, padding: '12px 0', borderRadius: 10, border: 'none',
                   background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600,
                   cursor: 'pointer', opacity: processing ? 0.7 : 1,

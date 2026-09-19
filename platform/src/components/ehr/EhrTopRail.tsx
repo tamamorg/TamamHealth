@@ -31,6 +31,7 @@ import { todayIso } from '@/lib/date-utils';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
 import { formatPhoneShared } from '@/lib/field-formats';
+import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrModuleMenu from './EhrModuleMenu';
 import EhrRailMenu, { type RailMenuItem } from './EhrRailMenu';
@@ -131,6 +132,9 @@ export default function EhrTopRail() {
     return counts;
   }, [notifications, todaysAppointmentCount]);
   const [query, setQuery] = useState('');
+  // Search results are memoised, so the mask has to be a dependency or a
+  // result list built before the switch flipped keeps the full number.
+  const maskIdentifiers = useSharedScreenMask();
   const [open, setOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(false);
@@ -273,7 +277,7 @@ export default function EhrTopRail() {
         meta: [patient.hospitalNumber, patientGenderAge(patient), patient.phone ? formatPhoneShared(patient.phone) : ''].filter(Boolean).join(' · '),
         href: `/patients/${encodeURIComponent(patient._id)}`,
       }));
-  }, [hospitals, isPlatformAdmin, organizations, patients, platformUsers, query, t]);
+  }, [hospitals, isPlatformAdmin, maskIdentifiers, organizations, patients, platformUsers, query, t]);
 
   const clearSearch = () => {
     setQuery('');

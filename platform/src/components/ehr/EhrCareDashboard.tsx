@@ -904,7 +904,10 @@ export default function EhrCareDashboard({
                     const visit = row.patientId ? visitByPatient.get(row.patientId) : undefined;
                     const ladderOwnsRow = !!visit && !row.lockStatus;
                     const statusControl = {
-                      text: ladderOwnsRow ? appointmentStatusLabel(visit!.status) : '',
+                      // An encounter-derived label is more precise than the
+                      // legacy scheduling rung. Keep the picker actions, but
+                      // never replace "Ready for checkout" with "In Progress".
+                      text: row.statusLabel || (ladderOwnsRow ? appointmentStatusLabel(visit!.status) : ''),
                       value: row.statusValue,
                       options: row.statusOptions,
                       onChange: row.onStatusChange,

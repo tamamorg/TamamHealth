@@ -8,6 +8,8 @@
 
 import { patientAgeLabel, patientFullName } from '@/lib/patient-utils';
 import { formatDate } from '@/lib/format-utils';
+import { formatPhoneShared } from '@/lib/field-formats';
+import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PatientDoc } from '@/lib/db-types';
 
@@ -25,6 +27,7 @@ export function coverageLabel(patient: PatientDoc): string {
 
 export default function LabOrderPatientStrip({ patient }: { patient: PatientDoc }) {
   const { t } = useTranslation();
+  useSharedScreenMask();
 
   const fields: { label: string; value: string }[] = [
     { label: t('labOrder.fieldName'), value: `${patient.surname?.toUpperCase() || ''}, ${patient.firstName || ''}`.trim() },
@@ -32,7 +35,7 @@ export default function LabOrderPatientStrip({ patient }: { patient: PatientDoc 
     { label: t('labOrder.fieldDob'), value: patient.dateOfBirth ? formatDate(patient.dateOfBirth) : '—' },
     { label: t('labOrder.fieldAgeSex'), value: `${patientAgeLabel(patient)} · ${patient.gender || '—'}` },
     { label: t('labOrder.fieldCoverage'), value: coverageLabel(patient) },
-    { label: t('labOrder.fieldPhone'), value: patient.phone || '—' },
+    { label: t('labOrder.fieldPhone'), value: patient.phone ? formatPhoneShared(patient.phone) : '—' },
   ];
 
   return (

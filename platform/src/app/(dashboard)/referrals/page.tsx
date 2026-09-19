@@ -28,7 +28,8 @@ import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKe
 import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
-import { formatPhoneShared } from '@/lib/field-formats';
+import { formatPhoneShared, formatLocationShared } from '@/lib/field-formats';
+import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { formatAppointmentTimeUntil } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
@@ -93,6 +94,7 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
   onPreview: (attachment: Attachment) => void;
 }) {
   const { t } = useTranslation();
+  useSharedScreenMask();
   // Which clinical records are unfolded: the viewer's own business, and
   // nothing outside it ever read this.
   const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
@@ -158,7 +160,7 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
             { l: t('referrals.demoDob'), v: demo.dateOfBirth },
             { l: t('patient.gender'), v: demo.gender },
             { l: t('patient.phone'), v: formatPhoneShared(demo.phone) },
-            { l: t('patient.location'), v: `${demo.county}, ${demo.state}` },
+            { l: t('patient.location'), v: formatLocationShared([demo.county, demo.state]) },
             { l: t('patient.tribe'), v: demo.tribe },
             { l: t('patient.bloodType'), v: demo.bloodType },
           ].map(item => (

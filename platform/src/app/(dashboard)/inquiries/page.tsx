@@ -25,6 +25,8 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { avatarTint, initials } from '@/lib/patient-utils';
 import { formatCompactDateTime } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
+import { formatPhoneShared } from '@/lib/field-formats';
+import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import type { MessageDoc } from '@/lib/db-types';
 import {
   ENQUIRY_STATUSES,
@@ -101,6 +103,7 @@ function buildInquiryActions(
 }
 
 export default function InquiriesPage() {
+  useSharedScreenMask();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
@@ -396,7 +399,7 @@ export default function InquiriesPage() {
                     </div>
                     <div className="ehr-appointment-main appointment-card-patient">
                       <strong>{m.patientName || 'Unknown patient'}</strong>
-                      <p>{m.patientPhone || 'No phone on file'}</p>
+                      <p>{m.patientPhone ? formatPhoneShared(m.patientPhone) : 'No phone on file'}</p>
                     </div>
                   </div>
 

@@ -255,8 +255,8 @@ export default function InsurancePolicyModal({
   if (presentation === 'page') return body;
 
   return (
-    <Modal onClose={onClose} width={480} labelledBy="insurance-policy-title">
-      <div className="modal-panel modal-panel--sm">
+    <Modal onClose={onClose} width={560} labelledBy="insurance-policy-title">
+      <div className="modal-panel ehr-finance-dialog ehr-finance-dialog--padded">
         <PopupHeader
           surface="panel"
           titleId="insurance-policy-title"

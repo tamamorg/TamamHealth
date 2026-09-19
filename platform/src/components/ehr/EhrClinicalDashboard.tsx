@@ -61,7 +61,7 @@ import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/e
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
 import { withReturnTo } from '@/lib/navigation/return-to';
-import { useRoleChoice, useRoleFlag } from '@/lib/settings/useRoleSetting';
+import { useRoleChoice, useRoleFlag, useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -673,6 +673,8 @@ export default function EhrClinicalDashboard({
   // reorders this list without a reload.
   const queueSort = useRoleChoice('queue.sort', 'Longest wait first');
   const queueMineOnly = useRoleFlag('queue.mineOnly', true);
+  // Subscribes the dashboard to the mask so formatPhoneShared re-renders with it.
+  useSharedScreenMask();
   const queueOverTarget = useRoleFlag('queue.overTarget', true);
   // Facility policy — the wait target every role's queue is measured against.
   const facilitySettings = useSettings();
@@ -2270,7 +2272,7 @@ export default function EhrClinicalDashboard({
                             <span className="ehr-patient-icon" style={AVATAR_TINT_NEUTRAL}>{initials(name)}</span>
                             <span className="ehr-find-patient-identity">
                               <strong>{name}</strong>
-                              <small>{[patient.hospitalNumber, patient.gender, patient.phone].filter(Boolean).join(' · ')}</small>
+                              <small>{[patient.hospitalNumber, patient.gender, patient.phone ? formatPhoneShared(patient.phone) : ''].filter(Boolean).join(' · ')}</small>
                             </span>
                           </button>
                         </li>

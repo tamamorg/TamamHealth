@@ -26,6 +26,8 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import Modal from '@/components/Modal';
 import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 import { useNow } from '@/lib/hooks/useNow';
+import { formatLocationShared } from '@/lib/field-formats';
+import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -38,6 +40,8 @@ export default function PatientsPage() {
   const now = useNow();
   const router = useRouter();
   const { t } = useTranslation();
+  // Re-render the list rows when "Hide patient identifiers" flips.
+  useSharedScreenMask();
   const { currentUser } = useAuth();
   const { patients, loading: patientsLoading } = usePatients();
   const { canRegisterPatients, isMedicalBiller, isCashier } = usePermissions();
@@ -422,7 +426,7 @@ export default function PatientsPage() {
                       </div>
 
                       <div className="appointment-card-provider">
-                        <strong>{[patient.county, patient.state].filter(Boolean).join(', ') || 'Location unknown'}</strong>
+                        <strong>{formatLocationShared([patient.county, patient.state]) || 'Location unknown'}</strong>
                         <span>{facilityNameOf(patient)}</span>
                       </div>
 

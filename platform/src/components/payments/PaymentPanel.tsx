@@ -10,7 +10,6 @@ import { PAYOR_LABELS, type PaymentMethodKey } from '@/lib/settings/facility-set
 import Modal from '@/components/Modal';
 import { formatMoney } from '@/lib/format-utils';
 import type { PaymentDoc } from '@/lib/db-types-payments';
-import type { FeeScheduleDoc } from '@/lib/db-types-billing';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -61,20 +60,6 @@ export default function PaymentPanel({
       } catch { /* offline fallback */ }
     })();
   }, [patientId, amountDue, scope]);
-
-  // Service price catalog — lets the cashier pick a catalogued service to
-  // populate the amount, so charges reflect real pricing instead of 0.
-  const [fees, setFees] = useState<FeeScheduleDoc[]>([]);
-  const [selectedFeeId, setSelectedFeeId] = useState('');
-  useEffect(() => {
-    if (!scope) { setFees([]); return; }
-    (async () => {
-      try {
-        const { getActiveFees } = await import('@/lib/services/fee-schedule-service');
-        setFees(await getActiveFees(scope));
-      } catch { /* offline — catalog optional */ }
-    })();
-  }, [scope]);
 
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -136,7 +121,7 @@ export default function PaymentPanel({
 
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
+    if (!Number.isFinite(numAmount) || numAmount <= 0) {
       setError(t('payments.errorValidAmount'));
       return;
     }
@@ -363,16 +348,16 @@ export default function PaymentPanel({
   }
 
   return (
-    <Modal onClose={onCancel} width={480}>
-      <div className="modal-content pp-pay" style={{ width: '100%' }}>
+    <Modal onClose={onCancel} width={560}>
+      <div className="modal-content pp-pay ehr-finance-dialog" style={{ width: '100%' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>
+        <div className="ehr-finance-dialog__header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{t('billing.collectPayment')}</h3>
             <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{patientName}</p>
           </div>
-          <button onClick={onCancel} aria-label="Close" style={{ background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <X size={16} />
+          <button className="ehr-finance-dialog__close" onClick={onCancel} aria-label={t('action.close')} style={{ background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <X size={16} style={{ color: 'inherit', stroke: 'currentColor' }} />
           </button>
         </div>
 
@@ -406,67 +391,22 @@ export default function PaymentPanel({
         {/* Amount hero — flat panel, no gradient wash: the figure itself is
             the emphasis, matching the billing module's plain label-above-
             value stat treatment. */}
-        <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>
+        <div style={{ padding: '18px var(--dialog-gutter)', borderBottom: '1px solid var(--border-light)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('payments.amountDueLabel')}</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--accent-text)', letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{formatMoney(amountDue, { currency })}</div>
         </div>
 
-        {/* Payment method selector */}
-        <div style={{ padding: '16px 22px 4px' }}>
-          <span className="pp-field-label">Payment method</span>
-          {/* A select, not a grid of tiles: the five methods are one
-              mutually-exclusive choice, and the tiles took a whole band of the
-              panel to say what one line says. */}
-          <Select
-            className="pp-method-select"
-            value={tab}
-            onChange={e => setTab(e.target.value as TabType)}
-            aria-label={t('payments.methodLabel')}
-          >
-            {tabs.map(tabItem => (
-              <option key={tabItem.key} value={tabItem.key}>{tabItem.label}</option>
-            ))}
-          </Select>
+        <div style={{ padding: '16px var(--dialog-gutter) 4px' }}>
+          <div className="pp-payment-choices" role="group" aria-label={t('payments.methodLabel')}>
+            {tabs.map(item => <button key={item.key} type="button" disabled={processing} aria-pressed={tab === item.key} onClick={() => setTab(item.key as TabType)}>
+              <item.icon size={20} /><span>{item.label}</span>
+            </button>)}
+          </div>
+          <p className="pp-payment-guidance">{t(`payments.steps.${tab === 'insurance' ? insuranceWaiverMode : tab}`)}</p>
         </div>
 
         {/* Form */}
-        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Service picker — fills the amount from the price catalog */}
-          {fees.length > 0 && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block' }}>{t('billing.service')}</label>
-                {/* Deselect the chosen catalog service — clears the picker and the
-                    amount it auto-filled so the cashier can start over. */}
-                {selectedFeeId && (
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedFeeId(''); setAmount(amountDue > 0 ? amountDue.toString() : ''); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: 'var(--accent-text)', padding: 0 }}
-                  >
-                    {t('action.clear')}
-                  </button>
-                )}
-              </div>
-              <Select
-                value={selectedFeeId}
-                onChange={e => {
-                  const id = e.target.value;
-                  setSelectedFeeId(id);
-                  const fee = fees.find(f => f._id === id);
-                  if (fee) setAmount(String(fee.unitPrice));
-                  else setAmount(amountDue > 0 ? amountDue.toString() : '');
-                }}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-              >
-                <option value="">Select a service…</option>
-                {fees.map(f => (
-                  <option key={f._id} value={f._id}>{f.serviceName} — {formatMoney(f.unitPrice, { currency: f.currency, decimals: 2 })}</option>
-                ))}
-              </Select>
-            </div>
-          )}
-
+        <div className="ehr-finance-dialog__body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Amount */}
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.amountWithCurrency', { currency })}</label>
@@ -640,10 +580,10 @@ export default function PaymentPanel({
 
         {/* Footer — flat bl-btn instead of the gradient-fill + drop-shadow
             "glow" button; the amount label already carries the emphasis. */}
-        <div className="bl-root" style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'row', gap: 10, position: 'sticky', bottom: 0, background: 'var(--bg-card-solid, #FFFFFF)', borderTop: '1px solid var(--border-light)' }}>
+        <div className="bl-root ehr-finance-dialog__footer" style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'row', gap: 10, position: 'sticky', bottom: 0, background: 'var(--bg-card-solid, #FFFFFF)', borderTop: '1px solid var(--border-light)' }}>
           <button type="button" className="bl-btn bl-btn--ghost" style={{ flex: 1 }} onClick={onCancel}>{t('action.cancel')}</button>
-          <button type="button" className="bl-btn bl-btn--primary" style={{ flex: 2 }} disabled={processing} onClick={handleSubmit}>
-            {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: parseFloat(amount).toLocaleString(), currency })}
+          <button type="button" className="bl-btn bl-btn--primary" style={{ flex: 2 }} disabled={processing || !Number.isFinite(Number(amount)) || Number(amount) <= 0} onClick={handleSubmit}>
+            {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: (Number.isFinite(Number(amount)) ? Number(amount) : 0).toLocaleString(), currency })}
           </button>
         </div>
       </div>

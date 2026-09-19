@@ -88,7 +88,6 @@ const CLAIM_COLUMNS = [
   { key: 'claims.colBilled', align: 'right' as const },
   { key: 'claims.colAllowed', align: 'right' as const },
   { key: 'claims.colPaid', align: 'right' as const },
-  { key: 'claims.colStatus', align: 'left' as const },
   { key: 'claims.colSubmittedDate', align: 'left' as const },
 ] as const;
 
@@ -291,7 +290,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
   return (
     <>
       <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
-        <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 980 }}>
+        <table className="bl-table bl-table--even bl-table--rows-open bl-workqueue-table" style={{ minWidth: 980 }}>
           {/* `bl-table--even` is table-layout: fixed — equal shares of the
               full width, stable as rows load. */}
           <thead>
@@ -344,11 +343,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
                 <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
                 <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
-                <td>
-                  <span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span>
-                </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString() : '—'}
+                  {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                 </td>
               </tr>
             ))}
