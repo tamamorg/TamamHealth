@@ -323,14 +323,19 @@ export default function SiteHeader() {
                 </HashLink>
               </div>
               <div className="tm-g3" style={{ padding: "40px 0 44px 56px", gap: "26px 32px", alignContent: "start" }}>
-                {m.links.map((link) => (
-                  // HashLink, not Link: several of these point at a section of
-                  // a page the reader may already be on (/platform#how-it-works).
-                  <HashLink key={link.label} href={link.href} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 3 }}>
+                {m.links.map((link) => {
+                  const label = <>
                     <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19, color: "var(--color-text)" }}>{link.label} &nbsp;›</span>
                     <span style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>{link.note}</span>
-                  </HashLink>
-                ))}
+                  </>;
+                  const style: React.CSSProperties = { textDecoration: "none", display: "flex", flexDirection: "column", gap: 3 };
+                  return /^https?:\/\//.test(link.href) ? (
+                    <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" style={style}>{label}</a>
+                  ) : (
+                    // Section links can point into the page already on screen.
+                    <HashLink key={link.label} href={link.href} style={style}>{label}</HashLink>
+                  );
+                })}
               </div>
             </div>
           </div>
