@@ -280,6 +280,8 @@ export interface SavedPaymentMethodDoc extends BaseDoc {
 // ═══ Payment Plan ══════════════════════════════════════════════════
 
 export interface PaymentPlanDoc extends BaseDoc {
+  /** Legacy plans without this field were denominated in SSP. */
+  currency?: string;
   type: 'payment_plan';
   patientId: string;
   patientName: string;

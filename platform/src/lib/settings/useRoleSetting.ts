@@ -37,6 +37,18 @@ export function useRoleFlag(key: string, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
 }
 
+/**
+ * "Hide patient identifiers on shared screens" (`security.mask`).
+ *
+ * `formatPhoneShared` / `formatLocationShared` read the store directly, so a
+ * component that only calls them never re-renders when the switch flips. Call
+ * this alongside them — and list the result in any `useMemo` that formats a
+ * shared value — so the mask applies without a navigation.
+ */
+export function useSharedScreenMask(): boolean {
+  return useRoleFlag('security.mask', false);
+}
+
 /** String setting — selects. */
 export function useRoleChoice(key: string, fallback: string): string {
   const value = useRoleSettings()[key];

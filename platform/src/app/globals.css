@@ -4,6 +4,15 @@
 
 /* ============ LAYOUT SYSTEM ============ */
 :root {
+  /* Module identity is categorical, never clinical severity. These reuse the
+     established brand/chart hues without changing triage or alert semantics. */
+  --module-care: var(--tm-deep);
+  --module-laboratory: #6D45C2;
+  --module-imaging: var(--brand-600);
+  --module-pharmacy: #0D9488;
+  --module-family: #BE185D;
+  --module-finance: var(--orange-800);
+  --module-operations: var(--tm-navy);
   --site-width: 1400px;
   --container-padding: 32px;
   --container-padding-medium: 24px;
@@ -45,16 +54,12 @@
   --type-size-caption: 0.8125rem; /* ~12px */
   --type-size-label: 0.6875rem; /* ~10px */
   --type-size-kpi: 1.6rem; /* ~24px */
-  /* Regular reads two rungs heavier than the browser default: the reception/
-     clinical dashboards set the platform's voice (600 content / 700 labels /
-     800 titles), and lighter body copy next to them looks washed out. Kept in
-     step with the `body` base below — when the two disagreed, a paragraph
-     using .type-body rendered lighter than the paragraph beside it that
-     styled nothing at all. */
+  /* Medium-weight data, semibold controls and stronger headings give busy
+     clinical screens hierarchy without making every value a headline. */
   /* Every rung is a face that is actually loaded (400/500/600/700/800 — see
      layout.tsx). An in-between value like 650 is not a lighter 700: the
      browser rounds it up to 700 and the rung silently becomes its neighbour. */
-  --type-weight-regular: 600;
+  --type-weight-regular: 500;
   --type-weight-medium: 600;
   /* 600 → 700: semibold drives every card/section title, label and tab in the
      app (h3-h5, .type-section-title, .type-label, chart nav/subtabs…) — the
@@ -851,11 +856,8 @@ body {
   overscroll-behavior: none;
   font-size: 15px;
   line-height: 1.55;
-  /* 600, not 400/500 — the platform's baseline weight. The role dashboards
-     render nearly all text at 600+, so anything left at the old base read as
-     faded beside them; on the clinical screens this is data being read at a
-     glance, and it has to hold up on a mid-brightness tablet in daylight. */
-  font-weight: 600;
+  /* Data stays medium weight; headings and controls carry the emphasis. */
+  font-weight: var(--type-weight-regular);
 }
 
 /* ============ Smooth transitions baseline ============
@@ -4177,6 +4179,13 @@ html:has(.mobile-shell-offline-banner) {
   color: #fff;
 }
 
+/* The circle identifies the selected page, not a second pointer selection.
+   Unselected shortcuts keep their tooltips and keyboard focus without a well.
+   An expanded menu retains its separate open-panel treatment. */
+.ehr-top-rail .ehr-top-modules > button:not(.ehr-module-trigger):not(.is-active):not(.active):hover {
+  background: transparent;
+}
+
 /* Count on a module shortcut — "there is work waiting in here". Same orange
    dot as the notification bell, ringed in the rail's navy so it reads as a
    badge on the icon rather than a stray pixel on the header. */
@@ -4276,6 +4285,50 @@ html:has(.mobile-shell-offline-banner) {
   border-top: 1px solid var(--ehr-border);
   border-left: 1px solid var(--ehr-border);
   background: var(--bg-card-solid);
+}
+
+.notifications-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid;
+}
+.notifications-popover-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.notifications-popover-heading h2 { margin: 0; white-space: nowrap; }
+.notifications-popover-count {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.notifications-popover-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ehr-top-actions .notifications-popover-header .notifications-popover-action {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 7px;
+  border-radius: 8px;
+  justify-content: center;
+}
+.ehr-top-actions .notifications-popover-header .notifications-popover-action svg.lucide {
+  color: inherit !important;
+  stroke: currentColor !important;
+  flex-shrink: 0;
+}
+@media (max-width: 380px) {
+  .notifications-popover-header { padding: 12px 8px; gap: 6px; }
+  .notifications-popover-heading { gap: 4px; }
+  .notifications-popover-controls { gap: 3px; }
+  .notifications-popover-heading h2 { font-size: 14px; }
 }
 
 /* The popover lives inside `.ehr-top-actions`, but its controls are content
@@ -4384,14 +4437,12 @@ html:has(.mobile-shell-offline-banner) {
   z-index: 1250;
 }
 
-/* The open hamburger becomes the panel's tab: same surface, squared bottom,
-   so the dropdown connects to the button instead of hovering near it. */
+/* The menu opens below the rail; its trigger stays a circular header action. */
 .ehr-top-modules .ehr-module-trigger.active {
-  background: var(--ehr-panel);
-  color: var(--ehr-text);
-  border-color: var(--ehr-border);
-  border-bottom-color: transparent;
-  border-radius: 12px 12px 0 0;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-color: transparent;
+  border-radius: 999px;
 }
 
 /* Role label only — the panel hangs off the module trigger, so it does not
@@ -7405,6 +7456,44 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .modal-portal-dialog > * {
   min-height: 0;
   max-height: 100%;
+}
+
+/* The portal owns popup width. A narrower nested panel must not leave an
+   empty strip beside its header and form (notably insurance's old sm panel). */
+.modal-portal-dialog > :is(.modal-panel, .modal-content) {
+  width: 100%;
+  max-width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Shared finance form rhythm; opt-in so clinical charts and drawers keep
+   their own layouts. Existing brand tokens also support dark mode and RTL. */
+.ehr-finance-dialog { --dialog-gutter: 24px; background: var(--bg-card-solid); }
+.ehr-finance-dialog__header { padding: 20px var(--dialog-gutter) !important; gap: 16px; align-items: center; }
+.ehr-finance-dialog__header > div { min-width: 0; }
+.ehr-finance-dialog__header h3 { font-size: 20px !important; line-height: 1.3; }
+.ehr-finance-dialog__header p { margin-top: 6px !important; font-size: 13px !important; line-height: 1.4; }
+.ehr-finance-dialog__close { width: 40px !important; height: 40px !important; flex: 0 0 40px; border-radius: 6px !important; display: grid !important; place-items: center; }
+.ehr-finance-dialog__close svg { width: 20px; height: 20px; }
+.ehr-finance-dialog__primary { min-height: 44px; background: var(--accent-primary) !important; color: #fff !important; border-radius: 6px !important; }
+.ehr-finance-dialog__terms > button[aria-pressed="true"] { border: 2px solid var(--accent-text) !important; background: color-mix(in srgb, var(--accent-primary) 10%, transparent) !important; }
+.ehr-finance-dialog__terms > button[aria-pressed="true"] > div { color: var(--accent-text) !important; }
+.ehr-finance-dialog__body { padding: 20px var(--dialog-gutter) !important; }
+.ehr-finance-dialog :is(label, .pp-field-label) { text-transform: none !important; letter-spacing: normal !important; font-size: 13px !important; line-height: 1.4; }
+.ehr-finance-dialog :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-width: 0; box-sizing: border-box; font-size: 14px !important; border-radius: 6px !important; }
+.ehr-finance-dialog :is(input:not([type="checkbox"]):not([type="radio"]), select) { min-height: 44px; }
+.ehr-finance-dialog__footer { padding: 16px var(--dialog-gutter) !important; gap: 12px !important; align-items: center; }
+.ehr-finance-dialog :is(.ehr-finance-dialog__footer, .ehr-finance-dialog__actions) > button { min-height: 44px; border-radius: 6px !important; }
+.ehr-finance-dialog button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.ehr-finance-dialog button:disabled { cursor: not-allowed !important; opacity: .55; }
+.ehr-finance-dialog--padded { padding: var(--dialog-gutter); }
+.ehr-finance-dialog--padded .grid > div { min-width: 0; }
+@media (max-width: 520px) {
+  .ehr-finance-dialog { --dialog-gutter: 16px; }
+  .ehr-finance-dialog__terms { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ehr-finance-dialog--padded .grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
+  .ehr-finance-dialog--padded .popup-resource-header--panel { margin-inline: -16px; margin-top: -16px; }
 }
 
 .viewport-popup {
@@ -27607,9 +27696,10 @@ table.patient-data-table.patient-data-table {
   .ehr-top-rail .ehr-top-brand { flex: none; max-width: none; }
 }
 
-/* The module trigger carries the design's tinted disc; the rest stay quiet
-   until hovered, which is what marks it as the way back to everything. */
-.ehr-top-rail .ehr-module-trigger { background: rgba(255, 255, 255, 0.16); }
+/* A closed menu is not a selected page. Only the current shortcut gets a
+   persistent disc; the expanded menu has its own panel treatment above. */
+.ehr-top-rail .ehr-module-trigger:not(.active) { background: transparent; }
+.ehr-top-rail .ehr-module-trigger:hover { background: rgba(255, 255, 255, 0.18); }
 
 /* Workspace: page padding 12/16/16 → 18/22/22, column gap 12 → 18, and both
    rails' card stacks 12 → 14 (left) and 12 → 16 (right). */
@@ -33751,4 +33841,23 @@ button.sadb-signal { cursor: pointer; }
   .ehr-module-menu-account button:hover,
   .ehr-module-menu-account button:active { background: var(--overlay-subtle); }
   .ehr-module-menu-account button.danger { color: var(--color-danger-text); }
+}
+
+/* Clinical rebrand: shared navigation and page identity. Layout, routes and
+   clinical status colours remain owned by their existing components. */
+.ehr-branded-page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: -0.015em;
+}
+.ehr-module-menu button:focus-visible,
+.ehr-top-modules button:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+.tamam-ehr-app :is(input, select, textarea) { font-weight: 500; }
+.tamam-ehr-app :is(th, td) { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  .ehr-top-modules button, .ehr-module-menu button { transition: none; }
 }

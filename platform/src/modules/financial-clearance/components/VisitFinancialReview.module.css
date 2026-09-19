@@ -1,0 +1,20 @@
+.review { border-block: 1px solid var(--ehr-border, #dce4ed); padding-block: 18px; color: var(--ehr-text, #113055); }
+.heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.heading h3 { margin: 0; font-size: 18px; }
+.review p { max-width: 78ch; margin: 8px 0; line-height: 1.5; }
+.heading p, .safety { color: var(--ehr-muted, #5d728b); }
+.refresh { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--ehr-border, #dce4ed); border-radius: 6px; background: var(--bg-primary); color: var(--accent-text, #075b94); }
+.refresh:disabled { opacity: .5; }
+.selection { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-block: 16px; }
+.selection label { text-transform: none; letter-spacing: normal; margin: 0; }
+.selection select { flex: 1 1 280px; min-width: 0; max-width: 100%; padding: 10px; border: 1px solid var(--ehr-border, #dce4ed); border-radius: 6px; color: inherit; background: var(--bg-primary); }
+.status { padding: 6px 12px; border-radius: 5px; background: var(--bg-secondary); font-weight: 600; }
+.status[data-status="payment_verified"] { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.status[data-status="awaiting_payment"], .status[data-status="awaiting_authorization"], .status[data-status="review_required"] { color: var(--warning-text, var(--text-primary)); background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.tableWrap { overflow-x: auto; }
+.review table { width: 100%; border-collapse: collapse; }
+.review th, .review td { padding: 12px 10px; text-align: start; border-bottom: 1px solid var(--ehr-border, #dce4ed); white-space: nowrap; }
+.review th { color: var(--ehr-muted, #5d728b); font-weight: 600; text-transform: none; letter-spacing: normal; }
+.review a { color: var(--accent-text, #075b94); text-decoration: underline; }
+.refresh:focus-visible, .selection select:focus-visible, .review a:focus-visible { outline: 2px solid var(--accent-text, #075b94); outline-offset: 3px; }
+.safety { font-size: 12px; }

@@ -57,7 +57,7 @@ export default function PopupHeader({
             title={expandLabel}
             data-action="popup-expand"
           >
-            <Maximize2 className="w-4 h-4" aria-hidden="true" />
+            <Maximize2 className="w-4 h-4" style={{ color: '#FFFFFF', stroke: 'currentColor' }} aria-hidden="true" />
           </button>
         )}
         <button
@@ -68,7 +68,7 @@ export default function PopupHeader({
           title={closeLabel}
           data-action="popup-close"
         >
-          <X className="w-4 h-4" aria-hidden="true" />
+          <X className="w-4 h-4" style={{ color: '#FFFFFF', stroke: 'currentColor' }} aria-hidden="true" />
         </button>
       </div>
     </header>

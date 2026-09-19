@@ -585,8 +585,20 @@ export async function signClinicalNote(
           orgId: existing.orgId, hospitalId: existing.hospitalId,
         });
       }
-      const { getEncounter, transitionEncounter } = await import('../services/encounter-service');
-      const encounter = await getEncounter(existing.encounterId);
+      const { getEncounter, transitionEncounter, advanceEncounterToClinician, PRE_CLINICIAN_STATUSES } = await import('../services/encounter-service');
+      let encounter = await getEncounter(existing.encounterId);
+      // A consultation started from the chart must drive the same visit as
+      // one started from the queue. Only a provider's encounter-linked
+      // consultation can catch up the pre-clinician stages; a nursing note,
+      // memo, or note for another patient/facility must never do so.
+      if (encounter && PRE_CLINICIAN_STATUSES.includes(encounter.status)
+        && isProviderRole(input.signerRole) && existing.noteType === 'soap'
+        && encounter.patientId === existing.patientId
+        && encounter.hospitalId === existing.hospitalId && encounter.orgId === existing.orgId) {
+        encounter = await advanceEncounterToClinician(encounter._id, {
+          clinicianId: input.signedBy, clinicianName: input.signedByName, actorId: input.signedBy,
+        });
+      }
       if (encounter?.status === 'with_clinician') {
         await transitionEncounter(existing.encounterId, 'ready_for_clinic_checkout', {
           actorId: input.signedBy,

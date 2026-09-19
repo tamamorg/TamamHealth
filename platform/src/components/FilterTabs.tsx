@@ -1,6 +1,6 @@
 'use client';
 
-import type { ComponentType } from 'react';
+import type { ComponentType, CSSProperties } from 'react';
 
 export interface FilterTabItem {
   /** Stable filter value */
@@ -10,7 +10,7 @@ export interface FilterTabItem {
   /** Count rendered as a badge after the label. Omit to hide the badge. */
   count?: number;
   /** Optional leading icon */
-  icon?: ComponentType<{ size?: number }>;
+  icon?: ComponentType<{ size?: number; style?: CSSProperties }>;
   /** Optional accent colour for the badge/active state (defaults to the primary accent) */
   tint?: string;
 }
@@ -67,7 +67,7 @@ export default function FilterTabs({
               boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.14)' : 'none',
             }}
           >
-            {Icon ? <Icon size={size === 'sm' ? 12 : 14} /> : null}
+            {Icon ? <Icon size={size === 'sm' ? 12 : 14} style={{ color: 'inherit', stroke: 'currentColor', flexShrink: 0 }} /> : null}
             <span>{tab.label}</span>
             {typeof tab.count === 'number' && (
               <span

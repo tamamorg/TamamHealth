@@ -28,6 +28,7 @@ import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { VisitFinancialReview } from '@/modules/financial-clearance/client';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
@@ -173,6 +174,10 @@ export default function BillingTab({
   const [data, setData] = useState<FinancialOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [chargeSearch, setChargeSearch] = useState('');
+  const [activityPage, setActivityPage] = useState(1);
+  const [showServices, setShowServices] = useState(false);
+  const [showBillingActions, setShowBillingActions] = useState(false);
+  const [showFinancialReview, setShowFinancialReview] = useState(false);
 
   const patientName = `${patient.firstName} ${patient.surname}`;
   const canManageBilling = BILLING_ROLES.includes(currentUser?.role ?? '');
@@ -463,9 +468,18 @@ export default function BillingTab({
   // "Search this table" — same client-side filter the bill detail page uses
   // for its line items, scoped to description/category.
   const chargeQuery = chargeSearch.trim().toLowerCase();
-  const visibleCharges = d.charges.filter(c => !chargeQuery
-    || c.description.toLowerCase().includes(chargeQuery)
-    || c.category.toLowerCase().includes(chargeQuery));
+  const activity = [
+    ...d.charges.map(c => ({ id: `charge-${c._id}`, kind: 'charge', date: c.serviceDate,
+      description: c.description, detail: c.category, reference: c._id, status: c.status,
+      amount: c.billedAmount, currency: 'SSP' })),
+    ...d.payments.map(p => ({ id: `payment-${p._id}`, kind: 'payment', date: p.processedAt,
+      description: getMethodConfig(p.method).label, detail: p.processedByName,
+      reference: p.reference || p._id, status: p.status, amount: p.amount, currency: p.currency })),
+  ].filter(row => !chargeQuery || [row.description, row.detail, row.reference, row.status].some(value => value.toLowerCase().includes(chargeQuery)))
+    .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) || a.id.localeCompare(b.id));
+  const pageCount = Math.max(1, Math.ceil(activity.length / 10));
+  const currentPage = Math.min(activityPage, pageCount);
+  const visibleActivity = activity.slice((currentPage - 1) * 10, currentPage * 10);
   const addInsuranceLabel = t('insuranceSnapshot.addInsurance') || 'Add insurance';
 
   return (
@@ -511,7 +525,7 @@ export default function BillingTab({
             {activePlan ? t('billing.monthPlan', { count: activePlan.termMonths }) : '—'}
           </span>
           {activePlan && (
-            <span className="bl-stat-sub">{t('billing.remaining', { amount: formatMoney(activePlan.remainingBalance) })}</span>
+            <span className="bl-stat-sub">{t('billing.remaining', { amount: formatMoney(activePlan.remainingBalance, { currency: activePlan.currency ?? 'SSP' }) })}</span>
           )}
         </div>
       </div>
@@ -524,11 +538,13 @@ export default function BillingTab({
         </section>
       ))}
 
+      {/* One account workspace; visit evidence remains explicitly visit-specific. */}
+      <div className="bl-card bl-billing-workspace">
       {/* ─── Charges ─── */}
-      <div className="bl-card">
+      <section className="bl-billing-section" aria-labelledby="patient-billing-charges">
         <div className="bl-card-head">
-          <h2 className="bl-card-title">Charges</h2>
-          <p className="bl-card-sub">Items billed to this patient across all encounters</p>
+          <h2 id="patient-billing-charges" className="bl-card-title">{t('billing.activityTitle')}</h2>
+          <p className="bl-card-sub">{t('billing.activityHelp')}</p>
           <span className="bl-underline" />
         </div>
         {/* ─── Toolbar ───
@@ -543,156 +559,93 @@ export default function BillingTab({
             <input
               type="text"
               value={chargeSearch}
-              onChange={e => setChargeSearch(e.target.value)}
-              placeholder="Search this table"
-              aria-label="Search charges"
+              onChange={e => { setChargeSearch(e.target.value); setActivityPage(1); }}
+              placeholder={t('billing.activitySearch')}
+              aria-label={t('billing.activitySearch')}
             />
           </div>
-          <SuperbillPicker sb={superbill} />
-          <button
-            type="button"
-            className="listpage-icon-btn"
-            onClick={() => setInsuranceModalOpen(true)}
-            title={addInsuranceLabel}
-            aria-label={addInsuranceLabel}
-          >
-            <ShieldCheck size={16} />
-          </button>
-          <button
-            type="button"
-            className="listpage-icon-btn"
-            onClick={() => setShowPlanWizard(true)}
-            title={t('billing.createPaymentPlan')}
-            aria-label={t('billing.createPaymentPlan')}
-          >
-            <CalendarClock size={16} />
-          </button>
-          <button
-            type="button"
-            className="listpage-icon-btn"
-            onClick={handlePrintStatement}
-            title={t('billing.printStatement')}
-            aria-label={t('billing.printStatement')}
-          >
-            <Printer size={16} />
-          </button>
-          <button
-            type="button"
-            className="listpage-icon-btn"
-            onClick={openPaymentLink}
-            title={t('billing.sendPaymentLink')}
-            aria-label={t('billing.sendPaymentLink')}
-          >
-            <Send size={16} />
-          </button>
-          {canManageBilling && (
-            <>
-              <button
-                type="button"
-                className="listpage-icon-btn"
-                onClick={openRefund}
-                title={t('billing.issueRefund')}
-                aria-label={t('billing.issueRefund')}
-              >
-                <RotateCcw size={16} />
-              </button>
-              <button
-                type="button"
-                className="listpage-icon-btn bl-icon-btn--danger"
-                onClick={() => setShowAdjustment(true)}
-                title={t('billing.adjustmentWriteOff')}
-                aria-label={t('billing.adjustmentWriteOff')}
-              >
-                <RefreshCw size={16} />
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className="listpage-icon-btn listpage-icon-btn-primary"
-            onClick={() => setShowPaymentPanel(true)}
-            title={t('billing.collectPayment')}
-            aria-label={t('billing.collectPayment')}
-          >
-            <Wallet size={16} />
-          </button>
+          <button type="button" className="bl-btn bl-btn--primary" onClick={() => setShowBillingActions(true)}><Wallet size={18} />{t('billing.actionsTitle')}</button>
         </div>
-        <SuperbillDraft sb={superbill} />
         <div className="bl-table-wrap">
           <table className="bl-table">
-            <thead>
-              <tr>
-                <th>Number</th><th>Charge</th><th>Category</th><th>Status</th><th>Date</th><th className="bl-right">Amount</th>
-              </tr>
-            </thead>
+            <thead><tr>
+              {['date', 'type', 'description', 'reference', 'status', 'amount'].map(column => <th key={column} className={column === 'amount' ? 'bl-right' : undefined}>{t(`billing.activityColumn.${column}`)}</th>)}
+            </tr></thead>
             <tbody>
-              {d.charges.length === 0 ? (
-                <tr><td colSpan={6}>
-                  <div className="bl-empty">
-                    <Receipt size={28} />
-                    <p>{t('billing.noChargesRecorded')}</p>
-                  </div>
-                </td></tr>
-              ) : visibleCharges.length === 0 ? (
-                <tr><td colSpan={6} className="bl-muted" style={{ textAlign: 'center', padding: 24 }}>No charges match your search.</td></tr>
-              ) : visibleCharges.map((charge, idx) => (
-                <tr key={charge._id}>
-                  <td className="bl-num">{idx + 1}</td>
-                  <td>{charge.description}</td>
-                  <td className="bl-muted">{charge.category}</td>
-                  <td><span className={statusChipClass(charge.status)}>{charge.status}</span></td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(charge.serviceDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                  <td className="bl-num bl-right">{formatMoney(charge.billedAmount)}</td>
-                </tr>
-              ))}
+              {!visibleActivity.length ? <tr><td colSpan={6}><div className="bl-empty"><Receipt size={28} /><p>{t('billing.activityEmpty')}</p></div></td></tr> :
+                visibleActivity.map(row => <tr key={row.id}>
+                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  <td><span className="bl-chip">{t(`billing.activityKind.${row.kind}`)}</span></td>
+                  <td>{row.description}<div className="bl-muted">{row.detail}</div></td>
+                  <td className="bl-activity-reference">{row.reference}</td>
+                  <td><span className={row.kind === 'charge' ? statusChipClass(row.status) : 'bl-chip'}>{row.status}</span></td>
+                  <td className="bl-num bl-right">{formatMoney(row.amount, { currency: row.currency })}</td>
+                </tr>)}
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* ─── Payments ───
-          Full width: the running totals column the bill detail page carries
-          alongside this list is dropped here, since the summary strip above
-          already states billed/paid/outstanding for the whole account. */}
-      <div className="bl-card">
-        <div className="bl-pay-single">
-          <h2 className="bl-card-title">Payments</h2>
-          <span className="bl-underline" />
-
-          <div className="bl-table-wrap">
-            <table className="bl-table">
-              <thead>
-                <tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th className="bl-right">Amount</th></tr>
-              </thead>
-              <tbody>
-                {d.payments.length === 0 ? (
-                  <tr><td colSpan={5}>
-                    <div className="bl-empty">
-                      <h3>{t('billing.noPaymentsRecorded')}</h3>
-                      <p>Payments recorded for this patient will appear here.</p>
-                    </div>
-                  </td></tr>
-                ) : d.payments.map(pmt => (
-                  <tr key={pmt._id}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{new Date(pmt.processedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                    <td>{getMethodConfig(pmt.method).label}</td>
-                    <td className="bl-muted">{pmt.reference || '—'}</td>
-                    <td>{pmt.processedByName}</td>
-                    <td className="bl-num bl-right">{formatMoney(pmt.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <nav className="bl-activity-pagination" aria-label={t('billing.activityPages')}>
+          <span role="status">{t('billing.activityPage', { page: currentPage, pages: pageCount, count: activity.length })}</span>
+          <div>
+            <button type="button" disabled={currentPage === 1} onClick={() => setActivityPage(currentPage - 1)}>{t('billing.activityPrevious')}</button>
+            <button type="button" disabled={currentPage === pageCount} onClick={() => setActivityPage(currentPage + 1)}>{t('billing.activityNext')}</button>
           </div>
-        </div>
+        </nav>
+      </section>
       </div>
+
+      {showFinancialReview && <Modal onClose={() => setShowFinancialReview(false)} width={820}>
+        <div className="bl-billing-review">
+          <VisitFinancialReview patientId={patient._id} encounterId={superbillEncounterId} />
+          <div className="bl-activity-pagination"><button type="button" onClick={() => setShowFinancialReview(false)}>{t('billing.activityClose')}</button></div>
+        </div>
+      </Modal>}
 
       {/* ─── Payment Panel Modal ─── */}
+      {showBillingActions && <Modal onClose={() => setShowBillingActions(false)} width={600} labelledBy="billing-actions-title">
+        <div className="bl-root bl-modal-body">
+          <div className="bl-modal-head"><h3 id="billing-actions-title" className="bl-modal-title">{t('billing.actionsTitle')}</h3></div>
+          <p>{t('billing.actionsHelp')}</p>
+          <div className="bl-action-choices">
+            {[
+              { label: t('billing.collectPayment'), icon: Wallet, run: () => setShowPaymentPanel(true) },
+              { label: t('billing.servicesPopup'), icon: Receipt, run: () => setShowServices(true) },
+              { label: addInsuranceLabel, icon: ShieldCheck, run: () => setInsuranceModalOpen(true) },
+              { label: t('billing.createPaymentPlan'), icon: CalendarClock, run: () => setShowPlanWizard(true) },
+              { label: t('financialReview.title'), icon: Receipt, run: () => setShowFinancialReview(true) },
+              { label: t('billing.sendPaymentLink'), icon: Send, run: openPaymentLink },
+              { label: t('billing.printStatement'), icon: Printer, run: handlePrintStatement },
+              ...(canManageBilling ? [
+                { label: t('billing.issueRefund'), icon: RotateCcw, run: openRefund },
+                { label: t('billing.adjustmentWriteOff'), icon: RefreshCw, run: () => setShowAdjustment(true) },
+              ] : []),
+            ].map(action => <button key={action.label} type="button" onClick={() => { setShowBillingActions(false); action.run(); }}><action.icon size={22} /><span>{action.label}</span></button>)}
+          </div>
+          <div className="bl-modal-actions"><button type="button" className="bl-btn bl-btn--outline" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button></div>
+        </div>
+      </Modal>}
+      {showServices && <Modal onClose={() => { if (!superbill.busy) setShowServices(false); }} width={760} disableBackdropClose={superbill.busy} labelledBy="billing-services-title">
+        <div className="bl-root bl-modal-body bl-services-dialog">
+          <div className="bl-modal-head"><h3 id="billing-services-title" className="bl-modal-title">{t('billing.servicesPopup')}</h3></div>
+          <ol className="bl-dialog-steps">
+            <li>{t('billing.servicesSelectStep')}</li>
+            <li>{t('billing.servicesPostStep')}</li>
+            <li>{t('billing.continuePayment')}</li>
+          </ol>
+          <SuperbillPicker sb={superbill} />
+          <SuperbillDraft sb={superbill} />
+          <div className="bl-modal-actions">
+            <button type="button" className="bl-btn bl-btn--outline" disabled={superbill.busy} onClick={() => setShowServices(false)}>{t('billing.activityClose')}</button>
+            <button type="button" className="bl-btn bl-btn--primary" disabled={superbill.busy || !!superbill.error || !superbill.posted || superbill.lines.length > 0} onClick={() => { setShowServices(false); setShowPaymentPanel(true); }}>{t('billing.continuePayment')}</button>
+          </div>
+        </div>
+      </Modal>}
       {showPaymentPanel && (
         <PaymentPanel
           patientId={patient._id}
           patientName={`${patient.firstName} ${patient.surname}`}
           amountDue={patientBalance}
+          encounterId={superbillEncounterId}
           onSuccess={() => { setShowPaymentPanel(false); reloadPayments(); loadAll(); }}
           onCancel={() => setShowPaymentPanel(false)}
         />

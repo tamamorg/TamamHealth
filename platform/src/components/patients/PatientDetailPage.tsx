@@ -1695,8 +1695,10 @@ export default function PatientDetailPage() {
               <div className="space-y-2">
                 <ChartSection
                   title="Appointments"
-                  addLabel="New appointment"
-                  onAdd={canBookAppointments ? () => router.push(`/appointments?new=1&patientId=${patient._id}`) : undefined}
+                  addLabel={t('appointments.bookAppointment')}
+                  addIcon={<Calendar />}
+                  onAdd={canBookAppointments ? () => router.push(`/appointments/new?patient=${encodeURIComponent(patient._id)}`) : undefined}
+                  filterSlot={!canBookAppointments ? <button type="button" className="tamam-section-add" disabled title={t('appointments.schedulingRequired')}><Calendar />{t('appointments.bookAppointment')}</button> : undefined}
                   searchValue={apptSearch}
                   onSearchChange={value => { setApptSearch(value); setApptPage(1); }}
                   pagination={{ page: apptPage, pageSize: APPT_PAGE_SIZE, total: filteredAppts.length, onPageChange: setApptPage }}
@@ -1720,9 +1722,9 @@ export default function PatientDetailPage() {
                             <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
                               <OmrsEmptyState
                                 itemLabel="appointments"
-                                actionLabel="Record appointments"
-                                onAction={canBookAppointments ? () => router.push(`/appointments?new=1&patientId=${patient._id}`) : undefined}
-                                disabledReason={canBookAppointments ? undefined : 'Requires scheduling permission'}
+                                actionLabel={t('appointments.bookAppointment')}
+                                onAction={canBookAppointments ? () => router.push(`/appointments/new?patient=${encodeURIComponent(patient._id)}`) : undefined}
+                                disabledReason={canBookAppointments ? undefined : t('appointments.schedulingRequired')}
                               />
                             </td>
                           </tr>

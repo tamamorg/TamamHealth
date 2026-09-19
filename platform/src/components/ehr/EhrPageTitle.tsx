@@ -19,6 +19,8 @@
  * heading and cannot drift apart again.
  */
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
+import ModuleIcon from './ModuleIcon';
 
 export default function EhrPageTitle({
   children,
@@ -28,5 +30,9 @@ export default function EhrPageTitle({
   children: ReactNode;
   className?: string;
 }) {
-  return <span className={`ehr-page-title ${className}`.trim()}>{children}</span>;
+  const pathname = usePathname();
+  return <span className={`ehr-page-title ehr-branded-page-title ${className}`.trim()}>
+    <ModuleIcon href={pathname || '/dashboard'} />
+    <span>{children}</span>
+  </span>;
 }

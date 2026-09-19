@@ -10,7 +10,6 @@
  * sets its own width/flex explicitly.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Modal from '@/components/Modal';
 import {
   ClipboardList, Check, Clock, Calendar, Plus, Trash2, X, Flag, Pencil, Search, User,
 } from '@/components/icons/lucide';
@@ -21,7 +20,7 @@ import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import type { ClinicianTaskDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 
-type TaskPriority = 'low' | 'normal' | 'medium' | 'high';
+type TaskPriority = 'low' | 'medium' | 'high';
 
 /** Client-local "today" — never the UTC slice, which flips a day early in Juba. */
 function todayISO(): string {
@@ -57,7 +56,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
   const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
-  const [priority, setPriority] = useState<TaskPriority>('normal');
+  const [priority, setPriority] = useState<TaskPriority>('medium');
   const [patientId, setPatientId] = useState('');
   const [patientQuery, setPatientQuery] = useState('');
   const [showPatientSearch, setShowPatientSearch] = useState(false);
@@ -99,7 +98,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
       });
       setTitle('');
       setDue('');
-      setPriority('normal');
+      setPriority('medium');
       setPatientId('');
       setPatientQuery('');
       setShowPatientSearch(false);
@@ -122,14 +121,14 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
   };
 
   const cyclePriority = (current?: string): TaskPriority => {
-    if (current === 'high') return 'normal';
+    if (current === 'high') return 'low';
     if (current === 'medium') return 'high';
-    if (current === 'low') return 'normal';
+    if (current === 'low') return 'medium';
     return 'medium';
   };
 
   return (
-    <Modal onClose={onClose} width={560} labelledBy="tasks-panel-title">
+    <>
       <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 'var(--card-radius)', padding: 0, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 60px)', overflow: 'hidden' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
           <div className="flex items-center gap-2">
@@ -173,7 +172,6 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
               style={{ ...fieldStyle, padding: '6px 8px', width: 110, flex: '0 0 auto' }}
             >
               <option value="low">Low</option>
-              <option value="normal">Normal</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </Select>
@@ -357,13 +355,13 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                         />
                         <button
                           onClick={() => update(task._id, { priority: cyclePriority(task.priority) })}
-                          aria-label={`Change priority for "${task.title}" (currently ${task.priority || 'normal'})`}
-                          title={`Priority: ${task.priority || 'normal'} — click to cycle`}
+                          aria-label={`Change priority for "${task.title}" (currently ${task.priority === 'normal' ? 'medium' : task.priority || 'medium'})`}
+                          title={`Priority: ${task.priority === 'normal' ? 'medium' : task.priority || 'medium'} — click to cycle`}
                           className="p-1 rounded flex-shrink-0 inline-flex items-center gap-1"
                           style={{ color: priorityColor(task.priority) }}
                         >
                           <Flag className="w-3 h-3" />
-                          <span className="text-[10px] font-bold uppercase">{task.priority || 'normal'}</span>
+                          <span className="text-[10px] font-bold uppercase">{task.priority === 'normal' ? 'medium' : task.priority || 'medium'}</span>
                         </button>
                       </div>
                     </div>
@@ -396,6 +394,6 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-    </Modal>
+    </>
   );
 }

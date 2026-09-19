@@ -76,11 +76,22 @@ export function formatPhoneShared(raw: unknown, countryCode: string = DEFAULT_CO
   return `••• ••• ${digits.slice(-2)}`;
 }
 
-/** Street address for a shared screen — masked entirely, or shown in full. */
-export function formatAddressShared(raw: unknown): string {
+/**
+ * Address for a shared screen — masked entirely, or shown in full.
+ *
+ * `hiddenLabel` names what was withheld, so a county/state line on a list row
+ * reads "Location hidden" rather than claiming a street address was there.
+ */
+export function formatAddressShared(raw: unknown, hiddenLabel: string = 'Address hidden'): string {
   const value = raw == null ? '' : String(raw).trim();
   if (!value) return '';
-  return getRoleFlag('security.mask', false) ? 'Address hidden' : value;
+  return getRoleFlag('security.mask', false) ? hiddenLabel : value;
+}
+
+/** County/state line for a shared screen — the list-row form of the above. */
+export function formatLocationShared(parts: unknown[]): string {
+  const value = parts.map(part => (part == null ? '' : String(part).trim())).filter(Boolean).join(', ');
+  return formatAddressShared(value, 'Location hidden');
 }
 
 // ---------------------------------------------------------------------------

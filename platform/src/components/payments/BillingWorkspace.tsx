@@ -500,9 +500,6 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     { label: t('payments.colPlans'), align: 'right' as const },
     { label: t('payments.colLastActivity'), align: 'left' as const },
     { label: t('payments.colBalance'), align: 'right' as const },
-    // Last column, and the Actions button sits directly above it — the pills
-    // line up under that button rather than drifting to the column's far left.
-    { label: 'Status', align: 'right' as const },
   ], [t, canSeeClaims]);
 
   // The work queue's Actions menu — create, export, reset, reload, in that
@@ -761,7 +758,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                     { key: 'accounts', label: 'Accounts', count: patientLines.length, icon: Users },
                     { key: 'claims', label: 'Claims', count: data.claims.length, icon: Shield },
                   ]}
-                  className="mb-3"
+                  className="mb-3 bl-workqueue-tabs"
                 />
               )}
             </div>
@@ -802,7 +799,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               />
             ) : (
               <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
-                <table className="bl-table bl-table--even bl-table--rows-open" style={{ minWidth: 940 }}>
+                <table className="bl-table bl-table--even bl-table--rows-open bl-workqueue-table" style={{ minWidth: 940 }}>
                   {/* `bl-table--even` is table-layout: fixed — every column
                       takes an equal share of the full width, and none of them
                       reflow as rows load. */}
@@ -834,7 +831,6 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                       </tr>
                     ) : filteredAccounts.map(line => {
                       const owing = line.outstanding > 0;
-                      const status = accountStatus(line);
                       const isRealPatient = line.patientId && !line.patientId.startsWith('demo-') && !line.patientId.includes('_demo');
                       return (
                         <tr
@@ -878,10 +874,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                             {line.lastActivity ? new Date(line.lastActivity).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                           </td>
                           <td className="bl-num bl-right" style={{ fontWeight: 700, color: owing ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
-                            {formatMoney(owing ? line.outstanding : line.totalCollected)}
-                          </td>
-                          <td className="bl-right">
-                            <span className={`bl-chip ${status.chip}`}>{status.label}</span>
+                            {formatMoney(owing ? line.outstanding : line.totalCollected, { decimals: 2 })}
                           </td>
                         </tr>
                       );
@@ -1142,9 +1135,9 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
   const owing = line.outstanding > 0;
 
   return (
-    <Modal onClose={onClose} width={600} labelledBy="billing-detail-name">
+    <Modal onClose={onClose} width={680} labelledBy="billing-detail-name">
       <div
-        className="bl-root"
+        className="bl-root bl-account-dialog"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -1155,11 +1148,11 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
       >
         {/* Header */}
         <div className="px-5 py-4 border-b flex items-start justify-between gap-3 modal-headband" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
-          <div>
+          <div className="bl-account-identity">
             <button
               onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)}
               className="bl-link"
-              style={{ fontSize: 16 }}
+              style={{ fontSize: 20 }}
               title={t('payments.openPatientRecord')}
             >
               <span id="billing-detail-name">{shortenPersonName(line.patientName)}</span>
@@ -1181,7 +1174,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
         </div>
 
         {/* Balance summary — flat, no gradient tint; colour carries the state. */}
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
+        <div className="px-5 py-4 bl-account-summary" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
           <div className="flex items-end justify-between gap-3 flex-wrap">
             <div>
               <span className="bl-stat-label" style={{ color: owing ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
@@ -1359,7 +1352,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="bl-fee-name">
-                          {t('payments.planMonthly', { amount: formatMoney(p.monthlyAmount), months: p.termMonths })}
+                          {t('payments.planMonthly', { amount: formatMoney(p.monthlyAmount, { currency: p.currency ?? 'SSP' }), months: p.termMonths })}
                         </div>
                         <div className="bl-fee-cat">
                           {p.startDate.slice(0, 10)} → {p.endDate.slice(0, 10)} · {p.apr === 0 ? t('payments.interestFree') : t('payments.aprValue', { apr: p.apr })}
@@ -1371,8 +1364,8 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     </div>
                     <div className="flex items-center justify-between gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--ehr-border-soft, #ECEEF1)' }}>
                       <div className="bl-fee-cat">
-                        {t('payments.paid')}: <span style={{ color: 'var(--color-success-text)' }}>{formatMoney(p.paidToDate)}</span>
-                        {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #3C5574)' }}>{formatMoney(planOutstanding)}</span>
+                        {t('payments.paid')}: <span style={{ color: 'var(--color-success-text)' }}>{formatMoney(p.paidToDate, { currency: p.currency ?? 'SSP' })}</span>
+                        {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #3C5574)' }}>{formatMoney(planOutstanding, { currency: p.currency ?? 'SSP' })}</span>
                       </div>
                       {p.status === 'active' && (
                         <button
@@ -1395,7 +1388,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
         </div>{/* /scrollable account sections */}
 
         {/* Footer actions */}
-        <div className="px-5 py-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
+        <div className="px-5 py-3 border-t flex items-center gap-2 bl-account-footer" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
           <button onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)} className="bl-btn bl-btn--outline" style={{ flex: 1 }}>
             {t('payments.openPatientRecord')} <ExternalLink className="w-3.5 h-3.5" />
           </button>
@@ -1414,7 +1407,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
 
 function Section({ title, icon, count, children }: { title: string; icon: React.ReactNode; count: number; children: React.ReactNode }) {
   return (
-    <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
+    <div className={`px-5 py-4 border-b bl-account-section${count === 0 ? ' bl-account-section--empty' : ''}`} style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'transparent', color: 'var(--bl-teal)' }}>

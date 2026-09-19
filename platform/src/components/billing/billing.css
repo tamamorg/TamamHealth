@@ -96,6 +96,62 @@
 .bl-card-head {
   padding: 16px 18px 0;
 }
+.bl-billing-review { padding: 0 18px; }
+.bl-overview-cards > .dash-card { padding: 0; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-primary); box-shadow: none; overflow: hidden; }
+.bl-overview-cards > .dash-card > :first-child { min-height: 88px; padding: 16px 20px; border-bottom: 1px solid var(--border-light); box-sizing: border-box; }
+.bl-overview-cards .bl-overview-heading { display: flex; align-items: center; gap: 8px; }
+.bl-overview-cards h3 { margin: 0; font-family: var(--font-platform); font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text-primary); }
+.bl-overview-cards > .dash-card > :nth-child(2) { padding: 20px; }
+.bl-workqueue-tabs { display: inline-grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bl-workqueue-tabs [role="tab"] { justify-content: center; min-height: 36px; gap: 8px; }
+.bl-workqueue-tabs [role="tab"] svg { width: 16px; height: 16px; }
+.bl-root .bl-workqueue-table { table-layout: auto; }
+.bl-root .bl-workqueue-table :is(thead th, tbody td) { text-align: start !important; }
+.bl-root .bl-workqueue-table tbody td { padding: 14px 16px; height: 52px; vertical-align: middle; font-size: 13px; white-space: normal; overflow: visible; text-overflow: clip; }
+.bl-root .bl-workqueue-table thead th { padding: 12px 16px; }
+.bl-root .bl-workqueue-table tbody td.bl-num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bl-root .bl-workqueue-table .bl-link { font-weight: 600; }
+.bl-root .bl-workqueue-table .bl-chip { min-width: 70px; display: inline-flex; justify-content: center; font-size: 11px; line-height: 1.4; padding: 5px 10px; }
+.bl-account-dialog .bl-account-identity { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.bl-account-dialog .modal-headband { padding: 20px 24px; }
+.bl-account-dialog .bl-account-summary { padding: 20px 24px; background: var(--bg-secondary); }
+.bl-account-dialog .bl-account-summary .bl-muted { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.bl-account-dialog .bl-account-section { padding: 18px 24px; }
+.bl-account-dialog .bl-account-section--empty { padding-block: 12px; }
+.bl-account-section--empty > div:first-child { margin-bottom: 0; }
+.bl-account-section--empty > div:last-child { padding: 4px 0 0 36px; }
+.bl-account-dialog .bl-account-footer { padding: 16px 24px; flex-wrap: wrap; gap: 12px; }
+.bl-account-dialog .bl-account-footer button { min-height: 44px; flex-basis: 200px !important; }
+.bl-account-dialog .bl-id-tag { font-size: 12px; }
+@media (max-width: 520px) {
+  .bl-account-dialog :is(.modal-headband, .bl-account-summary, .bl-account-section, .bl-account-footer) { padding-inline: 16px; }
+}
+.bl-action-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.bl-action-choices button { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 16px; text-align: start; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); }
+.bl-action-choices button:hover { background: var(--bg-secondary); border-color: var(--accent-primary); }
+.bl-action-choices button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.bl-action-choices svg { flex-shrink: 0; }
+.pp-payment-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.pp-payment-choices button { display: flex; align-items: center; gap: 8px; padding: 12px; min-height: 52px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); text-align: start; }
+.pp-payment-choices button[aria-pressed="true"] { border-color: var(--accent-primary); background: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-primary)); color: var(--accent-text); }
+.pp-payment-choices button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.pp-payment-guidance { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+.bl-activity-reference { max-width: 200px; overflow-wrap: anywhere; font-size: 12px; }
+.bl-activity-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-top: 1px solid var(--ehr-border, var(--border-light)); color: var(--ehr-muted); }
+.bl-activity-pagination > div { display: flex; gap: 8px; }
+.bl-activity-pagination button { min-height: 40px; padding: 8px 16px; border: 1px solid var(--ehr-border, var(--border-light)); border-radius: 6px; color: var(--accent-text); background: var(--bg-primary); }
+.bl-activity-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+.bl-activity-pagination button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.bl-billing-review > section { border: 0; }
+.bl-billing-workspace .bl-billing-section {
+  min-width: 0;
+  border-top: 1px solid var(--ehr-border, var(--border-light));
+}
+.bl-billing-workspace .bl-pay-single { padding-inline: 0; }
+.bl-billing-workspace .bl-pay-single > :is(.bl-card-title, .bl-underline) {
+  margin-inline: 18px;
+}
+.bl-billing-workspace .bl-empty { padding: 24px 18px; }
 .bl-card-title {
   font-size: 14px;
   font-weight: 700;
@@ -776,10 +832,25 @@
   box-shadow: 0 0 0 2px var(--bl-teal-soft);
 }
 
-.bl-modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
-.bl-modal-title { font-size: 15px; font-weight: 700; color: var(--ehr-text-title, #113055); margin: 0; }
+.bl-modal-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.bl-modal-title { font-size: 20px; font-weight: 700; color: var(--ehr-text-title, #113055); margin: 0; }
 .bl-modal-sub { font-size: 12.5px; color: var(--ehr-muted, #5D728B); margin: -8px 0 0; }
-.bl-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.bl-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 0; padding-top: 16px; border-top: 1px solid var(--border-light); }
+.bl-modal-actions > button { min-height: 44px; }
+.bl-modal-body > p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+.bl-dialog-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style-position: inside; gap: 16px; margin: 0; padding: 16px 0; border-block: 1px solid var(--border-light); font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.bl-services-dialog .bl-toolbar-select { width: 100%; height: 44px; }
+.bl-services-dialog .bl-draft { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; overflow-x: auto; }
+.bl-services-dialog .bl-draft-head { align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.bl-services-dialog .bl-draft-table { min-width: 520px; }
+.bl-services-dialog .bl-draft-foot { align-items: center; padding-block: 16px 0; }
+.bl-services-dialog .bl-draft-totals { min-width: 0; flex: 1; max-width: 300px; }
+.bl-services-dialog .bl-draft-remove { min-width: 36px; min-height: 36px; }
+@media (max-width: 520px) {
+  .bl-modal-body { padding: 16px; gap: 16px; }
+  .bl-dialog-steps { grid-template-columns: 1fr; gap: 8px; }
+  .bl-modal-actions > button { flex: 1 1 140px; }
+}
 
 /* Fee-schedule picker inside "Add items to bill" */
 .bl-fee-list {

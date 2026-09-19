@@ -4,7 +4,7 @@ import { putDoc, teardownTestDBs } from '../helpers/test-db';
 import { appointmentsDB, patientsDB, usersDB } from '@/lib/db';
 import { getAppointmentById } from '@/lib/services/appointment-service';
 import { getPatientById } from '@/lib/services/patient-service';
-import { assignProviderToPatient, reconcileCareTeamFromAppointment } from '@/lib/services/patient-assignment-service';
+import { assignProviderToPatient, reconcileCareTeamFromAppointment, resolveAndValidateTargets } from '@/lib/services/patient-assignment-service';
 import { getConsultationProgressByAppointment } from '@/lib/services/consultation-progress-service';
 import { checkInAppointment } from '@/lib/services/check-in-service';
 
@@ -59,6 +59,36 @@ const input = (patientId: string, appointmentId: string) => ({
 });
 
 describe('patient assignment target integrity', () => {
+  it('distinguishes an unavailable linked patient and can retry after that record arrives', async () => {
+    await seedIdentity();
+    await seedAppointment('appointment-1', 'patient-1');
+    const original = await getAppointmentById('appointment-1');
+    await expect(resolveAndValidateTargets(input('patient-1', 'appointment-1')))
+      .rejects.toMatchObject({ name: 'PatientRecordUnavailableError' });
+    await expect(assignProviderToPatient(input('patient-1', 'appointment-1')))
+      .rejects.toMatchObject({ name: 'PatientRecordUnavailableError' });
+    expect(await getAppointmentById('appointment-1')).toEqual(original);
+
+    // Simulates the original patient arriving through normal replication;
+    // never reconstruct a patient from the cached appointment name.
+    await seedPatient('patient-1');
+    await assignProviderToPatient(input('patient-1', 'appointment-1'));
+    expect((await getPatientById('patient-1'))?.assignedDoctor).toBe('doctor-1');
+  });
+
+  it('reports storage failure separately without modifying the appointment', async () => {
+    await seedIdentity();
+    await seedPatient('patient-1');
+    await seedAppointment('appointment-1', 'patient-1');
+    const original = await getAppointmentById('appointment-1');
+    const read = jest.spyOn(patientsDB(), 'get').mockRejectedValueOnce({ status: 500, message: 'private database details' });
+    try {
+      await expect(resolveAndValidateTargets(input('patient-1', 'appointment-1')))
+        .rejects.toMatchObject({ name: 'PatientRecordReadError' });
+      expect(await getAppointmentById('appointment-1')).toEqual(original);
+    } finally { read.mockRestore(); }
+  });
+
   it('rejects an appointment belonging to another patient before any write', async () => {
     await seedIdentity();
     await seedPatient('patient-1');

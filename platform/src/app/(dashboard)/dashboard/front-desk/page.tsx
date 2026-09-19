@@ -47,7 +47,8 @@ import {
   type LucideIcon,
 } from '@/components/icons/lucide';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
-import { formatPhoneShared } from '@/lib/field-formats';
+import { formatPhoneShared, formatLocationShared } from '@/lib/field-formats';
+import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import Select from '@/components/Select';
 import {
   ROOM_OPTIONS, RESCHEDULE_SLOTS, suggestDepartment, splitDateTime,
@@ -99,6 +100,10 @@ import { findActiveAppointmentForPatient } from '@/lib/appointment-workflow';
 export default function FrontDeskDashboardPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  // Rows and detail cards format phone/location through the shared-screen
+  // mask. The rows are memoised, so the flag is also a dependency below —
+  // otherwise rows built before the switch flipped keep the full values.
+  const maskIdentifiers = useSharedScreenMask();
   const scope = useDataScope();
   const { canConsult, canManageAppointmentSchedule, canCheckInAppointments, canAssignCareTeam } = usePermissions();
   // Reception schedules and checks in; a role that can do neither may look at
@@ -150,6 +155,7 @@ export default function FrontDeskDashboardPage() {
   // "Book appointment" — the same booking dialog the doctor module opens.
   const [bookingOpen, setBookingOpen] = useState(false);
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
+  const [nursingReviewIds, setNursingReviewIds] = useState<Set<string>>(new Set());
   // The end-of-day reconciliation list: open visits left over from a previous
   // day (a triaged patient who quietly left keeps an open encounter forever —
   // nothing else prompts anyone to close it). Opened from the Reception
@@ -210,6 +216,17 @@ export default function FrontDeskDashboardPage() {
           role: currentUser.role,
         });
         if (!cancelled) setEncounters(rows);
+        try {
+          const { getHandoffQueue } = await import('@/modules/post-consult/services/handoff-service');
+          const pending = await getHandoffQueue({ orgId: currentUser.orgId,
+            hospitalId: currentUser.hospitalId || currentUser.hospital?._id,
+            role: currentUser.role, userId: currentUser._id });
+          if (!cancelled) setNursingReviewIds(new Set(pending.map(enc => enc._id)));
+        } catch (err) {
+          // A handoff read must not hide the reception encounter queue.
+          if (!cancelled) setNursingReviewIds(new Set());
+          console.warn('Failed to load front-desk nursing handoff status', err);
+        }
       } catch (err) {
         console.warn('Failed to load front-desk encounter queue', err);
       }
@@ -467,6 +484,9 @@ export default function FrontDeskDashboardPage() {
           const state = linkedAppointment
             ? resolveOperationalVisitState(linkedAppointment, activeEncounter)
             : activeEncounter ? resolveOperationalVisitState({ status: triageVisitStatus }, activeEncounter) : null;
+          if (isCheckout && activeEncounter && nursingReviewIds.has(activeEncounter._id)) {
+            return { operationalLabel: 'Post-consultation nursing', operationalI18nKey: 'postConsult.title' };
+          }
           return state ? { operationalLabel: state.label, operationalI18nKey: state.i18nKey } : {};
         })(),
         waitMinutes: entry.minutesWaiting,
@@ -475,8 +495,8 @@ export default function FrontDeskDashboardPage() {
         sourceId: entry.triageId,
         encounterId: activeEncounter?._id,
         assignedRoom: room,
-        assignedDoctorName: doctorOf(entry.patientId),
-        assignedNurseName: nurseOf(entry.patientId),
+        assignedDoctorName: activeEncounter?.assignedClinicianName || activeEncounter?.clinicianName || entry.assignedToName || linkedAppointment?.providerName || doctorOf(entry.patientId),
+        assignedNurseName: activeEncounter?.assignedNurseName || linkedAppointment?.staffName || nurseOf(entry.patientId) || triageDoc?.triagedByName,
         location: locationOf(entry.patientId, room || (entry.chiefComplaint ? suggestDepartment(entry.chiefComplaint) : 'Triage')),
       });
     }
@@ -492,7 +512,10 @@ export default function FrontDeskDashboardPage() {
     // dropped from the board — a cancellation the desk can still see is one it
     // can still reverse.
     const CLOSED_UNSEEN = new Set<AppointmentDoc['status']>(['cancelled', 'rescheduled', 'no_show']);
-    const triagedPatientIds = new Set(activeTriageByPatient.keys());
+    // Only a rendered triage row may suppress its appointment. A discharged
+    // triage is deliberately absent from stageEntries; its completed booking
+    // must remain visible in Finished.
+    const triagedPatientIds = new Set(stageEntries.map(entry => entry.patientId));
     const APPT_SCORE: Record<string, number> = { emergency: 3, urgent: 2 };
     for (const a of todaysAppointments) {
       if (triagedPatientIds.has(a.patientId)) continue;
@@ -538,12 +561,12 @@ export default function FrontDeskDashboardPage() {
         score: APPT_SCORE[a.priority ?? ''] ?? 1,
         sourceId: a._id,
         encounterId: activeEncounter?._id,
-        assignedDoctorName: a.providerName || doctorOf(a.patientId),
+        assignedDoctorName: activeEncounter?.assignedClinicianName || activeEncounter?.clinicianName || a.providerName || doctorOf(a.patientId),
         // Same ladder as the doctor line above: the patient-level assignment
         // when reception has stamped it, else the nurse named on the booking —
         // a clinician-booked appointment carries staffName before the patient
         // document learns it (reconciled at check-in / front-desk save).
-        assignedNurseName: nurseOf(a.patientId) || a.staffName || '',
+        assignedNurseName: activeEncounter?.assignedNurseName || nurseOf(a.patientId) || a.staffName || activeTriageByPatient.get(a.patientId)?.triagedByName || '',
         location: a.department || a.facilityName || locationOf(a.patientId),
       });
     }
@@ -589,7 +612,7 @@ export default function FrontDeskDashboardPage() {
     // `queueNowMs` ticks every minute purely to recompute the wait labels
     // (buildQueueFromTriage reads the clock) — it is a dependency, not a value
     // read directly in the body above.
-  }, [boardDate, currentUser?.hospitalName, encounters, patients, queueNowMs, today, todaysAppointments, triages, viewingToday]);
+  }, [boardDate, currentUser?.hospitalName, encounters, nursingReviewIds, patients, queueNowMs, today, todaysAppointments, triages, viewingToday]);
 
   /**
    * The queue as it applies to the board's day. Every builder above already
@@ -897,6 +920,12 @@ export default function FrontDeskDashboardPage() {
     status: AppointmentStatus,
     mirrorTriage?: TriageDoc,
   ) => {
+    if (status === 'completed') {
+      const encounter = encounters.find(enc => enc.appointmentId === appt._id);
+      setCheckoutTarget({ patientId: appt.patientId, patientName: appt.patientName,
+        appointmentId: appt._id, encounterId: encounter?._id, triageId: mirrorTriage?._id });
+      return;
+    }
     if (status === 'checked_in') { setCheckInTarget(appt); return; }
     if (status === 'no_show') { setNoShowTarget(appt); return; }
     if (status === 'cancelled') { setCancelReason(''); setCancelTarget({ appt, triage: mirrorTriage }); return; }
@@ -939,7 +968,7 @@ export default function FrontDeskDashboardPage() {
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not update the appointment status', 'error');
     }
-  }, [updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t]);
+  }, [encounters, updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t]);
 
   // ── Cancel, after the dialog confirms it. Mirrors handleNoShow, and leaves
   //    an Undo on the toast that restores the pre-cancel rung (the cancel
@@ -1216,7 +1245,7 @@ export default function FrontDeskDashboardPage() {
       const activeForCare = entry.status === 'WAITING' || entry.status === 'IN CONSULT';
       // A slot closed without the patient being seen is finished, but there is
       // no visit to check out — it gets its own pill, never the Checkout action.
-      const checkoutReady = entry.status === 'DONE' && !entry.closedStatus;
+      const checkoutReady = entry.status === 'DONE' && !entry.closedStatus && entry.visitStatus !== 'completed';
       const statusTone: EhrCareDashboardRow['statusTone'] = entry.closedStatus
         ? APPOINTMENT_STATUS_TONES[entry.closedStatus]
         : entry.status === 'DONE'
@@ -1249,9 +1278,9 @@ export default function FrontDeskDashboardPage() {
       // arrived-but-untriaged appointments show their department instead;
       // checkout-only rows (no triage/appointment on file today) keep the
       // honest 'Checkout' state already on the entry.
-      const context = entry.stage ? STAGE_LABELS[entry.stage]
+      const context = entry.operationalI18nKey ? t(entry.operationalI18nKey) : entry.operationalLabel || (entry.stage ? STAGE_LABELS[entry.stage]
         : entry.type === 'appointment' ? entry.department
-        : entry.location || entry.department;
+        : entry.location || entry.department);
       // Same shared acuity words the Appointments tab of this very dashboard
       // uses; this branch called RED "Critical", so one column said two
       // different things depending on which tab you were on.
@@ -1394,11 +1423,14 @@ export default function FrontDeskDashboardPage() {
         // Rows with no booking at all still get the legacy panel: there is
         // nothing for the editor to edit.
         popupDetail: queueAppointment ? (
+          <>
+          {checkoutReady && <FrontDeskDetailActions actions={popupActions} />}
           <RowAppointmentEditor
             appointment={queueAppointment}
             appointments={appointments}
             patient={patient}
           />
+          </>
         ) : (
           <>
             <FrontDeskDetailActions actions={popupActions} />
@@ -1472,7 +1504,7 @@ export default function FrontDeskDashboardPage() {
         careTeamSecondary: patient.assignedNurseName || 'Nurse unassigned',
         careTeamLabel: 'Care team',
         location: patientFacilityName(patient, currentUser?.hospitalName || 'Registration'),
-        locationSecondary: [patient.county, patient.state].filter(Boolean).join(', ') || 'Location',
+        locationSecondary: formatLocationShared([patient.county, patient.state]) || 'Location',
         locationLabel: 'Location',
         status: 'registered',
         statusLabel: 'Registered',
@@ -1539,6 +1571,7 @@ export default function FrontDeskDashboardPage() {
     handleSaveRoom,
     handleUndoCheckout,
     handleWalkInStatusChange,
+    maskIdentifiers,
     openReschedule,
     patients,
     panelView,

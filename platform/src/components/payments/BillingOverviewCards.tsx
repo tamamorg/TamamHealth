@@ -16,6 +16,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -33,6 +34,10 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 /* Same hues as the facility/org dashboards so a user moving between them
    reads the identical colour for the identical meaning. */
 const CASH_RECEIVED = '#0fa06a';
+function OverviewSummaryTitle() {
+  const { t } = useTranslation();
+  return <h3>{t('billing.overviewSummary')}</h3>;
+}
 const CASH_PENDING = 'var(--color-warning)';
 const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on a light card
 const CHART_BLUE = 'var(--chart-1)';
@@ -165,16 +170,16 @@ export default function BillingOverviewCards({
   }, [payments, claims]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3" data-tour="billing-overview">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 bl-overview-cards" data-tour="billing-overview">
 
       {/* ── 1. Cash Flow — the ring carries the weight, the amounts caption it ── */}
       <div className="dash-card overflow-hidden">
-        <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
+        <div className="bl-overview-heading px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</span>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</h3>
           <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>All invoices</span>
         </div>
-        <div className="flex items-center gap-3 p-4">
+        <div className="flex flex-col items-center gap-4 p-4">
           <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
             <CashFlowDonut data={cashSlices} />
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
@@ -186,7 +191,7 @@ export default function BillingOverviewCards({
               </span>
             </div>
           </div>
-          <div className="flex-1 min-w-0 space-y-2">
+          <div className="w-full min-w-0 space-y-2">
             <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(15, 160, 106,0.10)', border: '1px solid rgba(15, 160, 106,0.28)' }}>
               <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Received</p>
               <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_RECEIVED }}>{formatMoney(cash.received)}</p>
@@ -202,7 +207,8 @@ export default function BillingOverviewCards({
       {/* ── 2. The stat list — the counts (and the shift's takings) that used
               to be flat strips above the cards ── */}
       <div className="dash-card overflow-hidden">
-        <div className="px-4 py-3 flex flex-col justify-center h-full">
+        <div className="bl-overview-heading"><Receipt size={16} /><OverviewSummaryTitle /></div>
+        <div className="px-4 py-3 flex flex-col">
           <StatRow
             icon={<Banknote className="w-4 h-4" style={{ color: CASH_RECEIVED }} />}
             label={<>Collected <b>Today</b></>}

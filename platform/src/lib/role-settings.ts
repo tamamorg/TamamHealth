@@ -121,7 +121,7 @@ function securitySection(idle: string, mask: boolean): RoleSettingSection {
       // that can disagree. A value stored from before the switch existed
       // still reads as no user lock (idleChoiceMinutes returns undefined).
       sel('security.idle', 'Auto sign-out after inactivity', 'Shared-workstation protection', idle, ['5 min', '10 min', '15 min', '30 min']),
-      tg('security.mask', 'Hide patient identifiers on shared screens', 'Masks phone and address in queues', mask),
+      tg('security.mask', 'Hide patient identifiers on shared screens', 'Masks phone and location in queues, lists and search', mask),
       { kind: 'action', label: 'Password', hint: 'Change the password you sign in with', action: 'password', buttonLabel: 'Change password' },
       { kind: 'action', label: 'Screen-lock PIN', hint: 'Quick unlock on this shared device', action: 'pin', buttonLabel: 'Manage PIN' },
       lock('Password policy', 'Minimum length and rotation period', 'Facility-managed'),

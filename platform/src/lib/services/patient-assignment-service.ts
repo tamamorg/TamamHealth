@@ -389,7 +389,7 @@ async function assertAssignableStaff(
   }
 }
 
-async function resolveAndValidateTargets(input: {
+export async function resolveAndValidateTargets(input: {
   patientId: string;
   hospitalId?: string;
   orgId?: string;
@@ -400,7 +400,11 @@ async function resolveAndValidateTargets(input: {
   if (!input.orgId || !input.hospitalId) throw new Error('Organization and facility are required for assignment');
   const { getPatientById } = await import('./patient-service');
   const patient = await getPatientById(input.patientId);
-  if (!patient) throw new Error('The patient does not exist');
+  if (!patient) {
+    const error = new Error('The linked patient record is not available on this device. Check sync and the appointment’s patient link, then retry. Do not register the patient again.');
+    error.name = 'PatientRecordUnavailableError';
+    throw error;
+  }
   if (patient.orgId !== input.orgId) throw new Error('The patient is outside the assignment organization');
 
   const { getEncounter, findOpenEncounterForPatient } = await import('./encounter-service');

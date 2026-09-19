@@ -16,6 +16,7 @@ import { Megaphone, Bell, ClipboardCheck } from '@/components/icons/lucide';
 
 import NotificationsPanel from '@/components/NotificationsPanel';
 import TasksPanel from '@/components/TasksPanel';
+import HeaderActionPopover from '@/components/HeaderActionPopover';
 import { useTasks } from '@/lib/hooks/useTasks';
 import { AnnouncementsPanel } from '@/modules/communication/client';
 
@@ -38,13 +39,14 @@ export default function QuickActions({ notificationCount }: {
   const announceRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const notifButtonRef = useRef<HTMLButtonElement>(null);
+  const tasksButtonRef = useRef<HTMLButtonElement>(null);
+  const announceButtonRef = useRef<HTMLButtonElement>(null);
 
   // Close header popovers on outside click. Both panels stay in their trigger
   // wrappers even though notifications uses fixed positioning, so containment
   // remains reliable without a backdrop over the clinical workspace.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (announceRef.current && !announceRef.current.contains(e.target as Node)) setAnnounceOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
     };
     document.addEventListener('mousedown', onClick);
@@ -55,15 +57,19 @@ export default function QuickActions({ notificationCount }: {
     <>
       {/* My Tasks */}
       <button
+        ref={tasksButtonRef}
         type="button"
         onClick={() => {
-          setTasksOpen(true);
+          setTasksOpen(open => !open);
           setNotifOpen(false);
           setAnnounceOpen(false);
         }}
         aria-label={openTasks.length > 0 ? `My tasks (${openTasks.length} open)` : 'My tasks'}
         title="My tasks"
-        className="relative"
+        aria-expanded={tasksOpen}
+        aria-haspopup="dialog"
+        aria-controls="tasks-popover"
+        className={`relative ${tasksOpen ? 'active' : ''}`}
       >
         <ClipboardCheck className="w-5 h-5" />
         {openTasks.length > 0 && (
@@ -72,7 +78,7 @@ export default function QuickActions({ notificationCount }: {
           </span>
         )}
       </button>
-      {tasksOpen && <TasksPanel onClose={() => setTasksOpen(false)} />}
+      {tasksOpen && <HeaderActionPopover anchorRef={tasksButtonRef} onClose={() => setTasksOpen(false)} id="tasks-popover" labelledBy="tasks-panel-title"><TasksPanel onClose={() => setTasksOpen(false)} /></HeaderActionPopover>}
 
       {/* Notifications */}
       <div className="relative inline-flex" ref={notifRef}>
@@ -81,6 +87,7 @@ export default function QuickActions({ notificationCount }: {
           type="button"
           onClick={() => {
             setNotifOpen(open => !open);
+            setTasksOpen(false);
             setAnnounceOpen(false);
           }}
           aria-label={notifCount > 0 ? `Notifications (${notifCount} unread)` : 'Notifications'}
@@ -108,15 +115,19 @@ export default function QuickActions({ notificationCount }: {
       {/* Announcements */}
       <div className="relative" ref={announceRef}>
         <button
+          ref={announceButtonRef}
           type="button"
           onClick={() => {
             setAnnounceOpen(open => !open);
+            setTasksOpen(false);
             setNotifOpen(false);
           }}
           aria-label="Announcements"
           aria-expanded={announceOpen}
+          aria-haspopup="dialog"
+          aria-controls="announcements-popover"
           title="Announcements"
-          className="relative"
+          className={`relative ${announceOpen ? 'active' : ''}`}
         >
           <Megaphone className="w-5 h-5" />
           {unread > 0 && (
@@ -124,7 +135,7 @@ export default function QuickActions({ notificationCount }: {
           )}
         </button>
         {announceOpen && (
-          <AnnouncementsPanel onClose={() => setAnnounceOpen(false)} onUnreadChange={setUnread} />
+          <HeaderActionPopover anchorRef={announceButtonRef} onClose={() => setAnnounceOpen(false)} id="announcements-popover" labelledBy="announcements-panel-title"><AnnouncementsPanel onClose={() => setAnnounceOpen(false)} onUnreadChange={setUnread} /></HeaderActionPopover>
         )}
       </div>
     </>

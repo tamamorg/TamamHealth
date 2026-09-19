@@ -146,7 +146,7 @@ export async function evaluateCheckoutGate(
   }
   push('post_consult_handoff', handoffReady,
     !handoffReady ? 'Post-consult nursing review is outstanding or care records have changed.' : undefined,
-    encounter ? `/consultation?encounterId=${encounter._id}&patientId=${patientId}` : undefined);
+    encounter ? `/patients/${encodeURIComponent(patientId)}?tab=careChecklist#post-consult` : undefined);
 
   // ── All clinic visits closed ──────────────────────────────────────────
   // Derived from the encounter's own stage rather than a tick box: a visit
