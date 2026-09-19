@@ -23,6 +23,7 @@ import { shortenPersonName } from '@/lib/patient-utils';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Activity } from '@/components/icons/lucide';
+import EhrPanelTitle from './EhrPanelTitle';
 import { useAuth } from '@/lib/context';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useLabResults } from '@/lib/hooks/useLabResults';
@@ -70,7 +71,7 @@ export default function ProgressFeedCard() {
     <section className="ehr-side-card ehr-progress-card">
       <div className="ehr-side-card-head">
         <Activity className="w-5 h-5" />
-        <h2>{config.title}</h2>
+        <EhrPanelTitle title={config.title} />
       </div>
       {events.length === 0 && (
         // The feed's window is 12h (buildProgressFeed default) — say so, so a

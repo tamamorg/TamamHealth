@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
 import { ClipboardList, Printer, Search, X, type LucideIcon } from '@/components/icons/lucide';
 import EhrMissionCard from './EhrMissionCard';
+import EhrPanelTitle from './EhrPanelTitle';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
 import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -1096,7 +1097,7 @@ export default function EhrCareDashboard({
           <div className="ehr-side-card">
             <div className="ehr-side-card-head">
               <ClipboardList className="w-5 h-5" />
-              <h2>{metricsTitle}</h2>
+              <EhrPanelTitle title={metricsTitle} />
             </div>
             {metrics.map(metric => (
               <EhrCareDashboardMetricItem

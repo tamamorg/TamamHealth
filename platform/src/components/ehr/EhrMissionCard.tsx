@@ -2,6 +2,7 @@
 
 import type { ComponentType } from 'react';
 import { Stethoscope } from '@/components/icons/lucide';
+import EhrPanelTitle from './EhrPanelTitle';
 
 /**
  * The mission card — the day's one instruction for the role, in the words of
@@ -30,7 +31,7 @@ export default function EhrMissionCard({
     <div className={`ehr-side-card ehr-mission-card${className ? ` ${className}` : ''}`} data-tour="mission-card">
       <div className="ehr-side-card-head ehr-mission-head">
         <Icon className="w-5 h-5" />
-        <h2>{title}</h2>
+        <EhrPanelTitle title={title} />
       </div>
       <p>{description}</p>
     </div>

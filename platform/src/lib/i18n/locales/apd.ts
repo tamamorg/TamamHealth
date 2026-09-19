@@ -6258,6 +6258,7 @@ const apd: TranslationMap = {
   'surveillance.hospitalNetworkTitle': 'شبكة المستشفيات -- حالة التنبيه حسب الموقع',
   'surveillance.idsrWeeklySummary': 'ملخص IDSR الأسبوعي',
   'surveillance.labelAlertLevel': 'مستوى التنبيه',
+  'superintendent.surveillanceTitle': 'المراقبة',
   'surveillance.labelCounty': 'المحلية',
   'surveillance.labelDeaths': 'الوفيات',
   'surveillance.labelDisease': 'المرض',

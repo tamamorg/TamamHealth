@@ -134,10 +134,10 @@ export function SadbPage({ greeting, actions, roles = ['super_admin'], children 
 /* ── Card ──────────────────────────────────────────────────────────── */
 
 export function SadbCard({
-  title, meta, action, children, className = '',
+  title, tabletTitle, meta, action, children, className = '',
   collapsible = false, collapsed = false, onToggleCollapsed,
 }: {
-  title?: string; meta?: ReactNode; action?: ReactNode; children: ReactNode; className?: string;
+  title?: string; tabletTitle?: string; meta?: ReactNode; action?: ReactNode; children: ReactNode; className?: string;
   /**
    * Make the WHOLE head a toggle for the body.
    *
@@ -153,7 +153,7 @@ export function SadbCard({
 }) {
   const head = (
     <>
-      {title && <h3 className="sadb-card-title">{title}</h3>}
+      {title && <h3 className="sadb-card-title">{tabletTitle ? <><span className="dashboard-panel-title-full">{title}</span><span className="dashboard-panel-title-tablet">{tabletTitle}</span></> : title}</h3>}
       {(meta || action || collapsible) && (
         <div className="flex items-center gap-3">
           {meta && <span className="sadb-card-meta">{meta}</span>}

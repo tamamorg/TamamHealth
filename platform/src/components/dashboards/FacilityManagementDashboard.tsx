@@ -649,7 +649,7 @@ export default function FacilityManagementDashboard() {
         {/* The week's arrivals: how many came, and how many stayed. Admissions
             and outpatient encounters are the two ends of the same day's work,
             and nothing on this page said either until now. */}
-        <SadbCard title="Patient Flow" meta="This week">
+        <SadbCard title="Patient Flow" tabletTitle="Patients" meta="This week">
           <div className="px-3 pt-3 pb-1">
             <WeeklyActivityChart data={weeklyFlow} chartType="bar" series={flowSeries} />
           </div>
@@ -661,7 +661,7 @@ export default function FacilityManagementDashboard() {
             the card, here it shares a row with a 208px chart, so it has
             height to spend and centres itself in it rather than sitting in
             the card's top corner. */}
-        <SadbCard title="Cash Flow" meta={`${cash.currency} · this week`}>
+        <SadbCard title="Cash Flow" tabletTitle="Cash" meta={`${cash.currency} · this week`}>
           <div className="sadb-readiness-body fmcash-body">
             <div className="fmcash-ring">
               <CashFlowDonut data={cashSlices} />
@@ -685,6 +685,7 @@ export default function FacilityManagementDashboard() {
 
         <SadbCard
           title="Today's Operations"
+          tabletTitle="Operations"
           action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>Schedule</SadbHeadLink>}
         >
           <div className="sadb-kv-fill">

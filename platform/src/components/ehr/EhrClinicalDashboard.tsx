@@ -22,6 +22,7 @@ import {
 } from '@/components/icons/lucide';
 import type { ComponentType } from 'react';
 import EhrMissionCard from './EhrMissionCard';
+import EhrPanelTitle from './EhrPanelTitle';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
@@ -2364,7 +2365,7 @@ export default function EhrClinicalDashboard({
           <section className="ehr-side-card ehr-outstanding-card">
             <div className="ehr-side-card-head">
               <ClipboardList className="w-5 h-5" />
-              <h2>Outstanding items</h2>
+              <EhrPanelTitle title="Outstanding items" />
             </div>
             <div className="ehr-outstanding-chips">
               {outstanding.map(item => (

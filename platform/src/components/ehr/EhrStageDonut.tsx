@@ -1,6 +1,7 @@
 'use client';
 
 import { PieChart } from '@/components/icons/lucide';
+import EhrPanelTitle from './EhrPanelTitle';
 
 /**
  * "Arrivals by stage" — the rail donut from the Reception / Clinical App
@@ -57,7 +58,7 @@ export default function EhrStageDonut({
     <div className="ehr-side-card ehr-stage-donut">
       <div className="ehr-side-card-head">
         <PieChart className="w-5 h-5" />
-        <h2>{title}</h2>
+        <EhrPanelTitle title={title} />
       </div>
       <div className="ehr-stage-donut-body">
         <div className="ehr-stage-donut-ring" style={{ background: gradient }} role="img" aria-label={`${total} ${centerLabel}`}>

@@ -6272,6 +6272,7 @@ const en: TranslationMap = {
   'surveillance.hospitalNetworkTitle': 'Hospital Network — Alert Status by Location',
   'surveillance.idsrWeeklySummary': 'IDSR Weekly Summary',
   'surveillance.labelAlertLevel': 'Alert Level',
+  'superintendent.surveillanceTitle': 'Surveillance',
   'surveillance.labelCounty': 'County',
   'surveillance.labelDeaths': 'Deaths',
   'surveillance.labelDisease': 'Disease',
