@@ -1228,20 +1228,49 @@ select.cn-select {
 }
 
 /* ── Medications popup ──────────────────────────────────────────────────── */
-.cn-meds { display: flex; flex-direction: column; max-height: 84vh; }
+/* `min-height: 0` lets the panel shrink inside Modal's own max-height on a
+   short viewport, so the columns scroll and the title bar stays put — without
+   it the whole dialog scrolled and carried the header away. */
+.cn-meds { display: flex; flex-direction: column; min-height: 0; max-height: 84vh; }
 
+/* Inside a popup this row is painted as the blue title band by the structural
+   headband rule in globals.css, whose zero-specificity floor also hands it a
+   16px bottom margin. These panels rule their own body off with a border, so
+   that margin showed as a white strip between the band and the form — hence
+   the explicit `margin: 0`, and even padding so the title centres in the band. */
 .cn-meds-header {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 18px 10px;
+  margin: 0;
+  padding: 10px 14px 10px 18px;
 }
-.cn-meds-title { margin: 0; font-size: 17px; font-weight: 700; }
+.cn-meds-title { margin: 0; min-width: 0; font-size: 17px; font-weight: 700; line-height: 1.2; }
+/* Window controls (expand, close) travel as one group at the trailing edge. */
+.cn-meds-header-actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .cn-meds-close {
-  border: none; background: none; cursor: pointer; padding: 4px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
   color: var(--text-muted);
 }
+.cn-meds-close:hover { background: var(--overlay-subtle); }
+.cn-meds-close:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 
 .cn-meds-body {
   display: grid;
@@ -1876,7 +1905,15 @@ select.cn-select {
   flex-wrap: wrap;
   margin: 2px 0 10px;
 }
-.cn-rx-inlinerow .cn-meds-nkm { margin-top: 0; }
+/* The global `label` rule also carries a 6px bottom margin and tracked bold
+   type. In a centred row that margin lifted the checkbox label 3px off the
+   button beside it, so both margins go and the type matches its neighbour. */
+.cn-rx-inlinerow .cn-meds-nkm {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--text-primary);
+}
 
 .cn-rx-qtynote {
   font-size: 11.5px;

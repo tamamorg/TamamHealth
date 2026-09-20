@@ -31,6 +31,7 @@ import MedicationsModal from './MedicationsModal';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import IncludeProblemsModal from './assessment/IncludeProblemsModal';
 import AllergiesModal from './AllergiesModal';
+import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
 import CareCoordinationModal, {
   type CareCoordinationResult, type SummaryProblem,
 } from './CareCoordinationModal';
@@ -118,6 +119,7 @@ export default function ClinicalNoteEditor({
   const [showMedications, setShowMedications] = useState(false);
   const [showProblems, setShowProblems] = useState(false);
   const [showAllergies, setShowAllergies] = useState(false);
+  const [showVitals, setShowVitals] = useState(false);
   const [showPrescribe, setShowPrescribe] = useState(false);
   const [showLabOrder, setShowLabOrder] = useState(false);
   const [showFollowUp, setShowFollowUp] = useState(false);
@@ -359,8 +361,14 @@ export default function ClinicalNoteEditor({
       case 'review_medications': setShowMedications(true); return;
       case 'manage_allergies': setShowAllergies(true); return;
       case 'prescribe': setShowPrescribe(true); return;
+      // Opens the chart's own vitals form over the note. It used to navigate
+      // to the chart's Vitals tab: the clinician left a half-written note,
+      // recorded the reading, found their way back, and then had to press
+      // Refresh before the note showed what they had just taken. The reading
+      // is still written to the CHART (recordNursingVitals) — the note only
+      // ever holds a snapshot of it, refreshed on save below.
       case 'record_vitals':
-        navigateAway(`/patients/${note.patientId}?tab=vitals`);
+        setShowVitals(true);
         return;
       // Opens FollowUpModal, which only collects the form; the write
       // (createFollowUp, then recordPlanAction) happens in
@@ -910,6 +918,8 @@ export default function ClinicalNoteEditor({
                 onOpenDerived={
                   section.sectionId === 'medications' ? () => setShowMedications(true)
                   : section.sectionId === 'allergies' ? () => setShowAllergies(true)
+                  // Read-only once signed: the snapshot is the record then.
+                  : section.sectionId === 'vitals' && !locked ? () => setShowVitals(true)
                   : undefined
                 }
                 onAction={locked ? undefined : handleSectionAction}
@@ -1133,6 +1143,25 @@ export default function ClinicalNoteEditor({
             setShowAllergies(false);
             if (!locked) void refreshDerived('allergies');
           }}
+        />
+      )}
+
+      {showVitals && currentUser && (
+        <NurseVitalsModal
+          patientId={note.patientId}
+          patientName={note.patientName}
+          hospitalNumber={patient?.hospitalNumber}
+          hospitalId={note.hospitalId || patient?.registrationHospital || ''}
+          hospitalName={note.hospitalName}
+          orgId={currentUser.orgId}
+          // Threads the reading onto the visit this note documents, so the
+          // chart files it under the same encounter.
+          encounterId={note.encounterId}
+          currentUser={{ _id: currentUser._id, name: userName }}
+          onClose={() => setShowVitals(false)}
+          // Pull the reading just taken into the note — the whole point of
+          // recording it from here.
+          onSaved={() => { if (!locked) void refreshDerived('vitals'); }}
         />
       )}
 

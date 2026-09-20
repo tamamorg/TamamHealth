@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, HeartPulse, LogOut, RotateCcw, X } from '@/components/icons/lucide';
 import CreateNoteButton, { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
+import EhrVisitMoreMenu, { type VisitMoreItem } from '@/components/ehr/EhrVisitMoreMenu';
 import Modal from '@/components/Modal';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
 import { STAGE_LABELS, type QueueEntry, type QueueStage } from '@/lib/services/patient-queue-service';
 import { formatClockTime, formatCompactDateTime } from '@/lib/format-utils';
@@ -170,6 +172,12 @@ export default function EhrVisitPopup({
   /**
    * Clinical dispositions — offered only while the visit is still waiting
    * (active triage with an encounter). The parent owns the confirm + writes.
+   *
+   * Escalation has no button of its own while Move is on offer: it is a place
+   * the patient can go, so it is a destination in the Move dialog, and a
+   * second "Escalate" beside Move read as the same action twice. It appears
+   * under More only when there is no Move to carry it — a patient already in
+   * consultation has no queue entry, and must still be escalatable.
    */
   onEscalate?: () => void;
   onLwbs?: () => void;
@@ -221,6 +229,69 @@ export default function EhrVisitPopup({
   const vitalsAreCurrent = Boolean(triage);
   const vitals = vitalsTriage ? triageVitals(vitalsTriage) : [];
 
+  // Everything under More, in two groups: what re-reads or re-routes the visit,
+  // then the two ways a patient leaves this worklist — handed back first, the
+  // one that closes the visit last and marked as such. The entries are built
+  // from the same optional handlers the buttons were, so every role sees
+  // exactly the actions its dashboard grants and an empty list draws no menu.
+  const { t } = useTranslation();
+  const canMove = Boolean(onMove && entry);
+  const moreItems: VisitMoreItem[] = [];
+  if (onMove && canMove) {
+    moreItems.push({
+      key: 'move',
+      group: 'visit',
+      label: t('visitActions.move'),
+      // The dialog carries the escalation when there is one to offer, so the
+      // entry says so — that is where a clinician now looks for it.
+      hint: t(onEscalate ? 'visitActions.moveHintEscalate' : 'visitActions.moveHint'),
+      icon: <ArrowRightLeft className="w-4 h-4" />,
+      onSelect: onMove,
+    });
+  }
+  if (onStartTriage && triage) {
+    moreItems.push({
+      key: 'review-triage',
+      group: 'visit',
+      label: t('visitActions.reviewTriage'),
+      hint: t('visitActions.reviewTriageHint'),
+      icon: <HeartPulse className="w-4 h-4" />,
+      onSelect: onStartTriage,
+    });
+  }
+  if (onReturnToDesk) {
+    moreItems.push({
+      key: 'return-to-desk',
+      group: 'exit',
+      label: t('visitActions.returnToDesk'),
+      hint: t('visitActions.returnToDeskHint'),
+      icon: <RotateCcw className="w-4 h-4" />,
+      onSelect: onReturnToDesk,
+    });
+  }
+  if (onEscalate && !canMove) {
+    moreItems.push({
+      key: 'escalate',
+      group: 'exit',
+      tone: 'danger',
+      label: t('visitActions.escalate'),
+      hint: t('visitActions.escalateHint'),
+      icon: <AlertTriangle className="w-4 h-4" />,
+      onSelect: onEscalate,
+    });
+  }
+  if (onLwbs) {
+    moreItems.push({
+      key: 'lwbs',
+      group: 'exit',
+      tone: 'danger',
+      label: t('visitActions.lwbs'),
+      hint: t('visitActions.lwbsHint'),
+      icon: <LogOut className="w-4 h-4" />,
+      onSelect: onLwbs,
+    });
+  }
+
   const body = (
       <div className={inline ? 'ehr-visit-pop ehr-visit-pop--inline' : 'modal-content card-elevated ehr-visit-pop'}>
         {/* Inline, the queue row directly above already names the patient and
@@ -257,8 +328,11 @@ export default function EhrVisitPopup({
           <button type="button" role="tab" aria-selected={tab === 'previous'} className={tab === 'previous' ? 'active' : ''} onClick={() => setTab('previous')}>
             Previous visit
           </button>
-          {/* Open chart / Move / Start consultation sit on the tab line: the
-              one row that is always visible, however far the visit scrolls. */}
+          {/* The action line sits on the tab row: the one row that is always
+              visible, however far the visit scrolls. It carries only what
+              moves the visit FORWARD — open the chart, start the triage,
+              acknowledge the handoff, write the note. Looking back, re-routing
+              and the exits are under More, to the right of the note button. */}
           <div className="ehr-visit-pop-actions">
             {/* Labelled, not an icon: it sat beside the note button's own
                 document glyph, so two identical-looking icons did different
@@ -269,49 +343,17 @@ export default function EhrVisitPopup({
                 <FileText className="w-4 h-4" aria-hidden /> Open chart
               </button>
             )}
-            {onStartTriage && (
+            {/* An untriaged arrival's next step IS the triage, so "Start
+                triage" stays on the line. Once a triage exists the same verb
+                is a look back ("Review triage") and moves under More. */}
+            {onStartTriage && !triage && (
               <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onStartTriage} title="Open the ETAT triage assessment">
-                <HeartPulse className="w-4 h-4" aria-hidden /> {triage ? 'Review triage' : 'Start triage'}
-              </button>
-            )}
-            {onMove && entry && (
-              <button type="button" className="ehr-visit-pop-icon" onClick={onMove} aria-label="Move to another queue" title="Move…">
-                <ArrowRightLeft className="w-4 h-4" aria-hidden />
+                <HeartPulse className="w-4 h-4" aria-hidden /> Start triage
               </button>
             )}
             {onAcknowledge && triage && triage.handoffStatus !== 'acknowledged' && triage.handoffStatus !== 'in_consultation' && (
               <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onAcknowledge} title="Acknowledge the nurse handoff">
                 <Check className="w-4 h-4" aria-hidden /> Acknowledge
-              </button>
-            )}
-            {onEscalate && (
-              <button
-                type="button"
-                className="ehr-visit-pop-icon ehr-visit-pop-labelled"
-                onClick={onEscalate}
-                title="Escalate this visit to emergency care"
-              >
-                <AlertTriangle className="w-4 h-4" aria-hidden /> Escalate
-              </button>
-            )}
-            {onLwbs && (
-              <button
-                type="button"
-                className="ehr-visit-pop-icon ehr-visit-pop-labelled"
-                onClick={onLwbs}
-                title="Record that the patient left without being seen"
-              >
-                <LogOut className="w-4 h-4" aria-hidden /> LWBS
-              </button>
-            )}
-            {onReturnToDesk && (
-              <button
-                type="button"
-                className="ehr-visit-pop-icon ehr-visit-pop-labelled"
-                onClick={onReturnToDesk}
-                title="Send this visit back to reception without closing it — for rebooking, or a patient who stepped out"
-              >
-                <RotateCcw className="w-4 h-4" aria-hidden /> Return to desk
               </button>
             )}
             {/* "End assignment" deliberately absent: it lives in the patient
@@ -331,6 +373,7 @@ export default function EhrVisitPopup({
               />
             )}
             {nurseActions}
+            <EhrVisitMoreMenu label={t('visitActions.more')} items={moreItems} />
           </div>
         </div>
 
@@ -481,24 +524,43 @@ const MOVE_DESTINATIONS: { stage: QueueStage; label: string }[] = [
 ];
 
 /* Move dialog — destination, priority, and an audited comment. `Move` stays
-   disabled until something actually changes, mirroring the Tamam dialog. */
-export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
+   disabled until something actually changes, mirroring the Tamam dialog.
+
+   Emergency care is one of the destinations. It used to be a separate
+   "Escalate" button beside Move on the visit panel, which read as a duplicate
+   of this dialog's Emergency priority — but the two are different writes:
+   raising the priority re-sorts the patient WITHIN the queue, escalating takes
+   the visit OUT of it and hands the encounter to emergency care. Offering it
+   here, as a place the patient can go, keeps the one decision ("where does
+   this patient go now?") in one dialog and the real escalation reachable. */
+export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate }: {
   entry: QueueEntry;
   saving: boolean;
   onClose: () => void;
   onMove: (change: { stage: QueueStage | null; priority: QueueEntry['acuity']; room: string; comment: string }) => void;
+  /** Escalate the visit to emergency care. Offered only when the visit can be
+   *  escalated (an open encounter still waiting); the parent owns the writes. */
+  onEscalate?: (comment: string) => void;
 }) {
+  const { t } = useTranslation();
   const movable = entry.stage === 'awaiting_rooming' || entry.stage === 'awaiting_consultation' || entry.stage === 'awaiting_triage';
   const [stage, setStage] = useState<QueueStage>(
     entry.stage === 'awaiting_rooming' || entry.stage === 'awaiting_consultation' ? entry.stage : 'awaiting_rooming',
   );
+  const [escalating, setEscalating] = useState(false);
   const [priority, setPriority] = useState<QueueEntry['acuity']>(entry.acuity);
   const [room, setRoom] = useState('');
   const [comment, setComment] = useState('');
 
-  const stageChanged = movable && stage !== entry.stage;
+  const stageChanged = !escalating && movable && stage !== entry.stage;
   const roomMissing = stageChanged && stage === 'awaiting_consultation' && !room.trim();
   const dirty = stageChanged || priority !== entry.acuity || comment.trim().length > 0;
+  // A stage driven by open orders cannot be re-routed, but it can still be
+  // escalated — so it is listed as the (current) option beside Emergency care
+  // rather than leaving a lone radio nobody could un-choose.
+  const destinations = movable
+    ? MOVE_DESTINATIONS
+    : [{ stage: entry.stage, label: STAGE_LABELS[entry.stage] }];
 
   return (
     <Modal onClose={onClose} width={520} labelledBy="ehr-queue-move-title">
@@ -508,16 +570,16 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
           <button type="button" aria-label="Close" onClick={onClose}><X className="w-4 h-4" /></button>
         </div>
 
-        {movable ? (
+        {(movable || onEscalate) && (
           <fieldset>
             <legend>Service location</legend>
-            {MOVE_DESTINATIONS.map(destination => (
+            {destinations.map(destination => (
               <label key={destination.stage} className="ehr-queue-move-option">
                 <input
                   type="radio"
                   name="queue-destination"
-                  checked={stage === destination.stage}
-                  onChange={() => setStage(destination.stage)}
+                  checked={!escalating && (!movable || stage === destination.stage)}
+                  onChange={() => { setEscalating(false); if (movable) setStage(destination.stage); }}
                 />
                 <span>
                   {destination.label}
@@ -536,30 +598,54 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
                 />
               </label>
             )}
+            {onEscalate && (
+              <label className="ehr-queue-move-option ehr-queue-move-option--escalate">
+                <input
+                  type="radio"
+                  name="queue-destination"
+                  checked={escalating}
+                  onChange={() => setEscalating(true)}
+                />
+                <span>
+                  <AlertTriangle className="w-4 h-4" aria-hidden /> {t('visitActions.escalateDestination')}
+                </span>
+              </label>
+            )}
+            {escalating && (
+              <p className="ehr-queue-move-escalate-note" role="note">
+                {t('visitActions.escalateNote', { name: shortenPersonName(entry.patientName) })}
+              </p>
+            )}
           </fieldset>
-        ) : (
+        )}
+        {!movable && (
           <p className="ehr-queue-move-note">
             {STAGE_LABELS[entry.stage]} is driven by open orders, so this entry moves on its own
             when the order closes. Priority and comments still apply.
           </p>
         )}
 
-        <fieldset>
-          <legend>Priority</legend>
-          <div className="ehr-queue-move-priorities">
-            {(Object.keys(PRIORITY_META) as QueueEntry['acuity'][]).map(level => (
-              <label key={level} className="ehr-queue-move-option">
-                <input
-                  type="radio"
-                  name="queue-priority"
-                  checked={priority === level}
-                  onChange={() => setPriority(level)}
-                />
-                <span className="ehr-queue-pill" data-tone={PRIORITY_META[level].tone}>{PRIORITY_META[level].label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {/* An escalated visit leaves the queue, so its place in it is moot.
+            Unmounted rather than `hidden`: the fieldset's own display:flex
+            outranks the attribute. */}
+        {!escalating && (
+          <fieldset>
+            <legend>Priority</legend>
+            <div className="ehr-queue-move-priorities">
+              {(Object.keys(PRIORITY_META) as QueueEntry['acuity'][]).map(level => (
+                <label key={level} className="ehr-queue-move-option">
+                  <input
+                    type="radio"
+                    name="queue-priority"
+                    checked={priority === level}
+                    onChange={() => setPriority(level)}
+                  />
+                  <span className="ehr-queue-pill" data-tone={PRIORITY_META[level].tone}>{PRIORITY_META[level].label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         <label className="ehr-queue-move-comment">
           <span>Comment</span>
@@ -573,19 +659,33 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove }: {
 
         <div className="ehr-queue-move-footer">
           <button type="button" onClick={onClose}>Cancel</button>
-          <button
-            type="button"
-            className="primary"
-            disabled={!dirty || roomMissing || saving}
-            onClick={() => onMove({
-              stage: stageChanged ? stage : null,
-              priority,
-              room: room.trim(),
-              comment: comment.trim(),
-            })}
-          >
-            {saving ? 'Moving…' : 'Move'}
-          </button>
+          {escalating ? (
+            /* The dialog IS the confirmation: the destination was chosen on
+               purpose and the note above says what it does, so this commits
+               without a second browser prompt. */
+            <button
+              type="button"
+              className="primary danger"
+              disabled={saving}
+              onClick={() => onEscalate?.(comment.trim())}
+            >
+              {saving ? t('visitActions.escalating') : t('visitActions.escalateSubmit')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="primary"
+              disabled={!dirty || roomMissing || saving}
+              onClick={() => onMove({
+                stage: stageChanged ? stage : null,
+                priority,
+                room: room.trim(),
+                comment: comment.trim(),
+              })}
+            >
+              {saving ? 'Moving…' : 'Move'}
+            </button>
+          )}
         </div>
       </div>
     </Modal>

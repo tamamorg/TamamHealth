@@ -44,6 +44,7 @@ import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/EhrVisitPopup';
+import EhrVisitActionDialog, { type VisitActionKind } from '@/components/ehr/EhrVisitActionDialog';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
@@ -1256,14 +1257,39 @@ export default function EhrClinicalDashboard({
 
   const [moveEntry, setMoveEntry] = useState<QueueEntry | null>(null);
   const [moveSaving, setMoveSaving] = useState(false);
+  // The triage behind the open Move dialog — what decides whether the dialog
+  // may offer Emergency care as a destination.
+  const moveTriage = moveEntry ? triages.find(triage => triage._id === moveEntry.triageId) ?? null : null;
 
   // Doctor-side clinical dispositions (KAN-100 follow-through). Escalation and
   // LWBS were nurse-only — a doctor watching a patient deteriorate in their
   // own worklist had no way to record either. Both mirror the triage doc the
   // way the triage station does, so the (triage-derived) queues stay honest.
-  const escalateVisit = async (triage: TriageDoc) => {
+  //
+  // Escalation is reached through the Move dialog's "Emergency care"
+  // destination, not a button of its own: on the visit panel it sat beside
+  // Move and read as a duplicate of that dialog's Emergency priority. A visit
+  // with no queue entry (already in consultation) has no Move dialog, so the
+  // panel's More menu offers the escalation directly there.
+  //
+  // Every exit confirms in EhrVisitActionDialog — the Move dialog's own kit —
+  // rather than the browser's confirm()/prompt(): one shape for everything
+  // under More, with the patient named and room to say why.
+  const canEscalateVisit = (triage?: TriageDoc | null): triage is TriageDoc =>
+    Boolean(triage?.encounterId && (triage.status === 'pending' || triage.status === 'seen'));
+
+  const [visitAction, setVisitAction] = useState<{ kind: VisitActionKind; triage: TriageDoc } | null>(null);
+
+  /** The audit line a queue change leaves on the triage record — the same
+   *  shape the Move dialog writes, so the notes read as one trail. */
+  const withQueueNote = (triage: TriageDoc, tag: string, text: string) => {
+    const stamp = `${new Date().toISOString().slice(0, 16).replace('T', ' ')} ${currentUser?.name || ''}`.trim();
+    return [triage.notes, `[${tag} ${stamp}] ${text}`].filter(Boolean).join('\n');
+  };
+
+  const escalateVisit = async (triage: TriageDoc, comment = '') => {
     if (!triage.encounterId) return;
-    if (!window.confirm(`Escalate ${triage.patientName} to emergency care?`)) return;
+    setMoveSaving(true);
     try {
       const { getEncounter, transitionEncounter, escalateEncounterToEmergency } =
         await import('@/lib/services/encounter-service');
@@ -1277,39 +1303,52 @@ export default function EhrClinicalDashboard({
           actorId: currentUser?._id, actorRole: currentUser?.role,
         });
       }
-      await escalateEncounterToEmergency(triage.encounterId, { actorId: currentUser?._id });
-      await updateTriageDoc(triage._id, { status: 'referred' }, { userId: currentUser?._id, username: currentUser?.name });
+      await escalateEncounterToEmergency(triage.encounterId, { actorId: currentUser?._id, reason: comment || undefined });
+      const updates: Partial<TriageDoc> = { status: 'referred' };
+      if (comment) updates.notes = withQueueNote(triage, 'Escalated', comment);
+      await updateTriageDoc(triage._id, updates, { userId: currentUser?._id, username: currentUser?.name });
       showToast(`${triage.patientName} escalated to emergency care.`, 'success');
+      setMoveEntry(null);
+      setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not escalate this visit.', 'error');
+    } finally {
+      setMoveSaving(false);
     }
   };
 
-  const markVisitLwbs = async (triage: TriageDoc) => {
-    if (!window.confirm(`Record that ${triage.patientName} left without being seen?`)) return;
+  /** Close the visit as "left without being seen". The visit is over, but what
+   *  is left of it is the desk's — the open bill, the rebooking — so the reason
+   *  travels with the closure and reception is told through the same feed a
+   *  returned visit uses (see `returnedToDeskItems`). */
+  const markVisitLwbs = async (triage: TriageDoc, reason = '') => {
+    setMoveSaving(true);
     try {
       // A triage-first patient (assessed without a desk check-in) has no
       // encounter — the triage record alone carries the departure then.
       if (triage.encounterId) {
         const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
-        await recordLeftWithoutBeingSeen(triage.encounterId, { actorId: currentUser?._id });
+        await recordLeftWithoutBeingSeen(triage.encounterId, { actorId: currentUser?._id, reason: reason || undefined });
       }
-      await updateTriageDoc(triage._id, { status: 'lwbs' }, { userId: currentUser?._id, username: currentUser?.name });
-      showToast(`${triage.patientName} recorded as left without being seen.`, 'success');
+      const updates: Partial<TriageDoc> = { status: 'lwbs' };
+      if (reason) updates.notes = withQueueNote(triage, 'Left without being seen', reason);
+      await updateTriageDoc(triage._id, updates, { userId: currentUser?._id, username: currentUser?.name });
+      showToast(`${triage.patientName} recorded as left without being seen. The front desk has been notified.`, 'success');
+      setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not record the departure.', 'error');
+    } finally {
+      setMoveSaving(false);
     }
   };
 
   /** Send an open visit back to reception without closing it — the patient
    *  stepped out, the handoff named the wrong provider, or the visit needs
    *  rebooking. The desk is notified through the returned-to-desk feed. */
-  const returnVisitToDesk = async (triage: TriageDoc) => {
-    const reason = window.prompt(
-      `Send ${triage.patientName} back to the front desk?\n\nReason (optional — shown to reception):`, '');
-    if (reason === null) return;
+  const returnVisitToDesk = async (triage: TriageDoc, reason = '') => {
+    setMoveSaving(true);
     try {
       const { returnVisitToFrontDesk } = await import('@/lib/services/triage-handoff-service');
       await returnVisitToFrontDesk({
@@ -1322,10 +1361,21 @@ export default function EhrClinicalDashboard({
         actorRole: currentUser?.role,
       });
       showToast(`${triage.patientName} returned to the front desk.`, 'success');
+      setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not return the visit.', 'error');
+    } finally {
+      setMoveSaving(false);
     }
+  };
+
+  const confirmVisitAction = (reason: string) => {
+    if (!visitAction) return;
+    const { kind, triage } = visitAction;
+    if (kind === 'escalate') void escalateVisit(triage, reason);
+    else if (kind === 'lwbs') void markVisitLwbs(triage, reason);
+    else void returnVisitToDesk(triage, reason);
   };
 
   // "End assignment" moved to the patient chart's ⋯ header menu
@@ -2184,16 +2234,16 @@ export default function EhrClinicalDashboard({
                             onStartTriage={row.patientId && canTriage && (!columns.triage || columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => router.push(`/triage/${row.patientId}`)
                               : undefined}
-                            onEscalate={columns.triage?.encounterId && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
-                              ? () => void escalateVisit(columns.triage!)
+                            onEscalate={canEscalateVisit(columns.triage)
+                              ? () => setVisitAction({ kind: 'escalate', triage: columns.triage! })
                               : undefined}
                             onLwbs={columns.triage && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
-                              ? () => void markVisitLwbs(columns.triage!)
+                              ? () => setVisitAction({ kind: 'lwbs', triage: columns.triage! })
                               : undefined}
                             onReturnToDesk={columns.triage
                               && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               && columns.triage.handoffStatus !== 'returned_to_desk'
-                              ? () => void returnVisitToDesk(columns.triage!)
+                              ? () => setVisitAction({ kind: 'return_to_desk', triage: columns.triage! })
                               : undefined}
                             creatingNote={creatingNote}
                             onCreateNote={row.patientId ? (noteType) => {
@@ -2231,6 +2281,19 @@ export default function EhrClinicalDashboard({
               saving={moveSaving}
               onClose={() => setMoveEntry(null)}
               onMove={change => void handleMove(change)}
+              onEscalate={canEscalateVisit(moveTriage)
+                ? comment => void escalateVisit(moveTriage, comment)
+                : undefined}
+            />
+          )}
+
+          {visitAction && (
+            <EhrVisitActionDialog
+              kind={visitAction.kind}
+              patientName={visitAction.triage.patientName}
+              saving={moveSaving}
+              onClose={() => setVisitAction(null)}
+              onConfirm={confirmVisitAction}
             />
           )}
 

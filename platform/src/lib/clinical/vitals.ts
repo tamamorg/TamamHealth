@@ -462,6 +462,103 @@ export function getVitalFlags(data: VitalsInput): Record<string, boolean> {
 }
 
 /**
+ * How a reading should be SHOWN — the read-side counterpart of the two
+ * functions above, for any surface that displays vitals rather than captures
+ * them (the chart's vitals band showed a neonate's 40°C in the same calm ink
+ * as a normal reading, because it called neither).
+ *
+ *  - `critical`   an IITT RED criterion — move to high-acuity care now
+ *  - `high_risk`  an IITT/NEWS2 high-risk (YELLOW) reading — up-triage
+ *  - `abnormal`   outside the normal clinical range, not in a danger band
+ *
+ * It introduces no thresholds of its own: danger comes from
+ * `getTriageVitalWarnings` (age- and pregnancy-aware, policy-driven), and
+ * "outside normal" from `getVitalFlags`. The latter's pulse, respiratory-rate
+ * and blood-pressure ranges are ADULT ranges — an infant's normal pulse of 130
+ * would read as tachycardia — so for a child those fields are flagged from the
+ * paediatric danger bands alone.
+ */
+export type VitalDisplayLevel = 'critical' | 'high_risk' | 'abnormal';
+
+export interface VitalDisplayFlag {
+  level: VitalDisplayLevel;
+  /** Which side of normal the reading sits on. */
+  direction: 'high' | 'low';
+  /** The sentence to show on hover / read to a screen reader. */
+  message: string;
+}
+
+/** A value inside each field's normal band — a flagged reading is always on
+ *  one side of it, which is all direction needs. */
+const ADULT_NORMAL_CENTRE: Partial<Record<TriageVitalField, number>> = {
+  temperature: 37, pulse: 75, respiratoryRate: 16, oxygenSaturation: 100,
+  systolic: 115, diastolic: 75, painScore: 0, bloodGlucose: 6, gcs: 15, muac: 100,
+};
+
+const ADULT_ONLY_NORMAL_FIELDS = new Set<TriageVitalField>(['pulse', 'respiratoryRate', 'systolic', 'diastolic']);
+
+export function assessVitalsForDisplay(
+  vitals: TriageVitalsInput,
+  patientAgeYears?: number,
+  options: { isPregnant?: boolean; policy?: TriagePolicy } = {},
+): Partial<Record<TriageVitalField, VitalDisplayFlag>> {
+  const policy = options.policy ?? DEFAULT_TRIAGE_POLICY;
+  const isChild = patientAgeYears !== undefined && patientAgeYears < policy.ageBands.adultMinYears.value;
+  const flags: Partial<Record<TriageVitalField, VitalDisplayFlag>> = {};
+
+  const centreFor = (field: TriageVitalField): number | undefined => {
+    if (isChild && (field === 'pulse' || field === 'respiratoryRate')) {
+      const bands = field === 'pulse' ? policy.child.pulse : policy.child.respiratoryRate;
+      const [low, high] = patientAgeYears! < 1 ? bands.under1 : patientAgeYears! < 5 ? bands.age1to4 : bands.age5to12;
+      return (low + high) / 2;
+    }
+    return ADULT_NORMAL_CENTRE[field];
+  };
+  const directionOf = (field: TriageVitalField): 'high' | 'low' => {
+    const value = parseStrictVitalNumber(vitals[field]);
+    const centre = centreFor(field);
+    return value !== null && centre !== undefined && value < centre ? 'low' : 'high';
+  };
+
+  // Danger bands first; RED outranks YELLOW when a field earns both.
+  for (const item of getTriageVitalWarnings(vitals, patientAgeYears, options)) {
+    const level: VitalDisplayLevel = item.urgency === 'RED' ? 'critical' : 'high_risk';
+    const held = flags[item.field];
+    if (held && (held.level === 'critical' || level !== 'critical')) continue;
+    flags[item.field] = { level, direction: directionOf(item.field), message: item.message };
+  }
+
+  // Then "outside normal" for whatever the danger bands left alone.
+  const asText = (field: TriageVitalField) => {
+    const raw = vitals[field];
+    return raw === undefined || raw === null ? undefined : String(raw);
+  };
+  const abnormal = getVitalFlags({
+    temperature: asText('temperature'), pulse: asText('pulse'), respiratoryRate: asText('respiratoryRate'),
+    spo2: asText('oxygenSaturation'), systolic: asText('systolic'), diastolic: asText('diastolic'),
+    painScore: asText('painScore'), bloodGlucose: asText('bloodGlucose'), gcs: asText('gcs'),
+    // MUAC's moderate band is a 6–59 month screen; on anyone else it is noise.
+    muac: patientAgeYears !== undefined
+      && patientAgeYears >= policy.muac.eligibleMinAgeYears.value
+      && patientAgeYears < policy.muac.eligibleMaxAgeYears.value ? asText('muac') : undefined,
+  });
+  for (const [key, on] of Object.entries(abnormal)) {
+    const field = (key === 'spo2' ? 'oxygenSaturation' : key) as TriageVitalField;
+    if (!on || flags[field]) continue;
+    if (isChild && ADULT_ONLY_NORMAL_FIELDS.has(field)) continue;
+    const direction = directionOf(field);
+    const unit = TRIAGE_VITAL_UNIT[field];
+    flags[field] = {
+      level: 'abnormal',
+      direction,
+      message: `${TRIAGE_VITAL_LABEL[field]} ${vitals[field]}${unit ? ` ${unit}` : ''} is ${direction === 'high' ? 'above' : 'below'} the normal range.`,
+    };
+  }
+
+  return flags;
+}
+
+/**
  * Validate a single entered vital is numeric and within plausible bounds.
  * Returns true when empty (optional) or valid; false for garbage/out-of-range.
  */

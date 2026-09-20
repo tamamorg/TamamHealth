@@ -35,18 +35,27 @@ export default function EhrStageDonut({
   title?: string;
   centerLabel?: string;
 }) {
-  const slices = segments.filter(s => s.value > 0);
+  // Resolve each stage's colour from its place in the FULL list, before the
+  // empty ones are dropped. Indexing the filtered slices instead handed the
+  // first non-empty stage the first colour — a lone "In service" patient drew
+  // a "Waiting"-blue ring beside an amber legend dot.
+  const coloured = segments.map((seg, i) => ({
+    ...seg,
+    value: Number.isFinite(seg.value) && seg.value > 0 ? seg.value : 0,
+    color: seg.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+  }));
+  const slices = coloured.filter(s => s.value > 0);
   const total = slices.reduce((sum, s) => sum + s.value, 0);
 
   // Build the ring in one pass: each slice ends where the next begins, so the
-  // gradient carries no seams and no rounding drift across the last stop.
+  // gradient carries no seams and no rounding drift across the last stop. Each
+  // arc is its stage's share of the total, so the ring splits by proportion.
   let cursor = 0;
-  const stops = slices.map((seg, i) => {
+  const stops = slices.map(seg => {
     const start = (cursor / total) * 360;
     cursor += seg.value;
     const end = (cursor / total) * 360;
-    const color = seg.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
-    return `${color} ${start}deg ${end}deg`;
+    return `${seg.color} ${start}deg ${end}deg`;
   });
   // An empty day still draws the ring — as one quiet band, so the card keeps
   // its shape instead of collapsing to a legend with nothing above it.
@@ -68,10 +77,10 @@ export default function EhrStageDonut({
           </div>
         </div>
         <ul className="ehr-stage-donut-legend">
-          {segments.map((seg, i) => (
+          {coloured.map(seg => (
             <li key={seg.name}>
               <span>
-                <i style={{ background: seg.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length] }} />
+                <i style={{ background: seg.color }} />
                 {seg.name}
               </span>
               <b>{seg.value}</b>

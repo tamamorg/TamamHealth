@@ -18677,6 +18677,177 @@ textarea.ehr-handoff-input {
   cursor: not-allowed;
 }
 
+/* The bare `label` rule in this file uppercases, tracks and bolds every
+   <label>, which turned the dialog's choices into "ROOMING — WAITING AREA".
+   These are sentences to read, not field captions — put them back. Scoped to
+   the kit so the Move dialog and the visit-action dialogs read alike. */
+.ehr-queue-move label {
+  margin-bottom: 0;
+  color: var(--ehr-text);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ehr-queue-move-option { cursor: pointer; }
+
+.ehr-queue-move-option input[type="radio"] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent-primary);
+}
+
+/* Emergency care as a destination. Set apart from the ordinary queues by a
+   hairline and the danger ink: it is the one choice here that takes the visit
+   out of the queue instead of moving it along. */
+.ehr-queue-move-option--escalate {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ehr-border);
+}
+
+.ehr-queue-move label.ehr-queue-move-option--escalate {
+  color: var(--color-danger-text);
+  font-weight: 700;
+}
+
+.ehr-queue-move-option--escalate > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ehr-queue-move-option--escalate input[type="radio"] { accent-color: var(--color-danger); }
+
+.ehr-queue-move-option--escalate svg.lucide { color: inherit; stroke: currentColor; }
+
+/* What a closing action does, said before it is pressed. A tinted band with a
+   rule down its leading edge — flat, no shadow — in the danger family. */
+.ehr-queue-move-escalate-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--color-danger);
+  border-radius: 6px;
+  background: var(--color-danger-bg);
+  color: var(--ehr-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* The same band for an action that closes nothing (Return to front desk). */
+.ehr-queue-move > .ehr-queue-move-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--accent-primary);
+  border-radius: 6px;
+  background: var(--accent-light);
+  color: var(--ehr-text);
+  line-height: 1.45;
+}
+
+.ehr-queue-move-footer button.primary.danger {
+  border-color: var(--color-danger-600);
+  background: var(--color-danger-600);
+  color: #fff;
+}
+
+.ehr-queue-move-footer button.primary.danger:hover:not(:disabled) {
+  border-color: var(--color-danger-700);
+  background: var(--color-danger-700);
+}
+
+/* ─── Visit panel: More menu ───
+   The trigger is one more pill on the action line (it carries
+   .ehr-visit-pop-labelled, so it takes that line's height, rounding and type);
+   the caret is the only thing that marks it as a menu. The list is portalled
+   to <body> and fixed, like the note-type menu beside it. */
+.ehr-visit-more-trigger[aria-expanded="true"] {
+  border-color: var(--accent-primary);
+  background: var(--accent-light);
+  color: var(--accent-text);
+}
+
+.ehr-visit-more-trigger svg { transition: transform 120ms ease; }
+.ehr-visit-more-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+.ehr-visit-more-menu {
+  position: fixed;
+  z-index: 1200;
+  padding: 6px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-card);
+  background: var(--bg-card-solid);
+  box-shadow: 0 12px 32px rgba(0, 29, 63, 0.18);
+  font-family: var(--font-platform);
+}
+
+/* A hairline between "re-route or re-read" and the exits. */
+.ehr-visit-more-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ehr-border, var(--border-light));
+}
+
+.ehr-visit-more-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ehr-visit-more-item:hover,
+.ehr-visit-more-item:focus-visible {
+  background: var(--overlay-subtle);
+  outline: none;
+}
+
+.ehr-visit-more-item:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-primary); }
+
+.ehr-visit-more-glyph {
+  display: inline-flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.ehr-visit-more-glyph svg.lucide { color: inherit; stroke: currentColor; }
+
+.ehr-visit-more-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ehr-visit-more-text strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ehr-visit-more-text small {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.ehr-visit-more-item[data-tone="danger"] strong,
+.ehr-visit-more-item[data-tone="danger"] .ehr-visit-more-glyph { color: var(--color-danger-text); }
+
+.ehr-visit-more-item[data-tone="danger"]:hover,
+.ehr-visit-more-item[data-tone="danger"]:focus-visible { background: var(--color-danger-bg); }
+
 /* Visit popup — row click on the clinician worklist */
 
 .ehr-visit-pop {
@@ -28700,6 +28871,23 @@ table.patient-data-table.patient-data-table {
 .ehr-side-card-head .ehr-week-activity-caption,
 .ehr-side-card-head .ehr-day-stats-nav {
   margin-inline-start: auto;
+}
+
+.ehr-panel-title-tablet,
+.dashboard-panel-title-tablet {
+  display: none;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .ehr-side-card-head .ehr-panel-title-full,
+  .dashboard-panel-title-full {
+    display: none;
+  }
+
+  .ehr-side-card-head .ehr-panel-title-tablet,
+  .dashboard-panel-title-tablet {
+    display: inline;
+  }
 }
 
 /* ═══════════ Design alignment — "Super Admin Settings" (dashboard redesign) ═══════════

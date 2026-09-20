@@ -233,7 +233,7 @@ export default function EhrCareDashboard({
   railContent,
   chart,
   chartTitle = 'Day activity',
-  chartSeriesNames = ['Open', 'Completed'],
+  chartSeriesNames = ['Open', 'Finished'],
   chartItems,
   showChart = true,
   showStageDonut = true,
