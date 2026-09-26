@@ -133,12 +133,12 @@ export function OmrsEmptyState({
       <p>There are no {itemLabel} to display for this patient</p>
       {onAction && (
         <button type="button" className="tamam-empty-action" onClick={onAction}>
-          {actionLabel || `Record ${itemLabel}`}
+          <Plus aria-hidden /> {actionLabel || `Record ${itemLabel}`}
         </button>
       )}
       {!onAction && disabledReason && (
         <span className="tamam-empty-action tamam-empty-action--disabled" title={disabledReason}>
-          {actionLabel || `Record ${itemLabel}`}
+          <Plus aria-hidden /> {actionLabel || `Record ${itemLabel}`}
         </span>
       )}
     </div>

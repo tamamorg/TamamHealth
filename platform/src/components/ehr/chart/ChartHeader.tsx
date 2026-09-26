@@ -208,7 +208,8 @@ export default function ChartHeader({
             aria-label="More actions"
             title="More actions"
           >
-            ⋯
+            <DuotoneIcon name="moreVertical" size={15} aria-hidden /> More
+            <DuotoneIcon name="chevronDown" size={12} className="tamam-header-caret" aria-hidden />
           </button>
           {menuOpen && (
             <>

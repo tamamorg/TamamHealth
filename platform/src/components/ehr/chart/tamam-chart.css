@@ -1908,11 +1908,6 @@
   position: relative;
   display: inline-flex;
 }
-.tamam-header-overflow > .tamam-header-actions-btn {
-  font-size: 16px;
-  line-height: 1;
-  padding: 6px 9px;
-}
 .tamam-header-overflow-backdrop {
   position: fixed;
   inset: 0;
@@ -2640,3 +2635,215 @@
 /* A badge with a glyph in it needs to sit its parts on one baseline. */
 .tamam-root .tamam-panel-badge { display: inline-flex; align-items: center; gap: 4px; }
 .tamam-root .tamam-panel-badge svg { width: 12px; height: 12px; }
+
+/* ══════════════════ ORANGE ACTIONS ══════════════════
+ *
+ * Every action button on the chart wears the palette's orange, so the verbs
+ * (add, record, prescribe, order, save) read as one family against the white
+ * surfaces and the blue chrome, the way the Epic toolbar's icon+label buttons
+ * do. Two rungs:
+ *   filled  — the primary verb of a surface: white label on --accent-orange-text
+ *             (#B35900, 4.83:1). The bright #FF7F00 cannot carry white at AA,
+ *             and this rung is the one globals.css reserves for white on orange.
+ *   outline — the secondary verb (Cancel, Retire, Correct, Vitals history):
+ *             orange ink and an orange hairline on the surface colour.
+ * Navigation (rail, tabs, segment toggles, filter chips, pager arrows) and the
+ * balance chip keep their own treatment: they are controls, not verbs.
+ * Section dialogs portal to <body>, so `.tamam-dialog` (set on their Modal)
+ * carries the same variables outside `.tamam-root`. */
+.tamam-root,
+.tamam-dialog {
+  --tamam-btn-bg: var(--accent-orange-text);
+  --tamam-btn-bg-hover: var(--orange-900);
+  --tamam-btn-ink: var(--color-white);
+  --tamam-btn-outline-ink: var(--accent-orange-text);
+}
+/* Dark surfaces: the text rung of orange is too dark to read as ink on them;
+   lift it to the 400 step (the fill keeps its white label either way). */
+:root[data-theme="dark"] .tamam-root,
+:root[data-theme="dark"] .tamam-dialog {
+  --tamam-btn-outline-ink: var(--orange-400);
+}
+
+/* ── Filled ── */
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button,
+  .tamam-btn-primary,
+  .btn-primary
+),
+.tamam-dialog .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--tamam-btn-bg);
+  border-radius: 6px;
+  background: var(--tamam-btn-bg);
+  color: var(--tamam-btn-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button,
+  .tamam-btn-primary,
+  .btn-primary
+):hover:not(:disabled),
+.tamam-dialog .btn-primary:hover:not(:disabled) {
+  background: var(--tamam-btn-bg-hover);
+  border-color: var(--tamam-btn-bg-hover);
+  color: var(--tamam-btn-ink);
+  text-decoration: none;
+}
+
+/* The duotone glyphs bake the brand blue into a `stroke=` attribute; repaint
+   the stroke, not just `color`, or the icon vanishes on the orange. */
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button,
+  .tamam-btn-primary,
+  .btn-primary
+) svg,
+.tamam-dialog .btn-primary svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--tamam-btn-ink) !important;
+  stroke: currentColor !important;
+}
+
+/* ── Outline ── */
+.tamam-root :is(
+  .tamam-vitals-link,
+  .btn-secondary,
+  .tamam-empty-action--disabled
+),
+.tamam-dialog .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--tamam-btn-outline-ink);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--tamam-btn-outline-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.tamam-root :is(.tamam-vitals-link, .btn-secondary):hover:not(:disabled),
+.tamam-dialog .btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tamam-btn-outline-ink) 10%, transparent);
+  border-color: var(--tamam-btn-outline-ink);
+  color: var(--tamam-btn-outline-ink);
+  text-decoration: none;
+}
+
+.tamam-root :is(.tamam-vitals-link, .btn-secondary, .tamam-empty-action--disabled) svg,
+.tamam-dialog .btn-secondary svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--tamam-btn-outline-ink) !important;
+  stroke: currentColor !important;
+}
+
+/* An action the role cannot take is still a button-shaped promise; mute it
+   rather than paint it orange. */
+.tamam-root .tamam-empty-action--disabled {
+  border-color: var(--ehr-border, var(--border-light));
+  color: var(--ehr-muted, #5D728B);
+  cursor: not-allowed;
+}
+.tamam-root .tamam-empty-action--disabled svg {
+  color: var(--ehr-muted, #5D728B) !important;
+}
+
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-vitals-record-link,
+  .tamam-vitals-link,
+  .tebra-panel-action,
+  .tamam-btn-primary,
+  .btn-primary,
+  .btn-secondary
+):disabled,
+.tamam-dialog :is(.btn-primary, .btn-secondary):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Compact sites ── the same button, sized to the strip it sits in. */
+.tamam-root :is(.tamam-vitals-link, .tamam-vitals-record-link) {
+  min-height: 30px;
+  padding: 0 10px;
+}
+.tamam-root .tamam-panel-add-btn {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  /* globals.css strips the background (`!important`) from any span/div whose
+     only element child is an svg — an icon-box heuristic. The order basket's
+     Add controls are spans (a button cannot nest inside the section-head
+     button), so the fill has to be restated at the same priority. */
+  background: var(--tamam-btn-bg) !important;
+}
+.tamam-root .tamam-panel-add-btn:hover { background: var(--tamam-btn-bg-hover) !important; }
+.tamam-root .tamam-panel-add-btn svg { width: 13px; height: 13px; }
+.tamam-root .tebra-demo-edit { min-height: 28px; }
+.tamam-root .btn-xs {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.tamam-root .btn-xs svg { width: 12px; height: 12px; }
+
+/* The overflow trigger is a dropdown: its caret is the same white as the
+   label, drawn a step smaller and tucked against it. */
+.tamam-root .tamam-header-actions-btn .tamam-header-caret {
+  width: 12px;
+  height: 12px;
+  margin-left: -2px;
+}
+
+/* Footer ghosts sit on the navy band and stay white-on-navy (orange ink is
+   unreadable there); only their glyph needed the stroke repaint. */
+.tamam-drawer-footer .tamam-btn-ghost svg,
+.tamam-drawer-footer .tamam-btn-ghost svg.lucide {
+  color: var(--color-white) !important;
+  stroke: currentColor !important;
+}

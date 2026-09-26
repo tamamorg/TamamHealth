@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
-import { Plus, ChevronDown, Pill, FlaskConical } from '@/components/icons/lucide';
+import { Plus, ChevronDown, Pill, FlaskConical, Check } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { PatientDoc } from '@/lib/db-types';
@@ -128,7 +128,7 @@ export default function OrderBasketPanel({
         <span className="tamam-panel-row-sub" style={{ marginInlineEnd: 'auto', alignSelf: 'center' }}>
           Orders are saved as soon as they&rsquo;re added.
         </span>
-        <button type="button" className="tamam-btn-primary" onClick={onClose}>Done</button>
+        <button type="button" className="tamam-btn-primary" onClick={onClose}><Check aria-hidden /> Done</button>
       </div>
     </>
   );

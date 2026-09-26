@@ -235,7 +235,7 @@ export default function MedicationsSection({
       )}
     </ChartSection>
     {selectedRx && (
-      <Modal onClose={() => busyId !== selectedRx._id && setSelectedRx(null)} width={620} labelledBy="medication-row-title">
+      <Modal className="tamam-dialog" onClose={() => busyId !== selectedRx._id && setSelectedRx(null)} width={620} labelledBy="medication-row-title">
         <div className="modal-panel p-6 space-y-5">
           <PopupHeader
             title={selectedRx.medication}

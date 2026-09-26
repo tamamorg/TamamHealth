@@ -237,7 +237,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       </ChartSection>
 
       {adding && (
-        <Modal onClose={() => !submitting && resetForm()} width={520} labelledBy="add-immunization-title">
+        <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={520} labelledBy="add-immunization-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="add-immunization-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -343,7 +343,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       )}
 
       {errorTarget && (
-        <Modal onClose={() => !submitting && setErrorTarget(null)} width={440} labelledBy="immunization-error-title">
+        <Modal className="tamam-dialog" onClose={() => !submitting && setErrorTarget(null)} width={440} labelledBy="immunization-error-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <h2 id="immunization-error-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.markImmunizationError')}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('chart.markImmunizationErrorHelp')}</p>
