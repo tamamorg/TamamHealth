@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -116,6 +117,7 @@ export default function FrontDeskDashboardPage() {
   const { appointments, updateStatus: updateAppointmentStatus, reschedule: rescheduleAppointment, loading: appointmentsLoading } = useAppointments();
   const { triages, update: updateTriage, loading: triagesLoading } = useTriage();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { t } = useTranslation();
   const { rooms } = useSettings();
   // Reactive room list from facility settings; fall back to the static list.
@@ -271,7 +273,13 @@ export default function FrontDeskDashboardPage() {
    *  linked — is closed the same way. A person's decision, audited; never
    *  automatic. */
   const closeStaleVisitAsLwbs = useCallback(async (encounter: EncounterDoc) => {
-    if (!window.confirm(`Close the visit for ${encounter.patientName || 'this patient'} as left without being seen?`)) return;
+    const name = encounter.patientName || t('frontDesk.thisPatient');
+    if (!await confirm({
+      title: t('confirm.frontDeskLwbsTitle'),
+      message: t('confirm.frontDeskLwbsMessage', { name }),
+      confirmLabel: t('confirm.frontDeskLwbsConfirm'),
+      tone: 'warning',
+    })) return;
     try {
       const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
       await recordLeftWithoutBeingSeen(encounter._id, {
@@ -288,7 +296,7 @@ export default function FrontDeskDashboardPage() {
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not close the visit.', 'error');
     }
-  }, [currentUser, showToast, updateTriage]);
+  }, [confirm, currentUser, showToast, t, updateTriage]);
 
   // Work plotted on the "Day activity" week chart. Drawn from the whole booking
   // list rather than the day-scoped rows in the worklist, so all seven columns

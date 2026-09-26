@@ -10,8 +10,9 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
-import { Stethoscope, X, Check, Search } from '@/components/icons/lucide';
+import { Stethoscope, Check, Search } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { ROLE_LABEL } from '@/lib/role-display';
 import type { UserRole } from '@/lib/db-types';
 import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
@@ -118,29 +119,19 @@ export default function AssignDoctorModal({
   };
 
   return (
-    <Modal onClose={onClose} width={480}>
-      <div
-        className="modal-content card-elevated assign-doctor-modal"
-        style={{ width: '100%' }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <Stethoscope className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <div>
-              <h2 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Assign to {providerLabel}</h2>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {target.patientName}{target.hospitalNumber ? ` · ${target.hospitalNumber}` : ''}
-              </p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-black/5" aria-label="Close">
-            <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-          </button>
-        </div>
+    <Modal onClose={onClose} size="md" labelledBy="assign-doctor-title" describedBy="assign-doctor-desc">
+      <DialogFrame className="assign-doctor-modal" busy={saving}>
+        <DialogHeader
+          titleId="assign-doctor-title"
+          title={`Assign to ${providerLabel}`}
+          description={`${target.patientName}${target.hospitalNumber ? ` · ${target.hospitalNumber}` : ''}`}
+          descriptionId="assign-doctor-desc"
+          icon={<Stethoscope />}
+          onClose={onClose}
+        />
 
         {/* Body */}
-        <div className="p-4 space-y-3">
+        <DialogBody className="space-y-3">
           {/* Search */}
           <div className="relative assign-doctor-search">
             <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
@@ -211,24 +202,22 @@ export default function AssignDoctorModal({
               style={{ borderColor: 'var(--border-medium)', background: 'var(--bg-input, var(--bg-card-solid))', color: 'var(--text-primary)' }}
             />
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" onClick={onClose} className="btn btn-secondary">
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleAssign}
             disabled={!selectedId || saving}
-            className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-            style={{ background: 'var(--accent-primary)' }}
+            className={`btn btn-primary${saving ? ' is-loading' : ''}`}
           >
             <Stethoscope className="w-4 h-4" />
             {saving ? 'Assigning…' : 'Assign'}
           </button>
-        </div>
-      </div>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }

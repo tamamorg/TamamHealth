@@ -198,7 +198,7 @@ export default function ConditionsSection({
       </ChartSection>
 
       {adding && (
-        <Modal onClose={() => !submitting && resetForm()} width={480} labelledBy="add-condition-title">
+        <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-condition-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="add-condition-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Add condition</h2>

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import Modal from '@/components/Modal';
 import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { formatLongDate } from '@/lib/format-utils';
@@ -45,6 +46,7 @@ export default function HandoffWorkflow({
   const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { wardPatients, patientTriageMap } = useWardRoster();
   const { marEntries } = useMarEntries();
   const { latest, create, acknowledge, unacknowledge } = useHandoffs();
@@ -190,7 +192,12 @@ export default function HandoffWorkflow({
   // handoff to 'signed' so the oncoming nurse can re-acknowledge.
   const handleUnacknowledge = async () => {
     if (!latest || acking) return;
-    if (!window.confirm(t('action.confirm'))) return;
+    if (!await confirm({
+      title: t('nurse.handoffUnackTitle'),
+      message: t('nurse.handoffUnackMessage'),
+      confirmLabel: t('nurse.handoffUnackConfirm'),
+      tone: 'warning',
+    })) return;
     setAcking(true);
     try {
       await unacknowledge(latest._id, currentUser._id, currentUser.name);

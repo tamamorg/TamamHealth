@@ -46,6 +46,7 @@ import {
   Plus,
   BarChart3,
   Loader2,
+  FileText,
   type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
@@ -853,6 +854,15 @@ export default function PharmacyDashboardPage() {
             <strong className="text-sm" style={{ color: 'var(--text-primary)' }}>{rx.medication}</strong>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatRxSig(rx)} · {qty} {inv?.unit || 'unit(s)'}</p>
           </div>
+          <button
+            type="button"
+            className="ehr-visit-pop-icon ehr-visit-pop-labelled"
+            onClick={() => router.push(`/patients/${encodeURIComponent(rx.patientId)}`)}
+            title="Open chart"
+            aria-label="Open chart"
+          >
+            <FileText className="w-4 h-4" aria-hidden /> Open chart
+          </button>
           {current && (
             <div className="ehr-visit-pop-actions">
               <button
@@ -979,8 +989,6 @@ export default function PharmacyDashboardPage() {
               location: location || rx.medication,
               locationSecondary: location ? (controlled && !paymentDue ? 'Substance' : 'Payment') : 'Medication',
               locationLabel: location ? (controlled && !paymentDue ? 'Substance' : 'Payment') : undefined,
-              detailHref: `/patients/${encodeURIComponent(rx.patientId)}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}&returnTo=${encodeURIComponent('/dashboard/pharmacy')}`,
-              detailLabel: t('dashboard.viewPatientRecord'),
               popupDetail: renderWorkflowPopup(rx),
               // New order/Ready/Dispensed (plus payment-due/discontinued) IS
               // this screen's whole point — a same-day visit must not paint

@@ -119,3 +119,6 @@ secring.*
 # dotfolder that could be untracked without breaking something: `.github/`
 # carries every CI and deploy pipeline, `.husky/` the pre-commit hook. Removed
 # from the index on 2026-08-26; the files stay on disk.
+
+# Scratch output (PDF page renders, screenshots) — never part of the product.
+tmp/

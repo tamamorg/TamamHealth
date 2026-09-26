@@ -347,7 +347,7 @@ export default function PrescribeModal({
 
   const panel = (
       <div className="cn-meds">
-        <div className="cn-meds-header">
+        <div className="cn-meds-header modal-no-headband">
           <h2 className="cn-meds-title" id="cn-rx-title">Prescribe Medications</h2>
           {/* One group, so the header's space-between has two children — left
               loose, Expand was the middle of three and sat dead centre. */}

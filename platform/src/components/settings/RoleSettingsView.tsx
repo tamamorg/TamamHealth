@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
 import { useAuth, useSync } from '@/lib/context';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -168,6 +169,7 @@ export default function RoleSettingsView() {
   const { currentUser, refreshCurrentUser, platformPolicy } = useAuth();
   const { isOnline, syncPaused, lastSync, toggleOnline } = useSync();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const { canManageUsers, canAccess } = usePermissions();
   const { users, update: updateUser } = useUsers();
   const { hospitals } = useHospitals();
@@ -577,8 +579,13 @@ export default function RoleSettingsView() {
     }
   };
 
-  const handleResetSettings = () => {
-    if (!window.confirm('Reset your settings on every device to their defaults?')) return;
+  const handleResetSettings = async () => {
+    if (!await confirm({
+      title: t('settings.resetTitle'),
+      message: t('settings.resetMessage'),
+      confirmLabel: t('settings.resetConfirm'),
+      tone: 'warning',
+    })) return;
     const defaults = buildDefaultSettings();
     resetRoleSettings(currentUser._id, currentUser.role);
     void import('@/lib/settings/user-settings-sync').then(({ currentUserPreferences, persistUserPreferences }) =>

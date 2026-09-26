@@ -4,11 +4,31 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { stopsClickPropagation } from '@/lib/a11y';
 
+/**
+ * Named widths, so two dialogs holding the same kind of content are the same
+ * width. `sm` asks a question (440); `md` edits one record (560); `lg` holds
+ * a short form with a list (720); `xl` is a two-pane editor (960); `2xl` is a
+ * clinical workspace (1180); `full` takes the viewport less its gutter.
+ * The pixel values live in globals.css as `--dialog-w-*`.
+ */
+export type DialogSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+
+const SIZE_WIDTH: Record<DialogSize, string> = {
+  sm: 'var(--dialog-w-sm)',
+  md: 'var(--dialog-w-md)',
+  lg: 'var(--dialog-w-lg)',
+  xl: 'var(--dialog-w-xl)',
+  '2xl': 'var(--dialog-w-2xl)',
+  full: 'min(1400px, 100%)',
+};
+
 interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
-  /** Max width of the dialog in px. Default 600. */
+  /** Max width of the dialog in px. Default 600. Prefer `size`. */
   width?: number;
+  /** Named width preset; wins over `width` when both are given. */
+  size?: DialogSize;
   /**
    * Layout variant. 'dialog' (default) is the centered popup; 'drawer' slides
    * in as a full-height panel anchored to the right edge of the screen.
@@ -18,6 +38,11 @@ interface ModalProps {
   disableBackdropClose?: boolean;
   /** id of the element labelling the dialog (for a11y). */
   labelledBy?: string;
+  /** id of the element describing the dialog — its lead paragraph. */
+  describedBy?: string;
+  /** Extra class on the dialog surface, so a host surface (the patient chart,
+   *  say) can restyle the controls inside a portal that renders outside it. */
+  className?: string;
 }
 
 /**
@@ -36,9 +61,12 @@ export default function Modal({
   onClose,
   children,
   width = 600,
+  size,
   variant = 'dialog',
   disableBackdropClose = false,
   labelledBy,
+  describedBy,
+  className,
 }: ModalProps) {
   const isDrawer = variant === 'drawer';
   const [mounted, setMounted] = useState(false);
@@ -117,7 +145,7 @@ export default function Modal({
     // listener above). There is nothing here for a key handler to add.
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
-      className="modal-portal-backdrop"
+      className="modal-portal-backdrop tm-motion tm-motion--backdrop"
       onMouseDown={disableBackdropClose ? undefined : e => {
         // Arm only when the press STARTS on the backdrop. A drag that begins
         // inside the dialog (selecting text in a field) and releases over the
@@ -160,13 +188,20 @@ export default function Modal({
           ? 0
           : 'calc(16px + env(safe-area-inset-top, 0px) + var(--app-overlay-top-inset, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px))',
         background: 'rgba(15, 31, 29, 0.70)',
-        animation: 'modalFadeIn 0.2s ease-out',
         overflowY: isDrawer ? 'hidden' : 'auto',
       }}
     >
       <div
         ref={dialogRef}
-        className="modal-portal-dialog"
+        // `tm-elevated` lets the dialog keep its shadow through the flat
+        // baseline; `tm-motion--*` is its entrance, on the motion tokens.
+        className={[
+          'modal-portal-dialog',
+          'tm-elevated',
+          'tm-motion',
+          isDrawer ? 'tm-motion--drawer modal-portal-dialog--drawer' : 'tm-motion--dialog',
+          className,
+        ].filter(Boolean).join(' ')}
         // Spread first: this element is a real dialog, so its own role and tab
         // behaviour must win over the helper's presentational defaults. All it
         // borrows is the refusal to forward a click to the backdrop.
@@ -174,10 +209,11 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         tabIndex={-1}
         style={{
           width: '100%',
-          maxWidth: width,
+          maxWidth: size ? SIZE_WIDTH[size] : width,
           maxHeight: isDrawer
             ? '100dvh'
             : 'calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px))',
@@ -198,15 +234,15 @@ export default function Modal({
           //
           // Callers that already provide their own surface are unaffected:
           // `--bg-card-solid` is the same token their classes resolve to, so
-          // it sits invisibly behind them. The 6px radius matches the
-          // `.modal-portal-backdrop > div > *` rule in globals.css that forces
-          // every child to 6px, so the two edges align exactly instead of
-          // leaving square corners poking out behind a rounded child.
+          // it sits invisibly behind them. The radius is `--radius-overlay`,
+          // the same token the `.modal-portal-backdrop > div > *` rule in
+          // globals.css forces on every child, so the two edges align exactly
+          // instead of leaving square corners poking out behind a rounded
+          // child.
           background: 'var(--bg-card-solid)',
           // A drawer is flush to the screen edge, so it stays square.
-          borderRadius: isDrawer ? 0 : 6,
+          borderRadius: isDrawer ? 0 : 'var(--radius-overlay)',
           margin: 0,
-          animation: isDrawer ? 'modalSlideInRight 0.28s ease-out' : 'modalSlideUp 0.25s ease-out',
         }}
       >
         {children}

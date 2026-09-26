@@ -60,6 +60,8 @@ import type {
 import './clinical-notes.css';
 import Select from '@/components/Select';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
+import { ScribePanel, canUseScribe, type ScribeSuggestion } from '@/modules/ai-scribe/client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const AUTOSAVE_MS = 900;
 
@@ -105,6 +107,8 @@ export default function ClinicalNoteEditor({
   const { showToast } = useToast();
   const confirm = useConfirm();
   const scope = useDataScope();
+  const { t } = useTranslation();
+  const [showScribe, setShowScribe] = useState(false);
 
   const [note, setNote] = useState<ClinicalNoteDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -890,6 +894,16 @@ export default function ClinicalNoteEditor({
 
       {/* Note canvas */}
       <div className="cn-canvas">
+          {currentUser && note.status === 'draft' && canUseScribe(currentUser, note) && <div className="scribe-launch">
+            <button className="btn btn-secondary" type="button" onClick={() => setShowScribe(true)}>{t('scribe.title')}</button>
+            <span>{t('scribe.launchHelp')}</span>
+          </div>}
+          {showScribe && currentUser && canUseScribe(currentUser, note) && <ScribePanel key={`${note._id}:${note._rev}:${currentUser._id}`} note={note} onClose={() => setShowScribe(false)} onApply={async (revision: string, section: string, suggestion: ScribeSuggestion) => {
+            if (Object.keys(pendingSaves.current).length || saving || note._rev !== revision) return false;
+            const { applyScribeSuggestion } = await import('@/modules/ai-scribe/services/apply-suggestion');
+            const updated = await persist(() => applyScribeSuggestion(note._id, revision, section, suggestion, { ...currentUser, hospitalId: scope?.hospitalId }));
+            return Boolean(updated);
+          }}/>}
           {locked && (
             <div className="cn-locked-banner">
               <Check size={15} />

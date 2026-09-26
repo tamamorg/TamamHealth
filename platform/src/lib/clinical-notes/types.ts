@@ -39,6 +39,8 @@ export interface NoteDiagnosis {
 
 /** One section's captured content inside a note. */
 export interface NoteSectionContent {
+  /** Provenance only; clinician-reviewed narrative, never a structured order. */
+  aiAssistance?: { requestId: string; model: string; promptVersion: string; reviewedBy: string; reviewedAt: string };
   sectionId: NoteSectionId;
   /** Narrative body. May contain the template block delimiters. */
   text?: string;

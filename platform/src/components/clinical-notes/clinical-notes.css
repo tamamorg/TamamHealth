@@ -893,8 +893,10 @@ select.cn-select {
   min-height: 36px;
 }
 
-.cn-btn:hover:not(:disabled) { background: var(--overlay-subtle); }
-.cn-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.cn-btn:hover:not(:disabled) { background: var(--state-hover, var(--overlay-subtle)); }
+.cn-btn:active:not(:disabled) { background: var(--state-active, var(--overlay-light)); }
+.cn-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.cn-btn:disabled { opacity: var(--state-disabled-opacity, 0.55); cursor: not-allowed; }
 
 .cn-btn-primary {
   background: var(--accent-primary);
@@ -1047,25 +1049,32 @@ select.cn-select {
 
 .cn-segmented {
   display: inline-flex;
+  gap: 2px;
+  padding: 3px;
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-pill, 999px);
-  overflow: hidden;
+  border-radius: var(--radius-md, 8px);
+  background: var(--overlay-subtle);
 }
 
 .cn-segmented button {
-  padding: 6px 16px;
+  min-height: 30px;
+  padding: 0 14px;
   font: inherit;
   font-size: 13px;
+  font-weight: 600;
   border: none;
-  background: var(--bg-card-solid);
+  border-radius: calc(var(--radius-md, 8px) - 2px);
+  background: transparent;
   cursor: pointer;
-  color: inherit;
+  color: var(--text-secondary);
+  transition: background var(--motion-fast, 120ms) var(--ease-standard, ease), color var(--motion-fast, 120ms) var(--ease-standard, ease);
 }
+.cn-segmented button:hover { color: var(--text-primary); }
+.cn-segmented button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 
 .cn-segmented button[aria-pressed='true'] {
   background: var(--accent-primary);
   color: #fff;
-  font-weight: 600;
 }
 
 /* ── Split "Create Clinical Note" button ────────────────────────────────── */
@@ -1233,21 +1242,32 @@ select.cn-select {
    it the whole dialog scrolled and carried the header away. */
 .cn-meds { display: flex; flex-direction: column; min-height: 0; max-height: 84vh; }
 
-/* Inside a popup this row is painted as the blue title band by the structural
-   headband rule in globals.css, whose zero-specificity floor also hands it a
-   16px bottom margin. These panels rule their own body off with a border, so
-   that margin showed as a white strip between the band and the form — hence
-   the explicit `margin: 0`, and even padding so the title centres in the band. */
+/* The plain dialog head from the overlay kit (`.tm-dialog__head`): title in
+   the accent ink over the body's own hairline, window controls at the
+   trailing edge. These carry `modal-no-headband`, so the structural blue
+   band in globals.css leaves them alone — a clinical workspace this wide
+   reads calmer under a quiet head than under a saturated bar. */
 .cn-meds-header {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4, 16px);
   margin: 0;
-  padding: 10px 14px 10px 18px;
+  min-height: var(--dialog-head-height, 64px);
+  padding: 14px var(--dialog-gutter, 24px) 12px;
+  background: var(--surface-overlay, var(--bg-card-solid));
 }
-.cn-meds-title { margin: 0; min-width: 0; font-size: 17px; font-weight: 700; line-height: 1.2; }
+.cn-meds-title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-condensed);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
 /* Window controls (expand, close) travel as one group at the trailing edge. */
 .cn-meds-header-actions {
   flex: none;
@@ -1260,17 +1280,19 @@ select.cn-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px);
   background: none;
   cursor: pointer;
   color: var(--text-muted);
+  transition: background var(--motion-fast, 120ms) var(--ease-standard, ease), color var(--motion-fast, 120ms) var(--ease-standard, ease);
 }
-.cn-meds-close:hover { background: var(--overlay-subtle); }
-.cn-meds-close:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.cn-meds-close:hover { background: var(--state-hover, var(--overlay-subtle)); color: var(--text-primary); }
+.cn-meds-close:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.cn-meds-close svg { color: currentColor; stroke: currentColor; }
 
 .cn-meds-body {
   display: grid;
@@ -1288,11 +1310,17 @@ select.cn-select {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 14px 18px 16px;
+  padding: var(--space-5, 20px) var(--dialog-gutter, 24px) var(--space-4, 16px);
   overflow-y: auto;
-  border-right: 1px solid var(--border-light);
+  overscroll-behavior: contain;
+  border-inline-end: 1px solid var(--border-light);
 }
-.cn-meds-right { padding: 14px 18px 16px; overflow-y: auto; }
+.cn-meds-right {
+  padding: var(--space-5, 20px) var(--space-5, 20px) var(--space-4, 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-overlay-head, transparent);
+}
 
 .cn-meds-controlrow {
   display: flex;
@@ -1377,10 +1405,21 @@ select.cn-select {
 
 .cn-meds-footer {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2, 8px);
   flex-wrap: wrap;
-  padding-top: 12px;
+  margin-top: auto;
+  padding-top: var(--space-4, 16px);
 }
+/* The dialog-level footer (last in the pane) is a bar: hairline above, the
+   primary at the trailing edge where the eye finishes, the rest before it. */
+.cn-meds-left > .cn-meds-footer:last-child {
+  justify-content: flex-end;
+  margin-top: var(--space-4, 16px);
+  padding-top: var(--space-4, 16px);
+  border-top: 1px solid var(--border-light);
+}
+.cn-meds-left > .cn-meds-footer:last-child > .cn-btn:not(.cn-btn-primary):first-child { margin-inline-end: auto; }
+.cn-meds-footer .cn-btn { min-height: var(--control-height, 40px); }
 
 .cn-meds-histhead {
   display: flex;

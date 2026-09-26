@@ -17,7 +17,7 @@
  * to a screen reader.
  */
 
-import { AlertTriangle, Info } from '@/components/icons/lucide';
+import { AlertTriangle, Info, History, Activity } from '@/components/icons/lucide';
 import { assessVitalsForDisplay, type VitalDisplayFlag, type VitalDisplayLevel } from '@/lib/clinical/vitals';
 import { formatDateTime } from '@/lib/format-utils';
 import { useNow } from '@/lib/hooks/useNow';
@@ -140,7 +140,7 @@ export default function ChartVitalsBand({
             {flagged.length > 0 && <b>{flagged.length}</b>}
           </span>
         )}
-        <button type="button" className="tamam-vitals-link" onClick={onViewVitalsHistory}>Vitals history</button>
+        <button type="button" className="tamam-vitals-link" onClick={onViewVitalsHistory}><History aria-hidden /> Vitals history</button>
         <span className="tamam-vitals-info" title="Latest recorded vital signs for this patient">
           <Info />
         </span>
@@ -154,7 +154,7 @@ export default function ChartVitalsBand({
           disabled={!canRecordVitals}
           title={canRecordVitals ? undefined : 'Requires vitals-recording permission'}
         >
-          Record vitals
+          <Activity aria-hidden /> Record vitals
         </button>
       </div>
       <div className="tamam-vitals-grid">

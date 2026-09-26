@@ -1,6 +1,8 @@
 'use client';
 
 import type { NavItem } from '@/lib/permissions';
+import Tooltip from '@/components/overlay/Tooltip';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function EhrTopActions({
   items,
@@ -29,6 +31,7 @@ export default function EhrTopActions({
   /** href → count of open work in that module. Omitted hrefs show no badge. */
   badges?: Record<string, number>;
 }) {
+  const { t } = useTranslation();
   if (items.length === 0) return null;
 
   return (
@@ -38,23 +41,25 @@ export default function EhrTopActions({
         const label = navLabel(item);
         const count = badges?.[item.href] ?? 0;
         const active = item.href === activeHref;
+        const tip = count > 0 ? t('topbar.waiting', { label, count }) : label;
+        const name = count > 0 ? t('topbar.waitingAria', { label, count }) : label;
         return (
-          <button
-            key={item.href}
-            type="button"
-            onClick={() => onOpenModule(item.href)}
-            onMouseEnter={() => onWarm?.(item.href)}
-            onFocus={() => onWarm?.(item.href)}
-            title={count > 0 ? `${label} · ${count} waiting` : label}
-            aria-label={count > 0 ? `${label}, ${count} waiting` : label}
-            aria-current={active ? 'page' : undefined}
-            className={active ? 'relative is-active' : 'relative'}
-          >
-            <ItemIcon className="w-5 h-5" />
-            {count > 0 && (
-              <span className="ehr-top-action-badge">{count > 99 ? '99+' : count}</span>
-            )}
-          </button>
+          <Tooltip key={item.href} content={tip}>
+            <button
+              type="button"
+              onClick={() => onOpenModule(item.href)}
+              onMouseEnter={() => onWarm?.(item.href)}
+              onFocus={() => onWarm?.(item.href)}
+              aria-label={name}
+              aria-current={active ? 'page' : undefined}
+              className={active ? 'relative is-active' : 'relative'}
+            >
+              <ItemIcon className="w-5 h-5" />
+              {count > 0 && (
+                <span className="ehr-top-action-badge">{count > 99 ? '99+' : count}</span>
+              )}
+            </button>
+          </Tooltip>
         );
       })}
     </>

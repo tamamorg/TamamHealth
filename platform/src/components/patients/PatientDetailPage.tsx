@@ -15,7 +15,7 @@ import {
   ClipboardList,
   User as UserIcon, Building2, X, Wallet, Syringe, Stethoscope,
   Heart, Printer, History, Calendar,
-  Bandage, Layers, Plus,
+  Bandage, Layers, Plus, Pencil, Sliders, Check,
 } from '@/components/icons/lucide';
 import Badge from '@/components/Badge';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -1488,7 +1488,7 @@ export default function PatientDetailPage() {
 
           {/* ══════ SIGN BEFORE PRINT MODAL ══════ */}
           {showPrintModal && (
-            <Modal onClose={() => setShowPrintModal(false)} width={560} labelledBy="print-sign-title">
+            <Modal className="tamam-dialog" onClose={() => setShowPrintModal(false)} width={560} labelledBy="print-sign-title">
               <div className="rounded-xl p-6 space-y-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
                 <div className="flex items-center justify-between">
                   <h2 id="print-sign-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Print patient record</h2>
@@ -2250,7 +2250,7 @@ export default function PatientDetailPage() {
       )}
 
       {showMessageModal && patient && (
-        <Modal onClose={() => !messageSending && setShowMessageModal(false)} width={500} labelledBy="patient-message-title">
+        <Modal className="tamam-dialog" onClose={() => !messageSending && setShowMessageModal(false)} width={500} labelledBy="patient-message-title">
           <div className="modal-content card-elevated p-5 w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
@@ -2331,7 +2331,7 @@ export default function PatientDetailPage() {
 
       {/* Edit Demographics Modal */}
       {showEditModal && patient && (
-        <Modal onClose={() => !editSubmitting && setShowEditModal(false)}>
+        <Modal className="tamam-dialog" onClose={() => !editSubmitting && setShowEditModal(false)}>
           {/* No max-width here: Modal already sizes the dialog panel (600px) and
               paints it opaque, so a narrower child left ~90px of empty panel
               showing past the form's right edge. Matches the message modal above. */}
@@ -2474,7 +2474,7 @@ export default function PatientDetailPage() {
           is nothing to collect. The full civil registration (cause, informant,
           certification) stays in the Deaths module — this flags the chart. */}
       {showDeceasedModal && patient && (
-        <Modal onClose={() => !deceasedSubmitting && setShowDeceasedModal(false)} width={440}>
+        <Modal className="tamam-dialog" onClose={() => !deceasedSubmitting && setShowDeceasedModal(false)} width={440}>
           <div className="modal-content card-elevated p-5 w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-semibold">
@@ -2649,6 +2649,7 @@ function PatientFacesheetView({
       <div className="tebra-section-title">
         <h1>Patient summary</h1>
         <button type="button" onClick={onToggleCustomize}>
+          {customizeOpen ? <Check aria-hidden /> : <Sliders aria-hidden />}
           {customizeOpen ? 'Done' : 'Customize View'}
         </button>
       </div>
@@ -2848,7 +2849,7 @@ function PatientDemographicsView({
 
       {activeTab === 'profile' && (
         <section className="tebra-demo-panel">
-          {canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}>Edit</button>}
+          {canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}><Pencil aria-hidden /> Edit</button>}
           <div className="tebra-demo-person">
             <div className="tebra-demo-avatar">{patientInitials(patient)}</div>
             <h2>{patientFullName(patient)}</h2>

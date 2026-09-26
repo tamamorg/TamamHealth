@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Calendar } from '@/components/icons/lucide';
+import { Plus, Calendar, ArrowRight } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { usePatientReminders } from '@/lib/hooks/usePatientReminders';
 import { patientFullName } from '@/lib/patient-utils';
@@ -104,7 +104,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
                 Cancel
               </button>
               <button type="button" className="tamam-btn-primary" disabled={!message.trim() || submitting} onClick={handleAdd}>
-                {submitting ? 'Adding…' : 'Add task'}
+                <Plus aria-hidden /> {submitting ? 'Adding…' : 'Add task'}
               </button>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
       </div>
       <div className="tamam-drawer-footer">
         <button type="button" className="tamam-btn-ghost" onClick={onClose}>Close</button>
-        <button type="button" className="tamam-btn-primary" onClick={onGoToRecall}>View all in Recall</button>
+        <button type="button" className="tamam-btn-primary" onClick={onGoToRecall}><ArrowRight aria-hidden /> View all in Recall</button>
       </div>
     </>
   );

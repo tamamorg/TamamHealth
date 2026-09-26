@@ -286,7 +286,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       </ChartSection>
 
       {selectedAllergy && (
-        <Modal onClose={() => !busy && setSelectedAllergy(null)} width={600} labelledBy="allergy-row-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setSelectedAllergy(null)} width={600} labelledBy="allergy-row-title">
           <div className="modal-panel p-6 space-y-5">
             <PopupHeader
               title={selectedAllergy.substance}
@@ -331,7 +331,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       )}
 
       {editing && (
-        <Modal onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="edit-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit allergy</h2>
@@ -370,7 +370,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       )}
 
       {retiring && (
-        <Modal onClose={() => !busy && setRetiring(null)} width={440} labelledBy="retire-allergy-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setRetiring(null)} width={440} labelledBy="retire-allergy-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="retire-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Retire allergy</h2>

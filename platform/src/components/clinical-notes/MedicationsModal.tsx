@@ -273,7 +273,7 @@ export default function MedicationsModal({
   return (
     <Modal onClose={onClose} width={1120} labelledBy="cn-meds-title">
       <div className="cn-meds">
-        <div className="cn-meds-header">
+        <div className="cn-meds-header modal-no-headband">
           <h2 className="cn-meds-title" id="cn-meds-title">Medications</h2>
           <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close medications">
             <X size={18} />
@@ -474,7 +474,7 @@ export default function MedicationsModal({
               (headings + buttons only) matches as one giant title bar and
               paints blue end to end. */}
           <div className="cn-consent-pop modal-panel" {...stopsClickPropagation}>
-            <div className="cn-meds-header">
+            <div className="cn-meds-header modal-no-headband">
               <h2 className="cn-meds-title" id="cn-consent-title">Obtain Consent from Patient</h2>
               <button type="button" className="cn-meds-close" onClick={() => setConsentPromptOpen(false)} aria-label="Close consent">
                 <X size={18} />

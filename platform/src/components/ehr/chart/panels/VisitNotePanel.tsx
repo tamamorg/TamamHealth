@@ -21,7 +21,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
-import { Image as ImageIcon, Stethoscope, X } from '@/components/icons/lucide';
+import { Image as ImageIcon, Stethoscope, X, Save } from '@/components/icons/lucide';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useToast } from '@/components/Toast';
 import { toIsoDate } from '@/lib/date-utils';
@@ -287,7 +287,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
       <div className="tamam-drawer-footer">
         <button type="button" className="tamam-btn-ghost" onClick={onClose} disabled={submitting}>Discard</button>
         <button type="button" className="tamam-btn-ghost" onClick={handleSave} disabled={!canSave || submitting}>
-          {submitting ? 'Saving…' : 'Save note'}
+          <Save aria-hidden /> {submitting ? 'Saving…' : 'Save note'}
         </button>
         {/* Primary: the note above is the short form — the full encounter
             (vitals, orders, prescriptions, signing) happens in /consultation. */}

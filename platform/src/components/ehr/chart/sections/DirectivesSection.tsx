@@ -167,7 +167,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       </ChartSection>
 
       {selectedDirective && (
-        <Modal onClose={() => !busy && setSelectedDirective(null)} width={620} labelledBy="directive-row-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setSelectedDirective(null)} width={620} labelledBy="directive-row-title">
           <div className="modal-panel p-6 space-y-5">
             <PopupHeader
               title={typeLabel(selectedDirective.type)}
@@ -199,7 +199,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Add ── */}
       {adding && (
-        <Modal onClose={() => !busy && setAdding(false)} width={480} labelledBy="add-directive-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setAdding(false)} width={480} labelledBy="add-directive-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="add-directive-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Add directive / consent</h2>
@@ -238,7 +238,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Edit (unsigned only) ── */}
       {editing && (
-        <Modal onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-directive-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-directive-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="edit-directive-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit directive</h2>
@@ -277,7 +277,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Signature ── */}
       {signing && (
-        <Modal onClose={() => !busy && setSigning(null)} width={460} labelledBy="sign-dir-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setSigning(null)} width={460} labelledBy="sign-dir-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="sign-dir-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Take signature</h2>
@@ -331,7 +331,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Revoke ── */}
       {revoking && (
-        <Modal onClose={() => !busy && setRevoking(null)} width={440} labelledBy="revoke-dir-title">
+        <Modal className="tamam-dialog" onClose={() => !busy && setRevoking(null)} width={440} labelledBy="revoke-dir-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="revoke-dir-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Revoke directive</h2>
