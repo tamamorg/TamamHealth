@@ -2040,46 +2040,18 @@ small,
 /* ── Confirmation dialog ─────────────────────────────────────────────────────
    The shared "are you sure?" panel behind useConfirm(). Deliberately small and
    quiet: it interrupts an action the user has already decided on, so it asks
-   its question and gets out of the way. */
-.confirm-dialog {
-  padding: 22px 24px 18px;
-}
+   its question and gets out of the way.
 
-.confirm-dialog-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.confirm-dialog-head h2 {
-  margin: 0;
-  font-size: 16.5px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--text-strong);
-}
-
-.confirm-dialog-icon {
-  display: inline-flex;
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: var(--color-danger);
-}
-
+   It is built on the overlay kit (DialogFrame / DialogHeader / DialogBody /
+   DialogFooter), which owns the gutters, the head and the action row. The
+   `confirm-dialog` class now sits on the Modal surface itself, so it must NOT
+   carry padding: the old 22px inset around the frame pulled the head's
+   hairline and the footer in from the rounded corners on every confirm. */
 .confirm-dialog-body {
   margin-top: 8px;
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--text-secondary);
-}
-
-/* Confirm sits right of Cancel, which is where the eye finishes — and Cancel
-   is the one holding focus, so keyboard-clearing a dialog is always harmless. */
-.confirm-dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
 }
 
 /* Filter toggle — turns clearly accent-colored when its dropdown is open
