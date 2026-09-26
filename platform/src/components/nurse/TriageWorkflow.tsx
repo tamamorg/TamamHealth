@@ -14,6 +14,7 @@ import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 import type { PatientDoc, TriageDisposition, TriageDoc } from '@/lib/db-types';
 import { jubaDate } from '@/lib/time-juba';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { patientAge, patientAgeYearsExact, patientFullName, patientGenderAge, initials, shortenPersonName } from '@/lib/patient-utils';
 import {
   calculateBmi,
@@ -221,6 +222,7 @@ export default function TriageWorkflow({
   const { triages: triageHistory, create: createTriageRecord, update: updateTriageRecord } = useTriage();
   const { appointments } = useAppointments();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const dataScope = useDataScope();
   const currentActor = { userId: currentUser?._id, username: currentUser?.name };
 
@@ -713,7 +715,12 @@ export default function TriageWorkflow({
     // edge out of 'discharged') — the same one-way-door confirm
     // EhrClinicalDashboard already asks before escalate/LWBS, so a mis-tapped
     // row-menu entry doesn't silently end a patient's visit.
-    if (status === 'discharged' && !window.confirm(t('nurse.triageDischargeConfirm', { name: ti.patientName }))) return;
+    if (status === 'discharged' && !await confirm({
+      title: t('nurse.triageDischargeTitle', { name: ti.patientName }),
+      message: t('nurse.triageDischargeConfirm', { name: ti.patientName }),
+      confirmLabel: t('nurse.triageDischargeAction'),
+      tone: 'warning',
+    })) return;
     try {
       // updateTriage resolves with the updated doc or throws (an illegal
       // transition, a lost update conflict after retries, a failed vital
@@ -734,7 +741,12 @@ export default function TriageWorkflow({
   // one-way — same confirm pattern EhrClinicalDashboard uses for its own
   // copies of these two actions.
   const markLeftWithoutBeingSeen = async (ti: typeof triageHistory[number]) => {
-    if (!window.confirm(t('nurse.triageLwbsConfirm', { name: ti.patientName }))) return;
+    if (!await confirm({
+      title: t('nurse.triageLwbsTitle', { name: ti.patientName }),
+      message: t('nurse.triageLwbsConfirm', { name: ti.patientName }),
+      confirmLabel: t('nurse.triageLwbsAction'),
+      tone: 'danger',
+    })) return;
     try {
       const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
       await recordLeftWithoutBeingSeen(ti.encounterId!, { actorId: currentUser?._id });
@@ -748,7 +760,12 @@ export default function TriageWorkflow({
   };
 
   const escalateToEmergency = async (ti: typeof triageHistory[number]) => {
-    if (!window.confirm(t('nurse.triageEscalateConfirm', { name: ti.patientName }))) return;
+    if (!await confirm({
+      title: t('nurse.triageEscalateTitle', { name: ti.patientName }),
+      message: t('nurse.triageEscalateConfirm', { name: ti.patientName }),
+      confirmLabel: t('nurse.triageEscalateAction'),
+      tone: 'danger',
+    })) return;
     try {
       const { getEncounter, transitionEncounter, escalateEncounterToEmergency } =
         await import('@/lib/services/encounter-service');

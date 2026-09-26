@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Calendar,
   HelpCircle,
+  Hospital,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -35,6 +36,8 @@ import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrModuleMenu from './EhrModuleMenu';
 import EhrRailMenu, { type RailMenuItem } from './EhrRailMenu';
+import Tooltip from '@/components/overlay/Tooltip';
+import { useMenuKeyboard } from '@/components/overlay/Menu';
 import { buildAddMenuEntries, usersHrefForRole } from '@/lib/people-nav';
 import EhrTopActions from './EhrTopActions';
 import QuickActions from '@/components/QuickActions';
@@ -142,7 +145,26 @@ export default function EhrTopRail() {
   const boxRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const moduleRef = useRef<HTMLDivElement>(null);
+  const moduleTriggerRef = useRef<HTMLButtonElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLButtonElement>(null);
+
+  // The account menu shares the keyboard model every menu in the app uses:
+  // arrows move, Escape closes and returns focus to the avatar, Tab leaves.
+  const closeUserMenu = useCallback((returnFocus: boolean) => {
+    setUserOpen(false);
+    if (returnFocus) avatarRef.current?.focus();
+  }, []);
+  const userMenuKeys = useMenuKeyboard(userMenuRef, closeUserMenu);
+  useEffect(() => {
+    if (!userOpen) return;
+    userMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [userOpen]);
+  const closeModuleMenu = useCallback((returnFocus: boolean) => {
+    setModuleOpen(false);
+    if (returnFocus) moduleTriggerRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!open && !moduleOpen && !userOpen) return;
@@ -157,8 +179,16 @@ export default function EhrTopRail() {
         setUserOpen(false);
       }
     };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (open) { setOpen(false); searchInputRef.current?.focus(); }
+    };
     document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    window.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      window.removeEventListener('keydown', onEscape);
+    };
   }, [open, moduleOpen, userOpen]);
 
   useEffect(() => {
@@ -367,7 +397,7 @@ export default function EhrTopRail() {
         onMouseEnter={() => warm(homeHref)}
         role="button"
         tabIndex={0}
-        aria-label="Go to your dashboard"
+        aria-label={t('topbar.home')}
         data-track="nav.home"
       >
         {/* One mark, every width. There used to be a second `<img>` — the
@@ -380,13 +410,15 @@ export default function EhrTopRail() {
       </div>
 
       <nav className="ehr-top-modules" aria-label="Primary EHR modules" ref={moduleRef}>
+        <Tooltip content={t('topbar.moduleMenu')}>
         <button
+          ref={moduleTriggerRef}
           type="button"
           className={`ehr-module-trigger ${moduleOpen ? 'active' : ''}`}
           onClick={() => setModuleOpen(value => !value)}
           aria-expanded={moduleOpen}
           aria-haspopup="menu"
-          title="Open module menu"
+          aria-label={t('topbar.moduleMenu')}
           data-track="nav.module_menu"
         >
           {/* A hamburger, fixed — never the current module's icon. It stays
@@ -402,6 +434,7 @@ export default function EhrTopRail() {
               still says "the dashboard", one row down. */}
           <Menu className="w-5 h-5" />
         </button>
+        </Tooltip>
 
         {moduleOpen && (
           <EhrModuleMenu
@@ -410,6 +443,7 @@ export default function EhrTopRail() {
             activeHref={activeModuleItem?.href}
             navLabel={navLabel}
             onOpenModule={openModule}
+            onClose={closeModuleMenu}
             onWarm={warm}
             footer={
               /* Phone-only account block — CSS hides it above 640px, where the
@@ -449,16 +483,17 @@ export default function EhrTopRail() {
         />
 
         {isFacilityConsole && staffListHref && (
-          <button
-            type="button"
-            className="relative"
-            onClick={() => router.push(staffListHref)}
-            title="View staff accounts"
-            aria-label="View staff accounts"
-            data-track="nav.staff_accounts"
-          >
-            <UserCheck className="w-4 h-4" />
-          </button>
+          <Tooltip content={t('topbar.staffAccounts')}>
+            <button
+              type="button"
+              className="relative"
+              onClick={() => router.push(staffListHref)}
+              aria-label={t('topbar.staffAccounts')}
+              data-track="nav.staff_accounts"
+            >
+              <UserCheck className="w-4 h-4" />
+            </button>
+          </Tooltip>
         )}
         {addMenuItems.length > 0 && (
           <EhrRailMenu
@@ -466,7 +501,7 @@ export default function EhrTopRail() {
             label=""
             icon={Plus}
             hideChevron
-            ariaLabel="Add a new record"
+            ariaLabel={t('topbar.addRecord')}
             items={addMenuItems}
           />
         )}
@@ -496,21 +531,22 @@ export default function EhrTopRail() {
           target sent every role without /dashboard access to RoleGuard's
           "Access Restricted" screen, and ?view=calendar was a dead param. */}
       {isHrefAllowed('/appointments', allowedRoutes) && (
-        <button
-          type="button"
-          className="ehr-top-calendar-button"
-          onClick={() => router.push('/appointments')}
-          aria-label={todaysAppointmentCount > 0 ? `Open calendar, ${todaysAppointmentCount} appointment${todaysAppointmentCount === 1 ? '' : 's'} today` : 'Open calendar'}
-          title={todaysAppointmentCount > 0 ? `Calendar · ${todaysAppointmentCount} today` : 'Calendar'}
-          data-track="nav.calendar"
-        >
-          <Calendar className="w-4 h-4" />
-          {todaysAppointmentCount > 0 && (
-            <span className="ehr-top-action-badge" aria-hidden="true">
-              {todaysAppointmentCount > 99 ? '99+' : todaysAppointmentCount}
-            </span>
-          )}
-        </button>
+        <Tooltip content={todaysAppointmentCount > 0 ? t('topbar.calendarToday', { count: todaysAppointmentCount }) : t('topbar.calendar')}>
+          <button
+            type="button"
+            className="ehr-top-calendar-button"
+            onClick={() => router.push('/appointments')}
+            aria-label={todaysAppointmentCount > 0 ? t('topbar.calendarToday', { count: todaysAppointmentCount }) : t('topbar.calendar')}
+            data-track="nav.calendar"
+          >
+            <Calendar className="w-4 h-4" />
+            {todaysAppointmentCount > 0 && (
+              <span className="ehr-top-action-badge" aria-hidden="true">
+                {todaysAppointmentCount > 99 ? '99+' : todaysAppointmentCount}
+              </span>
+            )}
+          </button>
+        </Tooltip>
       )}
 
       {(isPlatformAdmin || canSearchPatients || isNationalRole) ? (
@@ -614,49 +650,76 @@ export default function EhrTopRail() {
             facility to register a patient into, so the rail offered a clinical
             intake form from every platform screen. */}
         {canRegisterPatients && !receptionRole && !isPlatformAdmin && (
-          <button
-            type="button"
-            onClick={() => router.push('/patients/new')}
-            aria-label={t('frontDesk.registerNewPatient')}
-            title={t('frontDesk.registerNewPatient')}
-            data-track="patient.create"
-          >
-            {/* The same person-plus the front-desk strip's "Register new
-                patient" button wears, so the one act carries one glyph
-                wherever it is offered. */}
-            <UserPlus className="w-4 h-4" />
-          </button>
+          <Tooltip content={t('frontDesk.registerNewPatient')}>
+            <button
+              type="button"
+              onClick={() => router.push('/patients/new')}
+              aria-label={t('frontDesk.registerNewPatient')}
+              data-track="patient.create"
+            >
+              {/* The same person-plus the front-desk strip's "Register new
+                  patient" button wears, so the one act carries one glyph
+                  wherever it is offered. */}
+              <UserPlus className="w-4 h-4" />
+            </button>
+          </Tooltip>
         )}
         <QuickActions notificationCount={unreadCount} />
         <div className="ehr-user-menu-wrap" ref={userRef}>
           {/* Design: a plain 40px circle avatar — the role label lives in the
               menu below, not on the rail. */}
-          <button
-            type="button"
-            className={`ehr-avatar ${userOpen ? 'active' : ''}`}
-            title={`${currentUser?.name || 'Tamam user'} · ${roleConfig?.badgeLabel || roleLabel}`}
-            onClick={() => setUserOpen(value => !value)}
-            aria-expanded={userOpen}
-            aria-haspopup="menu"
-          >
-            <span className="ehr-avatar-mark">{userInitials}</span>
-          </button>
+          <Tooltip content={`${currentUser?.name || 'Tamam user'} · ${roleConfig?.badgeLabel || roleLabel}`}>
+            <button
+              ref={avatarRef}
+              type="button"
+              className={`ehr-avatar ${userOpen ? 'active' : ''}`}
+              aria-label={t('topbar.userMenu')}
+              onClick={() => setUserOpen(value => !value)}
+              onKeyDown={event => {
+                if (event.key === 'ArrowDown' && !userOpen) { event.preventDefault(); setUserOpen(true); }
+              }}
+              aria-expanded={userOpen}
+              aria-haspopup="menu"
+            >
+              <span className="ehr-avatar-mark">{userInitials}</span>
+            </button>
+          </Tooltip>
 
           {userOpen && (
-            <div className="ehr-user-menu" role="menu">
+            <div
+              ref={userMenuRef}
+              className="ehr-user-menu tm-elevated tm-motion tm-motion--menu"
+              role="menu"
+              aria-label={t('topbar.userMenu')}
+              onKeyDown={userMenuKeys.onKeyDown}
+            >
+              {/* Who you are, as what, and where — the rail's centre lines hide
+                  under 1100px, so the menu is the one place this is always
+                  readable. */}
+              <div className="ehr-user-menu-identity" role="presentation">
+                <span className="ehr-user-menu-name">{currentUser?.name || 'Tamam user'}</span>
+                <span className="ehr-user-menu-role">{roleConfig?.badgeLabel || roleLabel}</span>
+                {facilityName && (
+                  <span className="ehr-user-menu-facility">
+                    <Hospital aria-hidden="true" />
+                    <span>{facilityName}</span>
+                  </span>
+                )}
+              </div>
               <button type="button" role="menuitem" onClick={openSettingsPage}>
                 <Settings className="w-4 h-4" />
-                <span>Settings</span>
+                <span>{t('topbar.settings')}</span>
               </button>
               {tourAvailable && (
                 <button type="button" role="menuitem" onClick={() => { setUserOpen(false); startTour(); }}>
                   <HelpCircle className="w-4 h-4" />
-                  <span>Take a tour</span>
+                  <span>{t('topbar.tour')}</span>
                 </button>
               )}
+              <div className="ehr-user-menu-sep" role="separator" />
               <button type="button" role="menuitem" className="danger" onClick={() => { setUserOpen(false); logout(); }}>
                 <LogOut className="w-4 h-4" />
-                <span>Log out</span>
+                <span>{t('topbar.logout')}</span>
               </button>
             </div>
           )}

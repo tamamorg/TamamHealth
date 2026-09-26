@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { Printer, Download } from '@/components/icons/lucide';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
@@ -127,13 +128,23 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
   };
 
   return (
-    <Modal onClose={onClose} width={440} labelledBy="print-list-title">
-      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <h3 id="print-list-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h3>
-          {subtitle && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{subtitle}</p>}
-        </div>
-
+    <Modal
+      onClose={onClose}
+      size="md"
+      labelledBy="print-list-title"
+      describedBy={subtitle ? 'print-list-desc' : undefined}
+    >
+      <DialogFrame>
+        <DialogHeader
+          titleId="print-list-title"
+          title={title}
+          description={subtitle}
+          descriptionId="print-list-desc"
+          icon={<Printer />}
+          onClose={onClose}
+        />
+        <DialogBody>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
           <p style={groupHead}>What to print</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -192,13 +203,15 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={run} disabled={chosen.length === 0}>
+        </div>
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-primary" onClick={run} disabled={chosen.length === 0}>
             {format === 'print' ? 'Print' : 'Download CSV'}
           </button>
-        </div>
-      </div>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }

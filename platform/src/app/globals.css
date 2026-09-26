@@ -249,6 +249,120 @@
   --radius-card: 8px;
   --radius-pill: 999px;
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     OVERLAY & INTERACTION SYSTEM — one set of tokens for every dialog, menu,
+     popover, tooltip, toast and drawer, plus the states a control moves
+     through. Every value below is a size, a duration or a mix of the nine
+     palette colours; nothing here introduces a hue. The `tm-*` kit at the end
+     of this file and `components/overlay/*` are the only consumers that
+     should hardcode nothing — an overlay that needs a shadow, a layer or a
+     duration reads it from here so the whole product moves together.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Spacing ── a 4px scale. Gutters inside overlays are named further
+     down (--dialog-gutter) so a phone can tighten every dialog at once. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ── Radius ── one ladder, named by role. Controls stay on the clinical
+     6px; floating surfaces round a step more so they read as lifted off the
+     page rather than cut out of it. */
+  --radius-xs: 4px;
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-card);
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-overlay: 10px;   /* dialogs, drawers' free corners */
+  --radius-menu: 10px;      /* menus, popovers */
+  --radius-tooltip: 6px;
+
+  /* ── Elevation ── shadows are the ONLY thing that separates a floating
+     surface from the page (no glass, no glow). Inked in the palette's ink
+     so a lifted panel stays blue-biased like everything around it. Menus
+     are close to the page; dialogs are far from it. */
+  --shadow-menu:
+    0 1px 2px color-mix(in srgb, var(--tm-ink) 6%, transparent),
+    0 10px 28px -8px color-mix(in srgb, var(--tm-ink) 24%, transparent);
+  --shadow-popover:
+    0 1px 2px color-mix(in srgb, var(--tm-ink) 6%, transparent),
+    0 18px 40px -12px color-mix(in srgb, var(--tm-ink) 28%, transparent);
+  --shadow-dialog:
+    0 0 0 1px color-mix(in srgb, var(--tm-ink) 6%, transparent),
+    0 24px 64px -16px color-mix(in srgb, var(--tm-ink) 42%, transparent);
+  --shadow-drawer:
+    -8px 0 32px -12px color-mix(in srgb, var(--tm-ink) 36%, transparent);
+  --shadow-tooltip:
+    0 6px 16px -6px color-mix(in srgb, var(--tm-ink) 40%, transparent);
+  --shadow-toast:
+    0 1px 2px color-mix(in srgb, var(--tm-ink) 6%, transparent),
+    0 12px 28px -10px color-mix(in srgb, var(--tm-ink) 30%, transparent);
+
+  /* ── Layers ── the z-index ladder. A new overlay picks a rung; it never
+     invents a number. Ordered bottom to top. */
+  --z-dropdown: 1000;     /* row menus, inline popups on a page          */
+  --z-sticky: 1100;       /* sticky heads, daybars                        */
+  --z-rail: 1200;         /* the fixed top rail and the phone tab bar     */
+  --z-rail-menu: 1250;    /* panels hanging off the rail (modules, menus) */
+  --z-popover: 1260;      /* header popovers (notifications, tasks)       */
+  --z-backdrop: 2000;     /* modal scrim                                  */
+  --z-dialog: 2000;       /* the dialog itself (inside the scrim)         */
+  --z-dialog-menu: 3000;  /* a select/menu opened from inside a dialog    */
+  --z-tooltip: 3200;      /* always readable, even over a dialog          */
+  --z-toast: 9999;
+  --z-lock: 10000;        /* the screen lock outranks everything          */
+
+  /* ── Motion ── three durations and three curves. Functional motion only:
+     a surface arriving, a row highlighting, a chevron turning. The global
+     rule below this file's reduced-motion block zeroes all three under
+     `prefers-reduced-motion`, so a component that reads these needs no
+     media query of its own. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* ── Dialog sizes ── five widths, so two dialogs that hold the same kind
+     of content are the same width. `sm` asks a question; `md` edits one
+     record; `lg` holds a short form with a list; `xl` is a two-pane editor;
+     `2xl` is a full clinical workspace (medications, prescribing). */
+  --dialog-w-sm: 440px;
+  --dialog-w-md: 560px;
+  --dialog-w-lg: 720px;
+  --dialog-w-xl: 960px;
+  --dialog-w-2xl: 1180px;
+  --dialog-gutter: 24px;
+  --dialog-head-height: 64px;
+
+  /* ── Control geometry ── */
+  --control-height: 40px;
+  --control-height-sm: 32px;
+  --control-height-lg: 44px;
+  --touch-target: 44px;
+
+  /* ── Interaction states ── the fills a control moves through. Selected
+     is the accent wash with accent ink; hover is a quieter tint of the same
+     hue, so pointing at a row never looks like choosing it. */
+  --state-hover: var(--overlay-subtle);
+  --state-active: var(--overlay-light);
+  --state-selected: var(--accent-light);
+  --state-selected-ink: var(--accent-text);
+  --state-disabled-opacity: 0.5;
+
+  /* ── Overlay surfaces ── */
+  --surface-overlay: var(--bg-card-solid);
+  --surface-overlay-border: var(--border-medium);
+  --surface-overlay-head: color-mix(in srgb, var(--accent-primary) 3%, var(--bg-card-solid));
+  --tooltip-bg: var(--tm-navy);
+  --tooltip-ink: var(--color-white);
+
   /* ── App canvas ────────────────────────────────────────────────────────
      The ground stays the faint blue wash it has always been — 4% of the
      accent in white — and the cards stay pure white. Do NOT tint the cards
@@ -667,6 +781,30 @@
   --card-shadow-xl:    0 12px 32px color-mix(in srgb, #000000 55%, transparent);
   --card-hover-border: var(--border-medium);
 
+  /* Overlay elevation on an ink ground: shadows alone vanish, so every
+     floating surface also carries a one-step-lighter hairline (its border
+     token) and the shadows go black and deeper. */
+  --shadow-menu:
+    0 0 0 1px color-mix(in srgb, var(--color-white) 8%, transparent),
+    0 12px 32px -8px color-mix(in srgb, #000000 60%, transparent);
+  --shadow-popover:
+    0 0 0 1px color-mix(in srgb, var(--color-white) 8%, transparent),
+    0 18px 44px -12px color-mix(in srgb, #000000 65%, transparent);
+  --shadow-dialog:
+    0 0 0 1px color-mix(in srgb, var(--color-white) 10%, transparent),
+    0 28px 72px -16px color-mix(in srgb, #000000 75%, transparent);
+  --shadow-drawer:
+    -8px 0 36px -12px color-mix(in srgb, #000000 70%, transparent);
+  --shadow-tooltip:
+    0 0 0 1px color-mix(in srgb, var(--color-white) 12%, transparent),
+    0 8px 20px -6px color-mix(in srgb, #000000 70%, transparent);
+  --shadow-toast:
+    0 0 0 1px color-mix(in srgb, var(--color-white) 10%, transparent),
+    0 12px 32px -10px color-mix(in srgb, #000000 65%, transparent);
+  --surface-overlay-head: color-mix(in srgb, var(--tm-dodger) 5%, var(--bg-card-solid));
+  --tooltip-bg: var(--color-slate-100);
+  --tooltip-ink: var(--color-slate-900);
+
   --toggle-track: #35608C;
   --scrollbar-thumb: color-mix(in srgb, var(--tm-dodger) 30%, transparent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--tm-dodger) 45%, transparent);
@@ -787,8 +925,17 @@
 * { box-sizing: border-box; }
 
 /* ============ Flat platform baseline ============
-   Keep surfaces sharp across the app: no glow, blur, glass, or text shadow. */
-*, *::before, *::after {
+   Keep surfaces sharp across the app: no glow, blur, glass, or text shadow.
+   Cards, inputs and buttons stay flat.
+
+   `tm-elevated` is the one exemption, and it is deliberate: a surface that
+   FLOATS over the page — a dialog, a menu, a popover, a tooltip, a toast —
+   needs a shadow to read as above the page rather than pasted onto it. Every
+   such surface reads one of the `--shadow-*` tokens; nothing else earns the
+   class. (Before this exemption every menu in the app declared a shadow that
+   this rule silently discarded, which is why the open panels read as flat
+   rectangles with a hairline.) */
+*:not(.tm-elevated), *:not(.tm-elevated)::before, *:not(.tm-elevated)::after {
   box-shadow: none !important;
   text-shadow: none !important;
   -webkit-backdrop-filter: none !important;
@@ -7445,8 +7592,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-width: 860px;
 }
 
+/* The dialog's own corners are `--radius-overlay`; its direct child takes
+   the same value so a hand-rolled surface never pokes square corners out
+   behind the rounded portal. One token, one edge. */
 .modal-portal-backdrop > div > * {
-  border-radius: 6px !important;
+  border-radius: var(--radius-overlay) !important;
 }
 
 /* One viewport contract for portal dialogs and the few media previews that
@@ -11531,6 +11681,11 @@ canvas {
 
 /* ============ Reduced motion ============ */
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -11550,13 +11705,19 @@ canvas {
 }
 
 /* ── Static, sharp UI ──────────────────────────────────────────────────────
-   Decorative motion is disabled by design (no page/modal entrance fades, no
-   pulses or shimmer) so the interface reads as crisp and still. Loading
-   spinners (`animate-spin`) are deliberately preserved so progress stays
-   legible. */
-*:not(.animate-spin),
-*:not(.animate-spin)::before,
-*:not(.animate-spin)::after {
+   Decorative motion is disabled by design (no page entrance fades, no pulses
+   on cards, no idle floats) so the interface reads as crisp and still.
+   Loading spinners (`animate-spin`) are preserved so progress stays legible.
+
+   `tm-motion` is the one exemption: FUNCTIONAL motion that tells the user a
+   surface arrived or left — a dialog settling in, a menu dropping from its
+   trigger, a toast sliding up, a skeleton shimmering while data loads. Every
+   such animation reads `--motion-*`, which `prefers-reduced-motion` zeroes,
+   so the exemption never overrides the user's own setting. A component earns
+   the class by owning a surface; a card does not. */
+*:not(.animate-spin):not(.tm-motion):not(.is-loading),
+*:not(.animate-spin):not(.tm-motion):not(.is-loading)::before,
+*:not(.animate-spin):not(.tm-motion):not(.is-loading)::after {
   animation: none !important;
 }
 
@@ -13373,6 +13534,10 @@ span:has(> svg:only-child) {
   .ehr-workspace-grid.is-dashboard .ehr-left-rail {
     display: none;
   }
+}
+
+@media (max-width: 639px) {
+  :root { --dialog-gutter: 16px; }
 }
 
 @media (max-width: 1023px) {
@@ -34048,4 +34213,726 @@ button.sadb-signal { cursor: pointer; }
 .tamam-ehr-app :is(th, td) { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   .ehr-top-modules button, .ehr-module-menu button { transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TM OVERLAY KIT — dialogs, menus, tooltips, banners, fields, empty states,
+   skeletons and segmented controls.
+
+   Rendered by `components/overlay/*`, `Modal`, `ConfirmDialog`, `Toast` and
+   `EmptyState`. It reads ONLY the tokens declared under "OVERLAY &
+   INTERACTION SYSTEM" in :root, so a change to one duration, one shadow or
+   one width moves every overlay together. The `tm-` prefix is a namespace:
+   the bare `label` rule, the global icon recolouring and the flat baseline
+   never reach inside it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Motion primitives ── functional entrances only. Each reads a
+   `--motion-*` duration, which `prefers-reduced-motion` zeroes. */
+@keyframes tmFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tmDialogIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tmDrawerIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes tmDrawerInRtl { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+@keyframes tmMenuIn { from { opacity: 0; transform: translateY(-4px) scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes tmMenuInUp { from { opacity: 0; transform: translateY(4px) scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes tmToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes tmToastOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); } }
+@keyframes tmShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes tmSpin { to { transform: rotate(360deg); } }
+
+.tm-motion--backdrop { animation: tmFadeIn var(--motion-base) var(--ease-out) both; }
+.tm-motion--dialog { animation: tmDialogIn var(--motion-slow) var(--ease-out) both; }
+.tm-motion--drawer { animation: tmDrawerIn var(--motion-slow) var(--ease-out) both; }
+[dir='rtl'] .tm-motion--drawer { animation-name: tmDrawerInRtl; }
+.tm-motion--menu { animation: tmMenuIn var(--motion-fast) var(--ease-out) both; transform-origin: top center; }
+.tm-motion--menu.is-flipped { animation-name: tmMenuInUp; transform-origin: bottom center; }
+.tm-motion--toast { animation: tmToastIn var(--motion-base) var(--ease-out) both; }
+.tm-motion--toast.is-leaving { animation: tmToastOut var(--motion-base) var(--ease-in) forwards; }
+.tm-motion--fade { animation: tmFadeIn var(--motion-fast) var(--ease-out) both; }
+
+/* The portal dialog: elevated, rounded on the overlay token. */
+.modal-portal-dialog { box-shadow: var(--shadow-dialog); }
+.modal-portal-dialog--drawer { box-shadow: var(--shadow-drawer); }
+
+/* ── Dialog ── head · body · foot, each owning its own gutter so a dialog
+   never has to compute padding. The head is plain by default (title in the
+   accent ink over a hairline) — the solid brand band is opt-in per dialog
+   (`--brand`) rather than painted onto every popup, and a destructive dialog
+   wears a danger edge. */
+.tm-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+.tm-dialog__head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--dialog-gutter) var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-overlay);
+}
+.tm-dialog__head--brand {
+  border-bottom-color: transparent;
+  background: var(--accent-primary);
+  color: var(--accent-on);
+}
+.tm-dialog__head--danger { border-top: 3px solid var(--color-danger); }
+.tm-dialog__head--warning { border-top: 3px solid var(--color-warning); }
+
+.tm-dialog__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: var(--state-selected);
+  color: var(--state-selected-ink);
+}
+.tm-dialog__icon--danger { background: var(--color-danger-bg); color: var(--color-danger-text); }
+.tm-dialog__icon--warning { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.tm-dialog__icon--success { background: var(--color-success-bg); color: var(--color-success-text); }
+.tm-dialog__icon svg { width: 20px; height: 20px; color: currentColor; stroke: currentColor; }
+
+.tm-dialog__copy { flex: 1 1 auto; min-width: 0; padding-top: 2px; }
+.tm-dialog__title {
+  margin: 0;
+  font-family: var(--font-condensed);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.tm-dialog__head--brand .tm-dialog__title { color: inherit; }
+.tm-dialog__desc {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.tm-dialog__head--brand .tm-dialog__desc { color: color-mix(in srgb, var(--accent-on) 82%, transparent); }
+
+.tm-dialog__controls {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: -6px;
+  margin-inline-end: -8px;
+}
+.tm-dialog__ctl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.tm-dialog__ctl:hover { background: var(--state-hover); color: var(--text-primary); }
+.tm-dialog__ctl:active { background: var(--state-active); }
+.tm-dialog__ctl:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.tm-dialog__ctl svg { width: 18px; height: 18px; color: currentColor; stroke: currentColor; }
+.tm-dialog__head--brand .tm-dialog__ctl { color: var(--accent-on); }
+.tm-dialog__head--brand .tm-dialog__ctl:hover { background: color-mix(in srgb, var(--accent-on) 16%, transparent); color: var(--accent-on); }
+.tm-dialog__head--brand .tm-dialog__ctl:focus-visible { outline-color: var(--accent-on); }
+
+.tm-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-5) var(--dialog-gutter);
+}
+.tm-dialog__body--flush { padding: 0; }
+.tm-dialog__body--tight { padding-block: var(--space-4); }
+.tm-dialog__body > .tm-banner:first-child { margin-bottom: var(--space-4); }
+
+.tm-dialog__foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--dialog-gutter);
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-overlay);
+}
+.tm-dialog__foot-start {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-inline-end: auto;
+}
+.tm-dialog__foot-note { font-size: 12.5px; line-height: 1.4; color: var(--text-muted); }
+.tm-dialog__foot .btn { min-height: var(--control-height); }
+@media (max-width: 639px) {
+  .tm-dialog__foot { flex-wrap: wrap; }
+  .tm-dialog__foot .btn { flex: 1 1 auto; min-height: var(--touch-target); }
+  .tm-dialog__foot-start { flex-basis: 100%; margin-inline-end: 0; }
+}
+
+/* A card inside a dialog (Tebra's "Drug Info / Pharmacy Info" pattern):
+   a titled group that can fold, so a long form reads section by section. */
+.tm-dialog__section {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+}
+.tm-dialog__section + .tm-dialog__section { margin-top: var(--space-4); }
+.tm-dialog__section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: start;
+}
+button.tm-dialog__section-head { cursor: pointer; }
+button.tm-dialog__section-head:hover { background: var(--state-hover); }
+button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.tm-dialog__section-copy { flex: 1 1 auto; min-width: 0; }
+.tm-dialog__section-sub { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--text-muted); }
+.tm-dialog__section-chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+.tm-dialog__section[data-open='true'] .tm-dialog__section-chevron { transform: rotate(180deg); }
+.tm-dialog__section-body { padding: 0 var(--space-4) var(--space-4); }
+.tm-dialog__section[data-open='false'] .tm-dialog__section-body { display: none; }
+.tm-dialog__section[data-open='true'] > .tm-dialog__section-head { border-bottom: 1px solid var(--border-light); border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: var(--space-4); }
+
+/* Two panes: the work on the left, context on the right (drug monograph,
+   consent, history). Collapses to one column under 900px. */
+.tm-dialog__split {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
+  min-height: 0;
+}
+.tm-dialog__split > * { min-height: 0; }
+.tm-dialog__main { overflow-y: auto; overscroll-behavior: contain; padding: var(--space-5) var(--dialog-gutter); }
+.tm-dialog__aside {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-5);
+  border-inline-start: 1px solid var(--border-light);
+  background: var(--surface-overlay-head);
+}
+@media (max-width: 899px) {
+  .tm-dialog__split { grid-template-columns: minmax(0, 1fr); }
+  .tm-dialog__aside { border-inline-start: 0; border-top: 1px solid var(--border-light); }
+}
+
+/* Busy: the dialog stays visible under a wash while a save is in flight,
+   so the user sees what is being saved rather than a blank panel. */
+.tm-dialog__busy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--surface-overlay) 72%, transparent);
+}
+.tm-dialog__busy-card {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-menu);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.tm-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-medium);
+  border-top-color: var(--accent-primary);
+  animation: tmSpin 0.8s linear infinite;
+}
+
+/* ── Menu ── the one dropdown surface: row menus, rail menus, action menus.
+   Items carry an optional icon, a one-line hint and a tone; groups are
+   separated by a hairline and may be labelled. */
+.tm-menu {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  min-width: 200px;
+  max-width: min(360px, calc(100vw - 16px));
+  max-height: min(480px, calc(100dvh - 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1);
+  border: 1px solid var(--surface-overlay-border);
+  border-radius: var(--radius-menu);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-menu);
+  font-family: var(--font-platform);
+  outline: none;
+}
+.tm-menu--in-dialog { z-index: var(--z-dialog-menu); }
+.tm-menu__group + .tm-menu__group {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-light);
+}
+.tm-menu__label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-family: var(--font-condensed);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tm-menu__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+.tm-menu__item:hover,
+.tm-menu__item[data-focused='true'] { background: var(--state-hover); }
+.tm-menu__item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.tm-menu__item[aria-current='page'],
+.tm-menu__item[aria-checked='true'] { background: var(--state-selected); color: var(--state-selected-ink); }
+.tm-menu__item:disabled { opacity: var(--state-disabled-opacity); cursor: not-allowed; }
+.tm-menu__item-icon {
+  flex: none;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+.tm-menu__item-icon svg { width: 100%; height: 100%; color: currentColor; stroke: currentColor; }
+.tm-menu__item-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tm-menu__item-hint { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--text-muted); }
+.tm-menu__item-kbd { flex: none; align-self: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.tm-menu__item-check { flex: none; align-self: center; width: 16px; height: 16px; color: var(--state-selected-ink); }
+.tm-menu__item-check svg { width: 100%; height: 100%; color: currentColor; stroke: currentColor; }
+.tm-menu__item[data-tone='danger'],
+.tm-menu__item[data-tone='danger'] .tm-menu__item-icon { color: var(--color-danger-text); }
+.tm-menu__item[data-tone='danger']:hover,
+.tm-menu__item[data-tone='danger'][data-focused='true'] { background: var(--color-danger-bg); }
+.tm-menu__item[data-tone='success'],
+.tm-menu__item[data-tone='success'] .tm-menu__item-icon { color: var(--color-success-text); }
+.tm-menu__empty { padding: var(--space-3); font-size: 13px; color: var(--text-muted); text-align: center; }
+
+/* The trigger for a menu, when the caller has no button of its own. */
+.tm-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.tm-menu__trigger:hover { background: var(--state-hover); color: var(--text-primary); }
+.tm-menu__trigger[aria-expanded='true'] { background: var(--state-selected); border-color: var(--accent-primary); color: var(--state-selected-ink); }
+.tm-menu__trigger:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.tm-menu__trigger svg { width: 16px; height: 16px; color: currentColor; stroke: currentColor; }
+
+/* ── Tooltip ── navy plate, one line, arrives on hover and on focus. */
+.tm-tooltip {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: var(--radius-tooltip);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-ink);
+  box-shadow: var(--shadow-tooltip);
+  font-family: var(--font-platform);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+.tm-tooltip__kbd {
+  margin-inline-start: 8px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--tooltip-ink) 14%, transparent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.tm-tooltip__arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.tm-tooltip[data-side='bottom'] .tm-tooltip__arrow { top: -4px; }
+.tm-tooltip[data-side='top'] .tm-tooltip__arrow { bottom: -4px; }
+
+/* ── Skeleton ── a shimmer where a value will be. Reads the overlay tints
+   so it stays a shade of the ground in both themes. */
+.tm-skeleton {
+  display: block;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--overlay-subtle) 0%, var(--overlay-light) 50%, var(--overlay-subtle) 100%);
+  background-size: 200% 100%;
+  animation: tmShimmer 1.4s var(--ease-standard) infinite;
+}
+.tm-skeleton--text { height: 0.85em; margin-block: 0.3em; border-radius: 3px; }
+.tm-skeleton--circle { border-radius: 50%; }
+.tm-skeleton--block { border-radius: var(--radius-md); }
+.tm-skeleton-stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.tm-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.tm-skeleton-row:last-child { border-bottom: 0; }
+
+/* ── Segmented control ── a short set of exclusive choices (Active /
+   Inactive, Labs / Imaging, Yes / No). The chosen segment is the accent
+   fill with a check, so it reads as chosen even without colour. */
+.tm-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--overlay-subtle);
+}
+.tm-segmented--block { display: flex; }
+.tm-segmented--block .tm-segmented__btn { flex: 1 1 0; }
+.tm-segmented__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+.tm-segmented__btn:hover { color: var(--text-primary); background: color-mix(in srgb, var(--surface-overlay) 70%, transparent); }
+.tm-segmented__btn[aria-pressed='true'],
+.tm-segmented__btn[aria-selected='true'] { background: var(--accent-primary); color: var(--accent-on); }
+.tm-segmented__btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.tm-segmented__btn:disabled { opacity: var(--state-disabled-opacity); cursor: not-allowed; }
+.tm-segmented__check { display: none; width: 14px; height: 14px; }
+.tm-segmented__check svg { width: 100%; height: 100%; color: currentColor; stroke: currentColor; }
+.tm-segmented__btn[aria-pressed='true'] .tm-segmented__check,
+.tm-segmented__btn[aria-selected='true'] .tm-segmented__check { display: inline-flex; }
+.tm-segmented__count {
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--border-light);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.tm-segmented__btn[aria-pressed='true'] .tm-segmented__count,
+.tm-segmented__btn[aria-selected='true'] .tm-segmented__count { background: color-mix(in srgb, var(--accent-on) 22%, transparent); color: inherit; }
+.tm-segmented--sm .tm-segmented__btn { min-height: 26px; padding: 0 10px; font-size: 12px; }
+.tm-segmented__btn svg.tm-segmented__icon { width: 14px; height: 14px; color: currentColor; stroke: currentColor; }
+
+/* ── Inline banner ── a message that belongs to the surface it sits on:
+   "eLabs are not enabled", "consent required", "changes not saved". Four
+   tones on the status pairs; an optional action and a dismiss. */
+.tm-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-info-border);
+  border-inline-start-width: 3px;
+  border-radius: var(--radius-md);
+  background: var(--color-info-bg);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.tm-banner--compact { padding: var(--space-2) var(--space-3); font-size: 13px; }
+.tm-banner--success { border-color: var(--color-success-border); background: var(--color-success-bg); }
+.tm-banner--warning { border-color: var(--color-warning-border); background: var(--color-warning-bg); }
+.tm-banner--danger { border-color: var(--color-danger-border); background: var(--color-danger-bg); }
+.tm-banner__icon { flex: none; display: inline-flex; width: 18px; height: 18px; margin-top: 2px; color: var(--color-info-text); }
+.tm-banner--success .tm-banner__icon { color: var(--color-success-text); }
+.tm-banner--warning .tm-banner__icon { color: var(--color-warning-text); }
+.tm-banner--danger .tm-banner__icon { color: var(--color-danger-text); }
+.tm-banner__icon svg { width: 100%; height: 100%; color: currentColor; stroke: currentColor; }
+.tm-banner__body { flex: 1 1 auto; min-width: 0; }
+.tm-banner__title { display: block; font-weight: 700; }
+.tm-banner__text { color: var(--text-secondary); }
+.tm-banner__action {
+  flex: none;
+  align-self: center;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tm-banner__action:hover { background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+.tm-banner__action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.tm-banner__dismiss {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-block: -4px;
+  margin-inline-end: -6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tm-banner__dismiss:hover { background: var(--state-hover); color: var(--text-primary); }
+.tm-banner__dismiss:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.tm-banner__dismiss svg { width: 14px; height: 14px; color: currentColor; stroke: currentColor; }
+
+/* ── Field ── label · control · helper · error, wired by id. The label is a
+   sentence-case caption, NOT the file's uppercase tracked default: inside a
+   dialog the eye reads down a column of questions, and shouting them slows
+   that down. Required is a mark, optional is a word. */
+.tm-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tm-field__label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-platform);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.tm-field__req { color: var(--color-danger-text); font-weight: 700; }
+.tm-field__opt { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.tm-field__hint { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
+.tm-field__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-danger-text);
+}
+.tm-field__error svg { flex: none; width: 14px; height: 14px; color: currentColor; stroke: currentColor; }
+.tm-field__control { min-width: 0; }
+.tm-field__control > :is(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  width: 100%;
+  min-height: var(--control-height);
+  box-sizing: border-box;
+}
+.tm-field-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+/* ── Empty state ── the next step, not just the absence. */
+.tm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+}
+.tm-empty--sm { padding: var(--space-6) var(--space-4); }
+.tm-empty--inline { flex-direction: row; align-items: center; gap: var(--space-4); padding: var(--space-4); text-align: start; }
+.tm-empty__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-xl);
+  background: var(--overlay-subtle);
+  color: var(--text-muted);
+}
+.tm-empty__icon svg { width: 24px; height: 24px; color: currentColor; stroke: currentColor; }
+.tm-empty--sm .tm-empty__icon { width: 44px; height: 44px; margin-bottom: var(--space-3); }
+.tm-empty--inline .tm-empty__icon { margin-bottom: 0; }
+.tm-empty__copy { min-width: 0; }
+.tm-empty__title { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.tm-empty__text { margin: 6px 0 0; max-width: 44ch; font-size: 13.5px; line-height: 1.5; color: var(--text-muted); }
+.tm-empty--inline .tm-empty__text { max-width: none; }
+.tm-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-4); }
+.tm-empty--inline .tm-empty__actions { margin-top: 0; margin-inline-start: auto; flex: none; }
+
+/* ── Buttons: the states the base `.btn` was missing ── */
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid transparent; }
+.btn-ghost:hover:not(:disabled) { background: var(--state-hover); color: var(--text-primary); }
+.btn-icon { width: var(--control-height); height: var(--control-height); padding: 0; }
+.btn-icon.btn-sm { width: var(--control-height-sm); height: var(--control-height-sm); }
+.btn.is-loading { position: relative; color: transparent !important; pointer-events: none; }
+.btn.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-white) 35%, transparent);
+  border-top-color: var(--color-white);
+  animation: tmSpin 0.8s linear infinite;
+}
+.btn-secondary.is-loading::after,
+.btn-ghost.is-loading::after { border-color: var(--border-medium); border-top-color: var(--accent-primary); }
+.btn-danger.is-loading::after { border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); border-top-color: var(--color-danger); }
+.btn-danger-solid { background: var(--color-danger-600); color: var(--color-white); border: 1px solid transparent; }
+.btn-danger-solid:hover:not(:disabled) { background: var(--color-danger-700); }
+
+/* ── Toast: two more tones, a title line, elevation and a real edge. The
+   coloured edge used to be an inset box-shadow, which the flat baseline
+   discarded — it is a border now, so it actually shows. */
+.ehr-toast {
+  border-inline-start: 3px solid var(--ehr-toast-edge, var(--border-medium));
+  box-shadow: var(--shadow-toast);
+}
+.ehr-toast--info { --ehr-toast-edge: var(--color-info-text); }
+.ehr-toast--info .ehr-toast-icon { color: var(--color-info-text); stroke: var(--color-info-text); }
+.ehr-toast--warning { --ehr-toast-edge: var(--color-warning-text); }
+.ehr-toast--warning .ehr-toast-icon { color: var(--color-warning-text); stroke: var(--color-warning-text); }
+.ehr-toast-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ehr-toast-title { margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.3; }
+.ehr-toast-copy .ehr-toast-text { font-weight: 500; color: var(--text-secondary); }
+.ehr-toast-close:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* ── The rail's own menus, on the shared tokens ── the module directory, the
+   account menu, the search results and the header popovers now share one
+   elevation, one radius and one entrance with every other floating surface. */
+.ehr-module-menu,
+.ehr-rail-menu-panel,
+.ehr-user-menu,
+.ehr-top-search-menu,
+.notifications-popover,
+.ehr-visit-more-menu,
+.tsel-menu {
+  box-shadow: var(--shadow-menu);
+}
+.notifications-popover { box-shadow: var(--shadow-popover); }
+.ehr-user-menu { border-radius: var(--radius-menu); z-index: var(--z-rail-menu); }
+.ehr-top-search-menu { border-radius: var(--radius-menu); }
+
+/* Account menu identity block: who is signed in, as what, where. */
+.ehr-user-menu-identity { gap: 2px; padding: 12px 14px 10px; }
+.ehr-user-menu-name { font-size: 14px; }
+.ehr-user-menu-role {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ehr-user-menu-facility { margin-top: 2px; }
+.ehr-user-menu-facility svg { width: 13px; height: 13px; color: currentColor; stroke: currentColor; }
+.ehr-user-menu > button { height: 42px !important; font-weight: 700; }
+.ehr-user-menu > button[data-focused='true'] { background: var(--ehr-blue-light); color: var(--accent-text); }
+.ehr-user-menu > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.ehr-user-menu > button.danger { color: var(--color-danger-text); }
+.ehr-user-menu > button.danger:hover,
+.ehr-user-menu > button.danger[data-focused='true'] { background: var(--color-danger-bg); color: var(--color-danger-text); }
+.ehr-user-menu-sep { height: 1px; margin: 4px 0; background: var(--border-light); }
+
+/* Module rows: keyboard focus reads the same as hover. */
+.ehr-module-menu section > button[data-focused='true'] { background: var(--surface-hover, var(--state-hover)); }
+.ehr-module-menu section > button.active[data-focused='true'] { background: var(--tb-blue-900); color: #fff; }
+
+/* Rail icon buttons: a pressed state, so a tap is felt before the panel
+   arrives. */
+.ehr-top-modules button:active,
+.ehr-top-actions button:active,
+.ehr-top-calendar-button:active { background: color-mix(in srgb, var(--color-white) 24%, transparent); }
+.ehr-top-modules button,
+.ehr-top-actions button,
+.ehr-top-calendar-button { transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+
+/* Route context: a larger back target and a hover well, so the strip is
+   obviously a control and not a caption. */
+.route-context-back { min-height: 32px; padding: 0 8px; margin-inline-start: -8px; border-radius: var(--radius-sm); transition: background var(--motion-fast) var(--ease-standard); }
+.route-context-back:hover { background: var(--state-hover); text-decoration: none; }
+.route-context-crumb a { border-radius: var(--radius-xs); padding: 4px 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-skeleton { animation: none; background: var(--overlay-subtle); }
+  .tm-spinner, .btn.is-loading::after { animation-duration: 1.2s; }
 }

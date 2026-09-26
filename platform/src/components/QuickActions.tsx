@@ -17,6 +17,8 @@ import { Megaphone, Bell, ClipboardCheck } from '@/components/icons/lucide';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import TasksPanel from '@/components/TasksPanel';
 import HeaderActionPopover from '@/components/HeaderActionPopover';
+import Tooltip from '@/components/overlay/Tooltip';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useTasks } from '@/lib/hooks/useTasks';
 import { AnnouncementsPanel } from '@/modules/communication/client';
 
@@ -26,6 +28,7 @@ export default function QuickActions({ notificationCount }: {
    *  query twice on each mount. */
   notificationCount: number;
 }) {
+  const { t } = useTranslation();
   const [announceOpen, setAnnounceOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
@@ -56,54 +59,56 @@ export default function QuickActions({ notificationCount }: {
   return (
     <>
       {/* My Tasks */}
-      <button
-        ref={tasksButtonRef}
-        type="button"
-        onClick={() => {
-          setTasksOpen(open => !open);
-          setNotifOpen(false);
-          setAnnounceOpen(false);
-        }}
-        aria-label={openTasks.length > 0 ? `My tasks (${openTasks.length} open)` : 'My tasks'}
-        title="My tasks"
-        aria-expanded={tasksOpen}
-        aria-haspopup="dialog"
-        aria-controls="tasks-popover"
-        className={`relative ${tasksOpen ? 'active' : ''}`}
-      >
-        <ClipboardCheck className="w-5 h-5" />
-        {openTasks.length > 0 && (
-          <span className="ehr-top-action-badge">
-            {openTasks.length > 99 ? '99+' : openTasks.length}
-          </span>
-        )}
-      </button>
+      <Tooltip content={t('topbar.tasks')}>
+        <button
+          ref={tasksButtonRef}
+          type="button"
+          onClick={() => {
+            setTasksOpen(open => !open);
+            setNotifOpen(false);
+            setAnnounceOpen(false);
+          }}
+          aria-label={openTasks.length > 0 ? `${t('topbar.tasks')} (${openTasks.length})` : t('topbar.tasks')}
+          aria-expanded={tasksOpen}
+          aria-haspopup="dialog"
+          aria-controls="tasks-popover"
+          className={`relative ${tasksOpen ? 'active' : ''}`}
+        >
+          <ClipboardCheck className="w-5 h-5" />
+          {openTasks.length > 0 && (
+            <span className="ehr-top-action-badge">
+              {openTasks.length > 99 ? '99+' : openTasks.length}
+            </span>
+          )}
+        </button>
+      </Tooltip>
       {tasksOpen && <HeaderActionPopover anchorRef={tasksButtonRef} onClose={() => setTasksOpen(false)} id="tasks-popover" labelledBy="tasks-panel-title"><TasksPanel onClose={() => setTasksOpen(false)} /></HeaderActionPopover>}
 
       {/* Notifications */}
       <div className="relative inline-flex" ref={notifRef}>
-        <button
-          ref={notifButtonRef}
-          type="button"
-          onClick={() => {
-            setNotifOpen(open => !open);
-            setTasksOpen(false);
-            setAnnounceOpen(false);
-          }}
-          aria-label={notifCount > 0 ? `Notifications (${notifCount} unread)` : 'Notifications'}
-          aria-expanded={notifOpen}
-          aria-haspopup="dialog"
-          aria-controls="notifications-popover"
-          title="Notifications"
-          className={`relative ${notifOpen ? 'active' : ''}`}
-        >
-          <Bell className="w-5 h-5" />
-          {notifCount > 0 && (
-            <span className="ehr-top-action-badge">
-              {notifCount > 99 ? '99+' : notifCount}
-            </span>
-          )}
-        </button>
+        <Tooltip content={t('topbar.notifications')}>
+          <button
+            ref={notifButtonRef}
+            type="button"
+            onClick={() => {
+              setNotifOpen(open => !open);
+              setTasksOpen(false);
+              setAnnounceOpen(false);
+            }}
+            aria-label={notifCount > 0 ? `${t('topbar.notifications')} (${notifCount})` : t('topbar.notifications')}
+            aria-expanded={notifOpen}
+            aria-haspopup="dialog"
+            aria-controls="notifications-popover"
+            className={`relative ${notifOpen ? 'active' : ''}`}
+          >
+            <Bell className="w-5 h-5" />
+            {notifCount > 0 && (
+              <span className="ehr-top-action-badge">
+                {notifCount > 99 ? '99+' : notifCount}
+              </span>
+            )}
+          </button>
+        </Tooltip>
         {notifOpen && (
           <NotificationsPanel
             anchorRef={notifButtonRef}
@@ -114,26 +119,27 @@ export default function QuickActions({ notificationCount }: {
 
       {/* Announcements */}
       <div className="relative" ref={announceRef}>
-        <button
-          ref={announceButtonRef}
-          type="button"
-          onClick={() => {
-            setAnnounceOpen(open => !open);
-            setTasksOpen(false);
-            setNotifOpen(false);
-          }}
-          aria-label="Announcements"
-          aria-expanded={announceOpen}
-          aria-haspopup="dialog"
-          aria-controls="announcements-popover"
-          title="Announcements"
-          className={`relative ${announceOpen ? 'active' : ''}`}
-        >
-          <Megaphone className="w-5 h-5" />
-          {unread > 0 && (
-            <span className="ehr-top-action-badge is-dot" aria-hidden="true" />
-          )}
-        </button>
+        <Tooltip content={t('topbar.announcements')}>
+          <button
+            ref={announceButtonRef}
+            type="button"
+            onClick={() => {
+              setAnnounceOpen(open => !open);
+              setTasksOpen(false);
+              setNotifOpen(false);
+            }}
+            aria-label={t('topbar.announcements')}
+            aria-expanded={announceOpen}
+            aria-haspopup="dialog"
+            aria-controls="announcements-popover"
+            className={`relative ${announceOpen ? 'active' : ''}`}
+          >
+            <Megaphone className="w-5 h-5" />
+            {unread > 0 && (
+              <span className="ehr-top-action-badge is-dot" aria-hidden="true" />
+            )}
+          </button>
+        </Tooltip>
         {announceOpen && (
           <HeaderActionPopover anchorRef={announceButtonRef} onClose={() => setAnnounceOpen(false)} id="announcements-popover" labelledBy="announcements-panel-title"><AnnouncementsPanel onClose={() => setAnnounceOpen(false)} onUnreadChange={setUnread} /></HeaderActionPopover>
         )}

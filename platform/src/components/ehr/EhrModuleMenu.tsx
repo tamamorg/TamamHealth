@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronRight, Search, X } from '@/components/icons/lucide';
 import type { NavItem } from '@/lib/permissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useMenuKeyboard } from '@/components/overlay/Menu';
 
 /** Long role maps become task groups; short specialist maps stay one glance. */
 export const MODULE_MENU_COLLAPSE_THRESHOLD = 10;
@@ -14,6 +15,7 @@ export default function EhrModuleMenu({
   activeHref,
   navLabel,
   onOpenModule,
+  onClose,
   onWarm,
   footer,
 }: {
@@ -32,6 +34,8 @@ export default function EhrModuleMenu({
   activeHref?: string | null;
   navLabel: (item: NavItem) => string;
   onOpenModule: (href: string) => void;
+  /** Escape and Tab close the menu; Escape also returns focus to the trigger. */
+  onClose?: (returnFocus: boolean) => void;
   /**
    * Warm a destination before it is chosen. The menu is the second click of
    * every two-click journey through the rail, so the moment it opens is the
@@ -42,6 +46,8 @@ export default function EhrModuleMenu({
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+  const keys = useMenuKeyboard(rootRef, returnFocus => onClose?.(returnFocus));
   const totalItems = groups.reduce((sum, group) => sum + group.items.length, 0);
   const condensed = totalItems > MODULE_MENU_COLLAPSE_THRESHOLD;
   const activeSection = groups.find(group => group.items.some(item => item.href === activeHref))?.section ?? null;
@@ -88,7 +94,13 @@ export default function EhrModuleMenu({
   // arriving on a row is a much better signal than the menu being open.
 
   return (
-    <div className="ehr-module-menu" role="menu">
+    <div
+      ref={rootRef}
+      className="ehr-module-menu tm-elevated tm-motion tm-motion--menu"
+      role="menu"
+      aria-label={roleLabel}
+      onKeyDown={keys.onKeyDown}
+    >
       <div className="ehr-module-menu-head">
         <span>{roleLabel}</span>
         {condensed && (
@@ -119,6 +131,7 @@ export default function EhrModuleMenu({
               {condensed && !query && group.section ? (
                 <button
                   type="button"
+                  role="menuitem"
                   className={`ehr-module-group ${expanded ? 'is-expanded' : ''}`}
                   onClick={() => setExpandedSection(current => current === group.section ? null : group.section)}
                   aria-expanded={expanded}

@@ -1,6 +1,19 @@
 'use client';
 
-import type { ComponentType, CSSProperties, SVGProps } from 'react';
+/**
+ * The next step, not just the absence.
+ *
+ * An empty list that only says "nothing here" leaves the user to work out
+ * whether that is a problem and what to do about it. This names what would
+ * be here, says why it is empty when that is known, and offers the action
+ * that fills it. Sizes: `md` for a panel or page, `sm` for a card, `inline`
+ * for a row inside a table body (where the header row stays above it).
+ *
+ * Every colour and spacing is a token (`.tm-empty`); the hard-coded gradient
+ * and shadow the old version painted are gone.
+ */
+
+import type { ComponentType, CSSProperties, ReactNode, SVGProps } from 'react';
 import { DuotoneFileText } from '@/components/icons';
 
 type IconComponent = ComponentType<
@@ -14,39 +27,61 @@ type IconComponent = ComponentType<
   }
 >;
 
+export interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface EmptyStateProps {
   icon?: IconComponent;
   title: string;
-  message: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
+  message?: string;
+  action?: EmptyStateAction;
+  secondaryAction?: EmptyStateAction;
+  size?: 'sm' | 'md';
+  /** Row layout for inside a table body or a dense card. */
+  inline?: boolean;
+  /** Extra content under the copy — a filter reset, a hint list. */
+  children?: ReactNode;
+  className?: string;
 }
 
 const Inbox = DuotoneFileText;
 
-export default function EmptyState({ icon: Icon = Inbox, title, message, action }: EmptyStateProps) {
+export default function EmptyState({
+  icon: Icon = Inbox,
+  title,
+  message,
+  action,
+  secondaryAction,
+  size = 'md',
+  inline = false,
+  children,
+  className = '',
+}: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{
-        background: 'transparent',
-      }}>
-        <Icon className="w-6 h-6" style={{ color: 'var(--text-muted, #5D728B)' }} />
+    <div className={`tm-empty${size === 'sm' ? ' tm-empty--sm' : ''}${inline ? ' tm-empty--inline' : ''}${className ? ` ${className}` : ''}`}>
+      <div className="tm-empty__icon" aria-hidden="true">
+        <Icon />
       </div>
-      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary, #113055)' }}>{title}</h3>
-      <p className="text-xs max-w-xs" style={{ color: 'var(--text-muted, #5D728B)' }}>{message}</p>
-      {action && (
-        <button
-          onClick={action.onClick}
-          className="mt-4 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all"
-          style={{
-            background: 'linear-gradient(135deg, #2191D0, #015697)',
-            boxShadow: '0 2px 8px rgba(33, 145, 208, 0.3)',
-          }}
-        >
-          {action.label}
-        </button>
+      <div className="tm-empty__copy">
+        <h3 className="tm-empty__title">{title}</h3>
+        {message && <p className="tm-empty__text">{message}</p>}
+        {children}
+      </div>
+      {(action || secondaryAction) && (
+        <div className="tm-empty__actions">
+          {secondaryAction && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </button>
+          )}
+          {action && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={action.onClick}>
+              {action.label}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

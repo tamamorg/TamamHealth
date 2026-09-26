@@ -24,6 +24,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc, ProblemDoc } from '@/lib/db-types';
 import type { NoteDiagnosis } from '@/lib/clinical-notes/types';
@@ -63,6 +65,8 @@ export default function IncludeProblemsModal({
   patientId, patientName, currentUser, onInclude, onClose,
 }: IncludeProblemsModalProps) {
   const { showToast } = useToast();
+  const confirm = useConfirm();
+  const { t } = useTranslation();
   const scope = useDataScope();
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
 
@@ -161,10 +165,15 @@ export default function IncludeProblemsModal({
     await setProblemStatus(p._id, tab === 'active' ? 'inactive' : 'active');
   }, tab === 'active' ? 'deactivated' : 'reactivated');
 
-  const handleMarkError = () => {
+  const handleMarkError = async () => {
     const n = rows.filter(p => checked.has(p._id)).length;
     if (n === 0) return;
-    if (!window.confirm(`Remove ${n} problem${n === 1 ? '' : 's'} as entered in error? This deletes them from the problem list.`)) return;
+    if (!await confirm({
+      title: n === 1 ? t('problems.markErrorTitleOne') : t('problems.markErrorTitleMany', { count: n }),
+      message: t('problems.markErrorMessage'),
+      confirmLabel: t('problems.markErrorConfirm'),
+      tone: 'danger',
+    })) return;
     void forChecked(async (p) => {
       const { deleteProblem } = await import('@/lib/services/problem-service');
       await deleteProblem(p._id);
@@ -197,7 +206,7 @@ export default function IncludeProblemsModal({
   return (
     <Modal onClose={onClose} width={1060} labelledBy="cn-incprob-title">
       <div className="cn-meds">
-        <div className="cn-meds-header">
+        <div className="cn-meds-header modal-no-headband">
           <h2 className="cn-meds-title" id="cn-incprob-title">Include Problems</h2>
           <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close include problems">
             <X size={18} />

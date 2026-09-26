@@ -12,6 +12,8 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOnboarding } from '@/lib/hooks/useOnboarding';
 import { getDefaultDashboard } from '@/lib/permissions';
 import type { OnboardingSection, OnboardingStep } from '@/lib/onboarding/steps';
@@ -23,6 +25,8 @@ export default function GetStartedCard() {
   const router = useRouter();
   const pathname = usePathname();
   const { currentUser } = useAuth();
+  const confirmDialog = useConfirm();
+  const { t } = useTranslation();
   const {
     ready, plan, completedStepIds, completedCount, totalSteps,
     allDone, finished, collapsed,
@@ -105,7 +109,13 @@ export default function GetStartedCard() {
               <ChevronUp className="w-3.5 h-3.5" /> Minimize
             </button>
             <button
-              onClick={() => { if (confirm('Skip setup? You can always come back later.')) dismiss(); }}
+              onClick={() => {
+                void confirmDialog({
+                  title: t('onboarding.skipTitle'),
+                  message: t('onboarding.skipMessage'),
+                  confirmLabel: t('onboarding.skipConfirm'),
+                }).then(ok => { if (ok) dismiss(); });
+              }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-black/5"
               style={{ color: 'var(--text-muted)' }}
             >
