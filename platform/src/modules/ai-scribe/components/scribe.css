@@ -1,0 +1,26 @@
+.scribe-panel { color: var(--text-primary); background: var(--bg-card-solid); padding: 24px; }
+.scribe-panel header, .scribe-panel footer, .scribe-context, .scribe-controls, .scribe-launch { display: flex; align-items: center; gap: 12px; }
+.scribe-panel header, .scribe-panel footer { justify-content: space-between; flex-wrap: wrap; }
+.scribe-panel header { padding-bottom: 16px; border-bottom: 1px solid var(--border-medium); }
+.scribe-panel h2, .scribe-panel h3 { margin: 0 0 8px; }
+.scribe-panel p { margin: 8px 0 16px; color: var(--text-secondary); line-height: 1.6; }
+.scribe-panel header button { padding: 8px; border-radius: 8px; }
+.scribe-context { flex-wrap: wrap; padding-block: 16px; font-size: .875rem; }
+.scribe-context span:last-child { margin-inline-start: auto; }
+.scribe-notice, .scribe-warning { padding: 12px 16px; border: 1px solid var(--border-medium); border-radius: 8px; background: var(--bg-primary); }
+.scribe-panel .scribe-warning { border-inline-start: 3px solid var(--warning, #b45309); }
+.scribe-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-block: 24px; }
+.scribe-columns section { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.scribe-columns section > p { min-height: 80px; margin: 0; font-size: .875rem; }
+.scribe-panel label { text-transform: none; letter-spacing: normal; font-weight: 500; font-size: .875rem; }
+.scribe-panel .scribe-consent { display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
+.scribe-consent input { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 3px; }
+.scribe-panel textarea, .scribe-panel select { width: 100%; border: 1px solid var(--border-medium); border-radius: 8px; padding: 12px; background: var(--bg-card-solid); color: var(--text-primary); font: inherit; }
+.scribe-panel textarea { min-height: 220px; resize: vertical; line-height: 1.6; }
+.scribe-panel select { margin-top: 8px; }
+.scribe-panel :is(button, input, textarea, select, summary):focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+.scribe-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.scribe-panel blockquote { margin: 12px 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--border-medium); white-space: pre-wrap; overflow-wrap: anywhere; }
+.scribe-panel footer { border-top: 1px solid var(--border-medium); padding-top: 16px; font-size: .875rem; }
+.scribe-launch { flex-wrap: wrap; padding: 16px; border-bottom: 1px solid var(--border-medium); font-size: .875rem; }
+@media (max-width: 700px) { .scribe-columns { grid-template-columns: 1fr; } .scribe-panel { padding: 16px; } .scribe-columns section > p { min-height: 0; } }

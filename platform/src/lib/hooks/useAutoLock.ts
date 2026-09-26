@@ -293,7 +293,10 @@ export function useAutoLock(
   const [userWantsLock, setUserWantsLock] = useState<boolean>(() => userLockOn());
 
   // Keep refs in sync for use in event handlers (avoids stale closures)
-  useEffect(() => { isLockedRef.current = isLocked; }, [isLocked]);
+  useEffect(() => {
+    isLockedRef.current = isLocked;
+    if (isLocked) window.dispatchEvent(new Event('tamam:session-locked'));
+  }, [isLocked]);
   useEffect(() => { isAuthRef.current = isAuthenticated; }, [isAuthenticated]);
   useEffect(() => {
     setFacilityLockMin(getSettings().lockTimeoutMinutes);
