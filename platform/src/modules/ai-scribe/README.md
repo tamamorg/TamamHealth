@@ -4,7 +4,7 @@ Status: built as a self-contained module and **not wired into the app** (2026-09
 
 ## Wiring it in (deliberately not done yet)
 
-1. Mount the route: create `src/app/api/ai-scribe/route.ts` that re-exports the handlers from `@/modules/ai-scribe/api/route` (check that file for the exact exports).
+1. Mount the route: re-export the handlers in `api/route.ts` from the module barrel (`index.ts`), then create `src/app/api/ai-scribe/route.ts` that re-exports them from `@/modules/ai-scribe`. App routes may only import a module's barrel, `/client` surface or a named service (ESLint `no-restricted-imports`), and files inside the module must not import their own barrel (`module-boundaries.test.ts`). Remove the `modules/ai-scribe/index.ts` entry from the allowlist in `src/__tests__/dead-code.test.ts` at the same time.
 2. Add the entry point to `ClinicalNoteEditor`: import `ScribePanel`, `canUseScribe` and `ScribeSuggestion` from `@/modules/ai-scribe/client`, show a launch button only when `note.status === 'draft' && canUseScribe(currentUser, note)`, and on apply call `applyScribeSuggestion` from `services/apply-suggestion` inside the editor's `persist()` after checking there are no pending saves and the revision still matches. The removed hook is in git history (`git show 853846bf -- platform/src/components/clinical-notes/ClinicalNoteEditor.tsx`).
 3. Configure `TAMAM_SCRIBE_*` from `.env.example` and clear the release gate below.
 4. Before wiring, address the review findings: apply overwrites the whole section, `aiAssistance` provenance is never rendered or carried forward, nurse/midwife roles exceed the `clinical_note` sync grant, there is no applied-audit event, and `scribe.css` references a non-existent `--warning` token.

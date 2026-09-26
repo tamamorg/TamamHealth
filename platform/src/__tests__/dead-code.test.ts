@@ -80,6 +80,10 @@ const FRAMEWORK_ENTRIES = new Set([
 /** Framework/dynamic entries not represented by a static specifier. */
 const REACHED_DYNAMICALLY = new Map([
   ['lib/i18n/locales/apd.ts', 'loaded by `import(`./locales/${locale}`)` in lib/i18n/index.ts'],
+  // Built but deliberately not wired into the app (2026-09-26): no app route
+  // and no editor entry point until security/clinical approval. The barrel is
+  // what the app route will import once it is mounted; see the module README.
+  ['modules/ai-scribe/index.ts', 'server surface of the unwired ai-scribe module'],
 ]);
 
 function isEntry(file: string): boolean {
