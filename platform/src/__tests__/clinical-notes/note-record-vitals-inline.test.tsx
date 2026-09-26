@@ -64,6 +64,13 @@ async function openNote(overrides: Record<string, unknown> = {}) {
   } as never);
   mounted = await mountAndFlush(<ClinicalNoteEditor noteId={note._id} currentUser={DOCTOR} showContextSidebar={false} />);
   await act(async () => { await flush(); });
+  // The editor loads the note and builds its sections through a chain of
+  // in-memory DB reads; one flush is usually enough, but under CI load the
+  // vitals section was still missing when the first click landed. Wait on
+  // the outcome, not on a guessed number of ticks.
+  for (let attempt = 0; attempt < 40 && !mounted.container.querySelector('#cn-section-vitals'); attempt++) {
+    await act(async () => { await flush(); });
+  }
   return note;
 }
 

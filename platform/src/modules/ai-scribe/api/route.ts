@@ -4,8 +4,8 @@ import { getAuthPayload, verifyCsrfToken, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } f
 import { getUserById } from '@/modules/identity/services/user-service';
 import { getClinicalNoteById } from '@/lib/clinical-notes/note-service';
 import { auditLogDB } from '@/lib/db';
-import { canUseScribe, isScribeSection, MAX_SOURCE, MAX_AUDIO } from '@/modules/ai-scribe';
-import { getScribeConfig, readBounded, generate, transcribe, ScribeError } from '@/modules/ai-scribe/services/gateway.server';
+import { canUseScribe, isScribeSection, MAX_SOURCE, MAX_AUDIO } from '../core/contracts';
+import { getScribeConfig, readBounded, generate, transcribe, ScribeError } from '../services/gateway.server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
