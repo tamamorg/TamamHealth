@@ -1410,7 +1410,7 @@ const apd: TranslationMap = {
   'mission.frontDesk.body': 'ورّي الخطوة الجاية بوضوح عشان الاستقبال يسجل، يدخّل، يوجّه، ويقفل الزيارات.',
   'mission.lab.title': 'جاوب على كل طلب',
   'mission.lab.body': 'استلم اللي جا، شغّل اللي في البنش، وبلّغ كل نتيجة قبل ما الطبيب يسأل.',
-  'mission.pharmacy.title': 'صرف الدوا بحرية',
+  'mission.pharmacy.title': 'صرف الدوا بأمان كل مرة',
   'mission.pharmacy.body': 'راجع الوصفة، شيك التداخلات، وانصح العيان قبل ما أي دوا يطلع من الكاونتر.',
   'mission.radiology.title': 'بلّغ عن كل فحص',
   'mission.radiology.body': 'شيك قبل الطاولة، صوّر صاح، وأرسل كل تقرير للطبيب اللي طلبه.',

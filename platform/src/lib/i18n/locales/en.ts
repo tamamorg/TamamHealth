@@ -1413,7 +1413,7 @@ const en: TranslationMap = {
   'mission.frontDesk.body': 'Show the next action clearly so reception can register, check in, route, and close visits.',
   'mission.lab.title': 'Answer every order',
   'mission.lab.body': 'Receive what came in, run what is on the bench, and report every result before the clinician has to ask.',
-  'mission.pharmacy.title': 'Dispense freely',
+  'mission.pharmacy.title': 'Dispense safely, every time',
   'mission.pharmacy.body': 'Review what was prescribed, check the interactions, and counsel before anything leaves the counter.',
   'mission.radiology.title': 'Report every study',
   'mission.radiology.body': 'Screen before the table, acquire cleanly, and send every report back to the clinician who asked.',

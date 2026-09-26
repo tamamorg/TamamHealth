@@ -29226,6 +29226,23 @@ table.patient-data-table.patient-data-table {
   color: var(--set-ghost, #5D728B);
 }
 
+.ehr-panel-title-tablet,
+.dashboard-panel-title-tablet {
+  display: none;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .ehr-side-card-head .ehr-panel-title-full,
+  .dashboard-panel-title-full {
+    display: none;
+  }
+
+  .ehr-side-card-head .ehr-panel-title-tablet,
+  .dashboard-panel-title-tablet {
+    display: inline;
+  }
+}
+
 .ehr-set-row {
   padding: 12px 16px;
   border-bottom-color: var(--set-line-soft, var(--border-light));
