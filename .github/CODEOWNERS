@@ -105,7 +105,6 @@
 
 # --- Repo-root tooling -----------------------------------------------------
 /platform/src/modules/ai-scribe/ @makuachteny
-/platform/src/app/api/ai-scribe/ @makuachteny
 /package.json               @makuachteny
 /.lintstagedrc.mjs          @makuachteny
 /.husky/                    @makuachteny

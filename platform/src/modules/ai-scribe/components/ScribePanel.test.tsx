@@ -1,6 +1,8 @@
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import ScribePanel from './ScribePanel';
+// Through the browser surface the app will import once the module is wired,
+// so the surface itself stays exercised (and reachable) while unwired.
+import { ScribePanel } from '../client';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { apiFetch } from '@/lib/api-fetch';
 jest.mock('@/components/Modal', () => ({ __esModule: true, default: ({ children }: { children: ReactNode }) => <div>{children}</div> }));

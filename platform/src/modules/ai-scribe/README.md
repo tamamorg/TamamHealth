@@ -1,6 +1,13 @@
 # Hospital-hosted AI note assistant
 
-Status: opt-in implementation, disabled by default. Not a certified medical device, not a compliance certification, and not approved for unattended clinical use. No model or inference server is bundled. No production activation or deployment has been performed.
+Status: built as a self-contained module and **not wired into the app** (2026-09-26). Nothing imports it, no API route is mounted, and the clinical note editor has no entry point for it; the module only has to compile and pass its own tests. Opt-in by design, disabled by default even once wired. Not a certified medical device, not a compliance certification, and not approved for unattended clinical use. No model or inference server is bundled. No production activation or deployment has been performed.
+
+## Wiring it in (deliberately not done yet)
+
+1. Mount the route: re-export the handlers in `api/route.ts` from the module barrel (`index.ts`), then create `src/app/api/ai-scribe/route.ts` that re-exports them from `@/modules/ai-scribe`. App routes may only import a module's barrel, `/client` surface or a named service (ESLint `no-restricted-imports`), and files inside the module must not import their own barrel (`module-boundaries.test.ts`). Remove the `modules/ai-scribe/index.ts` entry from the allowlist in `src/__tests__/dead-code.test.ts` at the same time.
+2. Add the entry point to `ClinicalNoteEditor`: import `ScribePanel`, `canUseScribe` and `ScribeSuggestion` from `@/modules/ai-scribe/client`, show a launch button only when `note.status === 'draft' && canUseScribe(currentUser, note)`, and on apply call `applyScribeSuggestion` from `services/apply-suggestion` inside the editor's `persist()` after checking there are no pending saves and the revision still matches. The removed hook is in git history (`git show 853846bf -- platform/src/components/clinical-notes/ClinicalNoteEditor.tsx`).
+3. Configure `TAMAM_SCRIBE_*` from `.env.example` and clear the release gate below.
+4. Before wiring, address the review findings: apply overwrites the whole section, `aiAssistance` provenance is never rendered or carried forward, nurse/midwife roles exceed the `clinical_note` sync grant, there is no applied-audit event, and `scribe.css` references a non-existent `--warning` token.
 
 ## Scope and workflow
 
@@ -10,7 +17,7 @@ The assistant never signs notes, submits diagnoses, orders medicines/labs, popul
 
 ## Architecture and integrations
 
-Browser microphone/typed text → same-origin authenticated `/api/ai-scribe` → hospital private inference gateway → transient review → existing local PouchDB note + normal replication.
+Browser microphone/typed text → same-origin authenticated `/api/ai-scribe` (handler in `api/route.ts`, not mounted yet) → hospital private inference gateway → transient review → existing local PouchDB note + normal replication.
 
 - `client.ts`: browser component and pure policy exports.
 - `index.ts`: server policy vocabulary; services are imported individually.
@@ -81,6 +88,6 @@ Integration references: [vLLM compatible server](https://docs.vllm.ai/en/latest/
 
 ## Verification and remaining work
 
-Automated synthetic tests cover policy, schema/evidence, private endpoint validation, bounded input, CAS application, API CSRF/consent/scope, audit failure and revocation during generation. They use mocked inference—not proof of model quality or hospital integration. See adjacent `*.test.ts` files and `src/app/api/ai-scribe/route.test.ts`.
+Automated synthetic tests cover policy, schema/evidence, private endpoint validation, bounded input, CAS application, API CSRF/consent/scope, audit failure and revocation during generation. They use mocked inference—not proof of model quality or hospital integration. See adjacent `*.test.ts` files and `api/route.test.ts`.
 
 Remaining release work: hospital infrastructure provisioning, real gateway contract tests, device/browser recording checks, deployment-wide limits, immutable audit export, retention verification and clinical/language acceptance. These are mandatory activation gates, not claims of completed work.
