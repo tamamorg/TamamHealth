@@ -98,7 +98,12 @@ export const NOTE_SECTIONS: Readonly<Record<NoteSectionId, NoteSectionDef>> = {
   objective: { id: 'objective', label: 'Objective', kind: 'narrative', placeholder: 'Examination findings…' },
   physical_exam: { id: 'physical_exam', label: 'Physical Exam', kind: 'narrative', placeholder: 'Physical examination…' },
   assessment: { id: 'assessment', label: 'Assessment', kind: 'narrative', placeholder: 'Assessment and diagnoses…' },
-  plan: { id: 'plan', label: 'Plan', kind: 'narrative', placeholder: 'Plan of care…' },
+  // Carries the prompt Recommendations used to give (see RETIRED_SECTIONS): a
+  // plan that answers a referral has to say who does each next step.
+  plan: {
+    id: 'plan', label: 'Plan', kind: 'narrative',
+    placeholder: 'Plan of care, any advice to the referring provider, and who owns each next step…',
+  },
   procedure: { id: 'procedure', label: 'Procedure', kind: 'narrative', placeholder: 'Procedure performed…' },
   findings: { id: 'findings', label: 'Findings', kind: 'narrative', placeholder: 'Findings…' },
   indications: { id: 'indications', label: 'Indications', kind: 'narrative', placeholder: 'Indication for the procedure…' },
@@ -131,12 +136,14 @@ export const NOTE_SECTIONS: Readonly<Record<NoteSectionId, NoteSectionDef>> = {
   },
 
   // A consultation note exists to answer another clinician's question. Without
-  // the question recorded and an explicit recommendation back, it is just
-  // another progress note and the referring provider learns nothing.
+  // the question recorded, it is just another progress note and the referring
+  // provider learns nothing. The answer goes in the Plan.
   reason_for_consultation: {
     id: 'reason_for_consultation', label: 'Reason for Consultation', kind: 'narrative',
     placeholder: 'Referring provider and the specific question asked…',
   },
+  // Retired (see RETIRED_SECTIONS): no type offers it. The definition stays so
+  // a signed note that already holds one keeps rendering under its own label.
   recommendations: {
     id: 'recommendations', label: 'Recommendations', kind: 'narrative',
     placeholder: 'Advice to the referring provider, and who owns each next step…',
@@ -224,9 +231,9 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     description: 'Standard consultation note — subjective/objective/assessment/plan.',
     sections: CORE_SOAP,
     // Absorbs the retired Consultation type: a specialist answering a referral
-    // adds "Reason for Consultation" and "Recommendations" to a SOAP note
-    // instead of switching to a near-identical second type.
-    optionalSections: [...COMMON_OPTIONAL, 'reason_for_consultation', 'recommendations'],
+    // adds "Reason for Consultation" to a SOAP note and writes the advice back
+    // in the Plan, instead of switching to a near-identical second type.
+    optionalSections: [...COMMON_OPTIONAL, 'reason_for_consultation'],
   },
   hp: {
     id: 'hp',
@@ -242,17 +249,19 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
   // Retired from the picker (see NOTE_TYPE_ORDER): it was SOAP with a
   // different opening and closing section, and nothing ever auto-created it.
   // The definition stays so every existing consultation note keeps rendering
-  // — and re-signing, amending — exactly as written.
+  // — and re-signing, amending — exactly as written. (A note renders the
+  // sections stored on it, so one signed with a Recommendations section still
+  // shows it; the type just no longer seeds a new one — see RETIRED_SECTIONS.)
   consultation: {
     id: 'consultation',
     label: 'Consultation',
     description: 'Specialist opinion answering another provider’s question.',
-    // Opens with the referring question and closes with an explicit
-    // recommendation — the two things that make it a consultation rather than
-    // another progress note.
+    // Opens with the referring question and closes with the plan that answers
+    // it — the two things that make it a consultation rather than another
+    // progress note.
     sections: [
       'reason_for_consultation', 'hpi', 'past_medical_history', 'medications',
-      'allergies', 'vitals', 'physical_exam', 'assessment', 'recommendations', 'plan',
+      'allergies', 'vitals', 'physical_exam', 'assessment', 'plan',
     ],
     optionalSections: ['cc', 'ros', 'family_history', 'social_history', 'follow_up', 'patient_education'],
   },
@@ -334,6 +343,24 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     sections: ['addendum_reason', 'memo'],
     optionalSections: [],
   },
+};
+
+/**
+ * Sections no note type offers any more, and the section that took over each
+ * one's job.
+ *
+ * Recommendations sat directly above Plan and asked for the same thing — what
+ * happens next and who does it — with a subset of Plan's actions, so a note
+ * carrying both had two places to write one answer. Plan is the one that
+ * stays: every type that offered Recommendations has it, and it is where the
+ * orders are raised.
+ *
+ * Retiring is not deleting. The id stays in the catalog because signed notes
+ * hold it and must keep rendering as attested; unsigned drafts are folded into
+ * the successor by the note service (`foldRetiredSections`).
+ */
+export const RETIRED_SECTIONS: Readonly<Partial<Record<NoteSectionId, NoteSectionId>>> = {
+  recommendations: 'plan',
 };
 
 /**
