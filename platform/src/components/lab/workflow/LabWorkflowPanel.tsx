@@ -20,7 +20,7 @@ import {
   type LabWorkflowStepKey,
 } from './lab-workflow-types';
 import { useLabWorkflow } from './useLabWorkflow';
-import { CollectStep, OrderStep, ProcessStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
+import { CollectStep, OrderContext, OrderStep, ProcessStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
 import '../order/lab-order.css';
 
 export default function LabWorkflowPanel({
@@ -129,6 +129,11 @@ export default function LabWorkflowPanel({
             step stays enabled and guards its own write controls instead. A
             disabled fieldset disables every button inside it, Print included. */}
         <fieldset className="labord-scroll" disabled={!canWork && ctrl.step !== 'report'} style={{ border: 0, margin: 0, minWidth: 0 }}>
+          {/* The bench steps carry the order's context with them: the panel
+              opens on the step that needs doing, one past where it is shown. */}
+          {(ctrl.step === 'collect' || ctrl.step === 'receive' || ctrl.step === 'process' || ctrl.step === 'result') && (
+            <div className="labord-context-strip"><OrderContext order={order} /></div>
+          )}
           {ctrl.step === 'order' && <OrderStep order={order} />}
           {ctrl.step === 'collect' && <CollectStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'receive' && <ReceiveStep order={order} ctrl={ctrl} />}

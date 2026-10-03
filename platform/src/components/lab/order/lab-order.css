@@ -771,6 +771,10 @@
   gap: 12px;
 }
 
+/* The order's context repeated above a bench step; empty when the order
+   carried none, so it must not leave a gap of its own. */
+.labord-context-strip:not(:empty) { margin-bottom: 20px; }
+
 .labord-context .labord-field-label { margin-bottom: 4px; }
 
 /* ══════════════════ CHIP ROWS ══════════════════ */

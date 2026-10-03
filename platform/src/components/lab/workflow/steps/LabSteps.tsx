@@ -78,6 +78,69 @@ function CollectPreconditions({ order }: { order: LabResultDoc }) {
   );
 }
 
+/**
+ * What the ordering clinician told the laboratory: why the test was asked for,
+ * their notes, the internal comment, and the answers to the order-entry
+ * questions. Rendered on the Order step, and again above every bench step —
+ * the workflow opens on the step that needs doing (usually Collect), and a
+ * fasting answer or "call ext. 204" that sits one step back is one nobody
+ * reads while drawing the sample.
+ */
+export function OrderContext({ order }: { order: LabResultDoc }) {
+  const { t } = useTranslation();
+  if (!order.indications?.length && !order.clinicalNotes && !order.orderComment && !order.aoeAnswers?.length) return null;
+  return (
+    <>
+    {/* Each line says what it is: the orderer wrote these for the bench, and
+        an unlabelled chip row reads as a diagnosis rather than the reason
+        the test was asked for. */}
+    {(order.indications?.length || order.clinicalNotes || order.orderComment) && (
+      <div className="labord-section">
+        <div className="labord-section-head">{t('labFlow.clinicalContext')}</div>
+        <div className="labord-section-body labord-context">
+          {order.indications?.length ? (
+            <div>
+              <span className="labord-field-label">{t('labOrder.reasons')}</span>
+              <div className="labord-chip-row">
+                {order.indications.map(indication => (
+                  <span key={indication.code} className="labord-chip"><code>{indication.code}</code> {indication.title}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {order.clinicalNotes && (
+            <div>
+              <span className="labord-field-label">{t('labOrder.notesToLab')}</span>
+              <p className="labord-help" style={{ margin: 0 }}>{order.clinicalNotes}</p>
+            </div>
+          )}
+          {order.orderComment && (
+            <div>
+              <span className="labord-field-label">{t('labOrder.internalComment')}</span>
+              <p className="labord-help" style={{ margin: 0 }}>{order.orderComment}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {order.aoeAnswers?.length ? (
+      <div className="labord-section">
+        <div className="labord-section-head">{t('labOrder.aoeHeading')}</div>
+        <div className="labord-section-body" style={{ padding: 0 }}>
+          {order.aoeAnswers.map(entry => (
+            <div key={entry.question} className="labord-row">
+              <span className="labord-pick-meta">{entry.question}</span>
+              <span className="labord-field-value">{entry.answer}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null}
+    </>
+  );
+}
+
 /** Step 1 — the requisition as it arrived. Read-only by definition. */
 export function OrderStep({ order }: { order: LabResultDoc }) {
   const { t } = useTranslation();
@@ -108,52 +171,7 @@ export function OrderStep({ order }: { order: LabResultDoc }) {
         </div>
       </div>
 
-      {/* Each line says what it is: the orderer wrote these for the bench, and
-          an unlabelled chip row reads as a diagnosis rather than the reason
-          the test was asked for. */}
-      {(order.indications?.length || order.clinicalNotes || order.orderComment) && (
-        <div className="labord-section">
-          <div className="labord-section-head">{t('labFlow.clinicalContext')}</div>
-          <div className="labord-section-body labord-context">
-            {order.indications?.length ? (
-              <div>
-                <span className="labord-field-label">{t('labOrder.reasons')}</span>
-                <div className="labord-chip-row">
-                  {order.indications.map(indication => (
-                    <span key={indication.code} className="labord-chip"><code>{indication.code}</code> {indication.title}</span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {order.clinicalNotes && (
-              <div>
-                <span className="labord-field-label">{t('labOrder.notesToLab')}</span>
-                <p className="labord-help" style={{ margin: 0 }}>{order.clinicalNotes}</p>
-              </div>
-            )}
-            {order.orderComment && (
-              <div>
-                <span className="labord-field-label">{t('labOrder.internalComment')}</span>
-                <p className="labord-help" style={{ margin: 0 }}>{order.orderComment}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {order.aoeAnswers?.length ? (
-        <div className="labord-section">
-          <div className="labord-section-head">{t('labOrder.aoeHeading')}</div>
-          <div className="labord-section-body" style={{ padding: 0 }}>
-            {order.aoeAnswers.map(entry => (
-              <div key={entry.question} className="labord-row">
-                <span className="labord-pick-meta">{entry.question}</span>
-                <span className="labord-field-value">{entry.answer}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <OrderContext order={order} />
     </div>
   );
 }
@@ -491,7 +509,8 @@ export function ReportStep({
 }: {
   order: LabResultDoc;
   ctrl: LabWorkflowController;
-  /** The viewer may read and print the report but not act on it. */
+  /** The viewer cannot work the bench (notify, amend); they may still read,
+   *  print and — if they are a clinician — close the result out. */
   readOnly?: boolean;
 }) {
   const { t } = useTranslation();
@@ -598,6 +617,9 @@ export function ReportStep({
         <div className="labord-section-head">{t('labFlow.closeoutHeading')}</div>
         <div className="labord-section-body">
           <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutHelp')}</p>
+          {!ctrl.canCloseOut && (
+            <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutClinicianOnly')}</p>
+          )}
           <div className="labord-numbered">
             <CloseoutRow
               index={1}
@@ -606,7 +628,7 @@ export function ReportStep({
               at={order.reviewedAt}
               actionLabel={t('labFlow.markReviewed')}
               onAction={ctrl.markReviewed}
-              enabled={!readOnly && ctrl.stage === 'resulted'}
+              enabled={ctrl.canCloseOut && ctrl.stage === 'resulted'}
               busy={ctrl.busy}
             />
             <CloseoutRow
@@ -616,7 +638,7 @@ export function ReportStep({
               at={order.actedUponAt}
               actionLabel={t('labFlow.markActedUpon')}
               onAction={ctrl.markActedUpon}
-              enabled={!readOnly && ctrl.stage === 'reviewed_by_clinician'}
+              enabled={ctrl.canCloseOut && ctrl.stage === 'reviewed_by_clinician'}
               busy={ctrl.busy}
             />
             <CloseoutRow
@@ -626,7 +648,7 @@ export function ReportStep({
               at={order.communicatedAt}
               actionLabel={t('labFlow.markCommunicated')}
               onAction={ctrl.markCommunicated}
-              enabled={!readOnly && ctrl.stage === 'acted_upon'}
+              enabled={ctrl.canCloseOut && ctrl.stage === 'acted_upon'}
               busy={ctrl.busy}
             />
           </div>
