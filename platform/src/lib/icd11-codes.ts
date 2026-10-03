@@ -126,7 +126,7 @@ export const COMMON_ICD11_CODES: ICD11CodeEntry[] = [
   // Verified against the WHO ICD-11 MMS browser (via findacode.com), not
   // inferred — these back the physical-exam "Search ICD findings" fields in
   // the consultation flow, so accuracy matters more than usual here.
-  { code: 'MG22', title: 'Fatigue', chapter: 'Symptoms & signs', minLevel: 'boma', keywords: ['fatigue', 'tiredness', 'lethargy'] },
+  { code: 'MG22', title: 'Fatigue', chapter: 'Symptoms & signs', minLevel: 'boma', keywords: ['fatigue', 'tired', 'tiredness', 'lethargy'] },
   { code: 'MG29', title: 'Oedema', chapter: 'Symptoms & signs', minLevel: 'boma', keywords: ['edema', 'oedema', 'swelling'] },
   { code: 'MG45', title: 'Syncope or collapse', chapter: 'Symptoms & signs', minLevel: 'boma', keywords: ['syncope', 'fainting', 'collapse', 'passed out'] },
   { code: 'MC16', title: 'Pallor conjunctiva', chapter: 'Symptoms & signs', minLevel: 'boma', keywords: ['pallor', 'pale', 'anaemia sign'] },

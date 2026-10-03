@@ -5,7 +5,7 @@
  *
  * Laid out as the paper request form it replaces: a question, then its
  * control, then the next question — no cards. Cards start in the wizard, where
- * there is genuinely grouped content to separate. Diagnoses and tests are
+ * there is genuinely grouped content to separate. Reasons and tests are
  * numbered lists you add to, so what is on the order reads the same here as it
  * will on the printed requisition.
  *
@@ -16,11 +16,11 @@
 import { useMemo, useState } from 'react';
 import CodedSearchField from '@/components/CodedSearchField';
 import { Check, FlaskConical, Image as ImageIcon, Search, X } from '@/components/icons/lucide';
-import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import LabOrderPatientPicker from './LabOrderPatientPicker';
 import { catalogFor, searchCatalog, toOrderedTest } from './lab-order-catalog';
+import { REASON_SEARCH_OPTIONS } from './lab-order-reasons';
 import type { LabOrderKind, LabOrderProcessing } from './lab-order-types';
 import type { LabOrderController } from './useLabOrderDraft';
 import Select from '@/components/Select';
@@ -42,11 +42,6 @@ export default function LabOrderCreateDialog({
   const { draft, patch, patients, toggleTest, removeTest, addIndication, removeIndication } = controller;
   const [icdQuery, setIcdQuery] = useState('');
   const [testQuery, setTestQuery] = useState('');
-
-  const icdOptions = useMemo(
-    () => COMMON_ICD11_CODES.map(c => ({ code: c.code, name: c.title, meta: c.chapter, keywords: c.keywords })),
-    [],
-  );
 
   const testMatches = useMemo(() => {
     if (!testQuery.trim()) return [];
@@ -192,10 +187,11 @@ export default function LabOrderCreateDialog({
 
         <div className="labord-divider" />
 
-        {/* Diagnoses — numbered, in the order they were added. */}
+        {/* Reason for test — numbered, in the order added. Optional here; the
+            wizard's Clinical step is where it becomes required. */}
         <div className="labord-form labord-form--full">
           <div>
-            <span className="labord-q">{t('labOrder.diagnoses')}</span>
+            <span className="labord-q">{t('labOrder.reasons')}</span>
             {draft.indications.length > 0 && (
               <div className="labord-numbered">
                 {draft.indications.map((indication, i) => (
@@ -208,7 +204,7 @@ export default function LabOrderCreateDialog({
                       type="button"
                       className="labord-x"
                       onClick={() => removeIndication(indication.code)}
-                      aria-label={t('labOrder.removeDiagnosis', { code: indication.code })}
+                      aria-label={t('labOrder.removeReason', { code: indication.code })}
                     >
                       <X className="w-3.5 h-3.5" aria-hidden />
                     </button>
@@ -219,13 +215,13 @@ export default function LabOrderCreateDialog({
             <CodedSearchField
               label=""
               placeholder={t('labOrder.icdPlaceholder')}
-              options={icdOptions}
+              options={REASON_SEARCH_OPTIONS}
               value={icdQuery}
               onChange={setIcdQuery}
               onSelect={option => { addIndication({ code: option.code, title: option.name }); setIcdQuery(''); }}
               excludeCodes={draft.indications.map(indication => indication.code)}
             />
-            <p className="labord-help">{t('labOrder.diagnosesDialogHelp')}</p>
+            <p className="labord-help">{t('labOrder.reasonHelp')}</p>
           </div>
         </div>
 

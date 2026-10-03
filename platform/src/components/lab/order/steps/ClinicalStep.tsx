@@ -1,16 +1,18 @@
 'use client';
 
 /**
- * Step 3 — Clinical. Collection logistics plus the Ask-at-Order-Entry
- * questions the selected tests demand. Required questions are marked and
- * highlighted exactly as the Next button judges them, so "* required" and
- * "why can't I continue" always agree.
+ * Step 3 — Clinical. Everything the bench reads alongside the tests: why they
+ * are wanted, the collection logistics, and the Ask-at-Order-Entry questions
+ * the selected tests demand. Required items are marked and highlighted exactly
+ * as the Next button judges them, so "* required" and "why can't I continue"
+ * always agree.
  */
 
 import { AlertTriangle, CheckCircle2 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { aoeKey, timingLabelKey, type AoeQuestion, type CollectionTiming, type FastingState, type LabOrderPriority } from '../lab-order-types';
 import type { LabOrderController } from '../useLabOrderDraft';
+import LabOrderReasonPicker from '../LabOrderReasonPicker';
 import Select from '@/components/Select';
 
 function AoeField({
@@ -59,6 +61,8 @@ export default function ClinicalStep({ controller }: { controller: LabOrderContr
 
   return (
     <div>
+      <LabOrderReasonPicker controller={controller} />
+
       <div className="labord-section">
         <div className="labord-section-head">
           {draft.kind === 'imaging' ? t('labOrder.scheduling') : t('labOrder.collection')}
@@ -125,7 +129,9 @@ export default function ClinicalStep({ controller }: { controller: LabOrderContr
             )}
         </div>
         <div className="labord-section-body">
-          {schedule.length === 0 && <p className="labord-help" style={{ margin: 0 }}>{t('labOrder.aoeNone')}</p>}
+          {schedule.length === 0
+            ? <p className="labord-help" style={{ margin: 0 }}>{t('labOrder.aoeNone')}</p>
+            : <p className="labord-help" style={{ margin: '0 0 12px' }}>{t('labOrder.aoeWhy')}</p>}
           {schedule.map(({ test, questions }) => (
             <div key={test.name} className="labord-aoe-block">
               <div className="labord-aoe-title">

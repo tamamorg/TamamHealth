@@ -45,7 +45,7 @@ export function OrderStep({ study }: { study: LabResultDoc }) {
             <Field label={t('imgFlow.modality')} value={study.modality} />
             <Field label={t('imgFlow.bodyRegion')} value={study.bodyRegion} />
             <Field label={t('imgFlow.laterality')} value={study.laterality} />
-            <Field label={t('labOrder.orderingProvider')} value={study.orderedBy} />
+            <Field label={t('labOrder.orderingProviderLabel')} value={study.orderedBy} />
             <Field label={t('imgFlow.orderedAt')} value={study.orderedAt ? formatDateTime(study.orderedAt) : '—'} />
             <Field
               label={t('labOrder.priority')}
@@ -58,18 +58,24 @@ export function OrderStep({ study }: { study: LabResultDoc }) {
 
       {/* The clinical question is the whole point of a report — a study read
           without it is a description looking for a reader. */}
-      {(study.indications?.length || study.clinicalNotes) && (
+      {(study.indications?.length || study.clinicalNotes || study.orderComment) && (
         <div className="labord-section">
           <div className="labord-section-head">{t('imgFlow.clinicalQuestion')}</div>
-          <div className="labord-section-body">
+          <div className="labord-section-body labord-context">
             {study.indications?.length ? (
-              <div className="labord-chip-row" style={{ marginBottom: study.clinicalNotes ? 10 : 0 }}>
+              <div className="labord-chip-row">
                 {study.indications.map(indication => (
                   <span key={indication.code} className="labord-chip"><code>{indication.code}</code> {indication.title}</span>
                 ))}
               </div>
             ) : null}
             {study.clinicalNotes && <p className="labord-help" style={{ margin: 0 }}>{study.clinicalNotes}</p>}
+            {study.orderComment && (
+              <div>
+                <span className="labord-field-label">{t('labOrder.internalComment')}</span>
+                <p className="labord-help" style={{ margin: 0 }}>{study.orderComment}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -440,7 +446,7 @@ export function ReleaseStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
         <div className="labord-grid-2">
           <Field label={t('imgFlow.study')} value={studyLine(study)} />
           <Field label={t('imgFlow.stage')} value={t(`labFlow.stage_${ctrl.stage}`)} />
-          <Field label={t('labOrder.orderingProvider')} value={study.orderedBy} />
+          <Field label={t('labOrder.orderingProviderLabel')} value={study.orderedBy} />
           <Field label={t('imgFlow.reportedBy')} value={study.reportedBy} />
         </div>
         <div className="labord-divider" />

@@ -19,7 +19,6 @@ import LabOrderStepper from './LabOrderStepper';
 import PatientStep from './steps/PatientStep';
 import TestsStep from './steps/TestsStep';
 import ClinicalStep from './steps/ClinicalStep';
-import DiagnosisStep from './steps/DiagnosisStep';
 import ReviewStep from './steps/ReviewStep';
 import CompleteStep from './steps/CompleteStep';
 import { LAB_ORDER_STEPS, timingLabelKey, type LabOrderStepKey } from './lab-order-types';
@@ -125,10 +124,16 @@ export default function LabOrderWizard({
                 across the whole workspace puts its label and its control an
                 arm's length apart and reads as an empty band. */}
             <div className="labord-column">
+              {/* Said once, above every step: who fills this in and who reads
+                  it. Without it the form reads as questions for no one. */}
+              {step !== 'complete' && (
+                <p className="labord-audience">
+                  {t(draft.kind === 'imaging' ? 'labOrder.audienceImaging' : 'labOrder.audienceLab')}
+                </p>
+              )}
               {step === 'patient' && <PatientStep controller={controller} lockPatient={lockPatient} />}
               {step === 'tests' && <TestsStep controller={controller} />}
               {step === 'clinical' && <ClinicalStep controller={controller} />}
-              {step === 'diagnosis' && <DiagnosisStep controller={controller} />}
               {step === 'review' && <ReviewStep controller={controller} onEditStep={setStep} />}
               {step === 'complete' && <CompleteStep controller={controller} />}
             </div>

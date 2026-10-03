@@ -89,7 +89,7 @@ export function OrderStep({ order }: { order: LabResultDoc }) {
           <div className="labord-grid-2">
             <Field label={t('labFlow.test')} value={order.testName} />
             <Field label={t('labFlow.specimen')} value={order.specimen} />
-            <Field label={t('labOrder.orderingProvider')} value={order.orderedBy} />
+            <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy} />
             <Field label={t('labFlow.orderedAt')} value={order.orderedAt} />
             <Field
               label={t('labOrder.priority')}
@@ -108,18 +108,35 @@ export function OrderStep({ order }: { order: LabResultDoc }) {
         </div>
       </div>
 
-      {(order.indications?.length || order.clinicalNotes) && (
+      {/* Each line says what it is: the orderer wrote these for the bench, and
+          an unlabelled chip row reads as a diagnosis rather than the reason
+          the test was asked for. */}
+      {(order.indications?.length || order.clinicalNotes || order.orderComment) && (
         <div className="labord-section">
           <div className="labord-section-head">{t('labFlow.clinicalContext')}</div>
-          <div className="labord-section-body">
+          <div className="labord-section-body labord-context">
             {order.indications?.length ? (
-              <div className="labord-chip-row" style={{ marginBottom: order.clinicalNotes ? 10 : 0 }}>
-                {order.indications.map(indication => (
-                  <span key={indication.code} className="labord-chip"><code>{indication.code}</code> {indication.title}</span>
-                ))}
+              <div>
+                <span className="labord-field-label">{t('labOrder.reasons')}</span>
+                <div className="labord-chip-row">
+                  {order.indications.map(indication => (
+                    <span key={indication.code} className="labord-chip"><code>{indication.code}</code> {indication.title}</span>
+                  ))}
+                </div>
               </div>
             ) : null}
-            {order.clinicalNotes && <p className="labord-help" style={{ margin: 0 }}>{order.clinicalNotes}</p>}
+            {order.clinicalNotes && (
+              <div>
+                <span className="labord-field-label">{t('labOrder.notesToLab')}</span>
+                <p className="labord-help" style={{ margin: 0 }}>{order.clinicalNotes}</p>
+              </div>
+            )}
+            {order.orderComment && (
+              <div>
+                <span className="labord-field-label">{t('labOrder.internalComment')}</span>
+                <p className="labord-help" style={{ margin: 0 }}>{order.orderComment}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -469,7 +486,14 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
 }
 
 /** Step 6 — the report that goes back to the clinician. */
-export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWorkflowController }) {
+export function ReportStep({
+  order, ctrl, readOnly = false,
+}: {
+  order: LabResultDoc;
+  ctrl: LabWorkflowController;
+  /** The viewer may read and print the report but not act on it. */
+  readOnly?: boolean;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -517,7 +541,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
                 <Field label={t('labFlow.accession')} value={order.accessionNumber} />
                 <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
                 <Field label={t('lab.specimen')} value={order.specimen || '—'} />
-                <Field label={t('labOrder.orderingProvider')} value={order.orderedBy || '—'} />
+                <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy || '—'} />
                 <Field
                   label={t('labFlow.interpretation')}
                   value={order.critical ? t('lab.critical') : order.abnormal ? t('lab.abnormal') : t('labFlow.withinRange')}
@@ -539,7 +563,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             <Field label={t('lab.referenceRange')} value={order.referenceRange} />
             <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
             <Field label={t('lab.specimen')} value={order.specimen || '—'} />
-            <Field label={t('labOrder.orderingProvider')} value={order.orderedBy || '—'} />
+            <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy || '—'} />
             <Field
               label={t('labFlow.interpretation')}
               value={order.critical ? t('lab.critical') : order.abnormal ? t('lab.abnormal') : t('labFlow.withinRange')}
@@ -554,13 +578,13 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
         <div className="labord-section-body">
           <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.handoffHelp')}</p>
           <div className="labord-grid-2">
-            <Field label={t('labOrder.orderingProvider')} value={order.orderedBy} />
+            <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy} />
             <Field
               label={t('labFlow.reviewStatus')}
               value={ctrl.stage === 'resulted' ? t('labFlow.awaitingReview') : t(`labFlow.stage_${ctrl.stage}`)}
             />
           </div>
-          <button type="button" className="labord-btn" style={{ marginTop: 12 }} onClick={ctrl.notifyClinician} disabled={ctrl.busy}>
+          <button type="button" className="labord-btn" style={{ marginTop: 12 }} onClick={ctrl.notifyClinician} disabled={ctrl.busy || readOnly}>
             {t('labFlow.notifyClinician')}
           </button>
         </div>
@@ -582,7 +606,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
               at={order.reviewedAt}
               actionLabel={t('labFlow.markReviewed')}
               onAction={ctrl.markReviewed}
-              enabled={ctrl.stage === 'resulted'}
+              enabled={!readOnly && ctrl.stage === 'resulted'}
               busy={ctrl.busy}
             />
             <CloseoutRow
@@ -592,7 +616,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
               at={order.actedUponAt}
               actionLabel={t('labFlow.markActedUpon')}
               onAction={ctrl.markActedUpon}
-              enabled={ctrl.stage === 'reviewed_by_clinician'}
+              enabled={!readOnly && ctrl.stage === 'reviewed_by_clinician'}
               busy={ctrl.busy}
             />
             <CloseoutRow
@@ -602,7 +626,7 @@ export function ReportStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
               at={order.communicatedAt}
               actionLabel={t('labFlow.markCommunicated')}
               onAction={ctrl.markCommunicated}
-              enabled={ctrl.stage === 'acted_upon'}
+              enabled={!readOnly && ctrl.stage === 'acted_upon'}
               busy={ctrl.busy}
             />
           </div>

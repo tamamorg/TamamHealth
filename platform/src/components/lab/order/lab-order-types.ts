@@ -3,10 +3,16 @@
  *
  * The flow has two phases, mirroring how a clinician actually places an order:
  *   1. a compact "Create Order" dialog that captures the essentials
- *      (who, what type, which diagnoses, which tests), and
- *   2. a full-width requisition wizard — Patient → Tests → Clinical →
- *      Diagnosis → Review → Complete — where AOEs are answered, the order is
- *      checked, and the printable requisition is produced.
+ *      (who, what type, why, which tests), and
+ *   2. a full-width requisition wizard — Patient → Tests → Clinical → Review →
+ *      Complete — where the reason for testing and the AOEs are answered, the
+ *      order is checked, and the printable requisition is produced.
+ *
+ * The clinician fills all of it in; the laboratory (or imaging unit) reads it.
+ * The reason for testing lives in the Clinical step rather than a step of its
+ * own: to the bench it is one block of context alongside the AOE answers, and
+ * a separate "Diagnosis" step read as if a confirmed diagnosis had to exist
+ * before the test that would establish it.
  *
  * Everything here is data only, so the step components stay presentational and
  * the draft can be validated/serialised without touching React.
@@ -26,10 +32,10 @@ export type CollectionTiming = 'draw_now' | 'lab_collect' | 'future';
 export type FastingState = 'yes' | 'no' | 'unknown';
 
 /** The wizard's ordered steps. `complete` is post-submit (requisition preview). */
-export type LabOrderStepKey = 'patient' | 'tests' | 'clinical' | 'diagnosis' | 'review' | 'complete';
+export type LabOrderStepKey = 'patient' | 'tests' | 'clinical' | 'review' | 'complete';
 
 export const LAB_ORDER_STEPS: LabOrderStepKey[] = [
-  'patient', 'tests', 'clinical', 'diagnosis', 'review', 'complete',
+  'patient', 'tests', 'clinical', 'review', 'complete',
 ];
 
 /** One investigation on the requisition. */
@@ -41,7 +47,11 @@ export interface OrderedTest {
   loinc?: string;
 }
 
-/** A coded indication (ICD-11) justifying the order. */
+/**
+ * A coded reason (ICD-11) for the order. Not necessarily a diagnosis: a
+ * symptom, a suspected condition and a screening code are all valid, because
+ * the result is usually what settles the diagnosis.
+ */
 export interface OrderIndication {
   code: string;
   title: string;
@@ -97,7 +107,8 @@ export interface LabOrderDraft {
   aoe: AoeAnswers;
   /** Instructions for the bench / radiographer — persisted as clinical notes. */
   notes: string;
-  /** Internal comment, kept alongside the notes on the requisition. */
+  /** Staff-only handling comment — saved on each test as `orderComment`, shown
+   *  to the bench and on the requisition, never sent to the patient portal. */
   comments: string;
   /** Files that travel with the order (prior report, external result, consent).
    *  Filed against the patient's chart when the order is placed. */

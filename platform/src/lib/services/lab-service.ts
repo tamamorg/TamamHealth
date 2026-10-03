@@ -10,7 +10,7 @@ import { labOrder, getResultReviewSLA, type LabOrderStatus } from '../clinical-f
 import { maybeDecrypt, maybeEncrypt } from '../field-encryption';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 
-const ENCRYPTED_LAB_FIELDS = ['result', 'clinicalNotes'] as const;
+const ENCRYPTED_LAB_FIELDS = ['result', 'clinicalNotes', 'orderComment'] as const;
 
 function decryptLabResult(doc: LabResultDoc): LabResultDoc {
   const out = { ...doc };

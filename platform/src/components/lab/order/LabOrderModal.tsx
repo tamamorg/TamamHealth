@@ -3,7 +3,7 @@
 /**
  * Create Lab Order — the whole flow, mounted in one modal.
  *
- * Phase 1 is the compact Create Order dialog; phase 2 is the six-step
+ * Phase 1 is the compact Create Order dialog; phase 2 is the five-step
  * requisition wizard. One draft (`useLabOrderDraft`) spans both, so continuing
  * carries everything forward and nothing is written until the wizard's Review
  * step commits.
@@ -18,20 +18,29 @@ import Modal from '@/components/Modal';
 import LabOrderCreateDialog from './LabOrderCreateDialog';
 import LabOrderWizard from './LabOrderWizard';
 import { useLabOrderDraft } from './useLabOrderDraft';
+import type { LabOrderReasonContext } from './lab-order-reasons';
 import './lab-order.css';
 
 export default function LabOrderModal({
   onClose,
   onPlaced,
   presetPatientId,
+  reasonContext,
 }: {
   onClose: () => void;
   /** Called once the orders exist — refresh the queue here. */
   onPlaced: () => void;
   /** Skip patient lookup when the flow is opened from a chart. */
   presetPatientId?: string;
+  /** What the opener already knows about why the test is wanted (a note's
+   *  coded diagnoses and complaint), so the reason is confirmed, not re-typed. */
+  reasonContext?: LabOrderReasonContext;
 }) {
-  const controller = useLabOrderDraft({ presetPatientId });
+  const controller = useLabOrderDraft({
+    presetPatientId,
+    presetIndications: reasonContext?.indications,
+    contextText: reasonContext?.complaintText,
+  });
   const [phase, setPhase] = useState<'dialog' | 'wizard'>('dialog');
   // Opened from a chart, the patient is context rather than a choice, so the
   // picker shows it read-only instead of offering to swap charts mid-order.

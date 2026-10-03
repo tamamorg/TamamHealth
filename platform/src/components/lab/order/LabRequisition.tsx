@@ -5,8 +5,8 @@
  *
  * Deliberately monochrome and boxy: it is printed on whatever is in the tray
  * and read next to a bench, so it uses black rules and a single highlighted
- * test table rather than the app's screen palette. `@media print` in
- * lab-order.css hides everything except `.labord-print`.
+ * test table rather than the app's screen palette. Printed through
+ * printElementById, which isolates this element on the sheet.
  */
 
 import { patientAgeLabel } from '@/lib/patient-utils';
@@ -112,7 +112,7 @@ export default function LabRequisition({
 
       <div className="labord-req-grid" style={{ borderBottom: 0 }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <div className="labord-req-label">Diagnoses / indications</div>
+          <div className="labord-req-label">Reason for test</div>
           <div className="labord-req-value">
             {draft.indications.length
               ? draft.indications.map(indication => `${indication.code} ${indication.title}`).join('  ·  ')
@@ -158,7 +158,7 @@ export default function LabRequisition({
           )}
           {draft.comments.trim() && (
             <div style={{ marginTop: 6 }}>
-              <div className="labord-req-label">Comment</div>
+              <div className="labord-req-label">Internal comment</div>
               <div className="labord-req-value" style={{ fontWeight: 400 }}>{draft.comments}</div>
             </div>
           )}
