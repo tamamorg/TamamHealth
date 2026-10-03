@@ -126,7 +126,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
       // the consultation flow — instructions are appended to the duration note
       // (e.g. "5 days — take after meals") so they aren't lost.
       const durationNote = [duration.trim(), instructions.trim()].filter(Boolean).join(' — ');
-      await create({
+      const created = await create({
         patientId: patient._id,
         patientName: patientFullName(patient),
         medication: medication.trim(),
@@ -148,7 +148,12 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast(t('consultation.toastSentToPharmacy', { count: 1 }), 'success');
+      // A facility with no dispensary has no pharmacy to send to: the service
+      // saves the order as a script for the patient, and saying "sent to
+      // pharmacy" would leave them waiting at a window that does not exist.
+      showToast(created.prescription.fulfilment === 'external'
+        ? t('patientCopy.savedForOutside')
+        : t('consultation.toastSentToPharmacy', { count: 1 }), 'success');
       reset();
       onClose();
     } catch (err) {

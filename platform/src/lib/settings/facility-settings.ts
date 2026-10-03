@@ -158,6 +158,13 @@ export interface FacilitySettings {
      * False keeps the long-standing advisory behaviour (warn, allow override).
      */
     allergyHardStop: boolean;
+    /**
+     * This facility runs its own dispensary. False for a clinic with no
+     * pharmacy: prescriptions are then issued to the patient as a script
+     * (printed or texted) to fill elsewhere, instead of being sent to a
+     * dispensing queue nobody works — and they do not hold checkout.
+     */
+    onSitePharmacy: boolean;
   };
 
   // ── Users & access policy ───────────────────────────────────────────────
@@ -319,6 +326,7 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
     doorToClinicianMinutes: 30,
     requireControlledSubstanceWitness: true,
     allergyHardStop: false,
+    onSitePharmacy: true,
   },
   userPolicy: {
     requireAdminApproval: true,

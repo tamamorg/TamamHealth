@@ -176,3 +176,43 @@ export function atcForMedication(name: string): string | undefined {
   const hit = FORMULARY.find(d => n.includes(d.name.split(' ')[0].toLowerCase()) || d.name.toLowerCase().includes(n));
   return hit?.atc;
 }
+
+/**
+ * ATC classes whose medicines are controlled: opioid analgesics and
+ * anaesthetics, opium-alkaloid antitussives (codeine), opioid-dependence
+ * agents, benzodiazepines (anxiolytic, hypnotic, antiepileptic), z-drugs,
+ * barbiturates, centrally acting stimulants, and ketamine.
+ */
+const CONTROLLED_ATC_PREFIXES = [
+  'N02A', 'N01AH', 'R05DA', 'N07BC', 'N05BA', 'N05CD', 'N05CF', 'N03AE', 'N03AA', 'N06BA', 'N01AX03',
+];
+
+/**
+ * Controlled ingredients a prescriber may type that this list does not carry
+ * as formulary lines. Kept beside the formulary so the knowledge has one home.
+ */
+const CONTROLLED_INGREDIENTS_NOT_LISTED = [
+  'pethidine', 'fentanyl', 'methadone', 'buprenorphine', 'oxycodone', 'hydromorphone', 'dihydrocodeine',
+  'pentazocine', 'midazolam', 'lorazepam', 'clonazepam', 'alprazolam', 'bromazepam', 'nitrazepam',
+  'zolpidem', 'methylphenidate', 'thiopental',
+];
+
+/**
+ * Whether a medicine is controlled by its class, whatever this facility
+ * stocks. An inventory line can also mark a product controlled, but only for
+ * what is on the shelf — and the decisions that most need this (may a script
+ * be texted, may it be sent to an outside pharmacy) are made about medicines
+ * the facility does not hold.
+ *
+ * Matches any controlled ingredient named anywhere in the string, so a
+ * combination ("Paracetamol + Codeine") is caught by its controlled part. An
+ * unrecognised name is not assumed controlled.
+ */
+export function isControlledMedicine(name: string): boolean {
+  const n = (name || '').toLowerCase();
+  if (!n.trim()) return false;
+  if (CONTROLLED_INGREDIENTS_NOT_LISTED.some(ingredient => n.includes(ingredient))) return true;
+  return FORMULARY.some(drug =>
+    CONTROLLED_ATC_PREFIXES.some(prefix => drug.atc.startsWith(prefix))
+    && n.includes(drug.name.split(' ')[0].toLowerCase()));
+}

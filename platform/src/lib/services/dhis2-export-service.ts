@@ -331,7 +331,10 @@ export async function generateDHIS2Export(
 
   // Prescription indicators
   const rxDispensed = prescriptions.filter(p => p.status === 'dispensed').length;
-  const rxPending = prescriptions.filter(p => p.status === 'pending').length;
+  // "Pending" is the on-site dispensing backlog. A script handed to the
+  // patient for an outside pharmacy is never dispensed here and would
+  // otherwise inflate the figure for ever.
+  const rxPending = prescriptions.filter(p => p.status === 'pending' && p.fulfilment !== 'external').length;
   dataValues.push(
     { dataElement: 'PRESCRIPTIONS_TOTAL', category: 'default', value: prescriptions.length.toString(), period, orgUnit },
     { dataElement: 'PRESCRIPTIONS_DISPENSED', category: 'default', value: rxDispensed.toString(), period, orgUnit },

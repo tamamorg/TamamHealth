@@ -106,7 +106,14 @@ export default function CodedSearchField({
       if (menuRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // Escape dismisses the open list and stops there. Left to travel on, the
+    // same keypress reached the dialog hosting this field and closed it —
+    // discarding, for one, a half-written lab order.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setOpen(false);
+    };
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onScroll);
     document.addEventListener('keydown', onKey);

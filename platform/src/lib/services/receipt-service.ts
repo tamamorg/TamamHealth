@@ -30,12 +30,18 @@ function getMethodLabel(method: string): string {
   return labels[method] || method;
 }
 
-export function buildReceiptData(payment: PaymentDoc, facilityName?: string): ReceiptData {
+/**
+ * `hospitalNumber` is what the receipt shows as the patient's ID. The payment
+ * record only holds the internal document id ("pat-00001"), which means
+ * nothing to the patient or to a billing desk reading the slip back — so the
+ * caller, who has the chart, passes the number printed on the patient's card.
+ */
+export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hospitalNumber?: string): ReceiptData {
   const date = new Date(payment.processedAt);
   return {
     receiptNumber: payment.reference || payment._id,
     patientName: payment.patientName,
-    patientId: payment.patientId,
+    patientId: hospitalNumber?.trim() || payment.patientId,
     date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     method: payment.method,

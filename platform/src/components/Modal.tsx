@@ -46,6 +46,29 @@ interface ModalProps {
 }
 
 /**
+ * Which open modal is on top.
+ *
+ * Every modal listens for Escape on the window, and each used to answer it —
+ * so a dialog opened from a dialog (a confirm over an editor, the
+ * text-to-patient composer over the prescription handover over the prescribing
+ * dialog) closed the whole stack on one keypress, and the Tab trap of the one
+ * underneath fought the one on top. Only the newest modal handles keys now.
+ *
+ * The order is taken at first render, not in an effect: effects run
+ * child-first, so a modal mounted in the same commit as its parent would
+ * otherwise register below it.
+ */
+let modalSequence = 0;
+const openModals = new Set<number>();
+/** How many open modals hold the body scroll lock, and what it replaces. */
+let scrollLocks = 0;
+let overflowBeforeLock = '';
+function isTopModal(sequence: number): boolean {
+  for (const other of openModals) if (other > sequence) return false;
+  return true;
+}
+
+/**
  * Centered, portal-rendered modal.
  *
  * Renders into <body> so its backdrop sits above the entire app — including the
@@ -73,20 +96,37 @@ export default function Modal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const backdropArmedRef = useRef(false);
+  // Taken in the first render (a lazy initialiser), so a parent is always
+  // numbered before a modal it renders — see `isTopModal`.
+  const [sequence] = useState(() => ++modalSequence);
+
+  useEffect(() => {
+    openModals.add(sequence);
+    return () => { openModals.delete(sequence); };
+  }, [sequence]);
 
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
 
-  // Lock background scroll while the modal is open.
+  // Lock background scroll while any modal is open. Counted rather than
+  // saved-and-restored: with two modals stacked, the lower one closing first
+  // restored '' and the upper one then "restored" the 'hidden' it had seen on
+  // mount — leaving the page unscrollable with nothing open.
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    if (scrollLocks === 0) overflowBeforeLock = document.body.style.overflow;
+    scrollLocks += 1;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      scrollLocks -= 1;
+      if (scrollLocks === 0) document.body.style.overflow = overflowBeforeLock;
+    };
   }, []);
 
   // Esc closes and Tab stays inside the active dialog.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // A modal with another open above it leaves the keyboard to that one.
+      if (!isTopModal(sequence)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -118,7 +158,7 @@ export default function Modal({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, sequence]);
 
   // Move focus into the dialog, then return it to the control that opened the
   // popup. This preserves a user's place in dense clinical worklists.

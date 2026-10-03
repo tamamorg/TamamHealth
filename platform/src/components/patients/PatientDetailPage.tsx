@@ -64,6 +64,7 @@ const AssignDoctorModal = dynamic(() => import('@/components/AssignDoctorModal')
 const NurseVitalsModal = dynamic(() => import('@/components/nurse/NurseVitalsModal'));
 const PrescribeModal = dynamic(() => import('@/components/patients/PatientActionModals').then(mod => mod.PrescribeModal));
 const ReferModal = dynamic(() => import('@/components/patients/PatientActionModals').then(mod => mod.ReferModal));
+const VisitSummaryDialog = dynamic(() => import('@/components/patient-handover/VisitSummaryDialog'));
 import { toIsoDate, todayIso as isoToday } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
@@ -220,7 +221,14 @@ const DEEP_LINK_TAB_IDS = new Set([
 
 /** Legacy/alias `?tab=` values that don't have a section of their own: transfers
  *  are read on Care coordination, recall reminders on Appointments. */
-const TAB_ALIASES: Record<string, string> = { transfers: 'referrals', recall: 'appointments' };
+const TAB_ALIASES: Record<string, string> = {
+  transfers: 'referrals',
+  recall: 'appointments',
+  // The Medications section's id is `prescriptions`. The prescribe page and the
+  // progress feed both link `?tab=medications`, which resolved to nothing and
+  // dropped the prescriber on the summary instead of the list they just changed.
+  medications: 'prescriptions',
+};
 
 /** The section a `?tab=` value opens, or null when the value isn't a section.
  *  Shared by the initial read and the browser-navigation resync so a Back
@@ -310,9 +318,14 @@ export default function PatientDetailPage() {
   const [messageSubject, setMessageSubject] = useState('Follow-up from your care team');
   const [messageBody, setMessageBody] = useState('');
   const [messageChannel, setMessageChannel] = useState<'app' | 'sms' | 'both'>('app');
+  // A text leaves the building for a phone other people may read; the sender
+  // confirms the patient agreed to that before anything is sent.
+  const [messageTextConsent, setMessageTextConsent] = useState(false);
   const [messageSending, setMessageSending] = useState(false);
   const [messageError, setMessageError] = useState('');
   const [messageSent, setMessageSent] = useState(false);
+  const [messageSentNote, setMessageSentNote] = useState('');
+  const [messageSentWarning, setMessageSentWarning] = useState(false);
   // Set when the composer was opened from a "Patient education" action, so the
   // sent message is flagged as education and lists under Documents ▸ Patient
   // education. Tracked separately from the subject line, which the sender may
@@ -338,6 +351,7 @@ export default function PatientDetailPage() {
   // (e.g. the Facesheet Problems card's "Add" → Conditions tab + add modal).
   const [sectionAddRequest, setSectionAddRequest] = useState<'problems' | 'allergies' | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showVisitSummary, setShowVisitSummary] = useState(false);
   const [printSignature, setPrintSignature] = useState('');
   const [printSigned, setPrintSigned] = useState(false);
   const [printSections, setPrintSections] = useState<Set<PrintSectionId>>(() => new Set(DEFAULT_PRINT_SECTIONS));
@@ -764,31 +778,76 @@ export default function PatientDetailPage() {
       setMessageError('This patient does not have a phone number for SMS.');
       return;
     }
+    if ((messageChannel === 'sms' || messageChannel === 'both') && !messageTextConsent) {
+      setMessageError('Confirm the patient agreed to receive texts on this number.');
+      return;
+    }
     setMessageSending(true);
     setMessageError('');
     try {
-      const { createMessage } = await import('@/modules/communication/services/message-service');
-      await createMessage({
-        patientId: patient._id,
-        patientName: patientFullName(patient),
-        patientPhone: patient.phone || '',
-        recipientType: 'patient',
-        direction: 'staff_to_patient',
-        fromDoctorId: currentUser._id,
-        fromDoctorName: currentUser.name || currentUser.username || 'Care team',
-        fromHospitalId: currentUser.hospitalId,
-        fromHospitalName: regHospital?.name || patient.registrationHospital || '',
-        subject: messageSubject.trim() || 'Patient message',
-        body,
-        channel: messageChannel,
-        patientEducation: messageIsEducation || undefined,
-        sentAt: new Date().toISOString(),
-        orgId: currentUser.orgId,
-      });
+      if (messageChannel === 'app') {
+        const { createMessage } = await import('@/modules/communication/services/message-service');
+        await createMessage({
+          patientId: patient._id,
+          patientName: patientFullName(patient),
+          patientPhone: patient.phone || '',
+          recipientType: 'patient',
+          direction: 'staff_to_patient',
+          fromDoctorId: currentUser._id,
+          fromDoctorName: currentUser.name || currentUser.username || 'Care team',
+          fromHospitalId: currentUser.hospitalId,
+          fromHospitalName: regHospital?.name || patient.registrationHospital || '',
+          subject: messageSubject.trim() || 'Patient message',
+          body,
+          channel: messageChannel,
+          patientEducation: messageIsEducation || undefined,
+          sentAt: new Date().toISOString(),
+          orgId: currentUser.orgId,
+        });
+        setMessageSentWarning(false);
+        setMessageSentNote('Message saved to the patient portal inbox.');
+      } else {
+        // SMS and App + SMS go through the text service: it writes the same
+        // message, then actually hands the text to the gateway and records
+        // what happened. Writing the document alone never sent anything.
+        const { sendPatientText } = await import('@/modules/communication/services/patient-text-service');
+        const { toSmsSafe } = await import('@/lib/sms/text');
+        const result = await sendPatientText({
+          patient: { _id: patient._id, name: patientFullName(patient), phone: patient.phone },
+          text: toSmsSafe(body),
+          subject: messageSubject.trim() || 'Patient message',
+          channel: messageChannel,
+          sender: {
+            _id: currentUser._id,
+            name: currentUser.name || currentUser.username || 'Care team',
+            hospitalId: currentUser.hospitalId,
+            hospitalName: regHospital?.name || patient.registrationHospital || '',
+            orgId: currentUser.orgId,
+          },
+          patientEducation: messageIsEducation || undefined,
+          // The server refuses a text without this, whichever screen sends it.
+          consentConfirmed: messageTextConsent,
+        });
+        // The message is saved either way, so the form clears either way —
+        // leaving it filled invited a second click and a second message. The
+        // note says whether the text itself went.
+        const undelivered = result.outcome === 'not_connected' || result.outcome === 'failed';
+        setMessageSentWarning(undelivered);
+        setMessageSentNote(result.outcome === 'failed'
+          ? `The message is saved, but the text was NOT sent: ${result.error || 'the gateway refused it'}`
+          : result.outcome === 'not_connected'
+            ? (messageChannel === 'both'
+              ? 'No SMS gateway is connected, so the text was NOT sent. The message is in the patient portal inbox.'
+              : 'No SMS gateway is connected, so the text was NOT sent. The message is saved in the record only.')
+            : result.outcome === 'queued'
+              ? 'The text is saved and will send when the connection returns.'
+              : 'Text sent.');
+      }
       setMessageSent(true);
       setMessageBody('');
       setMessageSubject('Follow-up from your care team');
       setMessageChannel('app');
+      setMessageTextConsent(false);
       setMessageIsEducation(false);
     } catch (err) {
       console.error(err);
@@ -971,12 +1030,17 @@ export default function PatientDetailPage() {
         .print-only { display: none; }
 
         @media print {
-          /* ── Page setup ── */
-          @page {
+          /* ── Page setup ──
+             A named page, so the full-bleed sheet belongs to this document
+             alone. Unscoped, a zero page margin applied to every print made
+             from the chart — the SBAR and the lab report came out with their
+             text against the paper's edge. Later pages get a top and bottom
+             margin; the first keeps none so the header band bleeds. */
+          @page chart-record {
             size: A4;
-            margin: 0;
+            margin: 12mm 0;
           }
-          @page :first { margin-top: 0; }
+          @page chart-record:first { margin-top: 0; }
 
           html, body {
             background: #fff !important;
@@ -988,44 +1052,48 @@ export default function PatientDetailPage() {
             line-height: 1.45;
           }
 
-          /* Hide all app chrome — target every node in the tree */
-          body * { visibility: hidden !important; }
-          .print-doc-root,
-          .print-doc-root * { visibility: visible !important; }
-
-          /* The SBAR tab has its own Print button, which calls window.print()
-             against this same stylesheet — so without these rules it printed a
-             blank sheet, the whole page having been hidden and the handoff not
-             being .print-doc-root. It identifies the patient in its own first
-             line, so it prints as itself rather than through the record
-             template. */
-          .sbar-doc,
-          .sbar-doc * { visibility: visible !important; }
-          .sbar-doc {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            width: 100%;
-            padding: 10mm 12mm;
-            background: #fff;
+          /* Print the signed document and nothing else. Everything that is
+             neither the document nor an ancestor of it leaves the flow, and
+             its ancestors are released from the app shell's fixed-height,
+             overflow-clipped frame. Hiding with visibility alone left the
+             document inside that frame, so the record printed its first page
+             and stopped — allergies, results and the signature block never
+             reached paper. (The SBAR and lab-report buttons on this page go
+             through printElementById, which does the same for their target.) */
+          body:has(.print-doc-root) *:not(:has(.print-doc-root)):not(.print-doc-root):not(.print-doc-root *) {
+            display: none !important;
           }
-          /* Both can be mounted at once (print the record while sitting on the
-             SBAR tab); the record wins, since that is the document the user
-             just signed. */
-          body:has(.print-doc-root) .sbar-doc { display: none !important; }
+          html:has(.print-doc-root),
+          body:has(.print-doc-root),
+          body:has(.print-doc-root) :has(.print-doc-root) {
+            display: block !important;
+            position: static !important;
+            float: none !important;
+            width: auto !important;
+            max-width: none !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+            overflow: visible !important;
+            transform: none !important;
+            contain: none !important;
+            background: none !important;
+            box-shadow: none !important;
+          }
 
-          /* Full-page print wrapper — absolute so content flows across pages.
-             The display value has to be restored explicitly: this element also
+          /* The display value has to be restored explicitly: this element also
              carries .print-only, whose "display: none" above is what keeps the
              document off the screen, and that rule stays in force inside this
-             media block. Without the line below the whole printed record was
-             display:none — "Print chart" put a blank sheet through the
-             printer. */
+             media block. */
           .print-doc-root {
             display: block !important;
-            position: absolute;
-            top: 0; left: 0; right: 0;
+            position: static;
             width: 100%;
             background: #fff;
+            page: chart-record;
           }
 
           /* Reset everything inside the doc */
@@ -1611,6 +1679,7 @@ export default function PatientDetailPage() {
                   setMessageIsEducation(true);
                   setShowMessageModal(true);
                 }}
+                onVisitSummary={() => setShowVisitSummary(true)}
                 onNote={() => (canConsult ? void openClinicalNoteDrawer() : selectTab('notes'))}
                 onScripts={() => (canPrescribe ? setShowPrescribeModal(true) : selectTab('prescriptions'))}
                 onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
@@ -2293,6 +2362,20 @@ export default function PatientDetailPage() {
                     </button>
                   ))}
                 </div>
+                {messageChannel !== 'app' && (
+                  <label
+                    className="flex items-start gap-2 mt-2 text-[12px]"
+                    style={{ textTransform: 'none', letterSpacing: 'normal', fontWeight: 500, color: 'var(--text-primary)' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={messageTextConsent}
+                      onChange={e => { setMessageTextConsent(e.target.checked); setMessageError(''); }}
+                      style={{ width: 'auto', marginTop: 2 }}
+                    />
+                    <span>{t('patientText.consent')}</span>
+                  </label>
+                )}
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Subject</label>
@@ -2316,7 +2399,7 @@ export default function PatientDetailPage() {
                 />
               </div>
               {messageError && <p className="text-[12px]" role="alert" style={{ color: 'var(--color-danger-text)' }}>{messageError}</p>}
-              {messageSent && <p className="text-[12px] font-semibold" role="status" style={{ color: 'var(--color-success-text)' }}>Message saved and queued.</p>}
+              {messageSent && <p className="text-[12px] font-semibold" role="status" style={{ color: messageSentWarning ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}>{messageSentNote || 'Message saved.'}</p>}
             </div>
 
             <div className="flex items-center justify-end gap-2 mt-5">
@@ -2545,6 +2628,18 @@ export default function PatientDetailPage() {
         <AssignDoctorModal
           target={assignTarget}
           onClose={() => setAssignTarget(null)}
+        />
+      )}
+      {showVisitSummary && (
+        <VisitSummaryDialog
+          patient={patient}
+          records={records}
+          notes={clinicalNotes}
+          prescriptions={(allPrescriptions || []).filter(rx => rx.patientId === patient._id)}
+          labOrders={(allLabResults || []).filter(lab => lab.patientId === patient._id)}
+          appointments={patientAppointments || []}
+          currentUser={currentUser}
+          onClose={() => setShowVisitSummary(false)}
         />
       )}
     </>

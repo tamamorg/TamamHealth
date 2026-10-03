@@ -192,6 +192,13 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
               onChange={on => patch({ clinicalPolicy: { ...draft.clinicalPolicy, allergyHardStop: on } })}
             />
           </Row>
+          <Row label="On-site pharmacy" hint="Off for a facility with no dispensary: prescriptions are printed or texted to the patient for an outside pharmacy, and do not hold checkout">
+            <Toggle
+              label="On-site pharmacy"
+              on={draft.clinicalPolicy.onSitePharmacy}
+              onChange={on => patch({ clinicalPolicy: { ...draft.clinicalPolicy, onSitePharmacy: on } })}
+            />
+          </Row>
         </>
       )}
 

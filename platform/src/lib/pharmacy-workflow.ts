@@ -81,6 +81,29 @@ export function pharmacyStageGroup(stage: PrescriptionStatus): 'scheduled' | 'in
   }
 }
 
+/**
+ * An order the patient fills at a pharmacy outside this facility — the clinic
+ * has no dispensary, or the prescriber sent a stocked-out order out with the
+ * patient. The patient is holding a signed script for it, so it is not this
+ * pharmacy's work: it must not sit in a dispensing queue, count as "awaiting
+ * dispensing", or be dispensable here. Dispensing it on site as well would
+ * supply the same course twice.
+ */
+export function isOutsidePharmacyOrder(rx: Pick<PrescriptionDoc, 'fulfilment'>): boolean {
+  return rx.fulfilment === 'external';
+}
+
+/**
+ * Whether an order still holds its visit at the pharmacy stage: not dispensed,
+ * not stopped, and this pharmacy's to fill. An outside-pharmacy script is none
+ * of that — counting it left the visit parked at `awaiting_pharmacy` waiting
+ * for a dispense that can never be recorded here. (Whether the patient has
+ * been handed that script is the checkout gate's question, not the queue's.)
+ */
+export function holdsVisitAtPharmacy(rx: Pick<PrescriptionDoc, 'status' | 'fulfilment'>): boolean {
+  return rx.status !== 'dispensed' && rx.status !== 'discontinued' && !isOutsidePharmacyOrder(rx);
+}
+
 export function isFinanciallyCleared(balance?: number): boolean {
   return (balance ?? 0) <= 0;
 }

@@ -24,7 +24,7 @@ import UsageTracker from '@/components/UsageTracker';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
 import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
-import { MessagingDock, MessagingDockProvider } from '@/modules/communication/client';
+import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -187,6 +187,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           da19f4d6). Desktop only: it collides with the mobile shell's tab
           bar, where the Inbox tab is the messaging entry point instead. */}
       {!useShell && <MessagingDock />}
+      <PatientTextOutbox />
       <UsageTracker />
     </div>
     </ConsoleTrailProvider>

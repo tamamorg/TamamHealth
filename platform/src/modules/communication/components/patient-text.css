@@ -1,0 +1,46 @@
+/* Text-to-patient dialog. Scoped under `ptx-`: globals.css force-uppercases
+   every bare `label`, so the consent row resets it here rather than there. */
+
+.ptx-stack { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
+
+.ptx-body {
+  width: 100%;
+  min-height: 168px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ptx-count {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ptx-count[data-over='true'] { color: var(--color-danger-text); font-weight: 600; }
+
+.ptx-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ptx-consent input { flex: none; margin-top: 2px; width: 16px; height: 16px; }
+
+.ptx-privacy { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }

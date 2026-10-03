@@ -15,7 +15,7 @@ import Modal from '@/components/Modal';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
 import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
-import { isActivePharmacyStage, isFinanciallyCleared, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
+import { isActivePharmacyStage, isFinanciallyCleared, isOutsidePharmacyOrder, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
 import { comparePharmacyPriority, isTier1 } from '@/lib/clinical-flow/medication-tiers';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
@@ -308,7 +308,11 @@ export default function PharmacyDashboardPage() {
   const dateLabel = useMemo(() => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: '2-digit' }).format(new Date()), []);
 
   // ── Real data sources ──
-  const { prescriptions: rxQueue, loading: rxLoading, dispense, advance } = usePrescriptions();
+  const { prescriptions: allPrescriptions, loading: rxLoading, dispense, advance } = usePrescriptions();
+  // Scripts issued for an outside pharmacy are not this pharmacy's work — the
+  // patient is holding them. Dropped here so no lane, count or action below
+  // can pick one up.
+  const rxQueue = useMemo(() => allPrescriptions.filter(rx => !isOutsidePharmacyOrder(rx)), [allPrescriptions]);
   const { items: rawInventory, create: createInventory, update: updateInventory } = usePharmacyInventory();
   const { users } = useUsers();
 

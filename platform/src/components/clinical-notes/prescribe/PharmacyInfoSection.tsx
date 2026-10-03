@@ -14,10 +14,12 @@ interface PharmacyInfoSectionProps {
   pharmacies: string[];
   pharmacy: string;
   onPharmacyChange: (value: string) => void;
+  /** What choosing this destination means for the patient, when it needs saying. */
+  note?: string;
 }
 
 export default function PharmacyInfoSection({
-  draft, onChange, pharmacies, pharmacy, onPharmacyChange,
+  draft, onChange, pharmacies, pharmacy, onPharmacyChange, note,
 }: PharmacyInfoSectionProps) {
   return (
     <div className="cn-rx-grid">
@@ -31,6 +33,7 @@ export default function PharmacyInfoSection({
         >
           {pharmacies.map(p => <option key={p} value={p}>{p}</option>)}
         </Select>
+        {note && <span className="cn-rx-qtynote cn-rx-fieldnote">{note}</span>}
       </label>
 
       <label className="cn-rx-field cn-rx-field--wide">
