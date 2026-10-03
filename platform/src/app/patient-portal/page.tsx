@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   UserCircle,
 } from '@/components/icons/lucide';
-import type { PatientDoc, AppointmentDoc, LabResultDoc, MedicalRecordDoc, PrescriptionDoc, ImmunizationDoc } from '@/lib/db-types';
+import type { PatientDoc, AppointmentDoc, MedicalRecordDoc, PrescriptionDoc, ImmunizationDoc } from '@/lib/db-types';
+import type { PortalLabResult } from '@/lib/patient-portal-labs';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatClockTime , formatRxSig } from '@/lib/format-utils';
 import Select from '@/components/Select';
@@ -77,7 +78,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
-  const [labResults, setLabResults] = useState<LabResultDoc[]>([]);
+  const [labResults, setLabResults] = useState<PortalLabResult[]>([]);
   const [records, setRecords] = useState<MedicalRecordDoc[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionDoc[]>([]);
   const [immunizations, setImmunizations] = useState<ImmunizationDoc[]>([]);
@@ -106,7 +107,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
       try {
         const [apts, labs, recs, rxs, imms] = await Promise.all([
           patientPortalFetch<{ appointments: AppointmentDoc[] }>('/api/patient-portal/appointments', session.token),
-          patientPortalFetch<{ results: LabResultDoc[] }>('/api/patient-portal/labs', session.token),
+          patientPortalFetch<{ results: PortalLabResult[] }>('/api/patient-portal/labs', session.token),
           patientPortalFetch<{ records: MedicalRecordDoc[] }>('/api/patient-portal/records', session.token),
           patientPortalFetch<{ prescriptions: PrescriptionDoc[] }>('/api/patient-portal/prescriptions', session.token),
           patientPortalFetch<{ immunizations: ImmunizationDoc[] }>('/api/patient-portal/immunizations', session.token),
