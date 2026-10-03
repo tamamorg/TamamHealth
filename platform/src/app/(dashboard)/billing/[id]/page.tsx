@@ -310,7 +310,10 @@ export default function BillDetailPage() {
     const payRows = bill.payments.map(p => `
       <tr><td>${escapeHtml(new Date(p.receivedAt).toLocaleString())}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
       <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="num">${escapeHtml(money(p.amount))}</td></tr>`).join('');
-    const body = `
+    const reversal = bill.chargeReversedAt
+      ? `<p class="notice"><strong>Charge reversed</strong> on ${escapeHtml(formatBillDate(bill.chargeReversedAt))}: ${escapeHtml(bill.chargeReversalReason || '')}. ${escapeHtml(money(bill.amountPaid))} collected against this invoice is a credit on the patient's account until refunded.</p>`
+      : '';
+    const body = `${reversal}
       <section class="section"><h2 class="section-title">Line items</h2>
         <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
       </section>
@@ -439,6 +442,13 @@ export default function BillDetailPage() {
               Print bill <Printer size={15} />
             </button>
           </div>
+        )}
+
+        {bill.chargeReversedAt && (
+          <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
+            <strong>Charge reversed</strong> on {formatBillDate(bill.chargeReversedAt)}{bill.chargeReversedBy ? ` by ${bill.chargeReversedBy}` : ''}: {bill.chargeReversalReason}.
+            {' '}{money(bill.amountPaid)} was collected against this invoice and is a credit on the patient&apos;s account until refunded.
+          </p>
         )}
 
         {/* ── Summary strip ── */}

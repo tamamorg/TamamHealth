@@ -111,6 +111,16 @@ export interface BillingDoc extends BaseDoc {
   county?: string;
   orgId?: string;
   notes?: string;
+  /**
+   * Set when the charge on a bill the patient had already paid toward was
+   * withdrawn (the service it billed did not happen here — e.g. a prescription
+   * re-routed to an outside pharmacy). The payments stay on the record as
+   * collected; the ledger carries the credit they leave, which is what a
+   * cashier refunds. An unpaid bill is cancelled instead (`cancelBill`).
+   */
+  chargeReversedAt?: string;
+  chargeReversedBy?: string;
+  chargeReversalReason?: string;
 }
 
 /**
