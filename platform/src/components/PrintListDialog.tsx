@@ -6,6 +6,7 @@ import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/component
 import { Printer, Download } from '@/components/icons/lucide';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { useAuth } from '@/lib/context';
 
 /** One column of a printable list. `key` indexes into each row record. */
 export interface PrintListColumn {
@@ -25,13 +26,38 @@ export interface PrintListSection {
 
 type OutputFormat = 'print' | 'csv';
 
+/** "Print worklist" → "Worklist": the paper is the list, not the command. */
+export function printListTitle(dialogTitle: string): string {
+  const name = dialogTitle.replace(/^print\s+/i, '').trim() || 'Worklist';
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+const COUNTDOWN = /^(in\s+)?(\d+\s*(d|h|hr|hrs|m|min|mins)\s*)+(ago|late|overdue)?$/i;
+
+/**
+ * A time cell for paper: clock times and dates stay, live countdowns go.
+ * "07:15 · 7h 37m ago" is true for a minute on screen and wrong for the rest
+ * of the sheet's life; the header already says when the list was generated.
+ */
+export function printableTime(...parts: Array<string | undefined | null>): string {
+  return parts
+    .map(part => (part || '').trim())
+    .filter(part => part && !COUNTDOWN.test(part))
+    .join(' · ');
+}
+
 /**
  * The printed page is a standalone document written into a hidden iframe —
  * not the app under `@media print`. That is what makes it a "pure list":
  * none of the dashboard chrome, card styling, or globals.css print traps
  * apply, just a black-on-white table per section.
  */
-export function buildPrintListHtml(title: string, subtitle: string | undefined, sections: PrintListSection[]): string {
+export function buildPrintListHtml(
+  title: string,
+  subtitle: string | undefined,
+  sections: PrintListSection[],
+  facilityName?: string,
+): string {
   const printedAt = new Date().toLocaleString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
@@ -45,8 +71,13 @@ export function buildPrintListHtml(title: string, subtitle: string | undefined, 
     return `<section class="section">${heading}<table><thead><tr><th scope="col" class="num">#</th>${head}</tr></thead><tbody>${rows}</tbody></table></section>`;
   }).join('');
   return buildClinicalPrintDocument({
-    title,
+    // The dialog is titled for the action ("Print worklist"); the sheet is
+    // titled for what it is.
+    title: printListTitle(title),
     documentLabel: 'Operational list',
+    // Without this every list was headed with the product's placeholder
+    // facility name, so a sheet left on a desk did not say whose list it was.
+    facilityName,
     meta: [
       ...(subtitle ? [{ label: 'Scope', value: subtitle }] : []),
       { label: 'Generated', value: printedAt },
@@ -91,6 +122,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
   filename: string;
   onClose: () => void;
 }) {
+  const { currentUser } = useAuth();
   // Preselect the sections that have rows — printing every empty lane by
   // default is noise, but any can be ticked back on.
   const [selected, setSelected] = useState<Set<string>>(() => {
@@ -109,7 +141,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
   const chosen = sections.filter(section => selected.has(section.key));
   const run = () => {
     if (chosen.length === 0) return;
-    if (format === 'print') openIsolatedHtmlWindow(buildPrintListHtml(title, subtitle, chosen), '', true);
+    if (format === 'print') openIsolatedHtmlWindow(buildPrintListHtml(title, subtitle, chosen, currentUser?.hospitalName), '', true);
     else downloadCsv(filename, chosen);
     onClose();
   };

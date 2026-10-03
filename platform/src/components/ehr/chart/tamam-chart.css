@@ -2231,7 +2231,30 @@
 @media print {
   .sbar-as-form { display: block !important; }
   .sbar-as-form .tamam-reg-rail { display: none !important; }
-  .sbar-as-form .tamam-reg-fields { break-inside: avoid; }
+  /* A sheet of paper is narrower than the 900px breakpoint above, so on paper
+     the form fell to one field per row: a handoff ran to six pages, the first
+     nearly empty because each section refused to break and jumped whole to the
+     next sheet. Printed, it is a compact three-up grid whose sections may
+     split across pages; only a single field stays together. */
+  .tamam-reg-form.sbar-as-form-body { gap: 10px !important; }
+  .sbar-as-form .sbar-ro-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px 14px !important;
+  }
+  .sbar-as-form .sbar-ro-field { gap: 1px !important; break-inside: avoid; }
+  .sbar-as-form .sbar-ro-label { font-size: 8pt !important; }
+  .sbar-as-form .sbar-ro-value {
+    min-height: 0 !important;
+    padding: 2px 0 3px !important;
+    border: 0 !important;
+    border-bottom: 1px solid #CFD6DD !important;
+    border-radius: 0 !important;
+    background: none !important;
+    font-size: 10pt !important;
+  }
+  .sbar-as-form .tamam-reg-section,
+  .sbar-as-form .tamam-reg-fields { break-inside: auto; }
+  .sbar-as-form .tamam-reg-fields { padding: 8px 10px !important; }
 }
 
 .sbar-triage-header,
@@ -2636,33 +2659,33 @@
 .tamam-root .tamam-panel-badge { display: inline-flex; align-items: center; gap: 4px; }
 .tamam-root .tamam-panel-badge svg { width: 12px; height: 12px; }
 
-/* ══════════════════ ORANGE ACTIONS ══════════════════
+/* ══════════════════ ACTION BUTTONS ══════════════════
  *
- * Every action button on the chart wears the palette's orange, so the verbs
- * (add, record, prescribe, order, save) read as one family against the white
- * surfaces and the blue chrome, the way the Epic toolbar's icon+label buttons
- * do. Two rungs:
- *   filled  — the primary verb of a surface: white label on --accent-orange-text
- *             (#B35900, 4.83:1). The bright #FF7F00 cannot carry white at AA,
- *             and this rung is the one globals.css reserves for white on orange.
+ * Every action button on the chart wears the platform's action blue, so the
+ * verbs (add, record, prescribe, order, save) read as one family, the way the
+ * Epic toolbar's icon+label buttons do. Two rungs:
+ *   filled  — the primary verb of a surface: white label on --accent-primary
+ *             (#015697, 7.56:1), the same fill as the global .btn-primary.
  *   outline — the secondary verb (Cancel, Retire, Correct, Vitals history):
- *             orange ink and an orange hairline on the surface colour.
+ *             --accent-text ink and hairline on the surface colour. That token
+ *             brightens itself on dark surfaces, so no theme override is needed.
  * Navigation (rail, tabs, segment toggles, filter chips, pager arrows) and the
  * balance chip keep their own treatment: they are controls, not verbs.
  * Section dialogs portal to <body>, so `.tamam-dialog` (set on their Modal)
  * carries the same variables outside `.tamam-root`. */
 .tamam-root,
 .tamam-dialog {
-  --tamam-btn-bg: var(--accent-orange-text);
-  --tamam-btn-bg-hover: var(--orange-900);
+  --tamam-btn-bg: var(--accent-primary);
+  --tamam-btn-bg-hover: var(--accent-hover);
   --tamam-btn-ink: var(--color-white);
-  --tamam-btn-outline-ink: var(--accent-orange-text);
+  --tamam-btn-outline-ink: var(--accent-text);
 }
-/* Dark surfaces: the text rung of orange is too dark to read as ink on them;
-   lift it to the 400 step (the fill keeps its white label either way). */
-:root[data-theme="dark"] .tamam-root,
-:root[data-theme="dark"] .tamam-dialog {
-  --tamam-btn-outline-ink: var(--orange-400);
+/* The drawer footer band is itself --accent-primary; a button filled with the
+   same blue would lose its edge there, so its primary keeps the lighter chart
+   blue it had before (white on it is 5.02:1). */
+.tamam-root .tamam-drawer-footer {
+  --tamam-btn-bg: var(--tamam-teal);
+  --tamam-btn-bg-hover: var(--tamam-teal);
 }
 
 /* ── Filled ── */
@@ -2717,7 +2740,7 @@
 }
 
 /* The duotone glyphs bake the brand blue into a `stroke=` attribute; repaint
-   the stroke, not just `color`, or the icon vanishes on the orange. */
+   the stroke, not just `color`, or the icon vanishes on the blue fill. */
 .tamam-root :is(
   .tamam-header-actions-btn,
   .tamam-section-add,
@@ -2781,7 +2804,7 @@
 }
 
 /* An action the role cannot take is still a button-shaped promise; mute it
-   rather than paint it orange. */
+   rather than paint it as an action. */
 .tamam-root .tamam-empty-action--disabled {
   border-color: var(--ehr-border, var(--border-light));
   color: var(--ehr-muted, #5D728B);
@@ -2840,8 +2863,8 @@
   margin-left: -2px;
 }
 
-/* Footer ghosts sit on the navy band and stay white-on-navy (orange ink is
-   unreadable there); only their glyph needed the stroke repaint. */
+/* Footer ghosts sit on the blue band and stay white-on-blue (the outline ink
+   is unreadable there); only their glyph needed the stroke repaint. */
 .tamam-drawer-footer .tamam-btn-ghost svg,
 .tamam-drawer-footer .tamam-btn-ghost svg.lucide {
   color: var(--color-white) !important;

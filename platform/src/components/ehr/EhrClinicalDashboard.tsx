@@ -50,7 +50,7 @@ import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import Select from '@/components/Select';
-import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
+import PrintListDialog, { printableTime, type PrintListSection } from '@/components/PrintListDialog';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import EhrWorkItemProgress from '@/components/ehr/EhrWorkItemProgress';
@@ -1221,7 +1221,7 @@ export default function EhrClinicalDashboard({
       return {
         patient: row.name,
         reason: row.reason || '',
-        time: [columns.waitText, columns.waitSubtext].filter(Boolean).join(' · '),
+        time: printableTime(columns.waitText, columns.waitSubtext) || '—',
         careTeam: [columns.careTeamPrimary, columns.careTeamSecondary].filter(Boolean).join(' · '),
         context: [columns.queueText, columns.comingFrom].filter(Boolean).join(' · '),
         status: [columns.statusText, columns.statusSubtext].filter(Boolean).join(' · '),
