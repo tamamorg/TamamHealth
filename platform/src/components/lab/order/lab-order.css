@@ -236,6 +236,13 @@
   margin: 0 auto;
 }
 
+/* Who fills the form in and who reads it — one quiet line above every step. */
+.labord-audience {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 /* ══════════════════ PATIENT STRIP ══════════════════ */
 
 .labord-patient-strip {
@@ -752,6 +759,20 @@
   color: var(--text-muted);
 }
 
+/* ══════════════════ REASON FOR TEST ══════════════════ */
+
+/* The picker stacks labelled groups (on this order, from this visit, symptoms,
+   no-symptom reasons); the bench's context block stacks labelled lines. */
+.labord-reason-group { margin-top: 14px; }
+.labord-reason-group > .labord-field-label { margin-bottom: 4px; }
+
+.labord-context {
+  display: grid;
+  gap: 12px;
+}
+
+.labord-context .labord-field-label { margin-bottom: 4px; }
+
 /* ══════════════════ CHIP ROWS ══════════════════ */
 
 .labord-chip-row {
@@ -1002,16 +1023,14 @@
   border-radius: 2px;
 }
 
-/* Print only the requisition — everything else on the page is chrome. */
+/* The requisition and the result report print through printElementById, which
+   isolates the document (globals.css, `[data-print-active]`). This sheet used
+   to hide `body *` itself — and because a stylesheet stays loaded once its
+   route has been visited, that rule blanked every OTHER print on the same
+   page too. Only the paper-only parts and their cosmetics live here now. */
 .labord-print-only { display: none; }
 @media print {
-  body * { visibility: hidden !important; }
-  .labord-print, .labord-print * { visibility: visible !important; }
   .labord-print {
-    position: absolute !important;
-    left: 0;
-    top: 0;
-    width: 100%;
     max-width: none;
     border: 0;
     padding: 0;

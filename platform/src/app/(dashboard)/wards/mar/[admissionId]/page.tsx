@@ -465,7 +465,8 @@ export default function MARPage() {
               {t(STATUS_LABEL_KEY[s])}
             </span>
           ))}
-          <span style={{ color: 'var(--text-muted)' }}>{t('mar.legendHint')}</span>
+          {/* A screen instruction: on the printed record there is no cell to click. */}
+          <span className="no-print" style={{ color: 'var(--text-muted)' }}>{t('mar.legendHint')}</span>
         </div>
 
         {/* Record-administration modal */}

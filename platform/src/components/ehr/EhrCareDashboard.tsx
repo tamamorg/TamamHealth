@@ -8,7 +8,7 @@ import { ClipboardList, Printer, Search, X, type LucideIcon } from '@/components
 import EhrMissionCard from './EhrMissionCard';
 import EhrPanelTitle from './EhrPanelTitle';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
-import PrintListDialog, { type PrintListSection } from '@/components/PrintListDialog';
+import PrintListDialog, { printableTime, type PrintListSection } from '@/components/PrintListDialog';
 import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import EhrStageDonut from '@/components/ehr/EhrStageDonut';
@@ -650,7 +650,7 @@ export default function EhrCareDashboard({
     rows: visibleRows.map(row => ({
       patient: row.title,
       details: row.subtitle || '',
-      time: [row.time || row.date || '—', row.timeSecondary].filter(Boolean).join(' · '),
+      time: printableTime(row.time || row.date || '—', row.timeSecondary),
       careTeam: [row.careTeam || row.compactMeta || row.meta || '', row.careTeamSecondary].filter(Boolean).join(' · '),
       context: row.location || row.room || row.meta || '',
       status: [row.statusLabel || (row.status ? titleCase(row.status) : ''), row.statusSecondary].filter(Boolean).join(' · '),

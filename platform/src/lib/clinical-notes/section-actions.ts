@@ -92,7 +92,6 @@ export const SECTION_ACTIONS: Readonly<Partial<Record<NoteSectionId, readonly No
   allergies: ['manage_allergies'],
   vitals: ['record_vitals'],
   plan: ['prescribe', 'order_lab', 'order_vaccine', 'patient_education', 'refer'],
-  recommendations: ['order_lab', 'refer'],
   follow_up: ['schedule_followup'],
   patient_education: ['patient_education'],
 };

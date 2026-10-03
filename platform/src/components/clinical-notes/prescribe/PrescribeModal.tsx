@@ -20,7 +20,11 @@ import { useRouter } from 'next/navigation';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useSettings } from '@/lib/settings/SettingsProvider';
+import { cannotFillOnSite, stockPositionFor } from '@/lib/pharmacy-stock-position';
+import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
 import CollapsibleSection from './CollapsibleSection';
 import DrugInfoSection from './DrugInfoSection';
 import PharmacyInfoSection from './PharmacyInfoSection';
@@ -31,6 +35,9 @@ import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc, ProblemDoc } fr
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import './../clinical-notes.css';
+
+/** The destination that hands the script to the patient instead of a queue. */
+const OUTSIDE_PHARMACY = 'Outside pharmacy (patient takes the script)';
 
 /** Strength fragment from a formulary name, for the stored dose. */
 function doseFrom(name: string): string {
@@ -62,7 +69,11 @@ export default function PrescribeModal({
 }: PrescribeModalProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const scope = useDataScope();
+  // Facility policy: a clinic with no dispensary has no queue to send to, so
+  // every prescription is issued to the patient as a script.
+  const onSitePharmacy = useSettings().clinicalPolicy.onSitePharmacy;
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
   const facility = currentUser?.hospitalName || 'This facility';
   const pharmacyName = `${facility} Pharmacy`;
@@ -71,19 +82,22 @@ export default function PrescribeModal({
   const [problems, setProblems] = useState<ProblemDoc[]>([]);
   const [activeRx, setActiveRx] = useState<PrescriptionDoc[]>([]);
   const [inventory, setInventory] = useState<PharmacyInventoryDoc[]>([]);
-  // Names the pharmacy can actually fill right now — what the prescriber's
-  // "Show only in-stock medicines by default" filters the typeahead against.
-  const inStockNames = useMemo(
-    () => new Set(inventory.filter(i => i.stockLevel > 0).map(i => i.medicationName.toLowerCase())),
-    [inventory],
-  );
   const [observations, setObservations] = useState('');
   const [balance, setBalance] = useState<number | null>(null);
 
   const [draft, setDraft] = useState<RxDraft>(() => emptyDraft(facility));
   const [query, setQuery] = useState('');
   const [advanced, setAdvanced] = useState(false);
-  const [pharmacy, setPharmacy] = useState(pharmacyName);
+  // The prescriber's pick, when they have made one. With no on-site pharmacy
+  // there is nothing to pick: facility settings hydrate after first paint, and
+  // a dialog opened in that window must not keep offering a pharmacy the
+  // facility does not have — so the destination is derived, not stored.
+  const [pickedPharmacy, setPharmacy] = useState<string | null>(null);
+  const pharmacy = onSitePharmacy ? (pickedPharmacy ?? pharmacyName) : OUTSIDE_PHARMACY;
+  const external = pharmacy === OUTSIDE_PHARMACY;
+  // Outside-pharmacy scripts written in this sitting, handed over together.
+  const [toHandOver, setToHandOver] = useState<PrescriptionDoc[]>([]);
+  const [handingOver, setHandingOver] = useState(false);
   const [warnings, setWarnings] = useState<MonographWarning[]>([]);
   const [favorite, setFavorite] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -184,12 +198,21 @@ export default function PrescribeModal({
     return () => { cancelled = true; };
   }, [draft.drug, currentUser?._id]);
 
-  const drugInventory = useMemo(() => {
-    const drug = draft.drug;
-    if (!drug) return null;
-    const stem = drug.name.split(/[\s(]/)[0].toLowerCase();
-    return inventory.find(i => i.medicationName.toLowerCase().includes(stem)) || null;
-  }, [draft.drug, inventory]);
+  // Where the picked drug stands on this facility's shelf, at the quantity
+  // being typed. Null when there is no on-site pharmacy to have a shelf.
+  // A prescriber with no facility of their own (an org-level role) has no
+  // shelf: their scope spans several hospitals, and summing those would report
+  // another site's stock as "in stock here". They get "not tracked" instead.
+  const shelf = useMemo(
+    () => (currentUser?.hospitalId ? inventory : []),
+    [inventory, currentUser?.hospitalId],
+  );
+  const stock = useMemo(() => {
+    if (!draft.drug || !onSitePharmacy) return null;
+    return stockPositionFor(draft.drug.name, shelf, Math.max(1, parseInt(draft.quantity, 10) || 1), {
+      facilityId: currentUser?.hospitalId,
+    });
+  }, [draft.drug, draft.quantity, shelf, onSitePharmacy, currentUser?.hospitalId]);
 
   const handleToggleFavorite = useCallback(async () => {
     const drug = draft.drug;
@@ -237,7 +260,9 @@ export default function PrescribeModal({
         duration: draft.daysSupply ? `${draft.daysSupply} days` : '',
         prescribedBy: userName,
         status: 'pending',
-        orderStatus: send ? 'received_in_pharmacy_queue' : 'prescribed',
+        // A script for an outside pharmacy never enters this facility's queue.
+        orderStatus: send && !external ? 'received_in_pharmacy_queue' : 'prescribed',
+        fulfilment: external ? 'external' : undefined,
         quantityToDispense: Math.max(1, parseInt(draft.quantity, 10) || 1),
         indication: draft.reason || undefined,
         allowSubstitution: draft.allowSubstitution,
@@ -272,7 +297,10 @@ export default function PrescribeModal({
           'error',
         );
       }
-      onPrescribed?.();
+      // A host may leave the screen on this signal (the full-page route goes
+      // back to the chart). An outside-pharmacy script still has to be handed
+      // to the patient first, so its signal waits for the handover to close.
+      if (!external && toHandOver.length === 0) onPrescribed?.();
       return result.prescription;
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not write the prescription.', 'error');
@@ -280,23 +308,63 @@ export default function PrescribeModal({
     } finally {
       setBusy(false);
     }
-  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast]);
+  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length]);
+
+  // Every way out of the dialog goes through here. Scripts already saved for
+  // an outside pharmacy still have to reach the patient, so leaving — Cancel,
+  // Close, Escape, Expand, or sending a later order to the on-site pharmacy —
+  // offers the handover first instead of dropping it. Returns whether the
+  // dialog actually closed.
+  const finish = (): boolean => {
+    if (toHandOver.length > 0 && !handingOver) { setHandingOver(true); return false; }
+    onClose();
+    return true;
+  };
+  const requestClose = () => { finish(); };
 
   const handleAddRx = async () => {
     const rx = await write(false);
     if (!rx) return;
     showToast(`${rx.medication} added.`, 'success');
     setActiveRx(prev => [rx, ...prev]);
+    if (external) setToHandOver(prev => [...prev, rx]);
     setDraft(emptyDraft(facility));
     setQuery('');
   };
 
   const handleSend = async () => {
+    // The shelf cannot fill this as written. Say so before it joins a queue
+    // where the patient would only find out at the pharmacy window.
+    if (stock && cannotFillOnSite(stock)) {
+      const proceed = await confirm({
+        title: 'The pharmacy cannot fill this as written',
+        message: stock.state === 'short'
+          ? `${facility} has ${stock.available} ${stock.unit || 'units'} of ${draft.drug?.name} in stock and this prescription asks for ${stock.requested}. Send it to the pharmacy anyway, or go back and issue it for an outside pharmacy.`
+          : `${draft.drug?.name} is not available at ${facility}. Send it to the pharmacy anyway, or go back and issue it for an outside pharmacy.`,
+        confirmLabel: 'Send to pharmacy anyway',
+        cancelLabel: 'Go back',
+        tone: 'warning',
+      });
+      if (!proceed) return;
+    }
     const rx = await write(true);
     if (!rx) return;
     showToast(`${rx.medication} sent to ${pharmacy}.`, 'success');
-    onClose();
+    finish();
   };
+
+  // Outside pharmacy: the order is saved, then the patient is given the
+  // script — on paper or by text — together with any others added just now.
+  const handleIssue = async () => {
+    const rx = await write(false);
+    if (!rx) return;
+    setActiveRx(prev => [rx, ...prev]);
+    setToHandOver(prev => [...prev, rx]);
+    setDraft(emptyDraft(facility));
+    setQuery('');
+    setHandingOver(true);
+  };
+
 
   const handlePrintDraft = () => {
     if (!draft.drug) { showToast('Pick the drug before printing the prescription draft.', 'error'); return; }
@@ -357,7 +425,7 @@ export default function PrescribeModal({
                 type="button"
                 className="cn-meds-close"
                 onClick={() => {
-                  onClose();
+                  if (!finish()) return;
                   const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
                   router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
                 }}
@@ -368,7 +436,7 @@ export default function PrescribeModal({
                 <Maximize2 size={18} />
               </button>
             )}
-            <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close prescribe medications" title="Close" data-action="popup-close">
+            <button type="button" className="cn-meds-close" onClick={requestClose} aria-label="Close prescribe medications" title="Close" data-action="popup-close">
               <X size={18} />
             </button>
           </div>
@@ -392,7 +460,11 @@ export default function PrescribeModal({
                 onToggleSigs={() => setShowSigs(v => !v)}
                 showReasons={showReasons}
                 onToggleReasons={() => setShowReasons(v => !v)}
-                inStockNames={inStockNames}
+                inventory={onSitePharmacy ? shelf : undefined}
+                facilityId={currentUser?.hospitalId}
+                facilityName={facility}
+                stock={stock}
+                onIssueOutside={external ? undefined : () => setPharmacy(OUTSIDE_PHARMACY)}
               />
             </CollapsibleSection>
 
@@ -400,9 +472,12 @@ export default function PrescribeModal({
               <PharmacyInfoSection
                 draft={draft}
                 onChange={patch}
-                pharmacies={[pharmacyName]}
+                pharmacies={onSitePharmacy ? [pharmacyName, OUTSIDE_PHARMACY] : [OUTSIDE_PHARMACY]}
                 pharmacy={pharmacy}
                 onPharmacyChange={setPharmacy}
+                note={external
+                  ? `${onSitePharmacy ? '' : `${facility} has no on-site pharmacy. `}The patient is given the prescription, printed or by text, to fill at a pharmacy of their choice${patient?.preferredPharmacy?.name ? ` (preferred: ${patient.preferredPharmacy.name})` : ''}.`
+                  : undefined}
               />
             </CollapsibleSection>
 
@@ -411,12 +486,18 @@ export default function PrescribeModal({
             </CollapsibleSection>
 
             <div className="cn-meds-footer">
-              <button type="button" className="cn-btn" onClick={onClose}>Cancel</button>
+              <button type="button" className="cn-btn" onClick={requestClose}>Cancel</button>
               <button type="button" className="cn-btn" onClick={handlePrintDraft}>Print draft</button>
               <button type="button" className="cn-btn" onClick={handleAddRx} disabled={busy}>Add Rx</button>
-              <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={busy}>
-                Send Medication
-              </button>
+              {external ? (
+                <button type="button" className="cn-btn cn-btn-primary" onClick={handleIssue} disabled={busy}>
+                  Issue to patient
+                </button>
+              ) : (
+                <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={busy}>
+                  Send Medication
+                </button>
+              )}
             </div>
           </div>
 
@@ -425,7 +506,7 @@ export default function PrescribeModal({
               drug={draft.drug}
               warnings={warnings}
               observations={observations}
-              inventory={drugInventory}
+              stock={stock}
               currentMedications={activeRx.map(r => `${r.medication}${r.dose ? ` · ${r.dose}` : ''}`)}
             />
           </div>
@@ -433,11 +514,27 @@ export default function PrescribeModal({
       </div>
   );
 
-  if (presentation === 'page') return panel;
+  // The handover for scripts issued in this sitting. Closing it closes the
+  // prescribing dialog too: the orders are saved, and the copy dialog records
+  // whatever was printed or texted.
+  const handover = handingOver && toHandOver.length > 0 && (
+    <PrescriptionCopyDialog
+      prescriptions={toHandOver}
+      patientId={patientId}
+      patientName={patientName}
+      currentUser={currentUser}
+      onClose={() => { setHandingOver(false); setToHandOver([]); onPrescribed?.(); onClose(); }}
+    />
+  );
+
+  if (presentation === 'page') return <>{panel}{handover}</>;
 
   return (
-    <Modal onClose={onClose} width={1140} labelledBy="cn-rx-title">
-      {panel}
-    </Modal>
+    <>
+      <Modal onClose={requestClose} width={1140} labelledBy="cn-rx-title">
+        {panel}
+      </Modal>
+      {handover}
+    </>
   );
 }

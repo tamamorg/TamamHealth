@@ -1959,6 +1959,27 @@ select.cn-select {
   font-weight: 400;
   color: var(--text-muted);
 }
+/* A sentence under a field, where the one-line quantity note would clip. */
+.cn-rx-field > span.cn-rx-fieldnote { white-space: normal; font-weight: 400; line-height: 1.4; }
+
+/* The shelf, under the drug being prescribed, and its tag on a search result. */
+.cn-rx-stock { margin: 8px 0 2px; }
+.cn-rx-stock--quiet { font-size: 12px; color: var(--text-muted); }
+.cn-rx-stock--quiet[data-stock='ok'] { color: var(--color-success-text); font-weight: 600; }
+.cn-rx-stocktag {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-warning-text);
+  white-space: nowrap;
+}
+.cn-rx-stocktag[data-stock='out'],
+.cn-rx-stocktag[data-stock='expired'] { color: var(--color-danger-text); }
 
 .cn-rx-favorite {
   display: inline-flex;

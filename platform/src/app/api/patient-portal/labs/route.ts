@@ -9,7 +9,13 @@ export async function GET(req: NextRequest) {
 
   try {
     const { getLabResultsByPatient } = await import('@/lib/services/lab-service');
-    const results = await getLabResultsByPatient(auth.sub);
+    // `orderComment` is the orderer's staff-only handling note; the wizard
+    // labels it "Only staff see this", so it never leaves for the patient.
+    const results = (await getLabResultsByPatient(auth.sub)).map(doc => {
+      const shared = { ...doc };
+      delete shared.orderComment;
+      return shared;
+    });
     return NextResponse.json({ results });
   } catch (err) {
     if (demoFallbackEnabled()) {

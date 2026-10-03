@@ -28,6 +28,8 @@ interface ChartHeaderProps {
   onMessage: () => void;
   onPrint: () => void;
   onPatientEd: () => void;
+  /** Open the end-of-visit summary the patient takes home (print or text). */
+  onVisitSummary?: () => void;
   onNote: () => void;
   onScripts: () => void;
   onOrders: () => void;
@@ -102,7 +104,7 @@ function AllergyBanner({ allergens, onShow }: { allergens?: string[]; onShow?: (
 
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
-  onCollectPayment, onMessage, onPrint, onPatientEd, onNote, onScripts, onOrders, onExchange, onEdit, onStickyNote, onAssignProvider,
+  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onNote, onScripts, onOrders, onExchange, onEdit, onStickyNote, onAssignProvider,
   onShowAllergies, onEndAssignment, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
@@ -223,6 +225,11 @@ export default function ChartHeader({
                 {canViewClinical && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onPatientEd(); }}>
                     <DuotoneIcon name="fileText" size={15} /> Patient education
+                  </button>
+                )}
+                {canViewClinical && onVisitSummary && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onVisitSummary(); }}>
+                    <DuotoneIcon name="fileText" size={15} /> Visit summary
                   </button>
                 )}
                 {canViewClinical && (

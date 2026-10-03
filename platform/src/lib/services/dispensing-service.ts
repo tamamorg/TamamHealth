@@ -32,7 +32,8 @@ import type {
 } from '../db-types';
 import { findByType } from './db-query';
 import { recordMovement } from './controlled-substance-service';
-import { effectivePrescriptionStatus, updatePrescription } from './prescription-service';
+import { OUTSIDE_PHARMACY_REFUSAL, effectivePrescriptionStatus, updatePrescription } from './prescription-service';
+import { holdsVisitAtPharmacy } from '../pharmacy-workflow';
 
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
@@ -540,6 +541,13 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   let rx = input.prescription;
   const { quantity } = input;
 
+  // The patient holds a signed script for an outside-pharmacy order. Handing
+  // it over here too would supply the same course twice — refused before any
+  // stock is touched, whatever stage the order is in.
+  if (rx.fulfilment === 'external') {
+    throw new DispenseError(OUTSIDE_PHARMACY_REFUSAL, 'NOT_CLEARED');
+  }
+
   // ── 1. Validate. Nothing is written before every check passes. ──
   //
   // Who is dispensing, resolved directory-first — mirrors the witness
@@ -923,8 +931,9 @@ async function advanceEncounterAfterPharmacyClear(rx: PrescriptionDoc): Promise<
 
     const { getPrescriptionsByPatient } = await import('./prescription-service');
     const rxs = await getPrescriptionsByPatient(rx.patientId);
-    const stillActive = rxs.some(r =>
-      r.encounterId === rx.encounterId && r.status !== 'dispensed' && r.status !== 'discontinued');
+    // An outside-pharmacy script is not this pharmacy's to dispense, so it
+    // never counts as "still to do" here (`holdsVisitAtPharmacy`).
+    const stillActive = rxs.some(r => r.encounterId === rx.encounterId && holdsVisitAtPharmacy(r));
     if (stillActive) return;
 
     const { getNotesByPatient } = await import('../clinical-notes/note-service');

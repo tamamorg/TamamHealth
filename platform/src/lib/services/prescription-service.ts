@@ -1,6 +1,6 @@
 import { prescriptionsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
-import type { PrescriptionDoc, UserRole, HospitalDoc } from '../db-types';
+import type { PrescriptionDoc, PrescriptionPatientCopy, UserRole, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,6 +17,8 @@ import {
 import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinical-flow/order-lifecycles';
 import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import { canRerouteToOutsidePharmacy } from '../prescription-script';
+import { holdsVisitAtPharmacy, isOutsidePharmacyOrder } from '../pharmacy-workflow';
 import {
   getAdministrationEvents,
   getAdministrationEventsForPrescriptions,
@@ -38,6 +40,11 @@ import { getUserById } from '@/modules/identity/services/user-service';
  * from this one — importing it back would be circular.
  */
 const CLEARANCE_ROLES: UserRole[] = ['pharmacist'];
+
+/** Why an outside-pharmacy script cannot be worked or dispensed on site. */
+export const OUTSIDE_PHARMACY_REFUSAL =
+  'This prescription was issued for an outside pharmacy, and the patient holds the script. '
+  + 'To dispense it here, ask the prescriber to renew it for this pharmacy.';
 
 /** Granular pharmacy lifecycle stage, defaulting legacy docs from coarse status. */
 export function effectivePrescriptionStatus(
@@ -112,6 +119,11 @@ export async function advancePrescription(
   const from = effectivePrescriptionStatus(existing);
   if (from !== to && !rxLifecycle.can(from, to)) {
     throw new Error(`Illegal prescription transition: ${from} → ${to}`);
+  }
+  // The patient is holding a signed script for this order. Moving it through
+  // this facility's dispensing stages as well would supply the course twice.
+  if (existing.fulfilment === 'external' && from !== to) {
+    throw new Error(OUTSIDE_PHARMACY_REFUSAL);
   }
   if (to === 'cleared_for_dispensing') {
     const actor = actorId ? await getUserById(actorId) : null;
@@ -195,6 +207,26 @@ class SkipCheck extends Error {}
  * Failure is not a refusal: an unreadable settings document leaves the
  * advisory behaviour in place rather than blocking care.
  */
+/**
+ * Whether the facility an order is written at runs its own dispensary
+ * (`clinicalPolicy.onSitePharmacy`). Asked of the facility's settings document
+ * for the same reason the allergy policy is; an unreadable document leaves the
+ * long-standing behaviour — an on-site pharmacy — in place.
+ */
+async function onSitePharmacyAvailable(hospitalId?: string): Promise<boolean> {
+  if (hospitalId) {
+    try {
+      const { getFacilitySettings } = await import('../settings/settings-service');
+      return (await getFacilitySettings(hospitalId)).clinicalPolicy.onSitePharmacy !== false;
+    } catch { /* fall through to the in-memory store */ }
+  }
+  try {
+    return getSettings().clinicalPolicy.onSitePharmacy !== false;
+  } catch {
+    return true;
+  }
+}
+
 async function allergyHardStopEnabled(hospitalId?: string): Promise<boolean> {
   if (hospitalId) {
     try {
@@ -464,7 +496,9 @@ export async function createPrescription(
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   let admissionId = data.admissionId;
-  if (!admissionId && data.hospitalId) {
+  // An outside-pharmacy script is for the patient to take away (discharge
+  // medicines, say) — it is not a ward order and must not land on the MAR.
+  if (!admissionId && data.hospitalId && data.fulfilment !== 'external') {
     // A medication ordered from the chart while the patient is admitted is an
     // inpatient order even when the generic prescribing modal did not know the
     // admission id. Resolve it once at write time so it appears on exactly one
@@ -478,10 +512,20 @@ export async function createPrescription(
       )?._id;
     } catch { /* an outpatient order remains outpatient when the ward store is unavailable */ }
   }
+  // At a facility with no dispensary an outpatient order can only ever be a
+  // script the patient takes away. Decided here, not in one dialog, because
+  // orders are written from several screens (the quick prescribe form, a
+  // renewal, the note's medication list) and every one of them would
+  // otherwise create an order for a queue nobody works — invisible to the
+  // patient and a permanent hold on checkout. Ward orders (an admission) are
+  // administered from ward stock and stay as they are.
+  const external = data.fulfilment === 'external'
+    || (!data.fulfilment && !admissionId && !(await onSitePharmacyAvailable(data.hospitalId)));
   const doc: PrescriptionDoc = withPendingOfflineSync({
     _id: `rx-${uuidv4()}`,
     type: 'prescription',
     ...data,
+    ...(external ? { fulfilment: 'external' as const, orderStatus: 'prescribed' as const } : {}),
     // Stamped at write time, not derived on read: the tier is what the queue
     // sorts on and what the checkout safety flag reads, and both must agree
     // with what the prescriber saw. A later formulary edit reclassifying a
@@ -509,8 +553,16 @@ export async function createPrescription(
   // Both of the following are best-effort and deliberately AFTER the write:
   // the prescription is the clinical act, and neither a pricing gap nor an
   // encounter in an unexpected state may cost the patient their medication.
-  await parkVisitAtPharmacy(doc);
-  await billPrescription(doc);
+  //
+  // Neither applies to an outside-pharmacy script. It is not this pharmacy's
+  // work, so parking the visit would hold it for a dispense that cannot happen
+  // here; and it is not this facility's sale, so billing it would charge the
+  // patient for a medicine they buy elsewhere — a balance the checkout gate
+  // then waits on.
+  if (!isOutsidePharmacyOrder(doc)) {
+    await parkVisitAtPharmacy(doc);
+    await billPrescription(doc);
+  }
 
   return { prescription: doc, interactionWarnings, allergyWarnings, duplicateWarnings };
 }
@@ -546,6 +598,166 @@ export async function updatePrescription(id: string, data: Partial<PrescriptionD
   } catch {
     return null;
   }
+}
+
+/** Write one change to a prescription, re-reading on a revision conflict. */
+async function amendPrescription(
+  id: string,
+  change: (existing: PrescriptionDoc) => Partial<PrescriptionDoc> | null,
+): Promise<PrescriptionDoc | null> {
+  const db = prescriptionsDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let existing: PrescriptionDoc;
+    try {
+      existing = await db.get(id) as PrescriptionDoc;
+    } catch {
+      return null;
+    }
+    const patch = change(existing);
+    if (!patch) return existing;
+    const updated = withPendingOfflineSync({ ...existing, ...patch, updatedAt: new Date().toISOString() });
+    try {
+      const resp = await db.put(updated);
+      updated._rev = resp.rev;
+      emitSyncEvent({
+        resourceType: 'prescription',
+        resourceId: updated._id,
+        operation: 'update',
+        resourceVersion: updated._rev,
+        hospitalId: updated.hospitalId,
+        orgId: updated.orgId,
+      });
+      return updated;
+    } catch (err) {
+      // The pharmacy and the prescriber can both be writing the same order.
+      if ((err as { status?: number }).status === 409 && attempt < 4) continue;
+      throw err;
+    }
+  }
+  return null;
+}
+
+/**
+ * Turn an on-site order into a script the patient fills at an outside
+ * pharmacy — the shelf could not fill it, or the patient prefers their own
+ * pharmacy. Refused (the order is returned unchanged) once the order is on a
+ * pharmacist's bench; see `canRerouteToOutsidePharmacy`.
+ */
+export async function rerouteToOutsidePharmacy(
+  id: string,
+  actor: { id?: string; name: string },
+): Promise<PrescriptionDoc | null> {
+  let rerouted = false;
+  const updated = await amendPrescription(id, existing => {
+    if (existing.fulfilment === 'external' || !canRerouteToOutsidePharmacy(existing)) return null;
+    rerouted = true;
+    // A copy may already have been given while the order was still on-site
+    // (a text is recorded when the gateway accepts it, which can precede this
+    // write). That copy is the handover, so it counts from when it was given.
+    const firstCopy = existing.patientCopies?.[0];
+    return {
+      fulfilment: 'external',
+      ...(firstCopy ? {
+        issuedToPatientAt: existing.issuedToPatientAt || firstCopy.at,
+        issuedToPatientBy: existing.issuedToPatientBy || firstCopy.byName,
+      } : {}),
+    };
+  });
+  if (updated && rerouted) {
+    await logAuditSafe('PRESCRIPTION_REROUTED', actor.id, actor.name,
+      `Rx ${id}: ${updated.medication} — to be filled at an outside pharmacy`);
+    // The order was written as on-site, so it was billed and the visit was
+    // parked at the pharmacy. Neither holds once the patient takes it away.
+    await cancelPrescriptionCharge(updated, actor);
+    await releaseVisitFromPharmacy(updated, actor.id);
+  }
+  return updated;
+}
+
+/**
+ * Reverse the pharmacy charge raised when an order was written, for an order
+ * that is now filled outside the facility. Each prescription is billed on its
+ * own invoice (`billPrescription`), so that invoice is cancelled — which the
+ * billing service refuses once any payment has been taken, leaving a paid
+ * charge for the cashier to refund rather than silently rewriting money.
+ * Best-effort: the re-route is the clinical fact and stands regardless.
+ */
+async function cancelPrescriptionCharge(rx: PrescriptionDoc, actor: { id?: string; name: string }): Promise<void> {
+  try {
+    const { getBillsByPatient, cancelBill } = await import('./billing-service');
+    const bills = await getBillsByPatient(rx.patientId);
+    for (const bill of bills) {
+      const isThisOrder = bill.items.length > 0 && bill.items.every(
+        item => item.referenceType === 'prescription' && item.referenceId === rx._id);
+      if (!isThisOrder) continue;
+      await cancelBill(bill._id, actor.id || actor.name, actor.name, 'Prescription sent to an outside pharmacy');
+    }
+  } catch (err) {
+    console.warn('[prescription] could not cancel the charge for a re-routed order:', err);
+  }
+}
+
+/**
+ * Move a visit on from `awaiting_pharmacy` when nothing is left for this
+ * pharmacy to fill and the note is signed — the same closing move a final
+ * dispense makes (`advanceEncounterAfterPharmacyClear`), reached here because
+ * the last on-site order was sent out with the patient instead. A visit with
+ * another order still to dispense, or an unsigned note, stays where it is;
+ * signing the note later makes the same check.
+ */
+async function releaseVisitFromPharmacy(rx: PrescriptionDoc, actorId?: string): Promise<void> {
+  if (!rx.encounterId) return;
+  try {
+    const { getEncounter, transitionEncounter } = await import('./encounter-service');
+    const encounter = await getEncounter(rx.encounterId);
+    if (!encounter || encounter.status !== 'awaiting_pharmacy') return;
+
+    const rxs = await getPrescriptionsByPatient(rx.patientId);
+    if (rxs.some(other => other.encounterId === rx.encounterId && holdsVisitAtPharmacy(other))) return;
+
+    const { getNotesByPatient } = await import('../clinical-notes/note-service');
+    const notes = await getNotesByPatient(rx.patientId);
+    const signed = notes.some(note =>
+      note.encounterId === rx.encounterId && (note.status === 'signed' || note.status === 'amended'));
+    if (!signed) return;
+
+    await transitionEncounter(rx.encounterId, 'ready_for_clinic_checkout', { actorId });
+  } catch (err) {
+    console.warn('[prescription] could not release the visit from the pharmacy stage:', err);
+  }
+}
+
+/**
+ * Record that a copy of the prescription was given to the patient — printed or
+ * texted. For a script the patient fills outside the facility this is the
+ * handover itself: it stamps `issuedToPatientAt`, which is what releases the
+ * order from the checkout gate.
+ *
+ * A texted copy is recorded once per message: a retried send must not log the
+ * same text twice.
+ */
+export async function recordPrescriptionPatientCopy(
+  id: string,
+  copy: PrescriptionPatientCopy,
+): Promise<PrescriptionDoc | null> {
+  let recorded = false;
+  const updated = await amendPrescription(id, existing => {
+    const copies = existing.patientCopies || [];
+    if (copy.messageId && copies.some(c => c.messageId === copy.messageId)) return null;
+    recorded = true;
+    const external = existing.fulfilment === 'external';
+    return {
+      patientCopies: [...copies, copy],
+      issuedToPatientAt: external ? (existing.issuedToPatientAt || copy.at) : existing.issuedToPatientAt,
+      issuedToPatientBy: external ? (existing.issuedToPatientBy || copy.byName) : existing.issuedToPatientBy,
+    };
+  });
+  if (updated && recorded) {
+    await logAuditSafe('PRESCRIPTION_COPY_GIVEN', copy.byId, copy.byName,
+      `Rx ${id}: ${updated.medication} — ${copy.channel === 'sms' ? 'texted to' : 'printed for'} the patient`
+      + (updated.fulfilment === 'external' ? ' (outside pharmacy)' : ''));
+  }
+  return updated;
 }
 
 /**

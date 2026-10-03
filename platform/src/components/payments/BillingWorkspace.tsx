@@ -1017,6 +1017,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         <PaymentPanel
           patientId={payingLine.patientId}
           patientName={payingLine.patientName}
+          hospitalNumber={payingLine.hospitalNumber}
           amountDue={payingLine.outstanding}
           onCancel={() => setPayingLine(null)}
           onSuccess={() => { setPayingLine(null); loadData(); }}

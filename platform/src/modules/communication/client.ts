@@ -47,4 +47,6 @@ export {
   MessagingDockProvider, useMessagingDock, type DockPerson,
 } from './components/messaging-dock-context';
 export { default as MessagingDock } from './components/MessagingDock';
+export { default as PatientTextOutbox } from './components/PatientTextOutbox';
+export { default as PatientTextDialog, type PatientTextDialogProps } from './components/PatientTextDialog';
 export { default as AnnouncementsPanel } from './components/AnnouncementsPanel';

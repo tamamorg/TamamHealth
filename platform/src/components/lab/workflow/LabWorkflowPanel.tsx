@@ -124,13 +124,17 @@ export default function LabWorkflowPanel({
       </nav>
 
       <div className="labord-main">
-        <fieldset className="labord-scroll" disabled={!canWork} style={{ border: 0, margin: 0, minWidth: 0 }}>
+        {/* A read-only viewer (the ordering clinician) cannot work the bench,
+            but the finished report is theirs to read and print — so the Report
+            step stays enabled and guards its own write controls instead. A
+            disabled fieldset disables every button inside it, Print included. */}
+        <fieldset className="labord-scroll" disabled={!canWork && ctrl.step !== 'report'} style={{ border: 0, margin: 0, minWidth: 0 }}>
           {ctrl.step === 'order' && <OrderStep order={order} />}
           {ctrl.step === 'collect' && <CollectStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'receive' && <ReceiveStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'process' && <ProcessStep order={order} ctrl={ctrl} />}
           {ctrl.step === 'result' && <ResultStep order={order} ctrl={ctrl} />}
-          {ctrl.step === 'report' && <ReportStep order={order} ctrl={ctrl} />}
+          {ctrl.step === 'report' && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} />}
         </fieldset>
 
         <div className="labord-footer">

@@ -84,6 +84,17 @@ export interface CheckoutGateEvaluation {
 const RESOLVED_RX_STATUSES = new Set(['dispensed', 'discontinued']);
 
 /**
+ * A script for an outside pharmacy is finished, as far as this facility is
+ * concerned, once a copy has been handed to the patient. No dispense will ever
+ * be recorded here, so waiting for one would hold every visit at a facility
+ * with no dispensary. Until the copy is given it stays outstanding — an order
+ * the patient was never handed is exactly what this gate exists to catch.
+ */
+function isHandedToPatient(rx: { fulfilment?: string; issuedToPatientAt?: string }): boolean {
+  return rx.fulfilment === 'external' && Boolean(rx.issuedToPatientAt);
+}
+
+/**
  * Stages that are themselves at or past clinic checkout (Stage 9) or facility
  * checkout (Stage 10). An encounter reaching one of these already passed
  * through `ready_for_clinic_checkout`/`referred_out` at some earlier hop —
@@ -164,7 +175,11 @@ export async function evaluateCheckoutGate(
   try {
     const { getPrescriptionsByPatient } = await import('./prescription-service');
     const rxs = await getPrescriptionsByPatient(patientId, scope);
-    const outstanding = rxs.filter((r) => !RESOLVED_RX_STATUSES.has(r.status));
+    const outstanding = rxs.filter((r) => !RESOLVED_RX_STATUSES.has(r.status) && !isHandedToPatient(r));
+    // Scripts for an outside pharmacy are closed by giving the patient their
+    // copy, not by the dispensing queue — say which, and link accordingly.
+    const awaitingHandover = outstanding.filter((r) => r.fulfilment === 'external');
+    const awaitingDispense = outstanding.length - awaitingHandover.length;
     // Life-sustaining orders among them, for the separate safety signal above.
     const { isTier1 } = await import('../clinical-flow/medication-tiers');
     tier1Outstanding = outstanding
@@ -172,12 +187,19 @@ export async function evaluateCheckoutGate(
       .map((r) => ({ id: r._id, medication: r.medication }));
     push('prescriptions_dispensed', outstanding.length === 0,
       outstanding.length
-        ? `${outstanding.length} prescription(s) not yet dispensed: ${outstanding.map((r) => r.medication).slice(0, 3).join(', ')}.`
+        ? (awaitingDispense
+          ? `${awaitingDispense} prescription(s) not yet dispensed: ${outstanding.filter((r) => r.fulfilment !== 'external').map((r) => r.medication).slice(0, 3).join(', ')}.`
+          : '')
+          + (awaitingHandover.length
+            ? `${awaitingDispense ? ' ' : ''}${awaitingHandover.length} outside-pharmacy script(s) not yet given to the patient — print or text: ${awaitingHandover.map((r) => r.medication).slice(0, 3).join(', ')}.`
+            : '')
           + (tier1Outstanding.length
             ? ` ${tier1Outstanding.length} of these ${tier1Outstanding.length === 1 ? 'is' : 'are'} life-sustaining (Tier 1) — admin intervention required regardless of payment.`
             : '')
         : undefined,
-      outstanding.length ? '/pharmacy' : undefined);
+      outstanding.length
+        ? (awaitingDispense ? '/pharmacy' : `/patients/${patientId}?tab=prescriptions`)
+        : undefined);
   } catch (err) {
     push('prescriptions_dispensed', false, `Could not read prescriptions — blocking. (${errText(err)})`);
   }

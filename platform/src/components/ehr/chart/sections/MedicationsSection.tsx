@@ -21,9 +21,11 @@ import PopupHeader from '@/components/PopupHeader';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
-import { RefreshCw, Ban } from '@/components/icons/lucide';
+import { RefreshCw, Ban, Printer } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import { clickable } from '@/lib/a11y';
+import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
+import { isScriptable } from '@/lib/prescription-script';
 
 const PAGE_SIZE = 8;
 
@@ -34,6 +36,17 @@ const RX_STATUS_LABEL: Record<string, string> = {
   dispensed: 'Dispensed',
   discontinued: 'Stopped',
 };
+
+/**
+ * A script for an outside pharmacy is never "dispensed" here, so its status is
+ * whether the patient has been given it — the thing checkout waits on.
+ */
+function rxStatusLabel(rx: PrescriptionDoc): string {
+  if (rx.status === 'pending' && rx.fulfilment === 'external') {
+    return rx.issuedToPatientAt ? 'Script given to patient' : 'Script not yet given';
+  }
+  return RX_STATUS_LABEL[rx.status] || rx.status;
+}
 
 const STATUS_BADGE: Record<string, string> = {
   pending: 'tamam-panel-badge tamam-panel-badge--pending',
@@ -77,6 +90,8 @@ export default function MedicationsSection({
   const [selectedRx, setSelectedRx] = useState<PrescriptionDoc | null>(null);
   const [showStopReason, setShowStopReason] = useState(false);
   const [stopReason, setStopReason] = useState('');
+  /** The order whose copy is being handed to the patient (print or text). */
+  const [copyFor, setCopyFor] = useState<PrescriptionDoc | null>(null);
 
   const patientRx = useMemo(
     () => (prescriptions || [])
@@ -227,7 +242,7 @@ export default function MedicationsSection({
                 <td style={{ fontWeight: 600 }}>{rx.medication}</td>
                 <td>{formatRxSig(rx)}</td>
                 <td>{formatDate(rx.createdAt)}</td>
-                <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{RX_STATUS_LABEL[rx.status] || rx.status}</span></td>
+                <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{rxStatusLabel(rx)}</span></td>
               </tr>
             ))}
           </tbody>
@@ -240,14 +255,14 @@ export default function MedicationsSection({
           <PopupHeader
             title={selectedRx.medication}
             titleId="medication-row-title"
-            subtitle={`${formatRxSig(selectedRx)} · ${RX_STATUS_LABEL[selectedRx.status] || selectedRx.status}`}
+            subtitle={`${formatRxSig(selectedRx)} · ${rxStatusLabel(selectedRx)}`}
             onClose={() => setSelectedRx(null)}
             surface="panel"
           />
           <div className="clinical-row-dialog__facts">
             <div><span>Medication</span><strong>{selectedRx.medication}</strong></div>
             <div><span>Dosage instructions</span><strong>{formatRxSig(selectedRx)}</strong></div>
-            <div><span>Status</span><strong>{RX_STATUS_LABEL[selectedRx.status] || selectedRx.status}</strong></div>
+            <div><span>Status</span><strong>{rxStatusLabel(selectedRx)}</strong></div>
             <div><span>Start date</span><strong>{formatDate(selectedRx.createdAt)}</strong></div>
           </div>
           {showStopReason && (
@@ -264,9 +279,20 @@ export default function MedicationsSection({
             </label>
           )}
           <div className="clinical-row-dialog__actions">
-            {onSelect && !showStopReason && (
+            {onSelect && !showStopReason && selectedRx.fulfilment !== 'external' && (
               <button className="btn btn-sm btn-primary" onClick={() => { const id = selectedRx._id; setSelectedRx(null); onSelect(id); }}>
                 Open medication workflow
+              </button>
+            )}
+            {/* Offered only while the order is still a script: a stopped or
+                fully dispensed one would print as a second valid course. */}
+            {canPrescribe && !showStopReason && isScriptable(selectedRx) && (
+              <button
+                className="btn btn-sm btn-secondary"
+                disabled={busyId === selectedRx._id}
+                onClick={() => { setCopyFor(selectedRx); setSelectedRx(null); }}
+              >
+                <Printer className="w-3.5 h-3.5" /> Give to patient
               </button>
             )}
             {canPrescribe && !showStopReason && (
@@ -290,6 +316,17 @@ export default function MedicationsSection({
           </div>
         </div>
       </Modal>
+    )}
+    {copyFor && (
+      <PrescriptionCopyDialog
+        prescriptions={[copyFor]}
+        // The rest of the patient's active orders, so one script can carry them.
+        alsoOffer={patientRx.filter(rx => rx._id !== copyFor._id && rx.status === 'pending')}
+        patientId={patientId}
+        patientName={patientName}
+        currentUser={currentUser ?? null}
+        onClose={() => setCopyFor(null)}
+      />
     )}
     </>
   );

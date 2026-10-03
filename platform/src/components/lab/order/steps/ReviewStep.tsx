@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Step 5 — Review. Everything about to be committed, on one page, with a jump
+ * Step 4 — Review. Everything about to be committed, on one page, with a jump
  * back to whichever step owns each block. This is the last point where the
  * order is still a draft, so it repeats the AOE answers verbatim rather than
  * summarising them.
@@ -56,7 +56,7 @@ export default function ReviewStep({
               <span className="labord-field-value">{patient ? `${patientAgeLabel(patient)} · ${patient.gender || '—'}` : '—'}</span>
             </div>
             <div>
-              <span className="labord-field-label">{t('labOrder.orderingProvider')}</span>
+              <span className="labord-field-label">{t('labOrder.orderingProviderLabel')}</span>
               <span className="labord-field-value">{draft.orderedByName || '—'}</span>
             </div>
             <div>
@@ -71,15 +71,15 @@ export default function ReviewStep({
 
       <div className="labord-section">
         <div className="labord-section-head">
-          <span>{t('labOrder.diagnoses')}</span>
-          <EditButton label={t('action.edit')} onClick={() => onEditStep('diagnosis')} />
+          <span>{t('labOrder.reasons')}</span>
+          <EditButton label={t('action.edit')} onClick={() => onEditStep('clinical')} />
         </div>
         <div className="labord-section-body">
           <div className="labord-chip-row">
             {draft.indications.map(indication => (
               <span key={indication.code} className="labord-chip"><code>{indication.code}</code> {indication.title}</span>
             ))}
-            {draft.indications.length === 0 && <span className="labord-help">{t('labOrder.noDiagnosesYet')}</span>}
+            {draft.indications.length === 0 && <span className="labord-help">{t('labOrder.noReasonYet')}</span>}
           </div>
         </div>
       </div>

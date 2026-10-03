@@ -24,7 +24,7 @@
 
 import { useState } from 'react';
 import type { FormularyDrug } from '@/lib/data/formulary';
-import type { PharmacyInventoryDoc } from '@/lib/db-types';
+import type { StockPosition } from '@/lib/pharmacy-stock-position';
 
 export interface MonographWarning {
   severity: 'contraindicated' | 'serious' | 'moderate' | 'minor' | 'allergy';
@@ -37,8 +37,9 @@ interface DrugMonographPanelProps {
   warnings: MonographWarning[];
   /** "Wt 62 kg · 60 y" — empty when the chart holds no usable observation. */
   observations: string;
-  /** This facility's stock line for the drug, when it carries one. */
-  inventory: PharmacyInventoryDoc | null;
+  /** The drug's position on this facility's shelf at the prescribed quantity.
+   *  Null when the facility has no on-site pharmacy. */
+  stock: StockPosition | null;
   /** The patient's current medicines, for context under the warnings. */
   currentMedications: string[];
 }
@@ -57,7 +58,7 @@ function genericOf(drug: FormularyDrug): string {
 }
 
 export default function DrugMonographPanel({
-  drug, warnings, observations, inventory, currentMedications,
+  drug, warnings, observations, stock, currentMedications,
 }: DrugMonographPanelProps) {
   const [openSection, setOpenSection] = useState<'warnings' | 'uses' | 'cautions'>('warnings');
 
@@ -67,17 +68,31 @@ export default function DrugMonographPanel({
 
   const brand = brandOf(drug);
   const cautions: string[] = [];
-  if (inventory?.controlledSchedule) {
-    cautions.push(`Controlled drug (schedule ${inventory.controlledSchedule}) — register entry required at dispensing.`);
+  if (stock?.controlledSchedule) {
+    cautions.push(`Controlled drug (schedule ${stock.controlledSchedule}) — register entry required at dispensing.`);
   }
-  if (inventory?.requiresWitness) {
+  if (stock?.requiresWitness) {
     cautions.push('Dispensing must be witnessed and co-signed.');
   }
-  if (inventory) {
-    cautions.push(`Stock at this facility: ${inventory.stockLevel} ${inventory.unit}${inventory.stockLevel <= inventory.reorderLevel ? ' — at or below reorder level' : ''}.`);
-    if (inventory.expiryDate) cautions.push(`Batch ${inventory.batchNumber || '—'} expires ${inventory.expiryDate}.`);
-  } else {
+  // The same shelf position the form's stock notice shows — every in-date
+  // batch summed, judged against the quantity being prescribed.
+  if (!stock) {
+    cautions.push('This facility has no on-site pharmacy — the patient fills this at an outside pharmacy.');
+  } else if (stock.state === 'untracked') {
+    cautions.push('Stock is not tracked at this facility.');
+  } else if (stock.state === 'not_stocked') {
     cautions.push('Not stocked at this facility — the patient may need an external pharmacy.');
+  } else if (stock.state === 'expired') {
+    cautions.push('Only expired stock remains at this facility.');
+  } else if (stock.state === 'out') {
+    cautions.push('Out of stock at this facility.');
+  } else {
+    const unit = stock.unit ? ` ${stock.unit}` : '';
+    const qualifier = stock.state === 'short'
+      ? ` — less than the ${stock.requested} prescribed`
+      : stock.state === 'low' ? ' — at or below reorder level' : '';
+    cautions.push(`Stock at this facility: ${stock.available}${unit}${qualifier}.`);
+    if (stock.soonestExpiry) cautions.push(`Batch ${stock.soonestBatch || '—'} expires ${stock.soonestExpiry}.`);
   }
 
   return (

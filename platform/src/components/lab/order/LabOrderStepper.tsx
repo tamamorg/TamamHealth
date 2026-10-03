@@ -2,7 +2,7 @@
 
 /**
  * The wizard's chevron stepper. Steps already satisfied are clickable so a
- * clinician can jump back to fix a diagnosis without walking the whole form
+ * clinician can jump back to fix a test or a reason without walking the whole form
  * again; steps ahead of the first unsatisfied one are inert.
  */
 
@@ -13,7 +13,6 @@ const STEP_LABEL_KEY: Record<LabOrderStepKey, string> = {
   patient: 'labOrder.stepPatient',
   tests: 'labOrder.stepTests',
   clinical: 'labOrder.stepClinical',
-  diagnosis: 'labOrder.stepDiagnosis',
   review: 'labOrder.stepReview',
   complete: 'labOrder.stepComplete',
 };

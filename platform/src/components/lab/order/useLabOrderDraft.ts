@@ -28,12 +28,20 @@ import {
   type OrderedTest,
 } from './lab-order-types';
 
-export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
+export function useLabOrderDraft(options: {
+  presetPatientId?: string;
+  /** Reasons already known where the order was opened (a note's coded
+   *  diagnoses). They start on the order; the clinician can remove any. */
+  presetIndications?: OrderIndication[];
+  /** Complaint text from the opener, used for the reason suggestions. */
+  contextText?: string;
+} = {}) {
   const { currentUser } = useAuth();
   const { patients } = usePatients();
   const [draft, setDraft] = useState<LabOrderDraft>(() => ({
     ...emptyLabOrderDraft(currentUser?.name || ''),
     patientId: options.presetPatientId || '',
+    indications: options.presetIndications || [],
   }));
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<LabOrderReceipt | null>(null);
@@ -106,9 +114,11 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
       case 'tests':
         return draft.tests.length ? [] : ['labOrder.errTests'];
       case 'clinical':
-        return missingAoe.length ? ['labOrder.errAoe'] : [];
-      case 'diagnosis':
-        return draft.indications.length ? [] : ['labOrder.errDiagnosis'];
+        // In the order the step lays them out: the reason, then the AOEs.
+        return [
+          ...(draft.indications.length ? [] : ['labOrder.errReason']),
+          ...(missingAoe.length ? ['labOrder.errAoe'] : []),
+        ];
       default:
         return [];
     }
@@ -223,6 +233,7 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
           hospitalName: currentUser?.hospitalName,
           orgId: currentUser?.orgId,
           clinicalNotes: draft.notes || undefined,
+          orderComment: draft.comments.trim() || undefined,
           priority: draft.priority,
           processing: draft.processing,
           collectionTiming: draft.collectionTiming,
@@ -350,9 +361,13 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
   }, [submitInner]);
 
   const reset = useCallback(() => {
-    setDraft({ ...emptyLabOrderDraft(currentUser?.name || ''), patientId: options.presetPatientId || '' });
+    setDraft({
+      ...emptyLabOrderDraft(currentUser?.name || ''),
+      patientId: options.presetPatientId || '',
+      indications: options.presetIndications || [],
+    });
     setReceipt(null);
-  }, [currentUser?.name, options.presetPatientId]);
+  }, [currentUser?.name, options.presetPatientId, options.presetIndications]);
 
   return {
     draft,
@@ -360,6 +375,7 @@ export function useLabOrderDraft(options: { presetPatientId?: string } = {}) {
     patient,
     patients,
     patientContext,
+    contextText: options.contextText || '',
     schedule,
     missingAoe,
     blockersFor,

@@ -26,6 +26,7 @@ import AssignPicker from './AssignPicker';
 import { useConfirm } from '@/components/ConfirmDialog';
 import PrescribeModal from './prescribe/PrescribeModal';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
+import { reasonContextFromNote } from '@/components/lab/order/lab-order-reasons';
 import type { NoteSectionActionId } from '@/lib/clinical-notes/section-actions';
 import MedicationsModal from './MedicationsModal';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -47,7 +48,7 @@ import {
   getClinicalNoteById, updateClinicalNote, saveNoteSection, addNoteSection,
   removeNoteSection, changeNoteType, clearNote, signClinicalNote,
   addNoteAddendum, recordPlanAction, isNoteLocked,
-  listClinicalNotes,
+  listClinicalNotes, foldRetiredNoteSections,
 } from '@/lib/clinical-notes/note-service';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import { getRoleFlag } from '@/lib/settings/role-settings-store';
@@ -152,7 +153,11 @@ export default function ClinicalNoteEditor({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const loaded = await getClinicalNoteById(noteId);
+      // A draft started before Recommendations was folded into Plan still
+      // holds both; opening it moves that text into Plan. Signed notes come
+      // back as written. If the fold cannot be saved, show the note as it is.
+      const loaded = await foldRetiredNoteSections(noteId)
+        .catch(() => getClinicalNoteById(noteId));
       if (cancelled) return;
       setNote(loaded);
       setLoading(false);
@@ -263,7 +268,19 @@ export default function ClinicalNoteEditor({
     setSaving(true);
     try {
       const updated = await fn();
-      if (updated) { setNote(updated); setSavedAt(updated.updatedAt); }
+      if (updated) {
+        // The saved document does not yet hold edits still waiting on their
+        // own autosave timer. Replacing local state with it outright put the
+        // old text back under the clinician's cursor in any section they had
+        // moved on to — so those pending edits are laid back over it.
+        const pending = pendingSaves.current;
+        setNote(Object.keys(pending).length === 0 ? updated : {
+          ...updated,
+          sections: updated.sections.map(section =>
+            (pending[section.sectionId] ? { ...section, ...pending[section.sectionId] } : section)),
+        });
+        setSavedAt(updated.updatedAt);
+      }
       return updated;
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not save the note.', 'error');
@@ -1210,6 +1227,10 @@ export default function ClinicalNoteEditor({
       {showLabOrder && (
         <LabOrderModal
           presetPatientId={note.patientId}
+          // The reason for the test is already written here: the Assessment's
+          // coded diagnoses start on the order and the complaint feeds its
+          // symptom suggestions, so the clinician confirms rather than re-types.
+          reasonContext={reasonContextFromNote(note)}
           onClose={() => setShowLabOrder(false)}
           onPlaced={() => {
             // Fires only once submit() has actually written the order(s) —

@@ -12897,14 +12897,49 @@ span:has(> svg:only-child) {
   body:has([data-print-active]) * {
     visibility: hidden !important;
   }
-  [data-print-active],
-  [data-print-active] * {
+  /* Must OUT-RANK the hide rule above, not merely follow it. `:has()` takes
+     the specificity of its argument, so the hide rule is (0,1,1); a bare
+     `[data-print-active] *` is (0,1,0) and lost — every targeted print (SBAR,
+     shift handoff, MAR, lab requisition, lab report, briefing) came out as a
+     blank sheet. Repeating the `body:has()` prefix makes this (0,2,1). */
+  body:has([data-print-active]) [data-print-active],
+  body:has([data-print-active]) [data-print-active] * {
     visibility: visible !important;
   }
-  [data-print-active] {
+  /* Hiding is not enough. The app shell is a fixed-height, overflow-clipped
+     frame, and a document sitting inside it prints only as much as that frame
+     shows: one page, however long the record (a patient's SBAR printed its
+     first section and stopped). So everything that is neither the document
+     nor an ancestor of it leaves the flow altogether… */
+  body:has([data-print-active]) *:not(:has([data-print-active])):not([data-print-active]):not([data-print-active] *) {
+    display: none !important;
+  }
+  /* …and every ancestor is released to its natural size, so the document
+     starts at the top of the first sheet and paginates like any page. */
+  html:has([data-print-active]),
+  body:has([data-print-active]),
+  body:has([data-print-active]) :has([data-print-active]) {
     display: block !important;
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
+    position: static !important;
+    float: none !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+  body:has([data-print-active]) [data-print-active] {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
     width: 100% !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -27457,6 +27492,21 @@ table.patient-data-table.patient-data-table {
 .modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg {
   color: #fff !important;
   stroke: currentColor !important;
+}
+
+/* Chips that bring their own pale surface — the order wizard's tags, the
+   appointment popup's status pill — took the bar's white text and kept their
+   own pale fill, so the label vanished: a blank pill where the status should be. On
+   the bar they become the same translucent chip its buttons are. STAT keeps a
+   solid red so the one tag that changes what the bench does still stands out. */
+.modal-portal-backdrop [role="dialog"] :is(.labord-header, .appointment-detail-modal__header) :is(.labord-tag, .appointment-status-pill) {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #fff !important;
+}
+.modal-portal-backdrop [role="dialog"] .labord-header .labord-tag--stat {
+  background: var(--color-danger, #D92B20) !important;
+  border-color: transparent !important;
 }
 
 /* The two panel-specific pull-backs that used to live here — an exact

@@ -78,6 +78,20 @@ function docDate(iso?: string): string {
   return iso ? formatDate(iso) : '';
 }
 
+/**
+ * What became of the message. `status` alone reads "sent" for a text still
+ * waiting for a connection, so where the text service recorded what actually
+ * happened to the SMS, that is what the list shows.
+ */
+function deliveryLabel(m: MessageDoc): string {
+  switch (m.smsDelivery?.state) {
+    case 'queued': return 'text waiting to send';
+    case 'not_connected': return 'text not sent (no SMS gateway)';
+    case 'failed': return 'text not sent';
+    default: return m.status;
+  }
+}
+
 const CHANNEL_LABELS: Record<MessageDoc['channel'], string> = {
   app: 'in-app',
   sms: 'SMS',
@@ -506,7 +520,7 @@ export default function DocumentsPanel({
                     </span>
                   </div>
                   <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    {docDate(m.sentAt)} · {CHANNEL_LABELS[m.channel]} · {m.status}{m.fromDoctorName ? ` · ${m.fromDoctorName}` : ''}
+                    {docDate(m.sentAt)} · {CHANNEL_LABELS[m.channel]} · {deliveryLabel(m)}{m.fromDoctorName ? ` · ${m.fromDoctorName}` : ''}
                   </div>
                   {canViewClinical && m.body && (
                     <div className="text-[11px] mt-0.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{m.body}</div>

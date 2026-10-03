@@ -23,7 +23,7 @@ import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-i
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatCompactDateTime, formatMoney } from '@/lib/format-utils';
-import { isActivePharmacyStage, pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
+import { isActivePharmacyStage, isOutsidePharmacyOrder, pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
 import { usePatientBalances } from '@/lib/hooks/usePatientBalances';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycles';
@@ -102,7 +102,11 @@ export default function PharmacyPage() {
   const { showToast } = useToast();
   const { t } = useTranslation();
   const router = useRouter();
-  const { prescriptions: rxQueue, loading: rxLoading, dispense, markUnfilled, advance } = usePrescriptions();
+  const { prescriptions: allPrescriptions, loading: rxLoading, dispense, markUnfilled, advance } = usePrescriptions();
+  // Scripts issued for an outside pharmacy are not this pharmacy's work — the
+  // patient is holding them. Dropped here so no queue, count or export below
+  // can pick one up.
+  const rxQueue = useMemo(() => allPrescriptions.filter(rx => !isOutsidePharmacyOrder(rx)), [allPrescriptions]);
   const { items: rawInventory, create: createInventory, update: updateInventory } = usePharmacyInventory();
   const { patients } = usePatients();
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);

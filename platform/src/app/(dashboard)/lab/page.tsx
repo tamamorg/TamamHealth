@@ -576,7 +576,7 @@ export default function LabPage() {
             </Modal>
           )}
 
-          {/* Create Lab Order — compact dialog → six-step requisition wizard. */}
+          {/* Create Lab Order — compact dialog → five-step requisition wizard. */}
           {showOrderModal && (
             <LabOrderModal
               onClose={() => setShowOrderModal(false)}

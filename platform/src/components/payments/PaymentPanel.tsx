@@ -17,6 +17,8 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 interface PaymentPanelProps {
   patientId: string;
   patientName: string;
+  /** Printed on the receipt as the patient's ID, in place of the record id. */
+  hospitalNumber?: string;
   encounterId?: string;
   amountDue: number;
   currency?: string;
@@ -38,7 +40,7 @@ function defaultPaymentTab(): TabType {
 }
 
 export default function PaymentPanel({
-  patientId, patientName, encounterId, amountDue, currency = 'SSP', onSuccess, onCancel
+  patientId, patientName, hospitalNumber, encounterId, amountDue, currency = 'SSP', onSuccess, onCancel
 }: PaymentPanelProps) {
   const { currentUser } = useAuth();
   const scope = useDataScope();
@@ -230,7 +232,7 @@ export default function PaymentPanel({
   const handlePrint = async () => {
     if (!paymentDoc) return;
     const { buildReceiptData, printReceipt } = await import('@/lib/services/receipt-service');
-    const receipt = buildReceiptData(paymentDoc, currentUser?.hospital?.name || currentUser?.hospitalName);
+    const receipt = buildReceiptData(paymentDoc, currentUser?.hospital?.name || currentUser?.hospitalName, hospitalNumber);
     printReceipt(receipt);
   };
 
@@ -240,7 +242,7 @@ export default function PaymentPanel({
     setEmailError(null);
     try {
       const { buildReceiptData, emailReceipt } = await import('@/lib/services/receipt-service');
-      const receipt = buildReceiptData(paymentDoc, currentUser?.hospital?.name || currentUser?.hospitalName);
+      const receipt = buildReceiptData(paymentDoc, currentUser?.hospital?.name || currentUser?.hospitalName, hospitalNumber);
       // emailReceipt returns the API's honest `delivered` flag — only claim
       // "Sent" when the provider actually accepted the email.
       const delivered = await emailReceipt(receipt, emailAddress);

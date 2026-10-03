@@ -18,7 +18,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
-import { formatMoney } from '@/lib/format-utils';
+import { formatDate, formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type {
   PaymentDoc, ChargeDoc, PaymentPlanDoc, InsurancePolicyDoc, RefundDoc, LedgerEntryDoc,
@@ -106,7 +106,10 @@ function buildStatementHTML(opts: {
   const currency = overview.payments[0]?.currency || 'SSP';
   const generatedAt = new Date();
   const fmt = (n: number) => `${n.toLocaleString()} ${currency}`;
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  // The shared formatter reads a date-only value ("1988-03-15") as that
+  // calendar day. `new Date()` reads it as UTC midnight, which printed the
+  // patient's date of birth a day early on any device west of Greenwich.
+  const fmtDate = (d: string) => formatDate(d);
   const e = escapeHtml;
 
   const chargeRows = overview.charges.length === 0
@@ -644,6 +647,7 @@ export default function BillingTab({
         <PaymentPanel
           patientId={patient._id}
           patientName={`${patient.firstName} ${patient.surname}`}
+          hospitalNumber={patient.hospitalNumber}
           amountDue={patientBalance}
           encounterId={superbillEncounterId}
           onSuccess={() => { setShowPaymentPanel(false); reloadPayments(); loadAll(); }}

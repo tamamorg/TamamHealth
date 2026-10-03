@@ -19,7 +19,7 @@ import type { DataScope } from '../services/data-scope';
 import { filterByScope } from '../services/data-scope';
 import { isProviderRole } from '../clinical-roles';
 import {
-  getNoteType, resolveSections, isNoteTypeId,
+  getNoteType, resolveSections, isNoteTypeId, RETIRED_SECTIONS,
   type NoteTypeId, type NoteSectionId,
 } from './note-catalog';
 import { stripTemplateMarkers } from './section-templates';
@@ -99,9 +99,11 @@ async function hasOutstandingParkedWork(
   try {
     if (status === 'awaiting_pharmacy') {
       const { getPrescriptionsByPatient } = await import('../services/prescription-service');
+      const { holdsVisitAtPharmacy } = await import('../pharmacy-workflow');
       const rxs = await getPrescriptionsByPatient(patientId);
-      return rxs.some(rx =>
-        rx.encounterId === encounterId && rx.status !== 'dispensed' && rx.status !== 'discontinued');
+      // A script the patient fills outside is not pharmacy work, so it cannot
+      // be what the visit is waiting on.
+      return rxs.some(rx => rx.encounterId === encounterId && holdsVisitAtPharmacy(rx));
     }
     // awaiting_labs / awaiting_imaging: any test tied to this encounter that
     // has not yet resulted still blocks the move.
@@ -402,22 +404,44 @@ export async function updateClinicalNote(
   return { ...updated, _rev: resp.rev };
 }
 
+/**
+ * One read-modify-write at a time per note.
+ *
+ * Every mutator below reads the note, changes one part, and writes the whole
+ * document back. Two of them overlapping — the editor autosaving two sections
+ * typed within the same second, or a section save racing the "lab ordered"
+ * plan action — both read the same revision; the second write was then
+ * refused ("Document update conflict" on the clinician's screen) and its text
+ * stayed unsaved. Queued per note, each one reads what the last one wrote.
+ */
+const noteWriteQueues = new Map<string, Promise<unknown>>();
+function inNoteOrder<T>(id: string, write: () => Promise<T>): Promise<T> {
+  const previous = noteWriteQueues.get(id) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(write);
+  const settled = run.catch(() => undefined);
+  noteWriteQueues.set(id, settled);
+  void settled.then(() => { if (noteWriteQueues.get(id) === settled) noteWriteQueues.delete(id); });
+  return run;
+}
+
 /** Write one section's content — the autosave path the editor calls. */
 export async function saveNoteSection(
   id: string,
   sectionId: NoteSectionId,
   content: Partial<NoteSectionContent>,
 ): Promise<ClinicalNoteDoc | null> {
-  const existing = await getClinicalNoteById(id);
-  if (!existing) return null;
-  if (isNoteLocked(existing)) throw new NoteLockedError(id);
+  return inNoteOrder(id, async () => {
+    const existing = await getClinicalNoteById(id);
+    if (!existing) return null;
+    if (isNoteLocked(existing)) throw new NoteLockedError(id);
 
-  const sections = [...existing.sections];
-  const idx = sections.findIndex(s => s.sectionId === sectionId);
-  if (idx >= 0) sections[idx] = { ...sections[idx], ...content, sectionId };
-  else sections.push({ sectionId, ...content });
+    const sections = [...existing.sections];
+    const idx = sections.findIndex(s => s.sectionId === sectionId);
+    if (idx >= 0) sections[idx] = { ...sections[idx], ...content, sectionId };
+    else sections.push({ sectionId, ...content });
 
-  return updateClinicalNote(id, { sections });
+    return updateClinicalNote(id, { sections });
+  });
 }
 
 /** Add an optional section from the "Add Optional" menu. */
@@ -425,19 +449,21 @@ export async function addNoteSection(
   id: string,
   sectionId: NoteSectionId,
 ): Promise<ClinicalNoteDoc | null> {
-  const existing = await getClinicalNoteById(id);
-  if (!existing) return null;
-  if (isNoteLocked(existing)) throw new NoteLockedError(id);
-  if (existing.sections.some(s => s.sectionId === sectionId)) return existing;
+  return inNoteOrder(id, async () => {
+    const existing = await getClinicalNoteById(id);
+    if (!existing) return null;
+    if (isNoteLocked(existing)) throw new NoteLockedError(id);
+    if (existing.sections.some(s => s.sectionId === sectionId)) return existing;
 
-  const addedSections = [...(existing.addedSections || []), sectionId];
-  const order = resolveSections(existing.noteType, addedSections);
-  const bySection = new Map(existing.sections.map(s => [s.sectionId, s]));
-  bySection.set(sectionId, { sectionId, text: '' });
-  const sections = order
-    .map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' });
+    const addedSections = [...(existing.addedSections || []), sectionId];
+    const order = resolveSections(existing.noteType, addedSections);
+    const bySection = new Map(existing.sections.map(s => [s.sectionId, s]));
+    bySection.set(sectionId, { sectionId, text: '' });
+    const sections = order
+      .map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' });
 
-  return updateClinicalNote(id, { addedSections, sections });
+    return updateClinicalNote(id, { addedSections, sections });
+  });
 }
 
 /** Remove a section the clinician added. Default sections cannot be removed. */
@@ -445,16 +471,90 @@ export async function removeNoteSection(
   id: string,
   sectionId: NoteSectionId,
 ): Promise<ClinicalNoteDoc | null> {
-  const existing = await getClinicalNoteById(id);
-  if (!existing) return null;
-  if (isNoteLocked(existing)) throw new NoteLockedError(id);
+  return inNoteOrder(id, async () => {
+    const existing = await getClinicalNoteById(id);
+    if (!existing) return null;
+    if (isNoteLocked(existing)) throw new NoteLockedError(id);
 
-  const def = getNoteType(existing.noteType);
-  if (def.sections.includes(sectionId)) return existing;   // not removable
+    const def = getNoteType(existing.noteType);
+    if (def.sections.includes(sectionId)) return existing;   // not removable
 
-  return updateClinicalNote(id, {
-    addedSections: (existing.addedSections || []).filter(s => s !== sectionId),
-    sections: existing.sections.filter(s => s.sectionId !== sectionId),
+    return updateClinicalNote(id, {
+      addedSections: (existing.addedSections || []).filter(s => s !== sectionId),
+      sections: existing.sections.filter(s => s.sectionId !== sectionId),
+    });
+  });
+}
+
+/**
+ * Fold sections the catalog has retired into the section that absorbed them
+ * (`RETIRED_SECTIONS`) — today, Recommendations into Plan.
+ *
+ * The retired section's narrative goes ahead of the successor's own, the order
+ * the two were read in while both were on the page. The only thing dropped is
+ * an empty box: a retired section that holds text stays put when the note has
+ * no successor section to receive it.
+ *
+ * Returns the array it was given when there is nothing to fold, so callers can
+ * tell "unchanged" by identity and skip the write.
+ */
+export function foldRetiredSections(sections: NoteSectionContent[]): NoteSectionContent[] {
+  const present = new Set(sections.map(s => s.sectionId));
+  const moved = new Map<NoteSectionId, string[]>();
+  const kept = sections.filter((section) => {
+    const successor = RETIRED_SECTIONS[section.sectionId];
+    if (!successor) return true;
+    // Plain narrative only: the successor may carry a template block of its
+    // own, and a section holds one.
+    const text = stripTemplateMarkers(section.text || '').trim();
+    if (!text) return false;
+    if (!present.has(successor)) return true;
+    moved.set(successor, [...(moved.get(successor) ?? []), text]);
+    return false;
+  });
+  if (kept.length === sections.length) return sections;
+
+  return kept.map((section) => {
+    const incoming = moved.get(section.sectionId);
+    if (!incoming) return section;
+    const own = (section.text || '').trim() ? [section.text as string] : [];
+    return { ...section, text: [...incoming, ...own].join('\n\n') };
+  });
+}
+
+/** `addedSections` without the retired sections a fold removed. */
+function stillAdded(
+  addedSections: readonly NoteSectionId[],
+  sections: readonly NoteSectionContent[],
+): NoteSectionId[] {
+  const present = new Set(sections.map(s => s.sectionId));
+  return addedSections.filter(sid => !RETIRED_SECTIONS[sid] || present.has(sid));
+}
+
+/**
+ * Apply {@link foldRetiredSections} to a stored draft — what the editor calls
+ * on open, so a note started before a section was retired does not keep
+ * showing both boxes.
+ *
+ * Only a draft is folded. Anything already attested is returned untouched,
+ * under the heading it was written under — and that includes a note awaiting
+ * co-sign: the trainee has signed it, so moving its text before the
+ * supervisor reads it would have them co-sign something other than what was
+ * attested. (`isNoteLocked` is true only for signed/amended, which is why the
+ * check here is on the status itself.)
+ */
+export async function foldRetiredNoteSections(id: string): Promise<ClinicalNoteDoc | null> {
+  return inNoteOrder(id, async () => {
+    const existing = await getClinicalNoteById(id);
+    if (!existing || existing.status !== 'draft') return existing;
+
+    const sections = foldRetiredSections(existing.sections);
+    if (sections === existing.sections) return existing;
+
+    return updateClinicalNote(id, {
+      sections,
+      addedSections: stillAdded(existing.addedSections || [], sections),
+    });
   });
 }
 
@@ -480,11 +580,15 @@ export async function changeNoteType(
   const addedSections = withContent.map(s => s.sectionId);
   const order = resolveSections(noteType, addedSections);
   const bySection = new Map(existing.sections.map(s => [s.sectionId, s]));
-  const sections = order.map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' });
+  // A retired section that had no successor under the old type may have one
+  // under the new type.
+  const sections = foldRetiredSections(
+    order.map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' }),
+  );
 
   return updateClinicalNote(id, {
     noteType,
-    addedSections,
+    addedSections: stillAdded(addedSections, sections),
     sections,
   });
 }
@@ -729,16 +833,18 @@ export async function recordPlanAction(
   id: string,
   action: Omit<NotePlanAction, 'id' | 'createdAt'>,
 ): Promise<ClinicalNoteDoc | null> {
-  const existing = await getClinicalNoteById(id);
-  if (!existing) return null;
-  if (isNoteLocked(existing)) throw new NoteLockedError(id);
+  return inNoteOrder(id, async () => {
+    const existing = await getClinicalNoteById(id);
+    if (!existing) return null;
+    if (isNoteLocked(existing)) throw new NoteLockedError(id);
 
-  const entry: NotePlanAction = {
-    ...action,
-    id: `pa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-    createdAt: nowIso(),
-  };
-  return updateClinicalNote(id, { planActions: [...(existing.planActions || []), entry] });
+    const entry: NotePlanAction = {
+      ...action,
+      id: `pa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      createdAt: nowIso(),
+    };
+    return updateClinicalNote(id, { planActions: [...(existing.planActions || []), entry] });
+  });
 }
 
 /**
@@ -775,8 +881,12 @@ export async function copyNoteForward(
     const order = resolveSections(noteType, addedSections);
     const bySection = new Map(created.sections.map(s => [s.sectionId, s]));
     for (const s of carried) bySection.set(s.sectionId, s);
-    patch.addedSections = addedSections;
-    patch.sections = order.map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' });
+    // The source may be a signed note that still holds a retired section; its
+    // narrative carries into the section that replaced it, not a new copy.
+    patch.sections = foldRetiredSections(
+      order.map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' }),
+    );
+    patch.addedSections = stillAdded(addedSections, patch.sections);
   }
   return updateClinicalNote(created._id, patch);
 }

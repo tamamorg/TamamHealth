@@ -533,6 +533,11 @@ export interface LabResultDoc extends BaseDoc {
   /** Every test placed on one requisition shares this id, so the requisition
    *  can be reprinted and the group cancelled as a unit. */
   orderGroupId?: string;
+  /** Staff-only handling comment from the orderer ("call ext. 204 with the
+   *  result"). Shown to the bench with the order; encrypted at rest and
+   *  stripped from the patient-portal response — `clinicalNotes` is the
+   *  clinical message, this is the internal one. */
+  orderComment?: string;
 
   // ── Closing out the lifecycle ────────────────────────────────────────────
   // Who carried the result past `resulted`, and when. Without these the tail
@@ -607,6 +612,18 @@ export interface DispenseAllocation {
   afterBalance: number;
 }
 
+/** One copy of a prescription handed to the patient. */
+export interface PrescriptionPatientCopy {
+  channel: 'print' | 'sms';
+  at: string;
+  byId?: string;
+  byName: string;
+  /** Masked recipient number, for a texted copy. */
+  to?: string;
+  /** The message document that carried a texted copy. */
+  messageId?: string;
+}
+
 export interface PrescriptionDoc extends BaseDoc {
   type: 'prescription';
   patientId: string;
@@ -637,6 +654,31 @@ export interface PrescriptionDoc extends BaseDoc {
   effectiveOn?: string;
   /** Free-text note to the dispensing pharmacy. */
   pharmacyInstructions?: string;
+  /**
+   * Who fills this prescription. Absent means this facility's own pharmacy —
+   * every order written before the field existed.
+   *
+   * `external` is a script the patient takes to a pharmacy outside the
+   * facility: the facility has no dispensary, or its shelf could not fill the
+   * order. Such an order is kept out of every on-site dispensing queue and
+   * refused by the dispensing service (`isOutsidePharmacyOrder`) — the patient
+   * holds a signed script, and filling it here too would supply it twice. It
+   * must not hold a visit at checkout waiting for a dispense that will never
+   * be recorded here: the handover of the script IS the facility's last step
+   * (see `issuedToPatientAt`).
+   */
+  fulfilment?: 'on_site' | 'external';
+  /** When the script was handed to the patient to fill elsewhere. */
+  issuedToPatientAt?: string;
+  issuedToPatientBy?: string;
+  /**
+   * Every copy of this prescription given to the patient — printed or texted.
+   * Without it nobody can answer "did the patient get the script?", and a
+   * second clinician cannot tell a script already sent from one still owed.
+   * The phone number is stored masked: the record needs to show THAT a text
+   * went out, not hold another copy of the number.
+   */
+  patientCopies?: PrescriptionPatientCopy[];
   /**
    * Medication criticality tier (Principle 2.11): 1 life-sustaining,
    * 2 important/time-sensitive, 3 routine. Stamped at prescribing time from
@@ -1217,6 +1259,42 @@ export interface MessageDoc extends BaseDoc {
     providerMessageId?: string;
     error?: string;
   };
+  /**
+   * Where the text itself stands, for a message written on a device and
+   * dispatched through the server gateway (`patient-text-service`).
+   *
+   * `status` above cannot carry this: it is stamped 'sent' when the document
+   * is written, which for an SMS written offline is simply untrue. A device
+   * with no connection saves the message as `queued` and retries when it is
+   * back online; `not_connected` means the server has no SMS gateway
+   * configured, so nothing left the building and staff must not assume the
+   * patient was reached.
+   */
+  smsDelivery?: {
+    state: 'queued' | 'sent' | 'not_connected' | 'failed';
+    attempts: number;
+    lastAttemptAt?: string;
+    error?: string;
+    /** The number the server sent to, masked — its record, not this device's. */
+    to?: string;
+  };
+  /**
+   * What a platform-composed text carries, so the patient's message history
+   * and audit can tell a prescription from a visit summary from free text.
+   */
+  messageKind?: 'prescription' | 'visit_summary';
+  /**
+   * Prescriptions a texted script carries. When the text is accepted by the
+   * gateway — possibly hours after it was written, on a device that was
+   * offline — each of these records the copy as given to the patient.
+   */
+  prescriptionIds?: string[];
+  /**
+   * The sender confirmed, at send time, that the patient agreed to receive
+   * this content by text on this number. Recorded because a text is neither
+   * encrypted nor recallable, and the number is often a shared phone.
+   */
+  textConsentConfirmed?: boolean;
 }
 
 /**

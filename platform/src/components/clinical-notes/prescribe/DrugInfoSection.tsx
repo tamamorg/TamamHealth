@@ -13,9 +13,11 @@ import { useMemo } from 'react';
 import { Star } from '@/components/icons/lucide';
 import { FORMULARY, type FormularyDrug } from '@/lib/data/formulary';
 import { useRoleFlag } from '@/lib/settings/useRoleSetting';
-import type { ProblemDoc } from '@/lib/db-types';
+import type { PharmacyInventoryDoc, ProblemDoc } from '@/lib/db-types';
+import { stockPositionFor, type StockPosition, type StockState } from '@/lib/pharmacy-stock-position';
 import type { RxDraft } from './types';
 import Select from '@/components/Select';
+import StockNotice from './StockNotice';
 
 const RECOMMENDED_SIGS = [
   'Once daily',
@@ -43,44 +45,57 @@ interface DrugInfoSectionProps {
   onToggleSigs: () => void;
   showReasons: boolean;
   onToggleReasons: () => void;
-  /** Medication names the pharmacy currently holds, lower-cased. Drives the
-   *  prescriber's "Show only in-stock medicines by default" setting. */
-  inStockNames?: Set<string>;
+  /** This facility's shelf. Drives the prescriber's "Show only in-stock
+   *  medicines by default" setting and the stock tag on each search result.
+   *  Omitted when the facility has no on-site pharmacy — stock is then moot. */
+  inventory?: PharmacyInventoryDoc[];
+  facilityId?: string;
+  facilityName: string;
+  /** Shelf position of the picked drug at the typed quantity. */
+  stock?: StockPosition | null;
+  /** Switch this prescription to an outside pharmacy. */
+  onIssueOutside?: () => void;
 }
 
-/** Inventory records the drug's stem ("Amoxicillin 500mg" vs "Amoxicillin"),
- *  so match on the first word rather than requiring an exact name. */
-function stockedName(drugName: string, inStock: Set<string>): boolean {
-  const stem = drugName.toLowerCase().split(/[\s(]/)[0];
-  if (!stem) return false;
-  for (const held of inStock) if (held.includes(stem)) return true;
-  return false;
-}
+/** Search-result tags for the states a prescriber should see before picking. */
+const RESULT_STOCK_TAG: Partial<Record<StockState, string>> = {
+  out: 'Out of stock',
+  expired: 'Expired stock only',
+  not_stocked: 'Not stocked',
+  low: 'Low stock',
+};
 
 export default function DrugInfoSection({
   draft, onChange, query, onQueryChange, advanced, onToggleAdvanced,
   problems, serviceLocations, isFavorite, onToggleFavorite, showSigs, onToggleSigs,
-  showReasons, onToggleReasons, inStockNames,
+  showReasons, onToggleReasons, inventory, facilityId, facilityName, stock, onIssueOutside,
 }: DrugInfoSectionProps) {
   // "Show only in-stock medicines by default" (`rx.inStockOnly`). Advanced
   // search deliberately ignores it: that mode exists to find anything, and a
   // prescriber who has widened the search is asking for the full formulary.
   const inStockOnly = useRoleFlag('rx.inStockOnly', true);
-  const results = useMemo<FormularyDrug[]>(() => {
+  const results = useMemo<Array<{ drug: FormularyDrug; stock: StockState | null }>>(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2 || draft.drug) return [];
     const match = (d: FormularyDrug) => (advanced
       ? d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q) || d.atc.toLowerCase().startsWith(q)
       : d.name.toLowerCase().includes(q));
-    const found = FORMULARY.filter(match);
+    // The same shelf question the stock notice asks, so a result tagged "in
+    // stock" here cannot turn into "not stocked" once it is picked. An empty
+    // shelf means stock is not tracked: nothing is filtered or tagged.
+    const tracked = Boolean(inventory?.length);
+    const found = FORMULARY.filter(match).map(drug => ({
+      drug,
+      stock: tracked ? stockPositionFor(drug.name, inventory!, 1, { facilityId }).state : null,
+    }));
     // Filter, but never to nothing: if the pharmacy stocks none of the
     // matches, showing the full list beats an empty box that reads as "this
     // drug does not exist".
-    const stocked = (!advanced && inStockOnly && inStockNames)
-      ? found.filter(d => stockedName(d.name, inStockNames))
+    const stocked = (!advanced && inStockOnly && tracked)
+      ? found.filter(r => r.stock === 'ok' || r.stock === 'low' || r.stock === 'untracked')
       : found;
     return (stocked.length ? stocked : found).slice(0, advanced ? 16 : 8);
-  }, [query, draft.drug, advanced, inStockOnly, inStockNames]);
+  }, [query, draft.drug, advanced, inStockOnly, inventory, facilityId]);
 
   return (
     <>
@@ -96,10 +111,15 @@ export default function DrugInfoSection({
           />
           {results.length > 0 && (
             <div className="cn-inc-results cn-rx-results">
-              {results.map(d => (
+              {results.map(({ drug: d, stock: state }) => (
                 <button key={d.name} type="button" onClick={() => { onChange({ drug: d }); onQueryChange(''); }}>
                   <span>{d.name}</span>
-                  <span className="cn-meds-row-meta">{d.category}{d.form ? ` · ${d.form}` : ''}</span>
+                  <span className="cn-meds-row-meta">
+                    {d.category}{d.form ? ` · ${d.form}` : ''}
+                    {state && RESULT_STOCK_TAG[state] && (
+                      <span className="cn-rx-stocktag" data-stock={state}>{RESULT_STOCK_TAG[state]}</span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -159,6 +179,10 @@ export default function DrugInfoSection({
           />
         </label>
       </div>
+
+      {draft.drug && stock && (
+        <StockNotice position={stock} facilityName={facilityName} onIssueOutside={onIssueOutside} />
+      )}
 
       <div className="cn-rx-inlinerow">
         <button

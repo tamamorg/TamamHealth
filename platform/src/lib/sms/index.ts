@@ -2,6 +2,7 @@ import type { SmsProvider, SmsSendInput, SmsSendResult } from './provider';
 import { noopProvider } from './noop-provider';
 import { africasTalkingProvider } from './africas-talking-provider';
 import { twilioProvider } from './twilio-provider';
+import { normalizePhone } from './text';
 
 let cached: SmsProvider | null = null;
 
@@ -31,22 +32,6 @@ export function getSmsProvider(): SmsProvider {
 /** Test hook: clear the memoised provider so a new env value takes effect. */
 export function resetSmsProviderForTest(): void {
   cached = null;
-}
-
-/**
- * Normalise a raw phone number to E.164.
- *
- * Defaults assume South Sudan (+211) since that is the platform's primary
- * deployment. Numbers that already have a country code (start with `+` or
- * `211`) are kept as-is; a leading `0` is treated as the SS trunk prefix
- * and rewritten. Everything else is prefixed with `+` and digits only.
- */
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('211')) return '+' + digits;
-  if (digits.startsWith('0')) return '+211' + digits.slice(1);
-  if (raw.startsWith('+')) return raw;
-  return '+' + digits;
 }
 
 export async function sendSms(input: SmsSendInput): Promise<SmsSendResult> {

@@ -74,6 +74,8 @@ interface LabLike {
 interface RxLike {
   _id: string; patientId: string; patientName: string; medicationName?: string;
   orderStatus?: PrescriptionStatus; status?: string;
+  /** 'external' = a script the patient fills at an outside pharmacy. */
+  fulfilment?: string;
   dispensedAt?: string; updatedAt?: string; createdAt?: string;
 }
 
@@ -156,6 +158,9 @@ export function buildProgressFeed(
   }
 
   for (const d of input.prescriptions ?? []) {
+    // An outside-pharmacy script never moves through this facility's
+    // dispensing stages; it is not "received" by anyone here.
+    if (d.fulfilment === 'external') continue;
     const stage = d.orderStatus;
     let kind: ProgressEventKind | null = null;
     let label = '';

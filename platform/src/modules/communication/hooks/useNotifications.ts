@@ -476,7 +476,9 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (relevant('prescription')) try {
       const { getAllPrescriptions } = await import('@/lib/services/prescription-service');
       const rxs = await getAllPrescriptions(scope);
-      for (const rx of rxs.filter(x => x.status === 'pending').slice(0, perSourceLimit)) {
+      // A script the patient took to an outside pharmacy is never dispensed
+      // here, so it would otherwise sit in the bell as "awaiting" for good.
+      for (const rx of rxs.filter(x => x.status === 'pending' && x.fulfilment !== 'external').slice(0, perSourceLimit)) {
         out.push({ id: `rx-${rx._id}`, type: 'prescription', severity: 'info', title: nameFirst(rx.patientName, 'Prescription'), subtitle:`${rx.medication} · awaiting dispensing`, time: rx.updatedAt || rx.createdAt, href: '/pharmacy' });
       }
     } catch { /* offline */ }
