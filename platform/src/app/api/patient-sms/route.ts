@@ -29,10 +29,10 @@ import { ALL_STAFF } from '@/lib/sync/write-permissions';
 import { MAX_PATIENT_TEXT_LENGTH, maskPhone } from '@/lib/sms/text';
 import { isAllowedDestination } from '@/lib/sms/destination-policy';
 import {
-  MESSAGE_ID_PATTERN, PATIENT_SMS_PURPOSES, PHONE_TAIL_LENGTH,
-  beginDispatch, dispatchKey, endDispatch, phoneTail, recallDispatch, rememberDispatch,
+  MESSAGE_ID_PATTERN, PATIENT_SMS_PURPOSES, PHONE_TAIL_LENGTH, dispatchKey, phoneTail,
   type PatientSmsPurpose, type PatientSmsResponse,
 } from '@/lib/sms/patient-dispatch';
+import { claimDispatch, recallDispatch, releaseDispatch, settleDispatch } from '@/lib/sms/dispatch-ledger';
 import type { UserRole } from '@/lib/db-types';
 
 /** Same grant as writing the message itself (`DOC_WRITE_ROLES.message`). */
@@ -167,7 +167,7 @@ async function postHandler(request: NextRequest) {
 
     // A retry of a text this sender already sent to this patient.
     const key = dispatchKey(auth.sub, patientId, messageId);
-    const earlier = recallDispatch(key);
+    const earlier = await recallDispatch(key);
     if (earlier) return NextResponse.json({ ...earlier, duplicate: true } satisfies PatientSmsResponse);
 
     if (!phone) {
@@ -185,7 +185,13 @@ async function postHandler(request: NextRequest) {
       return NextResponse.json({ error: 'phone_changed' }, { status: 409 });
     }
 
-    if (!beginDispatch(key)) {
+    const claim = await claimDispatch(key);
+    if (claim.kind === 'sent') {
+      // Another request (or another instance) sent it between the look above
+      // and this claim.
+      return NextResponse.json({ ...claim.response, duplicate: true } satisfies PatientSmsResponse);
+    }
+    if (claim.kind === 'in_flight') {
       // The same text is already with the gateway (the sender's click and the
       // outbox retry raced). Retryable: the next try gets the recorded answer.
       return NextResponse.json({ error: 'in_flight' }, { status: 409 });
@@ -193,8 +199,9 @@ async function postHandler(request: NextRequest) {
     let result: Awaited<ReturnType<typeof sendSms>>;
     try {
       result = await sendSms({ to: phone, body: text });
-    } finally {
-      endDispatch(key);
+    } catch (err) {
+      await releaseDispatch(key);
+      throw err;
     }
 
     const { logAuditSafe } = await import('@/lib/services/audit-service');
@@ -205,16 +212,32 @@ async function postHandler(request: NextRequest) {
     const audit = (state: string) => logAuditSafe('PATIENT_TEXT_DISPATCH', auth.sub, auth.username,
       `${purpose} text for patient ${patientId} via ${result.providerId}: ${state}; `
       + `message ${messageId}; ${text.length} chars; sha256 ${digest}`);
+    // The digest proves a message document says what was sent — but only if
+    // that document exists. The route cannot insist on it (the device may be
+    // ahead of replication), and a caller that never writes one would leave a
+    // text nobody can read back. So where PHI encryption is on, the text is
+    // kept, encrypted, in its own audit entry: unreadable in the log, and
+    // recoverable by whoever holds the key. Without encryption it is not
+    // stored at all — a plaintext copy in the audit log is the worse outcome.
+    const keepText = async () => {
+      const { isEncryptionEnabled, encryptField } = await import('@/lib/field-encryption');
+      if (!isEncryptionEnabled()) return;
+      await logAuditSafe('PATIENT_TEXT_BODY', auth.sub, auth.username,
+        `message ${messageId} to patient ${patientId}; sha256 ${digest}; ${encryptField(text)}`);
+    };
 
     if (result.ok) {
       const response: PatientSmsResponse = {
         state: 'sent', provider: result.providerId, providerMessageId: result.providerMessageId, to: maskPhone(phone),
       };
-      rememberDispatch(key, response);
+      await settleDispatch(key, response);
       await audit('sent');
+      await keepText().catch(() => { /* the dispatch entry above still stands */ });
       return NextResponse.json(response);
     }
 
+    // Nothing was sent: give the claim back so a retry can try again.
+    await releaseDispatch(key);
     const failure = classifyGatewayError(result.error);
     await audit(failure.code);
     if (failure.kind === 'not_configured') {
