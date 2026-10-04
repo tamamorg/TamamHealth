@@ -126,7 +126,7 @@ const momoInstructions = (demoExample: string): string =>
 const buildPaymentMethods = (bankDetails?: string): PaymentMethodDef[] => [
   { id: 'mgurush', label: 'm-GURUSH', desc: 'Pay via m-GURUSH (South Sudan)', icon: Smartphone, color: '#1E90FF', instructions: momoInstructions('Dial *158# > Pay Bill\nBusiness Number: TamamHealth\nReference: Your Invoice #') },
   { id: 'mpesa', label: 'M-Pesa', desc: 'Pay via Safaricom M-Pesa', icon: Smartphone, color: '#0FA06A', instructions: momoInstructions('Go to M-Pesa > Lipa na M-Pesa > Pay Bill\nBusiness Number: 247247\nAccount: Your Invoice #') },
-  { id: 'mtn', label: 'MTN Mobile Money', desc: 'Pay via MTN MoMo', icon: Smartphone, color: '#FFD2A6', instructions: momoInstructions('Dial *165# > Pay Bill\nMerchant Code: TamamHealth\nReference: Your Invoice #') },
+  { id: 'mtn', label: 'MTN Mobile Money', desc: 'Pay via MTN MoMo', icon: Smartphone, color: '#B35900', instructions: momoInstructions('Dial *165# > Pay Bill\nMerchant Code: TamamHealth\nReference: Your Invoice #') },
   { id: 'airtel', label: 'Airtel Money', desc: 'Pay via Airtel Money', icon: Smartphone, color: '#E03127', instructions: momoInstructions('Dial *185# > Pay Bill\nBusiness Name: TamamHealth HEALTH\nReference: Your Invoice #') },
   { id: 'card', label: 'Visa / Mastercard', desc: 'Card payment (manually verified)', icon: CreditCard, color: '#1174b4', instructions: 'Enter your card details with our billing team, or provide a transaction reference. The charge is recorded here and verified by finance before it posts.' },
   // Literal hex (the --accent-primary value), not the CSS var — the icon

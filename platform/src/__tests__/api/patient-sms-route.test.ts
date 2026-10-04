@@ -73,6 +73,15 @@ const rateLimit = jest.fn(async ({ key }: { key: string; limit: number; windowMs
 });
 jest.mock('@/lib/rate-limit', () => ({
   rateLimit: (input: { key: string; limit: number; windowMs: number }) => rateLimit(input),
+  // No shared store in these tests: the dispatch ledger keeps to this process.
+  getUpstashConfig: () => null,
+  upstashPipeline: jest.fn(),
+}));
+
+let encryptionOn = false;
+jest.mock('@/lib/field-encryption', () => ({
+  isEncryptionEnabled: () => encryptionOn,
+  encryptField: (plaintext: string) => `enc:v1:${Buffer.from(plaintext).toString('base64')}`,
 }));
 
 const logAuditSafe = jest.fn(async (..._args: unknown[]) => undefined);
@@ -82,7 +91,7 @@ jest.mock('@/lib/services/audit-service', () => ({
 
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/patient-sms/route';
-import { resetDispatchLedgerForTest } from '@/lib/sms/patient-dispatch';
+import { resetDispatchLedgerForTest } from '@/lib/sms/dispatch-ledger';
 
 /** Every well-formed request carries the sender's consent confirmation unless a test withholds it. */
 function post(body: unknown) {
@@ -107,6 +116,7 @@ beforeEach(() => {
   provider = 'africastalking';
   allowed = true;
   exhausted = [];
+  encryptionOn = false;
   rateLimit.mockClear();
   delete process.env.PATIENT_SMS_COUNTRY_CODES;
   sendSms.mockClear();
@@ -307,6 +317,33 @@ describe('POST /api/patient-sms', () => {
     expect(res.status).toBe(429);
     expect(res.headers.get('Retry-After')).toBeTruthy();
     expect(sendSms).not.toHaveBeenCalled();
+  });
+
+  describe('what was said', () => {
+    const bodyEntries = () => logAuditSafe.mock.calls.filter(call => call[0] === 'PATIENT_TEXT_BODY');
+
+    it('keeps the text, encrypted, where PHI encryption is on — so a text with no chart record can still be read back', async () => {
+      encryptionOn = true;
+      await post({ patientId: 'pat-1', text: 'Pay 5000 SSP to this number', messageId: msg(70) });
+      expect(bodyEntries()).toHaveLength(1);
+      const details = String(bodyEntries()[0][3]);
+      expect(details).toContain(`message ${msg(70)} to patient pat-1`);
+      expect(details).not.toContain('Pay 5000 SSP');
+      expect(Buffer.from(details.split('enc:v1:')[1], 'base64').toString()).toBe('Pay 5000 SSP to this number');
+    });
+
+    it('stores no copy at all without encryption — never a plaintext one', async () => {
+      await post({ patientId: 'pat-1', text: 'Your prescription', messageId: msg(71) });
+      expect(bodyEntries()).toHaveLength(0);
+      expect(JSON.stringify(logAuditSafe.mock.calls)).not.toContain('Your prescription');
+    });
+
+    it('keeps nothing for a text that did not go', async () => {
+      encryptionOn = true;
+      sendSms.mockResolvedValueOnce({ ok: false, providerId: 'africastalking', error: 'InvalidPhoneNumber' });
+      await post({ patientId: 'pat-1', text: 'Your prescription', messageId: msg(72) });
+      expect(bodyEntries()).toHaveLength(0);
+    });
   });
 
   describe('consent', () => {

@@ -276,7 +276,10 @@ export default function ChartHeader({
         >
           <DuotoneIcon name="dollarSign" size={13} />
           <span className="tamam-allergy-label">Balance</span>
-          <span>{formatMoney(patientBalance)} due</span>
+          {/* A negative balance is money the facility owes the patient (an
+              overpayment, or a paid charge since reversed) — "-3,000 due"
+              said the opposite. */}
+          <span>{patientBalance < 0 ? `${formatMoney(Math.abs(patientBalance))} credit` : `${formatMoney(patientBalance)} due`}</span>
         </button>
       </div>
     </div>

@@ -28,6 +28,8 @@ import { billingDB, encountersDB } from '@/lib/db';
 import { clinicalNotesDB, createClinicalNote, getClinicalNoteById, saveNoteSection, recordPlanAction } from '@/lib/clinical-notes/note-service';
 import { createPrescription, rerouteToOutsidePharmacy } from '@/lib/services/prescription-service';
 import { getEncounter } from '@/lib/services/encounter-service';
+import { reversePaidBillCharge } from '@/lib/services/billing-service';
+import { createLedgerEntry, getPatientBalance } from '@/lib/services/ledger-service';
 import { holdsVisitAtPharmacy } from '@/lib/pharmacy-workflow';
 import { isScriptable, scriptableOnly, buildPrescriptionText } from '@/lib/prescription-script';
 import { isControlledMedicine } from '@/lib/data/formulary';
@@ -66,6 +68,8 @@ async function seedSignedNote() {
 }
 
 const statusOf = async () => (await getEncounter('enc-1'))?.status;
+
+const LEDGER = { patientId: 'pat-1', encounterId: 'enc-1', currency: 'SSP', facilityId: 'hosp-1', orgId: 'org-1', createdBy: 'user-1' } as const;
 
 describe('writing the order', () => {
   it('parks the visit at the pharmacy and bills an order this pharmacy will fill', async () => {
@@ -121,16 +125,72 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
     expect(after.balanceDue).toBe(0);
   });
 
-  it('leaves a charge the patient has already paid for the cashier to refund', async () => {
+  it('turns a charge the patient already paid into a credit they are owed', async () => {
+    // Cancelling is refused once money is recorded, and used to end there: the
+    // facility kept payment for a medicine it would not supply, and nothing
+    // said it was owed back.
     await seedVisit();
     const { prescription } = await createPrescription(order());
     await seedCharge(prescription._id, {
       status: 'paid', amountPaid: 3000, balanceDue: 0,
       payments: [{ amount: 3000, method: 'cash', receivedAt: new Date().toISOString(), receivedByName: 'Cashier' }],
     } as unknown as Partial<BillingDoc>);
+    // What billing and paying it had put in the ledger.
+    await createLedgerEntry({ ...LEDGER, entryType: 'charge', amount: 3000, description: 'Paracetamol — INV-1' });
+    await createLedgerEntry({ ...LEDGER, entryType: 'payment', amount: -3000, description: 'Cash' });
+    expect(await getPatientBalance('pat-1')).toBe(0);
 
     await rerouteToOutsidePharmacy(prescription._id, { id: 'user-1', name: 'Dr. James Wani' });
-    expect((await bill(prescription._id)).status).toBe('paid');
+
+    const after = await bill(prescription._id);
+    // The payment stays on the record exactly as collected…
+    expect(after.status).toBe('paid');
+    expect(after.amountPaid).toBe(3000);
+    expect(after.payments).toHaveLength(1);
+    // …the charge is marked withdrawn, with who and why…
+    expect(after.chargeReversedAt).toBeTruthy();
+    expect(after.chargeReversedBy).toBe('Dr. James Wani');
+    expect(after.chargeReversalReason).toBe('Prescription sent to an outside pharmacy');
+    expect(after.notes).toMatch(/3000 SSP was collected and is owed back/);
+    // …and the account is in credit by what was paid, for the cashier to refund.
+    expect(await getPatientBalance('pat-1')).toBe(-3000);
+  });
+
+  it('reverses a part-paid charge the same way, and stops asking for the rest', async () => {
+    await seedVisit();
+    const { prescription } = await createPrescription(order());
+    await seedCharge(prescription._id, {
+      status: 'partial', amountPaid: 1000, balanceDue: 2000,
+      payments: [{ amount: 1000, method: 'cash', receivedAt: new Date().toISOString(), receivedByName: 'Cashier' }],
+    } as unknown as Partial<BillingDoc>);
+    await createLedgerEntry({ ...LEDGER, entryType: 'charge', amount: 3000, description: 'Paracetamol — INV-1' });
+    await createLedgerEntry({ ...LEDGER, entryType: 'payment', amount: -1000, description: 'Cash' });
+
+    await rerouteToOutsidePharmacy(prescription._id, { id: 'user-1', name: 'Dr. James Wani' });
+
+    const after = await bill(prescription._id);
+    expect(after.balanceDue).toBe(0);
+    expect(after.chargeReversedAt).toBeTruthy();
+    expect(await getPatientBalance('pat-1')).toBe(-1000);
+  });
+
+  it('reverses a paid charge once, however often it is asked', async () => {
+    await seedCharge('rx-x', {
+      status: 'paid', amountPaid: 3000, balanceDue: 0,
+      payments: [{ amount: 3000, method: 'cash', receivedAt: new Date().toISOString(), receivedByName: 'Cashier' }],
+    } as unknown as Partial<BillingDoc>);
+    await createLedgerEntry({ ...LEDGER, entryType: 'charge', amount: 3000, description: 'x' });
+    await createLedgerEntry({ ...LEDGER, entryType: 'payment', amount: -3000, description: 'Cash' });
+
+    expect(await reversePaidBillCharge('bill-rx-x', 'user-1', 'Dr. James Wani', 'Sent out')).not.toBeNull();
+    expect(await reversePaidBillCharge('bill-rx-x', 'user-1', 'Dr. James Wani', 'Sent out')).toBeNull();
+    expect(await getPatientBalance('pat-1')).toBe(-3000);
+  });
+
+  it('has nothing to reverse on a bill nobody has paid — that one is cancelled', async () => {
+    await seedCharge('rx-y');
+    expect(await reversePaidBillCharge('bill-rx-y', 'user-1', 'Dr. James Wani', 'Sent out')).toBeNull();
+    expect((await bill('rx-y')).chargeReversedAt).toBeUndefined();
   });
 
   it('does not touch another order\'s invoice', async () => {

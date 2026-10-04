@@ -12,6 +12,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { useLabResults } from '@/lib/hooks/useLabResults';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import {
   evaluateCritical,
   evaluateCriticalObservations,
@@ -74,6 +75,10 @@ export function useLabWorkflow(
   canWork = true,
 ) {
   const { currentUser } = useAuth();
+  // Reviewing a result, acting on it and telling the patient are the
+  // clinician's half of the loop — the roles that order tests. The bench files
+  // the result; it does not review it on the clinician's behalf.
+  const { canOrderLabs: canCloseOut } = usePermissions();
   const { advance, update } = useLabResults(order.patientId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,11 +193,7 @@ export function useLabWorkflow(
     });
   }, [structuredObservationInputs]);
 
-  const run = useCallback(async (fn: () => Promise<unknown>) => {
-    if (!canWork || currentUser?.role !== 'lab_tech') {
-      setError('labFlow.readOnly');
-      return false;
-    }
+  const execute = useCallback(async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     try {
@@ -205,7 +206,31 @@ export function useLabWorkflow(
     } finally {
       setBusy(false);
     }
-  }, [canWork, currentUser?.role]);
+  }, []);
+
+  /** Bench work: collecting, receiving, processing, filing, amending. */
+  const run = useCallback(async (fn: () => Promise<unknown>) => {
+    if (!canWork || currentUser?.role !== 'lab_tech') {
+      setError('labFlow.readOnly');
+      return false;
+    }
+    return execute(fn);
+  }, [canWork, currentUser?.role, execute]);
+
+  /**
+   * Close-out: a clinician's attestation, not the bench's. It was gated like
+   * bench work, so only a lab tech could press "Mark reviewed" — recording a
+   * clinician's review nobody had made — while the clinician who ordered the
+   * test could not. The patient portal releases a result on this stage, which
+   * makes who may set it matter.
+   */
+  const runCloseout = useCallback(async (fn: () => Promise<unknown>) => {
+    if (!canCloseOut) {
+      setError('labFlow.closeoutClinicianOnly');
+      return false;
+    }
+    return execute(fn);
+  }, [canCloseOut, execute]);
 
   const collect = useCallback(() => run(async () => {
     await advance(order._id, 'specimen_collected', {
@@ -343,17 +368,17 @@ export function useLabWorkflow(
    * The guard in `advanceLabOrder` rejects skips, so each of these only fires
    * from the stage before it.
    */
-  const markReviewed = useCallback(() => run(
+  const markReviewed = useCallback(() => runCloseout(
     () => advance(order._id, 'reviewed_by_clinician', { reviewedBy: currentUser?.name, reviewedAt: new Date().toISOString() }),
-  ), [advance, currentUser, order._id, run]);
+  ), [advance, currentUser, order._id, runCloseout]);
 
-  const markActedUpon = useCallback(() => run(
+  const markActedUpon = useCallback(() => runCloseout(
     () => advance(order._id, 'acted_upon', { actedUponBy: currentUser?.name, actedUponAt: new Date().toISOString() }),
-  ), [advance, currentUser, order._id, run]);
+  ), [advance, currentUser, order._id, runCloseout]);
 
-  const markCommunicated = useCallback(() => run(
+  const markCommunicated = useCallback(() => runCloseout(
     () => advance(order._id, 'communicated_to_patient', { communicatedBy: currentUser?.name, communicatedAt: new Date().toISOString() }),
-  ), [advance, currentUser, order._id, run]);
+  ), [advance, currentUser, order._id, runCloseout]);
 
   /** Send the report to the ordering clinician's inbox. */
   const notifyClinician = useCallback(() => run(async () => {
@@ -389,6 +414,7 @@ export function useLabWorkflow(
     amendReason, setAmendReason,
     collect, receive, reject, startProcessing, fileResult, amendResult, notifyClinician,
     markReviewed, markActedUpon, markCommunicated,
+    canCloseOut,
   };
 }
 

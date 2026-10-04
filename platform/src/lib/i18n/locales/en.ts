@@ -2968,6 +2968,7 @@ const en: TranslationMap = {
   'labFlow.reason': 'Reason',
   'labFlow.closeoutHeading': 'Close the loop',
   'labFlow.closeoutHelp': 'A reported result is not finished until someone has read it, done something about it, and told the patient. Until then it keeps counting against the review SLA.',
+  'labFlow.closeoutClinicianOnly': 'Reviewing a result, acting on it and telling the patient are done by the ordering clinician.',
   'labFlow.errAmendReason': 'Give a reason for the correction',
   'labFlow.markActedUpon': 'Mark acted upon',
   'labFlow.markCommunicated': 'Mark communicated',

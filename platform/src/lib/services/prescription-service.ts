@@ -677,20 +677,23 @@ export async function rerouteToOutsidePharmacy(
 /**
  * Reverse the pharmacy charge raised when an order was written, for an order
  * that is now filled outside the facility. Each prescription is billed on its
- * own invoice (`billPrescription`), so that invoice is cancelled — which the
- * billing service refuses once any payment has been taken, leaving a paid
- * charge for the cashier to refund rather than silently rewriting money.
+ * own invoice (`billPrescription`), so that invoice is cancelled. Once money
+ * has been taken against it, it cannot be cancelled; the charge is reversed
+ * instead, which leaves the payment as a credit on the patient's account for
+ * the cashier to refund (`reversePaidBillCharge`).
  * Best-effort: the re-route is the clinical fact and stands regardless.
  */
 async function cancelPrescriptionCharge(rx: PrescriptionDoc, actor: { id?: string; name: string }): Promise<void> {
   try {
-    const { getBillsByPatient, cancelBill } = await import('./billing-service');
+    const { getBillsByPatient, cancelBill, reversePaidBillCharge } = await import('./billing-service');
     const bills = await getBillsByPatient(rx.patientId);
     for (const bill of bills) {
       const isThisOrder = bill.items.length > 0 && bill.items.every(
         item => item.referenceType === 'prescription' && item.referenceId === rx._id);
       if (!isThisOrder) continue;
-      await cancelBill(bill._id, actor.id || actor.name, actor.name, 'Prescription sent to an outside pharmacy');
+      const reason = 'Prescription sent to an outside pharmacy';
+      const cancelled = await cancelBill(bill._id, actor.id || actor.name, actor.name, reason);
+      if (!cancelled) await reversePaidBillCharge(bill._id, actor.id || actor.name, actor.name, reason);
     }
   } catch (err) {
     console.warn('[prescription] could not cancel the charge for a re-routed order:', err);

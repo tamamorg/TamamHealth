@@ -131,6 +131,61 @@ function explain(error: string): string {
 }
 
 /**
+ * The texts THIS device queued, kept in device-local storage that never
+ * replicates.
+ *
+ * The retry loop used to send every queued message authored by the signed-in
+ * user. Authorship is a field on a replicated document, and the sync
+ * validator checks role and organisation, not who wrote a document — so a
+ * message written by someone else with this user's id on it would arrive by
+ * replication and be sent from this user's session, under their name and
+ * against their allowance. A text is only retried by the device that was
+ * asked to send it.
+ *
+ * (A text queued on one workstation is therefore not retried from another;
+ * it goes when its own device is next online.)
+ */
+const OUTBOX_KEY = 'tamamhealth-patient-text-outbox';
+const OUTBOX_LIMIT = 500;
+
+function readOutbox(userId: string): string[] {
+  try {
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(`${OUTBOX_KEY}:${userId}`);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeOutbox(userId: string, ids: string[]): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(`${OUTBOX_KEY}:${userId}`, JSON.stringify(ids.slice(-OUTBOX_LIMIT)));
+  } catch { /* storage full or blocked: the text is simply not retried from here */ }
+}
+
+function rememberQueuedHere(userId: string, messageId: string): void {
+  if (!userId) return;
+  const ids = readOutbox(userId);
+  if (!ids.includes(messageId)) writeOutbox(userId, [...ids, messageId]);
+}
+
+function forgetQueuedHere(userId: string, messageId: string): void {
+  if (!userId) return;
+  const ids = readOutbox(userId);
+  if (ids.includes(messageId)) writeOutbox(userId, ids.filter(id => id !== messageId));
+}
+
+/** Test seam: clear the device-local outbox. */
+export function resetTextOutboxForTest(): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    for (const key of Object.keys(localStorage)) if (key.startsWith(OUTBOX_KEY)) localStorage.removeItem(key);
+  } catch { /* nothing to clear */ }
+}
+
+/**
  * Messages with a send in progress on this device. A new message is `queued`
  * until its first request returns — up to twenty seconds — and the outbox
  * must not pick it up and send it a second time in that window.
@@ -197,6 +252,8 @@ async function attemptDispatch(message: MessageDoc): Promise<PatientTextResult> 
     ...(undelivered && message.channel === 'sms' ? { status: 'failed' as const } : {}),
   });
   if (outcome === 'sent') await recordTextedPrescriptions(message, lastAttemptAt, sentTo);
+  // Settled one way or the other: nothing left for this device to retry.
+  if (outcome !== 'queued') forgetQueuedHere(message.fromDoctorId, message._id);
   return { message: updated ?? message, outcome, error };
 }
 
@@ -253,6 +310,7 @@ export async function sendPatientText(input: SendPatientTextInput): Promise<Pati
     prescriptionIds: input.prescriptionIds?.length ? input.prescriptionIds : undefined,
     smsDelivery: { state: 'queued', attempts: 0 },
   });
+  rememberQueuedHere(input.sender._id, message._id);
   return dispatchPatientText(message);
 }
 
@@ -275,10 +333,11 @@ export interface TextFlushOutcome {
 let flushing = false;
 
 /**
- * Retry this user's queued texts. Called when the device comes back online
- * and when the app opens. Only the author's own device retries a message, so
- * two workstations at one facility never both send the same text; the server
- * also refuses a message id it has already sent.
+ * Retry the texts this user queued on this device. Called when the device
+ * comes back online and when the app opens. Only the device that was asked to
+ * send a text retries it, so two workstations never both send the same one,
+ * and a message that merely carries this user's id is never sent on their
+ * behalf; the server also refuses a message id it has already sent.
  */
 export async function flushQueuedPatientTexts(userId: string, scope: DataScope): Promise<TextFlushOutcome> {
   const outcome: TextFlushOutcome = { attempted: 0, sent: 0, stillQueued: 0, failed: 0 };
@@ -286,7 +345,10 @@ export async function flushQueuedPatientTexts(userId: string, scope: DataScope):
   flushing = true;
   try {
     const mine = await getMessagesByDoctor(userId, scope);
+    const queuedHere = new Set(readOutbox(userId));
     const due = mine
+      // Only what this device was asked to send — see the outbox note above.
+      .filter(m => queuedHere.has(m._id))
       .filter(m => m.channel === 'sms' || m.channel === 'both')
       .filter(m => !IN_FLIGHT.has(m._id) && isTextRetryDue(m))
       // Oldest first: a text written this morning should not wait behind one

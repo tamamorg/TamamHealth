@@ -132,12 +132,12 @@ function memReset(hashed: string): void {
 // Upstash backend
 // ---------------------------------------------------------------------------
 
-interface UpstashConfig {
+export interface UpstashConfig {
   url: string;
   token: string;
 }
 
-function getUpstashConfig(): UpstashConfig | null {
+export function getUpstashConfig(): UpstashConfig | null {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   if (!url || !token) return null;
@@ -149,7 +149,7 @@ function getUpstashConfig(): UpstashConfig | null {
  * `{ error }` entries. Throws on transport failure or 5xx so the caller
  * can fall through to fail-open.
  */
-async function upstashPipeline(
+export async function upstashPipeline(
   cfg: UpstashConfig,
   commands: (string | number)[][],
 ): Promise<Array<{ result?: unknown; error?: string }>> {

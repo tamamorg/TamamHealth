@@ -770,6 +770,71 @@ export async function cancelBill(
 }
 
 /**
+ * Withdraw the charge on a bill that already has money against it.
+ *
+ * `cancelBill` refuses once a payment is recorded — rightly, since cancelling
+ * would lose sight of money the facility is holding. But the charge can still
+ * be wrong: a prescription paid for at the cashier and then sent to an outside
+ * pharmacy bills the patient for a medicine they will buy elsewhere. Left
+ * alone, the facility keeps the money and nothing says it is owed back.
+ *
+ * So the charge is reversed in the ledger and the payments are left exactly as
+ * collected. What remains is a credit on the patient's account — visible as a
+ * negative balance wherever the balance is shown — for the cashier to refund.
+ * The refund itself stays a human decision; this only makes the debt visible.
+ *
+ * Returns null for a bill with nothing collected (cancel that instead), one
+ * already cancelled, or one already reversed.
+ */
+export async function reversePaidBillCharge(
+  billId: string,
+  reversedBy: string,
+  reversedByName: string,
+  reason: string,
+): Promise<BillingDoc | null> {
+  const db = billingDB();
+  try {
+    const bill = await db.get(billId) as BillingDoc;
+    const collected = bill.amountPaid || 0;
+    if (collected <= 0 || bill.status === 'cancelled' || bill.chargeReversedAt) return null;
+
+    const now = new Date().toISOString();
+    bill.chargeReversedAt = now;
+    bill.chargeReversedBy = reversedByName;
+    bill.chargeReversalReason = reason;
+    // Nothing further is owed on a charge that no longer stands.
+    bill.balanceDue = 0;
+    const line = `Charge reversed: ${reason}. ${collected} ${bill.currency} was collected and is owed back to the patient.`;
+    bill.notes = bill.notes ? `${bill.notes}\n${line}` : line;
+    bill.updatedAt = now;
+    const resp = await db.put(bill);
+    bill._rev = resp.rev;
+
+    // The whole charge comes off; the payments already in the ledger then
+    // leave the account in credit by exactly what was collected.
+    await postLedgerAdjustment(bill, -bill.totalAmount, `Charge reversed — ${bill.invoiceNumber} (${reason}); refund due`, reversedBy);
+
+    await logAuditSafe(
+      'BILL_CHARGE_REVERSED', reversedBy, reversedByName,
+      `Reversed the charge on ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}; ${collected} ${bill.currency} collected is owed back — ${reason}`
+    );
+
+    emitSyncEvent({
+      resourceType: 'billing',
+      resourceId: bill._id,
+      operation: 'update',
+      resourceVersion: bill._rev,
+      orgId: bill.orgId,
+      hospitalId: bill.facilityId,
+    });
+
+    return bill;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Post a ledger adjustment mirroring a change to a bill's total, so patient
  * balances (which read the ledger, not the billing store) stay in sync.
  * Best-effort, same as the mirrors in createBill/recordPayment.

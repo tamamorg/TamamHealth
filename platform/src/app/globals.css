@@ -1229,6 +1229,69 @@ svg.lucide:not([style*="color"]) {
   color: var(--color-white) !important;
   stroke: currentColor !important;
 }
+/* Every other solid, white-text surface that can hold an icon.
+   The list above grew one class at a time, each time someone noticed a blank
+   square on a button; the note editor's Sign and "Pause visit & close", the
+   lab order's Next, and a dozen more were still waiting to be noticed. A
+   default icon is drawn in the accent colour, so on any fill that IS the
+   accent colour it vanishes. These take the surface's own ink instead of a
+   hard white, so they stay right on hover, on a danger fill, and under an
+   organisation's own brand colour.
+
+   ICON-ON-FILL:START — src/__tests__/design/icon-visibility.test.ts reads the
+   selectors between these markers and fails when a solid white-text control
+   elsewhere in the stylesheets is missing from them. */
+:is(
+  .cn-btn-primary,
+  .cn-btn-save,
+  .cn-btn.cn-consent-yes,
+  .cn-segmented button[aria-pressed='true'],
+  .cn-dx-acuity button[aria-pressed='true'],
+  .labord-btn--primary,
+  .labord-toggle--on,
+  .labord-step--current,
+  .labord-step--done,
+  .bl-btn--primary,
+  .bl-btn--dark,
+  .bl-chip--visit,
+  .th-tabs > button[aria-selected="true"],
+  .th-tabs > button.is-active,
+  .step-dot-active,
+  .step-dot-completed,
+  .ehr-mobile-tabbar-fab,
+  .mobile-shell-tabbar-fab,
+  .mobile-shell-header,
+  .mobile-chart-header,
+  .mobile-chart-actions button.primary,
+  .ehr-finance-dialog__primary,
+  .ehr-handoff-btn.primary,
+  .ehr-queue-add,
+  .ehr-queue-move-footer button.primary,
+  .ehr-set-section-head > .ehr-set-head-action,
+  .gov-map-layers button.is-active,
+  .triage-patient-photo-label,
+  .tamam-reg-photo-edit,
+  .ehr-rail-menu-trigger-primary,
+  .msgs-send,
+  .pp-top,
+  .pp-row-pay,
+  .pp-toast,
+  .sadb-pill.is-active,
+  .sadb-tenant-action.is-danger,
+  .popup-resource-header,
+  .rpt-nav-generate,
+  .orgh-btn--danger,
+  .btn-danger-solid,
+  .civ-editor button.is-primary,
+  .tamam-chip--active-visit,
+  .tamam-section-toggle button.is-active,
+  .tamam-activity-filters button.is-active,
+  .booking-week-grid .bwg-slot--selected
+) svg.lucide {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+/* ICON-ON-FILL:END */
 /* Icons on any white-text surface (FABs, custom colored buttons, banners)
    inherit white. The Icon component always sets an inline semantic color, so
    without this an icon whose semantic color matches its colored background

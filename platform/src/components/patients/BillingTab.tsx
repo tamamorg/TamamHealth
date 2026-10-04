@@ -19,6 +19,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { formatDate, formatMoney } from '@/lib/format-utils';
+import { summariseLedger, type LedgerSummary } from '@/lib/ledger-summary';
 import type { PatientDoc } from '@/lib/db-types';
 import type {
   PaymentDoc, ChargeDoc, PaymentPlanDoc, InsurancePolicyDoc, RefundDoc, LedgerEntryDoc,
@@ -71,6 +72,8 @@ interface FinancialOverview {
   charges: ChargeDoc[];
   plans: PaymentPlanDoc[];
   policies: InsurancePolicyDoc[];
+  /** The account as the ledger records it — what the balance is summed from. */
+  ledger: LedgerSummary;
 }
 
 interface CreatedPaymentLink {
@@ -112,40 +115,42 @@ function buildStatementHTML(opts: {
   const fmtDate = (d: string) => formatDate(d);
   const e = escapeHtml;
 
-  const chargeRows = overview.charges.length === 0
-    ? `<tr><td colspan="4" class="empty">No open bills on file</td></tr>`
-    : overview.charges.map(c => `
+  const KIND_LABEL: Record<string, string> = {
+    charge: 'Charge', payment: 'Payment', insurance_payment: 'Insurance payment',
+    adjustment: 'Adjustment', write_off: 'Write-off', refund: 'Refund',
+  };
+  const signed = (n: number) => (n < 0 ? `− ${fmt(Math.abs(n))}` : fmt(n));
+  const ledger = overview.ledger;
+
+  // The statement is the ledger, oldest first, each line with the balance
+  // after it — so the last line IS the balance due, and nothing on the page
+  // has to be taken on trust. (It used to list legacy charge documents beside
+  // a ledger balance; invoices raised by lab orders and prescriptions were in
+  // the balance and not on the page.)
+  const activityRows = ledger.rows.length === 0
+    ? `<tr><td colspan="5" class="empty">No account activity on file</td></tr>`
+    : ledger.rows.map(row => `
       <tr>
-        <td>${e(fmtDate(c.serviceDate))}</td>
-        <td>${e(c.description)}${c.category ? ` <span class="muted">· ${e(c.category)}</span>` : ''}</td>
-        <td><span class="status">${e(c.status)}</span></td>
-        <td class="num">${e(fmt(c.billedAmount))}</td>
+        <td>${e(fmtDate(row.date))}</td>
+        <td>${e(row.description)}</td>
+        <td><span class="status">${e(KIND_LABEL[row.kind] || row.kind)}</span></td>
+        <td class="num">${e(signed(row.amount))}</td>
+        <td class="num">${e(signed(row.balance))}</td>
       </tr>`).join('');
 
-  const paymentRows = overview.payments.length === 0
-    ? `<tr><td colspan="4" class="empty">No payments recorded</td></tr>`
-    : overview.payments.map(p => `
-      <tr>
-        <td>${e(fmtDate(p.processedAt))}</td>
-        <td>${e(getMethodConfig(p.method).label)}</td>
-        <td>${e(p.reference || '—')}</td>
-        <td class="num">${e(fmt(p.amount))}</td>
-      </tr>`).join('');
-
+  const totalRow = (label: string, value: string) => `<div class="total-row"><span>${e(label)}</span><strong>${e(value)}</strong></div>`;
   const body = `
     <section class="section">
-      <h2 class="section-title">Open bills</h2>
-      <table><thead><tr><th>Date</th><th>Description</th><th>Status</th><th class="num">Billed</th></tr></thead><tbody>${chargeRows}</tbody></table>
-    </section>
-    <section class="section">
-      <h2 class="section-title">Payments</h2>
-      <table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">Amount</th></tr></thead><tbody>${paymentRows}</tbody></table>
+      <h2 class="section-title">Account activity</h2>
+      <table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead><tbody>${activityRows}</tbody></table>
     </section>
     <div class="totals">
-      <div class="total-row"><span>Total charged</span><strong>${e(fmt(overview.totalCharged))}</strong></div>
-      <div class="total-row"><span>Insurance paid</span><strong>${e(fmt(overview.insurancePaid))}</strong></div>
-      <div class="total-row"><span>Patient paid</span><strong>${e(fmt(overview.selfPaid))}</strong></div>
-      <div class="total-row grand"><strong>Balance due</strong><strong>${e(fmt(balance))}</strong></div>
+      ${totalRow('Total charged', fmt(ledger.charged))}
+      ${ledger.insurancePaid ? totalRow('Insurance paid', `− ${fmt(ledger.insurancePaid)}`) : ''}
+      ${totalRow('Patient paid', `− ${fmt(ledger.patientPaid)}`)}
+      ${ledger.adjustments ? totalRow('Adjustments and write-offs', signed(ledger.adjustments)) : ''}
+      ${ledger.refunded ? totalRow('Refunds paid out', fmt(ledger.refunded)) : ''}
+      <div class="total-row grand"><strong>${balance < 0 ? 'Credit balance' : 'Balance due'}</strong><strong>${e(fmt(Math.abs(balance)))}</strong></div>
     </div>`;
 
   return buildClinicalPrintDocument({
@@ -390,9 +395,19 @@ export default function BillingTab({
         ledgerSvc.getPatientLedger(patient._id, undefined, scope).catch(() => [] as LedgerEntryDoc[]),
       ]);
 
-      const totalCharged = charges.reduce((s: number, c: ChargeDoc) => s + c.billedAmount, 0);
+      // Totals come from the ledger whenever it has entries: it is what the
+      // balance is summed from, so "billed − paid" and "outstanding" agree.
+      // The charge/payment documents are the fallback for an account that
+      // predates the ledger.
+      const ledger = summariseLedger(ledgerEntries);
+      const hasLedger = ledger.rows.length > 0;
       const postedPayments = payments.filter((p: PaymentDoc) => p.status === 'posted');
-      const totalPaid = postedPayments.reduce((s: number, p: PaymentDoc) => s + p.amount, 0);
+      const totalCharged = hasLedger
+        ? ledger.charged
+        : charges.reduce((s: number, c: ChargeDoc) => s + c.billedAmount, 0);
+      const totalPaid = hasLedger
+        ? ledger.patientPaid + ledger.insurancePaid
+        : postedPayments.reduce((s: number, p: PaymentDoc) => s + p.amount, 0);
       const insurancePaid = postedPayments
         .filter((p: PaymentDoc) => p.method === 'insurance')
         .reduce((s: number, p: PaymentDoc) => s + p.amount, 0);
@@ -420,12 +435,13 @@ export default function BillingTab({
         charges,
         plans,
         policies,
+        ledger,
       });
     } catch (err) {
       console.error('Failed to load billing data:', err);
       setData({
         totalCharged: 0, totalPaid: 0, totalDiscount: 0, totalRefunds: 0, insurancePaid: 0, selfPaid: 0,
-        payments: [], charges: [], plans: [], policies: [],
+        payments: [], charges: [], plans: [], policies: [], ledger: summariseLedger([]),
       });
     }
     setLoading(false);

@@ -18,7 +18,8 @@ jest.setTimeout(30000);
 import { teardownTestDBs } from '../helpers/test-db';
 import { messagesDB, prescriptionsDB } from '@/lib/db';
 import {
-  MAX_TEXT_ATTEMPTS, dispatchPatientText, flushQueuedPatientTexts, isTextRetryDue, sendPatientText,
+  MAX_TEXT_ATTEMPTS, dispatchPatientText, flushQueuedPatientTexts, isTextRetryDue, resetTextOutboxForTest,
+  sendPatientText,
 } from '@/modules/communication/services/patient-text-service';
 import type { MessageDoc, PrescriptionDoc } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
@@ -42,6 +43,7 @@ async function stored(id: string): Promise<MessageDoc> {
 beforeEach(() => {
   apiFetch.mockReset();
   setOnline(true);
+  resetTextOutboxForTest();
 });
 
 afterEach(async () => {
@@ -187,6 +189,35 @@ describe('retrying queued texts', () => {
     expect(isTextRetryDue(queued(3, 16), now)).toBe(true);
     expect(isTextRetryDue({ smsDelivery: { state: 'sent', attempts: 1 } } as MessageDoc, now)).toBe(false);
     expect(isTextRetryDue({} as MessageDoc, now)).toBe(false);
+  });
+
+  it('never sends a queued message it was not asked to send, even one carrying this user\'s id', async () => {
+    // Authorship is a field on a replicated document; the sync validator does
+    // not check who wrote it. A message written elsewhere with this user's id
+    // arrives looking exactly like one of their own queued texts.
+    const now = new Date().toISOString();
+    await messagesDB().put({
+      _id: 'msg-planted', type: 'message', recipientType: 'patient', patientId: 'pat-1', patientName: 'Mary Akol',
+      patientPhone: '0912345145', fromDoctorId: 'user-dr-wani', fromDoctorName: 'Dr. James Wani',
+      fromHospitalName: 'Wau State Hospital', subject: 's', body: 'Pay 5000 SSP to this number', channel: 'sms',
+      status: 'sent', sentAt: now, orgId: 'org-1', textConsentConfirmed: true,
+      smsDelivery: { state: 'queued', attempts: 0 }, createdAt: now, updatedAt: now,
+    } as unknown as MessageDoc);
+
+    apiFetch.mockResolvedValue(reply(200, { state: 'sent', provider: 'africastalking' }));
+    const outcome = await flushQueuedPatientTexts('user-dr-wani', SCOPE);
+
+    expect(outcome).toMatchObject({ attempted: 0, sent: 0 });
+    expect(apiFetch).not.toHaveBeenCalled();
+    expect((await stored('msg-planted')).smsDelivery?.state).toBe('queued');
+  });
+
+  it('stops retrying a text once it has settled', async () => {
+    apiFetch.mockResolvedValue(reply(200, { state: 'sent', provider: 'africastalking' }));
+    await sendPatientText({ patient: PATIENT, text: 'x', subject: 's', sender: SENDER, consentConfirmed: true });
+    apiFetch.mockClear();
+    expect(await flushQueuedPatientTexts('user-dr-wani', SCOPE)).toMatchObject({ attempted: 0 });
+    expect(apiFetch).not.toHaveBeenCalled();
   });
 
   it('sends this user\'s queued texts once the device is back online', async () => {
