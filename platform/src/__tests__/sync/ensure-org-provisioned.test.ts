@@ -99,6 +99,14 @@ describe('an unprovisioned organization', () => {
     });
     expect(dbCreates).toHaveLength(ORG_SCOPED_COUNT);
 
+    // And the server-side database each replication job feeds. The jobs run
+    // with create_target: false, so a type added to the sync map later (the
+    // history entries database was one) had nowhere to replicate into until
+    // someone reran the setup script by hand.
+    const aggregateCreates = calls.filter(c =>
+      c.method === 'PUT' && new URL(c.url).pathname === '/tamamhealth_history_entries');
+    expect(aggregateCreates).toHaveLength(1);
+
     const security = calls.filter(c => c.method === 'PUT' && c.url.endsWith('/_security'));
     // Every tenant database gets _security, and every shared browser database
     // gains this org's member role.

@@ -13,10 +13,11 @@
  */
 
 import type { AllergyEntry } from '../types/patient-clinical';
-import type { PrescriptionDoc, ProblemDoc, MedicalRecordDoc, TriageDoc } from '../db-types';
+import type { PrescriptionDoc, ProblemDoc, MedicalRecordDoc, TriageDoc, HistoryEntryDoc, ProcedureDoc } from '../db-types';
 import type { NoteSectionId } from './note-catalog';
 import type { DataScope } from '../services/data-scope';
 import { mergeVitalsTimeline } from '../clinical/vitals';
+import { formatHistoryDomain, formatPastHistory } from '../clinical/patient-history';
 
 /** "38.1 °C · 150/90 · HR 92" — the line a clinician scans, not a table. */
 export function formatVitals(record: Partial<Pick<MedicalRecordDoc, 'vitalSigns' | 'triageVitals'>> | null): string {
@@ -107,6 +108,16 @@ export interface ChartSnapshotInput {
    * building `ChartSnapshotInput` by hand gets the pre-existing behaviour.
    */
   allergiesLoadFailed?: boolean;
+  /** The patient's standing history, from the chart's History tab. */
+  historyEntries?: HistoryEntryDoc[];
+  /**
+   * True when the history read threw. An empty history and a failed read both
+   * arrive as `[]`; the editor uses this to try again on the next open rather
+   * than record that the chart's history was offered when it never loaded.
+   */
+  historyLoadFailed?: boolean;
+  /** Procedures on the chart — the ones already done read as surgical history. */
+  procedures?: ProcedureDoc[];
 }
 
 /**
@@ -133,6 +144,19 @@ export function snapshotForSection(
       if (input.allergiesLoadFailed) return '';
       return 'No allergy history has been documented for this patient.';
     }
+    // History sections say nothing when there is nothing on the chart. Unlike
+    // allergies there is no "none known" line to fall back to: an empty family
+    // history means nobody has recorded one, not that the family is well.
+    case 'past_medical_history':
+      return formatPastHistory({
+        entries: input.historyEntries ?? [],
+        problems: input.problems ?? [],
+        procedures: input.procedures ?? [],
+      });
+    case 'family_history':
+      return formatHistoryDomain(input.historyEntries ?? [], 'family');
+    case 'social_history':
+      return formatHistoryDomain(input.historyEntries ?? [], 'social');
     default:
       return '';
   }
@@ -150,20 +174,41 @@ export function snapshotForSection(
  * would hide, especially once that text is frozen into a signed note.
  */
 export async function loadChartSnapshot(patientId: string, scope?: DataScope): Promise<ChartSnapshotInput> {
-  const [prescriptions, allergies, problems, vitalsRecord] = await Promise.all([
+  const [prescriptions, allergies, problems, vitalsRecord, historyEntries, procedures] = await Promise.all([
     safelyTagged(async () => {
       const { getPrescriptionsByPatient } = await import('../services/prescription-service');
       return getPrescriptionsByPatient(patientId, scope);
     }, [] as PrescriptionDoc[]),
     safelyTagged(async () => {
+      // A patient this reader cannot see must count as a FAILED read, not an
+      // empty one: the allergy service answers both with `[]`, and an empty
+      // list here is written into the note as "No allergy history has been
+      // documented" — a negative nobody established.
+      const { getPatientById } = await import('../services/patient-service');
+      if (!await getPatientById(patientId, scope)) throw new Error('patient not readable in this scope');
       const { getActiveAllergies } = await import('../services/allergy-service');
-      return getActiveAllergies(patientId);
+      return getActiveAllergies(patientId, scope);
     }, [] as AllergyEntry[]),
     safelyTagged(async () => {
+      // Scoped like every other read here: the local database holds every
+      // organisation the device replicated, and this text is frozen into a
+      // signed note.
       const { getProblemsByPatient } = await import('../services/problem-service');
-      return getProblemsByPatient(patientId);
+      return getProblemsByPatient(patientId, scope);
     }, [] as ProblemDoc[]),
     newestVitals(patientId, scope),
+    safelyTagged(async () => {
+      // History is never read unscoped. Without a scope this counts as a
+      // failed read, so the caller tries again rather than treating the
+      // patient as having no history.
+      if (!scope) throw new Error('history requires a data scope');
+      const { getHistoryByPatient } = await import('../services/history-service');
+      return getHistoryByPatient(patientId, scope);
+    }, [] as HistoryEntryDoc[]),
+    safely(async () => {
+      const { getProceduresByPatient } = await import('../services/procedure-service');
+      return getProceduresByPatient(patientId, scope);
+    }, [] as ProcedureDoc[]),
   ]);
 
   return {
@@ -172,6 +217,9 @@ export async function loadChartSnapshot(patientId: string, scope?: DataScope): P
     problems: problems.value,
     vitalsRecord,
     allergiesLoadFailed: allergies.failed,
+    historyEntries: historyEntries.value,
+    historyLoadFailed: historyEntries.failed,
+    procedures,
   };
 }
 

@@ -810,7 +810,7 @@ export default function FrontDeskDashboardPage() {
             const { logAuditSafe } = await import('@/lib/services/audit-service');
             await logAuditSafe(
               'CHECKOUT_GATE_OVERRIDDEN', currentUser?._id, currentUser?.name,
-              `Discharged ${target.patientName} over unmet gate conditions ` +
+              `Discharged patient ${target.patientId} over unmet gate conditions ` +
               `[${evaluation.blocking.map(b => b.key).join(', ')}] — ${override.reason} ` +
               `(authorized by ${override.authorizedBy})`,
             );

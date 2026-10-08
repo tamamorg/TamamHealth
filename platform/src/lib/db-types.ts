@@ -938,6 +938,65 @@ export interface ProblemDoc extends BaseDoc {
 }
 
 /**
+ * One line of a patient's standing history — past medical, surgical, family or
+ * social. Anchored to the patient like the Problem List, so it is recorded once
+ * and read at every visit instead of being retyped into each note.
+ *
+ * One document per entry rather than one history document per patient: two
+ * clinicians adding a family-history line and a social-history line at the same
+ * moment then write two different documents, and neither can overwrite the
+ * other on sync.
+ *
+ * What is NOT here: coded current diagnoses (the Problem List), allergies
+ * (`patient.structuredAllergies`) and procedures done in this facility
+ * (`ProcedureDoc`). The History tab reads those alongside these entries; it does
+ * not copy them.
+ */
+export type HistoryDomain = 'medical' | 'surgical' | 'family' | 'social';
+
+export interface HistoryEntryDoc extends BaseDoc {
+  type: 'history_entry';
+  patientId: string;
+  patientName?: string;
+  domain: HistoryDomain;
+  /**
+   * The headline of the entry: the illness or event (medical), the operation
+   * (surgical), the condition a relative had (family), or the factor being
+   * described — "Tobacco", "Occupation" (social).
+   */
+  title: string;
+  /** Family history only: who had it ("Mother", "Maternal grandfather"). */
+  relation?: string;
+  /** Social history only: which factor `title` names. See SOCIAL_FACTORS. */
+  factor?: string;
+  /**
+   * When it happened, as the patient can give it. Free text on purpose — a
+   * history is taken as "2015", "as a child" or "about ten years ago", and a
+   * date picker would make the clinician invent a day and a month.
+   */
+  when?: string;
+  /** Surgical history only: where the operation was done. */
+  facility?: string;
+  /** The finding itself for social history ("Never smoked"); context otherwise. */
+  detail?: string;
+  /**
+   * 'entered_in_error' retires a mistaken entry without deleting it, so the
+   * chart can still show that something was recorded and withdrawn.
+   */
+  status: 'active' | 'entered_in_error';
+  /** Clinical note this entry was recorded from, when it was added mid-note. */
+  sourceNoteId?: string;
+  recordedBy?: string;
+  recordedByName?: string;
+  /** Who last corrected the entry, when it has been edited since it was recorded. */
+  updatedBy?: string;
+  updatedByName?: string;
+  hospitalId?: string;
+  hospitalName?: string;
+  orgId?: string;
+}
+
+/**
  * Care-program enrollment — clinical programs a patient is enrolled in
  * (ART/HIV care, TB, PMTCT, ANC, Nutrition, EPI/Immunization, NCD clinic, or
  * a free-text "other"). Anchored to the patient like the Problem List.
@@ -1049,6 +1108,12 @@ export interface AuditLogDoc extends BaseDoc {
   // Optional because write-audit entries and older rows don't carry them.
   /** Acting user's role at the time of access. */
   role?: string;
+  /**
+   * The person an action was recorded ABOUT, when a caller named someone other
+   * than whoever was signed in — the clinician a front-desk check-in was booked
+   * for, say. `userId` is always the actor.
+   */
+  subjectUserId?: string;
   /** Facility the actor was working at. */
   hospitalId?: string;
   /** Patient whose PHI was read — the field an access review pivots on. */
@@ -1184,6 +1249,15 @@ export interface MessageDoc extends BaseDoc {
   recipientDepartment?: string;
   recipientHospitalId?: string;
   recipientHospitalName?: string;
+  /**
+   * The clinician a patient's portal message is answering: whoever last wrote
+   * to them, or failing that their assigned doctor. Set by the server when the
+   * patient sends — never taken from the patient's request — and absent when
+   * the patient has no clinician to address, in which case the message is a
+   * front-desk enquiry like any other.
+   */
+  recipientStaffId?: string;
+  recipientStaffName?: string;
   fromDoctorId: string;
   fromDoctorName: string;
   fromHospitalName: string;
@@ -1222,6 +1296,13 @@ export interface MessageDoc extends BaseDoc {
    * editing the subject line.
    */
   patientEducation?: boolean;
+  /**
+   * Sent by the system, not typed by a person — an appointment reminder. It
+   * is shown to the patient like any other message, but it does not count as
+   * the care team answering them: a patient who asked a question on Monday
+   * has not been answered because a reminder went out on Tuesday.
+   */
+  automated?: boolean;
   orgId?: string;
   /**
    * Internal staff chat: groups a message into a conversation thread.
@@ -1234,10 +1315,25 @@ export interface MessageDoc extends BaseDoc {
   reactions?: { emoji: string; userId: string }[];
   /** Id of the message this one is replying to (staff chat). */
   replyToId?: string;
-  /** Soft-delete tombstone for staff chat ("This message was deleted"). */
+  /**
+   * The author removed this message from the thread. This is a retraction, not
+   * an erasure: `body`, `attachments` and `reactions` stay on the document, so
+   * the communication record keeps its chronology and the original can still
+   * be read. Nothing in the platform deletes a message document.
+   */
   deleted?: boolean;
+  /** When, and by whom, the message was removed. Absent on legacy tombstones. */
+  deletedAt?: string;
+  deletedById?: string;
+  deletedByName?: string;
   /** Set when the author edits a message within the edit window. */
   editedAt?: string;
+  /**
+   * Every earlier wording of an edited message, oldest first. `at` is when
+   * that wording was written (the send time for the first one), so an edit
+   * replaces what the thread shows without replacing the record.
+   */
+  editHistory?: Array<{ body: string; at: string }>;
   /** File/image attachments (PDF, JPG, PNG — base64 encoded for offline-first sync). */
   attachments?: Array<{
     name: string;
@@ -1793,6 +1889,8 @@ export interface ConversationDoc extends BaseDoc {
   name?: string;
   participantIds: string[];
   participantNames?: string[];
+  /** Who created it. Absent on conversations that predate the field. */
+  createdById?: string;
   createdByName?: string;
   lastMessageAt?: string;
   lastMessagePreview?: string;
@@ -1801,7 +1899,11 @@ export interface ConversationDoc extends BaseDoc {
   pinnedBy?: string[];
   /** User ids who have muted notifications for this conversation. */
   mutedBy?: string[];
-  /** User ids who have archived this conversation out of their active list. */
+  /**
+   * User ids who have archived this conversation out of their own list. This is
+   * the only way a conversation leaves a list — it and its messages are kept,
+   * and a new message brings it back for everyone.
+   */
   archivedBy?: string[];
   hospitalId?: string;
   hospitalName?: string;

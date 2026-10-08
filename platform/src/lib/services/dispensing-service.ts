@@ -888,7 +888,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   }
 
   await logAuditSafe('PRESCRIPTION_DISPENSED', input.dispenserId, input.dispenserName,
-    `Dispensed ${quantity} ${controlledBatch?.unit || plan.allocations[0]?.batch.unit || 'unit(s)'} of ${rx.medication} to ${rx.patientName} `
+    `Dispensed ${quantity} ${controlledBatch?.unit || plan.allocations[0]?.batch.unit || 'unit(s)'} to patient ${rx.patientId} `
     + `from batch(es) ${applied.map(a => a.batchNumber).join(', ')} (Rx: ${rx._id})`
     + (claimedOutcome === 'partial' ? ` — PARTIAL fill, ${claimedRequested - claimedTotalDispensed} outstanding` : ''),
   );
@@ -1038,7 +1038,7 @@ export async function recordUnfilled(
     await logAuditSafe(
       reason === 'stock_out' ? 'PRESCRIPTION_STOCKOUT' : 'PRESCRIPTION_CLARIFICATION',
       actor.id, actor.name,
-      `${rx.medication} for ${rx.patientName} (Rx: ${rx._id}): ${note}`,
+      `Rx ${rx._id} for patient ${rx.patientId}; note recorded on the prescription`,
     );
     await raisePharmacyTask(rx, reason, note);
   }

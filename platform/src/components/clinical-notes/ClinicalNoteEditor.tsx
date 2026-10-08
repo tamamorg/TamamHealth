@@ -32,6 +32,7 @@ import MedicationsModal from './MedicationsModal';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import IncludeProblemsModal from './assessment/IncludeProblemsModal';
 import AllergiesModal from './AllergiesModal';
+import HistoryModal from './HistoryModal';
 import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
 import CareCoordinationModal, {
   type CareCoordinationResult, type SummaryProblem,
@@ -41,14 +42,14 @@ import PatientEducationModal, { type PatientEducationModalResult } from './Patie
 import { socialHistoryRows } from '@/lib/clinical-notes/social-history-summary';
 import {
   NOTE_TYPE_ORDER, NOTE_TYPES, getNoteType, getSectionLabel,
-  availableOptionalSections, isNoteTypeId,
+  availableOptionalSections, isNoteTypeId, isDerivedSection, isHistorySection, HISTORY_SECTION_IDS,
   type NoteSectionId,
 } from '@/lib/clinical-notes/note-catalog';
 import {
   getClinicalNoteById, updateClinicalNote, saveNoteSection, addNoteSection,
   removeNoteSection, changeNoteType, clearNote, signClinicalNote,
   addNoteAddendum, recordPlanAction, isNoteLocked,
-  listClinicalNotes, foldRetiredNoteSections,
+  listClinicalNotes, foldRetiredNoteSections, includeChartHistory, sectionBody,
 } from '@/lib/clinical-notes/note-service';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import { getRoleFlag } from '@/lib/settings/role-settings-store';
@@ -97,10 +98,17 @@ interface ClinicalNoteEditorProps {
    */
   showContextSidebar?: boolean;
   onClose?: () => void;
+  /**
+   * Leave the note for a section of this patient's chart. The chart's drawer
+   * supplies it — the chart is already on screen, so it switches section and
+   * closes the drawer instead of navigating to the page it is on. Without it
+   * (the standalone notes route) the editor navigates to the chart itself.
+   */
+  onOpenChartTab?: (tabId: string) => void;
 }
 
 export default function ClinicalNoteEditor({
-  noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose,
+  noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose, onOpenChartTab,
 }: ClinicalNoteEditorProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -120,6 +128,7 @@ export default function ClinicalNoteEditor({
   const [showMedications, setShowMedications] = useState(false);
   const [showProblems, setShowProblems] = useState(false);
   const [showAllergies, setShowAllergies] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showVitals, setShowVitals] = useState(false);
   const [showPrescribe, setShowPrescribe] = useState(false);
   const [showLabOrder, setShowLabOrder] = useState(false);
@@ -251,6 +260,38 @@ export default function ClinicalNoteEditor({
     };
   }, [noteId]);
 
+  /**
+   * Write every edit still waiting on its autosave timer, now, and wait for it.
+   * Signing calls this first: the signature locks the note, so an edit left
+   * waiting would be refused afterwards and never reach the signed record. An
+   * edit that fails to save is put back so it is not lost, and the error
+   * stops the signature.
+   */
+  const flushPendingEdits = useCallback(async () => {
+    for (const t of Object.values(timers.current)) clearTimeout(t);
+    timers.current = {};
+    const pending = pendingSaves.current;
+    pendingSaves.current = {};
+    const sectionIds = Object.keys(pending);
+    for (let i = 0; i < sectionIds.length; i++) {
+      try {
+        await saveNoteSection(noteId, sectionIds[i] as NoteSectionId, pending[sectionIds[i]]);
+      } catch (err) {
+        for (const id of sectionIds.slice(i)) {
+          pendingSaves.current[id] = { ...pending[id], ...pendingSaves.current[id] };
+        }
+        throw err;
+      }
+    }
+  }, [noteId]);
+
+  /** Leave the note for a section of this patient's chart. */
+  const openChartTab = useCallback((tabId: string) => {
+    if (!note) return;
+    if (onOpenChartTab) onOpenChartTab(tabId);
+    else router.push(`/patients/${note.patientId}?tab=${tabId}`);
+  }, [note, onOpenChartTab, router]);
+
   const locked = note ? isNoteLocked(note) : false;
   const typeDef = note ? getNoteType(note.noteType) : null;
 
@@ -325,19 +366,79 @@ export default function ClinicalNoteEditor({
     showToast(`${getSectionLabel(sectionId)} refreshed from the chart.`, 'success');
   }, [note, noteId, persist, showToast, scope]);
 
-  // Fill any empty derived section on first open, so a new note opens with
-  // today's observations already in it.
-  useEffect(() => {
-    if (!note || locked) return;
-    const empty = note.sections.filter(
-      s => !s.snapshot && ['vitals', 'medications', 'allergies'].includes(s.sectionId),
-    );
+  // The chart's history changed under the note (the History popup closed):
+  // re-read it into whichever history sections the note carries. One chart
+  // read for all of them, and no toast — the clinician just made the change.
+  const refreshHistorySections = useCallback(async () => {
+    // Drafts only. A note awaiting co-signature is already attested: the
+    // supervisor must co-sign what the trainee signed, not a note the chart
+    // has since rewritten.
+    if (!note || note.status !== 'draft') return;
+    const present = note.sections.map(s => s.sectionId).filter(isHistorySection);
+    if (present.length === 0) return;
+    const snapshot = await loadChartSnapshot(note.patientId, scope);
+    if (snapshot.historyLoadFailed) return;
+    const at = new Date().toISOString();
+    for (const sectionId of present) {
+      await persist(() => saveNoteSection(noteId, sectionId, {
+        snapshot: snapshotForSection(sectionId, snapshot), snapshotAt: at,
+      }));
+    }
+  }, [note, noteId, persist, scope]);
+
+  // Read the chart into whichever derived sections of `current` are still
+  // empty. Runs on first open (below) and again whenever sections appear on a
+  // note that is already open — a type change, "Add Optional" — because a
+  // history section added mid-note would otherwise sit empty until the note
+  // was closed and reopened, looking like a patient with no history.
+  const fillEmptyDerived = useCallback(async (current: ClinicalNoteDoc | null) => {
+    if (!current || current.status !== 'draft') return;
+    const empty = current.sections.filter(s => !s.snapshot && isDerivedSection(s.sectionId));
     if (empty.length === 0) return;
+    const snapshot = await loadChartSnapshot(current.patientId, scope);
+    for (const section of empty) {
+      const text = snapshotForSection(section.sectionId, snapshot);
+      if (!text) continue;
+      await persist(() => saveNoteSection(noteId, section.sectionId, {
+        snapshot: text, snapshotAt: new Date().toISOString(),
+      }));
+    }
+  }, [noteId, persist, scope]);
+
+  // Fill any empty derived section on first open, so a new note opens with
+  // today's observations already in it — and, for a returning patient, with
+  // the history the chart already holds.
+  const scopeReady = Boolean(scope);
+  const isDraft = note?.status === 'draft';
+  useEffect(() => {
+    // Waits for the signed-in user's scope: the chart reads below are scoped,
+    // and history is not read at all without one. Drafts only — `locked` is
+    // false for a note awaiting co-signature, which is attested all the same
+    // and must reach the supervisor exactly as the trainee signed it.
+    if (!note || !isDraft || !scopeReady) return;
+    // Offered once per note: after that the sections on it are the
+    // clinician's choice, and reopening must not put back one they removed.
+    const offerHistory = !note.chartHistoryIncludedAt;
+    const hasEmptyDerived = note.sections.some(s => !s.snapshot && isDerivedSection(s.sectionId));
+    if (!offerHistory && !hasEmptyDerived) return;
 
     let cancelled = false;
     (async () => {
       const snapshot = await loadChartSnapshot(note.patientId, scope);
       if (cancelled) return;
+
+      let current: ClinicalNoteDoc = note;
+      // A failed history read is left for the next open rather than recorded
+      // as "offered, and the patient had none".
+      if (offerHistory && !snapshot.historyLoadFailed) {
+        const texts: Partial<Record<NoteSectionId, string>> = {};
+        for (const id of HISTORY_SECTION_IDS) texts[id] = snapshotForSection(id, snapshot);
+        const updated = await persist(() => includeChartHistory(noteId, texts));
+        if (cancelled) return;
+        if (updated) current = updated;
+      }
+
+      const empty = current.sections.filter(s => !s.snapshot && isDerivedSection(s.sectionId));
       for (const section of empty) {
         const text = snapshotForSection(section.sectionId, snapshot);
         if (!text) continue;
@@ -350,12 +451,13 @@ export default function ClinicalNoteEditor({
     // Deliberately keyed on the note id only: this is a one-shot prefill, not a
     // reaction to every subsequent edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId, note?.patientId]);
+  }, [noteId, note?.patientId, scopeReady, isDraft]);
 
   // ── Header actions ──────────────────────────────────────────────────────
   const handleTypeChange = async (next: string) => {
     if (!isNoteTypeId(next)) return;
-    await persist(() => changeNoteType(noteId, next));
+    // The new type may bring derived sections the old one did not have.
+    await fillEmptyDerived(await persist(() => changeNoteType(noteId, next)));
   };
 
   const handleClear = async () => {
@@ -374,6 +476,7 @@ export default function ClinicalNoteEditor({
   const handleSectionAction = useCallback((actionId: NoteSectionActionId) => {
     if (!note) return;
     switch (actionId) {
+      case 'update_history': setShowHistory(true); return;
       case 'include_problems': setShowProblems(true); return;
       case 'review_medications': setShowMedications(true); return;
       case 'manage_allergies': setShowAllergies(true); return;
@@ -438,15 +541,23 @@ export default function ClinicalNoteEditor({
   // ── Signing ─────────────────────────────────────────────────────────────
   const handleSign = async () => {
     setShowSignConfirm(false);
-    const updated = await persist(() => signClinicalNote(noteId, {
-      signedBy: currentUser?._id || '',
-      signedByName: userName,
-      // Without the role, a provider picking up an unassigned (or a
-      // colleague's) draft is refused by the attestation check even though
-      // provider roles hold standing signing authority.
-      signerRole: currentUser?.role,
-    }));
-    if (updated) showToast('Note signed.', 'success');
+    const updated = await persist(async () => {
+      await flushPendingEdits();
+      return signClinicalNote(noteId, {
+        signedBy: currentUser?._id || '',
+        signedByName: userName,
+        // Without the role, a provider picking up an unassigned (or a
+        // colleague's) draft is refused by the attestation check even though
+        // provider roles hold standing signing authority.
+        signerRole: currentUser?.role,
+      });
+    });
+    if (!updated) return;
+    showToast('Note signed.', 'success');
+    // A signed note is finished work: it is locked and the visit has moved on,
+    // so the editor closes onto the patient's Visits rather than leaving the
+    // clinician looking at a page with nothing left to do on it.
+    openChartTab('history');
   };
 
   const handleAddendum = async () => {
@@ -937,6 +1048,9 @@ export default function ClinicalNoteEditor({
                   : section.sectionId === 'allergies' ? () => setShowAllergies(true)
                   // Read-only once signed: the snapshot is the record then.
                   : section.sectionId === 'vitals' && !locked ? () => setShowVitals(true)
+                  // Same rule for history: the popup edits the chart, and a
+                  // signed note's history is no longer a way in to doing that.
+                  : isHistorySection(section.sectionId) && isDraft ? () => setShowHistory(true)
                   : undefined
                 }
                 onAction={locked ? undefined : handleSectionAction}
@@ -1005,8 +1119,7 @@ export default function ClinicalNoteEditor({
                 const dxLines = (s.diagnoses || [])
                   .map(d => `• ${d.name}${d.icd11Code ? ` (ICD-11 ${d.icd11Code})` : ''}${d.startDate ? ` — since ${d.startDate}` : ''}`)
                   .join('\n');
-                const body = [dxLines, stripTemplateMarkers(s.text || '') || s.snapshot || '']
-                  .filter(Boolean).join('\n');
+                const body = [dxLines, sectionBody(s)].filter(Boolean).join('\n');
                 return `${getSectionLabel(s.sectionId)}\n${body}`;
               })
               .join('\n\n');
@@ -1022,9 +1135,11 @@ export default function ClinicalNoteEditor({
         <button
           type="button"
           className="cn-btn"
-          onClick={() => navigateAway(`/patients/${note.patientId}?tab=overview`)}
+          // Named for the chart section it opens: Care plan (`careChecklist`).
+          // This pointed at `overview`, which is the Patient summary.
+          onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}
         >
-          <ClipboardList size={14} /> Care Checklist
+          <ClipboardList size={14} /> Care Plan
         </button>
 
         <div className="cn-footer-spacer" />
@@ -1060,8 +1175,9 @@ export default function ClinicalNoteEditor({
                 type="button"
                 className="cn-popover-item"
                 onClick={async () => {
-                  await persist(() => addNoteSection(noteId, def.id));
+                  const updated = await persist(() => addNoteSection(noteId, def.id));
                   setShowAddOptional(false);
+                  await fillEmptyDerived(updated);
                 }}
               >
                 {def.label}
@@ -1159,6 +1275,20 @@ export default function ClinicalNoteEditor({
           onClose={() => {
             setShowAllergies(false);
             if (!locked) void refreshDerived('allergies');
+          }}
+        />
+      )}
+
+      {showHistory && (
+        <HistoryModal
+          patientId={note.patientId}
+          patientName={note.patientName}
+          noteId={noteId}
+          onClose={() => {
+            setShowHistory(false);
+            // Whatever was added or corrected is on the chart now; bring the
+            // note's history sections back in line with it.
+            void refreshHistorySections();
           }}
         />
       )}

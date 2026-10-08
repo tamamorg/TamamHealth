@@ -163,6 +163,15 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       out.push(...messageNotificationItems(unreadMessages, perSourceLimit));
     } catch { /* offline */ }
 
+    // A patient's portal reply, addressed to this clinician and not yet
+    // answered. Opens the conversation on that patient's chart.
+    if (relevant('message')) try {
+      const { getUnansweredPatientMessages } = await import('@/modules/communication/services/patient-thread-service');
+      const { patientMessageNotificationItems } = await import('@/modules/communication/notifications/patient-message-items');
+      const waiting = await getUnansweredPatientMessages(currentUser._id, scope);
+      out.push(...patientMessageNotificationItems(waiting, perSourceLimit));
+    } catch { /* offline */ }
+
     if (relevant('referral')) try {
       const { getAllReferrals } = await import('@/lib/services/referral-service');
       const refs = await getAllReferrals(scope);

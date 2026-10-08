@@ -287,7 +287,10 @@ export default function SecurityCompliancePage() {
   /* ── Posture (reads the persisted policy, not the draft) ────────────── */
 
   const postureRows = useMemo(() => [
-    { label: 'Audit retention ≥ 6 years', tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: `${persisted.auditRetentionYears}y` },
+    // A stated policy, not a measurement: nothing reads this number. Audit
+    // entries are in fact never pruned on the server, so the trail is kept
+    // regardless — the chip says which of the two this row is reporting.
+    { label: 'Audit retention policy ≥ 6 years', tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: `${persisted.auditRetentionYears}y · policy only` },
     { label: 'PHI export control', tone: (persisted.phiExportRequiresReason ? 'ok' : 'warn') as Tone, chip: persisted.phiExportRequiresReason ? 'On' : 'Off' },
     { label: 'Deletion approval', tone: (persisted.dataDeletionRequiresApproval ? 'ok' : 'warn') as Tone, chip: persisted.dataDeletionRequiresApproval ? 'On' : 'Off' },
     // Three states, not two: "unknown" claimed "At risk" before, which is a

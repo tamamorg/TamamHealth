@@ -77,7 +77,7 @@ export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev
   };
   const resp = await db.put(doc);
   doc._rev = resp.rev;
-  await logAuditSafe('REGISTER_BIRTH', undefined, undefined, `Registered birth ${doc._id}: ${data.childFirstName} ${data.childSurname}, gender: ${data.childGender}`);
+  await logAuditSafe('REGISTER_BIRTH', undefined, undefined, `Registered birth ${doc._id}`);
   emitSyncEvent({
     resourceType: 'birth',
     resourceId: doc._id,

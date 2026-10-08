@@ -99,3 +99,52 @@ export function maybeEncrypt(plaintext: string): string {
 export function maybeDecrypt(value: string): string {
   return isEncrypted(value) ? decryptField(value) : value;
 }
+
+/* ─────────────── fields that replicate to devices ─────────────── */
+
+/** Shown in place of a field this device cannot decrypt. */
+export const UNREADABLE_FIELD_TEXT = '[Encrypted on the server — cannot be read on this device.]';
+
+/**
+ * Whether a field that REPLICATES TO BROWSERS is encrypted when written.
+ *
+ * Only where there is no browser sync. The key is a server-only secret, so a
+ * device that pulls an encrypted field has nothing to read it with. This
+ * layer's switch is on in `.env.example` and in CI, and production requires
+ * sync, so the two were routinely set together: every message, record and lab
+ * result the server wrote then failed to open on every device. In a synced
+ * deployment the at-rest control is disk encryption
+ * (`PHI_AT_REST_STRATEGY=disk-encryption`); see the header of this file.
+ *
+ * Fields that never leave the server (restricted notes) keep `maybeEncrypt`.
+ */
+export function encryptsReplicatedFields(): boolean {
+  return isEncryptionEnabled() && process.env.NEXT_PUBLIC_SYNC_ENABLED === 'false';
+}
+
+/**
+ * Encrypt a replicated field for storage when this deployment does that.
+ *
+ * Refuses to store the unreadable placeholder: a form loaded on a device that
+ * could not decrypt a field holds the placeholder, and saving it back would
+ * overwrite the ciphertext — the only copy of what the field said.
+ */
+export function maybeEncryptReplicated(plaintext: string): string {
+  if (plaintext === UNREADABLE_FIELD_TEXT) {
+    throw new EncryptionKeyError('This record has a field that cannot be read on this device, so it cannot be saved from it.');
+  }
+  return encryptsReplicatedFields() ? encryptField(plaintext) : plaintext;
+}
+
+/**
+ * Read a replicated field without letting one unreadable value take a whole
+ * list down. A value encrypted before the rule above, read where there is no
+ * key, used to throw out of the query that loaded it.
+ */
+export function readReplicatedField(value: string): string {
+  try {
+    return maybeDecrypt(value);
+  } catch {
+    return UNREADABLE_FIELD_TEXT;
+  }
+}

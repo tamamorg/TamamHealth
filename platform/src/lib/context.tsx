@@ -17,6 +17,20 @@ import { verifyPassword } from '@/modules/identity/core/auth';
 import { ROLES_WITHOUT_FACILITY, roleNeedsFacility } from '@/modules/identity/policy/user-scope-rules';
 
 import { logAudit } from './services/audit-service';
+
+/**
+ * Where a failed sign-in is filed, and against whom.
+ *
+ * Nobody is signed in when a sign-in fails, so these rows carried no
+ * organisation and never left the device — the server had no record of an
+ * offline password-guessing run against an account. The account that was
+ * tried is the SUBJECT, not the actor (nobody proved they were that person),
+ * and the row is filed under that account's organisation so it replicates the
+ * next time anyone at the facility syncs.
+ */
+function auditContextFor(target: { _id?: string; orgId?: string; hospitalId?: string } | null | undefined) {
+  return { subjectUserId: target?._id, orgId: target?.orgId, hospitalId: target?.hospitalId };
+}
 import { captureException } from './observability';
 import { canonicalizeUserRole } from './user-role';
 
@@ -665,6 +679,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const syncRole = currentUser?.role;
   const syncHospitalId = currentUser?.hospitalId;
   const syncFacilityIds = currentUser?.facilityIds;
+  const syncUserId = currentUser?._id;
 
   useEffect(() => {
     let aborted = false;
@@ -700,6 +715,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // a facility-scoped user's device never receives other facilities' PHI
         // (KAN-95). Previously every user in an org replicated all of it.
         user: {
+          _id: syncUserId,
           role: syncRole,
           orgId: syncOrgId,
           hospitalId: syncHospitalId,
@@ -729,7 +745,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // A user switch can keep the same org while changing facility or role; if
   // those keys are omitted, the new session keeps the previous user's CouchDB
   // replication scope until a full reload.
-  }, [isAuthenticated, hasUser, syncOrgId, syncHospitalId, syncFacilityIds, syncRole, sessionMode]);
+  }, [isAuthenticated, hasUser, syncOrgId, syncHospitalId, syncFacilityIds, syncRole, syncUserId, sessionMode]);
 
   // --- Sync gating: the manager runs only when the user wants to be online
   // AND the OS reports the network is up. If either drops, stopAll(). When
@@ -1065,13 +1081,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
 
         if (!localUser.isActive) {
-          await logAudit('login_failed', localUser._id, sanitizedUsername, 'Account disabled', false);
+          await logAudit('login_failed', undefined, sanitizedUsername, 'Account disabled', false, auditContextFor(localUser));
           return false;
         }
 
         const valid = await verifyPassword(password, localUser.passwordHash);
         if (!valid) {
-          await logAudit('login_failed', localUser._id, sanitizedUsername, 'Invalid password (offline)', false);
+          await logAudit('login_failed', undefined, sanitizedUsername, 'Invalid password (offline)', false, auditContextFor(localUser));
           return false;
         }
 
@@ -1081,7 +1097,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // director signing in offline as another role was wrongly forced through
         // the facility-assignment branch below.
         if (!ROLES_WITHOUT_FACILITY.includes(localUser.role) && hospitalId && localUser.hospitalId && localUser.hospitalId !== hospitalId) {
-          await logAudit('login_failed', localUser._id, sanitizedUsername, 'Hospital mismatch', false);
+          await logAudit('login_failed', undefined, sanitizedUsername, 'Hospital mismatch', false, auditContextFor(localUser));
           return false;
         }
 
@@ -1099,12 +1115,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (requestedRole && requestedRole !== localUser.role) {
           const { hasRoleRouteConfig } = await import('./role-routes');
           if (localUser.role !== 'super_admin' || !hasRoleRouteConfig(requestedRole)) {
-            await logAudit('login_failed', localUser._id, sanitizedUsername, 'Role not assigned (offline)', false);
+            await logAudit('login_failed', undefined, sanitizedUsername, 'Role not assigned (offline)', false, auditContextFor(localUser));
             return false;
           }
           if (!(await isOfflineImpersonationAllowed())) {
             loginFailureRef.current = { status: 403, code: 'impersonation_disabled' };
-            await logAudit('login_failed', localUser._id, sanitizedUsername, 'Impersonation disabled (offline)', false);
+            await logAudit('login_failed', undefined, sanitizedUsername, 'Impersonation disabled (offline)', false, auditContextFor(localUser));
             return false;
           }
           const needsFacility = roleNeedsFacility(requestedRole);
@@ -1121,7 +1137,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user = effective;
       }
 
-      await logAudit('login_success', user._id, user.username, usedApi ? 'API login' : 'Offline PouchDB login', true);
+      await logAudit('login_success', user._id, user.username, usedApi ? 'API login' : 'Offline PouchDB login', true, {
+        orgId: user.orgId, hospitalId: user.hospitalId, role: user.actualRole || user.role,
+      });
 
       // Shift change on a shared tablet: if the last person to sign in here
       // was somebody else, their ward is still in IndexedDB. Clear it before
@@ -1397,7 +1415,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       try {
         const { logAudit } = await import('./services/audit-service');
-        await logAudit('logout', loggingOutUser?._id, loggingOutUser?.username, 'Logged out', true);
+        await logAudit('logout', loggingOutUser?._id, loggingOutUser?.username, 'Logged out', true, {
+          orgId: loggingOutUser?.orgId, hospitalId: loggingOutUser?.hospitalId,
+          role: loggingOutUser?.actualRole || loggingOutUser?.role,
+        });
       } catch {
         // best-effort
       }

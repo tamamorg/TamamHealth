@@ -30,7 +30,7 @@ describe('records a human must reconcile', () => {
     'bed', 'admission', 'discharge', 'shift_handoff',
     // Clinical decisions.
     'allergy', 'adverse_event', 'lab_result', 'triage', 'clinical_encounter',
-    'procedure', 'immunization',
+    'procedure', 'immunization', 'history_entry',
     // Legally reportable vital events.
     'birth', 'death',
     // Identity and the movement of care.

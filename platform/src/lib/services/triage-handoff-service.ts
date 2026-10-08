@@ -77,13 +77,13 @@ export async function returnVisitToFrontDesk(input: ReturnVisitToFrontDeskInput)
       // stands, so the row leaves the clinical queues either way; record why
       // the encounter itself did not move.
       await logAuditSafe('ENCOUNTER_RETURN_TO_DESK_SKIPPED', input.actorId, input.actorName,
-        `Visit for ${input.patientName} (${input.patientId}): encounter not moved — ${err instanceof Error ? err.message : String(err)}`,
+        `Visit for patient ${input.patientId}: encounter not moved — ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }
 
   await logAuditSafe('TRIAGE_RETURNED_TO_DESK', input.actorId, input.actorName,
-    `${input.patientName} (${input.patientId}) returned to the front desk` +
+    `Patient ${input.patientId} returned to the front desk` +
     (input.reason ? ` — ${input.reason}` : ''),
   );
   return triage;

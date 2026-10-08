@@ -94,7 +94,7 @@ export async function addNutritionScreening(input: AddNutritionScreeningInput): 
     'ADD_NUTRITION_SCREENING',
     input.screenedById,
     input.screenedByName,
-    `Nutrition screening for ${doc.patientName}: MUAC ${doc.muac}cm → ${doc.status}`,
+    `Nutrition screening recorded for patient ${doc.patientId}`,
   );
   emitSyncEvent({ resourceType: 'nutrition_screening', resourceId: doc._id, operation: 'create', resourceVersion: doc._rev, hospitalId: doc.hospitalId, orgId: doc.orgId });
   return doc;

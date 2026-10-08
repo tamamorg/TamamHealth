@@ -202,7 +202,7 @@ export async function createEncounter(
   };
   const resp = await db.put(doc as unknown as Record<string, unknown>);
   doc._rev = resp.rev;
-  await logAuditSafe('CREATE_ENCOUNTER', data.clinicianId, undefined, `Encounter ${doc._id} for ${data.patientName} (${status})`);
+  await logAuditSafe('CREATE_ENCOUNTER', data.clinicianId, undefined, `Encounter ${doc._id} for patient ${data.patientId} (${status})`);
   emitSyncEvent({ resourceType: 'clinical_encounter', resourceId: doc._id, operation: 'create', resourceVersion: doc._rev, orgId: doc.orgId, hospitalId: doc.hospitalId });
   return doc;
 }
@@ -960,7 +960,7 @@ export async function returnEncounterToFrontDesk(
     'ENCOUNTER_RETURNED_TO_DESK',
     opts?.actorId,
     undefined,
-    `Visit for ${updated.patientName || updated.patientId} returned to the front desk` +
+    `Visit for patient ${updated.patientId} returned to the front desk` +
     (opts?.reason ? ` — ${opts.reason}` : ''),
   );
   return updated;
@@ -977,7 +977,7 @@ export async function recordLeftWithoutBeingSeen(
     'ENCOUNTER_LWBS',
     opts?.actorId,
     undefined,
-    `Patient ${updated.patientName || updated.patientId} left without being seen` +
+    `Patient ${updated.patientId} left without being seen` +
     (opts?.reason ? ` — ${opts.reason}` : ''),
   );
   return updated;
@@ -1009,7 +1009,7 @@ export async function escalateEncounterToEmergency(
     'ENCOUNTER_ESCALATED_TO_EMERGENCY',
     opts?.actorId,
     undefined,
-    `Patient ${updated.patientName || updated.patientId} escalated to emergency` +
+    `Patient ${updated.patientId} escalated to emergency` +
     (opts?.reason ? ` — ${opts.reason}` : ''),
   );
   return updated;

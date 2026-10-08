@@ -1,8 +1,13 @@
 import {
   gatewayRequestAllowed,
+  requiresRetainedDeletionCheck,
   resolveGatewayDatabase,
+  retainedDeletionAllowed,
+  tombstoneParentRev,
+  tombstonesInBody,
   validateGatewayWriteBody,
 } from '@/lib/sync/sync-gateway';
+import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
 
 describe('server-authorized CouchDB sync gateway', () => {
   it('routes a user only to their physical tenant database', () => {
@@ -78,5 +83,47 @@ describe('server-authorized CouchDB sync gateway', () => {
   it('leaves deletes alone on databases that are not append-only', () => {
     const patients = resolveGatewayDatabase('tamamhealth_patients--org-clinic-a', 'org-clinic-a')!;
     expect(validateGatewayWriteBody(patients, 'DELETE', ['pat-1'], null)).toBeNull();
+  });
+
+  describe('retained records: messages and conversations', () => {
+    const live = (rev: string) => ({ _rev: rev });
+    const dead = (rev: string) => ({ _rev: rev, _deleted: true });
+
+    it('checks deletions on the message and conversation databases only', () => {
+      const cfg = (name: string) => DATABASE_SYNC_CONFIGS.find(c => c.localName === name)!;
+      expect(requiresRetainedDeletionCheck(cfg('tamamhealth_messages'))).toBe(true);
+      expect(requiresRetainedDeletionCheck(cfg('tamamhealth_conversations'))).toBe(true);
+      expect(requiresRetainedDeletionCheck(cfg('tamamhealth_patients'))).toBe(false);
+    });
+
+    it('refuses to delete the only live revision — that is erasing the record', () => {
+      expect(retainedDeletionAllowed('2-b', [live('2-b')])).toBe(false);
+      expect(retainedDeletionAllowed('2-b', [live('2-b'), dead('3-x')])).toBe(false);
+      expect(retainedDeletionAllowed(null, [live('2-b')])).toBe(false);
+    });
+
+    it('allows pruning a conflict loser while the winner survives', () => {
+      expect(retainedDeletionAllowed('2-b', [live('2-b'), live('2-c')])).toBe(true);
+    });
+
+    it('allows a tombstone for a document the server never held or already lost', () => {
+      expect(retainedDeletionAllowed('1-a', [])).toBe(true);
+      expect(retainedDeletionAllowed('1-a', [dead('2-z')])).toBe(true);
+    });
+
+    it('reads the destroyed revision from a replication tombstone and from a plain one', () => {
+      expect(tombstoneParentRev({ _rev: '3-ccc', _revisions: { start: 3, ids: ['ccc', 'bbb', 'aaa'] } })).toBe('2-bbb');
+      expect(tombstoneParentRev({ _rev: '2-bbb' })).toBe('2-bbb');
+      expect(tombstoneParentRev({ _rev: '1-aaa', _revisions: { start: 1, ids: ['aaa'] } })).toBeNull();
+    });
+
+    it('finds every tombstone in a push batch by its position', () => {
+      const body = { new_edits: false, docs: [
+        { _id: 'msg-1', type: 'message' },
+        { _id: 'msg-2', _deleted: true, _rev: '2-b', _revisions: { start: 2, ids: ['b', 'a'] } },
+      ] };
+      expect(tombstonesInBody(body)).toEqual([{ index: 1, id: 'msg-2', parentRev: '1-a' }]);
+      expect(tombstonesInBody({ _deleted: true, _rev: '1-a' }, 'msg-9')).toEqual([{ index: 0, id: 'msg-9', parentRev: '1-a' }]);
+    });
   });
 });

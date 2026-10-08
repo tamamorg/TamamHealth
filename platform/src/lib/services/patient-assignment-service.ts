@@ -66,7 +66,7 @@ export async function completePatientAssignment(input: CompleteAssignmentInput):
   if (!updated) throw new Error('The patient could not be updated');
   const { logAuditSafe } = await import('./audit-service');
   await logAuditSafe('PATIENT_ASSIGNMENT_COMPLETED', actor.id, actor.name,
-    `Assignment for ${input.patientName} (${input.patientId}) ended` +
+    `Assignment for patient ${input.patientId} ended` +
     (input.reason ? ` — ${input.reason}` : ''),
   );
 }

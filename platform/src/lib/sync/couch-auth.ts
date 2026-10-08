@@ -471,6 +471,14 @@ export async function provisionOrganizationDatabases(orgIdInput: string): Promis
     const batch = configs.slice(offset, offset + concurrency);
     await Promise.all(batch.map(async config => {
       const dbName = tenantDatabaseName(config.localName, orgId);
+      // The server-side aggregate too. The replicator jobs below run with
+      // `create_target: false`, so a database type added to the sync map
+      // after an organisation was provisioned had a tenant database, two
+      // replication jobs — and nothing for them to replicate into until
+      // someone remembered to rerun the setup script on the server. A new
+      // CouchDB database is admin-only until `_security` says otherwise, so
+      // creating it here opens nothing.
+      await ensureDatabase(config.localName);
       await ensureDatabase(dbName);
       await installTenantValidator(dbName, config.direction === 'pull');
       await setDatabaseSecurity({ dbName, memberRoles: [`org:${orgId}`] });

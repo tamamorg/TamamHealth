@@ -6,6 +6,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { isMessageEditable } from '@/modules/communication/client';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { ROLE_LABEL } from '@/lib/role-display';
 import { initials, avatarTint } from '@/lib/patient-utils';
@@ -13,7 +15,7 @@ import type { ConversationDoc, MessageDoc, UserRole, StaffPresence } from '@/lib
 import {
   MessageSquare, Plus, Search, Send, Users as UsersIcon,
   MoreVertical, Info, UserPlus, X, ChevronDown, Check, ShieldCheck,
-  Trash2, Edit3, ArrowLeft, Bell, BellOff, LogOut, Settings,
+  Trash2, Edit3, ArrowLeft, Bell, BellOff, LogOut, Settings, Archive,
 } from '@/components/icons/lucide';
 
 /* ─────────────────────────── constants ─────────────────────────── */
@@ -83,9 +85,11 @@ export default function MessagesPage() {
     currentUser, conversations, messages, activeId, setActiveId,
     activeConversation, send, startDM, createGroupChat,
     togglePin, toggleMute, editMessage, deleteMessage, react,
-    renameGroup, addMembers, removeMember, leaveConversation, deleteConversation, setPresence,
+    renameGroup, addMembers, removeMember, leaveConversation, archiveConversation, setPresence,
+    unreadIds,
   } = chat;
   const { users } = useUsers();
+  const confirm = useConfirm();
 
   const [draft, setDraft] = useState('');
   const [convSearch, setConvSearch] = useState('');
@@ -97,6 +101,14 @@ export default function MessagesPage() {
   const [editDraft, setEditDraft] = useState('');
   const [replyTo, setReplyTo] = useState<MessageDoc | null>(null);
   const [reactingId, setReactingId] = useState<string | null>(null);
+  // Removed and edited messages keep their earlier text on the record; these
+  // are the ones whose record the reader has opened in the thread.
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const toggleRevealed = (id: string) => setRevealed(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [presenceOpen, setPresenceOpen] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -133,7 +145,7 @@ export default function MessagesPage() {
     if (!activeId && conversations.length > 0) setActiveId(conversations[0]._id);
   }, [conversations, activeId, requestedConversationId, setActiveId]);
   useEffect(() => { const el = threadRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages, activeId]);
-  useEffect(() => { setMenuOpen(false); setEditingId(null); setReplyTo(null); }, [activeId]);
+  useEffect(() => { setMenuOpen(false); setEditingId(null); setReplyTo(null); setRevealed(new Set()); }, [activeId]);
 
   const convTitle = (c: ConversationDoc): string => {
     if (c.kind === 'group') return c.name || 'Group chat';
@@ -181,11 +193,24 @@ export default function MessagesPage() {
   }, [messages]);
 
   const startEdit = (m: MessageDoc) => { setEditingId(m._id); setEditDraft(m.body); setReactingId(null); };
-  const saveEdit = async () => { if (editingId) { await editMessage(editingId, editDraft); setEditingId(null); } };
+  const saveEdit = async () => { if (editingId && editDraft.trim()) { await editMessage(editingId, editDraft); setEditingId(null); } };
+  const removeMessage = async (m: MessageDoc) => {
+    const ok = await confirm({
+      title: 'Remove this message?',
+      message: 'It will be taken out of the conversation, but it is not erased. Messages are part of the record: the original stays on file, and anyone in this conversation can still open it.',
+      confirmLabel: 'Remove message',
+      tone: 'warning',
+    });
+    if (ok) await deleteMessage(m._id);
+  };
 
   const ConvItem = ({ c }: { c: ConversationDoc }) => {
     const isActive = c._id === activeId;
-    const hasUnread = !!c.lastMessageFromName && c.lastMessageFromName !== currentUser?.name && c._id !== activeId;
+    // Read receipts decide this once they have loaded; the last-sender guess
+    // only covers the moment before, and never cleared after a thread was read.
+    const hasUnread = c._id !== activeId && (unreadIds
+      ? unreadIds.has(c._id)
+      : !!c.lastMessageFromName && c.lastMessageFromName !== currentUser?.name);
     const muted = c.mutedBy?.includes(meId);
     const presence = c.kind === 'dm' ? otherPresence(c) : undefined;
     return (
@@ -301,7 +326,7 @@ export default function MessagesPage() {
                         <button onClick={() => { setMenuOpen(false); leaveConversation(activeConversation._id); }}><LogOut className="w-4 h-4" /> Leave group</button>
                       </>
                     )}
-                    <button className="is-danger" onClick={() => { setMenuOpen(false); deleteConversation(activeConversation._id); }}><Trash2 className="w-4 h-4" /> Delete conversation</button>
+                    <button onClick={() => { setMenuOpen(false); archiveConversation(activeConversation._id); }} title="Hides it from your list only. Messages are kept, and it returns on the next message."><Archive className="w-4 h-4" /> Archive conversation</button>
                   </div>
                 )}
               </div>
@@ -320,7 +345,9 @@ export default function MessagesPage() {
                         {run.items.map((m, mi) => {
                           const isLastOwn = mine && ri === runs.length - 1 && mi === run.items.length - 1;
                           const readByOther = (m.readBy || []).some(id => id !== meId);
-                          const editable = mine && !m.deleted && (Date.now() - new Date(m.sentAt || m.createdAt).getTime() < 15 * 60 * 1000);
+                          const editable = isMessageEditable(m, meId);
+                          const shown = revealed.has(m._id);
+                          const history = m.editHistory || [];
                           const replied = m.replyToId ? msgById.get(m.replyToId) : undefined;
                           const reactions = m.reactions || [];
                           const grouped = Object.entries(reactions.reduce((acc, r) => { acc[r.emoji] = (acc[r.emoji] || 0) + 1; return acc; }, {} as Record<string, number>));
@@ -333,7 +360,7 @@ export default function MessagesPage() {
                             <div key={m._id} className="msgs-msg">
                               {replied && (
                                 <div className="msgs-quote">
-                                  {replied.fromDoctorName}: {replied.deleted ? 'deleted message' : replied.body.slice(0, 60)}
+                                  {replied.fromDoctorName}: {replied.deleted ? 'removed message' : replied.body.slice(0, 60)}
                                 </div>
                               )}
                               <div className="msgs-msg-row">
@@ -352,9 +379,23 @@ export default function MessagesPage() {
                                     onContextMenu={e => e.preventDefault()}
                                     className={`msgs-bubble${m.deleted ? ' msgs-bubble--deleted' : mine ? ' msgs-bubble--mine' : ''}`}
                                   >
-                                    {m.deleted ? 'This message was deleted' : renderBody(m.body)}
+                                    {m.deleted ? (
+                                      <>
+                                        {mine ? 'You removed this message' : `${m.deletedByName || m.fromDoctorName} removed this message`}
+                                        <span className="msgs-bubble-time">
+                                          {[clockTime(m.sentAt), m.deletedAt ? `removed ${clockTime(m.deletedAt)}` : '', 'kept on record'].filter(Boolean).join(' · ')}
+                                        </span>
+                                      </>
+                                    ) : renderBody(m.body)}
                                     {!m.deleted && <span className="msgs-bubble-time">{meta}</span>}
                                   </div>
+                                )}
+                                {(m.deleted || history.length > 0) && editingId !== m._id && (
+                                  <button type="button" className="msgs-record-toggle" aria-expanded={shown} onClick={() => toggleRevealed(m._id)}>
+                                    {m.deleted
+                                      ? (shown ? 'Hide original' : 'Show original')
+                                      : (shown ? 'Hide earlier versions' : 'Show earlier versions')}
+                                  </button>
                                 )}
 
                                 {/* hover action toolbar */}
@@ -363,7 +404,7 @@ export default function MessagesPage() {
                                     <button onClick={() => { setReactingId(reactingId === m._id ? null : m._id); }} title="React">😀</button>
                                     <button onClick={() => { setReplyTo(m); }} title="Reply"><ArrowLeft className="w-3.5 h-3.5" /></button>
                                     {editable && <button onClick={() => startEdit(m)} title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>}
-                                    {mine && <button className="is-danger" onClick={() => deleteMessage(m._id)} title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                    {mine && <button className="is-danger" onClick={() => removeMessage(m)} title="Remove from conversation"><Trash2 className="w-3.5 h-3.5" /></button>}
                                     {reactingId === m._id && (
                                       <div className="msgs-react-pop">
                                         {QUICK_REACTIONS.map(em => <button key={em} onClick={() => { react(m._id, em); setReactingId(null); }}>{em}</button>)}
@@ -373,12 +414,26 @@ export default function MessagesPage() {
                                 )}
                               </div>
 
+                              {shown && (m.deleted || history.length > 0) && (
+                                <div className="msgs-record">
+                                  {history.map((version, vi) => (
+                                    <p key={vi}><span className="msgs-record-when">{clockTime(version.at)}</span>{version.body}</p>
+                                  ))}
+                                  {m.deleted && (
+                                    <p>
+                                      <span className="msgs-record-when">{clockTime(m.editedAt || m.sentAt)}</span>
+                                      {m.body || (m.attachments?.length ? `${m.attachments.length} attachment${m.attachments.length === 1 ? '' : 's'}` : 'No text was kept for this message.')}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
                               {grouped.length > 0 && (
                                 <div className="msgs-reactions">
                                   {grouped.map(([em, count]) => {
                                     const mineReacted = reactions.some(r => r.emoji === em && r.userId === meId);
                                     return (
-                                      <button key={em} onClick={() => react(m._id, em)} className={`msgs-reaction${mineReacted ? ' is-mine' : ''}`}>
+                                      <button key={em} onClick={() => react(m._id, em)} disabled={!!m.deleted} className={`msgs-reaction${mineReacted ? ' is-mine' : ''}`}>
                                         <span>{em}</span><span>{count}</span>
                                       </button>
                                     );
@@ -422,7 +477,8 @@ export default function MessagesPage() {
                               <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--ehr-text)' }}>{p.name}{p.id === meId ? ' (you)' : ''}</p>
                               <p className="text-[10px] truncate" style={{ color: 'var(--ehr-muted)' }}>{p.role || PRESENCE[p.presence].label}</p>
                             </div>
-                            {activeConversation.kind === 'group' && p.id !== meId && (
+                            {activeConversation.kind === 'group' && p.id !== meId
+                              && (!activeConversation.createdById || activeConversation.createdById === meId) && (
                               <button onClick={() => removeMember(activeConversation._id, p.id)} title="Remove" className="p-1 rounded" style={{ color: 'var(--ehr-muted)' }}><X className="w-3.5 h-3.5" /></button>
                             )}
                           </div>
@@ -437,7 +493,7 @@ export default function MessagesPage() {
 
                       <div className="rounded-lg p-3 flex items-start gap-2" style={{ background: 'var(--ehr-head)' }}>
                         <ShieldCheck className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-success)' }} />
-                        <p className="text-[11px]" style={{ color: 'var(--ehr-muted)' }}>End-to-end encrypted. Every message is audit-logged. Copying, forwarding, and screenshots are restricted for PHI safety.</p>
+                        <p className="text-[11px]" style={{ color: 'var(--ehr-muted)' }}>Messages are part of the facility record and every one is audit-logged. Removing or editing a message does not erase it: the original stays on file. Copying from the thread is restricted for PHI safety.</p>
                       </div>
                     </div>
                   </aside>

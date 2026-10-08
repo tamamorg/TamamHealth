@@ -59,7 +59,7 @@ export async function createProgramEnrollment(
     'PROGRAM_ENROLLMENT_CREATED',
     undefined,
     data.recordedByName,
-    `Program enrollment ${doc._id}: ${doc.programName} for ${doc.patientName || doc.patientId} (${doc.status})`,
+    `Program enrollment ${doc._id} for patient ${doc.patientId} (${doc.status})`,
   );
   emitSyncEvent({
     resourceType: 'program_enrollment',
@@ -111,7 +111,7 @@ export async function deleteProgramEnrollment(id: string, reason: string): Promi
     outcomeReason: cleanReason,
   });
   if (!updated) return false;
-  await logAuditSafe('PROGRAM_ENROLLMENT_DISCONTINUED', undefined, undefined, `Program enrollment ${id}: ${cleanReason}`);
+  await logAuditSafe('PROGRAM_ENROLLMENT_DISCONTINUED', undefined, undefined, `Program enrollment ${id} discontinued; reason recorded on the enrollment`);
   return true;
 }
 

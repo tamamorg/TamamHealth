@@ -375,11 +375,11 @@ export async function createTriage(
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   await logAuditSafe('TRIAGE_RECORDED', data.triagedBy, data.triagedByName,
-    `${data.priority} triage for ${data.patientName} (${data.patientId})`
+    `${data.priority} triage for patient ${data.patientId}`
   );
   if (data.vitalUrgencyOverridden) {
     await logAuditSafe('TRIAGE_URGENCY_OVERRIDE', data.triagedBy, data.triagedByName,
-      `Vital urgency ${data.vitalUrgencyRecommendation} overridden to ${data.priority} for ${data.patientName} (${data.patientId}). Reason: ${data.vitalUrgencyOverrideReason?.trim()}`
+      `Vital urgency ${data.vitalUrgencyRecommendation} overridden to ${data.priority} for patient ${data.patientId}; reason recorded on the triage`
     );
   }
   emitSyncEvent({
@@ -480,7 +480,7 @@ export async function updateTriage(
     updated._rev = resp.rev;
     if (updates.status) {
       await logAuditSafe('TRIAGE_STATUS_CHANGE', actor?.userId, actor?.username,
-        `Triage ${id}: ${existing.status} → ${updates.status} for ${existing.patientName}`
+        `Triage ${id}: ${existing.status} → ${updates.status} for patient ${existing.patientId}`
       );
     } else {
       // No status transition this call — check for a plain content
@@ -492,7 +492,7 @@ export async function updateTriage(
       );
       if (changedFields.length > 0) {
         await logAuditSafe('TRIAGE_AMENDED', actor?.userId, actor?.username,
-          `Triage ${id} amended for ${existing.patientName} (${existing.patientId}): fields changed — ${changedFields.join(', ')}`
+          `Triage ${id} amended for patient ${existing.patientId}: fields changed — ${changedFields.join(', ')}`
         );
       }
     }
@@ -503,7 +503,7 @@ export async function updateTriage(
         existing.priority !== updated.priority)
     ) {
       await logAuditSafe('TRIAGE_URGENCY_OVERRIDE', existing.triagedBy, existing.triagedByName,
-        `Vital urgency ${updated.vitalUrgencyRecommendation} overridden to ${updated.priority} for ${updated.patientName} (${updated.patientId}). Reason: ${updated.vitalUrgencyOverrideReason?.trim()}`
+        `Vital urgency ${updated.vitalUrgencyRecommendation} overridden to ${updated.priority} for patient ${updated.patientId}; reason recorded on the triage`
       );
     }
     emitSyncEvent({

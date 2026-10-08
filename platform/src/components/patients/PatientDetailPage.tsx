@@ -15,7 +15,7 @@ import {
   ClipboardList,
   User as UserIcon, Building2, X, Wallet, Syringe, Stethoscope,
   Heart, Printer, History, Calendar,
-  Bandage, Layers, Plus, Pencil, Sliders, Check,
+  Bandage, Layers, Plus, Pencil, Sliders, Check, Archive, Mail,
 } from '@/components/icons/lucide';
 import Badge from '@/components/Badge';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -56,6 +56,8 @@ const PharmacyWorkspace = dynamic(() => import('@/components/pharmacy/workflow/P
 const AllergiesSection = dynamic(() => import('@/components/ehr/chart/sections/AllergiesSection'), { loading: ChartPanelLoading });
 const ConditionsSection = dynamic(() => import('@/components/ehr/chart/sections/ConditionsSection'), { loading: ChartPanelLoading });
 const OrdersSection = dynamic(() => import('@/components/ehr/chart/sections/OrdersSection'), { loading: ChartPanelLoading });
+const PatientMessagesSection = dynamic(() => import('@/components/ehr/chart/sections/PatientMessagesSection'), { loading: ChartPanelLoading });
+const HistorySection = dynamic(() => import('@/components/ehr/chart/sections/HistorySection'), { loading: ChartPanelLoading });
 const ProceduresSection = dynamic(() => import('@/components/ehr/chart/sections/ProceduresSection'), { loading: ChartPanelLoading });
 const ProgramsSection = dynamic(() => import('@/components/ehr/chart/sections/ProgramsSection'), { loading: ChartPanelLoading });
 const ImmunizationsSection = dynamic(() => import('@/components/ehr/chart/sections/ImmunizationsSection'), { loading: ChartPanelLoading });
@@ -216,7 +218,7 @@ const DEEP_LINK_TAB_IDS = new Set([
     'overview', 'appointments', 'history', 'problems', 'prescriptions', 'immunizations',
   'allergies', 'vitals', 'notes', 'labs', 'demographics', 'billing', 'careChecklist',
     'documents', 'recall', 'referrals', 'sbar', 'transfers',
-    'orders', 'procedures', 'programs',
+    'orders', 'procedures', 'programs', 'medicalHistory', 'messages',
 ]);
 
 /** Legacy/alias `?tab=` values that don't have a section of their own: transfers
@@ -682,8 +684,8 @@ export default function PatientDetailPage() {
         undefined,
         undefined,
         marking
-          ? `Marked ${patient.hospitalNumber} (${patientFullName(patient)}) deceased, date of death ${deceasedDateInput}`
-          : `Cleared deceased status for ${patient.hospitalNumber} (${patientFullName(patient)})`,
+          ? `Marked patient ${patient._id} deceased`
+          : `Cleared deceased status for patient ${patient._id}`,
       ).catch(() => {});
       setShowDeceasedModal(false);
     } catch (err) {
@@ -740,7 +742,7 @@ export default function PatientDetailPage() {
       });
       const { logAudit } = await import('@/lib/services/audit-service');
       await logAudit('PATIENT_EDIT', undefined, undefined,
-        `Updated demographics for ${patient.hospitalNumber} (${editForm.firstName} ${editForm.surname})`
+        `Updated demographics for patient ${patient._id}`
       ).catch(() => {});
       setShowEditModal(false);
     } catch (err) {
@@ -865,11 +867,13 @@ export default function PatientDetailPage() {
     { id: 'overview', label: 'Patient summary', icon: Heart },
     { id: 'history', label: 'Visits', icon: FileText },
     { id: 'problems', label: 'Conditions', icon: AlertTriangle },
+    { id: 'medicalHistory', label: 'History', icon: Archive },
     { id: 'prescriptions', label: 'Medications', icon: Pill },
     { id: 'immunizations', label: 'Immunizations', icon: Syringe },
     { id: 'allergies', label: 'Allergies', icon: ShieldAlert },
     { id: 'vitals', label: 'Vitals & Biometrics', icon: Activity },
     { id: 'notes', label: 'Notes', icon: FileText },
+    { id: 'messages', label: 'Messages', icon: Mail },
     { id: 'sbar', label: 'SBAR handoff', icon: MessageSquare },
     { id: 'labs', label: 'Results', icon: FlaskConical },
     { id: 'orders', label: 'Orders', icon: ClipboardList },
@@ -981,12 +985,19 @@ export default function PatientDetailPage() {
     { id: 'history', label: 'Visits', icon: History },
     // The encounter notes themselves, next to the visits they document.
     { id: 'notes', label: 'Notes', icon: Stethoscope },
+    // The conversation with the patient through their portal — what the care
+    // team wrote, and what the patient wrote back.
+    { id: 'messages', label: 'Messages', icon: Mail },
     // A shift-handoff summary, not a documentation flow of its own — sits
     // beside Notes since it's read the same way. Previously unreachable (no
     // rail slot); cheaper to surface it here than to delete a working view.
     { id: 'sbar', label: 'SBAR handoff', icon: MessageSquare },
     { id: 'allergies', label: 'Allergies', icon: ShieldAlert },
     { id: 'problems', label: 'Conditions', icon: AlertTriangle },
+    // The standing history — medical, surgical, family, social — recorded once
+    // against the patient. Beside Conditions because the two are read together;
+    // `history` (Visits) is the encounter timeline, a different thing.
+    { id: 'medicalHistory', label: 'History', icon: Archive },
     { id: 'immunizations', label: 'Immunizations', icon: Syringe },
     { id: 'procedures', label: 'Procedures', icon: Bandage },
     { id: 'programs', label: 'Programs', icon: Layers },
@@ -1930,7 +1941,12 @@ export default function PatientDetailPage() {
                   front-desk role may open — which is where the person who
                   enrols patients is standing. The card hides itself for roles
                   the API would refuse. */}
-              <PortalAccessCard patientId={patient._id} />
+              <PortalAccessCard
+                patientId={patient._id}
+                patientName={patientFullName(patient)}
+                hospitalNumber={patient.hospitalNumber}
+                facilityName={regHospital?.name}
+              />
             </>
           )}
 
@@ -2283,6 +2299,25 @@ export default function PatientDetailPage() {
               onAddDrug={() => setShowPrescribeModal(true)}
               onAddLab={() => setShowOrderLabModal(true)}
               focusId={focusId}
+            />
+          )}
+
+          {/* Messages — the two-way thread with the patient's portal. */}
+          {activeTab === 'messages' && canViewClinical && patient && (
+            <PatientMessagesSection
+              patient={patient}
+              patientName={patientFullName(patient)}
+              facilityName={regHospital?.name}
+            />
+          )}
+
+          {/* History — the patient's standing medical, surgical, family and
+              social history, recorded once and read by every note. */}
+          {activeTab === 'medicalHistory' && canViewClinical && patient && (
+            <HistorySection
+              patientId={patient._id}
+              patientName={patientFullName(patient)}
+              onOpenTab={selectTab}
             />
           )}
 

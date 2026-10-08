@@ -20,8 +20,8 @@ import { useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { Printer, Download, Send, X } from '@/components/icons/lucide';
-import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
 import { getSectionLabel } from '@/lib/clinical-notes/note-catalog';
+import { sectionBody } from '@/lib/clinical-notes/note-service';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
@@ -79,7 +79,11 @@ export default function CareCoordinationModal({
       '',
     ];
     for (const section of note.sections) {
-      const body = stripTemplateMarkers(section.text || '').trim() || (section.snapshot || '').trim();
+      // Social history is offered below as rows the clinician ticks. Emitting
+      // the section here as well sent it twice — and sent it even when they
+      // had unticked it, which is the opposite of what the tick box says.
+      if (section.sectionId === 'social_history') continue;
+      const body = sectionBody(section);
       if (!body) continue;
       lines.push(getSectionLabel(section.sectionId).toUpperCase(), body, '');
     }
@@ -124,7 +128,8 @@ export default function CareCoordinationModal({
 
   const handlePrint = () => {
     const noteSections = note.sections.flatMap(section => {
-      const text = stripTemplateMarkers(section.text || '').trim() || (section.snapshot || '').trim();
+      if (section.sectionId === 'social_history') return [];
+      const text = sectionBody(section);
       return text ? [`<section class="section"><h2 class="section-title">${escapeHtml(getSectionLabel(section.sectionId))}</h2><p>${escapeHtml(text).replace(/\n/g, '<br>')}</p></section>`] : [];
     }).join('');
     const selectedProblems = problems.filter((_, index) => includeProblems && pickedProblems.has(index));

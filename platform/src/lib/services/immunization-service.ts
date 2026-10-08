@@ -109,7 +109,7 @@ export async function enterImmunizationInError(
     statusChangedBy: actor?.name || actor?.id,
   });
   if (!updated) throw new Error('The immunization could not be updated. Reload the chart and try again.');
-  await logAuditSafe('IMMUNIZATION_ENTERED_IN_ERROR', actor?.id, actor?.name, `Immunization ${id}: ${cleanReason}`);
+  await logAuditSafe('IMMUNIZATION_ENTERED_IN_ERROR', actor?.id, actor?.name, `Immunization ${id} marked entered in error; reason recorded on the record`);
   return updated;
 }
 

@@ -45,6 +45,7 @@ export const DATABASE_SYNC_CONFIGS: DatabaseSyncConfig[] = [
   { localName: 'tamamhealth_follow_ups',            direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_hospitals',             direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_problems',              direction: 'both', orgScoped: true },
+  { localName: 'tamamhealth_history_entries',       direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_program_enrollments',   direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_procedures',            direction: 'both', orgScoped: true },
   { localName: 'tamamhealth_triage',                direction: 'both', orgScoped: true },
@@ -191,6 +192,7 @@ export const DATABASE_DOCUMENT_TYPES: Readonly<Record<string, readonly string[]>
   // in tamamhealth_hospitals".
   tamamhealth_hospitals: ['hospital', 'system_config', 'facility_settings', 'department', 'specialty_pathway_config'],
   tamamhealth_problems: ['problem'],
+  tamamhealth_history_entries: ['history_entry'],
   tamamhealth_program_enrollments: ['program_enrollment'],
   tamamhealth_procedures: ['procedure'],
   tamamhealth_triage: ['triage'],

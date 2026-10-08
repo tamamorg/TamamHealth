@@ -115,7 +115,7 @@ export interface SyncManagerOptions {
    * for callers that have not been updated — those callers are the remaining
    * exposure, not a safe default.
    */
-  user?: { role?: UserRole; orgId?: string; hospitalId?: string; facilityIds?: string[] };
+  user?: { _id?: string; role?: UserRole; orgId?: string; hospitalId?: string; facilityIds?: string[] };
   onChange?: (status: AggregateStatus) => void;
 }
 
@@ -292,6 +292,7 @@ export class SyncManager {
           // Drives the push filter so this device never tries to replicate docs
           // its role may not write (which would wedge the push checkpoint).
           writableRole: this.user?.role,
+          userId: this.user?._id,
           pullMode,
           pullIntervalMs,
           onChange: (status) => {
@@ -315,6 +316,14 @@ export class SyncManager {
       startConfigs(secondWave);
     };
     this._secondWaveTimer = setTimeout(() => this._startSecondWave?.(), SECOND_WAVE_DELAY_MS);
+  }
+
+  /**
+   * The running service for one database, or null — this tab is a follower,
+   * sync is off, or that database's wave has not started yet.
+   */
+  getService(localName: string): SyncService | null {
+    return this.services.get(localName) ?? null;
   }
 
   /** Stop all sync services (call on logout) */

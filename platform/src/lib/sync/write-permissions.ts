@@ -29,6 +29,7 @@
  * `userCtx.roles` — **never** from the document body, which the client controls.
  */
 
+import { MESSAGE_IMMUTABLE_FIELDS } from './message-integrity';
 import type { UserRole } from '../db-types';
 // Type-only at its own boundary (it imports `AuthPayload` as a type), so this
 // pulls no runtime auth code into the validator-generation path.
@@ -232,6 +233,10 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   follow_up: NURSING_AND_CLINICIANS,
   problem: CLINICIANS,
   procedure: CLINICIANS,
+  // Nurses take histories too (triage, rooming, the ward), so this is wider
+  // than the Problem List beside it. Mirrors `canRecordHistory` in
+  // usePermissions — change the two together.
+  history_entry: NURSING_AND_CLINICIANS,
   program_enrollment: NURSING_AND_CLINICIANS,
   order_set: CLINICIANS,
   phone_note: NURSING_AND_CLINICIANS,
@@ -536,6 +541,43 @@ export const APPEND_ONLY_TYPES: readonly string[] = [
   'medication_administration',
   'ledger_entry',
 ];
+
+/**
+ * Document types that are part of the retained communication record: they may
+ * be updated (read receipts, reactions, a retraction stamp) but the document
+ * itself must never be destroyed.
+ *
+ * These cannot simply join `APPEND_ONLY_TYPES`, and the validator cannot
+ * enforce this either. Messages are updated concurrently by design — two
+ * people marking a thread read is a conflict — and resolving a conflict means
+ * deleting the losing revision. `validate_doc_update` sees one revision at a
+ * time and cannot tell "prune a conflict loser" from "erase the record", so
+ * the rule lives in the sync gateway, which can ask CouchDB what else is alive
+ * (`retainedDeletionAllowed` in `sync-gateway.ts`).
+ */
+// `history_entry` is here for the same reason and the same shape of problem: an
+// entry is corrected in place (so it cannot be append-only), a mistake is
+// withdrawn with `status: 'entered_in_error'` rather than removed, and a signed
+// note may carry a snapshot of the line — deleting the entry would leave that
+// note quoting a record that no longer exists.
+export const RETAINED_RECORD_TYPES: readonly string[] = ['message', 'conversation', 'history_entry'];
+
+/**
+ * Retained types a client may never delete, even to prune a conflict.
+ *
+ * Messages are left out on purpose: they conflict by design (two people mark a
+ * thread read) and devices prune the losing revision themselves, so only the
+ * gateway — which can see what else is alive — can police their deletion. A
+ * history entry has no such traffic: its conflicts go to the review queue and
+ * are settled server-side, so the validator can simply refuse.
+ */
+export const NO_CLIENT_DELETE_TYPES: readonly string[] = ['history_entry'];
+
+/** Whether a browser database holds nothing but retained-record documents. */
+export function isRetainedRecordDatabase(localName: string): boolean {
+  const types = DATABASE_DOCUMENT_TYPES[localName];
+  return !!types && types.length > 0 && types.every(type => RETAINED_RECORD_TYPES.includes(type));
+}
 
 /**
  * Whether a browser database holds nothing but append-only documents.
@@ -851,6 +893,34 @@ export function buildValidateDocUpdateFn(
     }
   }
 
+  // ── Lifecycle: an audit row is signed by whoever wrote it ──────────────
+  // Every role may create audit rows (they are written client-side), so the
+  // only thing between a user and an entry recording a colleague's "action"
+  // was honesty. The actor on a row must be the authenticated account writing
+  // it. A row with no actor is still accepted — a failed sign-in has none, and
+  // names the account that was tried in subjectUserId instead — as is a write
+  // from an account provisioned before identity claims existed.
+  if (docType === 'audit_log' && !oldDoc && !isDelete) {
+    var auditWriter = null;
+    for (var au = 0; au < roles.length; au++) if (roles[au].indexOf('user:') === 0) auditWriter = roles[au].substring(5);
+    if (auditWriter !== null && newDoc.userId !== undefined && newDoc.userId !== null && newDoc.userId !== ''
+        && newDoc.userId !== auditWriter) {
+      throw({ forbidden: 'An audit entry cannot be written in the name of another user' });
+    }
+  }
+
+  // ── Lifecycle: records that are withdrawn, never deleted ───────────────
+  // The sync gateway refuses to destroy a retained record and is the stronger
+  // check, because it can tell an erasure from the pruning of a conflict
+  // loser. This is the floor for a write that reaches CouchDB without the
+  // gateway: these types have no legitimate client delete at all — a mistake
+  // is marked entered-in-error, and a conflict on them is queued for a person
+  // (HIGH_RISK_RESOURCES), who resolves it on the server.
+  var NO_CLIENT_DELETE = ${JSON.stringify(NO_CLIENT_DELETE_TYPES)};
+  if (isDelete && contains(NO_CLIENT_DELETE, docType)) {
+    throw({ forbidden: docType + ' is a retained record; mark it entered in error instead of deleting it' });
+  }
+
   // ── Lifecycle: append-only trails ──────────────────────────────────────
   // Evidence is only evidence if the people it records cannot amend it. These
   // types may be created and never touched again; a correction is a new
@@ -858,6 +928,47 @@ export function buildValidateDocUpdateFn(
   var APPEND_ONLY = ${appendOnlyJson};
   if (oldDoc && contains(APPEND_ONLY, docType)) {
     throw({ forbidden: docType + ' is append-only; an existing entry cannot be ' + (isDelete ? 'deleted' : 'modified') });
+  }
+
+  // ── Lifecycle: a sent message keeps its author and its wording ─────────
+  // The sync gateway judges this against the server's current copy and is the
+  // stronger check (message-integrity.ts). This is the same rule for a write
+  // that reaches CouchDB by another path, judged on the revision replaced.
+  if (docType === 'message' && oldDoc && !isDelete) {
+    var MSG_FIXED = ${JSON.stringify(MESSAGE_IMMUTABLE_FIELDS)};
+    for (var mf = 0; mf < MSG_FIXED.length; mf++) {
+      var msgBefore = oldDoc[MSG_FIXED[mf]], msgAfter = newDoc[MSG_FIXED[mf]];
+      if (msgBefore === undefined || msgBefore === null) msgBefore = '';
+      if (msgAfter === undefined || msgAfter === null) msgAfter = '';
+      if (JSON.stringify(msgBefore) !== JSON.stringify(msgAfter)) {
+        throw({ forbidden: 'The ' + MSG_FIXED[mf] + ' of a message cannot be changed' });
+      }
+    }
+    var msgActor = null;
+    for (var mr = 0; mr < roles.length; mr++) if (roles[mr].indexOf('user:') === 0) msgActor = roles[mr].substring(5);
+    var msgIsAuthor = msgActor !== null && msgActor === oldDoc.fromDoctorId;
+    var msgOldBody = typeof oldDoc.body === 'string' ? oldDoc.body : '';
+    var msgNewBody = typeof newDoc.body === 'string' ? newDoc.body : '';
+    function msgWordings(d, current) {
+      var out = current ? [current] : [];
+      var history = d.editHistory || [];
+      for (var mh = 0; mh < history.length; mh++) {
+        if (history[mh] && typeof history[mh].body === 'string' && history[mh].body) out.push(history[mh].body);
+      }
+      return out;
+    }
+    var msgWas = msgWordings(oldDoc, msgOldBody), msgNow = msgWordings(newDoc, msgNewBody);
+    if (msgOldBody && !msgNewBody) throw({ forbidden: 'A message cannot be emptied' });
+    if (msgIsAuthor) {
+      for (var mw = 0; mw < msgWas.length; mw++) {
+        if (!contains(msgNow, msgWas[mw])) throw({ forbidden: 'An edit must keep every earlier wording on the record' });
+      }
+    } else {
+      for (var mn = 0; mn < msgNow.length; mn++) {
+        if (!contains(msgWas, msgNow[mn])) throw({ forbidden: 'Only the author can change what a message says' });
+      }
+      if (newDoc.deleted === true && oldDoc.deleted !== true) throw({ forbidden: 'Only the author can remove a message' });
+    }
   }
 
   // ── Role-based write permission, by document type ──────────────────────

@@ -11,6 +11,7 @@ import { getSettings } from '../settings/settings-store';
 import { normalizePhone, normalizeEmail, normalizeNationalId } from '../field-formats';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { todayIso } from '@/lib/date-utils';
+import { suggestPortalUsername, uniquePortalUsername } from '@/modules/identity/client';
 import {
   buildGeocodeId,
   buildUnknownId,
@@ -570,9 +571,62 @@ async function releaseIdentifier(kind: 'geocode' | 'national', value: string): P
   }
 }
 
+/**
+ * A portal invitation minted by the registering device, to be written with the
+ * patient rather than after them.
+ *
+ * Only the hash arrives here. The code itself stays with the caller, who shows
+ * it to the clerk once (see `mintPortalInvite`).
+ */
+export interface PortalInviteAtRegistration {
+  tokenHash: string;
+  expiresAt: string;
+  /** Who is registering, for the audit trail. */
+  enabledBy?: string;
+}
+
+export interface CreatePatientOptions {
+  portalInvite?: PortalInviteAtRegistration;
+}
+
+/**
+ * The portal fields for a patient being registered with an account.
+ *
+ * The username needs the hospital number, which is why this lives here and not
+ * in the form: the number does not exist until the service issues it.
+ *
+ * Uniqueness is checked against every patient this device holds, the same
+ * reach as the duplicate check, and is best-effort for the same reason — a
+ * registration must not be lost because an index was still building. The name
+ * plus the hospital number's tail is already close to unique on its own.
+ */
+async function portalFieldsAtRegistration(
+  invite: PortalInviteAtRegistration,
+  patient: { firstName?: string; surname?: string; hospitalNumber: string },
+  now: string,
+): Promise<Partial<PatientDoc>> {
+  const taken = new Set<string>();
+  try {
+    for (const p of await getAllPatients()) {
+      const name = p.portalUsername?.trim().toLowerCase();
+      if (name) taken.add(name);
+    }
+  } catch (err) {
+    console.warn('[createPatient] portal username check unavailable, using the suggestion:', err);
+  }
+  return {
+    portalUsername: uniquePortalUsername(suggestPortalUsername(patient), taken),
+    portalEnabledAt: now,
+    ...(invite.enabledBy ? { portalEnabledBy: invite.enabledBy } : {}),
+    portalInviteTokenHash: invite.tokenHash,
+    portalInviteExpiresAt: invite.expiresAt,
+  };
+}
+
 export async function createPatient(
   rawData: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
   scope?: DataScope,
+  options: CreatePatientOptions = {},
 ): Promise<PatientDoc> {
   const data = normalizePatientContact(rawData as unknown as Record<string, unknown>) as typeof rawData;
   const errors = validatePatientData(data as unknown as Record<string, unknown>);
@@ -659,10 +713,21 @@ export async function createPatient(
     heldClaims.push({ kind: 'national', value: nationalIdValue });
   }
 
+  // Part of the registration write itself, so there is never a registered
+  // patient whose account is still a second step somebody has to remember.
+  const portalFields = options.portalInvite
+    ? await portalFieldsAtRegistration(
+        options.portalInvite,
+        { firstName: data.firstName, surname: data.surname, hospitalNumber },
+        now,
+      )
+    : {};
+
   const doc: PatientDoc = withPendingOfflineSync({
     _id: id,
     type: 'patient',
     ...data,
+    ...portalFields,
     orgId,
     countryId,
     ...(geocodeId ? { geocodeId } : {}),
@@ -682,7 +747,11 @@ export async function createPatient(
     throw err;
   }
   doc._rev = resp.rev;
-  await logAuditSafe('CREATE_PATIENT', undefined, undefined, `Created patient ${doc._id}: ${data.firstName} ${data.surname} (${hospitalNumber})`);
+  await logAuditSafe('CREATE_PATIENT', undefined, undefined, `Created patient ${doc._id}`);
+  if (doc.portalUsername && options.portalInvite) {
+    await logAuditSafe('patient_portal_enrolled', undefined, undefined,
+      `Portal access issued at registration for patient ${doc._id}`);
+  }
   emitSyncEvent({
     resourceType: 'patient',
     resourceId: doc._id,

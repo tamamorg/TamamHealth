@@ -19,6 +19,7 @@ export type NoteSectionActionId =
   | 'review_medications'
   | 'prescribe'
   | 'manage_allergies'
+  | 'update_history'
   | 'record_vitals'
   | 'order_lab'
   | 'order_vaccine'
@@ -49,6 +50,10 @@ export const NOTE_SECTION_ACTIONS: Readonly<Record<NoteSectionActionId, NoteSect
   manage_allergies: {
     id: 'manage_allergies', label: 'Allergies',
     description: 'Record or update this patient’s allergies',
+  },
+  update_history: {
+    id: 'update_history', label: 'Update History',
+    description: 'Add to or correct this patient’s history on the chart',
   },
   record_vitals: {
     id: 'record_vitals', label: 'Record Vitals',
@@ -90,6 +95,11 @@ export const SECTION_ACTIONS: Readonly<Partial<Record<NoteSectionId, readonly No
   medications: ['review_medications', 'prescribe'],
   discharge_medications: ['review_medications', 'prescribe'],
   allergies: ['manage_allergies'],
+  // The history sections show what the chart holds; the way to change that is
+  // to change the chart, so every later note reads the correction too.
+  past_medical_history: ['update_history'],
+  family_history: ['update_history'],
+  social_history: ['update_history'],
   vitals: ['record_vitals'],
   plan: ['prescribe', 'order_lab', 'order_vaccine', 'patient_education', 'refer'],
   follow_up: ['schedule_followup'],

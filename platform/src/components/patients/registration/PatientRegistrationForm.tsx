@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from '@/components/icons/lucide';
 import { type CapturedFingerprint } from '@/components/FingerprintCapture';
@@ -32,6 +32,10 @@ import ContactSection, { geocodeIdFor } from './sections/ContactSection';
 import NextOfKinSection from './sections/NextOfKinSection';
 import CoverageSection from './sections/CoverageSection';
 import { useRoleFlag } from '@/lib/settings/useRoleSetting';
+import { mintPortalInvite } from '@/modules/identity/client';
+import PortalSlipDialog from '@/components/patients/PortalSlipDialog';
+import type { PortalSlip } from '@/lib/patient-portal-slip';
+import '@/components/patients/portal-slip.css';
 import {
   EMPTY_REGISTRATION_FORM, MAX_ADDITIONAL_NOK,
   type AdditionalNok, type CoverageType, type RegistrationTextField,
@@ -126,6 +130,16 @@ export function PatientRegistrationForm({
    * everything required is answered, and reads back every field.
   */
   const [reviewMode, setReviewMode] = useState(false);
+  /**
+   * Whether registering also opens a portal account. On unless the clerk says
+   * otherwise: the account is written WITH the patient, and the sign-in slip is
+   * handed over before they leave the desk. It used to be a separate errand on
+   * the chart's Demographics tab, which is to say it mostly did not happen.
+   */
+  const [portalAccount, setPortalAccount] = useState(true);
+  /** The slip to hand over, and what registration does once it is dismissed. */
+  const [portalSlip, setPortalSlip] = useState<PortalSlip | null>(null);
+  const afterSlip = useRef<(() => void) | null>(null);
   // Which section the clerk is currently looking at — a different question
   // from how much is done, and the one the nav marks.
   const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
@@ -143,6 +157,7 @@ export function PatientRegistrationForm({
         setFingerprints(draft.fingerprints);
         setPatientPhotoUrl(draft.patientPhotoUrl);
         setReviewMode(draft.reviewMode);
+        setPortalAccount(draft.portalAccount !== false);
         if (draft.reviewMode) setActiveSection(REVIEW_SECTION);
       } else {
         showToast(t('patientNew.toastDraftLoadFailed'), 'error');
@@ -160,7 +175,8 @@ export function PatientRegistrationForm({
     fingerprints,
     patientPhotoUrl,
     reviewMode,
-  }), [form, additionalNok, fingerprints, patientPhotoUrl, reviewMode]);
+    portalAccount,
+  }), [form, additionalNok, fingerprints, patientPhotoUrl, reviewMode, portalAccount]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -434,6 +450,12 @@ export function PatientRegistrationForm({
     setSubmitting(true);
     setSubmitIntent(nextAction);
     try {
+      // Minted here, on this device, so the account is part of the same write
+      // as the patient and works with no connection. Only the hash is stored;
+      // the code lives in this function until the slip is dismissed. Null
+      // means this browser cannot hash it safely — the patient is still
+      // registered, and the account is issued from the chart instead.
+      const invite = portalAccount ? await mintPortalInvite() : null;
       const result = await createPatient(buildPatientDoc({
         form,
         additionalNok,
@@ -442,7 +464,13 @@ export function PatientRegistrationForm({
         hospitalId: currentUser?.hospitalId || form.registrationFacility,
         registeredBy: currentUser?.name || currentUser?.username || '',
         nowIso: new Date().toISOString(),
-      }));
+      }), invite ? {
+        portalInvite: {
+          tokenHash: invite.tokenHash,
+          expiresAt: invite.expiresAt,
+          enabledBy: currentUser?.username,
+        },
+      } : undefined);
 
       // Persist fingerprint enrollments now that the patient _id exists.
       // Best-effort: a biometric failure must never roll back registration.
@@ -479,19 +507,38 @@ export function PatientRegistrationForm({
         'success',
       );
       if (draftId) await dropPatientRegistrationDraft(draftId);
-      if (nextAction === 'check-in' && onCheckIn && result?._id) {
-        // An embedded host that offered the check-in button owns the hand-off.
-        onCheckIn(result._id);
-      } else if (onRegistered) {
-        onRegistered();
-      } else if (nextAction === 'check-in' && result?._id) {
-        // The standalone Check-In module is retired — a patient is checked in
-        // from an appointment. Someone registered at the window has none, so
-        // this hands off to the walk-in dialog, which books today's slot
-        // already checked in.
-        router.push(`/appointments?walkIn=${result._id}`);
+      const proceed = () => {
+        if (nextAction === 'check-in' && onCheckIn && result?._id) {
+          // An embedded host that offered the check-in button owns the hand-off.
+          onCheckIn(result._id);
+        } else if (onRegistered) {
+          onRegistered();
+        } else if (nextAction === 'check-in' && result?._id) {
+          // The standalone Check-In module is retired — a patient is checked in
+          // from an appointment. Someone registered at the window has none, so
+          // this hands off to the walk-in dialog, which books today's slot
+          // already checked in.
+          router.push(`/appointments?walkIn=${result._id}`);
+        } else {
+          router.push('/patients');
+        }
+      };
+      if (invite && result?.portalUsername) {
+        // The slip comes before the hand-off: once the form navigates away the
+        // code is gone, and it cannot be shown again.
+        afterSlip.current = proceed;
+        setPortalSlip({
+          patientName: [form.firstName, form.middleName, form.surname].map(n => n.trim()).filter(Boolean).join(' '),
+          hospitalNumber: result.hospitalNumber,
+          username: result.portalUsername,
+          activationCode: invite.code,
+          expiresAt: invite.expiresAt,
+          facilityName: currentUser?.hospitalName
+            || facilities.find(f => f.id === form.registrationFacility)?.name,
+        });
       } else {
-        router.push('/patients');
+        if (portalAccount) showToast(t('pslip.unavailable'), 'warning');
+        proceed();
       }
     } catch (err) {
       console.error('Failed to register patient:', err);
@@ -572,11 +619,11 @@ export function PatientRegistrationForm({
                 </button>
               ) : (
                 <>
-                  <button type="button" onClick={() => handleSubmit('profile')} disabled={submitting} className="btn btn-primary">
+                  <button type="button" onClick={() => handleSubmit('profile')} disabled={submitting || portalSlip !== null} className="btn btn-primary">
                     {submitting && submitIntent === 'profile' ? t('patientNew.saving') : t('patientNew.registerPatient')}
                   </button>
                   {(!onRegistered || onCheckIn) && canCheckIn && (
-                    <button type="button" onClick={() => handleSubmit('check-in')} disabled={submitting} className="btn btn-secondary">
+                    <button type="button" onClick={() => handleSubmit('check-in')} disabled={submitting || portalSlip !== null} className="btn btn-secondary">
                       {submitting && submitIntent === 'check-in' ? t('patientNew.saving') : t('patientNew.registerAndCheckIn')}
                     </button>
                   )}
@@ -652,12 +699,39 @@ export function PatientRegistrationForm({
                       onOpen={id => router.push(`/patients/${id}`)}
                     />
                   )}
+                  footer={(
+                    <div className="pslip-offer">
+                      <p className="pslip-offer-title">{t('pslip.offerTitle')}</p>
+                      <label className="pslip-offer-check">
+                        <input
+                          type="checkbox"
+                          checked={portalAccount}
+                          onChange={e => setPortalAccount(e.target.checked)}
+                          disabled={submitting || portalSlip !== null}
+                        />
+                        <span>{t('pslip.offerLabel')}</span>
+                      </label>
+                      <p className="pslip-offer-hint">{t('pslip.offerHint')}</p>
+                    </div>
+                  )}
                 />
               )}
             </div>
           </div>
         </div>
       </main>
+
+      {portalSlip && (
+        <PortalSlipDialog
+          slip={portalSlip}
+          onClose={() => {
+            setPortalSlip(null);
+            const next = afterSlip.current;
+            afterSlip.current = null;
+            next?.();
+          }}
+        />
+      )}
 
       {showPhotoModal && (
         <PhotoCaptureModal

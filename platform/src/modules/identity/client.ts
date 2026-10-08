@@ -64,6 +64,13 @@ export { describeInvitationOutcome, type InvitationCopy } from './provisioning/i
 export {
   generateTempPassword, tempPasswordLengthFor, TEMP_PASSWORD_LENGTH,
 } from './provisioning/temp-password';
+// The patient's portal code is minted on the registering device, as part of
+// the registration write — see `provisioning/portal-invite.ts`.
+export {
+  mintPortalInvite, formatPortalActivationCode, suggestPortalUsername, uniquePortalUsername,
+  PORTAL_ACTIVATE_PATH, PORTAL_INVITE_TTL_HOURS,
+  type PortalInvite,
+} from './provisioning/portal-invite';
 export {
   parseUserImport, splitCsvLine, resolveRole, usernameFromName,
   normaliseImportUsername, IMPORT_TEMPLATE_CSV, MAX_IMPORT_ROWS,

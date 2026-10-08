@@ -12,6 +12,7 @@
  * every gate an admin action gets. Filed with the other staff patient routes
  * so it inherits them.
  */
+import { PORTAL_ENROL_ROLES } from '@/lib/sync/portal-credential-authority';
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog, AUDIT_ACTION_HEADER } from '@/lib/audit/with-audit';
@@ -28,11 +29,8 @@ export const runtime = 'nodejs';
  * login to somebody else's medical record is an administrative act, and the
  * doctor in the consulting room has no way to check who is at the desk.
  */
-const ENROL_ROLES: UserRole[] = [
-  'super_admin', 'org_admin', 'front_desk', 'central_registration_clerk',
-  'clinic_clerk', 'hrio', 'records_hmis_officer', 'medical_superintendent',
-  'hospital_manager',
-];
+// One list, shared with the sync gateway's rule for the same fields.
+const ENROL_ROLES: UserRole[] = [...PORTAL_ENROL_ROLES];
 
 export async function GET(request: NextRequest) {
   try {

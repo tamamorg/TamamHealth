@@ -328,7 +328,7 @@ export function useLabOrderDraft(options: {
 
       const { logAudit } = await import('@/lib/services/audit-service');
       await logAudit('LAB_ORDER_CREATED', currentUser?._id, currentUser?.username,
-        `Ordered ${draft.tests.length} test(s) for ${patientName}: ${draft.tests.map(t => t.name).join(', ')}`,
+        `Ordered ${draft.tests.length} test(s) for patient ${draft.patientId}`,
       ).catch(() => {});
 
       const done: LabOrderReceipt = { orderGroupId, accessionNumbers, createdIds, encounterId: deskEncounterId, placedAt };

@@ -129,3 +129,48 @@ export function validatePortalAppointment(
     },
   };
 }
+
+export interface ValidPortalMessage {
+  body: string;
+  subject: string;
+  department?: string;
+  patientPhone: string;
+}
+
+/** Long enough for a real question, short enough that one account cannot ship megabytes to every clinic device. */
+const MESSAGE_BODY_MAX = 4000;
+
+/**
+ * A patient's portal message. Only the words are the patient's to supply —
+ * where it goes, who it is from and when it was sent are decided by the server.
+ */
+export function validatePortalMessage(body: Record<string, unknown>): ValidationResult<ValidPortalMessage> {
+  const fields: Record<string, string> = {};
+  const text = stringValue(body, 'body');
+  const subject = stringValue(body, 'subject');
+  const department = stringValue(body, 'recipientDepartment');
+  const patientPhone = stringValue(body, 'patientPhone');
+
+  if (!text) fields.body = 'Write a message before sending.';
+  else if (tooLong(text, MESSAGE_BODY_MAX)) fields.body = `Keep the message under ${MESSAGE_BODY_MAX} characters.`;
+  if (tooLong(subject, 200)) fields.subject = 'Subject is too long.';
+  if (tooLong(department, 80)) fields.recipientDepartment = 'Department is too long.';
+  if (tooLong(patientPhone, 32)) fields.patientPhone = 'Phone number is too long.';
+
+  if (Object.keys(fields).length > 0) return { ok: false, fields };
+  return {
+    ok: true,
+    value: { body: text, subject: subject || '(no subject)', department: department || undefined, patientPhone },
+  };
+}
+
+/**
+ * The id for a portal-created document. A client may propose one (so an
+ * offline retry lands on the same document), but only in the shape the server
+ * itself would have generated — never `_design/…`, `_local/…` or another
+ * type's id, which this route would otherwise write with admin credentials.
+ */
+export function portalDocId(proposed: unknown, prefix: 'apt' | 'pmt', generate: () => string): string {
+  const shape = new RegExp(`^${prefix}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`);
+  return typeof proposed === 'string' && shape.test(proposed) ? proposed : `${prefix}-${generate()}`;
+}

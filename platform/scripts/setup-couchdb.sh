@@ -80,6 +80,7 @@ DATABASES=(
   tamamhealth_fee_schedule
   tamamhealth_follow_ups
   tamamhealth_handoffs
+  tamamhealth_history_entries
   tamamhealth_hospitals
   tamamhealth_immunizations
   tamamhealth_insurance_policies

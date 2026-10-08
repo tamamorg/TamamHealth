@@ -19,7 +19,7 @@ import type { DataScope } from '../services/data-scope';
 import { filterByScope } from '../services/data-scope';
 import { isProviderRole } from '../clinical-roles';
 import {
-  getNoteType, resolveSections, isNoteTypeId, RETIRED_SECTIONS,
+  getNoteType, resolveSections, isNoteTypeId, RETIRED_SECTIONS, HISTORY_SECTION_IDS,
   type NoteTypeId, type NoteSectionId,
 } from './note-catalog';
 import { stripTemplateMarkers } from './section-templates';
@@ -304,7 +304,7 @@ export async function createClinicalNote(input: CreateNoteInput): Promise<Clinic
     hospitalId: doc.hospitalId,
   });
   await logAuditSafe('CLINICAL_NOTE_CREATED', input.authorId, input.authorName,
-    `${def.label} started for ${input.patientName} (${doc._id})`);
+    `${def.label} started for patient ${input.patientId} (${doc._id})`);
   return { ...doc, _rev: resp.rev };
 }
 
@@ -464,6 +464,71 @@ export async function addNoteSection(
 
     return updateClinicalNote(id, { addedSections, sections });
   });
+}
+
+/**
+ * Bring the chart's history into a note, once.
+ *
+ * `snapshots` holds the text for each history section that has something on
+ * the chart. A section the note type lists as optional is added with its
+ * snapshot already in it; a section the note already has is left alone (the
+ * editor's own derived-section fill handles that one). Nothing is added for a
+ * patient with no history, so a first visit does not open with three empty
+ * boxes.
+ *
+ * Stamped whether or not anything was added, because "offered" is the fact
+ * being recorded: after this, the sections on the note are the clinician's
+ * choice.
+ */
+export async function includeChartHistory(
+  id: string,
+  snapshots: Partial<Record<NoteSectionId, string>>,
+): Promise<ClinicalNoteDoc | null> {
+  return inNoteOrder(id, async () => {
+    const existing = await getClinicalNoteById(id);
+    if (!existing) return null;
+    if (isNoteLocked(existing)) throw new NoteLockedError(id);
+    // Drafts only. `awaiting_cosign` is not "locked" — the supervisor can
+    // still act on it — but it is attested: adding sections now would have
+    // them co-sign something other than what the trainee signed. Same rule
+    // `foldRetiredNoteSections` keeps.
+    if (existing.status !== 'draft') return existing;
+    if (existing.chartHistoryIncludedAt) return existing;
+
+    const ts = nowIso();
+    const def = getNoteType(existing.noteType);
+    const present = new Set(existing.sections.map(s => s.sectionId));
+    const toAdd = def.includeChartHistory
+      ? HISTORY_SECTION_IDS.filter(sid =>
+          !present.has(sid)
+          && def.optionalSections.includes(sid)
+          && (snapshots[sid] || '').trim().length > 0)
+      : [];
+
+    if (toAdd.length === 0) return updateClinicalNote(id, { chartHistoryIncludedAt: ts });
+
+    const addedSections = [...(existing.addedSections || []), ...toAdd];
+    const bySection = new Map(existing.sections.map(s => [s.sectionId, s]));
+    for (const sid of toAdd) {
+      bySection.set(sid, { sectionId: sid, text: '', snapshot: snapshots[sid], snapshotAt: ts });
+    }
+    const sections = resolveSections(existing.noteType, addedSections)
+      .map(sid => bySection.get(sid) ?? { sectionId: sid, text: '' });
+
+    return updateClinicalNote(id, { addedSections, sections, chartHistoryIncludedAt: ts });
+  });
+}
+
+/**
+ * A section's content as plain text: what the chart held, then what the
+ * clinician wrote. Most sections have only one of the two; the history
+ * sections can have both, and a reader that took "text, else snapshot" would
+ * drop the chart's history the moment a clinician added a line under it.
+ */
+export function sectionBody(section: Pick<NoteSectionContent, 'text' | 'snapshot'>): string {
+  return [(section.snapshot || '').trim(), stripTemplateMarkers(section.text || '').trim()]
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** Remove a section the clinician added. Default sections cannot be removed. */
@@ -630,33 +695,41 @@ export async function signClinicalNote(
   input: SignNoteInput,
 ): Promise<ClinicalNoteDoc | null> {
   const db = clinicalNotesDB();
-  let existing: ClinicalNoteDoc;
-  try {
-    existing = await db.get(id) as ClinicalNoteDoc;
-  } catch {
-    return null;
-  }
-  if (isNoteLocked(existing)) throw new NoteLockedError(id);
-  if (!canAttestNote(existing, input.signedBy, input.signerRole)) {
-    throw new NoteSigningAuthorizationError(
-      `${input.signedByName || 'This user'} may not sign note ${id} — only its author, its assignee, ` +
-      'or a user holding a provider role may attest it.',
-    );
-  }
-  if (!hasContent(existing)) {
-    throw new Error('Cannot sign an empty note — document the encounter first.');
-  }
+  // The lock is taken in the note's write order, behind any section save
+  // already on its way. Taken outside it, the signature could read the note
+  // before an autosave landed: that save was then refused as "locked" and the
+  // clinician's last sentence never reached the record they attested to.
+  const written = await inNoteOrder(id, async () => {
+    let current: ClinicalNoteDoc;
+    try {
+      current = await db.get(id) as ClinicalNoteDoc;
+    } catch {
+      return null;
+    }
+    if (isNoteLocked(current)) throw new NoteLockedError(id);
+    if (!canAttestNote(current, input.signedBy, input.signerRole)) {
+      throw new NoteSigningAuthorizationError(
+        `${input.signedByName || 'This user'} may not sign note ${id} — only its author, its assignee, ` +
+        'or a user holding a provider role may attest it.',
+      );
+    }
+    if (!hasContent(current)) {
+      throw new Error('Cannot sign an empty note — document the encounter first.');
+    }
 
-  const ts = nowIso();
-  const updated: ClinicalNoteDoc = {
-    ...existing,
-    status: input.awaitingCosign ? 'awaiting_cosign' : 'signed',
-    signedBy: input.signedBy,
-    signedByName: input.signedByName,
-    signedAt: ts,
-    updatedAt: ts,
-  };
-  const resp = await db.put(updated);
+    const ts = nowIso();
+    const next: ClinicalNoteDoc = {
+      ...current,
+      status: input.awaitingCosign ? 'awaiting_cosign' : 'signed',
+      signedBy: input.signedBy,
+      signedByName: input.signedByName,
+      signedAt: ts,
+      updatedAt: ts,
+    };
+    return { existing: current, updated: next, resp: await db.put(next) };
+  });
+  if (!written) return null;
+  const { existing, updated, resp } = written;
   emitSyncEvent({
     resourceType: 'clinical_note',
     resourceId: id,
@@ -666,7 +739,7 @@ export async function signClinicalNote(
     hospitalId: updated.hospitalId,
   });
   await logAuditSafe('CLINICAL_NOTE_SIGNED', input.signedBy, input.signedByName,
-    `${getNoteType(existing.noteType).label} signed for ${existing.patientName} (${id})`);
+    `${getNoteType(existing.noteType).label} signed for patient ${existing.patientId} (${id})`);
 
   // Signing the note is what ends the consultation, so it is what moves the
   // visit on. Without this the encounter sat at `with_clinician` for good: the
@@ -773,7 +846,7 @@ export async function cosignClinicalNote(
   };
   const resp = await db.put(updated);
   await logAuditSafe('CLINICAL_NOTE_COSIGNED', cosignedBy, cosignedByName,
-    `Note ${id} countersigned for ${existing.patientName}`);
+    `Note ${id} countersigned for patient ${existing.patientId}`);
   if (existing.encounterId && cosignedBy) {
     const { ensurePostConsultHandoff } = await import('@/modules/post-consult/services/handoff-service');
     const encounter = await ensurePostConsultHandoff(existing.encounterId, {
@@ -824,7 +897,7 @@ export async function addNoteAddendum(
   };
   const resp = await db.put(updated);
   await logAuditSafe('CLINICAL_NOTE_AMENDED', authorId, authorName,
-    `Addendum added to note ${id} for ${existing.patientName}`);
+    `Addendum added to note ${id} for patient ${existing.patientId}`);
   return { ...updated, _rev: resp.rev };
 }
 
@@ -912,7 +985,7 @@ export async function deleteClinicalNote(id: string, userName?: string): Promise
     if (isNoteLocked(existing)) throw new NoteLockedError(id);
     await db.remove({ _id: existing._id, _rev: existing._rev! });
     await logAuditSafe('CLINICAL_NOTE_DELETED', undefined, userName,
-      `Draft note ${id} deleted for ${existing.patientName}`);
+      `Draft note ${id} deleted for patient ${existing.patientId}`);
     return true;
   } catch (err) {
     if (err instanceof NoteLockedError) throw err;

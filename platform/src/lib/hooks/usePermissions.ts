@@ -42,6 +42,12 @@ export function usePermissions() {
   const canEditClinical = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   // Midwives provide clinical maternity care, so they can view clinical records.
   const canViewClinical = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isMedSupt || isSuperAdmin;
+  // History-taking is nursing work as much as medical work: the nurse who
+  // triages or rooms the patient is usually the one who asks. Wider than
+  // `canEditClinical` (the diagnosis list stays with clinicians) and must
+  // match DOC_WRITE_ROLES.history_entry, or a nurse's entry saves on the
+  // device and is refused at replication.
+  const canRecordHistory = canEditClinical || role === 'nurse' || isMidwife || isTriageNurse || isRoomingNurse;
   const canConsult = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   const canPrescribe = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   const canOrderLabs = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
@@ -135,6 +141,7 @@ export function usePermissions() {
     canEditBranding,
     canManageUsers,
     canEditClinical,
+    canRecordHistory,
     canViewClinical,
     canConsult,
     canPrescribe,

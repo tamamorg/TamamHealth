@@ -709,6 +709,13 @@ select.cn-select {
 
 .cn-derived-empty { color: var(--text-muted); font-style: italic; }
 
+/* History sections: the chart's snapshot, then a short box for what belongs to
+   this visit alone. It is the lesser of the two, so it opens small. */
+.cn-textarea--under-snapshot { min-height: 46px; margin-top: 6px; }
+
+/* The chart's History tab, shown over a note. */
+.cn-history-body { max-height: min(70vh, 720px); overflow-y: auto; padding: 4px 18px 18px; }
+
 /* ── Popovers (shortcut + template pickers) ─────────────────────────────── */
 /* The search box is one of the section's tools, sized like the buttons beside
    it — same padding, border and radius as .cn-tool, so the row reads as one

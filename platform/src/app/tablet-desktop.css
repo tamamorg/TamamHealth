@@ -640,3 +640,22 @@
   .ehr-top-rail .ehr-top-center { left: calc(50% - 22px); }
   .ehr-top-rail .ehr-top-facility { max-width: 28px; }
 }
+
+/* Half-width windows (a laptop split screen) and portrait tablets
+   ---------------------------------------------------------------
+   The compact-desktop contract above keeps every rail and panel. Below 900px
+   those rails are 138-180px wide, and content sized for a 292px rail was
+   being clipped or cut to "Patie…" instead of fitting. Nothing here removes
+   a panel: each rule lets content wrap or tighten inside the track it has. */
+@media (min-width: 640px) and (max-width: 899px) {
+  /* Chart section rail: 46px was left for a label after the desktop insets.
+     Trim the insets and let a long label take a second line. */
+  /* !important throughout: the chart stylesheet is a component import and
+     lands after this file, so equal-specificity rules here would lose. */
+  .tamam-left-rail { padding: 0 6px 16px 8px !important; }
+  .tamam-rail-cardbody { padding: 4px !important; }
+  .tamam-rail-item { gap: 8px !important; padding: 8px 6px !important; font-size: 11.5px !important; line-height: 1.25 !important; }
+  .tamam-left-rail .tamam-rail-item svg { width: 18px !important; height: 18px !important; }
+  .tamam-rail-label { white-space: normal !important; overflow-wrap: break-word; min-width: 0; }
+  .tamam-header { padding: 12px 14px !important; }
+}

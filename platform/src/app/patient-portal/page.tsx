@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Modal from '@/components/Modal';
 import {
   User, Calendar, FileText, FlaskConical, Syringe,
@@ -215,7 +215,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   ];
   const tabs = navGroups.flatMap(g => g.items);
 
-  type ChatMsg = { id?: string; text: string; from: 'patient' | 'system'; time: string };
+  type ChatMsg = { id?: string; text: string; from: 'patient' | 'system'; time: string; sender?: string };
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
     { text: t('patientPortal.chatWelcome', { name: patient.firstName }), from: 'system', time: '09:00' },
   ]);
@@ -227,17 +227,40 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   // history survives page reloads (rather than only living in component
   // state). Anything authored by `fromDoctorId === 'patient'` is rendered as
   // a patient-side bubble; everything else is a staff/system reply.
+  //
+  // Re-read on a timer while the Messages tab is open: a reply from the
+  // clinician used to appear only after a full page reload, so the patient
+  // had no way to know they had been answered. Skipped mid-send, so the poll
+  // cannot drop the bubble the patient has just typed.
+  //
+  // `chatEpoch` moves every time a send starts or finishes. A poll remembers
+  // the epoch it started in and throws its answer away if a send has happened
+  // since: that answer was read before the send landed, and applying it would
+  // make the message the patient just sent vanish until the next poll.
+  const chatSendingRef = useRef(false);
+  const chatEpoch = useRef(0);
+  const chatLoadedOnce = useRef(false);
   useEffect(() => {
+    chatSendingRef.current = chatSending;
+    chatEpoch.current += 1;
+  }, [chatSending]);
+  useEffect(() => {
+    // Once on arrival (the overview counts on the history being there), then
+    // only while the Messages tab is the one open.
+    if (chatLoadedOnce.current && activeTab !== 'chat') return;
+    chatLoadedOnce.current = true;
     let cancelled = false;
-    (async () => {
+    const loadChat = async () => {
+      if (chatSendingRef.current) return;
+      const epoch = chatEpoch.current;
       try {
         const session = readPatientPortalSession();
         if (!session) return;
-        const { messages: docs } = await patientPortalFetch<{ messages: Array<{ _id?: string; body: string; fromDoctorId?: string; sentAt?: string; createdAt?: string }> }>(
+        const { messages: docs } = await patientPortalFetch<{ messages: Array<{ _id?: string; body: string; fromDoctorId?: string; fromDoctorName?: string; sentAt?: string; createdAt?: string }> }>(
           '/api/patient-portal/messages',
           session.token
         );
-        if (cancelled) return;
+        if (cancelled || chatSendingRef.current || epoch !== chatEpoch.current) return;
         const formatted: ChatMsg[] = docs
           .slice() // getMessagesByPatient returns newest-first; flip so newest is at the bottom
           .sort((a, b) => (a.sentAt || '').localeCompare(b.sentAt || ''))
@@ -245,6 +268,9 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             id: m._id,
             text: m.body,
             from: m.fromDoctorId === 'patient' ? 'patient' : 'system',
+            // Who on the care team wrote it — a reply from "the facility" reads
+            // very differently from one signed by the patient's own doctor.
+            sender: m.fromDoctorId === 'patient' ? undefined : m.fromDoctorName,
             time: new Date(m.sentAt || m.createdAt || Date.now())
               .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           }));
@@ -255,9 +281,11 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
         // History load is best-effort — fall back to the welcome stub.
         console.error('[patient-portal] load messages failed', err);
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    };
+    void loadChat();
+    const timer = activeTab === 'chat' ? setInterval(() => { void loadChat(); }, 20_000) : null;
+    return () => { cancelled = true; if (timer) clearInterval(timer); };
+  }, [activeTab]);
 
   const handleSendChat = async () => {
     const trimmed = chatInput.trim();
@@ -991,6 +1019,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               {chatMessages.map((msg, i) => (
                 <div key={msg.id || i} className={`pp-bubble-line ${msg.from === 'patient' ? 'me' : ''}`}>
                   <div className="pp-bubble">
+                    {msg.sender && <strong style={{ display: 'block', marginBottom: 2, fontSize: 11 }}>{msg.sender}</strong>}
                     {msg.text}
                     <small>{msg.time}</small>
                   </div>

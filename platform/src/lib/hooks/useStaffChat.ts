@@ -21,6 +21,10 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Conversations with a message this user has not read, from the read
+  // receipts themselves. Null until first computed (and while message reads
+  // are disabled), so a caller can tell "none unread" from "not known yet".
+  const [unreadIds, setUnreadIds] = useState<Set<string> | null>(null);
 
   const me: Participant | null = useMemo(
     () => (currentUser ? { id: currentUser._id, name: currentUser.name } : null),
@@ -50,14 +54,68 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
     }
   }, [currentUser, enabled]);
 
+  const loadUnread = useCallback(async () => {
+    if (!messagesEnabled || !currentUser) { setUnreadIds(null); return; }
+    try {
+      const { getUnreadConversationIds } = await import('@/modules/communication/services/conversation-service');
+      const ids = await getUnreadConversationIds(currentUser._id, {
+        role: currentUser.role,
+        orgId: currentUser.orgId,
+        hospitalId: currentUser.hospitalId,
+      });
+      setUnreadIds(new Set(ids));
+    } catch {
+      /* keep the last known set */
+    }
+  }, [currentUser, messagesEnabled]);
+
   const loadMessages = useCallback(async (conversationId: string | null) => {
-    if (!messagesEnabled || !conversationId) { setMessages([]); return; }
+    if (!messagesEnabled || !conversationId || !currentUser) { setMessages([]); return; }
     const { getConversationMessages } = await import('@/modules/communication/services/conversation-service');
-    setMessages(await getConversationMessages(conversationId));
-  }, [messagesEnabled]);
+    setMessages(await getConversationMessages(conversationId, currentUser._id));
+  }, [messagesEnabled, currentUser]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
+  useEffect(() => { loadUnread(); }, [loadUnread]);
   useEffect(() => { loadMessages(activeId); }, [activeId, loadMessages]);
+
+  // One audit row each time a thread is opened: reading messages is access to
+  // PHI. Keyed on the ids so a re-render or a live reload does not log again.
+  const viewerId = currentUser?._id;
+  const viewerName = currentUser?.username;
+  useEffect(() => {
+    if (!messagesEnabled || !activeId || !viewerId) return;
+    let cancelled = false;
+    (async () => {
+      const { recordConversationAccess } = await import('@/modules/communication/services/conversation-service');
+      await recordConversationAccess(activeId, viewerId, viewerName);
+      // The server only sends what was written after this user joined; fetch
+      // the rest of the thread the first time it is opened.
+      const { backfillConversation } = await import('@/modules/communication/services/conversation-sync');
+      if (await backfillConversation(activeId) > 0 && !cancelled) await loadMessages(activeId);
+    })();
+    return () => { cancelled = true; };
+  }, [messagesEnabled, activeId, viewerId, viewerName, loadMessages]);
+
+  // Being removed from a conversation is something the server stops telling
+  // this device about, so ask: on mount, and again whenever the tab regains
+  // focus or connectivity.
+  useEffect(() => {
+    if (!enabled || !viewerId) return;
+    let cancelled = false;
+    const check = async () => {
+      const { reconcileMembership } = await import('@/modules/communication/services/conversation-sync');
+      if (await reconcileMembership(viewerId) && !cancelled) await loadConversations();
+    };
+    check();
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', check);
+      window.removeEventListener('online', check);
+    };
+  }, [enabled, viewerId, loadConversations]);
 
   // Live updates on both stores.
   useEffect(() => {
@@ -66,6 +124,9 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
     const reloadConversations = makeCoalescer(() => {
       if (cancelled) return;
       loadConversations();
+      // Every new message also touches its conversation, so this one feed is
+      // enough to keep the unread set current without a second listener.
+      loadUnread();
     });
     const reloadMessages = makeCoalescer(() => {
       if (!cancelled) loadMessages(activeId);
@@ -85,7 +146,7 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
       try { c1.cancel(); } catch {}
       try { c2?.cancel(); } catch {}
     };
-  }, [enabled, messagesEnabled, loadConversations, loadMessages, activeId]);
+  }, [enabled, messagesEnabled, loadConversations, loadMessages, loadUnread, activeId]);
 
   // Mark the open conversation read whenever its messages change.
   useEffect(() => {
@@ -95,8 +156,9 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
     (async () => {
       const { markConversationRead } = await import('@/modules/communication/services/conversation-service');
       await markConversationRead(activeId, currentUser._id);
+      await loadUnread();
     })();
-  }, [activeId, messages, currentUser]);
+  }, [activeId, messages, currentUser, loadUnread]);
 
   const activeConversation = useMemo(
     () => conversations.find(c => c._id === activeId) || null,
@@ -181,36 +243,41 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
 
   const renameGroup = useCallback(async (conversationId: string, name: string) => {
     const svc = await import('@/modules/communication/services/conversation-service');
-    await svc.renameGroup(conversationId, name);
+    if (!me) return;
+    await svc.renameGroup(conversationId, name, me.id);
     await loadConversations();
-  }, [loadConversations]);
+  }, [me, loadConversations]);
 
   const addMembers = useCallback(async (conversationId: string, members: Participant[]) => {
     const svc = await import('@/modules/communication/services/conversation-service');
-    await svc.addMembers(conversationId, members);
+    if (!me) return;
+    await svc.addMembers(conversationId, members, me.id);
     await loadConversations();
-  }, [loadConversations]);
+  }, [me, loadConversations]);
 
   const removeMember = useCallback(async (conversationId: string, userId: string) => {
     const svc = await import('@/modules/communication/services/conversation-service');
-    await svc.removeMember(conversationId, userId);
+    if (!me) return;
+    await svc.removeMember(conversationId, userId, me.id);
     await loadConversations();
-  }, [loadConversations]);
+  }, [me, loadConversations]);
 
   const leaveConversation = useCallback(async (conversationId: string) => {
     if (!me) return;
     const svc = await import('@/modules/communication/services/conversation-service');
-    await svc.removeMember(conversationId, me.id);
+    await svc.removeMember(conversationId, me.id, me.id);
     if (activeId === conversationId) setActiveId(null);
     await loadConversations();
   }, [me, activeId, loadConversations]);
 
-  const deleteConversation = useCallback(async (conversationId: string) => {
+  /** Take a conversation out of this user's list. It and its messages are kept. */
+  const archiveConversation = useCallback(async (conversationId: string) => {
+    if (!me) return;
     const svc = await import('@/modules/communication/services/conversation-service');
-    await svc.deleteConversation(conversationId);
+    await svc.archiveConversation(conversationId, me.id);
     if (activeId === conversationId) setActiveId(null);
     await loadConversations();
-  }, [activeId, loadConversations]);
+  }, [me, activeId, loadConversations]);
 
   const setPresence = useCallback(async (presence: import('../db-types').StaffPresence) => {
     if (!me) return;
@@ -238,7 +305,8 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
     addMembers,
     removeMember,
     leaveConversation,
-    deleteConversation,
+    archiveConversation,
+    unreadIds,
     setPresence,
   };
 }

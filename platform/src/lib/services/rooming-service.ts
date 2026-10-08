@@ -157,7 +157,7 @@ export async function assignRoom(
     'ROOMING_ASSIGN_ROOM',
     opts.actorId,
     opts.actorName,
-    `Encounter ${encounterId} (${enc.patientName}) placed in room ${room}`,
+    `Encounter ${encounterId} (patient ${enc.patientId}) placed in room ${room}`,
   );
   return updated ?? enc;
 }
@@ -220,7 +220,7 @@ export async function setDestinationClinic(
     'ROOMING_TRANSFER_CLINIC',
     opts.actorId,
     opts.actorName,
-    `Encounter ${encounterId} (${enc.patientName}) re-routed to ${destination}`,
+    `Encounter ${encounterId} (patient ${enc.patientId}) re-routed to ${destination}`,
   );
   return updated ?? enc;
 }
@@ -251,7 +251,7 @@ export async function markReadyForClinician(
     'ROOMING_READY_FOR_CLINICIAN',
     opts.actorId,
     opts.actorName,
-    `Encounter ${encounterId} (${enc.patientName}) ready in room ${current?.roomNumber ?? '?'}`,
+    `Encounter ${encounterId} (patient ${enc.patientId}) ready in room ${current?.roomNumber ?? '?'}`,
   );
   return updated ?? enc;
 }

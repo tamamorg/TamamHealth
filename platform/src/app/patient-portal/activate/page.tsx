@@ -93,6 +93,7 @@ function ActivateForm() {
             onChange={e => setCode(e.target.value)}
             required
             autoComplete="off"
+            autoCapitalize="characters"
             spellCheck={false}
           />
         </div>

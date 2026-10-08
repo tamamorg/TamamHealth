@@ -114,8 +114,13 @@ describe('server-side vitals recompute (never trusting the client)', () => {
       'TRIAGE_RECORDED', 'user-nurse', 'Nurse Test', expect.stringContaining('GREEN triage'),
     );
     expect(mockLogAuditSafe).toHaveBeenCalledWith(
-      'TRIAGE_URGENCY_OVERRIDE', 'user-nurse', 'Nurse Test', expect.stringContaining('Repeat reading pending'),
+      'TRIAGE_URGENCY_OVERRIDE', 'user-nurse', 'Nurse Test', expect.stringContaining('reason recorded on the triage'),
     );
+    // The override is audited; the reason itself is clinical free text and
+    // stays on the triage record, not in a log administrators read.
+    for (const call of mockLogAuditSafe.mock.calls) {
+      expect(String(call[3])).not.toContain('Repeat reading pending');
+    }
   });
 
   test('a client-supplied vitalUrgencyRecommendation cannot substitute for the real one when there ARE no dangerous vitals', async () => {

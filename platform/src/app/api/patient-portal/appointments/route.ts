@@ -7,7 +7,7 @@ import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
 import type { AppointmentDoc, AppointmentStatus } from '@/lib/db-types';
 import { demoFallbackEnabled, logDemoFallback, getDemoAppointmentsByPatient, recordDemoAppointment } from '@/lib/patient-portal-demo';
-import { validatePortalAppointment } from '@/lib/patient-portal-write-validation';
+import { validatePortalAppointment, portalDocId } from '@/lib/patient-portal-write-validation';
 
 export async function GET(req: NextRequest) {
   const auth = await verifyPatientToken(req);
@@ -55,21 +55,42 @@ export async function POST(req: NextRequest) {
   // the missing identities on its own (an empty providerId is nothing to
   // collide on), so there was never anything to bypass it for.
   const now = new Date().toISOString();
-  const id = (typeof body._id === 'string' && body._id) || `apt-${uuidv4()}`;
+  const id = portalDocId(body._id, 'apt', uuidv4);
   const validated = validatePortalAppointment(body);
   if (!validated.ok) {
     return NextResponse.json({ error: 'Invalid appointment request', fields: validated.fields }, { status: 400 });
   }
 
+  // The clinic the request is for owns it. Without an organisation the request
+  // is invisible to every front desk and never reaches a clinic device — see
+  // lib/patient-portal-ownership.ts.
+  const { resolvePortalOwnership, missingOwnership } = await import('@/lib/patient-portal-ownership');
+  const ownership = await resolvePortalOwnership(auth.sub, validated.value.facilityId);
+  if (ownership.foreignFacility) {
+    // A real facility, but another organisation's: the request would land in
+    // that organisation's front-desk queue from a patient it has never seen.
+    return NextResponse.json(
+      { error: 'Invalid appointment request', fields: { facilityId: 'This facility cannot be booked from your portal.' } },
+      { status: 400 },
+    );
+  }
+  if (missingOwnership(ownership) && !demoFallbackEnabled()) {
+    logApiError('[patient-portal/appointments POST]', new Error(`No organisation resolved for patient ${auth.sub}`));
+    return NextResponse.json({ error: 'Your request could not be sent. Please contact your facility.' }, { status: 503 });
+  }
+
   const doc: AppointmentDoc = {
     _id: id,
     type: 'appointment',
+    orgId: ownership.orgId,
     patientId: auth.sub,
     patientName: auth.name,
     patientPhone: typeof body.patientPhone === 'string' ? body.patientPhone : undefined,
     providerId: typeof body.providerId === 'string' ? body.providerId : '',
     providerName: typeof body.providerName === 'string' ? body.providerName : '',
-    facilityId: validated.value.facilityId,
+    // The facility the server resolved, not the one the request named: an id
+    // it could not verify falls back to the patient's own facility.
+    facilityId: ownership.facilityId || validated.value.facilityId,
     facilityName: typeof body.facilityName === 'string' ? body.facilityName : '',
     facilityLevel: validated.value.facilityLevel,
     appointmentDate: validated.value.appointmentDate,
@@ -109,7 +130,9 @@ export async function POST(req: NextRequest) {
 
     await logAuditSafe(
       'PATIENT_REQUEST_APPOINTMENT', auth.sub, auth.name,
-      `Patient ${auth.sub} requested appointment ${doc._id} on ${doc.appointmentDate || '(no date)'}`
+      `Patient ${auth.sub} requested appointment ${doc._id} on ${doc.appointmentDate || '(no date)'}`,
+      true,
+      { orgId: doc.orgId, hospitalId: doc.facilityId, patientId: auth.sub, resourceType: 'appointment', resourceId: doc._id },
     );
     emitSyncEvent({
       resourceType: 'appointment',
