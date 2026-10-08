@@ -283,6 +283,10 @@ export default function TamamChartShell({
                 orgId: currentUser.orgId,
               } : null}
               onClose={closeDrawer}
+              // The chart is already on screen: switch its section and close
+              // the drawer. The tab-change effect above only closes it when
+              // the section actually changes, so close it here as well.
+              onOpenChartTab={(tabId) => { setActiveTab(tabId); closeDrawer(); }}
             />
           </div>
         ) : null;

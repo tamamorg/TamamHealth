@@ -6,14 +6,17 @@
 # locally, and runs structural checks. Designed to fail loudly so the GH
 # Action wrapping it pages on a regression.
 #
-# This is NOT a real restore — it does not touch any live database. It only
-# proves that:
+# It never touches a live database. It proves that:
 #
 #   1. the latest snapshot exists,
 #   2. it decrypts with the operator's private key,
 #   3. its structure is what we expect:
 #        - couchdb tarball: contains tamamhealth_*.json.gz members,
-#        - postgres dump:   pg_restore --list returns at least one entry.
+#        - postgres dump:   pg_restore --list returns at least one entry,
+#   4. when DRILL_RESTORE_COUCHDB_URL names a THROWAWAY CouchDB, the couchdb
+#      snapshot actually restores into it and every document is counted
+#      (scripts/restore-couchdb-dump.sh). Without it the drill is structural
+#      only, and says so.
 #
 # Usage:
 #   ./scripts/backup-restore-drill.sh
@@ -136,6 +139,25 @@ else
         fail "couchdb snapshot has no tamamhealth_*.json.gz members"
       else
         log "  couchdb structural check PASS"
+        # A snapshot that decrypts and lists the right files has still not
+        # been shown to RESTORE. When a throwaway CouchDB is supplied, replay
+        # the snapshot into it with the same script the runbook uses and count
+        # the result. This is the step that would have caught a restore
+        # procedure that silently restored nothing.
+        if [ -n "${DRILL_RESTORE_COUCHDB_URL:-}" ]; then
+          mkdir -p "${WORK}/couchdb-restore"
+          if tar xzf "${WORK}/couchdb.tar.gz" -C "${WORK}/couchdb-restore" \
+             && RESTORE_COUCHDB_URL="$DRILL_RESTORE_COUCHDB_URL" \
+                RESTORE_COUCHDB_USER="${DRILL_RESTORE_COUCHDB_USER:-admin}" \
+                RESTORE_COUCHDB_PASSWORD="${DRILL_RESTORE_COUCHDB_PASSWORD:?DRILL_RESTORE_COUCHDB_PASSWORD required with DRILL_RESTORE_COUCHDB_URL}" \
+                "$(dirname "$0")/restore-couchdb-dump.sh" "${WORK}/couchdb-restore"; then
+            log "  couchdb restore-and-count PASS"
+          else
+            fail "couchdb snapshot did not restore cleanly into the drill database"
+          fi
+        else
+          log "  couchdb restore-and-count SKIPPED (no DRILL_RESTORE_COUCHDB_URL) — structure only"
+        fi
       fi
     else
       fail "couchdb snapshot decrypt failed"

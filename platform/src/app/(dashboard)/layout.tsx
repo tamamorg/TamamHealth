@@ -4,6 +4,7 @@ import { ForcePasswordChange } from '@/modules/identity/client';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
+import { setAuditActor } from '@/lib/services/audit-service';
 import EhrTopRail from '@/components/ehr/EhrTopRail';
 import RoleGuard from '@/components/RoleGuard';
 import { SettingsProvider } from '@/lib/settings/SettingsProvider';
@@ -29,6 +30,22 @@ import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modul
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
+  // Audit rows written from this browser are filed under the signed-in user's
+  // organisation and facility, or they never replicate to the server — see
+  // `setAuditActor`. Cleared on sign-out so the next person on a shared
+  // device does not inherit the last one's identity.
+  const auditUserId = currentUser?._id;
+  const auditUsername = currentUser?.username;
+  // A super-admin signed in as a nurse is still a super-admin acting.
+  const auditRole = currentUser?.actualRole || currentUser?.role;
+  const auditOrgId = currentUser?.orgId;
+  const auditHospitalId = currentUser?.hospitalId;
+  useEffect(() => {
+    setAuditActor(isAuthenticated && auditUserId ? {
+      userId: auditUserId, username: auditUsername, role: auditRole, orgId: auditOrgId, hospitalId: auditHospitalId,
+    } : null);
+    return () => setAuditActor(null);
+  }, [isAuthenticated, auditUserId, auditUsername, auditRole, auditOrgId, auditHospitalId]);
   const orgTimeout = currentUser?.organization?.lockTimeoutMinutes;
   // The platform's own idle policy is a ceiling over the facility/org/user
   // chain — see useAutoLock. It was displayed on /admin/security and read by

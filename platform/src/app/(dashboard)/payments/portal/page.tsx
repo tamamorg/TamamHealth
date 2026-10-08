@@ -271,7 +271,7 @@ export default function PatientPortalPage() {
       const { logAuditSafe } = await import('@/lib/services/audit-service');
       await logAuditSafe(
         'PATIENT_SUBMIT_PAYMENT', doc.processedBy, doc.processedByName,
-        `Portal payment ${doc._id} for ${doc.amount} ${doc.currency} from ${doc.patientName} (ref: ${reference}, pending finance approval)`
+        `Portal payment ${doc._id} for ${doc.amount} ${doc.currency} from patient ${doc.patientId} (ref: ${reference}, pending finance approval)`
       );
 
       const { emitSyncEvent } = await import('@/lib/services/sync-event-service');

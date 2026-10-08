@@ -42,6 +42,62 @@ function reasonFor(
   }
 }
 
+describe('an audit row is signed by whoever wrote it', () => {
+  const writer: UserCtx = { name: 'nurse-1', roles: ['org:org-a', 'role:nurse', 'user:user-nurse-a', 'facility:h-1'] };
+  const row = (over: Record<string, unknown> = {}) => ({
+    _id: 'audit-1', type: 'audit_log', orgId: 'org-a', hospitalId: 'h-1', action: 'HISTORY_ENTRY_CREATED',
+    userId: 'user-nurse-a', details: 'd', success: true, ...over,
+  });
+
+  it('accepts a row in the writer’s own name', () => {
+    expect(reasonFor(row(), null, writer)).toBeNull();
+  });
+
+  it('refuses a row written in a colleague’s name', () => {
+    expect(reasonFor(row({ userId: 'user-dr-b' }), null, writer)).toMatch(/name of another user/);
+  });
+
+  it('accepts a row with no actor that names the account it is about — a failed sign-in', () => {
+    expect(reasonFor(row({ userId: undefined, subjectUserId: 'user-dr-b', action: 'login_failed' }), null, writer)).toBeNull();
+  });
+
+  it('does not lock out an account provisioned before identity claims existed', () => {
+    const legacy: UserCtx = { name: 'old', roles: ['org:org-a', 'role:nurse'] };
+    expect(reasonFor(row({ userId: 'user-anything' }), null, legacy)).toBeNull();
+  });
+
+  it('still refuses to modify or delete an existing row', () => {
+    expect(reasonFor(row({ details: 'rewritten' }), row(), writer)).toMatch(/append-only/);
+    expect(reasonFor({ _id: 'audit-1', _deleted: true }, row(), writer)).toMatch(/append-only/);
+  });
+});
+
+describe('a history entry is withdrawn, never deleted', () => {
+  const nurse: UserCtx = { name: 'nurse-1', roles: ['org:org-a', 'role:nurse', 'user:user-nurse-a', 'facility:h-1'] };
+  const entry = {
+    _id: 'history-1', type: 'history_entry', orgId: 'org-a', hospitalId: 'h-1', patientId: 'pat-1',
+    domain: 'family', title: 'Diabetes', status: 'active',
+  };
+
+  it('lets nursing and clinical roles record and correct an entry', () => {
+    expect(reasonFor(entry, null, nurse)).toBeNull();
+    expect(reasonFor({ ...entry, status: 'entered_in_error' }, entry, nurse)).toBeNull();
+    expect(reasonFor(entry, null, { name: 'desk', roles: ['org:org-a', 'role:front_desk', 'facility:h-1'] }))
+      .toMatch(/may not write documents of type history_entry/);
+  });
+
+  it('refuses a delete from any client, whatever its role', () => {
+    const tombstone = { _id: 'history-1', _deleted: true };
+    expect(reasonFor(tombstone, entry, nurse)).toMatch(/retained record/);
+    expect(reasonFor(tombstone, entry, { name: 'doc', roles: ['org:org-a', 'role:doctor', 'facility:h-1'] }))
+      .toMatch(/retained record/);
+  });
+
+  it('still lets the server settle a conflict', () => {
+    expect(reasonFor({ _id: 'history-1', _deleted: true }, entry, { name: 'admin', roles: ['_admin'] })).toBeNull();
+  });
+});
+
 describe('org-scoped validate_doc_update', () => {
   it('allows cashier deposit amendments without clinical admission edits', () => {
     const actor = { name: 'cashier', roles: ['org:org-a', 'role:cashier', 'facility:h-1'] };

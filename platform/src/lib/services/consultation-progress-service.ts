@@ -136,7 +136,7 @@ async function writeProgress(
   };
   const response = await db.put(updated);
   updated._rev = response.rev;
-  await logAuditSafe(auditAction, actor?.id, actor?.name, `Consultation progress ${existing._id} for ${existing.patientName}`);
+  await logAuditSafe(auditAction, actor?.id, actor?.name, `Consultation progress ${existing._id} for patient ${existing.patientId}`);
   emitSyncEvent({
     resourceType: 'consultation_progress',
     resourceId: updated._id,
@@ -203,7 +203,7 @@ export async function ensureConsultationProgress(input: {
   };
   const response = await consultationProgressDB().put(doc);
   doc._rev = response.rev;
-  await logAuditSafe('CREATE_CONSULTATION_PROGRESS', input.actor?.id, input.actor?.name, `Created consultation tracker for ${input.patientName}`);
+  await logAuditSafe('CREATE_CONSULTATION_PROGRESS', input.actor?.id, input.actor?.name, `Created consultation tracker for patient ${input.patientId}`);
   emitSyncEvent({ resourceType: 'consultation_progress', resourceId: doc._id, operation: 'create', resourceVersion: doc._rev, orgId: doc.orgId, hospitalId: doc.hospitalId });
   return doc;
 }

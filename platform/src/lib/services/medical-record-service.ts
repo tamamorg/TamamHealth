@@ -8,7 +8,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { isProviderRole, isClinicalAuthorRole } from '../clinical-roles';
-import { maybeDecrypt, maybeEncrypt } from '../field-encryption';
+import { readReplicatedField, maybeEncryptReplicated } from '../field-encryption';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { validateDiagnosisCodes, lookupIcd11 } from '../clinical/diagnosis-validation';
 import type { DiagnosisLike } from '../clinical/diagnosis-validation';
@@ -24,13 +24,13 @@ function decryptRecord(doc: MedicalRecordDoc): MedicalRecordDoc {
   const out = { ...doc };
   for (const field of ENCRYPTED_RECORD_FIELDS) {
     const value = out[field];
-    if (typeof value === 'string') out[field] = maybeDecrypt(value);
+    if (typeof value === 'string') out[field] = readReplicatedField(value);
   }
   if (out.followUp?.reason) {
-    out.followUp = { ...out.followUp, reason: maybeDecrypt(out.followUp.reason) };
+    out.followUp = { ...out.followUp, reason: readReplicatedField(out.followUp.reason) };
   }
   if (out.addenda) {
-    out.addenda = out.addenda.map(a => ({ ...a, text: maybeDecrypt(a.text) }));
+    out.addenda = out.addenda.map(a => ({ ...a, text: readReplicatedField(a.text) }));
   }
   return out;
 }
@@ -39,13 +39,13 @@ function encryptRecordFields<T extends Partial<MedicalRecordDoc>>(data: T): T {
   const out = { ...data };
   for (const field of ENCRYPTED_RECORD_FIELDS) {
     const value = out[field];
-    if (typeof value === 'string' && value.length > 0) out[field] = maybeEncrypt(value);
+    if (typeof value === 'string' && value.length > 0) out[field] = maybeEncryptReplicated(value);
   }
   if (out.followUp?.reason) {
-    out.followUp = { ...out.followUp, reason: maybeEncrypt(out.followUp.reason) };
+    out.followUp = { ...out.followUp, reason: maybeEncryptReplicated(out.followUp.reason) };
   }
   if (out.addenda) {
-    out.addenda = out.addenda.map(a => ({ ...a, text: maybeEncrypt(a.text) }));
+    out.addenda = out.addenda.map(a => ({ ...a, text: maybeEncryptReplicated(a.text) }));
   }
   return out;
 }

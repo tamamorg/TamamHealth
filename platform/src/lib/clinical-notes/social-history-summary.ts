@@ -9,9 +9,13 @@
  * sent from this platform could not carry social history at all, and nothing
  * on the screen said so.
  *
- * The note already holds the content: `social_history` is a narrative section
- * the clinician typed. What the modal needs is a two-column shape, so this
- * splits it.
+ * The note already holds the content: its `social_history` section carries
+ * the chart's social history as a snapshot, plus anything the clinician typed
+ * under it for this visit. What the modal needs is a two-column shape, so this
+ * splits both.
+ *
+ * Notes written before the section read the chart hold narrative only, and
+ * come through the same way.
  *
  * ## Why label/detail and not the whole line
  *
@@ -39,7 +43,9 @@ const TEMPLATE_DELIMITER = /^[[\]{}<>=–—-]+$/;
 const MAX_LABEL_LENGTH = 40;
 
 export function socialHistoryRows(note: Pick<ClinicalNoteDoc, 'sections'> | null | undefined): SummarySocialHistory[] {
-  const text = note?.sections.find(s => s.sectionId === 'social_history')?.text ?? '';
+  const section = note?.sections.find(s => s.sectionId === 'social_history');
+  // Chart first, then the visit's own lines — the order the section shows them.
+  const text = [section?.snapshot ?? '', section?.text ?? ''].filter(part => part.trim()).join('\n');
   if (!text.trim()) return [];
 
   const rows: SummarySocialHistory[] = [];

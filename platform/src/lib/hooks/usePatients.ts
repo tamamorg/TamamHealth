@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { PatientDoc } from '../db-types';
+import type { CreatePatientOptions } from '../services/patient-service';
 import { patientsDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useDataScope } from './useDataScope';
@@ -67,7 +68,10 @@ export function usePatients(enabled = true) {
     setPatients(results);
   }, [loadPatients, scope]);
 
-  const create = useCallback(async (data: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
+  const create = useCallback(async (
+    data: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
+    options?: CreatePatientOptions,
+  ) => {
     if (!scope) throw new Error('Your patient data scope is unavailable');
     const { createPatient } = await import('../services/patient-service');
     // Scope so duplicate-detection and geocode assignment don't read/disclose
@@ -76,7 +80,7 @@ export function usePatients(enabled = true) {
     // error (`toastRegisterFailed`, form re-enabled) instead of an unbounded
     // "Saving…" — see lib/write-timeout.ts for the failure mode.
     const patient = await withTimeout(
-      createPatient(data, scope),
+      createPatient(data, scope, options),
       CLINICAL_WRITE_TIMEOUT_MS,
       'Registration timed out — the local database did not respond. Please try again.',
     );

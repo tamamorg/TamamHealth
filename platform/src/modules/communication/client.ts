@@ -7,9 +7,10 @@
  * the main one and `index.ts` carries the small server-safe remainder.
  *
  * Services are not re-exported here. Two reasons, and the first is concrete:
- * `message-service` and `conversation-service` both export `deleteMessage`, so
- * a single barrel would have to rename one of them and quietly make the import
- * line lie about which store it writes to. The second is the rule the identity
+ * `message-service` and `conversation-service` both write the messages store
+ * (`retractMessage` is the record-keeping primitive, `deleteMessage` the staff
+ * chat action built on it), so a single barrel would blur which one a caller
+ * meant. The second is the rule the identity
  * module established — services are a named entrypoint tier
  * (`@/modules/communication/services/<name>`), which keeps a lazy import lazy
  * and keeps a barrel from dragging the data layer behind a hook.
@@ -42,6 +43,7 @@ export {
 } from './notifications/notification-scope';
 
 // ── Messaging ───────────────────────────────────────────────────────────────
+export { EDIT_WINDOW_MS, REMOVED_MESSAGE_PREVIEW, isMessageEditable } from './message-rules';
 export { useMessages } from './hooks/useMessages';
 export {
   MessagingDockProvider, useMessagingDock, type DockPerson,

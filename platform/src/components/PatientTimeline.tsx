@@ -84,7 +84,8 @@ const CATEGORY_CONFIG: Record<TimelineEvent['category'], { labelKey: string }> =
 /** First line of real text in a note, for the timeline's subtitle. */
 function notePreviewLine(note: ClinicalNoteDoc): string | undefined {
   for (const section of note.sections) {
-    const body = (section.text || section.snapshot || '')
+    // Chart snapshot first, then the clinician's text — a section can hold both.
+    const body = [section.snapshot || '', section.text || ''].filter(Boolean).join('\n')
       .replace(/<!--\/?template-->/g, '')
       .trim();
     if (body) return body.split('\n')[0].slice(0, 90);

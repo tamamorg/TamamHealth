@@ -40,10 +40,16 @@ export interface RegistrationReviewProps {
    * are about to create before being told someone like them already exists.
    */
   notice?: ReactNode;
+  /**
+   * Rendered under the read-back — what registering will also do (the portal
+   * account). Below rather than above because it is a choice about the record
+   * the clerk has just finished checking, not a fact about it.
+   */
+  footer?: ReactNode;
 }
 
 export default function RegistrationReview({
-  title, eyebrow, heading, photoUrl, photoAlt, groups, editLabel, onEdit, notice,
+  title, eyebrow, heading, photoUrl, photoAlt, groups, editLabel, onEdit, notice, footer,
 }: RegistrationReviewProps) {
   return (
     <section className="registration-section tamam-reg-section tamam-reg-review" id="reg-review">
@@ -88,6 +94,8 @@ export default function RegistrationReview({
           </section>
         ))}
       </div>
+
+      {footer}
     </section>
   );
 }

@@ -247,7 +247,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
 
   await logAuditSafe(
     'BILL_CREATED', data.generatedBy, data.generatedByName,
-    `Invoice ${invoiceNumber}: ${data.patientName} total=${totalAmount} ${doc.currency}`
+    `Invoice ${invoiceNumber}: patient ${data.patientId} total=${totalAmount} ${doc.currency}`
   );
 
   emitSyncEvent({
@@ -590,7 +590,7 @@ export async function finalizeBill(
 
     await logAuditSafe(
       'BILL_FINALIZED', finalizedBy, finalizedByName,
-      `Finalized ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency} for ${bill.patientName}`
+      `Finalized ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency} for patient ${bill.patientId}`
     );
 
     emitSyncEvent({

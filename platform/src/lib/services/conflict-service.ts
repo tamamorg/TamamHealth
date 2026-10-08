@@ -60,6 +60,11 @@ export const HIGH_RISK_RESOURCES: ReadonlySet<string> = new Set([
   'immunization',
   'patient',
   'patient_transfer',
+  // Standing history is corrected in place, and social history holds one
+  // answer per factor — so two devices editing "Tobacco" offline is a real
+  // case, and most-recent-wins would silently drop one clinician's correction
+  // from a line every later note copies.
+  'history_entry',
 ]);
 
 export const MEDIUM_RISK_RESOURCES: ReadonlySet<string> = new Set([

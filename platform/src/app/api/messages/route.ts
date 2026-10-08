@@ -1,11 +1,12 @@
 /**
  * API: /api/messages
  * GET  — List messages by patient or doctor
- * POST — Create, update status, or delete messages
+ * POST — Create, update status, or remove messages. Nothing here erases a
+ *        message: "delete" retracts it from the thread and keeps the content.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
-import { withAuditLog } from '@/lib/audit/with-audit';
+import { AUDIT_ACTION_HEADER, withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 // hospital_manager and medical_biller both hold the /messages route in
 // role-routes.ts (and DOC_WRITE_ROLES.message is ALL_STAFF, which already
@@ -76,15 +77,19 @@ async function postHandler(request: NextRequest) {
       } catch {
         return NextResponse.json({ error: 'Message not found' }, { status: 404 });
       }
-      const updated = await updateMessage(body.messageId as string, {
-        status: body.status as Parameters<typeof updateMessage>[1]['status'],
-      });
+      const status = body.status;
+      if (status !== 'sent' && status !== 'delivered' && status !== 'failed') {
+        return NextResponse.json({ error: 'status must be sent, delivered or failed' }, { status: 400 });
+      }
+      const updated = await updateMessage(body.messageId as string, { status });
       if (!updated) return NextResponse.json({ error: 'Message not found' }, { status: 404 });
-      return NextResponse.json({ message: updated });
+      return NextResponse.json({ message: updated }, { headers: { [AUDIT_ACTION_HEADER]: 'message.update' } });
     }
-    // Delete message
+    // Remove a message from its thread. Messages are part of the record, so
+    // this is a retraction by the author and never an erasure: the document
+    // and its content stay, stamped with who removed it and when.
     if (action === 'delete' && body.messageId) {
-      const { deleteMessage } = await import('@/modules/communication/services/message-service');
+      const { retractMessage } = await import('@/modules/communication/services/message-service');
       const { messagesDB } = await import('@/lib/db');
       const { filterByScope, buildScopeFromAuth } = await import('@/lib/services/data-scope');
       try {
@@ -95,9 +100,13 @@ async function postHandler(request: NextRequest) {
       } catch {
         return NextResponse.json({ error: 'Message not found' }, { status: 404 });
       }
-      const deleted = await deleteMessage(body.messageId as string);
-      if (!deleted) return NextResponse.json({ error: 'Message not found' }, { status: 404 });
-      return NextResponse.json({ deleted: true });
+      const headers = { [AUDIT_ACTION_HEADER]: 'message.retract' };
+      const result = await retractMessage(body.messageId as string, { id: auth.sub, name: auth.name });
+      if (result === 'not_found') return NextResponse.json({ error: 'Message not found' }, { status: 404, headers });
+      if (result === 'not_author') {
+        return NextResponse.json({ error: 'Only the author can remove a message' }, { status: 403, headers });
+      }
+      return NextResponse.json({ deleted: true, retained: true }, { headers });
     }
     // Create new message
     if (!body.patientId || !body.content) {

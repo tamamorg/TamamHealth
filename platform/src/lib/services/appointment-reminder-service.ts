@@ -68,6 +68,8 @@ export async function generateReminderMessages(appointments: AppointmentDoc[]): 
       const created = await createMessage({
         recipientType: 'patient',
         direction: 'staff_to_patient',
+        // Not a person replying — see MessageDoc.automated.
+        automated: true,
         patientId: apt.patientId,
         patientName: apt.patientName,
         patientPhone: apt.patientPhone || '',

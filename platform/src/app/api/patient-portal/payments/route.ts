@@ -6,7 +6,7 @@ import { paymentsDB } from '@/lib/db';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
 import type { PaymentDoc, PaymentStatus, PaymentMethodType } from '@/lib/db-types-payments';
-import { validatePortalPayment } from '@/lib/patient-portal-write-validation';
+import { validatePortalPayment, portalDocId } from '@/lib/patient-portal-write-validation';
 
 export async function POST(req: NextRequest) {
   const auth = await verifyPatientToken(req);
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   // reviewed/approved before being posted to the ledger. Do not auto-allocate.
   try {
     const now = new Date().toISOString();
-    const id = (typeof body._id === 'string' && body._id) || `pmt-${uuidv4()}`;
+    const id = portalDocId(body._id, 'pmt', uuidv4);
 
     const validated = validatePortalPayment(body);
     if (!validated.ok) {
@@ -36,9 +36,32 @@ export async function POST(req: NextRequest) {
     }
     const db = paymentsDB();
 
+    // A payment is filed under the patient's own organisation, at a facility
+    // of that organisation — the one named when it is one, else the patient's
+    // registration facility — so finance at that clinic can see it to approve
+    // it. It is never filed under another organisation: that would put an
+    // unverified payment, with a reference of the patient's choosing, into a
+    // finance queue that has no reason to distrust it. See
+    // lib/patient-portal-ownership.ts.
+    const { resolvePortalOwnership, missingOwnership } = await import('@/lib/patient-portal-ownership');
+    const ownership = await resolvePortalOwnership(
+      auth.sub, typeof body.facilityId === 'string' ? body.facilityId : undefined,
+    );
+    if (ownership.foreignFacility) {
+      return NextResponse.json(
+        { error: 'Invalid payment', fields: { facilityId: 'This facility cannot be paid from your portal.' } },
+        { status: 400 },
+      );
+    }
+    if (missingOwnership(ownership)) {
+      logApiError('[patient-portal/payments POST]', new Error(`No organisation resolved for patient ${auth.sub}`));
+      return NextResponse.json({ error: 'Your payment could not be submitted. Please contact your facility.' }, { status: 503 });
+    }
+
     const doc: PaymentDoc = {
       _id: id,
       type: 'payment',
+      orgId: ownership.orgId,
       patientId: auth.sub,
       patientName: auth.name,
       encounterId: typeof body.encounterId === 'string' ? body.encounterId : undefined,
@@ -53,7 +76,7 @@ export async function POST(req: NextRequest) {
       processedBy: auth.sub,
       processedByName: auth.name,
       notes: `[PATIENT_SUBMITTED] pending_verification — finance must approve before posting. ${typeof body.notes === 'string' ? body.notes : ''}`.trim(),
-      facilityId: typeof body.facilityId === 'string' ? body.facilityId : '',
+      facilityId: ownership.facilityId || '',
       createdAt: now,
       updatedAt: now,
       createdBy: auth.sub,
@@ -64,7 +87,9 @@ export async function POST(req: NextRequest) {
 
     await logAuditSafe(
       'PATIENT_SUBMIT_PAYMENT', auth.sub, auth.name,
-      `Patient ${auth.sub} submitted payment ${doc._id} for ${doc.amount} ${doc.currency} (pending finance approval)`
+      `Patient ${auth.sub} submitted payment ${doc._id} for ${doc.amount} ${doc.currency} (pending finance approval)`,
+      true,
+      { orgId: doc.orgId, hospitalId: doc.facilityId, patientId: auth.sub, resourceType: 'payment', resourceId: doc._id },
     );
     emitSyncEvent({
       resourceType: 'payment',

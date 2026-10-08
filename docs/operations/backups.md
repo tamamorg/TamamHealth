@@ -365,20 +365,29 @@ notification arrives at the start of the operator's day.)
    tar xzf snapshot.tar.gz -C ./restore/
    ```
 
-4. **Replay into CouchDB:**
+4. **Replay into CouchDB** with the restore script — the same one the weekly
+   drill runs, so this step is rehearsed every week:
 
    ```bash
-   for f in ./restore/*/tamamhealth_*.json.gz; do
-     db=$(basename "$f" .json.gz)
-     # create the db
-     curl -X PUT "http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@localhost:5984/${db}"
-     # bulk_docs upload (un-gzip and reformat the _all_docs payload to bulk_docs)
-     gunzip -c "$f" | jq '{docs: [.rows[].doc] }' | \
-       curl -sf -X POST -H 'Content-Type: application/json' \
-       --data-binary @- \
-       "http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@localhost:5984/${db}/_bulk_docs"
-   done
+   RESTORE_COUCHDB_URL=http://localhost:5984 \
+   RESTORE_COUCHDB_USER="$COUCHDB_USER" RESTORE_COUCHDB_PASSWORD="$COUCHDB_PASSWORD" \
+     ./scripts/restore-couchdb-dump.sh ./restore/
    ```
+
+   It creates each database, replays the documents at their original
+   revisions, then counts what the target holds against what the dump
+   contains and exits non-zero on any gap. It refuses to write into a database
+   that already has documents.
+
+   Do not replay the dump by hand with a bare `_bulk_docs` post. Every dumped
+   document carries its `_rev`, and without `new_edits: false` CouchDB answers
+   `conflict` for each one — under HTTP 201, so `curl -f` does not notice. The
+   restore "succeeds" with zero documents. This runbook carried exactly that
+   command until 2026-10-08 (verified against CouchDB 3.5).
+
+   The dump is taken with `_all_docs`, which records only the winning revision
+   of each document. Unresolved conflict revisions are not in it and are not
+   restored.
 
 5. **Replay Postgres:**
 

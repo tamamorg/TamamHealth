@@ -218,7 +218,7 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
 
   await logAuditSafe(
     'PAYMENT_COLLECTED', input.processedBy, input.processedByName,
-    `${input.amount} ${doc.currency} via ${input.method} from ${input.patientName} (ref: ${doc.reference})`
+    `${input.amount} ${doc.currency} via ${input.method} from patient ${input.patientId} (ref: ${doc.reference})`
       + (settlementError ? ` — bill settlement failed: ${settlementError}` : '')
       + (settlementUnapplied > 0 ? ` — ${settlementUnapplied} ${doc.currency} unapplied to any open bill` : '')
   );
@@ -1621,7 +1621,7 @@ export async function issueRefund(input: {
   });
 
   await logAuditSafe('REFUND_ISSUED', input.processedBy, input.processedByName,
-    `Refund ${input.amount} ${doc.currency} to ${input.patientName}: ${input.reason}`);
+    `Refund ${input.amount} ${doc.currency} to patient ${input.patientId}: ${input.reason}`);
 
   emitSyncEvent({
     resourceType: 'refund',
@@ -1726,7 +1726,7 @@ export async function createPaymentPlan(input: {
   doc._rev = resp.rev;
 
   await logAuditSafe('PAYMENT_PLAN_CREATED', input.createdByStaff, input.createdByStaffName,
-    `Plan for ${input.patientName}: ${input.totalBalance} over ${input.termMonths} months`);
+    `Plan for patient ${input.patientId}: ${input.totalBalance} over ${input.termMonths} months`);
 
   emitSyncEvent({
     resourceType: 'payment_plan',

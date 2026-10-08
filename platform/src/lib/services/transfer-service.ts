@@ -123,7 +123,7 @@ export async function assembleTransferPackage(
   // the legacy consultation flow no browser UI writes to any more). Only
   // attested notes travel with the referral: an unsigned draft is not yet a
   // record of what happened at this visit.
-  const { getNotesByPatient } = await import('../clinical-notes/note-service');
+  const { getNotesByPatient, sectionBody } = await import('../clinical-notes/note-service');
   const clinicalNotes: TransferPackageClinicalNote[] = (await getNotesByPatient(patientId))
     .filter(n => n.status === 'signed' || n.status === 'amended')
     .map(n => ({
@@ -135,7 +135,10 @@ export async function assembleTransferPackage(
       authorName: n.authorName,
       signedByName: n.signedByName,
       signedAt: n.signedAt,
-      sections: n.sections.map(s => ({ sectionId: s.sectionId, text: s.text })),
+      // The whole section: what the chart held (vitals, medications, history)
+      // as well as what was typed. Sending `text` alone dropped every
+      // chart-derived section from the package the receiving clinician reads.
+      sections: n.sections.map(s => ({ sectionId: s.sectionId, text: sectionBody(s) })),
     }));
 
   // The problem list — chronic/ongoing conditions a receiving clinician needs

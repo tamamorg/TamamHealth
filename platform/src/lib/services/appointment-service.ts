@@ -288,7 +288,7 @@ export async function createAppointment(
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   await logAuditSafe('CREATE_APPOINTMENT', data.bookedBy, data.bookedByName,
-    `Appointment ${doc._id}: ${data.patientName} with ${data.providerName} on ${data.appointmentDate} at ${data.appointmentTime}`
+    `Appointment ${doc._id}: patient ${data.patientId} with ${data.providerName} on ${data.appointmentDate} at ${data.appointmentTime}`
   );
   emitSyncEvent({
     resourceType: 'appointment',

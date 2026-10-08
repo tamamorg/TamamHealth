@@ -4,9 +4,11 @@
  * One section of a clinical note: its heading, its action row, and its body.
  *
  * Narrative sections get a textarea plus Text Shortcut. Derived sections
- * (vitals, medications, allergies) render a snapshot of the chart as it stood
- * when the note was written, with a refresh control — a note records what the
- * clinician saw, so it must not silently change when the chart later does.
+ * (vitals, medications, allergies, and the three history sections) render a
+ * snapshot of the chart as it stood when the note was written, with a refresh
+ * control — a note records what the clinician saw, so it must not silently
+ * change when the chart later does. The history sections additionally take
+ * free text under the snapshot, for what belongs to this visit alone.
  *
  * Every section additionally offers the actions that belong to it (see
  * section-actions.ts): Assessment cites problems, Plan raises orders,
@@ -16,7 +18,7 @@
 
 import {
   Pill, FlaskConical, Syringe, Heart, RefreshCw, X,
-  ClipboardList, Plus, AlertTriangle, Activity, Send, Calendar,
+  ClipboardList, Plus, AlertTriangle, Activity, Send, Calendar, Archive,
 } from '@/components/icons/lucide';
 import ShortcutSearchInput from './shortcuts/ShortcutSearchInput';
 import { useShortcutSearch } from './shortcuts/useShortcutSearch';
@@ -33,6 +35,7 @@ const ACTION_ICONS: Record<NoteSectionActionId, typeof Pill> = {
   review_medications: Pill,
   prescribe: Plus,
   manage_allergies: AlertTriangle,
+  update_history: Archive,
   record_vitals: Activity,
   order_lab: FlaskConical,
   order_vaccine: Syringe,
@@ -113,6 +116,37 @@ export default function NoteSectionCard({
     : null;
 
   if (def.kind === 'derived') {
+    const narrative = stripTemplateMarkers(text).trim();
+    // What to say when the chart had nothing for this section. A locked note
+    // says only that nothing was documented: it may predate the section
+    // reading the chart at all, and "no family history recorded" would then be
+    // a finding nobody made. And where the clinician's own text is the whole
+    // content, the snapshot block steps aside rather than contradict it.
+    const emptyCopy = readOnly && def.narrative
+      ? 'Not documented.'
+      : `No ${def.label.toLowerCase()} recorded for this patient.`;
+    const showSnapshotBlock = Boolean(snapshotRows) || !(def.narrative && (narrative || !readOnly));
+    const snapshotBlock = !showSnapshotBlock ? null : onOpenDerived ? (
+      // The whole snapshot is the door into the working view — clicking a
+      // medication line opens the Medications popup, not a text cursor.
+      <div
+        className={`cn-derived cn-derived-clickable${content?.snapshot ? '' : ' cn-derived-empty'}`}
+        role="button"
+        tabIndex={0}
+        title={`Open ${def.label.toLowerCase()}`}
+        onClick={() => onOpenDerived(sectionId)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDerived(sectionId); }
+        }}
+      >
+        {snapshotRows || emptyCopy}
+      </div>
+    ) : (
+      <div className={`cn-derived${content?.snapshot ? '' : ' cn-derived-empty'}`}>
+        {snapshotRows || emptyCopy}
+      </div>
+    );
+
     return (
       // onFocus notes which section the caret is in — it reports focus rather
       // than accepting activation, so there is nothing here to key-activate.
@@ -127,6 +161,7 @@ export default function NoteSectionCard({
           {!readOnly && (
             <div className="cn-section-tools">
               {actionButtons}
+              {def.narrative && <ShortcutSearchInput search={shortcuts} />}
               {onRefreshDerived && (
                 <button
                   type="button"
@@ -140,26 +175,21 @@ export default function NoteSectionCard({
             </div>
           )}
         </div>
-        {onOpenDerived ? (
-          // The whole snapshot is the door into the working view — clicking a
-          // medication line opens the Medications popup, not a text cursor.
-          <div
-            className={`cn-derived cn-derived-clickable${content?.snapshot ? '' : ' cn-derived-empty'}`}
-            role="button"
-            tabIndex={0}
-            title={`Open ${def.label.toLowerCase()}`}
-            onClick={() => onOpenDerived(sectionId)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDerived(sectionId); }
-            }}
-          >
-            {snapshotRows || `No ${def.label.toLowerCase()} recorded for this patient.`}
-          </div>
+        {snapshotBlock}
+        {def.narrative && (readOnly ? (
+          narrative ? <div className="cn-derived cn-derived-narrative">{narrative}</div> : null
         ) : (
-          <div className={`cn-derived${content?.snapshot ? '' : ' cn-derived-empty'}`}>
-            {snapshotRows || `No ${def.label.toLowerCase()} recorded for this patient.`}
-          </div>
-        )}
+          <textarea
+            className="cn-textarea cn-textarea--under-snapshot"
+            value={text}
+            // No snapshot can mean the chart is empty or that it has not been
+            // read (offline, a failed load) — so this says what to do, not what
+            // the patient's history is.
+            placeholder={content?.snapshot ? def.placeholder : 'Nothing from the chart here. Refresh re-reads it; Update History records it. Or write for this visit only…'}
+            onChange={e => onChange({ text: e.target.value })}
+            aria-label={`${def.label} — notes for this visit`}
+          />
+        ))}
       </section>
     );
   }

@@ -4,7 +4,7 @@ import {
   type DatabaseSyncConfig,
 } from './sync-config';
 import { tenantDatabaseName } from './tenant-database';
-import { isAppendOnlyDatabase } from './write-permissions';
+import { isAppendOnlyDatabase, isRetainedRecordDatabase } from './write-permissions';
 
 const READ_POST_ENDPOINTS = new Set(['_all_docs', '_bulk_get', '_changes', '_find', '_revs_diff']);
 const ALLOWED_INTERNAL_ENDPOINTS = new Set([
@@ -110,4 +110,75 @@ export function validateGatewayWriteBody(
     return null;
   }
   return validateDocument(config, body);
+}
+
+/* ───────────────────── retained records: deletions ───────────────────── */
+
+/** One leaf of a document's revision tree, as `?open_revs=all` reports it. */
+export interface CouchLeaf { _rev: string; _deleted?: boolean }
+
+type Tombstone = {
+  _id?: unknown;
+  _rev?: unknown;
+  _deleted?: unknown;
+  _revisions?: { start?: unknown; ids?: unknown };
+};
+
+/** Databases where a deletion must be justified before it is forwarded. */
+export function requiresRetainedDeletionCheck(config: DatabaseSyncConfig): boolean {
+  return isRetainedRecordDatabase(config.localName);
+}
+
+/**
+ * The revision a tombstone destroys.
+ *
+ * Replication writes with `new_edits: false`, where `_rev` is the tombstone's
+ * own revision and the one it replaces is the second entry of `_revisions`. An
+ * ordinary write carries the revision it replaces in `_rev` directly.
+ */
+export function tombstoneParentRev(doc: Tombstone): string | null {
+  const start = doc._revisions?.start;
+  const ids = doc._revisions?.ids;
+  if (typeof start === 'number' && Array.isArray(ids)) {
+    return ids.length > 1 && typeof ids[1] === 'string' ? `${start - 1}-${ids[1]}` : null;
+  }
+  return typeof doc._rev === 'string' ? doc._rev : null;
+}
+
+/**
+ * Whether deleting `parentRev` leaves the record standing.
+ *
+ * A message or conversation is never erased, but one deletion is routine and
+ * must keep working: conflict resolution removes the losing revision while the
+ * winner stays. So a deletion is allowed exactly when another live revision of
+ * the same document survives it. Deleting the only live revision is the
+ * erasure this rule exists to stop.
+ *
+ * A document the server has never seen has nothing to protect — the tombstone
+ * is for a record that never arrived — so that is allowed too.
+ */
+export function retainedDeletionAllowed(parentRev: string | null, leaves: readonly CouchLeaf[]): boolean {
+  const live = leaves.filter(leaf => !leaf._deleted);
+  if (live.length === 0) return true;
+  if (!parentRev) return false;
+  return live.some(leaf => leaf._rev !== parentRev);
+}
+
+/** The tombstones in a write body, with the index each holds in `docs`. */
+export function tombstonesInBody(
+  body: unknown,
+  /** The document id from the URL, for a single-document PUT whose body omits `_id`. */
+  pathId?: string,
+): Array<{ index: number; id: string; parentRev: string | null }> {
+  const docs = (body as { docs?: unknown } | null)?.docs;
+  const values = Array.isArray(docs) ? docs : [body];
+  const out: Array<{ index: number; id: string; parentRev: string | null }> = [];
+  values.forEach((value, index) => {
+    if (!value || typeof value !== 'object') return;
+    const doc = value as Tombstone;
+    const id = typeof doc._id === 'string' ? doc._id : (Array.isArray(docs) ? undefined : pathId);
+    if (doc._deleted !== true || !id) return;
+    out.push({ index, id, parentRev: tombstoneParentRev(doc) });
+  });
+  return out;
 }

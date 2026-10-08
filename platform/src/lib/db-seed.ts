@@ -1918,6 +1918,7 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
     // also removes the orphaned database.
     'tamamhealth_intake_forms',
     'tamamhealth_program_enrollments', 'tamamhealth_procedures',
+    'tamamhealth_history_entries',
     'tamamhealth_handoffs', 'tamamhealth_patient_transfers', 'tamamhealth_nutrition_screenings',
     'tamamhealth_nutrition_supplies', 'tamamhealth_availability', 'tamamhealth_announcements',
     'tamamhealth_emergency_plans', 'tamamhealth_assets', 'tamamhealth_leave_requests',

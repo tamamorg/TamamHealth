@@ -20,6 +20,8 @@ export interface PatientRegistrationDraft {
   fingerprints: CapturedFingerprint[];
   patientPhotoUrl: string | null;
   reviewMode: boolean;
+  /** False only when the clerk declined a portal account; absent means yes. */
+  portalAccount?: boolean;
 }
 
 export function createPatientRegistrationDraftId(): string {
@@ -87,6 +89,7 @@ export function normalizePatientRegistrationDraft(raw: unknown): PatientRegistra
     fingerprints,
     patientPhotoUrl: typeof raw.patientPhotoUrl === 'string' ? raw.patientPhotoUrl : null,
     reviewMode: raw.reviewMode === true,
+    ...(raw.portalAccount === false ? { portalAccount: false } : {}),
   };
 }
 

@@ -381,6 +381,7 @@
 .tamam-header {
   padding: 14px 20px;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 14px;
 }
@@ -410,7 +411,12 @@
 }
 
 .tamam-header-body {
-  flex: 1 1 auto;
+  /* A real basis, not `auto`: with the actions column refusing to shrink, an
+     auto basis let this column be squeezed to nothing in a half-width window
+     (measured 0px at 720) and the name, age and allergies stacked a word per
+     line under the buttons. With the header wrapping, the actions drop to
+     their own line as soon as the identity cannot keep ~240px. */
+  flex: 1 1 240px;
   min-width: 0;
 }
 
@@ -619,12 +625,14 @@
 /* The banner's right column: actions on the first line, the balance chip on
    its own beneath them, both flush right. */
 .tamam-header-aside {
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-  max-width: 540px;
+  max-width: min(540px, 100%);
 }
 
 .tamam-header-actions {
@@ -2654,6 +2662,85 @@
    reading "General consent to treat — signed at reg…" is not a consent record. */
 .tamam-table--directives { table-layout: fixed; }
 .tamam-table--directives td { white-space: normal; }
+
+/* Messages tab — the patient's conversation with their care team. Staff on the
+   right on the action-blue tint, the patient on the left on a neutral. */
+.tamam-root .tamam-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 52vh;
+  min-height: 160px;
+  overflow-y: auto;
+  padding: 12px 4px;
+}
+.tamam-root .tamam-thread-empty { margin: auto; color: var(--ehr-muted, #5D728B); font-size: 13px; }
+.tamam-root .tamam-thread-note { margin: 0 0 4px; }
+.tamam-root .tamam-thread-line { display: flex; }
+.tamam-root .tamam-thread-line.is-staff { justify-content: flex-end; }
+.tamam-root .tamam-thread-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(72%, 560px);
+  padding: 8px 12px;
+  border: 1px solid var(--ehr-border, var(--border-light));
+  border-radius: 10px;
+  background: var(--bg-card-solid, #fff);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* A tint, not a solid fill: the bubble keeps dark text, so nothing inside it
+   (a future attachment icon, say) can vanish against its own background. */
+.tamam-root .tamam-thread-line.is-staff .tamam-thread-bubble {
+  border-color: var(--border-accent, var(--accent-primary));
+  background: var(--accent-light);
+}
+.tamam-root .tamam-thread-who { font-size: 11px; font-weight: 700; }
+.tamam-root .tamam-thread-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.tamam-root .tamam-thread-when { font-size: 10.5px; opacity: 0.72; }
+.tamam-root .tamam-thread-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ehr-border-soft, var(--border-light));
+}
+.tamam-root .tamam-thread-composer textarea {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--ehr-border, var(--border-light));
+  border-radius: 6px;
+  background: var(--bg-card-solid, #fff);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+/* The History tab embedded in a popup over a note: keep `.tamam-root` for the
+   table and section rules it scopes, drop the full-page shell it also is. */
+.tamam-root.tamam-root--embedded {
+  display: block;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* History tab — four short tables stacked. Entries wrap: a history line cut
+   off at "Mother: diabetes, diagnosed in her…" has lost the part that matters.
+   The last column holds the row's two buttons and is sized to fit them. */
+.tamam-root .tamam-table--history td { white-space: normal; vertical-align: top; }
+.tamam-root .tamam-table--history th:last-child { width: 132px; }
+.tamam-root .tamam-table--history th:nth-last-child(2) { width: 20%; }
+.tamam-root .tamam-table--history-social th:first-child { width: 24%; }
+/* The "Problem list" / "Procedures" tag on a borrowed row doubles as the link
+   to that list, so it is a button wearing the badge. */
+.tamam-root .tamam-history-source { border: 0; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; }
+.tamam-root .tamam-history-source:hover { text-decoration: underline; }
 
 /* A badge with a glyph in it needs to sit its parts on one baseline. */
 .tamam-root .tamam-panel-badge { display: inline-flex; align-items: center; gap: 4px; }

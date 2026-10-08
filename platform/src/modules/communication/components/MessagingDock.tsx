@@ -539,7 +539,7 @@ export default function MessagingDock() {
               if (m.deleted) {
                 return (
                   <div key={m._id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <span className="text-[11px] italic px-3 py-1.5 rounded-2xl" style={{ color: 'var(--text-muted)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>This message was deleted</span>
+                    <span className="text-[11px] italic px-3 py-1.5 rounded-2xl" style={{ color: 'var(--text-muted)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>{mine ? 'You removed this message' : `${m.deletedByName || m.fromDoctorName} removed this message`} · kept on record</span>
                   </div>
                 );
               }

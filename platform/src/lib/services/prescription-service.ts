@@ -436,9 +436,13 @@ export async function createPrescription(
         'DRUG_INTERACTION_WARNING',
         undefined,
         data.prescribedBy,
-        `${interactionWarnings.highestSeverity?.toUpperCase()} interaction detected: ` +
-        `${data.medication} for patient ${data.patientName}. ` +
-        `Interactions: ${interactionWarnings.interactions.map(i => `${i.drug1}↔${i.drug2}`).join(', ')}`
+        // That a warning fired, how severe, and for whom — not which drugs.
+        // The pairs are saved on the prescription, which is access-controlled
+        // with the chart; the audit log is read by administrators.
+        `${interactionWarnings.highestSeverity?.toUpperCase()} interaction detected for patient ${data.patientId}: ` +
+        `${interactionWarnings.interactions.length} interaction(s), recorded on the prescription`,
+        true,
+        { patientId: data.patientId, resourceType: 'prescription' },
       );
     }
   } catch {
@@ -474,8 +478,10 @@ export async function createPrescription(
         'DRUG_ALLERGY_WARNING',
         undefined,
         data.prescribedBy,
-        `Allergy alert: ${data.medication} for patient ${data.patientName} — ` +
-        alerts.map(a => `${a.allergy} (${a.criticality})`).join(', ')
+        `Allergy alert for patient ${data.patientId}: ${alerts.length} match(es), ` +
+        `${overrides.length} requiring override; recorded on the prescription`,
+        true,
+        { patientId: data.patientId, resourceType: 'prescription' },
       );
       // Facility policy — "Allergy hard stop" turns the advisory alert into a
       // refusal. Collected here and thrown after the audit entry is written,
@@ -539,7 +545,7 @@ export async function createPrescription(
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   await logAuditSafe('PRESCRIPTION_CREATED', undefined, doc.prescribedBy,
-    `Rx ${doc._id}: ${doc.medication} ${doc.dose} for ${doc.patientName}`
+    `Rx ${doc._id} for patient ${doc.patientId}`
   );
   emitSyncEvent({
     resourceType: 'prescription',
@@ -665,7 +671,7 @@ export async function rerouteToOutsidePharmacy(
   });
   if (updated && rerouted) {
     await logAuditSafe('PRESCRIPTION_REROUTED', actor.id, actor.name,
-      `Rx ${id}: ${updated.medication} — to be filled at an outside pharmacy`);
+      `Rx ${id} — to be filled at an outside pharmacy`);
     // The order was written as on-site, so it was billed and the visit was
     // parked at the pharmacy. Neither holds once the patient takes it away.
     await cancelPrescriptionCharge(updated, actor);
@@ -757,7 +763,7 @@ export async function recordPrescriptionPatientCopy(
   });
   if (updated && recorded) {
     await logAuditSafe('PRESCRIPTION_COPY_GIVEN', copy.byId, copy.byName,
-      `Rx ${id}: ${updated.medication} — ${copy.channel === 'sms' ? 'texted to' : 'printed for'} the patient`
+      `Rx ${id} — ${copy.channel === 'sms' ? 'texted to' : 'printed for'} the patient`
       + (updated.fulfilment === 'external' ? ' (outside pharmacy)' : ''));
   }
   return updated;
@@ -798,7 +804,7 @@ export async function dispensePrescription(id: string, dispensedBy?: string): Pr
   });
   if (result) {
     await logAuditSafe('PRESCRIPTION_DISPENSED', undefined, dispensedBy || 'unknown',
-      `Dispensed ${result.medication} ${result.dose} to ${result.patientName} (Rx: ${id})`
+      `Dispensed to patient ${result.patientId} (Rx: ${id})`
     );
   }
   return result;

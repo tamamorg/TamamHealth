@@ -70,6 +70,17 @@ jobs:
     # `production-cron`, not to `production`.
     environment: production-cron
     timeout-minutes: 30
+    # A throwaway CouchDB for the drill to restore INTO. It lives and dies with
+    # this job and never sees the network; the password is not a secret because
+    # nothing outside the runner can reach it.
+    services:
+      couchdb:
+        image: couchdb:3
+        env:
+          COUCHDB_USER: drill
+          COUCHDB_PASSWORD: drill-throwaway-not-a-secret
+        ports:
+          - 5984:5984
     steps:
       - uses: actions/checkout@v7
 
@@ -147,11 +158,21 @@ jobs:
           BACKUP_PRIVKEY_PASSPHRASE: ${{ secrets.BACKUP_PRIVKEY_PASSPHRASE }}
           AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
           DRILL_SKIP_POSTGRES: ${{ vars.DRILL_SKIP_POSTGRES }}
+          DRILL_RESTORE_COUCHDB_URL: http://localhost:5984
+          DRILL_RESTORE_COUCHDB_USER: drill
+          DRILL_RESTORE_COUCHDB_PASSWORD: drill-throwaway-not-a-secret
         run: |
           if [ -z "${BACKUP_BUCKET:-}" ]; then
             echo "::error::BACKUP_BUCKET secret is not set"
             exit 1
           fi
+          # The service container has no health check; wait for it, and make
+          # sure the system database the dump restores into exists.
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:5984/_up >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS -u "drill:drill-throwaway-not-a-secret" -X PUT http://localhost:5984/_users >/dev/null || true
           ./scripts/backup-restore-drill.sh
 
       - name: Annotate failure

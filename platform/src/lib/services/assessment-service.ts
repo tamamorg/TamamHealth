@@ -110,7 +110,7 @@ export async function createAssessment(input: CreateAssessmentInput): Promise<As
   };
   const resp = await db.put(doc);
   doc._rev = resp.rev;
-  await logAuditSafe('CREATE_ASSESSMENT', input.enteredById, input.enteredByName, `${meta.instrumentName} (score ${meta.totalScore}) for patient ${doc.patientId}`);
+  await logAuditSafe('CREATE_ASSESSMENT', input.enteredById, input.enteredByName, `${meta.instrumentName} recorded for patient ${doc.patientId}`);
   emitSyncEvent({ resourceType: 'assessment', resourceId: doc._id, operation: 'create', resourceVersion: doc._rev, hospitalId: doc.hospitalId, orgId: doc.orgId });
   return doc;
 }
@@ -138,7 +138,7 @@ export async function updateAssessmentAnswers(id: string, answers: Record<string
   };
   const resp = await db.put(updated);
   updated._rev = resp.rev;
-  await logAuditSafe('UPDATE_ASSESSMENT', undefined, undefined, `Updated ${updated.instrumentName} answers (score ${meta.totalScore}) for patient ${updated.patientId}`);
+  await logAuditSafe('UPDATE_ASSESSMENT', undefined, undefined, `Updated ${updated.instrumentName} answers for patient ${updated.patientId}`);
   emitSyncEvent({ resourceType: 'assessment', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, hospitalId: updated.hospitalId, orgId: updated.orgId });
   return updated;
 }

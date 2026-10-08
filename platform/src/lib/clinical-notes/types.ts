@@ -116,6 +116,13 @@ export interface ClinicalNoteDoc extends BaseDoc {
   /** Actions raised from the Plan section. */
   planActions?: NotePlanAction[];
 
+  /**
+   * When the chart's history was brought into this note (see
+   * `includeChartHistory`). It is offered once: a clinician who then removes a
+   * history section has decided, and reopening the note must not put it back.
+   */
+  chartHistoryIncludedAt?: string;
+
   /** Note this one was copied forward from (SALT). */
   copiedFromId?: string;
   /** Signed note this amendment corrects. */

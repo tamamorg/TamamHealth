@@ -359,7 +359,7 @@ export async function admitPatient(
 
   await logAuditSafe(
     'PATIENT_ADMITTED', data.admittedBy, data.admittedByName,
-    `Admitted ${data.patientName} to ${data.wardName} (${data.admittingDiagnosis})`
+    `Admitted patient ${data.patientId} to ${data.wardName}`
   );
 
   emitSyncEvent({
@@ -592,7 +592,7 @@ export async function reassignAdmissionBed(
   } else {
     await updateWardOccupancy(destination.wardId);
   }
-  await logAuditSafe('PATIENT_BED_REASSIGNED', actor?.id, actor?.name, `Moved ${admission.patientName} to ${destination.wardName} (${destination.bedNumber})`);
+  await logAuditSafe('PATIENT_BED_REASSIGNED', actor?.id, actor?.name, `Moved patient ${admission.patientId} to ${destination.wardName} (${destination.bedNumber})`);
   emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
   return updated;
 }
@@ -746,7 +746,7 @@ export async function dischargePatient(
 
     await logAuditSafe(
       'PATIENT_DISCHARGED', dischargeData.dischargedBy, dischargeData.dischargedByName,
-      `Discharged ${admission.patientName} from ${admission.wardName} (LOS: ${admission.lengthOfStay}d)`
+      `Discharged patient ${admission.patientId} from ${admission.wardName} (LOS: ${admission.lengthOfStay}d)`
     );
 
     emitSyncEvent({
@@ -805,7 +805,7 @@ export async function closeAdmissionForDeath(
     const response = await db.put(updated);
     updated._rev = response.rev;
     await updateWardOccupancy(updated.wardId);
-    await logAuditSafe('ADMISSION_CLOSED_AFTER_DEATH', death.certifiedBy, death.certifiedBy, `Closed ${updated.patientName}'s admission from death record ${death.id}`);
+    await logAuditSafe('ADMISSION_CLOSED_AFTER_DEATH', death.certifiedBy, death.certifiedBy, `Closed patient ${updated.patientId}'s admission from death record ${death.id}`);
     emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
     return updated;
   } catch (error) {
@@ -846,7 +846,7 @@ export async function closeAdmissionForTransfer(
     const response = await db.put(updated);
     updated._rev = response.rev;
     await updateWardOccupancy(updated.wardId);
-    await logAuditSafe('ADMISSION_TRANSFERRED', transfer.actorId, transfer.actorName, `Closed ${updated.patientName}'s admission for transfer ${transfer.id}`);
+    await logAuditSafe('ADMISSION_TRANSFERRED', transfer.actorId, transfer.actorName, `Closed patient ${updated.patientId}'s admission for transfer ${transfer.id}`);
     emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
     return updated;
   } catch (error) {

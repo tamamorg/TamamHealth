@@ -98,7 +98,7 @@ export async function advanceProcedure(
   const resp = await db.put(updated);
   updated._rev = resp.rev;
   await logAuditSafe('PROCEDURE_STATUS_CHANGED', opts.actorId, opts.actorName,
-    `Procedure ${id} (${existing.name}): ${from} → ${to}` + (opts.reason ? ` — ${opts.reason}` : ''));
+    `Procedure ${id}: ${from} → ${to}`);
   emitSyncEvent({
     resourceType: 'procedure',
     resourceId: updated._id,
@@ -143,7 +143,7 @@ export async function createProcedure(
     'PROCEDURE_CREATED',
     undefined,
     data.performedByName,
-    `Procedure ${doc._id}: ${doc.name} for ${doc.patientName || doc.patientId}`,
+    `Procedure ${doc._id} for patient ${doc.patientId}`,
   );
   emitSyncEvent({
     resourceType: 'procedure',
@@ -202,7 +202,7 @@ export async function amendProcedure(
     amendmentReason: cleanReason,
   });
   if (!updated) throw new Error('The procedure could not be corrected. Reload the chart and try again.');
-  await logAuditSafe('PROCEDURE_AMENDED', actor?.id, actor?.name, `Procedure ${id}: ${cleanReason}`);
+  await logAuditSafe('PROCEDURE_AMENDED', actor?.id, actor?.name, `Procedure ${id}; reason recorded on the procedure`);
   return updated;
 }
 
@@ -221,6 +221,6 @@ export async function deleteProcedure(
     statusChangedBy: actor?.name || actor?.id,
   });
   if (!updated) return false;
-  await logAuditSafe('PROCEDURE_ENTERED_IN_ERROR', actor?.id, actor?.name, `Procedure ${id}: ${cleanReason}`);
+  await logAuditSafe('PROCEDURE_ENTERED_IN_ERROR', actor?.id, actor?.name, `Procedure ${id}; reason recorded on the procedure`);
   return true;
 }

@@ -46,7 +46,7 @@ export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev
   };
   const resp = await db.put(doc);
   doc._rev = resp.rev;
-  await logAuditSafe('REGISTER_DEATH', undefined, undefined, `Registered death ${doc._id}: ${data.deceasedFirstName} ${data.deceasedSurname}, cause: ${data.immediateCause || 'unspecified'}`);
+  await logAuditSafe('REGISTER_DEATH', undefined, undefined, `Registered death ${doc._id}`);
   emitSyncEvent({
     resourceType: 'death',
     resourceId: doc._id,

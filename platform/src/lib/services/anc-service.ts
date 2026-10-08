@@ -80,7 +80,7 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
       };
       await msgs.put(alertDoc);
       await logAuditSafe('ANC_HIGH_RISK_ALERT', undefined, undefined,
-        `Auto-alert: ${data.motherName} (ANC visit ${data.visitNumber}) — risk factors: ${factors}`
+        `Auto-alert: high-risk ANC visit ${data.visitNumber} for patient ${data.motherId || 'unknown'}; factors recorded on the visit`
       );
     } catch (err) {
       console.warn('[ANC] failed to push high-risk alert message', err);

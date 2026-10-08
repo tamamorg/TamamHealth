@@ -30,7 +30,11 @@
 
 import { patientsDB } from '@/lib/db';
 import type { PatientDoc } from '@/lib/db-types';
-import { issueInvite, hashInviteToken, inviteHashMatches, isInviteExpired } from '@/modules/identity/provisioning/user-invite';
+import { hashInviteToken, inviteHashMatches, isInviteExpired } from '@/modules/identity/provisioning/user-invite';
+import {
+  formatPortalActivationCode, generatePortalActivationCode, isPortalActivationCode,
+  normalisePortalActivationCode, normalisePortalUsername, portalInviteExpiry,
+} from '@/modules/identity/provisioning/portal-invite';
 import { findByType } from '@/lib/services/db-query';
 import { PORTAL_MIN_PASSWORD_LENGTH } from '@/modules/identity/policy/password-policy';
 
@@ -46,21 +50,11 @@ export interface PortalEnrolment {
   expiresAt: string;
 }
 
-function normaliseUsername(raw: string): string {
-  return raw.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
-}
+const normaliseUsername = normalisePortalUsername;
 
-/** A username suggestion from the patient's own identifiers. */
-export function suggestPortalUsername(patient: { firstName?: string; surname?: string; hospitalNumber?: string }): string {
-  const name = [patient.firstName, patient.surname]
-    .filter(Boolean)
-    .join('.')
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9.]/g, '');
-  const suffix = (patient.hospitalNumber || '').replace(/[^0-9]/g, '').slice(-4);
-  return normaliseUsername(suffix ? `${name}.${suffix}` : name) || 'patient';
-}
+// The suggestion is shared with registration, which now issues the account as
+// part of the patient write and runs in a browser.
+export { suggestPortalUsername } from '@/modules/identity/provisioning/portal-invite';
 
 export type EnrolmentResult =
   | { ok: true; enrolment: PortalEnrolment }
@@ -97,7 +91,10 @@ export async function enrolPatientInPortal(
     .find(p => p._id !== patientId && p.portalUsername?.trim().toLowerCase() === username);
   if (clash) return { ok: false, reason: 'username_taken' };
 
-  const invite = issueInvite();
+  // The short desk code, not the staff invitation token — see `portal-invite.ts`
+  // for why a patient's slip is not 43 characters of base64.
+  const code = generatePortalActivationCode();
+  const invite = { token: formatPortalActivationCode(code), tokenHash: hashInviteToken(code), expiresAt: portalInviteExpiry() };
   const now = new Date().toISOString();
   const updated: PatientDoc = {
     ...patient,
@@ -115,7 +112,7 @@ export async function enrolPatientInPortal(
 
   const { logAudit } = await import('@/lib/services/audit-service');
   await logAudit('patient_portal_enrolled', patientId, actorUsername,
-    `Portal access issued for patient ${patientId} as "${username}"`, true);
+    `Portal access issued for patient ${patientId}`, true);
 
   return {
     ok: true,
@@ -143,9 +140,17 @@ export async function activatePortalAccount(
   }
 
   const db = patientsDB();
-  const candidate = hashInviteToken(code.trim());
+  // A desk code is stored as the hash of its normalised form, so a patient who
+  // types it lower-case or without the dashes still redeems it. The raw form is
+  // tried too: codes issued before the short format were hashed as typed, and
+  // those contain dashes that mean something.
+  const typed = code.trim();
+  const normalised = normalisePortalActivationCode(typed);
+  const candidates = [hashInviteToken(typed)];
+  if (isPortalActivationCode(normalised)) candidates.push(hashInviteToken(normalised));
   const match = (await findByType<PatientDoc>(db, 'patient'))
-    .find(p => p.portalInviteTokenHash && inviteHashMatches(p.portalInviteTokenHash, candidate));
+    .find(p => p.portalInviteTokenHash
+      && candidates.some(candidate => inviteHashMatches(p.portalInviteTokenHash!, candidate)));
   if (!match) return { ok: false, reason: 'not_found' };
   if (match.portalDisabledAt) return { ok: false, reason: 'disabled' };
   if (isInviteExpired(match.portalInviteExpiresAt)) return { ok: false, reason: 'expired' };

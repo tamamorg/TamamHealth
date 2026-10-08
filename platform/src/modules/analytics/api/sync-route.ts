@@ -77,6 +77,11 @@ import { NATIONAL_PROJECTION_EXCLUDED_TYPES } from '../index';
  *   - tamamhealth_patient_reminders   Queued patient reminders. Facility-
  *                                     operational, not a national analytics
  *                                     target.
+ *   - tamamhealth_history_entries     A patient's standing history (past
+ *                                     medical, surgical, family, social).
+ *                                     Facility-operational clinical detail,
+ *                                     and family/social lines describe people
+ *                                     and circumstances no indicator counts.
  *   - tamamhealth_procedures          Bedside/theatre procedures performed on
  *                                     a patient. Facility-operational clinical
  *                                     detail (like patient_notes/phone_notes);

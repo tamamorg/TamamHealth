@@ -235,6 +235,9 @@ export const payrollEntriesDB = () => getDB('tamamhealth_payroll_entries');
 export const patientFeedbackDB = () => getDB('tamamhealth_patient_feedback');
 export const controlledSubstanceLogDB = () => getDB('tamamhealth_controlled_substance_log');
 export const problemsDB = () => getDB('tamamhealth_problems');
+// Standing patient history (past medical, surgical, family, social) — one
+// document per entry, anchored to the patient like the Problem List.
+export const historyEntriesDB = () => getDB('tamamhealth_history_entries');
 // Care-program enrollment (ART/HIV, TB, PMTCT, ANC, Nutrition, EPI, NCD, other).
 export const programEnrollmentsDB = () => getDB('tamamhealth_program_enrollments');
 // Procedures performed on a patient (bedside/theatre) — anchored to the patient.

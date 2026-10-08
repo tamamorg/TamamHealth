@@ -79,7 +79,17 @@ export interface NoteSectionDef {
    * Derived sections name the chart data they render, so the editor can fetch
    * the right thing without a switch statement per section.
    */
-  source?: 'vitals' | 'medications' | 'allergies' | 'problems';
+  source?: 'vitals' | 'medications' | 'allergies' | 'problems' | 'history';
+  /**
+   * A derived section that also takes free text under its snapshot.
+   *
+   * The history sections are the case: what the chart holds is shown read-only,
+   * and the clinician can still add what belongs to this visit alone ("family
+   * history reviewed, non-contributory"). It is also what keeps a note written
+   * before these sections became derived readable and editable — its narrative
+   * is still there, under the same heading.
+   */
+  narrative?: boolean;
 }
 
 /**
@@ -115,9 +125,22 @@ export const NOTE_SECTIONS: Readonly<Record<NoteSectionId, NoteSectionDef>> = {
   discharge_medications: { id: 'discharge_medications', label: 'Discharge Medications', kind: 'narrative', placeholder: 'Medications on discharge…' },
   discharge_instructions: { id: 'discharge_instructions', label: 'Discharge Instructions', kind: 'narrative', placeholder: 'Instructions given to the patient…' },
   follow_up: { id: 'follow_up', label: 'Follow-up', kind: 'narrative', placeholder: 'Follow-up arrangements…' },
-  past_medical_history: { id: 'past_medical_history', label: 'Past Medical History', kind: 'narrative', placeholder: 'Past medical and surgical history…' },
-  family_history: { id: 'family_history', label: 'Family History', kind: 'narrative', placeholder: 'Relevant family history…' },
-  social_history: { id: 'social_history', label: 'Social History', kind: 'narrative', placeholder: 'Social history…' },
+  // The three history sections read the chart's History tab (and, for past
+  // medical history, the problem list and procedures beside it), so a returning
+  // patient's history is already in the note when it opens. See
+  // `HISTORY_SECTION_IDS` below and `formatPastHistory` for what each carries.
+  past_medical_history: {
+    id: 'past_medical_history', label: 'Past Medical History', kind: 'derived', source: 'history', narrative: true,
+    placeholder: 'Anything to add for this visit…',
+  },
+  family_history: {
+    id: 'family_history', label: 'Family History', kind: 'derived', source: 'history', narrative: true,
+    placeholder: 'Anything to add for this visit…',
+  },
+  social_history: {
+    id: 'social_history', label: 'Social History', kind: 'derived', source: 'history', narrative: true,
+    placeholder: 'Anything to add for this visit…',
+  },
   caller: { id: 'caller', label: 'Caller', kind: 'narrative', placeholder: 'Who called and their relationship to the patient…' },
   call_reason: { id: 'call_reason', label: 'Reason for Call', kind: 'narrative', placeholder: 'Why they called…' },
   advice_given: { id: 'advice_given', label: 'Advice Given', kind: 'narrative', placeholder: 'Advice given on the call…' },
@@ -208,6 +231,13 @@ export interface NoteTypeDef {
   optionalSections: readonly NoteSectionId[];
   /** Shown in the type picker to explain when to reach for it. */
   description: string;
+  /**
+   * Bring the chart's history into a new note of this type on its own: any
+   * history section this type lists as optional is added when the patient
+   * already has that history on the chart, so a returning patient's note opens
+   * with it. A patient with nothing recorded gets no empty sections.
+   */
+  includeChartHistory?: boolean;
 }
 
 /** Sections almost every clinical note carries, in their conventional order. */
@@ -234,6 +264,7 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     // adds "Reason for Consultation" to a SOAP note and writes the advice back
     // in the Plan, instead of switching to a near-identical second type.
     optionalSections: [...COMMON_OPTIONAL, 'reason_for_consultation'],
+    includeChartHistory: true,
   },
   hp: {
     id: 'hp',
@@ -314,6 +345,7 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
       'vitals', 'fetal_assessment', 'objective', 'assessment', 'plan',
     ],
     optionalSections: ['hpi', 'ros', 'past_medical_history', 'family_history', 'social_history', 'patient_education', 'follow_up'],
+    includeChartHistory: true,
   },
   phone: {
     id: 'phone',
@@ -433,6 +465,20 @@ export const NOTE_TYPE_ORDER: readonly NoteTypeId[] = [
 
 export function isNoteTypeId(value: unknown): value is NoteTypeId {
   return typeof value === 'string' && value in NOTE_TYPES;
+}
+
+/** The sections that read the chart's History tab. */
+export const HISTORY_SECTION_IDS: readonly NoteSectionId[] = [
+  'past_medical_history', 'family_history', 'social_history',
+];
+
+export function isHistorySection(id: NoteSectionId | string): boolean {
+  return (HISTORY_SECTION_IDS as readonly string[]).includes(id);
+}
+
+/** Every section whose body is pulled from the chart. */
+export function isDerivedSection(id: NoteSectionId | string): boolean {
+  return NOTE_SECTIONS[id as NoteSectionId]?.kind === 'derived';
 }
 
 export function isNoteSectionId(value: unknown): value is NoteSectionId {

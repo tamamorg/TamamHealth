@@ -274,7 +274,7 @@ export async function recordAdministration(input: AdministrationInput): Promise<
   }
   await logAuditSafe(
     'MEDICATION_ADMINISTERED', input.administeredBy, input.administeredByName,
-    `${doc.status.toUpperCase()} ${rx.medication} ${doc.doseGiven} to ${rx.patientName} (Rx: ${rx._id})`
+    `${doc.status.toUpperCase()} administration for patient ${rx.patientId} (Rx: ${rx._id})`
       + (doc.witnessName ? ` witnessed by ${doc.witnessName}` : ''),
   );
   emitSyncEvent({
@@ -344,7 +344,7 @@ export async function voidAdministration(
   }, now);
   const response = await db.put(correction);
   correction._rev = response.rev;
-  await logAuditSafe('MEDICATION_ADMIN_VOIDED', voidedBy, voidedByName, `Voided ${rx.medication} administration ${target._id}: ${reason.trim()}`);
+  await logAuditSafe('MEDICATION_ADMIN_VOIDED', voidedBy, voidedByName, `Voided administration ${target._id} (Rx: ${rx._id}); reason recorded on the correction`);
   emitSyncEvent({
     resourceType: correction.type, resourceId: correction._id, operation: 'create', resourceVersion: correction._rev,
     hospitalId: correction.hospitalId, orgId: correction.orgId,

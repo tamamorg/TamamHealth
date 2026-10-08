@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { labOrder, getResultReviewSLA, type LabOrderStatus } from '../clinical-flow/order-lifecycles';
-import { maybeDecrypt, maybeEncrypt } from '../field-encryption';
+import { readReplicatedField, maybeEncryptReplicated } from '../field-encryption';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 
 const ENCRYPTED_LAB_FIELDS = ['result', 'clinicalNotes', 'orderComment'] as const;
@@ -16,7 +16,7 @@ function decryptLabResult(doc: LabResultDoc): LabResultDoc {
   const out = { ...doc };
   for (const field of ENCRYPTED_LAB_FIELDS) {
     const value = out[field];
-    if (typeof value === 'string') out[field] = maybeDecrypt(value);
+    if (typeof value === 'string') out[field] = readReplicatedField(value);
   }
   return out;
 }
@@ -25,7 +25,7 @@ function encryptLabFields<T extends Partial<LabResultDoc>>(data: T): T {
   const out = { ...data };
   for (const field of ENCRYPTED_LAB_FIELDS) {
     const value = out[field];
-    if (typeof value === 'string' && value.length > 0) out[field] = maybeEncrypt(value);
+    if (typeof value === 'string' && value.length > 0) out[field] = maybeEncryptReplicated(value);
   }
   return out;
 }

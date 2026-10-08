@@ -16,24 +16,97 @@ export async function logAuditSafe(...args: Parameters<typeof logAudit>): Promis
   }
 }
 
+/**
+ * Who is acting, for the fields a write-audit row needs beyond the two its
+ * callers pass.
+ *
+ * `logAudit` is called from ~75 places with an action, sometimes a user, and a
+ * sentence. None of them passes an organisation — and the audit database is
+ * organisation-scoped: the push filter drops a row whose `orgId` is not the
+ * user's, and the server's validator would refuse it anyway. So every
+ * write-audit row a browser produced ("history entry recorded", "note signed",
+ * "message sent") stayed on the device that wrote it, was never seen by an
+ * administrator, and was eventually trimmed by local retention. The trail
+ * existed only where the person it records could erase it.
+ *
+ * The signed-in session knows the organisation, so it is recorded once here
+ * (the dashboard layout sets it on sign-in and clears it on sign-out) instead
+ * of threading a context argument through 75 call sites.
+ */
+export interface AuditActor {
+  userId?: string;
+  username?: string;
+  /** The account's real role — not one borrowed through "sign in as". */
+  role?: string;
+  orgId?: string;
+  hospitalId?: string;
+}
+
+let ambientActor: AuditActor | null = null;
+
+/**
+ * Record (or clear, with `null`) the signed-in user for write-audit rows.
+ *
+ * Browser only, and that is enforced: on the server this module is shared by
+ * every request in the process, so an ambient actor there would stamp one
+ * user's organisation onto another user's audit rows. Server callers pass an
+ * explicit `context` to `logAudit` instead.
+ */
+export function setAuditActor(actor: AuditActor | null): void {
+  if (typeof window === 'undefined') return;
+  ambientActor = actor && (actor.userId || actor.orgId) ? { ...actor } : null;
+}
+
+/** Extra fields a caller can attach to a write-audit row. */
+export type AuditContext = Pick<AuditLogDoc,
+  'orgId' | 'hospitalId' | 'role' | 'patientId' | 'resourceType' | 'resourceId' | 'subjectUserId'>;
+
 export async function logAudit(
   action: string,
   userId: string | undefined,
   username: string | undefined,
   details: string,
-  success: boolean = true
+  success: boolean = true,
+  context: Partial<AuditContext> = {},
 ): Promise<void> {
   try {
     const db = auditLogDB();
     const now = new Date().toISOString();
+    const actor = typeof window === 'undefined' ? null : ambientActor;
     const doc: AuditLogDoc = {
       _id: `audit-${uuidv4()}`,
       type: 'audit_log',
       action,
-      userId,
-      username,
+      // The actor is whoever is signed in. Several callers pass the id of the
+      // person the action concerns instead (the clinician a check-in was made
+      // for, the doctor who certified a death) — filed as `userId`, that put
+      // a front-desk action under a doctor's name. With a session, the
+      // session is the actor and a different id from the caller is kept as
+      // the subject. Without one (server code), the caller's word stands.
+      userId: actor?.userId ?? userId,
+      // The name follows the id. When the caller named someone other than
+      // the signed-in user, their name is that person's too — keeping it
+      // would pair the session's id with another person's name, and the audit
+      // screen shows the name. Otherwise the caller's display name stands.
+      username: actor && userId && userId !== actor.userId
+        ? actor.username
+        : (username ?? actor?.username),
       details,
       success,
+      ...definedOnly({
+        subjectUserId: context.subjectUserId
+          ?? (actor?.userId && userId && userId !== actor.userId ? userId : undefined),
+        // Organisation and facility come from ONE source: the caller's explicit
+        // context when it names an organisation (server routes), otherwise the
+        // signed-in session. Mixing them could pair one organisation with
+        // another's facility.
+        orgId: context.orgId ?? actor?.orgId,
+        hospitalId: context.orgId ? context.hospitalId : (context.hospitalId ?? actor?.hospitalId),
+        role: context.role ?? actor?.role,
+        patientId: context.patientId,
+        resourceType: context.resourceType,
+        resourceId: context.resourceId,
+      }),
       createdAt: now,
       updatedAt: now,
     };
@@ -55,6 +128,10 @@ export async function logAudit(
     console.error('[Audit] Failed to write audit log:', err);
     captureException(err, { tag: '[Audit] Failed to write audit log:' });
   }
+}
+
+function definedOnly<T extends Record<string, unknown>>(fields: T): Partial<T> {
+  return Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined && v !== '')) as Partial<T>;
 }
 
 /** Log a data access event for compliance tracking */
@@ -113,11 +190,10 @@ export async function getAuditLogsForUser(
  * are the only roles that see every org's rows unscoped — that escape hatch
  * lives in `filterByScope` itself (its own early return), not duplicated
  * here, so the two stay in lockstep. Every other role is filtered exactly
- * like any other org-scoped read: an audit row from `logAudit` (most writes)
- * carries no `orgId` at all and is excluded for a non-admin scope, so today
- * this mainly surfaces the `orgId`-stamped `PHI_READ`/`PHI_SEARCH` rows to a
- * non-admin caller — narrower than "everything", which is the fail-closed
- * posture this exists for.
+ * like any other org-scoped read. Write-audit rows carry the signed-in
+ * session's `orgId` (see `setAuditActor`); rows written before that, and rows
+ * from server code that passed no context, carry none and stay visible only to
+ * the platform roles.
  */
 export async function getRecentAuditLogs(limit: number = 50, scope?: DataScope): Promise<AuditLogDoc[]> {
   const db = auditLogDB();

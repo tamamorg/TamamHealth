@@ -109,6 +109,8 @@ export interface SyncServiceOptions {
    * after the rejected one — including new patients — silently stops syncing.
    */
   writableRole?: string;
+  /** The signed-in user's `_id`; scopes staff-chat pushes to their own. */
+  userId?: string;
   /**
    * How the PULL direction runs.
    *  - 'poll'  (default): periodic one-shot pulls that release their HTTP
@@ -143,6 +145,8 @@ export function buildPushFilter(
   role: string | undefined,
   entitlement: FacilityEntitlement,
   appendOnlyDatabase = false,
+  /** The signed-in user's id, for the staff-chat rules below. */
+  userId?: string,
 ) {
   return (doc: { _id?: string; _deleted?: boolean; type?: string; [key: string]: unknown }) => {
     if (typeof doc._id === 'string' && doc._id.indexOf('_design/') === 0) return false;
@@ -159,6 +163,19 @@ export function buildPushFilter(
     if (!role || !doc.type) return false;
     const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
     if (!allowed) return false;
+    // Staff chat belongs to its participants and each message to its author
+    // (participant-scope.ts, message-integrity.ts). The server refuses these,
+    // so offering them only produces a standing "denied" on this device:
+    //   - a conversation this user is not in;
+    //   - an untouched (first-revision) chat message someone else wrote —
+    //     the author's device delivers it. Once this user has marked it read
+    //     or reacted, the document has moved on and is theirs to push.
+    if (userId) {
+      if (doc.type === 'conversation'
+          && !(Array.isArray(doc.participantIds) && doc.participantIds.includes(userId))) return false;
+      if (doc.type === 'message' && typeof doc.conversationId === 'string' && doc.conversationId
+          && doc.fromDoctorId !== userId && typeof doc._rev === 'string' && doc._rev.indexOf('1-') === 0) return false;
+    }
     return (allowed as readonly string[]).includes(role)
       && documentMatchesEntitlement(doc, entitlement);
   };
@@ -238,6 +255,7 @@ export class SyncService {
       opts.writableRole,
       entitlement,
       isAppendOnlyDatabase((opts.localDB as { name?: string }).name ?? ''),
+      opts.userId,
     );
     this.pullMode = opts.pullMode ?? 'poll';
     this.pullIntervalMs = opts.pullIntervalMs ?? 15000;
@@ -358,6 +376,32 @@ export class SyncService {
     this.cancelReplication();
     this.clearRetryTimer();
     this.updateStatus({ state: 'idle' });
+  }
+
+  /**
+   * One-off pull of the documents matching `selector`, from the beginning.
+   *
+   * The regular pull only moves forward from its checkpoint, so it never
+   * revisits documents that existed before this device became entitled to
+   * them — the history of a group chat the user was just added to, say.
+   * PouchDB keys a replication's checkpoint on its selector, so this keeps
+   * its own: the first call fetches the history, later calls are a no-op
+   * read of the feed. The server still applies its own scoping on top.
+   */
+  async pullMatching(selector: Record<string, unknown>): Promise<number> {
+    if (this.direction === 'push') return 0;
+    const result = await this.runOneShot('pull', {
+      batch_size: 100,
+      selector: this.selector ? { $and: [this.selector, selector] } : selector,
+    });
+    return result.docs_written || 0;
+  }
+
+  /** Ask the server for specific documents by id, without replicating them. */
+  async remoteDocs(ids: string[]): Promise<Array<{ key: string; error?: string; doc?: Record<string, unknown> | null }>> {
+    if (ids.length === 0) return [];
+    const result = await this.remoteDB.allDocs({ keys: ids, include_docs: true });
+    return result.rows as unknown as Array<{ key: string; error?: string; doc?: Record<string, unknown> | null }>;
   }
 
   /** Force a one-time sync (non-live) and return when complete */

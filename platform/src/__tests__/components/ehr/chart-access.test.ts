@@ -29,7 +29,7 @@ const access = (over: Partial<ChartAccess> = {}): ChartAccess => ({
 /** Sections that carry clinical detail — none may appear in a restricted set. */
 const CLINICAL_ONLY_TABS = [
   'history', 'problems', 'notes', 'vitals', 'sbar', 'orders',
-  'procedures', 'programs', 'careChecklist', 'immunizations',
+  'procedures', 'programs', 'careChecklist', 'immunizations', 'medicalHistory', 'messages',
 ];
 
 describe('allowedChartTabIds', () => {

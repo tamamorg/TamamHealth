@@ -16,8 +16,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api-fetch';
-import { Check, Copy, Loader2, Smartphone, UserX } from '@/components/icons/lucide';
+import { Check, Copy, Loader2, Printer, Smartphone, UserX } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { usePortalSlipLabels } from '@/components/patients/PortalSlipDialog';
+import { buildPortalSlipText, printPortalSlip, type PortalSlip } from '@/lib/patient-portal-slip';
 
 interface PortalAccess {
   enrolled: boolean;
@@ -35,8 +37,15 @@ interface Issued {
   expiresAt: string;
 }
 
-export default function PortalAccessCard({ patientId }: { patientId: string }) {
+export default function PortalAccessCard({ patientId, patientName, hospitalNumber, facilityName }: {
+  patientId: string;
+  /** For the printed slip; the card itself never shows them. */
+  patientName?: string;
+  hospitalNumber?: string;
+  facilityName?: string;
+}) {
   const { t } = useTranslation();
+  const slipLabels = usePortalSlipLabels();
   const [access, setAccess] = useState<PortalAccess | null>(null);
   const [suggested, setSuggested] = useState('');
   const [username, setUsername] = useState('');
@@ -99,11 +108,10 @@ export default function PortalAccessCard({ patientId }: { patientId: string }) {
 
   if (!permitted) return null;
 
-  const slip = issued
-    ? `TamamHealth patient portal\nUsername: ${issued.username}\nActivation code: ${issued.activationCode}\n`
-      + `Activate at: ${typeof window !== 'undefined' ? window.location.origin : ''}/patient-portal/activate\n`
-      + `The code expires on ${new Date(issued.expiresAt).toLocaleDateString()}.`
-    : '';
+  // The same slip registration hands over, so a re-issue reads identically.
+  const slip: PortalSlip | null = issued
+    ? { patientName: patientName || issued.username, hospitalNumber, facilityName, ...issued }
+    : null;
 
   return (
     <section className="pac">
@@ -128,13 +136,20 @@ export default function PortalAccessCard({ patientId }: { patientId: string }) {
               className="btn btn-secondary btn-sm"
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(slip);
+                  if (slip) await navigator.clipboard.writeText(buildPortalSlipText(slip, slipLabels));
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 } catch { /* clipboard unavailable — the slip is on screen */ }
               }}
             >
               {copied ? <><Check className="w-4 h-4" /> {t('pac.copied')}</> : <><Copy className="w-4 h-4" /> {t('pac.copySlip')}</>}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => { if (slip) printPortalSlip(slip, slipLabels); }}
+            >
+              <Printer className="w-4 h-4" /> {t('pslip.print')}
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setIssued(null)}>
               {t('pac.done')}
