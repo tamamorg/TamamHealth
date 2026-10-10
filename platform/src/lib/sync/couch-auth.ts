@@ -66,6 +66,16 @@ function adminEnv(): CouchAdminEnv {
 }
 
 /**
+ * The server's own CouchDB credentials, as an Authorization header.
+ *
+ * For the few gateway checks that must read the server's register rather than
+ * the caller's organization database, which a gateway user cannot see.
+ */
+export function couchAdminAuthorization(): string {
+  return adminEnv().authHeader;
+}
+
+/**
  * Absolute endpoint for a `_replicator` document.
  *
  * CouchDB 3 rejects bare database names in persisted replications with

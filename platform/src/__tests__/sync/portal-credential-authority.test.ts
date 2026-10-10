@@ -8,9 +8,11 @@
  * The rule must stop that without refusing the ordinary case it resembles — a
  * device editing a patient while holding a copy from before they activated.
  */
-import { PORTAL_ENROL_ROLES, applyPortalCredentialAuthority, canIssuePortalInvite } from '@/lib/sync/portal-credential-authority';
+import { PORTAL_ENROL_ROLES, SERVER_HELD_BEFORE, applyPortalCredentialAuthority, canIssuePortalInvite } from '@/lib/sync/portal-credential-authority';
 import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 
+const HASH = 'a'.repeat(64);
+const NOW = new Date('2026-10-10T09:00:00.000Z');
 const base = { _id: 'pat-1', type: 'patient', orgId: 'org-a', firstName: 'Mary', phone: '0911' };
 const activated = {
   ...base, portalUsername: 'mary.deng.0042', portalPasswordHash: 'server-hash',
@@ -56,16 +58,16 @@ describe('an existing patient: the server’s portal fields stand', () => {
 describe('a new patient: registration may issue an invitation, nothing more', () => {
   const invited = {
     ...base, portalUsername: 'mary.deng.0042', portalEnabledAt: '2026-10-08', portalEnabledBy: 'user-desk',
-    portalInviteTokenHash: 'invite-hash', portalInviteExpiresAt: '2026-10-22',
+    portalInviteTokenHash: HASH, portalInviteExpiresAt: '2026-10-22T09:00:00.000Z',
   };
 
   test('an enrol role’s invitation is kept', () => {
-    expect(applyPortalCredentialAuthority(invited, null, 'front_desk')).toEqual({ doc: invited, changed: false });
+    expect(applyPortalCredentialAuthority(invited, null, 'front_desk', NOW)).toEqual({ doc: invited, changed: false });
   });
 
   test('a clinical role that registers the patient issues the invitation too', () => {
     for (const role of ['nurse', 'doctor', 'clinical_officer', 'midwife']) {
-      const { doc, changed } = applyPortalCredentialAuthority(invited, null, role);
+      const { doc, changed } = applyPortalCredentialAuthority(invited, null, role, NOW);
       expect(changed).toBe(false);
       expect(doc.portalInviteTokenHash).toBe(invited.portalInviteTokenHash);
     }
@@ -73,18 +75,51 @@ describe('a new patient: registration may issue an invitation, nothing more', ()
 
   test('a role that cannot register patients cannot create one with portal access', () => {
     for (const role of ['pharmacist', 'lab_tech', undefined]) {
-      const { doc, changed } = applyPortalCredentialAuthority(invited, null, role);
+      const { doc, changed } = applyPortalCredentialAuthority(invited, null, role, NOW);
       expect(changed).toBe(true);
       expect(Object.keys(doc).filter(key => key.startsWith('portal'))).toEqual([]);
     }
   });
 
+  test('a patient the server held before is not new: deleted and written back, they arrive with no access', () => {
+    for (const role of ['nurse', 'doctor', 'front_desk', 'org_admin']) {
+      for (const held of [SERVER_HELD_BEFORE, { ...activated, _deleted: true }]) {
+        const { doc, changed } = applyPortalCredentialAuthority(invited, held, role, NOW);
+        expect(changed).toBe(true);
+        expect(Object.keys(doc).filter(key => key.startsWith('portal'))).toEqual([]);
+        expect(doc.firstName).toBe('Mary');
+      }
+    }
+  });
+
+  test('an invitation that is not the desk’s shape is dropped whole', () => {
+    const shapes = [
+      { portalInviteTokenHash: 'chosen-by-device' },
+      { portalInviteTokenHash: undefined },
+      { portalUsername: 'Mary Deng' },
+      { portalUsername: 'md' },
+      { portalInviteExpiresAt: 'never' },
+      { portalInviteExpiresAt: undefined },
+    ];
+    for (const shape of shapes) {
+      const { doc } = applyPortalCredentialAuthority({ ...invited, ...shape }, null, 'front_desk', NOW);
+      expect(Object.keys(doc).filter(key => key.startsWith('portal') && doc[key] !== undefined)).toEqual([]);
+    }
+  });
+
+  test('an invitation cannot outlive a slip', () => {
+    const { doc, changed } = applyPortalCredentialAuthority({ ...invited, portalInviteExpiresAt: '9999-01-01T00:00:00.000Z' }, null, 'front_desk', NOW);
+    expect(changed).toBe(true);
+    expect(doc.portalInviteExpiresAt).toBe('2026-10-24T09:00:00.000Z');
+    expect(doc.portalInviteTokenHash).toBe(HASH);
+  });
+
   test('nobody can register a patient with a ready-made password or a login history', () => {
     const preset = { ...invited, portalPasswordHash: 'attacker-hash', portalLastLoginAt: '2026-10-08' };
-    const { doc } = applyPortalCredentialAuthority(preset, null, 'org_admin');
+    const { doc } = applyPortalCredentialAuthority(preset, null, 'org_admin', NOW);
     expect(doc.portalPasswordHash).toBeUndefined();
     expect(doc.portalLastLoginAt).toBeUndefined();
-    expect(doc.portalInviteTokenHash).toBe('invite-hash');
+    expect(doc.portalInviteTokenHash).toBe(HASH);
   });
 });
 
@@ -102,7 +137,7 @@ test('re-issuing from a chart stays with desk and records roles', () => {
 describe('the registration form and the gateway agree on who issues an invitation', () => {
   const invited = {
     ...base, portalUsername: 'mary.deng.0042', portalEnabledAt: '2026-10-10',
-    portalInviteTokenHash: 'desk-hash', portalInviteExpiresAt: '2026-10-24',
+    portalInviteTokenHash: HASH, portalInviteExpiresAt: '2026-10-24T09:00:00.000Z',
   };
 
   // The form offers the account exactly when `canIssuePortalInvite` says so.
@@ -110,7 +145,7 @@ describe('the registration form and the gateway agree on who issues an invitatio
   // activates, so every role that can register must have its invitation kept.
   test.each(DOC_WRITE_ROLES.patient.map(role => [role]))('%s', role => {
     expect(canIssuePortalInvite(role)).toBe(true);
-    expect(applyPortalCredentialAuthority(invited, null, role).doc.portalInviteTokenHash).toBe('desk-hash');
+    expect(applyPortalCredentialAuthority(invited, null, role, NOW).doc.portalInviteTokenHash).toBe(HASH);
   });
 
   test('no role, no offer', () => {

@@ -23,6 +23,7 @@ jest.mock('@/modules/identity/core/api-auth', () => ({
 jest.mock('@/lib/sync/couch-auth', () => ({
   ensureCouchGatewayUser: jest.fn(async () => ({ username: 'gw', password: 'pw' })),
   ensureOrganizationProvisioned: jest.fn(async () => undefined),
+  couchAdminAuthorization: () => 'Basic server',
 }));
 const logAuditSafe = jest.fn(async (..._args: unknown[]) => undefined);
 jest.mock('@/lib/services/audit-service', () => ({ logAuditSafe: (...args: unknown[]) => logAuditSafe(...args) }));
@@ -84,7 +85,9 @@ beforeEach(() => {
       const keys = (body?.keys as string[] | undefined) ?? docs.map(d => d._id);
       return Response.json({ rows: keys.map(key => {
         const doc = docs.find(d => d._id === key);
-        return doc ? { id: key, key, value: { rev: doc._rev }, doc } : { key, error: 'not_found' };
+        if (!doc) return { key, error: 'not_found' };
+        // A tombstone is listed, without its body — as CouchDB lists one.
+        return doc._deleted ? { id: key, key, value: { rev: doc._rev, deleted: true }, doc: null } : { id: key, key, value: { rev: doc._rev }, doc };
       }) });
     }
     if (endpoint === '_bulk_get') {
@@ -261,25 +264,71 @@ describe('patient writes: portal credentials are the server’s', () => {
     expect(sent.body!.new_edits).toBe(false);
   });
 
+  const REGISTER = 'tamamhealth_patients';
+  const invite = { portalUsername: 'mary.deng.0042', portalInviteTokenHash: 'b'.repeat(64), portalInviteExpiresAt: new Date(Date.now() + 86_400_000).toISOString() };
+  const sentDoc = () => (forwarded('_bulk_docs').filter(c => c.url.pathname.includes(PATIENTS))[0].body!.docs as Doc[])[0];
+
   test('a patient registered with an invitation keeps it, whoever registered them', async () => {
     store[PATIENTS] = [];
-    const fresh = { _id: 'pat-2', _rev: '1-a', type: 'patient', orgId: 'org-a', portalUsername: 'x', portalInviteTokenHash: 'minted-at-registration' };
+    const fresh = { _id: 'pat-2', _rev: '1-a', type: 'patient', orgId: 'org-a', ...invite };
 
     await call(PATIENTS, ['_bulk_docs'], { body: { new_edits: false, docs: [fresh] } });
 
-    const [sent] = forwarded('_bulk_docs').filter(c => c.url.pathname.includes(PATIENTS));
-    expect((sent.body!.docs as Doc[])[0]).toMatchObject({ portalUsername: 'x', portalInviteTokenHash: 'minted-at-registration' });
+    expect(sentDoc()).toMatchObject(invite);
     expect(audits('sync.gateway.portal_credentials_stripped')).toHaveLength(0);
   });
 
   test('a new patient arriving with a ready-made password loses it, and it is audited', async () => {
     store[PATIENTS] = [];
-    const fresh = { _id: 'pat-3', _rev: '1-a', type: 'patient', orgId: 'org-a', portalUsername: 'x', portalPasswordHash: 'chosen-by-device' };
+    const fresh = { _id: 'pat-3', _rev: '1-a', type: 'patient', orgId: 'org-a', portalUsername: 'mary.deng.0042', portalPasswordHash: 'chosen-by-device' };
 
     await call(PATIENTS, ['_bulk_docs'], { body: { new_edits: false, docs: [fresh] } });
 
-    const [sent] = forwarded('_bulk_docs').filter(c => c.url.pathname.includes(PATIENTS));
-    expect((sent.body!.docs as Doc[])[0].portalPasswordHash).toBeUndefined();
+    expect(sentDoc().portalPasswordHash).toBeUndefined();
     expect(audits('sync.gateway.portal_credentials_stripped')).toHaveLength(1);
+  });
+
+  // The takeover this closes: delete a patient, then register "them" again
+  // with an activation code of your own.
+  test('a patient deleted and written back does not come back with a new invitation', async () => {
+    store[PATIENTS] = [{ _id: 'pat-1', _rev: '4-dead', _deleted: true }];
+    const rebirth = { _id: 'pat-1', _rev: '5-b', type: 'patient', orgId: 'org-a', phone: '0999', ...invite };
+
+    await call(PATIENTS, ['_bulk_docs'], { body: { new_edits: false, docs: [rebirth] } });
+
+    expect(Object.keys(sentDoc()).filter(key => key.startsWith('portal'))).toEqual([]);
+    expect(sentDoc().phone).toBe('0999');
+    expect(audits('sync.gateway.portal_credentials_stripped')).toHaveLength(1);
+  });
+
+  test('a patient the server’s register holds, under any organization, is not new here', async () => {
+    store[PATIENTS] = [];
+    store[REGISTER] = [{ _id: 'pat-elsewhere', _rev: '2-a', type: 'patient', orgId: 'org-b', portalUsername: 'someone.else', portalPasswordHash: 'server-hash' }];
+    const claim = { _id: 'pat-elsewhere', _rev: '9-z', type: 'patient', orgId: 'org-a', ...invite };
+
+    await call(PATIENTS, ['_bulk_docs'], { body: { new_edits: false, docs: [claim] } });
+
+    expect(Object.keys(sentDoc()).filter(key => key.startsWith('portal'))).toEqual([]);
+    const lookup = upstreamCalls.find(c => c.url.pathname === `/${REGISTER}/_all_docs`);
+    expect(lookup?.body).toEqual({ keys: ['pat-elsewhere'] });
+    expect(audits('sync.gateway.portal_credentials_stripped')).toHaveLength(1);
+  });
+
+  test('a patient written without an id carries no portal fields', async () => {
+    store[PATIENTS] = [];
+    const nameless = { type: 'patient', orgId: 'org-a', firstName: 'Mary', ...invite, portalPasswordHash: 'chosen-by-device' };
+
+    await call(PATIENTS, ['_bulk_docs'], { body: { docs: [nameless] } });
+
+    expect(Object.keys(sentDoc()).filter(key => key.startsWith('portal'))).toEqual([]);
+    expect(sentDoc().firstName).toBe('Mary');
+  });
+
+  test('a write whose body names a different document than its path is refused', async () => {
+    store[PATIENTS] = [onServer];
+    const response = await call(PATIENTS, ['pat-1'], { method: 'PUT', body: { _id: 'pat-9', type: 'patient', orgId: 'org-a', ...invite } });
+
+    expect(response.status).toBe(400);
+    expect(upstreamCalls.filter(c => c.method === 'PUT')).toEqual([]);
   });
 });
