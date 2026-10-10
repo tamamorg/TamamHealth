@@ -17,8 +17,9 @@
  *     through the API (`/api/patients/portal-access`, activation, login),
  *     which writes as the server.
  *   - a patient the server has never seen may arrive with an invitation, but
- *     only from a role allowed to enrol, and never with a password or a
- *     suspension state: registration can issue an invitation, nothing more.
+ *     only from a role allowed to register patients, and never with a password
+ *     or a suspension state: registration can issue an invitation, nothing
+ *     more.
  *
  * It rewrites rather than refuses, on purpose. A device that edits a
  * patient's phone number while holding a copy from before the patient
@@ -29,13 +30,33 @@
  * replicated write can invent the revision it claims to replace.
  */
 import type { UserRole } from '../db-types';
+import { DOC_WRITE_ROLES } from './write-permissions';
 
-/** Roles that may issue portal access. One list, shared with the enrol API. */
+/** Roles that may issue or re-issue portal access from a chart. Shared with the enrol API. */
 export const PORTAL_ENROL_ROLES: readonly UserRole[] = [
   'super_admin', 'org_admin', 'front_desk', 'central_registration_clerk',
   'clinic_clerk', 'hrio', 'records_hmis_officer', 'medical_superintendent',
   'hospital_manager',
 ];
+
+/**
+ * Whether a registration by `role` may carry a portal invitation.
+ *
+ * Every role that can register a patient, which is wider than the enrol list
+ * above. The two answer different questions. Re-issuing access to a patient
+ * who already has a record hands somebody a way into that record, so it stays
+ * with the desk and records roles. Registering a patient creates the record
+ * and hands over its slip in the same act, by the same person; in a small
+ * facility that person is a nurse or a clinical officer, and refusing their
+ * invitation printed a slip whose code never activated, with nothing to tell
+ * anyone why.
+ *
+ * The registration form asks this before it offers the account, so the form
+ * and the gateway cannot disagree.
+ */
+export function canIssuePortalInvite(role: string | undefined): boolean {
+  return Boolean(role) && (DOC_WRITE_ROLES.patient as readonly string[]).includes(role as string);
+}
 
 /** What an invitation issued at registration consists of. */
 const INVITATION_FIELDS: readonly string[] = [
@@ -69,7 +90,7 @@ export function applyPortalCredentialAuthority(
   let authoritative: Doc;
   if (prior) {
     authoritative = portalFieldsOf(prior);
-  } else if (role && (PORTAL_ENROL_ROLES as readonly string[]).includes(role)) {
+  } else if (canIssuePortalInvite(role)) {
     authoritative = {};
     for (const field of INVITATION_FIELDS) if (sent[field] !== undefined) authoritative[field] = sent[field];
   } else {
