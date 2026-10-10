@@ -181,7 +181,7 @@ export async function discardUnit(id: string, reason: string, scope?: DataScope)
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('DISCARD_BLOOD_UNIT', undefined, undefined,
-      `Blood unit ${id} discarded: ${reason}`
+      `Blood unit ${id} discarded; reason recorded on the unit`
     );
     emitBloodBank(updated, 'update');
     return updated;

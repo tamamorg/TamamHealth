@@ -242,10 +242,12 @@ export async function POST(request: NextRequest) {
   // so the desk reads it from the booking row rather than a parallel doc.
   // The one fact with nowhere else to go is the near-miss match list — it is
   // named in the audit detail so whoever links an unmatched booking can see
-  // what the matcher considered without it deciding for them.
+  // what the matcher considered without it deciding for them. By chart id,
+  // not by name: an anonymous web form must not be able to cause the names of
+  // existing patients to be written into a log administrators read.
   const nearMisses = !linked && candidates.length
     ? candidates.slice(0, 3)
-      .map(c => `${c.patient.firstName} ${c.patient.surname} (${Math.round(c.score * 100)}%)`)
+      .map(c => `${c.patient._id} (${Math.round(c.score * 100)}%)`)
       .join(', ')
     : '';
 

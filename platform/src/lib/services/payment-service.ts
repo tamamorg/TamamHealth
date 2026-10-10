@@ -440,7 +440,7 @@ export async function reversePayment(
     }
 
     await logAuditSafe('PAYMENT_REVERSED', reversedBy, reversedByName,
-      `Reversed ${pmt.amount} ${pmt.currency} — ${reason}`);
+      `Reversed payment ${pmt._id}: ${pmt.amount} ${pmt.currency}; reason recorded on the ledger entry`);
 
     emitSyncEvent({
       resourceType: 'payment',
@@ -1547,7 +1547,7 @@ export async function createAdjustment(input: {
   });
 
   await logAuditSafe('ADJUSTMENT_CREATED', input.approvedBy, input.approvedByName,
-    `${input.adjustmentType} of ${input.amount}: ${input.reason}`);
+    `${input.adjustmentType} of ${input.amount}; reason recorded on the adjustment`);
 
   emitSyncEvent({
     resourceType: 'adjustment',
@@ -1621,7 +1621,7 @@ export async function issueRefund(input: {
   });
 
   await logAuditSafe('REFUND_ISSUED', input.processedBy, input.processedByName,
-    `Refund ${input.amount} ${doc.currency} to patient ${input.patientId}: ${input.reason}`);
+    `Refund ${input.amount} ${doc.currency} to patient ${input.patientId}; reason recorded on the refund`);
 
   emitSyncEvent({
     resourceType: 'refund',

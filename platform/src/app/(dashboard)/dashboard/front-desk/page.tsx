@@ -811,7 +811,7 @@ export default function FrontDeskDashboardPage() {
             await logAuditSafe(
               'CHECKOUT_GATE_OVERRIDDEN', currentUser?._id, currentUser?.name,
               `Discharged patient ${target.patientId} over unmet gate conditions ` +
-              `[${evaluation.blocking.map(b => b.key).join(', ')}] — ${override.reason} ` +
+              `[${evaluation.blocking.map(b => b.key).join(', ')}]; reason recorded on the visit ` +
               `(authorized by ${override.authorizedBy})`,
             );
             gateNote = ` — override: ${evaluation.blocking.map(b => b.label).join('; ')}`;

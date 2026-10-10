@@ -658,4 +658,166 @@
   .tamam-left-rail .tamam-rail-item svg { width: 18px !important; height: 18px !important; }
   .tamam-rail-label { white-space: normal !important; overflow-wrap: break-word; min-width: 0; }
   .tamam-header { padding: 12px 14px !important; }
+  /* Workspace header (dashboard, appointments). Below 1024px an older rule
+     turns it into three stacked blocks and zeroes the primary button's font,
+     which left a wide blue bar holding nothing but a "+". One wrapping row
+     instead: greeting first, then the labelled action, then the icon tools. */
+  .ehr-clinical-dashboard-header {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px 10px !important;
+  }
+  .ehr-clinical-dashboard-header > .ehr-clinical-dashboard-header-main { order: 0; flex: 1 1 200px; min-width: 0; }
+  .ehr-clinical-dashboard-header > .ehr-clinical-dashboard-tabs { order: 1; flex: 0 0 auto; }
+  .ehr-clinical-dashboard-header > .ehr-schedule-actions { order: 2; flex: 0 0 auto; }
+  .ehr-clinical-dashboard-tabs .ehr-segmented-single { display: inline-flex !important; width: auto !important; }
+  .ehr-clinical-dashboard-tabs .ehr-segmented-single > button {
+    width: auto !important;
+    padding: 0 12px !important;
+    gap: 6px !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Rail cards in a 138-180px track: titles and the week chart were sized for
+     260px and ran out of the card (the activity card needed 180px of 118). */
+  .ehr-side-card .ehr-side-card-head,
+  .ehr-day-stats .ehr-side-card-head { flex-wrap: wrap !important; row-gap: 2px !important; min-width: 0; }
+  .ehr-side-card .ehr-side-card-head h2,
+  .ehr-day-stats .ehr-side-card-head h2 {
+    min-width: 0;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    letter-spacing: 0.05em !important;
+    overflow-wrap: anywhere;
+  }
+  .ehr-side-card .ehr-side-card-head > svg,
+  .ehr-day-stats .ehr-side-card-head > svg { flex: 0 0 18px !important; width: 18px !important; height: 18px !important; }
+  .ehr-side-card-head .ehr-week-activity-caption { margin-inline-start: 0 !important; white-space: normal !important; }
+  .ehr-week-activity-bars { gap: 3px !important; }
+  .ehr-week-activity-days {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+  }
+  .ehr-week-activity-days span { font-size: 8px !important; letter-spacing: -0.03em; }
+
+  /* Donut beside its legend needs ~230px; in a rail track the legend's counts
+     were pushed under the card edge. Ring on top, legend the full width below. */
+  .ehr-stage-donut-body { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+  .ehr-stage-donut-ring { align-self: center; }
+  .ehr-stage-donut-legend { width: 100% !important; min-width: 0 !important; }
+  .ehr-stage-donut-legend li { min-width: 0; }
+  .ehr-stage-donut-legend span { min-width: 0; overflow-wrap: anywhere; white-space: normal !important; }
+
+  .ehr-clinical-dashboard-tabs .ehr-segmented-single > button { min-height: 32px !important; }
+
+  /* Side navigation in a rail track (admin console, settings, facility
+     settings). The labels were single-line with an ellipsis, so at 140px the
+     admin rail read "Reconcili…" and the settings rail "Facility se…". A label
+     takes a second line instead; insets tighten to give it the room. */
+  .sadb-rail { padding: 8px 4px !important; }
+  .sadb-rail-title { padding-inline: 6px !important; }
+  .sadb-rail-item { gap: 7px !important; padding: 7px 6px !important; font-size: 12px !important; line-height: 1.2 !important; }
+  .ehr-set-nav button { gap: 7px !important; padding: 6px !important; font-size: 12px !important; line-height: 1.2 !important; }
+  .ehr-set-nav button svg { width: 17px !important; height: 17px !important; }
+  .fs-nav button,
+  .fs-nav-foot { gap: 7px !important; padding: 7px 6px !important; font-size: 12px !important; line-height: 1.2 !important; min-width: 0; }
+  .sadb-rail-label,
+  .ehr-set-nav button em,
+  .fs-nav button > span,
+  .fs-nav-foot > span {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+  }
+  .fs-nav-group { flex-wrap: wrap !important; padding: 10px 6px 4px !important; }
+  .fs-nav-group small { flex-basis: 100% !important; white-space: normal !important; text-align: start !important; }
+
+  /* Platform readiness: donut beside two signals needs ~330px. In a narrower
+     card the signals shrank to 30px columns with a word per line. */
+  .sadb-readiness-body { flex-wrap: wrap !important; }
+  .sadb-readiness-signals { flex: 1 1 170px !important; }
+
+  /* Worklist rows keep their five columns in a ~370px centre panel, which
+     left ~70px a column and cut every row to "Aluel Mal…" / "Artemeth…" /
+     "Dr. Jame…" on one line. Two lines, broken only between words, show the
+     whole of most names; anything longer still ends in an ellipsis. */
+  .appointment-card-row .appointment-card-patient button,
+  .appointment-card-row .appointment-card-patient p,
+  .appointment-card-row .appointment-card-provider strong,
+  .appointment-card-row .ehr-appointment-department strong {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden !important;
+    white-space: normal !important;
+    overflow-wrap: normal;
+    word-break: normal;
+    text-align: start;
+    line-height: 1.25;
+  }
+  .appointment-card-flow .appointment-card-row.ehr-appointment-row { height: auto !important; min-height: 52px; padding-block: 8px !important; }
+}
+
+/* Below 840px three panels do not fit: with both rails in flow the worklist
+   was ~330px wide and its five columns ~40px each (measured at 640px, the
+   width of half a 1280px laptop screen), so every patient, drug and clinician
+   was cut to a stem. Nothing is hidden or moved off-canvas here either — the
+   right rail's cards simply continue down the left column, under the
+   calendar and charts, and the worklist takes the width that frees up. The
+   page scrolls as one document instead of three panes. */
+@media (min-width: 640px) and (max-width: 839px) {
+  .tamam-ehr-app .page-container:has(> .ehr-schedule-shell .ehr-right-rail) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  .ehr-schedule-shell:has(.ehr-right-rail) {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+  .ehr-workspace-grid:has(> .ehr-right-rail),
+  .ehr-care-dashboard .ehr-workspace-grid:has(> .ehr-right-rail) {
+    grid-template-columns: clamp(176px, 28vw, 210px) minmax(0, 1fr) !important;
+    grid-template-rows: auto 1fr !important;
+    grid-template-areas: none !important;
+    align-items: start !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
+  }
+  .ehr-workspace-grid:has(> .ehr-right-rail) > .ehr-left-rail { grid-column: 1 !important; grid-row: 1 !important; }
+  .ehr-workspace-grid:has(> .ehr-right-rail) > .ehr-right-rail { grid-column: 1 !important; grid-row: 2 !important; }
+  .ehr-workspace-grid:has(> .ehr-right-rail) > .ehr-center-panel {
+    grid-column: 2 !important;
+    grid-row: 1 / span 2 !important;
+    /* Still its own scroller, as on desktop: a 300-row queue must not turn
+       the page into 300 rows. It holds in view while the left column scrolls. */
+    position: sticky !important;
+    top: 0 !important;
+    height: calc(100dvh - var(--ehr-top-rail-height) - 24px) !important;
+    min-height: 0 !important;
+  }
+  .ehr-workspace-grid:has(> .ehr-right-rail) > .ehr-left-rail,
+  .ehr-workspace-grid:has(> .ehr-right-rail) > .ehr-right-rail {
+    height: auto !important;
+    /* `min-height: 0` (set for the three-pane layout) let these rows collapse
+       and the second rail paint over the first. */
+    min-height: min-content !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
+/* Chart tables in a ~470px column. Six or more columns left ~60px each, so a
+   test, a clinician and a date each ran a word per line (Orders, Results,
+   Care coordination). Wide tables keep readable columns and scroll sideways
+   inside their card — the treatment phones already get; tables that fit
+   (Conditions, Allergies) are left alone. */
+@media (min-width: 640px) and (max-width: 899px) {
+  .tamam-section-body { overflow-x: auto; }
+  .tamam-root .tamam-table:has(thead th:nth-child(6)) { min-width: 640px; }
 }

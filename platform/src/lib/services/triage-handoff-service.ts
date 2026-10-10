@@ -84,7 +84,7 @@ export async function returnVisitToFrontDesk(input: ReturnVisitToFrontDeskInput)
 
   await logAuditSafe('TRIAGE_RETURNED_TO_DESK', input.actorId, input.actorName,
     `Patient ${input.patientId} returned to the front desk` +
-    (input.reason ? ` — ${input.reason}` : ''),
+    (input.reason ? '; reason recorded on the triage' : ''),
   );
   return triage;
 }

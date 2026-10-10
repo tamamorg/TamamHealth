@@ -58,7 +58,7 @@ export async function createSchedule(
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   await logAuditSafe('CREATE_SCHEDULE', undefined, undefined,
-    `Schedule ${doc._id}: ${data.userName} (${data.shiftType}) on ${data.shiftDate}`
+    `Schedule ${doc._id}: staff ${data.userId} (${data.shiftType}) on ${data.shiftDate}`
   );
   emitSyncEvent({
     resourceType: 'staff_schedule',

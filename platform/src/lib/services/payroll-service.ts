@@ -68,7 +68,7 @@ export async function createPayrollEntry(input: CreatePayrollInput): Promise<Pay
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   await logAuditSafe('PAYROLL_ENTRY_CREATED', undefined, undefined,
-    `Payroll for ${input.userName} (${input.period}): ${doc.netPay} ${doc.currency}`);
+    `Payroll entry ${doc._id} for staff ${input.userId} (${input.period})`);
   emitSyncEvent({
     resourceType: 'payroll_entry',
     resourceId: doc._id,
@@ -99,7 +99,7 @@ export async function setPayrollStatus(
     const resp = await db.put(existing);
     existing._rev = resp.rev;
     await logAuditSafe('PAYROLL_STATUS', actor.id, actor.name,
-      `${existing.userName} ${existing.period} → ${status}`);
+      `Payroll entry ${existing._id} for staff ${existing.userId} (${existing.period}) → ${status}`);
     emitSyncEvent({
       resourceType: 'payroll_entry',
       resourceId: existing._id,

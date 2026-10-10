@@ -11,6 +11,7 @@
 
 import {
   ensureOrganizationProvisioned,
+  validatorFingerprint,
 } from '@/lib/sync/couch-auth';
 import { DATABASE_SYNC_CONFIGS } from '@/lib/sync/sync-config';
 
@@ -78,7 +79,7 @@ describe('the cheap paths make no network calls at all', () => {
 
 describe('a provisioned organization', () => {
   it('costs one sentinel read, then the memo makes repeats free', async () => {
-    sentinelResponse = { status: 200, body: { _rev: '1-a', databaseCount: ORG_SCOPED_COUNT } };
+    sentinelResponse = { status: 200, body: { _rev: '1-a', databaseCount: ORG_SCOPED_COUNT, validators: validatorFingerprint() } };
     await ensureOrganizationProvisioned('org-already-done');
     expect(calls).toHaveLength(1);
     expect(calls[0].method).toBe('GET');
@@ -115,6 +116,24 @@ describe('an unprovisioned organization', () => {
     const sentinelWrite = calls.find(c =>
       c.method === 'PUT' && c.url.includes('/_local/tamamhealth-provisioning'));
     expect(sentinelWrite?.body).toMatchObject({ databaseCount: ORG_SCOPED_COUNT });
+  });
+
+  it('re-provisions when the validators have changed, even though no database was added', async () => {
+    // A release that only tightens a rule must still reach existing tenants.
+    sentinelResponse = { status: 200, body: { _rev: '5-e', databaseCount: ORG_SCOPED_COUNT, validators: 'an-older-build' } };
+    await ensureOrganizationProvisioned('org-old-rules');
+    const validatorWrites = calls.filter(c =>
+      c.method === 'PUT' && c.url.includes('/_design/tamamhealth-org-scope'));
+    expect(validatorWrites).toHaveLength(ORG_SCOPED_COUNT);
+    const sentinelWrite = calls.find(c =>
+      c.method === 'PUT' && c.url.includes('/_local/tamamhealth-provisioning'));
+    expect(sentinelWrite?.body).toMatchObject({ _rev: '5-e', validators: validatorFingerprint() });
+  });
+
+  it('treats a sentinel written before fingerprints existed as out of date', async () => {
+    sentinelResponse = { status: 200, body: { _rev: '2-b', databaseCount: ORG_SCOPED_COUNT } };
+    await ensureOrganizationProvisioned('org-pre-fingerprint');
+    expect(calls.some(c => c.method === 'PUT' && c.url.includes('/_design/tamamhealth-org-scope'))).toBe(true);
   });
 
   it('re-provisions when the sync map has grown past the recorded count', async () => {

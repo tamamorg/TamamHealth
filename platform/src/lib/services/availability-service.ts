@@ -103,7 +103,7 @@ export async function createAvailability(
   const resp = await db.put(doc);
   doc._rev = resp.rev;
   await logAuditSafe('CREATE_AVAILABILITY', actorId, actorName,
-    `Availability ${doc._id}: ${data.providerName} on ${data.date} ${data.startTime}–${data.endTime} (${data.modality})`);
+    `Availability ${doc._id}: provider ${data.providerId} on ${data.date} ${data.startTime}–${data.endTime} (${data.modality})`);
   return doc;
 }
 

@@ -18,7 +18,7 @@
  * bundles is a build error by design — admin creds must not be shipped.
  */
 import { Buffer } from 'node:buffer';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { DATABASE_SYNC_CONFIGS } from './sync-config';
 import {
   tenantDatabaseName,
@@ -403,6 +403,31 @@ export async function applyOrgScopedSecurity(roles: string[]): Promise<void> {
 const provisioningMemo = new Map<string, Promise<void>>();
 const PROVISIONING_SENTINEL = '_local/tamamhealth-provisioning';
 
+/**
+ * A fingerprint of the validators this build would install.
+ *
+ * The sentinel used to record only how many databases an organisation had, so
+ * the only thing that re-provisioned an existing organisation was the sync map
+ * growing. A release that changed a validator rule and added no database left
+ * every existing tenant running the old rules indefinitely — the fix shipped,
+ * the build was live, and CouchDB went on enforcing what it had been told
+ * months earlier, until someone remembered to run the validator script by
+ * hand. Recording the fingerprint makes "the rules changed" a reason to
+ * re-provision in its own right.
+ */
+let validatorFingerprintMemo: string | null = null;
+export function validatorFingerprint(): string {
+  if (validatorFingerprintMemo === null) {
+    validatorFingerprintMemo = createHash('sha256')
+      .update(ORG_SCOPED_VALIDATE_FN)
+      .update('\u0000')
+      .update(SERVER_WRITES_ONLY_VALIDATE_FN)
+      .digest('hex')
+      .slice(0, 16);
+  }
+  return validatorFingerprintMemo;
+}
+
 export async function ensureOrganizationProvisioned(orgIdInput: string | undefined): Promise<void> {
   if (!orgIdInput) return;
   if (process.env.NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED !== 'true') return;
@@ -425,8 +450,9 @@ export async function ensureOrganizationProvisioned(orgIdInput: string | undefin
     );
     const sentinelPath = `/${encodeURIComponent(firstDb)}/${PROVISIONING_SENTINEL}`;
     const sentinel = await couchFetch({ method: 'GET', path: sentinelPath, allow404: true }) as
-      { _rev?: string; databaseCount?: number } | null;
-    if (sentinel?.databaseCount === orgScopedCount) return;
+      { _rev?: string; databaseCount?: number; validators?: string } | null;
+    const validators = validatorFingerprint();
+    if (sentinel?.databaseCount === orgScopedCount && sentinel.validators === validators) return;
 
     await provisionOrganizationDatabases(orgId);
     try {
@@ -437,6 +463,7 @@ export async function ensureOrganizationProvisioned(orgIdInput: string | undefin
           _id: PROVISIONING_SENTINEL,
           ...(sentinel?._rev ? { _rev: sentinel._rev } : {}),
           databaseCount: orgScopedCount,
+          validators,
           provisionedAt: new Date().toISOString(),
         },
       });

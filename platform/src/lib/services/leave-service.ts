@@ -61,7 +61,7 @@ export async function requestLeave(input: CreateLeaveInput): Promise<LeaveReques
   doc._rev = resp.rev;
 
   await logAuditSafe('LEAVE_REQUESTED', input.userId, input.userName,
-    `${input.userName} requested ${doc.days}d ${input.leaveType} leave (${input.startDate} → ${input.endDate})`);
+    `Leave request ${doc._id}: ${doc.days}d for staff ${input.userId} (${input.startDate} → ${input.endDate})`);
 
   emitSyncEvent({
     resourceType: 'leave_request',
@@ -101,7 +101,7 @@ export async function decideLeave(
 
     await logAuditSafe(decision.status === 'approved' ? 'LEAVE_APPROVED' : 'LEAVE_REJECTED',
       decision.decidedBy, decision.decidedByName,
-      `${decision.status} ${existing.days}d ${existing.leaveType} for ${existing.userName}`);
+      `Leave request ${existing._id} ${decision.status}: ${existing.days}d for staff ${existing.userId}`);
 
     emitSyncEvent({
       resourceType: 'leave_request',
@@ -131,7 +131,7 @@ export async function cancelLeave(id: string, actor: { id: string; name: string 
     const resp = await db.put(existing);
     existing._rev = resp.rev;
     await logAuditSafe('LEAVE_CANCELLED', actor.id, actor.name,
-      `Cancelled ${existing.days}d ${existing.leaveType} for ${existing.userName}`);
+      `Leave request ${existing._id} cancelled: ${existing.days}d for staff ${existing.userId}`);
     emitSyncEvent({
       resourceType: 'leave_request',
       resourceId: existing._id,

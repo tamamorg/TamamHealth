@@ -89,7 +89,10 @@ export default function ChartCard({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Wraps: in a narrow card (three-across on a half-width window) the
+            type buttons plus the period select are wider than the card, and
+            an unshrinkable row pushed the select out past its edge. */}
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
           {/* Chart type buttons */}
           {chartTypes.length > 1 && chartTypes.map(t => (
             <button
