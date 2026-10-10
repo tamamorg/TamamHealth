@@ -961,7 +961,7 @@ export async function returnEncounterToFrontDesk(
     opts?.actorId,
     undefined,
     `Visit for patient ${updated.patientId} returned to the front desk` +
-    (opts?.reason ? ` — ${opts.reason}` : ''),
+    (opts?.reason ? '; reason recorded on the visit' : ''),
   );
   return updated;
 }
@@ -978,7 +978,7 @@ export async function recordLeftWithoutBeingSeen(
     opts?.actorId,
     undefined,
     `Patient ${updated.patientId} left without being seen` +
-    (opts?.reason ? ` — ${opts.reason}` : ''),
+    (opts?.reason ? '; reason recorded on the visit' : ''),
   );
   return updated;
 }
@@ -1010,7 +1010,7 @@ export async function escalateEncounterToEmergency(
     opts?.actorId,
     undefined,
     `Patient ${updated.patientId} escalated to emergency` +
-    (opts?.reason ? ` — ${opts.reason}` : ''),
+    (opts?.reason ? '; reason recorded on the visit' : ''),
   );
   return updated;
 }

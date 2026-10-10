@@ -91,7 +91,7 @@ export default function WeekSlotGrid({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `minmax(210px, 1.5fr) repeat(${columns.length}, minmax(76px, 1fr))`,
+          gridTemplateColumns: `minmax(clamp(104px, 28%, 210px), 1.5fr) repeat(${columns.length}, minmax(58px, 1fr))`,
           alignItems: 'center',
           gap: 10,
           // The date strip is what the reader steers the whole grid by, so it
@@ -201,7 +201,7 @@ function ProviderRow({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `minmax(210px, 1.5fr) repeat(${columns.length}, minmax(76px, 1fr))`,
+        gridTemplateColumns: `minmax(clamp(104px, 28%, 210px), 1.5fr) repeat(${columns.length}, minmax(58px, 1fr))`,
         gap: 10,
         // Top, not centre. The row's height is set by its busiest day, so
         // centring floated the name level with whatever chip happened to be in

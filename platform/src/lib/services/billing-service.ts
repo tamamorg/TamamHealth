@@ -705,7 +705,7 @@ export async function applyDiscount(
 
     await logAuditSafe(
       'BILL_DISCOUNTED', appliedBy, appliedByName,
-      `Discount ${discount} ${bill.currency} on ${bill.invoiceNumber} — ${reason}`
+      `Discount ${discount} ${bill.currency} on ${bill.invoiceNumber}; reason recorded on the bill`
     );
 
     emitSyncEvent({
@@ -751,7 +751,7 @@ export async function cancelBill(
 
     await logAuditSafe(
       'BILL_CANCELLED', cancelledBy, cancelledByName,
-      `Cancelled ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}${reason ? ` — ${reason}` : ''}`
+      `Cancelled ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}${reason ? '; reason recorded on the bill' : ''}`
     );
 
     emitSyncEvent({
@@ -816,7 +816,7 @@ export async function reversePaidBillCharge(
 
     await logAuditSafe(
       'BILL_CHARGE_REVERSED', reversedBy, reversedByName,
-      `Reversed the charge on ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}; ${collected} ${bill.currency} collected is owed back — ${reason}`
+      `Reversed the charge on ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}; ${collected} ${bill.currency} collected is owed back; reason recorded on the bill`
     );
 
     emitSyncEvent({
@@ -879,7 +879,7 @@ export async function waiveBill(
 
     await logAuditSafe(
       'BILL_WAIVED', waivedBy, waivedByName,
-      `Waived ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency} — ${reason}`
+      `Waived ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}; reason recorded on the bill`
     );
 
     emitSyncEvent({

@@ -491,7 +491,7 @@ export async function assessAdmissionDeposit(input: {
   };
   const response = await wardDB().put(updated);
   updated._rev = response.rev;
-  await logAuditSafe('ADMISSION_DEPOSIT_ASSESSED', input.actor.id, input.actor.name, `Admission ${admission._id} deposit marked ${updated.admissionDepositStatus}: ${reason}`);
+  await logAuditSafe('ADMISSION_DEPOSIT_ASSESSED', input.actor.id, input.actor.name, `Admission ${admission._id} deposit marked ${updated.admissionDepositStatus}; reason recorded on the admission`);
   emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
   return updated;
 }

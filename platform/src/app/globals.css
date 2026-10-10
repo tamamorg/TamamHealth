@@ -27629,6 +27629,14 @@ table.patient-data-table.patient-data-table {
    2. An empty day prints one dash PER RANK of the row (the component counts
       them), on that same rhythm — each rank of times then rules straight
       across the week instead of a lone dash floating at the top. */
+/* The matrix needs ~450px at its tightest (name column + five days). In a
+   narrower card it scrolls sideways as one block rather than running under
+   the card edge, where the last day and the "next days" arrow were cut off. */
+.booking-week-grid {
+  overflow-x: auto;
+  padding-inline-end: 8px;
+}
+
 .booking-week-grid .bwg-cell {
   display: flex;
   flex-direction: column;

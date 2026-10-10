@@ -19,5 +19,5 @@ export async function assertDischargeAllowed(id: string, status: string, actor: 
   });
   if (!exceptional && !evaluation.canDischarge) throw new Error(`CHECKOUT_BLOCKED: ${evaluation.blocking.map(b => b.key).join(', ')}`);
   if (exceptional) await logAuditSafe('CHECKOUT_GATE_OVERRIDDEN', actor.actorId, undefined,
-    `Encounter ${id}: ${status}; ${evaluation.blocking.map(b => b.key).join(', ')}; ${actor.reason!.trim()}`);
+    `Encounter ${id}: ${status}; ${evaluation.blocking.map(b => b.key).join(', ')}; reason recorded on the visit`);
 }
