@@ -1,5 +1,5 @@
 import { captureException } from '@/lib/observability';
-import { referralsDB, hospitalsDB, medicalRecordsDB } from '../db';
+import { referralsDB, hospitalsDB, medicalRecordsDB, patientsDB } from '../db';
 import type { ReferralDoc, HospitalDoc, MedicalRecordDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -449,6 +449,11 @@ export async function recordReferralIntake(
  * write is idempotent on the same target hospital). Strictly better than
  * leaving a referral marked seen for a transfer that never happened.
  */
+/** Thrown by acceptReferral when the referral would move a patient the sending org does not own. */
+export class ReferralTenantError extends Error {
+  name = 'ReferralTenantError';
+}
+
 export async function acceptReferral(referralId: string): Promise<ReferralDoc | null> {
   const db = referralsDB();
   try {
@@ -480,13 +485,31 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
         // Destination hospital unreachable (offline) — fall back to leaving
         // the orgId as-is; same-org referrals are unaffected.
       }
+      // Tenant guard (the cross-org takeover fix). Re-homing moves a patient
+      // into another organisation, so it is only legitimate when the patient
+      // CURRENTLY belongs to the org that was entitled to refer them -- the
+      // referral's sending org. A referral stamped by an org that never owned
+      // the patient (forged via a known patient id) must not move it. A patient
+      // already in the destination org is the idempotent re-run case. This
+      // throws (outside the swallow below) so the referral is NOT marked seen.
+      {
+        let currentOrgId: string | undefined;
+        try {
+          currentOrgId = ((await patientsDB().get(referral.patientId)) as { orgId?: string }).orgId;
+        } catch {
+          currentOrgId = undefined;
+        }
+        if (currentOrgId !== referral.orgId && !(toOrgId && currentOrgId === toOrgId)) {
+          throw new ReferralTenantError('Referral refused: the patient does not belong to the referring organization.');
+        }
+      }
       try {
         const { updatePatient } = await import('./patient-service');
         await updatePatient(referral.patientId, {
           registrationHospital: referral.toHospitalId,
           lastVisitHospital: referral.toHospitalId,
           ...(toOrgId ? { orgId: toOrgId } : {}),
-        });
+        }, { allowRehome: true });
       } catch (err) {
         console.error('Failed to transfer patient on referral acceptance:', err);
         captureException(err, { tag: 'Failed to transfer patient on referral acceptance:' });
@@ -518,7 +541,8 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
     }
 
     return updated;
-  } catch {
+  } catch (err) {
+    if (err instanceof ReferralTenantError) throw err;
     return null;
   }
 }

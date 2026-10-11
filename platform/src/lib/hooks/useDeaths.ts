@@ -47,10 +47,11 @@ export function useDeaths() {
 
   const register = useCallback(async (data: Omit<DeathRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createDeath } = await import('../services/death-service');
-    const doc = await createDeath(data);
+    if (!scope) throw new Error('Your data scope is still loading - try again in a moment.');
+    const doc = await createDeath(data, scope);
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   return { deaths, stats, loading, error, register, reload: load };
 }

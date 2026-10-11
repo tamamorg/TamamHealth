@@ -377,7 +377,10 @@ export default function LabDashboardPage() {
       setBatchTestType('');
       setBatchEntries([]);
     } catch (err) {
+      // A result that did not save must not look saved: the entries stay on
+      // screen so nothing typed is lost, and the tech is told.
       console.error('Failed to batch save:', err);
+      showToast(t('radiology.updateFailed'), 'error');
     } finally {
       setBatchSaving(false);
     }

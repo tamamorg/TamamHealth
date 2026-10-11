@@ -6,6 +6,7 @@ import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
+import { resolveRegisterOrgId } from './register-org';
 
 /**
  * The EPI antigens this deployment records. One list, exported: coverage
@@ -38,7 +39,8 @@ export async function getByFacility(facilityId: string): Promise<ImmunizationDoc
   return all.filter(i => i.facilityId === facilityId);
 }
 
-export async function createImmunization(data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<ImmunizationDoc> {
+export async function createImmunization(data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, scope: DataScope): Promise<ImmunizationDoc> {
+  const orgId = await resolveRegisterOrgId(data, scope);
   const db = immunizationsDB();
   const now = new Date().toISOString();
   const id = `imm-${uuidv4()}`;
@@ -46,6 +48,7 @@ export async function createImmunization(data: Omit<ImmunizationDoc, '_id' | '_r
     _id: id,
     type: 'immunization',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

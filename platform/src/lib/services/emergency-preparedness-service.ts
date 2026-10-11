@@ -14,6 +14,7 @@
  *  - Cross-facility emergency dashboard
  */
 import { emergencyPlansDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { EmergencyPlanDoc, EmergencyPhase, EmergencySeverity } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -61,6 +62,7 @@ export async function getPlanById(id: string, scope?: DataScope): Promise<Emerge
 export async function createPlan(
   data: Omit<EmergencyPlanDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<EmergencyPlanDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'emergency plan');
   const db = emergencyPlansDB();
   const now = new Date().toISOString();
 
@@ -68,6 +70,7 @@ export async function createPlan(
     _id: `emerg-${uuidv4()}`,
     type: 'emergency_plan',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

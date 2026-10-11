@@ -84,3 +84,35 @@ export async function nextSequence(
   }
   throw new Error(`Could not allocate a sequence for "${key}" after ${maxAttempts} attempts`);
 }
+
+/**
+ * Per-device identifier segment, minted once and kept in a `_local/` document
+ * (never replicated). `nextSequence` counters are per-device too, so the
+ * sequence alone does not make an identifier unique across devices or
+ * facilities: two workstations both reach "0007" on the same day. Appending
+ * this code is what stops them issuing the same invoice number. Same scheme
+ * as the patient hospital-number device code (4 base-36 characters).
+ */
+export async function getDeviceCode(db: CounterDB): Promise<string> {
+  const id = '_local/invoice_device_code';
+  const read = async (): Promise<string | null> => {
+    try {
+      const doc = (await db.get(id)) as { code?: string };
+      return typeof doc.code === 'string' && doc.code.length > 0 ? doc.code : null;
+    } catch {
+      return null;
+    }
+  };
+  const existing = await read();
+  if (existing) return existing;
+
+  const raw = `${Math.random().toString(16).slice(2, 10)}${Date.now().toString(16)}`.padEnd(8, '0');
+  const code = parseInt(raw.slice(0, 8), 16).toString(36).toUpperCase().padStart(4, '0').slice(-4);
+  try {
+    await db.put({ _id: id, code } as Record<string, unknown>);
+  } catch {
+    // A concurrent tab won the race; agree on its code.
+    return (await read()) ?? code;
+  }
+  return code;
+}

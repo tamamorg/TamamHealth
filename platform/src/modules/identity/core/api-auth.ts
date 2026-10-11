@@ -87,6 +87,36 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
       const liveSec = Math.floor(Date.parse(user.passwordUpdatedAt) / 1000);
       if (Number.isFinite(liveSec) && liveSec > (payload.pwdAt ?? 0)) return null;
     }
+    // The stored user document is authoritative for privileges. A 30-day token
+    // would otherwise keep a demoted / moved account's old role, org and
+    // facilities. Exception: a super_admin signed in AS another role
+    // (actualRole set) keeps the token's borrowed identity, but only while the
+    // live record is still a super_admin — otherwise the impersonation ends.
+    if (user) {
+      const liveRole = canonicalizeUserRole(user.role);
+      const impersonating = !!auth.actualRole
+        && canonicalizeUserRole(auth.actualRole) === 'super_admin'
+        && liveRole === 'super_admin';
+      if (!impersonating) {
+        auth.role = liveRole;
+        auth.actualRole = undefined;
+        auth.orgId = user.orgId;
+        auth.hospitalId = user.hospitalId;
+        auth.hospitalName = user.hospitalName ?? auth.hospitalName;
+        auth.facilityIds = user.facilityIds;
+        // Refreshed from the live record so a cleared "must change password"
+        // flag (or a newly set one) is not pinned by a stale token. Geographic
+        // tier claims likewise follow the live user where the document carries
+        // them; the token's values stand only for fields the user document
+        // does not carry.
+        auth.mustChangePassword = user.mustChangePassword;
+        const geo = user as { countryId?: string; payam?: string; county?: string; state?: string };
+        if (geo.countryId !== undefined) auth.countryId = geo.countryId;
+        if (geo.payam !== undefined) auth.payam = geo.payam;
+        if (geo.county !== undefined) auth.county = geo.county;
+        if (geo.state !== undefined) auth.state = geo.state;
+      }
+    }
   } catch (err) {
     if (isProduction && auth.sub !== 'admin' && !isDemoDeployment) {
       captureException(err, { area: 'api-auth', check: 'user-active', sub: auth.sub });

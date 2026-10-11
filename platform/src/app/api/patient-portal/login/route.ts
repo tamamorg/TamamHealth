@@ -5,13 +5,15 @@ import { createPatientToken } from '@/lib/patient-portal-auth';
 import { demoFallbackEnabled, logDemoFallback, findDemoPatientByUsername } from '@/lib/patient-portal-demo';
 
 import { otpEnabled, issueOtp } from '@/lib/patient-portal-otp';
-import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { rateLimit, refundRateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 // Shared rate limit: 10 attempts / 15 min / IP + 10 attempts / 15 min /
 // account. Production config requires the Upstash backend, so attempts cannot
 // be multiplied across replicas or forgotten on a cold start.
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_MAX = 10;
+// bcrypt hash of a random string, compared when no real hash exists (timing parity).
+const DUMMY_PASSWORD_HASH = '$2b$12$gNB1VUNmx6fi4XsavwguR.3iwu6bqFy0LDcaFxb4ygNt/dTUKcIlq';
 
 // Lazy per-process index creation — Mango createIndex is idempotent server-side
 // but each call still costs a round-trip, so we cache the attempt.
@@ -100,7 +102,11 @@ export async function POST(req: NextRequest) {
 
     // Verify the password. One generic error for "no such user" and "wrong
     // password" so the response never reveals which was wrong.
-    const passwordOk = !!found?.portalPasswordHash && await verifyPassword(password, found.portalPasswordHash);
+    // ALWAYS run one bcrypt compare (a dummy hash when there is no patient or
+    // no credential) so response time does not reveal whether the username
+    // exists or has been activated.
+    const passwordOk = await verifyPassword(password, found?.portalPasswordHash || DUMMY_PASSWORD_HASH)
+      && !!found?.portalPasswordHash;
     if (!found || !passwordOk) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
     }
@@ -114,10 +120,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
     }
 
-    // A successful password proof clears both failed-attempt streaks. OTP has
-    // its own shared IP/challenge limits, so retaining password failures here
-    // would only lock out a legitimate patient who has reached factor two.
-    await Promise.all([resetRateLimit(ipRateKey), resetRateLimit(accountRateKey)]);
+    // A successful password proof clears THIS ACCOUNT's failed-attempt streak
+    // only. The per-IP counter is deliberately left alone: if any success reset
+    // it, an attacker could sign in to their own account between guesses and
+    // never reach the IP limit. It gets back only this one attempt, so it
+    // counts failures rather than sign-ins.
+    await Promise.all([resetRateLimit(accountRateKey), refundRateLimit(ipRateKey)]);
 
     // Second factor (KAN-76). When OTP is enabled we stop here and prove
     // possession of the registered phone before issuing any session token —

@@ -58,6 +58,10 @@ export function gatewayRequestAllowed(
   const endpoint = pathAfterDatabase[0] || '';
   if (endpoint === '_security' || endpoint === '_compact' || endpoint === '_design') return false;
   if (endpoint.startsWith('_') && !ALLOWED_INTERNAL_ENDPOINTS.has(endpoint)) return false;
+  // Only `_local/<checkpoint>` has anything below it that replication uses.
+  // A sub-resource of any other endpoint (`_all_docs/queries`, ...) answers in
+  // a shape the read filters were not written for, so it is not offered.
+  if (endpoint.startsWith('_') && endpoint !== '_local' && pathAfterDatabase.length > 1) return false;
 
   const isWrite = isCouchDocumentWrite(method, pathAfterDatabase);
   if (config.direction === 'pull' && isWrite) return false;

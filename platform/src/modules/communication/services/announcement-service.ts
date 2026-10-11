@@ -1,4 +1,5 @@
 import { announcementsDB } from '@/lib/db';
+import { resolveDocOrgId } from '@/lib/services/register-org';
 import type { AnnouncementDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import { filterByScope } from '@/lib/services/data-scope';
@@ -64,6 +65,7 @@ export async function createAnnouncement(
   if (data.audience === 'role' && !(data.targetRoles || []).length) {
     throw new Error('Choose at least one role to announce to');
   }
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'announcement');
   const db = announcementsDB();
   const now = new Date().toISOString();
   const doc: AnnouncementDoc = {
@@ -71,6 +73,7 @@ export async function createAnnouncement(
     type: 'announcement',
     dismissedBy: [],
     ...data,
+    orgId,
     title: data.title.trim(),
     body: data.body.trim(),
     createdAt: now,

@@ -49,6 +49,8 @@ export type PatientTokenPayload = {
    * retroactively, only refuse to extend one indefinitely).
    */
   sst?: number;
+  /** Issued-at, unix seconds (standard JWT claim). */
+  iat?: number;
 };
 
 /**
@@ -132,7 +134,74 @@ export async function verifyPatientToken(
   }
 
   const throttled = await guardPortalFloor(payload.sub);
-  return throttled ?? payload;
+  if (throttled) return throttled;
+  const dead = await rejectIfPortalSessionRevoked(payload);
+  return dead ?? payload;
+}
+
+/**
+ * The shared live check every authenticated portal request passes through.
+ *
+ * A portal JWT is valid for hours and renewable for a day, and was trusted on
+ * signature alone: suspending the portal account, or the patient choosing a new
+ * password, changed nothing about a token already in someone's hand. The
+ * patient document is therefore authoritative on every request:
+ *
+ *  - the patient must still exist,
+ *  - `portalDisabledAt` must be unset (suspension takes effect immediately), and
+ *  - the token must have been issued at or after the last credential change
+ *    (`portalCredentialEpoch`, stamped when the password is set or access is
+ *    suspended). The check tolerates the field being absent.
+ *
+ * Fails closed when the patient store is unreachable, except on a demo
+ * deployment (no CouchDB by design), where the signed token stays the truth.
+ */
+export async function rejectIfPortalSessionRevoked(
+  payload: Pick<PatientTokenPayload, 'sub' | 'iat'>,
+): Promise<NextResponse | null> {
+  const revoked = () => NextResponse.json({ error: 'Session is no longer valid. Please sign in again.' }, { status: 401 });
+  try {
+    const { patientsDB } = await import('./db');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const patient = await (patientsDB() as any).get(payload.sub) as {
+      portalDisabledAt?: string; portalCredentialEpoch?: string;
+    };
+    if (patient.portalDisabledAt) return revoked();
+    if (patient.portalCredentialEpoch) {
+      const epochSec = Math.floor(Date.parse(patient.portalCredentialEpoch) / 1000);
+      if (Number.isFinite(epochSec) && (typeof payload.iat !== 'number' || payload.iat < epochSec)) return revoked();
+    }
+    return null;
+  } catch (err) {
+    const e = err as { status?: number; name?: string } | undefined;
+    if (e && (e.status === 404 || e.name === 'not_found')) return revoked();
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') return null;
+    return NextResponse.json({ error: 'Session could not be verified.' }, { status: 503 });
+  }
+}
+
+/**
+ * Stamp the credential epoch on a patient: every portal token issued before
+ * now stops working. Call when a portal password is set or access suspended.
+ * Best-effort conflict retry; never throws into the caller's success path.
+ */
+export async function stampPortalCredentialEpoch(patientId: string): Promise<void> {
+  try {
+    const { patientsDB } = await import('./db');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = patientsDB() as any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const doc = await db.get(patientId);
+        await db.put({ ...doc, portalCredentialEpoch: new Date().toISOString() });
+        return;
+      } catch (err) {
+        if ((err as { status?: number } | undefined)?.status !== 409) return;
+      }
+    }
+  } catch {
+    // demo / no store -- nothing to stamp
+  }
 }
 
 /**
@@ -198,4 +267,18 @@ export async function guardPortalWrite(
     { error: 'Too many requests. Please try again shortly.' },
     { status: 429, headers: { 'Retry-After': String(retryAfter) } },
   );
+}
+
+/** Same stamp, addressed by portal username (the activate route only learns the username). */
+export async function stampPortalCredentialEpochByUsername(username: string): Promise<void> {
+  try {
+    if (!username) return;
+    const { patientsDB } = await import('./db');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const found = await (patientsDB() as any).find({ selector: { type: 'patient', portalUsername: username }, limit: 1 });
+    const id = found?.docs?.[0]?._id as string | undefined;
+    if (id) await stampPortalCredentialEpoch(id);
+  } catch {
+    // best-effort
+  }
 }

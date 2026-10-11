@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidationError } from '@/lib/validation';
 import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { useBirths } from '@/lib/hooks/useBirths';
@@ -62,7 +63,7 @@ export default function BirthsPage() {
 
   // Header stat chips — computed from data already loaded on this page,
   // unaffected by the search box (same as the patients header).
-  const thisMonthPrefix = new Date().toISOString().slice(0, 7);
+  const thisMonthPrefix = todayIso().slice(0, 7);
   const birthStats = useMemo(() => {
     const all = births || [];
     return {
@@ -91,8 +92,10 @@ export default function BirthsPage() {
       showToast(t('births.registeredSuccess'), 'success');
       setShowForm(false);
       setForm({ childFirstName: '', childSurname: '', childGender: 'Male', dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '', motherName: '', motherAge: 0, motherNationality: 'South Sudanese', fatherName: '', fatherNationality: 'South Sudanese', birthWeight: 3000, birthType: 'single', deliveryType: 'normal', attendedBy: '', registeredBy: '', state: '', county: '', certificateNumber: '' });
-    } catch {
-      showToast(t('births.registerFailed'), 'error');
+    } catch (err) {
+      // The service says what is missing (a facility, an organization); the
+      // generic message cannot.
+      showToast(err instanceof ValidationError ? err.message : t('births.registerFailed'), 'error');
     }
   };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Wallet, CalendarClock,
   Receipt, Printer, Search,
@@ -198,35 +198,50 @@ export default function BillingTab({
   const [refundAmount, setRefundAmount] = useState(0);
   const [refundReason, setRefundReason] = useState('');
   const [processingRefund, setProcessingRefund] = useState(false);
+  // Synchronous in-flight latch (state is async) + one nonce per opened dialog:
+  // the idempotency key is derived from it so a double click or retry replays
+  // the same refund instead of posting a second one.
+  const refundInFlight = useRef(false);
+  const refundNonce = useRef('');
 
-  const refundablePayments = (data?.payments ?? []).filter(p => p.method !== 'insurance' && p.method !== 'waiver');
+  // What is left to give back on a payment. The service is the authority on
+  // this; the dialog mirrors it so its default and its limit are ones the
+  // service will accept.
+  const refundableAmount = (p: { amount: number; refundedAmount?: number }) =>
+    Math.max(0, Math.round((p.amount - (p.refundedAmount ?? 0)) * 100) / 100);
+  const refundablePayments = (data?.payments ?? []).filter(p =>
+    p.method !== 'insurance' && p.method !== 'waiver' && p.status === 'posted' && refundableAmount(p) > 0);
   const selectedRefundPayment = refundablePayments.find(p => p._id === refundPaymentId);
 
   const openRefund = () => {
     const first = refundablePayments[0];
     setRefundPaymentId(first?._id ?? '');
-    setRefundAmount(first?.amount ?? 0);
+    setRefundAmount(first ? refundableAmount(first) : 0);
     setRefundReason('');
+    refundNonce.current = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
     setShowRefund(true);
   };
 
   const handleRefundPaymentChange = (id: string) => {
     setRefundPaymentId(id);
     const p = refundablePayments.find(x => x._id === id);
-    setRefundAmount(p?.amount ?? 0);
+    setRefundAmount(p ? refundableAmount(p) : 0);
   };
 
   const handleIssueRefund = async () => {
+    if (refundInFlight.current) return;
     if (!selectedRefundPayment) { showToast(t('billing.selectPayment') || 'Select a payment to refund', 'error'); return; }
     if (!refundReason.trim()) { showToast(t('billing.reasonRequired') || 'A reason is required', 'error'); return; }
-    if (refundAmount <= 0 || refundAmount > selectedRefundPayment.amount) {
+    if (refundAmount <= 0 || refundAmount > refundableAmount(selectedRefundPayment)) {
       showToast(t('billing.invalidRefundAmount') || 'Refund amount must be between 0 and the payment amount', 'error');
       return;
     }
+    refundInFlight.current = true;
     setProcessingRefund(true);
     try {
       const svc = await import('@/lib/services/payment-service');
       await svc.issueRefund({
+        idempotencyKey: `refund:${selectedRefundPayment._id}:${Math.round(refundAmount * 100)}:${refundNonce.current}`,
         paymentId: selectedRefundPayment._id,
         patientId: patient._id,
         patientName,
@@ -244,10 +259,15 @@ export default function BillingTab({
       reloadPayments();
       loadAll();
     } catch (err) {
+      // Keep the dialog open (and the key) so a retry resumes safely.
       console.error('Failed to issue refund:', err);
-      showToast(t('billing.refundFailed') || 'Failed to issue refund', 'error');
+      const detail = err instanceof Error && err.message ? err.message : '';
+      const base = t('billing.refundFailed') || 'Failed to issue refund';
+      showToast(detail ? `${base}: ${detail}` : base, 'error');
+    } finally {
+      refundInFlight.current = false;
+      setProcessingRefund(false);
     }
-    setProcessingRefund(false);
   };
 
   // ─── Adjustment / write-off ───

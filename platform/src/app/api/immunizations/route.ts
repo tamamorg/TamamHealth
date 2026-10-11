@@ -102,9 +102,15 @@ async function postHandler(request: NextRequest) {
       else delete body.orgId;
     }
     const { createImmunization } = await import('@/lib/services/immunization-service');
-    const immunization = await createImmunization(body as Parameters<typeof createImmunization>[0]);
+    const immunization = await createImmunization(
+      body as Parameters<typeof createImmunization>[0],
+      (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
+    );
     return NextResponse.json({ immunization }, { status: 201 });
   } catch (err) {
+    if (err instanceof Error && err.name === 'ValidationError') {
+      return NextResponse.json({ error: err.message, fields: (err as Error & { fields?: Record<string, string> }).fields }, { status: 400 });
+    }
     logApiError('[API /immunizations POST]', err);
     return serverError();
   }

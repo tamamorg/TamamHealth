@@ -1,4 +1,5 @@
 import { handoffsDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { ShiftHandoffDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import type { DataScope } from './data-scope';
@@ -39,12 +40,14 @@ export async function getLatestHandoff(facilityId?: string): Promise<ShiftHandof
 export async function createHandoff(
   data: Omit<ShiftHandoffDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'signedAt' | 'status'>,
 ): Promise<ShiftHandoffDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'shift handoff');
   const db = handoffsDB();
   const now = new Date().toISOString();
   const doc: ShiftHandoffDoc = {
     _id: `handoff-${uuidv4()}`,
     type: 'shift_handoff',
     ...data,
+    orgId,
     signedAt: now,
     status: 'signed',
     createdAt: now,

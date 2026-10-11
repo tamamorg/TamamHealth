@@ -1,4 +1,5 @@
 import { facilityAssessmentsDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { FacilityAssessmentDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import { emitSyncEvent } from './sync-event-service';
@@ -19,6 +20,7 @@ export async function getAssessmentsByFacility(facilityId: string): Promise<Faci
 }
 
 export async function createAssessment(data: Omit<FacilityAssessmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<FacilityAssessmentDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'facility assessment');
   const db = facilityAssessmentsDB();
   const now = new Date().toISOString();
   const id = `assess-${uuidv4()}`;
@@ -26,6 +28,7 @@ export async function createAssessment(data: Omit<FacilityAssessmentDoc, '_id' |
     _id: id,
     type: 'facility_assessment',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

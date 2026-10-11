@@ -284,7 +284,78 @@ export interface AdmitPatientInput {
   encounterId?: string;
 }
 
+const ADMISSION_CLAIM_STALE_MS = 30_000;
+
+/**
+ * Serialise admissions per patient+facility on this device. The duplicate
+ * check inside admitPatient is read-then-write, and the bed compare-and-swap
+ * only protects admissions that pick a bed; a double tap on a bedless admit
+ * would pass both checks twice. The claim is a `_local/` document keyed on the
+ * patient (the same pattern patient-service uses for identifiers): the second
+ * writer gets a 409 from the database rather than from a check it can race.
+ * It is held only for the duration of the admit and always released; a claim
+ * older than ADMISSION_CLAIM_STALE_MS (a crashed tab) is taken over.
+ */
+async function claimAdmission(data: AdmitPatientInput): Promise<{ claimId: string; token: string }> {
+  const db = wardDB();
+  const claimId = `_local/admission_claim_${data.facilityId}_${data.patientId}`;
+  // The token identifies THIS call's claim, so a slow admit that outlives the
+  // stale window cannot delete the claim a later caller took over from it.
+  const token = uuidv4();
+  const put = () => db.put({ _id: claimId, claimedAt: new Date().toISOString(), token } as never);
+  try {
+    await put();
+    return { claimId, token };
+  } catch (err) {
+    const e = err as { name?: string; status?: number } | undefined;
+    if (!(e && (e.name === 'conflict' || e.status === 409))) throw err;
+  }
+  type ClaimDoc = { _id: string; _rev: string; claimedAt?: string };
+  let holder = null as ClaimDoc | null;
+  try { holder = await db.get(claimId) as unknown as ClaimDoc; } catch { holder = null; }
+  const age = holder?.claimedAt ? Date.now() - new Date(holder.claimedAt).getTime() : Infinity;
+  if (holder && age < ADMISSION_CLAIM_STALE_MS) {
+    throw new WardWorkflowError(
+      `${data.patientName} is already being admitted. Wait a moment and check the ward list.`,
+      'DUPLICATE_ADMISSION',
+    );
+  }
+  try {
+    if (holder) await db.remove({ _id: holder._id, _rev: holder._rev } as never);
+    await put();
+    return { claimId, token };
+  } catch {
+    throw new WardWorkflowError(
+      `${data.patientName} is already being admitted. Wait a moment and check the ward list.`,
+      'DUPLICATE_ADMISSION',
+    );
+  }
+}
+
+async function releaseAdmissionClaim(claimId: string, token: string): Promise<void> {
+  try {
+    const db = wardDB();
+    const existing = await db.get(claimId) as { _id: string; _rev: string; token?: string };
+    if (existing.token !== token) return; // someone else's claim now
+    await db.remove(existing as never);
+  } catch {
+    /* already gone - a stale claim self-expires */
+  }
+}
+
 export async function admitPatient(
+  data: AdmitPatientInput,
+  actor?: { id?: string; role?: UserRole },
+): Promise<AdmissionDoc> {
+  const { claimId, token } = await claimAdmission(data);
+  try {
+    return await admitPatientGuarded(data, actor);
+  } finally {
+    await releaseAdmissionClaim(claimId, token);
+  }
+}
+
+async function admitPatientGuarded(
   data: AdmitPatientInput,
   actor?: { id?: string; role?: UserRole },
 ): Promise<AdmissionDoc> {
@@ -388,6 +459,27 @@ export async function admitPatient(
       });
     } catch (err) {
       console.warn('[ward] could not close the encounter on admission (admission was saved):', err);
+      // The admission stands, but the visit is still open and the patient
+      // would keep showing on outpatient queues. Leave a durable repair
+      // record (same shape as the encounter projection) instead of only a
+      // console line nobody reads.
+      try {
+        const { upsertWorkflowRepair } = await import('./workflow-repair-service');
+        await upsertWorkflowRepair(`repair:admission-encounter:${doc._id}`, {
+          workflow: 'encounter_projection',
+          patientId: data.patientId,
+          patientName: data.patientName,
+          encounterId,
+          admissionId: doc._id,
+          hospitalId: data.facilityId,
+          orgId: doc.orgId,
+          status: 'open',
+          currentStep: 'close_encounter_on_admission',
+          lastError: err instanceof Error ? err.message : 'Encounter could not be closed on admission',
+        });
+      } catch (repairErr) {
+        console.warn('[ward] could not record the admission/encounter repair:', repairErr);
+      }
     }
   }
 

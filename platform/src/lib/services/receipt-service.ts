@@ -109,32 +109,48 @@ export function printReceipt(receipt: ReceiptData): void {
  * "Receipt sent" UI on it. A cashier being told an email went out when it
  * didn't is worse than surfacing the failure.
  */
-export async function emailReceipt(receipt: ReceiptData, toEmail: string): Promise<boolean> {
+export type ReceiptEmailFailure = 'forbidden' | 'no_email' | 'rate_limited' | 'not_found' | 'failed';
+export interface ReceiptEmailResult {
+  delivered: boolean;
+  /** Set when delivered is false; maps the route's status codes (403/422/429/404). */
+  failure?: ReceiptEmailFailure;
+}
+
+/**
+ * Same as {@link emailReceipt} but keeps the reason a send was refused so the UI
+ * can say why. The server builds the subject/body from the stored payment and
+ * only mails the patient's address on file; `paymentId` binds the request.
+ */
+export async function sendReceiptEmail(receipt: ReceiptData, toEmail: string, paymentId?: string): Promise<ReceiptEmailResult> {
   try {
-    // Goes through apiFetch so the CSRF token from the session cookie is
-    // auto-attached.
     const { apiFetch } = await import('@/lib/api-fetch');
     const response = await apiFetch('/api/receipts/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: toEmail,
-        subject: `Payment Receipt — ${receipt.receiptNumber}`,
-        html: generateReceiptHTML(receipt),
+        ...(paymentId ? { paymentId } : {}),
         receiptNumber: receipt.receiptNumber,
-        amount: receipt.amount,
-        currency: receipt.currency,
       }),
     });
-
     if (!response.ok) {
       console.warn(`[Receipt Service] Email API returned ${response.status} for receipt ${receipt.receiptNumber}`);
-      return false;
+      const failure: ReceiptEmailFailure =
+        response.status === 403 ? 'forbidden'
+        : response.status === 422 ? 'no_email'
+        : response.status === 429 ? 'rate_limited'
+        : response.status === 404 ? 'not_found'
+        : 'failed';
+      return { delivered: false, failure };
     }
     const body = await response.json().catch(() => null) as { delivered?: boolean } | null;
-    return body?.delivered === true;
+    return body?.delivered === true ? { delivered: true } : { delivered: false, failure: 'failed' };
   } catch (err) {
     console.warn('[Receipt Service] Email send failed', err);
-    return false;
+    return { delivered: false, failure: 'failed' };
   }
+}
+
+export async function emailReceipt(receipt: ReceiptData, toEmail: string, paymentId?: string): Promise<boolean> {
+  return (await sendReceiptEmail(receipt, toEmail, paymentId)).delivered;
 }

@@ -176,6 +176,8 @@ export interface VerifiedTokenPayload {
   /** Second-factor enrolment is required for this role and not yet done. */
   /** Password epoch (unix seconds) — see createToken. */
   pwdAt?: number;
+  /** Expiry (unix seconds). */
+  exp?: number;
   /** Issued-at (unix seconds) — drives sliding session renewal. */
   iat?: number;
   /** "Keep me signed in" — see createToken. Absent on tokens minted before

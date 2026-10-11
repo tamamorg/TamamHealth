@@ -8,7 +8,8 @@
  * The rule must stop that without refusing the ordinary case it resembles — a
  * device editing a patient while holding a copy from before they activated.
  */
-import { PORTAL_ENROL_ROLES, applyPortalCredentialAuthority } from '@/lib/sync/portal-credential-authority';
+import { PORTAL_ENROL_ROLES, applyPortalCredentialAuthority, canIssuePortalInvite } from '@/lib/sync/portal-credential-authority';
+import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 
 const base = { _id: 'pat-1', type: 'patient', orgId: 'org-a', firstName: 'Mary', phone: '0911' };
 const activated = {
@@ -62,11 +63,20 @@ describe('a new patient: registration may issue an invitation, nothing more', ()
     expect(applyPortalCredentialAuthority(invited, null, 'front_desk')).toEqual({ doc: invited, changed: false });
   });
 
-  test('a role that may not enrol cannot register a patient with portal access', () => {
-    const { doc, changed } = applyPortalCredentialAuthority(invited, null, 'nurse');
-    expect(changed).toBe(true);
-    expect(Object.keys(doc).filter(key => key.startsWith('portal'))).toEqual([]);
-    expect(doc.firstName).toBe('Mary');
+  test('a clinical role that registers the patient issues the invitation too', () => {
+    for (const role of ['nurse', 'doctor', 'clinical_officer', 'midwife']) {
+      const { doc, changed } = applyPortalCredentialAuthority(invited, null, role);
+      expect(changed).toBe(false);
+      expect(doc.portalInviteTokenHash).toBe(invited.portalInviteTokenHash);
+    }
+  });
+
+  test('a role that cannot register patients cannot create one with portal access', () => {
+    for (const role of ['pharmacist', 'lab_tech', undefined]) {
+      const { doc, changed } = applyPortalCredentialAuthority(invited, null, role);
+      expect(changed).toBe(true);
+      expect(Object.keys(doc).filter(key => key.startsWith('portal'))).toEqual([]);
+    }
   });
 
   test('nobody can register a patient with a ready-made password or a login history', () => {
@@ -84,7 +94,27 @@ test('other document types and tombstones are left alone', () => {
   expect(applyPortalCredentialAuthority({ ...activated, _deleted: true }, activated, 'nurse').changed).toBe(false);
 });
 
-test('the enrol roles exclude clinical roles', () => {
+test('re-issuing from a chart stays with desk and records roles', () => {
   expect(PORTAL_ENROL_ROLES).not.toContain('nurse');
   expect(PORTAL_ENROL_ROLES).not.toContain('doctor');
+});
+
+describe('the registration form and the gateway agree on who issues an invitation', () => {
+  const invited = {
+    ...base, portalUsername: 'mary.deng.0042', portalEnabledAt: '2026-10-10',
+    portalInviteTokenHash: 'desk-hash', portalInviteExpiresAt: '2026-10-24',
+  };
+
+  // The form offers the account exactly when `canIssuePortalInvite` says so.
+  // A role it said yes to and the gateway then stripped is a slip that never
+  // activates, so every role that can register must have its invitation kept.
+  test.each(DOC_WRITE_ROLES.patient.map(role => [role]))('%s', role => {
+    expect(canIssuePortalInvite(role)).toBe(true);
+    expect(applyPortalCredentialAuthority(invited, null, role).doc.portalInviteTokenHash).toBe('desk-hash');
+  });
+
+  test('no role, no offer', () => {
+    expect(canIssuePortalInvite(undefined)).toBe(false);
+    expect(canIssuePortalInvite('')).toBe(false);
+  });
 });

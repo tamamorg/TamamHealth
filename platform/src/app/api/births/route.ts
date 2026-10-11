@@ -97,9 +97,15 @@ async function postHandler(request: NextRequest) {
       else delete body.orgId;
     }
     const { createBirth } = await import('@/lib/services/birth-service');
-    const birth = await createBirth(body as Parameters<typeof createBirth>[0]);
+    const birth = await createBirth(
+      body as Parameters<typeof createBirth>[0],
+      (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
+    );
     return NextResponse.json({ birth }, { status: 201 });
   } catch (err) {
+    if (err instanceof Error && err.name === 'ValidationError') {
+      return NextResponse.json({ error: err.message, fields: (err as Error & { fields?: Record<string, string> }).fields }, { status: 400 });
+    }
     logApiError('[API /births POST]', err);
     return serverError();
   }

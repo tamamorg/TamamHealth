@@ -183,6 +183,7 @@ export default function ANCPage() {
       showToast(t('patientNew.toastFillRequired'), 'error');
       return;
     }
+    try {
     await register({
       motherId: form.motherId || `mother-new-${Date.now()}`,
       motherName: form.motherName,
@@ -220,6 +221,10 @@ export default function ANCPage() {
     });
     setShowModal(false);
     resetRegistrationForm();
+    } catch (err) {
+      // Keep the form open: a refused save (e.g. no facility/organisation) must not look saved.
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+    }
   };
 
   // Persist a correction to a saved ANC visit, then close the edit modal.

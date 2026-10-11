@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useRooming } from '@/lib/hooks/useRooming';
 import { BedDouble, Clock, CheckCircle2, ArrowRightLeft, LogIn, Activity, Save, X } from '@/components/icons/lucide';
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
@@ -64,6 +66,8 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
   const router = useRouter();
   const { currentUser } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
   const { entries, loading, error, markArrived, assignRoom, transferClinic, markReady, recordVitals } = useRooming();
   const visibleEntries = patientId ? entries.filter(entry => entry.encounter.patientId === patientId) : entries;
 
@@ -306,9 +310,14 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                     <button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => {
-                        const clinic = window.prompt('Route this patient to which clinic?');
-                        if (clinic?.trim()) {
+                      onClick={async () => {
+                        const clinic = await confirmPrompt({
+                          title: t('confirm.routeClinicTitle', { name: encounter.patientName }),
+                          inputLabel: t('confirm.routeClinicLabel'),
+                          confirmLabel: t('confirm.routeClinicConfirm'),
+                          inputRequired: true,
+                        });
+                        if (clinic) {
                           run(encounter._id, () => transferClinic(encounter._id, clinic, actor), 'Patient re-routed');
                         }
                       }}

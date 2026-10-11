@@ -1,4 +1,5 @@
 import { diseaseAlertsDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { DiseaseAlertDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -80,12 +81,14 @@ export async function deleteAlert(id: string, scope?: DataScope): Promise<boolea
 export async function createAlert(
   data: Omit<DiseaseAlertDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<DiseaseAlertDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.hospitalId, patientId: data.patientId }, 'disease alert');
   const db = diseaseAlertsDB();
   const now = new Date().toISOString();
   const doc: DiseaseAlertDoc = {
     _id: `alert-${uuidv4()}`,
     type: 'disease_alert',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   } as DiseaseAlertDoc;

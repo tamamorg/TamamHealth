@@ -208,6 +208,8 @@ export interface PaymentDoc extends BaseDoc {
   processedByName: string;
   reversedAt?: string;
   reversalReason?: string;
+  /** Sum of processed refunds against this payment; status becomes 'refunded' when it equals `amount`. */
+  refundedAmount?: number;
   // Allocation (how this payment was applied)
   allocations?: PaymentAllocation[];
   notes?: string;

@@ -39,10 +39,20 @@ import { dirname } from 'node:path';
 // ---------- Constants ----------------------------------------------------
 
 /**
- * Hardcoded fallback list of databases. Mirrors DB_TABLE_MAP in
- * platform/src/app/api/sync/route.ts. We attempt to read that file at
- * startup (best-effort) and fall back to this set if the platform source is
- * not on disk (the worker container does not bundle the platform tree).
+ * Hardcoded list of databases. MUST equal the keys of DB_TABLE_MAP in
+ * platform/src/modules/analytics/api/sync-route.ts (the route file
+ * platform/src/app/api/sync/route.ts only re-exports it). The worker image
+ * does not bundle the platform tree, so in a container this is the list that
+ * is actually used; the autodiscovery in loadDbList() only helps when the
+ * platform source is on disk.
+ *
+ * Do NOT add a database the platform does not map: /api/sync answers 400 for
+ * it. Databases deliberately absent from the map (encounters, clinical_notes,
+ * patient_transfers, history_entries, ...) are facility-operational PHI that
+ * is not projected nationally; see the exclusion list in sync-route.ts.
+ *
+ * platform/src/__tests__/architecture/sync-worker-db-list.test.ts fails the
+ * build when this list and the platform map differ.
  */
 const FALLBACK_DBS = Object.freeze([
   'tamamhealth_patients',
@@ -96,40 +106,49 @@ const FALLBACK_DBS = Object.freeze([
   // Program enrollment writeback (ART/TB/PMTCT/ANC/Nutrition/EPI/NCD care-cascade
   // indicators). Keep aligned with DB_TABLE_MAP in platform/src/app/api/sync/route.ts.
   'tamamhealth_program_enrollments',
+  // Medication administration (MAR) writeback. Keep aligned with DB_TABLE_MAP.
+  'tamamhealth_medication_administrations',
 ]);
 
 /**
- * Try to read DB names off the platform's route.ts. If the platform tree is
+ * Try to read DB names off the platform's sync-route.ts. If the platform tree is
  * present at runtime (local docker-compose with bind mounts, or a developer's
  * machine), we'll auto-pick up newly-added databases without needing to redeploy
  * the worker. Otherwise, fall back to the constant above.
  */
+/**
+ * Extract the tamamhealth_* keys of the `const DB_TABLE_MAP = { ... };` literal
+ * from the platform's route source. Anchored on the declaration (`const
+ * DB_TABLE_MAP ... = {`) because the same identifier also appears in prose
+ * comments earlier in the file.
+ */
+function parseDbTableMapKeys(src) {
+  const blockMatch = src.match(/const\s+DB_TABLE_MAP\b[^=]*=\s*{([\s\S]*?)\n};/);
+  if (!blockMatch) return [];
+  return [...new Set(
+    [...blockMatch[1].matchAll(/^\s*(tamamhealth_[A-Za-z0-9_]+)\s*:/gm)].map((m) => m[1]),
+  )];
+}
+
 async function loadDbList() {
   const candidatePaths = [
     process.env.PLATFORM_SYNC_ROUTE_PATH,
-    '/app/platform/src/app/api/sync/route.ts',
-    '../platform/src/app/api/sync/route.ts',
+    '/app/platform/src/modules/analytics/api/sync-route.ts',
+    '../platform/src/modules/analytics/api/sync-route.ts',
   ].filter(Boolean);
 
   for (const path of candidatePaths) {
     try {
-      const src = await readFile(path, 'utf8');
-      // Extract identifiers between the DB_TABLE_MAP { ... }; block.
-      // The route.ts uses `tamamhealth_<name>: '<table>'` entries, so a
-      // simple regex over keys suffices and is more robust than parsing TS.
-      const blockMatch = src.match(/DB_TABLE_MAP[^{]*{([\s\S]*?)};/);
-      if (!blockMatch) continue;
-      const keys = [...blockMatch[1].matchAll(/(tamamhealth_[A-Za-z0-9_]+)\s*:/g)]
-        .map((m) => m[1]);
+      const keys = parseDbTableMapKeys(await readFile(path, 'utf8'));
       if (keys.length) {
         log('info', `loaded ${keys.length} db names from ${path}`);
-        return Object.freeze([...new Set(keys)]);
+        return Object.freeze(keys);
       }
     } catch {
       // try next
     }
   }
-  log('info', `using fallback db list (${FALLBACK_DBS.length} entries)`);
+  log('info', `using built-in db list (${FALLBACK_DBS.length} entries)`);
   return FALLBACK_DBS;
 }
 
@@ -376,6 +395,32 @@ async function postSync({ syncUrl, secret, db, changes, timeoutMs }) {
   return parsed;
 }
 
+// ---------- Dead-letter ledger --------------------------------------------
+
+/** Reserved top-level state key; never a database name. */
+const DEAD_LETTER_KEY = '__deadLetters';
+const MAX_DEAD_LETTER_RECORDS = 200;
+
+/**
+ * Persist the fact that a batch was skipped after exhausting retries. The
+ * state file is the only durable store the worker has, so the ledger lives
+ * there: `total` counts every skipped doc ever (never trimmed), `records`
+ * keeps the most recent MAX_DEAD_LETTER_RECORDS entries so the file cannot
+ * grow without bound.
+ */
+function recordDeadLetter(state, { db, from, to, docs, batch }) {
+  const prev = state[DEAD_LETTER_KEY] || { total: 0, records: [] };
+  const records = [
+    ...(Array.isArray(prev.records) ? prev.records : []),
+    { db, from, to, docs, batch, at: new Date().toISOString() },
+  ].slice(-MAX_DEAD_LETTER_RECORDS);
+  state[DEAD_LETTER_KEY] = { total: (Number(prev.total) || 0) + docs, records };
+}
+
+function deadLetterTotal(state) {
+  return Number(state?.[DEAD_LETTER_KEY]?.total) || 0;
+}
+
 // ---------- Per-db poll cycle -------------------------------------------
 
 async function pollDatabase({ env, state, db }) {
@@ -430,6 +475,7 @@ async function pollDatabase({ env, state, db }) {
       state[db] = { seq: since, errorRetries: retries, lastUpdated: new Date().toISOString() };
       return { db, processed: changes.length, advancedTo: since, response: resp, heldForRetry: true };
     }
+    recordDeadLetter(state, { db, from: since, to: newSeq, docs: errorCount, batch: changes.length });
     log('error', `${db}: DEAD-LETTER — ${errorCount} doc(s) failed ${MAX_ERROR_RETRIES} retries; advancing past to unblock the stream. Those docs did NOT reach national analytics — investigate /api/sync logs`, { from: since, to: newSeq });
     state[db] = { seq: newSeq, errorRetries: 0, lastUpdated: new Date().toISOString() };
     return { db, processed: changes.length, advancedTo: newSeq, response: resp, deadLettered: errorCount };
@@ -461,7 +507,10 @@ export async function runOnce({ env, state, dbs }) {
 
 async function mainLoop({ env, dbs }) {
   let state = await loadState(env.STATE_FILE);
-  await saveHeartbeat(env.HEARTBEAT_FILE, { status: 'starting', databases: dbs.length });
+  await saveHeartbeat(env.HEARTBEAT_FILE, { status: 'starting', databases: dbs.length, deadLetteredDocs: deadLetterTotal(state) });
+  if (deadLetterTotal(state) > 0) {
+    log('critical', `${deadLetterTotal(state)} document(s) were dead-lettered by earlier runs and never reached analytics; see ${DEAD_LETTER_KEY} in ${env.STATE_FILE}`);
+  }
 
   // Empty state means either a genuine first run or a lost state file. We
   // cannot tell them apart locally, so ask the platform for the checkpoints it
@@ -527,6 +576,9 @@ async function mainLoop({ env, dbs }) {
       status: totalErrors > 0 ? 'degraded' : 'ok',
       totalProcessed,
       totalErrors,
+      // Documents skipped after 5 failed retries. Non-zero means analytics is
+      // missing data: see __deadLetters in the state file for which batches.
+      deadLetteredDocs: deadLetterTotal(state),
     }).catch((err) => log('error', `heartbeat write failed: ${err.message}`));
 
     if (totalErrors > 0 && totalProcessed === 0) {
@@ -583,5 +635,9 @@ export {
   pollDatabase,
   recoverStateFromPlatform,
   splitCouchAuth,
+  parseDbTableMapKeys,
+  recordDeadLetter,
+  deadLetterTotal,
+  DEAD_LETTER_KEY,
   FALLBACK_DBS,
 };

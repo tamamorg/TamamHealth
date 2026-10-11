@@ -33,6 +33,7 @@ import NextOfKinSection from './sections/NextOfKinSection';
 import CoverageSection from './sections/CoverageSection';
 import { useRoleFlag } from '@/lib/settings/useRoleSetting';
 import { mintPortalInvite } from '@/modules/identity/client';
+import { canIssuePortalInvite } from '@/lib/sync/portal-credential-authority';
 import PortalSlipDialog from '@/components/patients/PortalSlipDialog';
 import type { PortalSlip } from '@/lib/patient-portal-slip';
 import '@/components/patients/portal-slip.css';
@@ -137,6 +138,11 @@ export function PatientRegistrationForm({
    * the chart's Demographics tab, which is to say it mostly did not happen.
    */
   const [portalAccount, setPortalAccount] = useState(true);
+  // Offered only where the sync gateway will keep the invitation: a role it
+  // accepts one from, in an organization whose patients it carries. Anyone
+  // else registering would hand over a slip that never works.
+  const canIssuePortal = canIssuePortalInvite(currentUser?.role) && Boolean(currentUser?.orgId);
+  const offerPortalAccount = portalAccount && canIssuePortal;
   /** The slip to hand over, and what registration does once it is dismissed. */
   const [portalSlip, setPortalSlip] = useState<PortalSlip | null>(null);
   const afterSlip = useRef<(() => void) | null>(null);
@@ -455,7 +461,7 @@ export function PatientRegistrationForm({
       // the code lives in this function until the slip is dismissed. Null
       // means this browser cannot hash it safely — the patient is still
       // registered, and the account is issued from the chart instead.
-      const invite = portalAccount ? await mintPortalInvite() : null;
+      const invite = offerPortalAccount ? await mintPortalInvite() : null;
       const result = await createPatient(buildPatientDoc({
         form,
         additionalNok,
@@ -537,7 +543,7 @@ export function PatientRegistrationForm({
             || facilities.find(f => f.id === form.registrationFacility)?.name,
         });
       } else {
-        if (portalAccount) showToast(t('pslip.unavailable'), 'warning');
+        if (offerPortalAccount) showToast(t('pslip.unavailable'), 'warning');
         proceed();
       }
     } catch (err) {
@@ -702,16 +708,22 @@ export function PatientRegistrationForm({
                   footer={(
                     <div className="pslip-offer">
                       <p className="pslip-offer-title">{t('pslip.offerTitle')}</p>
-                      <label className="pslip-offer-check">
-                        <input
-                          type="checkbox"
-                          checked={portalAccount}
-                          onChange={e => setPortalAccount(e.target.checked)}
-                          disabled={submitting || portalSlip !== null}
-                        />
-                        <span>{t('pslip.offerLabel')}</span>
-                      </label>
-                      <p className="pslip-offer-hint">{t('pslip.offerHint')}</p>
+                      {canIssuePortal ? (
+                        <>
+                          <label className="pslip-offer-check">
+                            <input
+                              type="checkbox"
+                              checked={portalAccount}
+                              onChange={e => setPortalAccount(e.target.checked)}
+                              disabled={submitting || portalSlip !== null}
+                            />
+                            <span>{t('pslip.offerLabel')}</span>
+                          </label>
+                          <p className="pslip-offer-hint">{t('pslip.offerHint')}</p>
+                        </>
+                      ) : (
+                        <p className="pslip-offer-note">{t('pslip.offerElsewhere')}</p>
+                      )}
                     </div>
                   )}
                 />

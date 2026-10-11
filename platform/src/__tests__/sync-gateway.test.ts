@@ -29,6 +29,9 @@ describe('server-authorized CouchDB sync gateway', () => {
     const audit = resolveGatewayDatabase('tamamhealth_audit_log--org-clinic-a', 'org-clinic-a')!;
     expect(gatewayRequestAllowed(audit, 'POST', ['_bulk_docs'])).toBe(true);
     expect(gatewayRequestAllowed(audit, 'POST', ['_all_docs'])).toBe(false);
+    // Only a replication checkpoint lives below an internal endpoint.
+    expect(gatewayRequestAllowed(fee, 'POST', ['_all_docs', 'queries'])).toBe(false);
+    expect(gatewayRequestAllowed(fee, 'GET', ['_local', 'checkpoint-1'])).toBe(true);
     expect(gatewayRequestAllowed(audit, 'POST', ['_revs_diff'])).toBe(true);
   });
 

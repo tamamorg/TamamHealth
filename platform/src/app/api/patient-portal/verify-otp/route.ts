@@ -59,6 +59,15 @@ export async function POST(req: NextRequest) {
     const db = patientsDB() as any;
     const patient = await db.get(challengeId);
 
+    // A patient suspended between password proof and code entry gets no session.
+    // Answers like a bad code so it cannot reveal whose access was withdrawn.
+    if (patient.portalDisabledAt) {
+      return NextResponse.json(
+        { error: 'That code is not valid or has expired. Please sign in again.' },
+        { status: 401 },
+      );
+    }
+
     // "Is anyone actually using the portal we enrolled them in?" was
     // unanswerable — nothing recorded a portal sign-in. Best-effort, and never
     // in the way of a patient reaching their own records.

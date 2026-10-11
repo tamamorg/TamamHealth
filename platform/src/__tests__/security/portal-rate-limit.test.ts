@@ -14,7 +14,13 @@
  * IP freely, and what is worth bounding is access to one person's record.
  */
 const mockRateLimit = jest.fn();
-jest.mock('@/lib/rate-limit', () => ({ rateLimit: (...a: unknown[]) => mockRateLimit(...a) }));
+jest.mock('@/lib/rate-limit', () => ({
+  rateLimit: (...a: unknown[]) => mockRateLimit(...a),
+  resetRateLimit: jest.fn(async () => undefined),
+  refundRateLimit: jest.fn(async () => undefined),
+}));
+// The live session check reads the patient document; this file is about the floor.
+jest.mock('@/lib/db', () => ({ patientsDB: () => ({ get: async () => ({ _id: 'p' }) }) }));
 
 import { NextResponse } from 'next/server';
 import { verifyPatientToken, guardPortalWrite, createPatientToken } from '@/lib/patient-portal-auth';

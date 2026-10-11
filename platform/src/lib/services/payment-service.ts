@@ -39,7 +39,7 @@ import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
-import { nextSequence } from './doc-counter';
+import { nextSequence, getDeviceCode } from './doc-counter';
 import { createLedgerEntry, getPatientBalance } from './ledger-service';
 import { jubaDate } from '../time-juba';
 import { getSettings } from '../settings/settings-store';
@@ -389,56 +389,99 @@ export async function updatePaymentStatus(
   return pmt;
 }
 
+export type PaymentReversalErrorCode =
+  | 'PAYMENT_NOT_REVERSIBLE' | 'PAYMENT_REFUNDED';
+
+export class PaymentOperationError extends Error {
+  constructor(public readonly code: PaymentReversalErrorCode | RefundErrorCode, message: string) {
+    super(message);
+    this.name = 'PaymentOperationError';
+  }
+}
+
+/**
+ * Void a posted payment. Returns null ONLY when the payment does not exist;
+ * every other failure throws so the caller can tell "not found" from "failed".
+ *
+ * Safe to retry: the status flip is persisted first, but the ledger credit-back
+ * uses a deterministic idempotency key and is re-ensured on every call, so a
+ * retry after a failed ledger write completes the reversal instead of
+ * returning early with the ledger uncorrected. Bill unsettlement is
+ * idempotent too (it skips payment records already marked reversed).
+ * Refused once any refund has been processed against the payment: the refund
+ * already returned (part of) the money, so a full reversal would double it.
+ */
 export async function reversePayment(
   paymentId: string, reason: string, reversedBy: string, reversedByName: string
 ): Promise<PaymentDoc | null> {
   const db = paymentsDB();
+  let pmt: PaymentDoc;
   try {
-    const pmt = await db.get(paymentId) as PaymentDoc;
-    if (pmt.status === 'reversed') return pmt;
+    pmt = await db.get(paymentId) as PaymentDoc;
+  } catch (err) {
+    const e = err as { status?: number; name?: string } | undefined;
+    if (e && (e.status === 404 || e.name === 'not_found')) return null;
+    throw err;
+  }
+  if (pmt.status === 'refunded' || (pmt.refundedAmount ?? 0) > 0) {
+    throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided');
+  }
+  // A refund document is the record of money returned. issueRefund writes it
+  // before it updates the payment, so a crash in between leaves a `posted`
+  // payment with refundedAmount 0 - the refund documents decide, not the flag.
+  if (pmt.status === 'posted' && (await processedRefundsFor(pmt._id, pmt.patientId)).length > 0) {
+    throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided');
+  }
+  if (pmt.status !== 'posted' && pmt.status !== 'reversed') {
+    throw new PaymentOperationError('PAYMENT_NOT_REVERSIBLE', `A ${pmt.status} payment cannot be voided`);
+  }
 
+  const firstPass = pmt.status !== 'reversed';
+  if (firstPass) {
     pmt.status = 'reversed';
     pmt.reversedAt = new Date().toISOString();
     pmt.reversalReason = reason;
     pmt.updatedAt = pmt.reversedAt;
     const resp = await db.put(pmt);
     pmt._rev = resp.rev;
+  }
 
-    // Reverse the ledger entry (positive = debit = balance increases)
-    await createLedgerEntry({
-      patientId: pmt.patientId,
-      encounterId: pmt.encounterId,
-      entryType: 'payment',
-      amount: pmt.amount, // positive reversal
-      description: `Payment reversal: ${reason}`,
-      referenceId: pmt._id,
-      referenceType: 'payment',
-      facilityId: pmt.facilityId,
-      orgId: pmt.orgId,
-    });
+  // Reverse the ledger entry (positive = debit = balance increases). Keyed so
+  // a retry returns the existing entry rather than posting a second one.
+  await createLedgerEntry({
+    patientId: pmt.patientId,
+    encounterId: pmt.encounterId,
+    entryType: 'payment',
+    amount: pmt.amount, // positive reversal
+    description: `Payment reversal: ${pmt.reversalReason || reason}`,
+    referenceId: pmt._id,
+    referenceType: 'payment',
+    currency: pmt.currency,
+    facilityId: pmt.facilityId,
+    orgId: pmt.orgId,
+    createdBy: reversedBy,
+    idempotencyKey: `payment-reversal:${pmt._id}`,
+  });
 
-    // Undo whatever this payment mirrored onto BillingDoc(s) (see
-    // settleOpenBillsWithPayment). Before that mirror existed this was
-    // symmetric — payments never touched bills, so a reversal had nothing to
-    // undo there. Now a payment can flip a bill to 'partial'/'paid', so
-    // without this a reversed payment credits the ledger back (patient owes
-    // again) while every bill-reading screen still shows the invoice paid —
-    // permanently and silently contradictory. Best-effort: the ledger
-    // reversal above is authoritative and must stand even if a bill can't be
-    // updated; a failure is recorded on the payment doc, not retried here.
-    try {
-      const { unsettleBillsForPayment } = await import('./billing-service');
-      const { failedBillIds } = await unsettleBillsForPayment(pmt._id, pmt.patientId, reversedBy, reversedByName);
-      if (failedBillIds.length > 0) {
-        pmt.billSettlementError = `Reversal could not update bill(s): ${failedBillIds.join(', ')}`;
-        pmt.updatedAt = new Date().toISOString();
-        const resp2 = await db.put(pmt);
-        pmt._rev = resp2.rev;
-      }
-    } catch (err) {
-      console.warn('[payment] could not unsettle bills for reversed payment', pmt._id, err);
+  // Undo whatever this payment mirrored onto BillingDoc(s) (see
+  // settleOpenBillsWithPayment). Without this a reversed payment credits the
+  // ledger back while every bill-reading screen still shows the invoice paid.
+  // Best-effort: the ledger reversal above is authoritative and must stand even
+  // if a bill can't be updated; a failure is recorded on the payment doc.
+  try {
+    const { unsettleBillsForPayment } = await import('./billing-service');
+    const { failedBillIds } = await unsettleBillsForPayment(pmt._id, pmt.patientId, reversedBy, reversedByName);
+    if (failedBillIds.length > 0) {
+      pmt.billSettlementError = `Reversal could not update bill(s): ${failedBillIds.join(', ')}`;
+      pmt.updatedAt = new Date().toISOString();
+      const resp2 = await db.put(pmt);
+      pmt._rev = resp2.rev;
     }
+  } catch (err) {
+    console.warn('[payment] could not unsettle bills for reversed payment', pmt._id, err);
+  }
 
+  if (firstPass) {
     await logAuditSafe('PAYMENT_REVERSED', reversedBy, reversedByName,
       `Reversed payment ${pmt._id}: ${pmt.amount} ${pmt.currency}; reason recorded on the ledger entry`);
 
@@ -450,9 +493,9 @@ export async function reversePayment(
       orgId: pmt.orgId,
       hospitalId: pmt.facilityId,
     });
+  }
 
-    return pmt;
-  } catch { return null; }
+  return pmt;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1565,6 +1608,76 @@ export async function createAdjustment(input: {
 // REFUNDS
 // ═══════════════════════════════════════════════════════════════════
 
+export type RefundErrorCode =
+  | 'PAYMENT_NOT_FOUND' | 'PAYMENT_NOT_REFUNDABLE' | 'INVALID_AMOUNT'
+  | 'REFUND_EXCEEDS_REMAINING' | 'CURRENCY_MISMATCH' | 'PAYMENT_MISMATCH' | 'RETRY_MISMATCH';
+
+const cents = (n: number) => Math.round(n * 100);
+
+/** Processed refund documents against one payment (the single source of "already refunded"). */
+async function processedRefundsFor(paymentId: string, patientId: string): Promise<RefundDoc[]> {
+  const rows = await findByType<RefundDoc>(refundsDB(), 'refund', { patientId }, { indexFields: ['type', 'patientId'] });
+  return rows.filter(r => r.paymentId === paymentId && r.status === 'processed');
+}
+
+const refundLedgerId = (refundId: string) => `ledger-idem-${refundId.replace(/[^A-Za-z0-9._:-]/g, '').slice(0, 120)}`;
+
+/**
+ * Close the check-then-write race in issueRefund. Two callers (a double click
+ * with no idempotency key, two tabs) can both pass the "amount remaining"
+ * check before either document exists. After writing, every caller re-reads
+ * ALL processed refunds and walks them in a deterministic order: refunds whose
+ * ledger entry is already posted first (they have been honoured), then by
+ * createdAt, then _id. A refund that would push the running total past the
+ * payment amount loses; if that is this caller's refund it is voided (status
+ * `failed`, no ledger entry is ever posted for it) and the caller is refused.
+ */
+async function voidIfOverRefunded(doc: RefundDoc, paymentAmount: number): Promise<void> {
+  const rows = await processedRefundsFor(doc.paymentId, doc.patientId);
+  if (!rows.some(r => r._id === doc._id)) rows.push(doc);
+  const posted = new Set<string>();
+  for (const r of rows) {
+    try { await getDB('tamamhealth_ledger').get(refundLedgerId(r._id)); posted.add(r._id); } catch { /* not posted */ }
+  }
+  rows.sort((a, b) =>
+    (posted.has(b._id) ? 1 : 0) - (posted.has(a._id) ? 1 : 0)
+    || (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0)
+    || (a._id < b._id ? -1 : a._id > b._id ? 1 : 0));
+  const cap = cents(paymentAmount);
+  let running = 0;
+  for (const r of rows) {
+    if (running + cents(r.amount) > cap) {
+      if (r._id !== doc._id) continue; // another caller's loser; it voids itself
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const fresh = await refundsDB().get(doc._id) as RefundDoc & { voidReason?: string };
+          fresh.status = 'failed';
+          fresh.voidReason = 'Concurrent refund exceeded the amount remaining on the payment';
+          fresh.updatedAt = new Date().toISOString();
+          await refundsDB().put(fresh);
+          break;
+        } catch (err) {
+          if ((err as { status?: number }).status !== 409 || attempt === 2) throw err;
+        }
+      }
+      throw new PaymentOperationError('REFUND_EXCEEDS_REMAINING', 'Refund exceeds the amount remaining on this payment');
+    }
+    running += cents(r.amount);
+  }
+}
+
+/**
+ * Refund (part of) a posted payment. patientId / orgId / facility / currency
+ * come from the PAYMENT document; the caller's copies are only checked against
+ * it. Refused for a payment that is not posted (reversed, voided, already fully
+ * refunded, pending, failed), a non-positive / non-finite amount, an amount
+ * above what is left after earlier processed refunds, or a currency mismatch.
+ *
+ * Idempotent when `idempotencyKey` is given: a retry with the same key and the
+ * same operation resumes the ledger / payment updates without posting twice.
+ * When the payment becomes fully refunded it is marked `refunded` and the bill
+ * settlements it made are undone like a reversal.
+ */
 export async function issueRefund(input: {
   idempotencyKey?: string;
   paymentId: string;
@@ -1580,48 +1693,151 @@ export async function issueRefund(input: {
   orgId?: string;
 }): Promise<RefundDoc> {
   const db = refundsDB();
+  const pdb = paymentsDB();
   const now = new Date().toISOString();
+  const fail = (code: RefundErrorCode, msg: string) => new PaymentOperationError(code, msg);
 
-  let doc: RefundDoc = {
-    _id: input.idempotencyKey ? `ref-${encodeURIComponent(input.idempotencyKey)}` : `ref-${uuidv4()}`,
-    type: 'refund',
-    ...input,
-    currency: input.currency || 'SSP',
-    reference: `REF-${uuidv4().slice(0, 8).toUpperCase()}`,
-    status: 'processed',
-    processedAt: now,
-    createdAt: now,
-    updatedAt: now,
-    createdBy: input.processedBy,
-  };
+  if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount <= 0 || cents(input.amount) <= 0) {
+    throw fail('INVALID_AMOUNT', 'Refund amount must be a number greater than zero');
+  }
+  const amount = cents(input.amount) / 100;
 
+  // The money being refunded: normally a PaymentDoc. Admission-deposit refunds
+  // (ward-service) instead name a PaymentRecord embedded on a bill, which has
+  // no PaymentDoc; its patient / amount / currency / tenancy come from that
+  // bill record, and there is no payment document to flag as refunded.
+  let pmtDoc: PaymentDoc | null = null;
+  let pmt: { _id: string; patientId: string; patientName: string; amount: number; currency: string; orgId?: string; facilityId: string; status: string };
   try {
-    const resp = await db.put(doc);
-    doc._rev = resp.rev;
-  } catch (error) {
-    if (!input.idempotencyKey || (error as { status?: number }).status !== 409) throw error;
-    doc = await db.get(doc._id) as RefundDoc;
-    if (doc.paymentId !== input.paymentId || doc.amount !== input.amount || doc.patientId !== input.patientId || doc.orgId !== input.orgId || doc.currency !== (input.currency || 'SSP')) throw new Error('Refund retry does not match the original operation');
+    pmtDoc = await pdb.get(input.paymentId) as PaymentDoc;
+    pmt = pmtDoc;
+  } catch (err) {
+    const e = err as { status?: number; name?: string } | undefined;
+    if (!(e && (e.status === 404 || e.name === 'not_found'))) throw err;
+    const { getBillsByPatient } = await import('./billing-service');
+    const bills = input.patientId ? await getBillsByPatient(input.patientId) : [];
+    const bill = bills.find(b => (b.payments || []).some(r => r.id === input.paymentId && !r.reversed));
+    const rec = bill?.payments.find(r => r.id === input.paymentId);
+    if (!bill || !rec) throw fail('PAYMENT_NOT_FOUND', 'Payment not found');
+    pmt = {
+      _id: rec.id, patientId: bill.patientId, patientName: bill.patientName, amount: rec.amount,
+      currency: bill.currency, orgId: bill.orgId, facilityId: bill.facilityId, status: 'posted',
+    };
+  }
+  if (input.patientId && input.patientId !== pmt.patientId) throw fail('PAYMENT_MISMATCH', 'Payment belongs to a different patient');
+  if (input.orgId !== undefined && pmt.orgId !== undefined && input.orgId !== pmt.orgId) throw fail('PAYMENT_MISMATCH', 'Payment belongs to a different organisation');
+  if (input.currency && input.currency !== pmt.currency) throw fail('CURRENCY_MISMATCH', 'Refund currency must match the payment currency');
+
+  const refundId = input.idempotencyKey ? `ref-${encodeURIComponent(input.idempotencyKey)}` : `ref-${uuidv4()}`;
+
+  let doc: RefundDoc | null = null;
+  if (input.idempotencyKey) {
+    try {
+      doc = await db.get(refundId) as RefundDoc;
+      if (doc.paymentId !== pmt._id || cents(doc.amount) !== cents(amount)) throw fail('RETRY_MISMATCH', 'Refund retry does not match the original operation');
+      if (doc.status === 'failed') throw fail('REFUND_EXCEEDS_REMAINING', 'This refund was voided because it exceeded the amount remaining on the payment');
+    } catch (err) {
+      if (err instanceof PaymentOperationError) throw err;
+      const e = err as { status?: number; name?: string } | undefined;
+      if (!e || (e.status !== 404 && e.name !== 'not_found')) throw err;
+    }
+  }
+
+  if (!doc) {
+    if (pmt.status !== 'posted') throw fail('PAYMENT_NOT_REFUNDABLE', `A ${pmt.status} payment cannot be refunded`);
+    const existing = await processedRefundsFor(pmt._id, pmt.patientId);
+    const alreadyRefunded = existing.reduce((sum, r) => sum + cents(r.amount), 0);
+    if (cents(amount) > cents(pmt.amount) - alreadyRefunded) {
+      throw fail('REFUND_EXCEEDS_REMAINING', 'Refund exceeds the amount remaining on this payment');
+    }
+
+    doc = {
+      _id: refundId,
+      type: 'refund',
+      paymentId: pmt._id,
+      patientId: pmt.patientId,
+      patientName: pmt.patientName,
+      amount,
+      currency: pmt.currency,
+      method: input.method,
+      reason: input.reason,
+      processedBy: input.processedBy,
+      processedByName: input.processedByName,
+      facilityId: pmt.facilityId,
+      orgId: pmt.orgId,
+      reference: `REF-${uuidv4().slice(0, 8).toUpperCase()}`,
+      status: 'processed',
+      processedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: input.processedBy,
+    };
+    try {
+      const resp = await db.put(doc);
+      doc._rev = resp.rev;
+      await voidIfOverRefunded(doc, pmt.amount);
+    } catch (error) {
+      if (!input.idempotencyKey || (error as { status?: number }).status !== 409) throw error;
+      doc = await db.get(refundId) as RefundDoc;
+    }
   }
 
   // Resume the ledger write after a partial failure without duplicating it.
   await createLedgerEntry({
-    patientId: input.patientId,
+    patientId: doc.patientId,
     entryType: 'refund',
-    amount: input.amount,
-    description: `Refund: ${input.reason}`,
+    amount: doc.amount,
+    description: `Refund: ${doc.reason}`,
     referenceId: doc._id,
     referenceType: 'refund',
     idempotencyKey: doc._id,
-    method: input.method,
+    method: doc.method,
     currency: doc.currency,
-    facilityId: input.facilityId,
-    orgId: input.orgId,
-    createdBy: input.processedBy,
+    facilityId: doc.facilityId,
+    orgId: doc.orgId,
+    createdBy: doc.processedBy,
   });
 
+  // Record the refunded total on the payment (recomputed from the refund
+  // documents, so it is idempotent) and flag it fully refunded when exhausted.
+  let fullyRefunded = false;
+  const refundedTotal = async () => (await findByType<RefundDoc>(db, 'refund', { patientId: pmt.patientId }, { indexFields: ['type', 'patientId'] }))
+    .filter(r => r.paymentId === pmt._id && r.status === 'processed')
+    .reduce((sum, r) => sum + cents(r.amount), 0);
+  if (!pmtDoc) {
+    fullyRefunded = (await refundedTotal()) >= cents(pmt.amount);
+  } else {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const fresh = await pdb.get(pmt._id) as PaymentDoc;
+      const total = await refundedTotal();
+      fullyRefunded = total >= cents(fresh.amount);
+      const nextStatus = fullyRefunded && fresh.status === 'posted' ? 'refunded' : fresh.status;
+      if (fresh.refundedAmount === total / 100 && fresh.status === nextStatus) break;
+      fresh.refundedAmount = total / 100;
+      fresh.status = nextStatus;
+      fresh.updatedAt = new Date().toISOString();
+      try {
+        await pdb.put(fresh);
+        break;
+      } catch (err) {
+        if ((err as { status?: number }).status !== 409 || attempt === 2) throw err;
+      }
+    }
+  }
+
+  if (fullyRefunded && pmtDoc) {
+    // Same bill undo as a reversal (idempotent). Best-effort; the ledger and
+    // payment status above are authoritative.
+    try {
+      const { unsettleBillsForPayment } = await import('./billing-service');
+      await unsettleBillsForPayment(pmt._id, pmt.patientId, input.processedBy, input.processedByName);
+    } catch (err) {
+      console.warn('[payment] could not unsettle bills for refunded payment', pmt._id, err);
+    }
+  }
+
   await logAuditSafe('REFUND_ISSUED', input.processedBy, input.processedByName,
-    `Refund ${input.amount} ${doc.currency} to patient ${input.patientId}; reason recorded on the refund`);
+    `Refund ${doc.amount} ${doc.currency} to patient ${doc.patientId}; reason recorded on the refund`);
 
   emitSyncEvent({
     resourceType: 'refund',
@@ -1850,7 +2066,7 @@ export async function generateInvoice(input: {
   const doc: InvoiceDoc = {
     _id: `inv-${uuidv4()}`,
     type: 'invoice',
-    invoiceNumber: `INV-${seq}`,
+    invoiceNumber: `INV-${seq}-${await getDeviceCode(db)}`,
     patientId: input.patientId,
     patientName: input.patientName,
     encounterId: input.encounterId,

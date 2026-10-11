@@ -13,6 +13,7 @@ afterEach(async () => {
 function triageInput(overrides: Record<string, unknown> = {}) {
   return {
     patientId: 'patient-1',
+    orgId: 'org-test',
     patientName: 'Test Patient',
     airway: 'clear',
     breathing: 'normal',

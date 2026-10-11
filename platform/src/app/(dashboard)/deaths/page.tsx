@@ -1,5 +1,6 @@
 'use client';
 
+import { ValidationError } from '@/lib/validation';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PatientName from '@/components/PatientName';
@@ -158,7 +159,7 @@ export default function DeathsPage() {
 
   // Header stat chips — computed from data already loaded on this page,
   // unaffected by the column filters (same as the patients header).
-  const thisMonthPrefix = new Date().toISOString().slice(0, 7);
+  const thisMonthPrefix = todayIso().slice(0, 7);
   const deathStats = useMemo(() => {
     const all = deaths || [];
     return {
@@ -253,8 +254,10 @@ export default function DeathsPage() {
       setLinkedPatientId(undefined);
       setEncounterId(undefined);
       setPatientLookup('');
-    } catch {
-      showToast(t('deaths.registerFailed'), 'error');
+    } catch (err) {
+      // The service says what is missing (a facility, an organization); the
+      // generic message cannot.
+      showToast(err instanceof ValidationError ? err.message : t('deaths.registerFailed'), 'error');
     }
   };
 
@@ -297,7 +300,7 @@ export default function DeathsPage() {
             </thead>
             <tbody>
               {filtered.map(d => (
-                <tr key={d._id} className="cursor-pointer hover:bg-[var(--table-row-hover)]" onClick={() => setExpandedDeath(expandedDeath === d._id ? null : d._id)}>
+                <tr key={d._id} className="cursor-pointer hover:bg-[var(--table-row-hover)]" tabIndex={0} role="button" aria-expanded={expandedDeath === d._id} onClick={() => setExpandedDeath(expandedDeath === d._id ? null : d._id)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setExpandedDeath(expandedDeath === d._id ? null : d._id); } }}>
                   <td className="font-mono text-xs">{d.certificateNumber}</td>
                   <td><PatientName patientId={d.patientId} name={`${d.deceasedFirstName} ${d.deceasedSurname}`} gender={d.deceasedGender} nameClassName="text-sm font-semibold" /></td>
                   <td className="text-sm">{d.deceasedGender}</td>

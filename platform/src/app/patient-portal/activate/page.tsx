@@ -144,6 +144,28 @@ function ActivateForm() {
   );
 }
 
+function ActivateAside() {
+  const { t } = useTranslation();
+  return (
+    <aside className="lg-aside blueprint">
+      <Corners />
+      <span className="lg-eyebrow">{t('pactivate.asideEyebrow')}</span>
+      <h2 className="lg-h2">{t('pactivate.asideTitle')}</h2>
+      <p className="lg-aside-copy">{t('pactivate.asideBody')}</p>
+      <ul className="lg-points">
+        <li>{t('pactivate.asidePoint1')}</li>
+        <li>{t('pactivate.asidePoint2')}</li>
+        <li>{t('pactivate.asidePoint3')}</li>
+      </ul>
+      <div className="lg-shot lg-shot--portrait blueprint">
+        <Corners />
+        {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
+        <img src="/assets/clinician-with-tablet.jpg" alt={t('pactivate.asideShotAlt')} />
+      </div>
+    </aside>
+  );
+}
+
 export default function PatientPortalActivatePage() {
   return (
     <div className="lg-root">
@@ -161,6 +183,10 @@ export default function PatientPortalActivatePage() {
             <ActivateForm />
           </Suspense>
         </div>
+
+        {/* The same panel, and the same photograph, as the portal's sign-in
+            page: this is that doorway's first step, not a different place. */}
+        <ActivateAside />
       </div>
 
     </div>

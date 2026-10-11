@@ -10,6 +10,7 @@
  * is what this file names.
  */
 
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 
 export type RadiologyWorkflowStepKey = 'order' | 'schedule' | 'safety' | 'acquire' | 'report' | 'release';
@@ -99,8 +100,8 @@ export function fallbackAccessionNumber(study: { _id: string; accessionNumber?: 
   if (study.accessionNumber) return study.accessionNumber;
   const ordered = new Date(study.orderedAt || Date.now());
   const day = Number.isNaN(ordered.getTime())
-    ? new Date().toISOString().slice(2, 10).replace(/-/g, '')
-    : ordered.toISOString().slice(2, 10).replace(/-/g, '');
+    ? todayIso().slice(2).replace(/-/g, '')
+    : toIsoDate(ordered).slice(2).replace(/-/g, '');
   return `IMG-${day}-${study._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
 }
 

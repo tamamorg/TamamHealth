@@ -36,6 +36,7 @@ import { captureException } from '@/lib/observability';
 import { createHash, timingSafeEqual, randomInt } from 'node:crypto';
 import { getUpstashConfig, upstashPipeline, withRetry, hashKey } from './upstash';
 import { sendSms } from './sms';
+import { rateLimit } from './rate-limit';
 
 /** How long a code stays valid. Long enough for slow SMS, short enough to matter. */
 export const OTP_TTL_SECONDS = 5 * 60;
@@ -195,19 +196,28 @@ export async function verifyOtp(patientId: string, submitted: string): Promise<O
     return { ok: false, reason: 'expired' };
   }
 
-  if (challenge.attempts >= OTP_MAX_ATTEMPTS) {
+  // Attempt accounting is an atomic INCR (shared rate-limit backend), not a
+  // read-modify-write of the stored challenge: concurrent guesses used to read
+  // the same `attempts` value and each write back +1, multiplying the five
+  // allowed attempts by the request concurrency. The counter is bound to this
+  // challenge's code hash, so issuing a fresh code starts a fresh count.
+  const remainingMs = Math.max(1000, challenge.expiresAt - Date.now());
+  const verdict = await rateLimit({
+    key: `portal-otp:attempts:${patientId}:${challenge.codeHash}`,
+    limit: OTP_MAX_ATTEMPTS,
+    windowMs: remainingMs,
+  });
+  if (!verdict.allowed) {
     await dropChallenge(patientId);
     return { ok: false, reason: 'too-many-attempts' };
   }
 
   const submittedHash = hashCode(patientId, (submitted || '').trim());
   if (!constantTimeEquals(submittedHash, challenge.codeHash)) {
-    const attempts = challenge.attempts + 1;
-    if (attempts >= OTP_MAX_ATTEMPTS) {
+    if (verdict.remaining <= 0) {
       await dropChallenge(patientId);
       return { ok: false, reason: 'too-many-attempts' };
     }
-    await putChallenge(patientId, { ...challenge, attempts });
     return { ok: false, reason: 'mismatch' };
   }
 

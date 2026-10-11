@@ -3,11 +3,13 @@ import { NextRequest } from 'next/server';
 
 const mockRateLimit = jest.fn();
 const mockResetRateLimit = jest.fn();
+const mockRefundRateLimit = jest.fn(async (..._args: unknown[]) => undefined);
 const mockFind = jest.fn();
 
 jest.mock('@/lib/rate-limit', () => ({
   rateLimit: (...args: unknown[]) => mockRateLimit(...args),
   resetRateLimit: (...args: unknown[]) => mockResetRateLimit(...args),
+  refundRateLimit: (...args: unknown[]) => mockRefundRateLimit(...args),
 }));
 jest.mock('@/lib/request-utils', () => ({ getClientIp: () => '203.0.113.9' }));
 jest.mock('@/lib/patient-portal-auth', () => ({ createPatientToken: async () => 'patient-token' }));
@@ -46,14 +48,17 @@ beforeEach(() => {
   });
 });
 
-test('uses shared IP/account buckets and clears them after a valid password', async () => {
+test('uses shared IP/account buckets and clears only the account bucket after a valid password', async () => {
   const { POST } = await import('./route');
   const response = await POST(request({ username: 'ASHA', password: 'correct-password' }));
 
   expect(response.status).toBe(200);
   expect(mockRateLimit).toHaveBeenNthCalledWith(1, expect.objectContaining({ key: 'portal-login:ip:203.0.113.9' }));
   expect(mockRateLimit).toHaveBeenNthCalledWith(2, expect.objectContaining({ key: 'portal-login:account:asha' }));
-  expect(mockResetRateLimit).toHaveBeenCalledWith('portal-login:ip:203.0.113.9');
+  // Only the account streak is cleared; a success must never reset the per-IP counter.
+  expect(mockResetRateLimit).not.toHaveBeenCalledWith('portal-login:ip:203.0.113.9');
+  // ...but the successful attempt itself is handed back, so the IP bucket counts failures.
+  expect(mockRefundRateLimit).toHaveBeenCalledWith('portal-login:ip:203.0.113.9');
   expect(mockResetRateLimit).toHaveBeenCalledWith('portal-login:account:asha');
   expect(mockFind).toHaveBeenCalledWith(expect.objectContaining({
     selector: { type: 'patient', portalUsername: 'asha' },

@@ -9,6 +9,8 @@
 // reactions, presence, member management).
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePathname } from 'next/navigation';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -89,6 +91,8 @@ function Avatar({ name, size = 36, group }: { name: string; size?: number; group
 
 export default function MessagingDock() {
   const pathname = usePathname();
+  const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
   const { currentUser } = useAuth();
   const { open, openDock, closeDock, pendingDM, clearPendingDM } = useMessagingDock();
   const onDashboard = pathname === '/dashboard' || pathname?.startsWith('/dashboard/');
@@ -231,8 +235,14 @@ export default function MessagingDock() {
     if (!currentUser) return;
     setTransferBusy(id);
     try {
-      const notes = decision === 'reject'
-        ? window.prompt('Reason for rejecting this transfer')?.trim()
+      const notes: string | undefined = decision === 'reject'
+        ? await confirmPrompt({
+            title: t('confirm.rejectTransferTitle'),
+            inputLabel: t('confirm.rejectTransferLabel'),
+            confirmLabel: t('confirm.rejectTransferConfirm'),
+            inputRequired: true,
+            tone: 'danger',
+          }) ?? undefined
         : undefined;
       if (decision === 'reject' && !notes) return;
       const [svc, perms] = await Promise.all([

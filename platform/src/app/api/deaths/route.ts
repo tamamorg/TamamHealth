@@ -93,9 +93,15 @@ async function postHandler(request: NextRequest) {
       else delete body.orgId;
     }
     const { createDeath } = await import('@/lib/services/death-service');
-    const death = await createDeath(body as Parameters<typeof createDeath>[0]);
+    const death = await createDeath(
+      body as Parameters<typeof createDeath>[0],
+      (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
+    );
     return NextResponse.json({ death }, { status: 201 });
   } catch (err) {
+    if (err instanceof Error && err.name === 'ValidationError') {
+      return NextResponse.json({ error: err.message, fields: (err as Error & { fields?: Record<string, string> }).fields }, { status: 400 });
+    }
     logApiError('[API /deaths POST]', err);
     return serverError();
   }

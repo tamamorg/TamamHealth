@@ -53,6 +53,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: GENERIC_FAILURE }, { status: 400 });
     }
 
+    // activatePortalAccount stamps portalCredentialEpoch itself in the same
+    // write that sets the password, which ends every earlier portal session --
+    // a second stamp here would be a redundant source of truth.
+
     // No session — see rule 3. The username is returned so the sign-in form
     // can be pre-filled, which matters when it was printed on a slip.
     return NextResponse.json({ ok: true, username: result.username });

@@ -46,3 +46,19 @@ describe('shared API rate-limit adapter', () => {
     expect(await checkRateLimit(second, 'endpoint-a', 1)).toBeNull();
   });
 });
+
+describe('refunding a successful attempt', () => {
+  it('leaves failures counted and good sign-ins free', async () => {
+    const { rateLimit, refundRateLimit, _resetRateLimitForTest } = await import('@/lib/rate-limit');
+    _resetRateLimitForTest();
+    const opts = { key: 'refund-test:ip:10.0.0.1', limit: 3, windowMs: 60_000 };
+    // Thirty successful sign-ins from one address never approach the limit.
+    for (let i = 0; i < 30; i++) {
+      expect((await rateLimit(opts)).allowed).toBe(true);
+      await refundRateLimit(opts.key);
+    }
+    // Failures are not refunded, so they still add up.
+    await rateLimit(opts); await rateLimit(opts); await rateLimit(opts);
+    expect((await rateLimit(opts)).allowed).toBe(false);
+  });
+});

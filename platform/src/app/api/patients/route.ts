@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized, validationError } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { redactPatients, redactPatient, PATIENT_PORTAL_FIELDS } from '@/lib/patient-redaction';
 // Roles that may read patient lists. Every read here is scoped by
 // filterByScope to the caller's own org/facility (this route is the mobile/
 // integration surface; the browser reads via services). Each grant carries a
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
         { query: new URL(request.url).searchParams.get('q') || undefined, resultCount: Array.isArray(patients) ? patients.length : 0 },
       ),
     ).catch(() => {});
-    return NextResponse.json({ patients, total: patients.length });
+    return NextResponse.json({ patients: redactPatients(patients), total: patients.length });
   } catch (err) {
     logApiError('[API /patients GET]', err);
     return serverError();
@@ -85,19 +86,25 @@ async function postHandler(request: NextRequest) {
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
     // Sanitize text fields to prevent stored XSS
     const sanitized = sanitizePayload(body);
+    // Portal enrolment is a separate, audited flow (portalInvite via the
+    // registration service, or /api/patients/portal-access) -- never body fields.
+    for (const k of PATIENT_PORTAL_FIELDS) delete sanitized[k];
+    for (const k of Object.keys(sanitized)) if (k.startsWith('portal') && k !== 'portalInvite') delete sanitized[k];
+    delete sanitized.portalInvite;
     // Tenancy is stamped from the verified auth claim, never trusted from the
     // client -- a non-admin must not inject records into another org's tenant DB.
     // Platform/national admins may still target a specific org explicitly.
-    if (auth.role !== 'super_admin' && auth.role !== 'government') {
-      if (auth.orgId) sanitized.orgId = auth.orgId;
-      else delete sanitized.orgId;
-    }
+    // The body's orgId is never honoured: it comes from the session, or (for
+    // platform/national roles with no org) is inferred by createPatient from
+    // the registration hospital.
+    if (auth.orgId) sanitized.orgId = auth.orgId;
+    else delete sanitized.orgId;
     sanitized.createdBy = auth.sub;
     // Scope so duplicate-detection and geocode assignment don't read/disclose
     // across tenant boundaries (see createPatient's own docs).
     const scope = buildScopeFromAuth(auth);
     const patient = await createPatient(sanitized as Parameters<typeof createPatient>[0], scope);
-    return NextResponse.json({ patient }, { status: 201 });
+    return NextResponse.json({ patient: redactPatient(patient) }, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'ValidationError') {
       const ve = err as Error & { fields: Record<string, string> };

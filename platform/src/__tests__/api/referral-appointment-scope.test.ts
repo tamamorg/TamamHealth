@@ -59,7 +59,7 @@ jest.setTimeout(30000);
 
 import type { NextRequest } from 'next/server';
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
-import { hospitalsDB } from '@/lib/db';
+import { hospitalsDB, patientsDB } from '@/lib/db';
 import { getAuthPayload, type AuthPayload } from '@/modules/identity/core/api-auth';
 import { createReferral, getReferralById } from '@/lib/services/referral-service';
 import { createAppointment, getAppointmentById } from '@/lib/services/appointment-service';
@@ -149,6 +149,8 @@ describe('BUG 1 — /api/referrals accept / update_status scope guard', () => {
       // via hospitalsDB, exactly like the real create path.
     } as unknown as Parameters<typeof createReferral>[0]);
     expect(referral.toOrgId).toBe(ORG_B);
+    // The patient belongs to the referring org (org-a) until the receiver accepts.
+    await putDoc(patientsDB(), { _id: 'pat-2', type: 'patient', orgId: ORG_A, registrationHospital: HOSP_A } as unknown as { _id: string });
 
     mockGetAuth.mockResolvedValue(authFor(ORG_B, HOSP_B, 'user-receiving-doc'));
 
@@ -161,6 +163,27 @@ describe('BUG 1 — /api/referrals accept / update_status scope guard', () => {
 
     const persisted = await getReferralById(referral._id);
     expect(persisted?.status).toBe('seen');
+    // Legitimate cross-org referral: the patient is re-homed into the receiver.
+    const moved = await patientsDB().get('pat-2') as unknown as { orgId?: string; registrationHospital?: string };
+    expect(moved.orgId).toBe(ORG_B);
+    expect(moved.registrationHospital).toBe(HOSP_B);
+  });
+
+  test('the SENDING org cannot accept its own outbound cross-org referral', async () => {
+    const referral = await createReferral({
+      patientId: 'pat-2b', patientName: 'Cross Org Patient',
+      fromHospital: 'Hospital A', fromHospitalId: HOSP_A,
+      toHospital: 'Hospital B', toHospitalId: HOSP_B,
+      referralDate: '2026-08-01', urgency: 'urgent', reason: 'Trauma transfer',
+      department: 'Surgery', status: 'sent', referringDoctor: 'Dr A', notes: '',
+      orgId: ORG_A,
+    } as unknown as Parameters<typeof createReferral>[0]);
+    mockGetAuth.mockResolvedValue(authFor(ORG_A, HOSP_A));
+    const res = await referralsPOST(postRequest('http://test/api/referrals', {
+      action: 'accept', referralId: referral._id,
+    }));
+    expect(res.status).toBe(403);
+    expect((await getReferralById(referral._id))?.status).toBe('sent');
   });
 });
 
@@ -240,6 +263,7 @@ describe('BUG 3 — auth wins over a client-supplied orgId on create', () => {
   });
 
   test('referral create stamps orgId from auth even when the body supplies a different org', async () => {
+    await putDoc(patientsDB(), { _id: 'pat-6', type: 'patient', orgId: ORG_A, registrationHospital: HOSP_A } as unknown as { _id: string });
     mockGetAuth.mockResolvedValue(authFor(ORG_A, HOSP_A));
     const res = await referralsPOST(postRequest('http://test/api/referrals', {
       patientId: 'pat-6', toHospitalId: HOSP_B, reason: 'Specialist opinion', orgId: ORG_B,

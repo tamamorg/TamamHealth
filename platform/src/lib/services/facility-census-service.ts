@@ -3,6 +3,8 @@ import type { BaseDoc } from '../db-types';
 import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
+import { resolveRegisterOrgId } from './register-org';
+import { ValidationError } from '../validation';
 
 export interface FacilityCensusDoc extends BaseDoc {
   type: 'facility_census';
@@ -23,6 +25,12 @@ export async function getFacilityCensusByFacility(facilityId: string): Promise<F
 }
 
 export async function saveFacilityCensus(input: Omit<FacilityCensusDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<FacilityCensusDoc> {
+  // A census filed against no facility (or the legacy 'unknown' placeholder)
+  // names no org and is never reconciled with a real facility; refuse it.
+  if (!input.facilityId || input.facilityId === 'unknown') {
+    throw new ValidationError({ facilityId: 'A facility is required to file a census.' });
+  }
+  const orgId = await resolveRegisterOrgId(input);
   const store = db();
   const now = new Date().toISOString();
   const id = `facility-census-${input.facilityId}-${input.date}`;
@@ -39,6 +47,7 @@ export async function saveFacilityCensus(input: Omit<FacilityCensusDoc, '_id' | 
     _rev: existing?._rev,
     type: 'facility_census',
     ...input,
+    orgId,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -59,7 +68,7 @@ export async function saveFacilityCensus(input: Omit<FacilityCensusDoc, '_id' | 
     userId: input.submittedBy,
     username: input.submittedByName,
     hospitalId: input.facilityId,
-    orgId: input.orgId,
+    orgId,
   });
 
   return doc;

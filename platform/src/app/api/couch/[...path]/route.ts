@@ -30,6 +30,7 @@ import {
 } from '@/lib/sync/participant-scope';
 import { messageIntegrityViolation } from '@/lib/sync/message-integrity';
 import { applyPortalCredentialAuthority } from '@/lib/sync/portal-credential-authority';
+import { readRequestNamesPortalSecret, stripPortalSecrets } from '@/lib/sync/portal-read-redaction';
 
 export const dynamic = 'force-dynamic';
 const MAX_PROXY_BODY_BYTES = 25 * 1024 * 1024;
@@ -272,6 +273,36 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
       }
     }
 
+    // Patient-portal credential hashes do not replicate down to staff devices
+    // (portal-read-redaction.ts): reads of the patients database that carry
+    // document bodies are stripped of them below, and a query that names them
+    // is refused because it would read a hash out without receiving the field.
+    let redactPortalSecrets = false;
+    if (config.localName === 'tamamhealth_patients' && !isMutatingWrite && method !== 'HEAD') {
+      const endpoint = pathAfterDatabase[0] || '';
+      // A change feed is always treated as carrying documents. Deciding from
+      // `include_docs` means reading the query the way CouchDB will, and it
+      // reads a repeated or differently-cased parameter differently than
+      // `searchParams.get` does; stripping a feed that has no bodies costs
+      // nothing.
+      const wantsDocs = endpoint === '_changes' || readReturnsDocuments(request, pathAfterDatabase);
+      if (readRequestNamesPortalSecret(request.nextUrl.search, parsed)) {
+        return forbidden('This query is not permitted.');
+      }
+      if (wantsDocs) {
+        const streamed = Array.from(request.nextUrl.searchParams.entries()).some(([key, value]) =>
+          key.toLowerCase() === 'feed' && ['continuous', 'eventsource'].includes(value.toLowerCase()))
+          || ['continuous', 'eventsource'].includes(String((parsed as { feed?: unknown } | null)?.feed ?? '').toLowerCase());
+        if (endpoint === '_changes' && streamed) {
+          // A streamed feed cannot be rewritten as one JSON document.
+          return forbidden('Streaming change feeds are not available for this database.');
+        }
+        redactPortalSecrets = true;
+        // Rewritten as JSON below; never negotiate multipart.
+        headers.set('accept', 'application/json');
+      }
+    }
+
     if (refused.size > 0) {
       const docs = (parsed as { docs?: unknown[] } | null)?.docs;
       if (pathAfterDatabase[0] !== '_bulk_docs' || !Array.isArray(docs)) return forbidden(refusal);
@@ -353,6 +384,10 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
         status: filtered.status ?? response.status,
         headers: { 'cache-control': 'no-store' },
       });
+    }
+    if (redactPortalSecrets && response.ok) {
+      const stripped = stripPortalSecrets(await response.json());
+      return NextResponse.json(stripped, { status: response.status, headers: { 'cache-control': 'no-store' } });
     }
     return new NextResponse(request.method === 'HEAD' ? null : response.body, {
       status: response.status,

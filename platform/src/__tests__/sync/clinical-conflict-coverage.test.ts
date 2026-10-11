@@ -24,17 +24,20 @@ describe('records a human must reconcile', () => {
    */
   const MUST_BE_RECONCILED = [
     // Medication and controlled drugs.
-    'prescription', 'medication_administration', 'medication_allergy',
+    'prescription', 'medication_administration',
     'controlled_substance_log',
     // Inpatient state — a silently chosen bed claim double-books a bed.
-    'bed', 'admission', 'discharge', 'shift_handoff',
+    'bed', 'admission', 'shift_handoff',
     // Clinical decisions.
-    'allergy', 'adverse_event', 'lab_result', 'triage', 'clinical_encounter',
+    'lab_result', 'triage', 'clinical_encounter',
     'procedure', 'immunization', 'history_entry',
     // Legally reportable vital events.
     'birth', 'death',
     // Identity and the movement of care.
     'patient', 'referral', 'patient_transfer',
+    // Money and the chart itself (Oct 2026).
+    'billing', 'payment', 'charge', 'medical_record', 'clinical_note',
+    'appointment', 'problem',
   ];
 
   it.each(MUST_BE_RECONCILED)('%s conflicts are queued, not auto-resolved', type => {

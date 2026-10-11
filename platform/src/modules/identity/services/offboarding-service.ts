@@ -25,6 +25,7 @@ import { appointmentsDB, encountersDB } from '@/lib/db';
 import type { AppointmentDoc, EncounterDoc } from '@/lib/db-types';
 import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import { findByType } from '@/lib/services/db-query';
+import { todayIso } from '@/lib/date-utils';
 
 /** How many examples to name before falling back to a bare count. */
 const SAMPLE_LIMIT = 5;
@@ -66,7 +67,7 @@ export const EMPTY_OPEN_WORK: OpenWorkSummary = {
  */
 export async function summarizeOpenWork(
   userId: string,
-  today: string = new Date().toISOString().slice(0, 10),
+  today: string = todayIso(),
 ): Promise<OpenWorkSummary> {
   try {
     const [appointments, encounters] = await Promise.all([

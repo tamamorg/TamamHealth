@@ -8,6 +8,7 @@ import { CLINICIANS } from '@/lib/sync/write-permissions';
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
+import { RECORD_EDITABLE_FIELDS } from '@/lib/medical-record-fields';
 const WRITE_ROLES = CLINICIANS;
 async function patchHandler(
   request: NextRequest,
@@ -24,13 +25,19 @@ async function patchHandler(
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
-    // Prevent changing immutable fields
-    const immutable = ['_id', '_rev', 'type', 'createdAt'];
-    for (const key of immutable) {
-      delete body[key];
+    // Explicit allow-list of clinical-content fields. patientId, orgId,
+    // hospitalId, _id, _rev, type, createdAt, authorship/signature fields
+    // (providerName, providerRole, signed*, cosigned*, consultedBy*) and
+    // document lifecycle (documentStatus, addenda) are never accepted here.
+    const patch: Record<string, unknown> = {};
+    for (const key of RECORD_EDITABLE_FIELDS) {
+      if (key in body && body[key] !== undefined) patch[key] = body[key];
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: 'No editable fields supplied' }, { status: 400 });
     }
     const { sanitizePayload } = await import('@/lib/validation');
-    const sanitized = sanitizePayload(body);
+    const sanitized = sanitizePayload(patch);
     const { updateMedicalRecord, getMedicalRecordById } = await import('@/lib/services/medical-record-service');
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
     // Scope guard: a clinician may only amend records their org/facility can

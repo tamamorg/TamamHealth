@@ -55,6 +55,9 @@ export const SECOND_WAVE_DELAY_MS = 20_000;
  */
 export const CLEAN_POINT_MIN_INTERVAL_MS = 60_000;
 export const AUDIT_PRUNE_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/** Local databases that replicate at all — the only ones with delivery to prove. */
+const REPLICATING_DATABASES: ReadonlySet<string> = new Set(DATABASE_SYNC_CONFIGS.map(c => c.localName));
+
 const AUDIT_PRUNE_AT_KEY = 'tamamhealth.audit.last-prune.v1';
 
 export type AggregateState =
@@ -458,15 +461,29 @@ export class SyncManager {
    * notifyChange() runs on every replication tick.
    */
   private rememberCleanPoint(status: AggregateStatus): void {
-    if (status.state !== 'synced') return;
-    if (status.activeDatabases > 0 || status.errorDatabases > 0) return;
+    // Nothing may be in flight. An errored or denied database no longer blocks
+    // the others: each one is judged on its own delivery below, and a denial
+    // is sticky for the session — gating on it here would leave every database
+    // unrecorded, and so unwipeable, because one document was refused.
+    if (status.state !== 'synced' && status.state !== 'error') return;
+    if (status.activeDatabases > 0) return;
     if (status.lastSync === this._lastCleanPoint) return;
     const now = Date.now();
     if (this._cleanPointPromise || now - this._lastCleanPointAt < CLEAN_POINT_MIN_INTERVAL_MS) return;
     this._lastCleanPoint = status.lastSync;
     this._lastCleanPointAt = now;
     this._cleanPointPromise = import('../security/local-wipe')
-      .then(({ recordSyncedSequences }) => recordSyncedSequences())
+      .then(({ recordSyncedSequences }) => recordSyncedSequences({
+        // Only databases whose own replication has proven delivery. Databases
+        // whose service has not started (second wave, no org yet) have no
+        // entry and so are never stamped clean.
+        // A database with no sync configuration never replicates (users,
+        // device settings, slot holds): it has no delivery to prove, and
+        // leaving it unstamped made every logout report a failed wipe.
+        only: (name) => (REPLICATING_DATABASES.has(name)
+          ? this.services.get(name)?.isCleanForWipe() === true
+          : true),
+      }))
       .then(() => {
         // Retention is daily housekeeping, not replication-cycle work. The
         // timestamp is local-only; losing it merely causes an earlier safe run.

@@ -2,6 +2,7 @@
 import { useState, useMemo, useRef } from 'react';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import { useAuth } from '@/lib/context';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ScanLine } from '@/components/icons/lucide';
 import { useLabResults } from '@/lib/hooks/useLabResults';
@@ -59,6 +60,7 @@ const SAMPLE_STUDIES = [
 export default function RadiologyDashboard() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const { results: labResults, update: updateLabResult } = useLabResults();
 
   const realStudies = useMemo(
@@ -172,7 +174,14 @@ export default function RadiologyDashboard() {
       if (documentIds.length) {
         const source = labResults.find(result => result._id === studyId);
         const linkedIds = [...new Set([...(source?.studyDocumentIds || []), ...documentIds])];
-        await updateLabResult(studyId, { studyDocumentIds: linkedIds, imageCount: linkedIds.length });
+        try {
+          await updateLabResult(studyId, { studyDocumentIds: linkedIds, imageCount: linkedIds.length });
+        } catch (err) {
+          // Write conflict / validator rejection: no success banner.
+          console.error('[radiology] linking images failed', err);
+          showToast(t('radiology.updateFailed'), 'error');
+          return;
+        }
       }
     }
 
@@ -239,11 +248,18 @@ export default function RadiologyDashboard() {
     if (study) {
       // Persist to the actual order doc so the findings reach the ordering
       // clinician's consultation view and the HMIS reports.
-      await updateLabResult(studyId, {
-        result: findings.trim(),
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-      });
+      try {
+        await updateLabResult(studyId, {
+          result: findings.trim(),
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        // Keep the typed findings and the study's prior state; no success banner.
+        console.error('[radiology] report not saved', err);
+        showToast(t('radiology.updateFailed'), 'error');
+        return;
+      }
       // Mirrors the lab bench's notifyClinician: a report otherwise only
       // surfaces if someone happens to reopen the chart, so page the ordering
       // clinician directly. Best-effort — the report is already durably
@@ -278,7 +294,12 @@ export default function RadiologyDashboard() {
   const handleStartStudy = async (studyId: string) => {
     const isReal = realStudies.some(s => s.id === studyId);
     if (isReal) {
-      await updateLabResult(studyId, { status: 'in_progress' });
+      try {
+        await updateLabResult(studyId, { status: 'in_progress' });
+      } catch (err) {
+        console.error('[radiology] could not start study', err);
+        showToast(t('radiology.updateFailed'), 'error');
+      }
     } else {
       setStudyStatusOverrides(prev => ({ ...prev, [studyId]: 'in_progress' }));
     }

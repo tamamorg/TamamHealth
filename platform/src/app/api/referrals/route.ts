@@ -89,7 +89,22 @@ async function postHandler(request: NextRequest) {
       if (!existingForAccept || filterByScope([existingForAccept], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
       }
-      const result = await acceptReferral(body.referralId as string);
+      // Accepting re-homes the patient into the destination, so only the
+      // RECEIVING side may do it -- seeing the referral (e.g. as its sender)
+      // is not enough.
+      const { isReceivingSide } = await import('@/lib/referral-parties');
+      if (!isReceivingSide(auth, existingForAccept)) {
+        return forbidden('Only the receiving facility can accept a referral.');
+      }
+      let result;
+      try {
+        result = await acceptReferral(body.referralId as string);
+      } catch (err) {
+        if (err instanceof Error && err.name === 'ReferralTenantError') {
+          return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
+        }
+        throw err;
+      }
       if (!result) return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
       return NextResponse.json({ referral: result });
     }
@@ -108,6 +123,20 @@ async function postHandler(request: NextRequest) {
       if (!existingForStatus || filterByScope([existingForStatus], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
       }
+      // Receiver-only: received / seen / completed. Sender-only: cancelled / sent.
+      const { isReceivingSide, isSendingSide, sideForStatus } = await import('@/lib/referral-parties');
+      const requiredSide = sideForStatus(String(body.status));
+      if (!requiredSide) {
+        return NextResponse.json({ error: 'Unsupported referral status' }, { status: 400 });
+      }
+      const onRequiredSide = requiredSide === 'receiver'
+        ? isReceivingSide(auth, existingForStatus)
+        : isSendingSide(auth, existingForStatus);
+      if (!onRequiredSide) {
+        return forbidden(requiredSide === 'receiver'
+          ? 'Only the receiving facility can make this status change.'
+          : 'Only the sending facility can make this status change.');
+      }
       const result = await updateReferralStatus(
         body.referralId as string,
         body.status as Parameters<typeof updateReferralStatus>[1],
@@ -121,6 +150,18 @@ async function postHandler(request: NextRequest) {
         { error: 'patientId, toHospitalId, and reason are required' },
         { status: 400 }
       );
+    }
+    // The patient must be inside the caller's own scope. Without this a
+    // clinician who knows another org's patient id could raise a referral for
+    // that patient to their own hospital. 404 so an out-of-scope id reads
+    // like a missing one.
+    {
+      const { getPatientById } = await import('@/lib/services/patient-service');
+      const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+      const patient = await getPatientById(String(body.patientId));
+      if (!patient || filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
+        return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
+      }
     }
     body.referredBy = body.referredBy || auth.sub;
     body.referredByName = body.referredByName || auth.name;

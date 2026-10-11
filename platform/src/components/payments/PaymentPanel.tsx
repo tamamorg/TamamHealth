@@ -63,12 +63,29 @@ export default function PaymentPanel({
     })();
   }, [patientId, amountDue, scope]);
 
+  useEffect(() => {
+    if (!scope) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getPatientById } = await import('@/lib/services/patient-service');
+        const patient = await getPatientById(patientId, scope);
+        if (!cancelled) setEmailAddress((patient?.email || '').trim());
+      } catch { /* leave empty: sending stays disabled with the note */ }
+      finally { if (!cancelled) setEmailLoaded(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [patientId, scope]);
+
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [paymentDoc, setPaymentDoc] = useState<PaymentDoc | null>(null);
+  // The recipient is the patient's email on file and nothing else: the server
+  // refuses any other address, so it is shown read-only rather than editable.
   const [emailAddress, setEmailAddress] = useState('');
+  const [emailLoaded, setEmailLoaded] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailSending, setEmailSending] = useState(false);
@@ -241,19 +258,25 @@ export default function PaymentPanel({
     setEmailSending(true);
     setEmailError(null);
     try {
-      const { buildReceiptData, emailReceipt } = await import('@/lib/services/receipt-service');
+      const { buildReceiptData, sendReceiptEmail } = await import('@/lib/services/receipt-service');
       const receipt = buildReceiptData(paymentDoc, currentUser?.hospital?.name || currentUser?.hospitalName, hospitalNumber);
-      // emailReceipt returns the API's honest `delivered` flag — only claim
+      // sendReceiptEmail returns the API's honest `delivered` flag — only claim
       // "Sent" when the provider actually accepted the email.
-      const delivered = await emailReceipt(receipt, emailAddress);
-      if (delivered) {
+      const result = await sendReceiptEmail(receipt, emailAddress, paymentDoc._id);
+      if (result.delivered) {
         setEmailSent(true);
       } else {
-        setEmailError('Email could not be delivered — print the receipt or try again.');
+        setEmailError(t(
+          result.failure === 'forbidden' ? 'payments.emailErrForbidden'
+          : result.failure === 'no_email' ? 'payments.emailErrNoEmail'
+          : result.failure === 'rate_limited' ? 'payments.emailErrRateLimited'
+          : result.failure === 'not_found' ? 'payments.emailErrNotFound'
+          : 'payments.emailErrFailed',
+        ));
       }
     } catch (err) {
       console.error(err);
-      setEmailError('Email could not be delivered — print the receipt or try again.');
+      setEmailError(t('payments.emailErrFailed'));
     } finally {
       setEmailSending(false);
     }
@@ -312,13 +335,19 @@ export default function PaymentPanel({
           {/* Email input (shown when email button clicked) */}
           {showEmailInput && !emailSent && (
             <div className="bl-field" style={{ padding: '0 20px 12px', flexDirection: 'row' }}>
-              <input type="email" value={emailAddress} onChange={e => setEmailAddress(e.target.value)}
-                placeholder="support.tamam@gmail.com"
+              <input type="email" value={emailAddress} readOnly aria-label={t('payments.emailOnFile')}
+                placeholder={emailLoaded ? t('payments.noPatientEmail') : ''}
                 style={{ flex: 1 }}
               />
               <button type="button" className="bl-btn bl-btn--primary" disabled={emailSending || !emailAddress} onClick={handleEmailReceipt}>
                 {emailSending ? t('payments.sending') : t('payments.send')}
               </button>
+            </div>
+          )}
+
+          {showEmailInput && !emailSent && emailLoaded && !emailAddress && (
+            <div style={{ padding: '0 20px 12px' }}>
+              <div className="bl-muted" style={{ fontSize: 12 }}>{t('payments.noPatientEmailNote')}</div>
             </div>
           )}
 

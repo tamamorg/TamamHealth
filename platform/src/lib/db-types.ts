@@ -201,6 +201,9 @@ export interface PatientDoc extends BaseDoc, Omit<Patient, 'id'> {
   /** Set when the portal account is suspended without deleting the credential
    *  (a disputed account, a shared phone, a request from the patient). */
   portalDisabledAt?: string;
+  /** Portal tokens issued before this instant are refused (stamped when the
+   *  portal password is set or access is suspended). Absent = no cut-off. */
+  portalCredentialEpoch?: string;
   /** Medications review: clinician attested the patient takes no medications. */
   noKnownMedications?: boolean;
   /** Problems review: clinician attested the patient has no known problems. */

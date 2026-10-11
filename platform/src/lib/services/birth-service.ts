@@ -7,6 +7,7 @@ import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { jubaYearMonth, jubaIsInMonth, isInRange } from '../time-juba';
 import { findByType } from './db-query';
+import { resolveRegisterOrgId } from './register-org';
 
 /**
  * Look up ANC visits for a mother by name (case-insensitive). Used after a
@@ -47,7 +48,10 @@ export async function getBirthsByState(state: string): Promise<BirthRegistration
   return all.filter(b => b.state === state);
 }
 
-export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<BirthRegistrationDoc> {
+export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, scope: DataScope): Promise<BirthRegistrationDoc> {
+  // Refuse before anything is written: a birth with no organisation never syncs
+  // and is invisible to the registrar's own scoped list.
+  const orgId = await resolveRegisterOrgId(data, scope);
   const db = birthsDB();
   const now = new Date().toISOString();
   const id = `birth-${uuidv4()}`;
@@ -71,6 +75,7 @@ export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev
     _id: id,
     type: 'birth',
     ...data,
+    orgId,
     linkedAncMotherId: data.linkedAncMotherId || linkedAncMotherId,
     createdAt: now,
     updatedAt: now,

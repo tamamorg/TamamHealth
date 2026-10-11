@@ -261,14 +261,25 @@ describe('patient writes: portal credentials are the server’s', () => {
     expect(sent.body!.new_edits).toBe(false);
   });
 
-  test('a new patient from a role that may not enrol arrives without portal access, and it is audited', async () => {
+  test('a patient registered with an invitation keeps it, whoever registered them', async () => {
     store[PATIENTS] = [];
-    const fresh = { _id: 'pat-2', _rev: '1-a', type: 'patient', orgId: 'org-a', portalUsername: 'x', portalInviteTokenHash: 'chosen-by-device' };
+    const fresh = { _id: 'pat-2', _rev: '1-a', type: 'patient', orgId: 'org-a', portalUsername: 'x', portalInviteTokenHash: 'minted-at-registration' };
 
     await call(PATIENTS, ['_bulk_docs'], { body: { new_edits: false, docs: [fresh] } });
 
     const [sent] = forwarded('_bulk_docs').filter(c => c.url.pathname.includes(PATIENTS));
-    expect(Object.keys((sent.body!.docs as Doc[])[0]).filter(key => key.startsWith('portal'))).toEqual([]);
+    expect((sent.body!.docs as Doc[])[0]).toMatchObject({ portalUsername: 'x', portalInviteTokenHash: 'minted-at-registration' });
+    expect(audits('sync.gateway.portal_credentials_stripped')).toHaveLength(0);
+  });
+
+  test('a new patient arriving with a ready-made password loses it, and it is audited', async () => {
+    store[PATIENTS] = [];
+    const fresh = { _id: 'pat-3', _rev: '1-a', type: 'patient', orgId: 'org-a', portalUsername: 'x', portalPasswordHash: 'chosen-by-device' };
+
+    await call(PATIENTS, ['_bulk_docs'], { body: { new_edits: false, docs: [fresh] } });
+
+    const [sent] = forwarded('_bulk_docs').filter(c => c.url.pathname.includes(PATIENTS));
+    expect((sent.body!.docs as Doc[])[0].portalPasswordHash).toBeUndefined();
     expect(audits('sync.gateway.portal_credentials_stripped')).toHaveLength(1);
   });
 });

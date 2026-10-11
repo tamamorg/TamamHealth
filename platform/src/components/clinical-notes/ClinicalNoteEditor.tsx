@@ -24,6 +24,7 @@ import Modal from '@/components/Modal';
 import NoteSectionCard from './NoteSectionCard';
 import AssignPicker from './AssignPicker';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import PrescribeModal from './prescribe/PrescribeModal';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import { reasonContextFromNote } from '@/components/lab/order/lab-order-reasons';
@@ -113,6 +114,7 @@ export default function ClinicalNoteEditor({
   const router = useRouter();
   const { showToast } = useToast();
   const confirm = useConfirm();
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const [note, setNote] = useState<ClinicalNoteDoc | null>(null);
@@ -461,9 +463,15 @@ export default function ClinicalNoteEditor({
   };
 
   const handleClear = async () => {
-    if (!window.confirm('Clear every section of this note? Text you have written will be removed.')) return;
+    const ok = await confirm({
+      title: t('clinicalNote.clearTitle'),
+      message: t('clinicalNote.clearConfirm'),
+      confirmLabel: t('clinicalNote.clearAction'),
+      tone: 'danger',
+    });
+    if (!ok) return;
     await persist(() => clearNote(noteId));
-    showToast('Note cleared.', 'success');
+    showToast(t('clinicalNote.cleared'), 'success');
   };
 
   // ── Section actions ─────────────────────────────────────────────────────

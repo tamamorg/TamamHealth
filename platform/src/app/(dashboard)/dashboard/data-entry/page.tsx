@@ -151,7 +151,7 @@ export default function DataEntryDashboard() {
     setSaving(true);
     try {
       const { saveFacilityCensus, getFacilityCensusByFacility } = await import('@/lib/services/facility-census-service');
-      const facilityId = currentUser?.hospitalId || 'unknown';
+      const facilityId = currentUser?.hospitalId || '';
       await saveFacilityCensus({
         facilityId,
         facilityName: myHospital?.name,

@@ -1,4 +1,5 @@
 import { availabilityDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { AvailabilityDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -78,6 +79,7 @@ export async function createAvailability(
     throw new Error('End time must be after start time');
   }
 
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'availability window');
   const db = availabilityDB();
   const now = new Date().toISOString();
 
@@ -97,6 +99,7 @@ export async function createAvailability(
     type: 'availability',
     status: 'open',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

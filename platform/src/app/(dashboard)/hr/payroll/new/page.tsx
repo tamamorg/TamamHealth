@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDialog';
 import CreateRecordPage from '@/components/create-dialogs/CreateRecordPage';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { todayIso } from '@/lib/date-utils';
 import { useReturnTo } from '@/lib/navigation/expand-to-page';
 
 export default function NewPayrollEntryPage() {
@@ -24,7 +25,7 @@ export default function NewPayrollEntryPage() {
 
   return (
     <CreateRecordPage
-      title={t('hr.addPayrollEntryPeriod', { period: period || new Date().toISOString().slice(0, 7) })}
+      title={t('hr.addPayrollEntryPeriod', { period: period || todayIso().slice(0, 7) })}
       note={t('createPage.payrollNote')}
       backLabel={t('createPage.backToPayroll')}
       returnTo={returnTo}

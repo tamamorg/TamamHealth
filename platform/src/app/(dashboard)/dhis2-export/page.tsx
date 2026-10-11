@@ -1,5 +1,6 @@
 'use client';
 
+import { todayIso } from '@/lib/date-utils';
 import { useState, useEffect, useMemo } from 'react';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import {
@@ -37,7 +38,7 @@ export default function DHIS2ExportPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'aggregate' | 'export' | 'log'>('overview');
   const [syncing, setSyncing] = useState(false);
-  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [period, setPeriod] = useState(todayIso().slice(0, 7));
   const [exportLevel, setExportLevel] = useState<'facility' | 'payam' | 'county' | 'state' | 'national'>('facility');
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<{ format: string; rows: number; date: string } | null>(null);

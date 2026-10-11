@@ -24,6 +24,9 @@ import {
   saveHeartbeat,
   pollDatabase,
   recoverStateFromPlatform,
+  parseDbTableMapKeys,
+  deadLetterTotal,
+  DEAD_LETTER_KEY,
   FALLBACK_DBS,
 } from './index.mjs';
 
@@ -146,6 +149,72 @@ test('saveHeartbeat writes a current service status atomically', async () => {
 test('FALLBACK_DBS includes patients and audit_log', () => {
   assert.ok(FALLBACK_DBS.includes('tamamhealth_patients'));
   assert.ok(FALLBACK_DBS.includes('tamamhealth_audit_log'));
+});
+
+test('FALLBACK_DBS has no duplicates and includes medication_administrations', () => {
+  assert.equal(new Set(FALLBACK_DBS).size, FALLBACK_DBS.length);
+  assert.ok(FALLBACK_DBS.includes('tamamhealth_medication_administrations'));
+});
+
+test('parseDbTableMapKeys reads the declaration, not prose mentions of the name', () => {
+  const src = [
+    '/* DB_TABLE_MAP below; { not this brace } */',
+    "const DB_TABLE_MAP: Record<string, string> = {",
+    "  tamamhealth_patients: 'patients',",
+    "  // tamamhealth_commented: 'nope',",
+    "  tamamhealth_hospitals: 'hospitals',",
+    '};',
+  ].join('\n');
+  assert.deepEqual(parseDbTableMapKeys(src), ['tamamhealth_patients', 'tamamhealth_hospitals']);
+});
+
+test('parseDbTableMapKeys on the real platform route matches FALLBACK_DBS exactly', async () => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const route = new URL('../platform/src/modules/analytics/api/sync-route.ts', import.meta.url);
+  if (!existsSync(route)) return; // worker checked out alone
+  const keys = parseDbTableMapKeys(readFileSync(route, 'utf8'));
+  assert.ok(keys.length > 0);
+  assert.deepEqual([...keys].sort(), [...FALLBACK_DBS].sort());
+});
+
+test('a batch that fails 5 retries is dead-lettered in state and counted', async (t) => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('/_changes')) {
+      return new Response(JSON.stringify({
+        last_seq: '9-z', results: [{ seq: '9-z', id: 'p:1', doc: { _id: 'p:1' }, changes: [{ rev: '1-x' }] }],
+      }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ ok: false, processed: 0, errors: 1 }), { status: 200 });
+  };
+  t.after(() => { globalThis.fetch = realFetch; });
+  const env = {
+    COUCHDB_URL: 'http://couchdb:5984',
+    COUCHDB_WEBHOOK_SECRET: 'x'.repeat(32),
+    PLATFORM_SYNC_URL: 'http://platform:3000/api/sync',
+    BATCH_SIZE: 100,
+  };
+  const state = {};
+  for (let i = 0; i < 4; i++) {
+    const r = await pollDatabase({ env, state, db: 'tamamhealth_patients' });
+    assert.ok(r.heldForRetry);
+    assert.equal(deadLetterTotal(state), 0);
+  }
+  const last = await pollDatabase({ env, state, db: 'tamamhealth_patients' });
+  assert.equal(last.deadLettered, 1);
+  assert.equal(deadLetterTotal(state), 1);
+  const rec = state[DEAD_LETTER_KEY].records[0];
+  assert.equal(rec.db, 'tamamhealth_patients');
+  assert.equal(rec.to, '9-z');
+  // Survives the state-file round trip.
+  const dir = mkdtempSync(join(tmpdir(), 'sw-dl-'));
+  try {
+    await saveState(join(dir, 's.json'), state);
+    assert.equal(deadLetterTotal(await loadState(join(dir, 's.json'))), 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('pollDatabase advances seq and POSTs an HMAC signed body', async (t) => {

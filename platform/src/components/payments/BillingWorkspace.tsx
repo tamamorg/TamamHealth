@@ -173,6 +173,9 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   const [reverseFor, setReverseFor] = useState<{ payment: PaymentDoc; mode: 'void' | 'refund' } | null>(null);
   const [reverseReason, setReverseReason] = useState('');
   const [reversing, setReversing] = useState(false);
+  // One idempotency key per opened refund dialog: a double click or retry of the
+  // same dialog replays the same refund instead of posting a second one.
+  const refundKeyRef = useRef('');
 
   const loadData = useCallback(async () => {
     if (!scope) return;
@@ -591,21 +594,24 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   // Confirm + perform a payment reversal. Void uses reversePayment (status →
   // reversed); Refund uses issueRefund. Both write an audit trail in-service.
   const handleConfirmReverse = async () => {
-    if (!reverseFor) return;
+    if (!reverseFor || reversing) return;
     const reason = reverseReason.trim();
     if (!reason) return;
     setReversing(true);
+    const mode = reverseFor.mode;
     try {
       const { reversePayment, issueRefund } = await import('@/lib/services/payment-service');
       const p = reverseFor.payment;
-      if (reverseFor.mode === 'void') {
-        await reversePayment(p._id, reason, currentUser?._id || 'system', myName || 'System');
+      if (mode === 'void') {
+        const result = await reversePayment(p._id, reason, currentUser?._id || 'system', myName || 'System');
+        if (!result) throw new Error('Payment not found');
       } else {
         await issueRefund({
+          idempotencyKey: refundKeyRef.current,
           paymentId: p._id,
           patientId: p.patientId,
           patientName: p.patientName,
-          amount: p.amount,
+          amount: Math.round((p.amount - (p.refundedAmount ?? 0)) * 100) / 100,
           currency: p.currency,
           method: p.method,
           reason,
@@ -619,7 +625,9 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       setReverseReason('');
       loadData();
     } catch (err) {
+      // Keep the dialog open (and the refund key) so a retry resumes safely.
       console.error('Failed to reverse payment:', err);
+      showToast(mode === 'refund' ? t('billing.refundFailed') : t('payments.errorPaymentFailed'), 'error');
     } finally {
       setReversing(false);
     }
@@ -899,7 +907,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           onClose={() => setSelectedPatientId(null)}
           onRecordPayment={() => setPayingLine(selectedLine)}
           onRecordPlanPayment={(plan) => { setRecordPlanFor(plan); setPlanAmount(''); setPlanNotes(''); }}
-          onReversePayment={(payment, mode) => { setReverseFor({ payment, mode }); setReverseReason(''); }}
+          onReversePayment={(payment, mode) => { refundKeyRef.current = `refund:${payment._id}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; setReverseFor({ payment, mode }); setReverseReason(''); }}
         />
       )}
 
@@ -923,7 +931,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                     {reverseFor.payment.reference && <span style={{ fontFamily: 'monospace' }}> · {reverseFor.payment.reference}</span>}
                   </div>
                 </div>
-                <span className="bl-num" style={{ fontWeight: 700, color: 'var(--color-danger-text)' }}>{formatMoney(reverseFor.payment.amount)}</span>
+                <span className="bl-num" style={{ fontWeight: 700, color: 'var(--color-danger-text)' }}>{formatMoney(reverseFor.mode === 'refund' ? reverseFor.payment.amount - (reverseFor.payment.refundedAmount ?? 0) : reverseFor.payment.amount)}</span>
               </div>
             </div>
             <div className="bl-field">
@@ -1287,13 +1295,13 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                           back. Both go through a confirm dialog + audited service. */}
                       {!reversed && p.status === 'posted' && (
                         <div className="flex items-center gap-1.5">
-                          <button
+                          {!(p.refundedAmount && p.refundedAmount > 0) && <button
                             onClick={() => onReversePayment(p, 'void')}
                             className="bl-btn bl-btn--ghost"
                             style={{ padding: '3px 8px', fontSize: 11 }}
                           >
                             <Ban className="w-3 h-3" /> {t('action.reverse')}
-                          </button>
+                          </button>}
                           <button
                             onClick={() => onReversePayment(p, 'refund')}
                             className="bl-btn bl-btn--outline"
