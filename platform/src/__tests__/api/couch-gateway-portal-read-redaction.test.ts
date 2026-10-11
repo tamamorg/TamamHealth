@@ -18,6 +18,7 @@ jest.mock('@/modules/identity/core/api-auth', () => ({
 jest.mock('@/lib/sync/couch-auth', () => ({
   ensureCouchGatewayUser: jest.fn(async () => ({ username: 'gw', password: 'pw' })),
   ensureOrganizationProvisioned: jest.fn(async () => undefined),
+  couchAdminAuthorization: () => 'Basic server',
 }));
 jest.mock('@/lib/services/audit-service', () => ({ logAuditSafe: jest.fn(async () => undefined) }));
 
@@ -28,6 +29,7 @@ import { stripPortalSecrets } from '@/lib/sync/portal-read-redaction';
 
 const PATIENTS = tenantDatabaseName('tamamhealth_patients', 'org-a');
 const COUCH = 'http://couch.test:5984';
+const MINTED = 'c'.repeat(64);
 type Doc = Record<string, unknown> & { _id: string };
 
 const serverPatient = (): Doc => ({
@@ -159,11 +161,11 @@ describe('the push side is unchanged', () => {
     }) as unknown as typeof fetch;
     const fresh = {
       _id: 'pat-new', _rev: '1-a', type: 'patient', orgId: 'org-a', firstName: 'N', surname: 'P',
-      portalUsername: 'np', portalEnabledAt: '2026-01-01', portalInviteTokenHash: 'minted', portalInviteExpiresAt: '2026-02-01',
+      portalUsername: 'n.p.0001', portalEnabledAt: '2026-01-01', portalInviteTokenHash: MINTED, portalInviteExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     };
     await call(['_bulk_docs'], { body: { new_edits: false, docs: [fresh] } });
     const sent = upstream.find(c => c.url.pathname.endsWith('/_bulk_docs'))!;
-    expect((sent.body!.docs as Doc[])[0].portalInviteTokenHash).toBe('minted');
+    expect((sent.body!.docs as Doc[])[0].portalInviteTokenHash).toBe(MINTED);
   });
 });
 
