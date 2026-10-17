@@ -131,7 +131,55 @@ export interface SyncServiceOptions {
   onChange?: (status: SyncStatus) => void;
 }
 
-import { DOC_WRITE_ROLES, isAppendOnlyDatabase } from './write-permissions';
+import {
+  DOC_CREATE_ONLY_REQUIRED_VALUES,
+  DOC_CREATE_ONLY_ROLES,
+  DOC_UPDATE_ONLY_ROLES,
+  DOC_WRITE_ROLES,
+  isAppendOnlyDatabase,
+} from './write-permissions';
+
+/**
+ * Mirrors the order of the generated CouchDB validator (write-permissions.ts):
+ *   1. no existing server doc + create-only role  -> accepted when the
+ *      required values hold (unconditionally for types with none);
+ *   2. role in the full-write matrix              -> accepted;
+ *   3. existing server doc + update-only role     -> accepted (the changed
+ *      fields are checked server-side; the device cannot see the server's old
+ *      document, so field-level rejection cannot be predicted here).
+ * The validator knows "is there an old doc" from the server; the closest the
+ * client has is the revision generation: a first revision ("1-") can only be a
+ * create, anything later was edited after creation. A role that is both
+ * create-only and update-only (nurse/admission) is accepted either way.
+ */
+function roleMayPush(
+  role: string,
+  doc: { type?: string; _rev?: unknown; [key: string]: unknown },
+): boolean {
+  const type = doc.type as string;
+  if ((DOC_WRITE_ROLES[type] as readonly string[] | undefined)?.includes(role)) return true;
+  const firstRevision = typeof doc._rev !== 'string' || doc._rev.indexOf('1-') === 0;
+  const creator = (DOC_CREATE_ONLY_ROLES[type] as readonly string[] | undefined)?.includes(role) === true;
+  const amender = (DOC_UPDATE_ONLY_ROLES[type] as readonly string[] | undefined)?.includes(role) === true;
+  // A creator's document is offered at ANY local revision. The revision number
+  // says how many times this device saved it, not whether the server has it: a
+  // nurse who records vitals offline and corrects a typo before the first push
+  // holds revision 2 of a document the server will still see as a create.
+  // Withholding it would be silent — no denial, the database reads clean, and
+  // the logout wipe then deletes vitals nobody else has. If it IS an amendment
+  // the server refuses, that surfaces as a denial, which blocks the wipe.
+  if (creator) {
+    const required = DOC_CREATE_ONLY_REQUIRED_VALUES[type] ?? {};
+    const shapeOk = Object.keys(required).every(
+      (field) => required[field].includes(doc[field] as string),
+    );
+    // A create that misses the required shape is refused by the validator; an
+    // amender may still get through as an update.
+    if (shapeOk) return true;
+    if (!amender) return false;
+  }
+  return amender && !firstRevision;
+}
 
 /**
  * Build a PouchDB push filter that drops documents the server would reject:
@@ -161,8 +209,8 @@ export function buildPushFilter(
       return !appendOnlyDatabase;
     }
     if (!role || !doc.type) return false;
-    const allowed = doc.type ? DOC_WRITE_ROLES[doc.type] : undefined;
-    if (!allowed) return false;
+    // Unknown types fail closed on the server, whatever the narrower tables say.
+    if (!DOC_WRITE_ROLES[doc.type]) return false;
     // Staff chat belongs to its participants and each message to its author
     // (participant-scope.ts, message-integrity.ts). The server refuses these,
     // so offering them only produces a standing "denied" on this device:
@@ -176,8 +224,7 @@ export function buildPushFilter(
       if (doc.type === 'message' && typeof doc.conversationId === 'string' && doc.conversationId
           && doc.fromDoctorId !== userId && typeof doc._rev === 'string' && doc._rev.indexOf('1-') === 0) return false;
     }
-    return (allowed as readonly string[]).includes(role)
-      && documentMatchesEntitlement(doc, entitlement);
+    return roleMayPush(role, doc) && documentMatchesEntitlement(doc, entitlement);
   };
 }
 
@@ -216,6 +263,13 @@ export class SyncService {
   // repair ran — re-running on idle, spaced out, converges the fleet (each
   // healed doc pushes a clean revision and stops re-importing).
   private lastHealAt = 0;
+  // Proof-of-delivery bookkeeping for the security wipe (local-wipe.ts). A
+  // database is only "clean" once its own push has gone idle without error and
+  // without a denied document since the last restart, and nothing has changed
+  // since. Any doubt leaves these false, which keeps data on the device.
+  private pushClean = false;
+  private pushDenied = false;
+  private pullClean = false;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private _status: SyncStatus = {
     state: 'idle',
@@ -265,10 +319,26 @@ export class SyncService {
     return { ...this._status };
   }
 
+  /**
+   * True only when every local write on this database is proven to be on the
+   * server: the live push has reached an idle ('paused') state with no error
+   * and no denied document, and has not become active again. A pull-only
+   * database has nothing to push (the server owns it), so it is clean once a
+   * pull cycle has completed without error.
+   */
+  isCleanForWipe(): boolean {
+    if (this.stopped) return false;
+    if (this.direction === 'pull') return this.pullClean && this._status.error === null;
+    return this.pushClean && !this.pushDenied && this._status.error === null;
+  }
+
   /** Start replication (live push + live-or-polled pull). */
   startSync(): void {
     this.cancelReplication();
     this.stopped = false;
+    this.pushClean = false;
+    this.pushDenied = false;
+    this.pullClean = false;
     this.updateStatus({ state: 'connecting', error: null });
 
     // `live` and `retry` MUST sit at the top level of the sync options — PouchDB
@@ -347,7 +417,11 @@ export class SyncService {
         this.scheduleNextPull(this.pullIntervalMs);
       }
     };
-    Promise.resolve(rep as unknown as Promise<unknown>).then(done, (err: unknown) => {
+    Promise.resolve(rep as unknown as Promise<unknown>).then(() => {
+      this.pullClean = true;
+      done();
+    }, (err: unknown) => {
+      this.pullClean = false;
       // Network blip or transient CouchDB error: don't surface as fatal, just
       // retry on the next cycle. Persistent auth failures are handled by the
       // session heartbeat / refresh path elsewhere.
@@ -591,13 +665,22 @@ export class SyncService {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private attachListeners(rep: any, repDirection: 'push' | 'pull'): void {
-    rep.on('change', (info: unknown) => this.handleReplicationChange(info, repDirection));
+    rep.on('change', (info: unknown) => {
+      if (repDirection === 'push') this.pushClean = false;
+      this.handleReplicationChange(info, repDirection);
+    });
 
     rep.on('paused', (err: unknown) => {
-      // Paused means replication is up to date (or went offline)
+      // Paused means replication is up to date (or went offline). With an
+      // error it went OFFLINE or is retrying: that is not "synced", and it
+      // must not erase a standing denial from this replication either.
+      if (repDirection === 'push') this.pushClean = !err && !this.pushDenied;
+      else this.pullClean = !err;
+      const failure = err instanceof Error ? err.message : err ? 'Replication paused with an error' : null;
       this.updateStatus({
-        state: 'paused',
+        state: this.pushDenied && repDirection === 'push' ? 'denied' : 'paused',
         lastSync: this._status.lastSync || new Date().toISOString(),
+        ...(failure ? { error: failure } : {}),
       });
       // Push idle with no error = every local write is on the server. The one
       // moment a stale "pending" stamp is provably a lie — repair them.
@@ -608,19 +691,35 @@ export class SyncService {
         void healStaleOfflineMetadata(this.localDB, this.pushFilter).catch(e =>
           captureException(e, { tag: 'sync.healStaleOfflineMetadata' })
         );
+        void import('@/lib/services/register-org')
+          .then(m => m.repairRegisterOrgIds())
+          .catch(e => captureException(e, { tag: 'sync.repairRegisterOrgIds' }));
       }
     });
 
     rep.on('active', () => {
-      this.updateStatus({ state: 'active', error: null });
+      if (repDirection === 'push') this.pushClean = false;
+      // A standing denial is not cleared by activity: the rejected document
+      // is still unsent, so the error text stays until the service restarts.
+      this.updateStatus(
+        repDirection === 'push' && this.pushDenied
+          ? { state: 'active' }
+          : { state: 'active', error: null },
+      );
     });
 
     rep.on('denied', (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Access denied';
+      if (repDirection === 'push') {
+        this.pushDenied = true;
+        this.pushClean = false;
+      }
       this.updateStatus({ state: 'denied', error: msg });
     });
 
     rep.on('error', (err: unknown) => {
+      if (repDirection === 'push') this.pushClean = false;
+      else this.pullClean = false;
       const msg = err instanceof Error ? err.message : 'Replication error';
       this.updateStatus({ state: 'error', error: msg });
       this.scheduleRetry();

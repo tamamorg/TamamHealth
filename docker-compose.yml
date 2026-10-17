@@ -94,8 +94,12 @@ services:
       # the Doppler CLI at boot. Unset = legacy .env_file path. See
       # docs/operations/secrets.md.
       DOPPLER_TOKEN: ${DOPPLER_TOKEN:-}
+    # Loopback only by default: Docker-published ports bypass UFW, so a bare
+    # "3000:3000" exposes the app (plain HTTP, no TLS) to the internet. The
+    # host-level Caddy that deploy.sh writes proxies to localhost:3000. Set
+    # PLATFORM_BIND=0.0.0.0 only for a deliberately direct-exposed install.
     ports:
-      - "${PLATFORM_PORT:-3000}:3000"
+      - "${PLATFORM_BIND:-127.0.0.1}:${PLATFORM_PORT:-3000}:3000"
     # Persist generated demo/bootstrap passwords across container recreate.
     # Host file must be owned by the container `node` UID (usually 1000) so
     # seed-credentials.ts can read/write without EACCES on /app.
@@ -153,8 +157,10 @@ services:
       dockerfile: Dockerfile
     environment:
       NODE_ENV: production
+    # Loopback only by default (see platform above); host Caddy proxies to
+    # localhost:3001. Override with WEBSITE_BIND.
     ports:
-      - "${WEBSITE_PORT:-3001}:3001"
+      - "${WEBSITE_BIND:-127.0.0.1}:${WEBSITE_PORT:-3001}:3001"
     restart: unless-stopped
     networks:
       - app-net
@@ -190,9 +196,10 @@ services:
       - couchdb_backups:/backups
       - ./scripts/dump-couchdb.sh:/usr/local/bin/dump-couchdb.sh:ro
     command: >
-      sh -c "apk add --no-cache curl jq &&
+      sh -c "apk add --no-cache curl jq ||
+               { echo '[couchdb-backup] FATAL: apk add curl jq failed; cron NOT started, no backups will run' >&2; exit 1; };
              echo '15 2 * * * /usr/local/bin/dump-couchdb.sh >> /backups/backup.log 2>&1' > /etc/crontabs/root &&
-             crond -f -l 2"
+             exec crond -f -l 2"
     restart: unless-stopped
     networks:
       - app-net

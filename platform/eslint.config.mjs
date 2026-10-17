@@ -18,7 +18,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
  * has not moved yet and turn every intermediate commit into a wall of errors.
  * Adding a name here is the last step of migrating that domain.
  */
-const MIGRATED_MODULES = ['identity', 'communication', 'tenancy', 'analytics', 'feature-catalog', 'terminology', 'clinical-forms', 'departments', 'ai-scribe'];
+const MIGRATED_MODULES = ['identity', 'communication', 'tenancy', 'analytics', 'feature-catalog', 'terminology', 'clinical-forms', 'departments', 'ai-scribe', 'financial-clearance', 'insurance', 'post-consult', 'specialty-care'];
 
 /**
  * The directories inside a module that are private.
@@ -39,6 +39,19 @@ function privatePaths(name) {
     `@/modules/${name}/${dir}/*`,
     `@/modules/${name}/${dir}/**`,
   ]);
+}
+
+/** The `patterns` entries that make `names` private to the importing file. */
+function boundaryPatterns(names) {
+  return names.map(name => ({
+    group: privatePaths(name),
+    message:
+      `Import from '@/modules/${name}', '@/modules/${name}/client', `
+      + `'@/modules/${name}/edge', or a named service `
+      + `('@/modules/${name}/services/<name>'). A module's internals are private — reaching `
+      + 'past them is how the previous layout ended up with no boundaries at all '
+      + '(docs/adr/0003-domain-modules.md).',
+  }));
 }
 
 /**
@@ -78,20 +91,32 @@ function moduleBoundaryRules() {
     // `await import()`, and that is the right place to draw the line: a lazy
     // import names a file deliberately, and the alternative — routing every
     // lazy load through a barrel — is the eager-loading bug above.
+    //
+    // FLAT CONFIG REPLACES RULE OPTIONS, IT DOES NOT MERGE THEM. Two blocks
+    // that both match a file and both set `no-restricted-imports` leave the
+    // file with only the LAST block's patterns. An earlier version emitted one
+    // block per module, all matching `src/**`, so every non-app file was
+    // restricted from the final module in the list only (src/lib/context.tsx
+    // was checked against `ai-scribe` and nothing else). So: exactly ONE block
+    // per file, each carrying the patterns for every module it must not reach
+    // into.
+    //
+    //   - outside src/modules, src/app, src/shared: all migrated modules.
+    //   - inside src/modules/<m>/**: every migrated module EXCEPT <m>, so a
+    //     module may import its own internals by deep path.
+    //   - src/app and src/shared: Rules 3 and 2 below.
+    {
+      files: ['src/**/*.{ts,tsx}'],
+      ignores: ['src/modules/**', 'src/app/**', 'src/shared/**'],
+      rules: {
+        'no-restricted-imports': ['error', { patterns: boundaryPatterns(MIGRATED_MODULES) }],
+      },
+    },
     ...MIGRATED_MODULES.map(name => ({
-      files: [`src/**/*.{ts,tsx}`],
-      ignores: [`src/modules/${name}/**`],
+      files: [`src/modules/${name}/**/*.{ts,tsx}`],
       rules: {
         'no-restricted-imports': ['error', {
-          patterns: [{
-            group: privatePaths(name),
-            message:
-              `Import from '@/modules/${name}', '@/modules/${name}/client', `
-              + `'@/modules/${name}/edge', or a named service `
-              + `('@/modules/${name}/services/<name>'). A module's internals are private — reaching `
-              + 'past them is how the previous layout ended up with no boundaries at all '
-              + '(docs/adr/0003-domain-modules.md).',
-          }],
+          patterns: boundaryPatterns(MIGRATED_MODULES.filter(m => m !== name)),
         }],
       },
     })),

@@ -13,12 +13,45 @@ import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
-import { nextSequence } from './doc-counter';
+import { nextSequence, getDeviceCode } from './doc-counter';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { toIsoDate } from '@/lib/date-utils';
 
 const billingDB = () => getDB('tamamhealth_billing');
+
+/**
+ * Typed business-rule failure. `null` from the mutators below still means
+ * "bill not found"; anything else that refuses the operation throws this, so a
+ * caller (API route, UI) can tell the reasons apart and map them to a status.
+ */
+export type BillingErrorCode =
+  | 'INVALID_AMOUNT' | 'AMOUNT_EXCEEDS_BALANCE' | 'INVALID_METHOD'
+  | 'BILL_NOT_PAYABLE' | 'BILL_PAID' | 'BILL_CANCELLED' | 'BILL_WAIVED'
+  | 'BILL_HAS_PAYMENTS' | 'CHARGE_REVERSED' | 'INVALID_REASON';
+
+export class BillingError extends Error {
+  constructor(public readonly code: BillingErrorCode, message: string) {
+    super(message);
+    this.name = 'BillingError';
+  }
+}
+
+const PAYMENT_METHODS: readonly PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit', 'waiver'];
+const PAYABLE_STATUSES: readonly string[] = ['pending', 'partial', 'insurance_pending', 'insurance_approved', 'insurance_rejected'];
+
+export function isPaymentMethod(v: unknown): v is PaymentMethod {
+  return typeof v === 'string' && (PAYMENT_METHODS as readonly string[]).includes(v);
+}
+
+function isNotFound(err: unknown): boolean {
+  const e = err as { status?: number; name?: string } | undefined;
+  return !!e && (e.status === 404 || e.name === 'not_found');
+}
+function isConflict(err: unknown): boolean {
+  const e = err as { status?: number; name?: string } | undefined;
+  return !!e && (e.status === 409 || e.name === 'conflict');
+}
 
 // ===== Invoice Number Generation =====
 
@@ -35,7 +68,11 @@ async function generateInvoiceNumber(): Promise<string> {
   // distinct bills reconciling to one reference. It was also a full scan of the
   // billing database on every invoice. See doc-counter.ts.
   const seq = await nextSequence(db, `invoice_${dateStr}`, () => highestInvoiceSeq(dateStr));
-  return `INV-${dateStr}-${String(seq).padStart(4, '0')}`;
+  // Device segment: the counter is per-device (`_local/`), so two devices
+  // reach the same sequence on the same day. Legacy `INV-<date>-<seq>` numbers
+  // stay as stored and still parse in highestInvoiceSeq.
+  const device = await getDeviceCode(db);
+  return `INV-${dateStr}-${String(seq).padStart(4, '0')}-${device}`;
 }
 
 /**
@@ -318,17 +355,48 @@ export async function recordPayment(
   reference?: string,
   notes?: string,
 ): Promise<BillingDoc | null> {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
+    throw new BillingError('INVALID_AMOUNT', 'Payment amount must be a number greater than zero');
+  }
+  const cents = Math.round(amount * 100) / 100;
+  if (cents <= 0) throw new BillingError('INVALID_AMOUNT', 'Payment amount must be at least 0.01');
+  if (!isPaymentMethod(method)) throw new BillingError('INVALID_METHOD', 'Unknown payment method');
+
   const db = billingDB();
-  try {
-    const bill = await db.get(billId) as BillingDoc;
+  // Retry on a write conflict by re-reading and re-validating against the
+  // fresh bill, so a concurrent writer's payments[] entry is kept, not lost.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let bill: BillingDoc;
+    try {
+      bill = await db.get(billId) as BillingDoc;
+    } catch (err) {
+      if (isNotFound(err)) return null;
+      throw err;
+    }
+    if (bill.chargeReversedAt) throw new BillingError('CHARGE_REVERSED', 'The charge on this bill was reversed; it cannot take payments');
+    if (!PAYABLE_STATUSES.includes(bill.status)) {
+      throw new BillingError(
+        bill.status === 'paid' ? 'BILL_PAID' : bill.status === 'cancelled' ? 'BILL_CANCELLED' : bill.status === 'waived' ? 'BILL_WAIVED' : 'BILL_NOT_PAYABLE',
+        `A bill that is ${bill.status} cannot take payments`,
+      );
+    }
+    if (cents > Math.round(bill.balanceDue * 100) / 100) {
+      throw new BillingError('AMOUNT_EXCEEDS_BALANCE', 'Payment exceeds the balance due on this bill');
+    }
+
     const now = new Date().toISOString();
+    const payment = applyPaymentToBill(bill, cents, method, receivedBy, receivedByName, now, reference, notes);
 
-    const payment = applyPaymentToBill(bill, amount, method, receivedBy, receivedByName, now, reference, notes);
-
-    const resp = await db.put(bill);
-    bill._rev = resp.rev;
+    try {
+      const resp = await db.put(bill);
+      bill._rev = resp.rev;
+    } catch (err) {
+      if (isConflict(err)) continue;
+      throw err;
+    }
 
     // Credit the ledger so the patient balance drops to match the bill.
+    // Keyed on the PaymentRecord id so a retry cannot post a second credit.
     // Best-effort — the bill payment is already persisted above.
     try {
       const { createLedgerEntry } = await import('./ledger-service');
@@ -336,7 +404,7 @@ export async function recordPayment(
         patientId: bill.patientId,
         encounterId: bill.encounterId,
         entryType: 'payment',
-        amount: -amount,
+        amount: -cents,
         description: `Payment — ${bill.invoiceNumber}`,
         referenceId: bill._id,
         referenceType: 'billing',
@@ -344,6 +412,7 @@ export async function recordPayment(
         facilityId: bill.facilityId,
         orgId: bill.orgId,
         createdBy: receivedBy,
+        idempotencyKey: `bill-payment:${payment.id}`,
       });
     } catch (err) {
       console.warn('[billing] ledger payment mirror failed for', bill._id, err);
@@ -351,7 +420,7 @@ export async function recordPayment(
 
     await logAuditSafe(
       'PAYMENT_RECORDED', receivedBy, receivedByName,
-      `Payment ${payment.id}: ${amount} ${bill.currency} via ${method} for ${bill.invoiceNumber}`
+      `Payment ${payment.id}: ${cents} ${bill.currency} via ${method} for ${bill.invoiceNumber}`
     );
 
     emitSyncEvent({
@@ -364,9 +433,8 @@ export async function recordPayment(
     });
 
     return bill;
-  } catch {
-    return null;
   }
+  throw new Error('Bill was modified concurrently; retry the payment');
 }
 
 export interface SettleOpenBillsInput {
@@ -529,14 +597,19 @@ export async function unsettleBillsForPayment(
     record.reversed = true;
     record.reversedAt = now;
     bill.amountPaid = Math.max(0, Math.round((bill.amountPaid - record.amount) * 100) / 100);
-    bill.balanceDue = Math.max(0, Math.round((bill.totalAmount - bill.amountPaid) * 100) / 100);
-    if (bill.balanceDue <= 0 && bill.amountPaid > 0) {
-      bill.status = 'paid';
-      bill.balanceDue = 0;
-    } else if (bill.amountPaid > 0) {
-      bill.status = 'partial';
-    } else {
-      bill.status = 'pending';
+    // A bill whose charge was reversed, or that was cancelled/waived, has no
+    // balance to reopen: the payment record is still marked reversed (the
+    // money did leave), but status and balanceDue stay as they were.
+    if (!bill.chargeReversedAt && bill.status !== 'cancelled' && bill.status !== 'waived') {
+      bill.balanceDue = Math.max(0, Math.round((bill.totalAmount - bill.amountPaid) * 100) / 100);
+      if (bill.balanceDue <= 0 && bill.amountPaid > 0) {
+        bill.status = 'paid';
+        bill.balanceDue = 0;
+      } else if (bill.amountPaid > 0) {
+        bill.status = 'partial';
+      } else {
+        bill.status = 'pending';
+      }
     }
     bill.updatedAt = now;
 
@@ -861,40 +934,60 @@ async function postLedgerAdjustment(bill: BillingDoc, amount: number, descriptio
   }
 }
 
+/**
+ * Waive the outstanding balance of a bill. Refuses (throws BillingError) a
+ * bill that is paid, cancelled, already waived, charge-reversed, or that has
+ * any live payment applied; returns null only when the bill does not exist.
+ * The waived balance comes off the ledger like cancelBill/applyDiscount do.
+ */
 export async function waiveBill(
   billId: string,
   waivedBy: string,
   waivedByName: string,
   reason: string,
 ): Promise<BillingDoc | null> {
+  if (typeof reason !== 'string' || !reason.trim()) throw new BillingError('INVALID_REASON', 'A waiver reason is required');
   const db = billingDB();
+  let bill: BillingDoc;
   try {
-    const bill = await db.get(billId) as BillingDoc;
-    bill.status = 'waived';
-    bill.discountReason = reason;
-    bill.balanceDue = 0;
-    bill.updatedAt = new Date().toISOString();
-    const resp = await db.put(bill);
-    bill._rev = resp.rev;
-
-    await logAuditSafe(
-      'BILL_WAIVED', waivedBy, waivedByName,
-      `Waived ${bill.invoiceNumber}: ${bill.totalAmount} ${bill.currency}; reason recorded on the bill`
-    );
-
-    emitSyncEvent({
-      resourceType: 'billing',
-      resourceId: bill._id,
-      operation: 'update',
-      resourceVersion: bill._rev,
-      orgId: bill.orgId,
-      hospitalId: bill.facilityId,
-    });
-
-    return bill;
-  } catch {
-    return null;
+    bill = await db.get(billId) as BillingDoc;
+  } catch (err) {
+    if (isNotFound(err)) return null;
+    throw err;
   }
+  if (bill.status === 'paid') throw new BillingError('BILL_PAID', 'A paid bill cannot be waived');
+  if (bill.status === 'cancelled') throw new BillingError('BILL_CANCELLED', 'A cancelled bill cannot be waived');
+  if (bill.status === 'waived') throw new BillingError('BILL_WAIVED', 'This bill is already waived');
+  if (bill.chargeReversedAt) throw new BillingError('CHARGE_REVERSED', 'The charge on this bill was reversed');
+  if ((bill.payments || []).some(p => !p.reversed)) {
+    throw new BillingError('BILL_HAS_PAYMENTS', 'A bill with payments applied cannot be waived');
+  }
+
+  const waivedAmount = Math.round((bill.balanceDue || 0) * 100) / 100;
+  bill.status = 'waived';
+  bill.discountReason = reason.trim();
+  bill.balanceDue = 0;
+  bill.updatedAt = new Date().toISOString();
+  const resp = await db.put(bill);
+  bill._rev = resp.rev;
+
+  await postLedgerAdjustment(bill, -waivedAmount, `Bill waived — ${bill.invoiceNumber}`, waivedBy);
+
+  await logAuditSafe(
+    'BILL_WAIVED', waivedBy, waivedByName,
+    `Waived ${bill.invoiceNumber}: ${waivedAmount} ${bill.currency}; reason recorded on the bill`
+  );
+
+  emitSyncEvent({
+    resourceType: 'billing',
+    resourceId: bill._id,
+    operation: 'update',
+    resourceVersion: bill._rev,
+    orgId: bill.orgId,
+    hospitalId: bill.facilityId,
+  });
+
+  return bill;
 }
 
 /**

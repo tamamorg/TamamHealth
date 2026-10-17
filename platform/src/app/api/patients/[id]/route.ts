@@ -9,6 +9,7 @@ import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { canAssignCareTeamRole } from '@/lib/care-team-permissions';
 import { PATIENT_CARE_TEAM_FIELDS } from '@/lib/sync/write-permissions';
+import { redactPatient, stripProtectedPatientFields } from '@/lib/patient-redaction';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'front_desk', 'medical_superintendent', 'hrio',
@@ -46,7 +47,7 @@ export async function GET(
         { patientId: id },
       ),
     ).catch(() => {});
-    return NextResponse.json({ patient });
+    return NextResponse.json({ patient: redactPatient(patient) });
   } catch (err) {
     logApiError('[API /patients/:id GET]', err);
     return serverError();
@@ -73,7 +74,9 @@ async function patchHandler(
     delete body.type;
     delete body.createdAt;
     const { sanitizePayload } = await import('@/lib/validation');
-    const sanitized = sanitizePayload(body);
+    // Portal credential fields, tenant/ownership fields and registration
+    // identifiers are never writable through this route.
+    const sanitized = stripProtectedPatientFields(sanitizePayload(body), { route: true }) as Record<string, unknown>;
     if (
       !canAssignCareTeamRole(auth.role) &&
       PATIENT_CARE_TEAM_FIELDS.some(field => Object.prototype.hasOwnProperty.call(sanitized, field))
@@ -100,7 +103,7 @@ async function patchHandler(
     if (!updated) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
-    return NextResponse.json({ patient: updated });
+    return NextResponse.json({ patient: redactPatient(updated) });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'ValidationError') {
       const ve = err as Error & { fields: Record<string, string> };

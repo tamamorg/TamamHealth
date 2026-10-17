@@ -12,7 +12,12 @@
  * Exercise the production predicate directly so role and tenant/facility
  * scoping cannot drift between the test and the replication stream.
  */
-import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
+import {
+  DOC_CREATE_ONLY_REQUIRED_VALUES,
+  DOC_CREATE_ONLY_ROLES,
+  DOC_UPDATE_ONLY_ROLES,
+  DOC_WRITE_ROLES,
+} from '@/lib/sync/write-permissions';
 import { buildPushFilter } from '@/lib/sync/sync-service';
 
 function pushFilter(role: string | undefined) {
@@ -21,7 +26,7 @@ function pushFilter(role: string | undefined) {
     facilityIds: ['fac-a'],
     allFacilities: false,
   });
-  return (doc: { _id?: string; _deleted?: boolean; type?: string; orgId?: string; hospitalId?: string }) =>
+  return (doc: { _id?: string; _rev?: string; _deleted?: boolean; type?: string; orgId?: string; hospitalId?: string; recordKind?: string }) =>
     filter({ orgId: 'org-a', ...doc });
 }
 
@@ -99,24 +104,65 @@ describe('push filter: tenant and facility entitlement', () => {
 });
 
 /**
- * The wedge itself, expressed as an invariant: for any role, EVERY document
- * that survives the push filter is one the CouchDB validator would accept
- * (a known type this role may write, or a deletion tombstone).
- * Nothing the validator rejects can reach the stream, so nothing can stall the
- * checkpoint.
+ * The wedge itself, expressed as an invariant: for any role and revision, the
+ * filter agrees with the validator's decision order (create-only on a first
+ * revision, full-write matrix, update-only on a later revision). Nothing the
+ * validator rejects reaches the stream, and nothing it accepts is withheld.
  */
-describe('push filter: invariant — survivors are all server-acceptable', () => {
-  const roles = ['front_desk', 'doctor', 'nurse', 'lab_tech', 'pharmacist', 'cashier'];
+describe('push filter: invariant — agrees with the validator', () => {
+  const roles = ['front_desk', 'doctor', 'nurse', 'lab_tech', 'pharmacist', 'cashier', 'hrio'];
   const typed = Object.keys(DOC_WRITE_ROLES);
-  test('no role ever pushes a doc its matrix row forbids', () => {
+  test('every role/type/revision decision matches the validator tables', () => {
     for (const role of roles) {
       const f = pushFilter(role);
       for (const type of typed) {
-        const allowed = (DOC_WRITE_ROLES[type] as readonly string[]).includes(role);
-        expect(f({ _id: `${type}-1`, type })).toBe(allowed);
+        const full = (DOC_WRITE_ROLES[type] as readonly string[]).includes(role);
+        const creator = (DOC_CREATE_ONLY_ROLES[type] as readonly string[] | undefined)?.includes(role) ?? false;
+        const amender = (DOC_UPDATE_ONLY_ROLES[type] as readonly string[] | undefined)?.includes(role) ?? false;
+        const required = DOC_CREATE_ONLY_REQUIRED_VALUES[type];
+        const body: Record<string, string> = {};
+        for (const k of Object.keys(required ?? {})) body[k] = required![k][0];
+        const first = f({ _id: `${type}-1`, _rev: '1-a', type, ...body });
+        const later = f({ _id: `${type}-1`, _rev: '3-b', type, ...body });
+        expect(first).toBe(full || creator);
+        // A creator is offered at any local revision: an unsent document that
+        // was edited before its first push is still a create on the server.
+        expect(later).toBe(full || amender || creator);
       }
-      // Design docs are rejected for every role.
       expect(f({ _id: '_design/idx-z' })).toBe(false);
     }
+  });
+});
+
+describe('push filter: update-only and create-only roles', () => {
+  test('pharmacist updates a prescription but cannot create one', () => {
+    const f = pushFilter('pharmacist');
+    expect(f({ _id: 'rx-1', _rev: '2-x', type: 'prescription' })).toBe(true);
+    expect(f({ _id: 'rx-1', _rev: '1-x', type: 'prescription' })).toBe(false);
+  });
+  test('nurse updates an admission and an appointment', () => {
+    const f = pushFilter('nurse');
+    expect(f({ _id: 'adm-1', _rev: '2-x', type: 'admission' })).toBe(true);
+    expect(f({ _id: 'appt-1', _rev: '4-x', type: 'appointment' })).toBe(true);
+    // create-only too
+    expect(f({ _id: 'adm-2', _rev: '1-x', type: 'admission' })).toBe(true);
+    expect(f({ _id: 'appt-2', _rev: '1-x', type: 'appointment' })).toBe(true);
+  });
+  test('cashier updates an admission but cannot create one', () => {
+    const f = pushFilter('cashier');
+    expect(f({ _id: 'adm-1', _rev: '2-x', type: 'admission' })).toBe(true);
+    expect(f({ _id: 'adm-1', _rev: '1-x', type: 'admission' })).toBe(false);
+  });
+  test('nurse creates only the nursing-vitals shape of a medical record', () => {
+    const f = pushFilter('nurse');
+    expect(f({ _id: 'mr-1', _rev: '1-x', type: 'medical_record', recordKind: 'nursing_vitals' })).toBe(true);
+    expect(f({ _id: 'mr-2', _rev: '1-x', type: 'medical_record', recordKind: 'consultation' })).toBe(false);
+    // Edited locally before the first push: still unsent, so still offered.
+    expect(f({ _id: 'mr-1', _rev: '2-x', type: 'medical_record', recordKind: 'nursing_vitals' })).toBe(true);
+    expect(f({ _id: 'mr-2', _rev: '2-x', type: 'medical_record', recordKind: 'consultation' })).toBe(false);
+  });
+  test('pharmacist cannot push types outside its grants', () => {
+    const f = pushFilter('pharmacist');
+    expect(f({ _id: 'adm-1', _rev: '2-x', type: 'admission' })).toBe(false);
   });
 });

@@ -201,6 +201,9 @@ export interface PatientDoc extends BaseDoc, Omit<Patient, 'id'> {
   /** Set when the portal account is suspended without deleting the credential
    *  (a disputed account, a shared phone, a request from the patient). */
   portalDisabledAt?: string;
+  /** Portal tokens issued before this instant are refused (stamped when the
+   *  portal password is set or access is suspended). Absent = no cut-off. */
+  portalCredentialEpoch?: string;
   /** Medications review: clinician attested the patient takes no medications. */
   noKnownMedications?: boolean;
   /** Problems review: clinician attested the patient has no known problems. */
@@ -634,6 +637,30 @@ export interface PrescriptionDoc extends BaseDoc {
   frequency: string;
   duration: string;
   prescribedBy: string;
+  /**
+   * Safety decision support captured when the order was written. Persisting
+   * this matters: a toast disappears, while the pharmacist and the next
+   * clinician still need to know that a warning was present at prescribing.
+   */
+  medicationSafety?: {
+    assessedAt: string;
+    allergyWarnings: Array<{
+      medication: string;
+      allergy: string;
+      reason: 'direct' | 'class';
+      criticality: 'mild' | 'moderate' | 'severe' | 'unknown';
+      reaction?: string;
+      requiresOverride: boolean;
+    }>;
+    interactionWarnings: Array<{
+      drug1: string;
+      drug2: string;
+      severity: 'contraindicated' | 'serious' | 'moderate';
+      description: string;
+      clinicalAdvice: string;
+    }>;
+    duplicateWarnings: string[];
+  };
   /** Coarse status kept for backward compatibility + queue filters. Derived
    *  from the granular `orderStatus` below. */
   status: 'pending' | 'dispensed' | 'discontinued';

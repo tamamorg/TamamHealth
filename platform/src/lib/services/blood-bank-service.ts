@@ -1,4 +1,5 @@
 import { bloodBankDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { BloodBankDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -38,6 +39,7 @@ export async function getAvailableUnits(bloodGroup?: string, facilityId?: string
 export async function addUnit(
   data: Omit<BloodBankDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<BloodBankDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'blood unit');
   const db = bloodBankDB();
   const now = new Date().toISOString();
 
@@ -45,6 +47,7 @@ export async function addUnit(
     _id: `blood-${uuidv4()}`,
     type: 'blood_bank',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

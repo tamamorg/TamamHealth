@@ -22,6 +22,7 @@ import { medications } from '@/lib/data/formulary';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { formatCompactDateTime, formatMoney } from '@/lib/format-utils';
 import { isActivePharmacyStage, isOutsidePharmacyOrder, pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
 import { usePatientBalances } from '@/lib/hooks/usePatientBalances';
@@ -101,6 +102,7 @@ export default function PharmacyPage() {
   const { canDispense, canAccess } = usePermissions();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
   const router = useRouter();
   const { prescriptions: allPrescriptions, loading: rxLoading, dispense, markUnfilled, advance } = usePrescriptions();
   // Scripts issued for an outside pharmacy are not this pharmacy's work — the
@@ -286,11 +288,14 @@ export default function PharmacyPage() {
     rx: typeof rxQueue[number],
     reason: 'stock_out' | 'clarification_requested',
   ) => {
-    const note = window.prompt(
-      reason === 'stock_out'
-        ? 'Where is the patient being referred for this medicine?'
-        : 'What needs clarifying with the prescriber?',
-    );
+    const stockOut = reason === 'stock_out';
+    // null = Cancel; an empty note is allowed (optional), as before.
+    const note = await confirmPrompt({
+      title: t(stockOut ? 'confirm.rxStockOutTitle' : 'confirm.rxClarifyTitle', { medication: rx.medication }),
+      inputLabel: t(stockOut ? 'confirm.rxStockOutLabel' : 'confirm.rxClarifyLabel'),
+      confirmLabel: t(stockOut ? 'confirm.rxStockOutConfirm' : 'confirm.rxClarifyConfirm'),
+      tone: 'warning',
+    });
     if (note === null) return;
     try {
       await markUnfilled(rx, reason, note.trim(), {

@@ -135,13 +135,28 @@ export async function listLocalDatabases(): Promise<string[]> {
  * value is only ever used to answer "has anything been written locally since
  * then" — it is not a checkpoint and replication does not read it.
  */
-export async function recordSyncedSequences(): Promise<void> {
+export async function recordSyncedSequences(
+  options: {
+    /**
+     * Which databases have PROVEN delivery (their own push went idle without
+     * error or denial). Evaluated before and again after the sequence is read,
+     * so a write that lands in between does not get stamped clean. Omitted =
+     * every database (legacy callers/tests); the sync manager always passes it.
+     * Databases that do not qualify keep whatever was recorded before, so a
+     * change since then still reads as dirty.
+     */
+    only?: (name: string) => boolean;
+  } = {},
+): Promise<void> {
   if (!IS_BROWSER) return;
-  const seqs: Record<string, string> = {};
+  const only = options.only;
+  const seqs: Record<string, string> = only ? { ...(readJson<Record<string, string>>(SEQ_KEY) ?? {}) } : {};
   const { getDB } = await import('../db');
   await inBatches(await listLocalDatabases(), async (name) => {
+    if (only && !only(name)) return;
     try {
       const info = await getDB(name).info();
+      if (only && !only(name)) return;
       seqs[name] = String(info.update_seq);
     } catch {
       // A database that cannot be opened cannot be proven clean; leaving it

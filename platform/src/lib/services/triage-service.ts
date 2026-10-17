@@ -1,4 +1,5 @@
 import { patientsDB, triageDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { PatientDoc, TriageDoc, TriagePriority } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import type { DataScope } from './data-scope';
@@ -363,12 +364,14 @@ export async function createTriage(
   }
 
   await assertTriageVitalSafety(data, options.scope);
+  const orgId = await resolveDocOrgId(data, 'triage', options.scope?.orgId);
   const db = triageDB();
   const now = new Date().toISOString();
   const doc: TriageDoc = withPendingOfflineSync({
     _id: `triage-${uuidv4()}`,
     type: 'triage',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   }, now);

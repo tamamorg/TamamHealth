@@ -38,7 +38,6 @@
  */
 import type { UserRole } from '../db-types';
 import { DOC_WRITE_ROLES } from './write-permissions';
-import { PORTAL_INVITE_TTL_HOURS, normalisePortalUsername } from '@/modules/identity/provisioning/portal-invite';
 
 /** Roles that may issue or re-issue portal access from a chart. Shared with the enrol API. */
 export const PORTAL_ENROL_ROLES: readonly UserRole[] = [
@@ -91,6 +90,11 @@ export const SERVER_HELD_BEFORE: Doc = Object.freeze({ _deleted: true });
 /** A device clock may run ahead of the server's; an expiry this far past a slip's lifetime is not one. */
 const EXPIRY_SKEW_MS = 24 * 3_600_000;
 const TOKEN_HASH = /^[0-9a-f]{64}$/;
+// The desk's own figures (`modules/identity/provisioning/portal-invite.ts`),
+// restated because a sync rule may not reach into a module's internals. A
+// test holds the two together.
+export const SLIP_LIFETIME_HOURS = 14 * 24;
+const NORMALISED_USERNAME = /^[a-z0-9._-]{3,}$/;
 
 /**
  * The invitation a registration may carry, or nothing if it is not one.
@@ -101,14 +105,14 @@ const TOKEN_HASH = /^[0-9a-f]{64}$/;
  */
 function invitationFrom(sent: Doc, now: Date): Doc {
   const { portalUsername: username, portalInviteTokenHash: hash, portalInviteExpiresAt: expiresAt } = sent;
-  if (typeof username !== 'string' || username.length < 3 || normalisePortalUsername(username) !== username) return {};
+  if (typeof username !== 'string' || !NORMALISED_USERNAME.test(username)) return {};
   if (typeof hash !== 'string' || !TOKEN_HASH.test(hash)) return {};
   const expires = typeof expiresAt === 'string' ? Date.parse(expiresAt) : NaN;
   if (Number.isNaN(expires)) return {};
 
   const out: Doc = {};
   for (const field of INVITATION_FIELDS) if (typeof sent[field] === 'string') out[field] = sent[field];
-  const latest = now.getTime() + PORTAL_INVITE_TTL_HOURS * 3_600_000;
+  const latest = now.getTime() + SLIP_LIFETIME_HOURS * 3_600_000;
   if (expires > latest + EXPIRY_SKEW_MS) out.portalInviteExpiresAt = new Date(latest).toISOString();
   return out;
 }

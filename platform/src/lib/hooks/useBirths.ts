@@ -33,10 +33,11 @@ export function useBirths() {
 
   const register = useCallback(async (data: Omit<BirthRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createBirth } = await import('../services/birth-service');
-    const doc = await createBirth(data);
+    if (!scope) throw new Error('Your data scope is still loading - try again in a moment.');
+    const doc = await createBirth(data, scope);
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   return { births, stats, loading, error, register, reload: load };
 }

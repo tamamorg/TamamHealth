@@ -12,6 +12,7 @@ import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
 import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useAuth } from '@/lib/context';
 import { useProcedures } from '@/lib/hooks/useProcedures';
 import { formatDate } from '@/lib/format-utils';
@@ -43,6 +44,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
   const { procedures, create, amend, advance, remove } = useProcedures(patientId);
 
   const [adding, setAdding] = useState(false);
@@ -68,8 +70,15 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   const advanceTo = async (id: string, to: ProcedureStatus) => {
     let reason: string | undefined;
     if (to === 'aborted') {
-      reason = window.prompt('Why was this procedure aborted?')?.trim() || undefined;
-      if (!reason) return;
+      const answer = await confirmPrompt({
+        title: t('confirm.procedureAbortTitle'),
+        inputLabel: t('confirm.procedureAbortLabel'),
+        confirmLabel: t('confirm.procedureAbortConfirm'),
+        inputRequired: true,
+        tone: 'warning',
+      });
+      if (!answer) return;
+      reason = answer;
     }
     setAdvancing(id);
     try {

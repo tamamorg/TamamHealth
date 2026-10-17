@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
     const conflicts = await listConflicts({
       status,
       risk,
-      orgId: auth.role !== 'super_admin' ? auth.orgId : undefined,
+      // No org on the token means no tenant to show: an empty list, never
+      // every organization's queue.
+      orgId: auth.orgId,
+      superAdmin: auth.role === 'super_admin',
     });
 
     return NextResponse.json({ conflicts, total: conflicts.length });

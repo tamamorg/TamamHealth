@@ -7,6 +7,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaYearMonth, jubaIsInMonth } from '../time-juba';
 import { findByType } from './db-query';
+import { resolveRegisterOrgId } from './register-org';
 
 export async function getAllANCVisits(scope?: DataScope): Promise<ANCVisitDoc[]> {
   const db = ancDB();
@@ -27,7 +28,8 @@ export async function getByFacility(facilityId: string): Promise<ANCVisitDoc[]> 
   return all.filter(v => v.facilityId === facilityId);
 }
 
-export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<ANCVisitDoc> {
+export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, scope: DataScope): Promise<ANCVisitDoc> {
+  const orgId = await resolveRegisterOrgId(data, scope);
   const db = ancDB();
   const now = new Date().toISOString();
   const id = `anc-${uuidv4()}`;
@@ -35,6 +37,7 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
     _id: id,
     type: 'anc_visit',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };
@@ -74,7 +77,7 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
         channel: 'app',
         status: 'sent',
         sentAt: now,
-        orgId: data.orgId,
+        orgId,
         createdAt: now,
         updatedAt: now,
       };

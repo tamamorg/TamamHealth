@@ -1,4 +1,5 @@
 import { staffSchedulesDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { StaffScheduleDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -45,6 +46,7 @@ export async function getOnCallStaff(date: string, facilityId?: string, scope?: 
 export async function createSchedule(
   data: Omit<StaffScheduleDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<StaffScheduleDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'staff schedule');
   const db = staffSchedulesDB();
   const now = new Date().toISOString();
 
@@ -52,6 +54,7 @@ export async function createSchedule(
     _id: `sched-${uuidv4()}`,
     type: 'staff_schedule',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

@@ -9,6 +9,17 @@ import type { UserRole } from '@/lib/db-types';
 const WRITE_ROLES: UserRole[] = [
   'super_admin', 'doctor', 'clinical_officer', 'pharmacist', 'medical_superintendent',
 ];
+const PRESCRIBER_ROLES: UserRole[] = ['super_admin', 'doctor', 'clinical_officer', 'medical_superintendent'];
+/** Drug-defining fields: prescriber-only, and only while nothing has been dispensed. */
+const DRUG_FIELDS = ['medication', 'dose', 'quantityToDispense'] as const;
+/** Part of the record of what was supplied: frozen once anything is dispensed, like DRUG_FIELDS. */
+const SUPPLY_RECORD_FIELDS = ['route', 'frequency', 'duration', 'refills'] as const;
+const PRESCRIBER_EDITABLE = [
+  'route', 'frequency', 'duration', 'indication', 'allowSubstitution', 'refills',
+  'effectiveOn', 'pharmacyInstructions', 'urgency',
+] as const;
+/** What the pharmacy may annotate without dispensing. */
+const PHARMACY_EDITABLE = ['pharmacyInstructions'] as const;
 async function patchHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -136,13 +147,40 @@ async function patchHandler(
       }
       return NextResponse.json({ prescription: updated });
     }
-    // Generic update
-    delete body._id;
-    delete body._rev;
-    delete body.type;
-    delete body.createdAt;
+    // Generic update -- an explicit allow-list, never a body merge.
+    // Dispensing lifecycle (status, orderStatus, dispense*, stock, counselling,
+    // controlled-substance log) moves ONLY through the dispense / stock_out /
+    // request_clarification actions above. Identity, tenancy and authorship
+    // (patientId, orgId, hospitalId, prescribedBy, _id, _rev, type, createdAt)
+    // are never accepted from the body.
+    if ('status' in body || 'orderStatus' in body) {
+      return forbidden('Prescription status changes go through the dispense, stock-out or clarification actions.');
+    }
+    const isPrescriber = hasRole(auth, PRESCRIBER_ROLES);
+    const touchesDrug = [...DRUG_FIELDS, ...SUPPLY_RECORD_FIELDS].some(f => f in body);
+    if (touchesDrug) {
+      if (!isPrescriber) {
+        return forbidden('Only a prescriber can change the medication, dose, quantity, route, frequency, duration or refills of a prescription.');
+      }
+      if (existingRx.status !== 'pending' || existingRx.dispensedAt || (existingRx.quantityDispensed ?? 0) > 0) {
+        return NextResponse.json(
+          { error: 'A prescription that has been dispensed or stopped cannot be amended.' },
+          { status: 409 },
+        );
+      }
+    }
+    const allowed = isPrescriber ? [...PRESCRIBER_EDITABLE, ...DRUG_FIELDS] : PHARMACY_EDITABLE;
+    const patch: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (key in body && body[key] !== undefined) patch[key] = body[key];
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: 'No editable fields supplied' }, { status: 400 });
+    }
+    const { sanitizePayload } = await import('@/lib/validation');
+    const clean = sanitizePayload(patch);
     const { updatePrescription } = await import('@/lib/services/prescription-service');
-    const updated = await updatePrescription(id, body);
+    const updated = await updatePrescription(id, clean);
     if (!updated) {
       return NextResponse.json({ error: 'Prescription not found' }, { status: 404 });
     }

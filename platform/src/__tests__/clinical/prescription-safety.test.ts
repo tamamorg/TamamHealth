@@ -18,8 +18,8 @@ jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
-import { hospitalsDB, patientsDB } from '@/lib/db';
-import { createPrescription } from '@/lib/services/prescription-service';
+import { hospitalsDB, patientsDB, prescriptionsDB } from '@/lib/db';
+import { assessPrescriptionSafety, createPrescription } from '@/lib/services/prescription-service';
 
 afterEach(async () => {
   await teardownTestDBs();
@@ -73,6 +73,22 @@ const SEVERE_PENICILLIN_ALLERGY = {
 };
 
 describe('createPrescription — allergy safety', () => {
+  it('can identify a severe class allergy before an order is written', async () => {
+    await seedHospital();
+    await seedPatient([SEVERE_PENICILLIN_ALLERGY]);
+
+    const assessment = await assessPrescriptionSafety('pat-00001', 'Amoxicillin 500mg');
+
+    expect(assessment.allergyWarnings?.[0]).toMatchObject({
+      allergy: 'Penicillin',
+      reason: 'class',
+      requiresOverride: true,
+    });
+    const clinicalOrders = (await prescriptionsDB().allDocs()).rows
+      .filter(row => !row.id.startsWith('_design/'));
+    expect(clinicalOrders).toHaveLength(0);
+  });
+
   it('flags a class match against a recorded severe allergy and requires override', async () => {
     await seedHospital();
     await seedPatient([SEVERE_PENICILLIN_ALLERGY]);
@@ -91,6 +107,10 @@ describe('createPrescription — allergy safety', () => {
     // support, and blocking would need an override UI; the audit trail and
     // the returned alerts are the record.
     expect(result.prescription._id).toMatch(/^rx-/);
+    expect(result.prescription.medicationSafety?.allergyWarnings[0]).toMatchObject({
+      allergy: 'Penicillin',
+      requiresOverride: true,
+    });
   });
 
   it('ignores inactive allergies and reports nothing for a clean patient', async () => {
@@ -131,6 +151,18 @@ describe('createPrescription — duplicate orders', () => {
     const second = await createPrescription(rxInput() as never);
 
     expect(second.duplicateWarnings ?? []).toHaveLength(0);
+  });
+
+  it('does not report an unrelated duplicate already present in the chart', async () => {
+    await seedHospital();
+    await seedPatient();
+
+    await createPrescription(rxInput({ medication: 'Ferrous Sulfate 200mg' }) as never);
+    await createPrescription(rxInput({ medication: 'Ferrous Sulfate 300mg' }) as never);
+
+    const assessment = await assessPrescriptionSafety('pat-00001', 'Paracetamol 500mg');
+
+    expect(assessment.duplicateWarnings ?? []).toHaveLength(0);
   });
 });
 

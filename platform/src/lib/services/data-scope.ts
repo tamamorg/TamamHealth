@@ -31,6 +31,12 @@ const NATIONAL_ROLES = new Set<UserRole>([
   'county_health_director',
 ]);
 
+/**
+ * Document types addressed to another organisation (`toOrgId` is part of their
+ * schema): referrals and patient transfers. See the toOrgId rule in filterByScope.
+ */
+const CROSS_ORG_ADDRESSED_TYPES = new Set(['referral', 'patient_transfer']);
+
 export interface DataScope {
   orgId?: string;
   hospitalId?: string;
@@ -83,7 +89,12 @@ export function filterByScope<T extends Record<string, any>>(
     // has to pass the facility filter below, which already matches on
     // `toHospitalId` — so this grants sight of referrals addressed to that
     // org's facilities, not of the sending org's data in general.
-    filtered = filtered.filter(d => d.orgId === scope.orgId || d.toOrgId === scope.orgId);
+    filtered = filtered.filter(d => d.orgId === scope.orgId || (
+      // Only the document types that legitimately carry a destination org can
+      // use it; any other document (a patient with a forged toOrgId) cannot
+      // widen its own visibility to another tenant.
+      CROSS_ORG_ADDRESSED_TYPES.has(d.type) && d.toOrgId === scope.orgId
+    ));
   }
 
   // An organization administrator does not see their peers.

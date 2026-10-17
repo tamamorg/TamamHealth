@@ -186,3 +186,21 @@ describe('device handover', () => {
     }
   });
 });
+
+describe('local wipe — only proven-clean databases are stamped', () => {
+  it('a database the predicate rejects stays dirty even if it looks idle', async () => {
+    await openDB('tamamhealth_patients').put({ _id: 'p1', name: 'A' });
+    await openDB('tamamhealth_lab_results').put({ _id: 'l1', name: 'B' });
+    await recordSyncedSequences({ only: (name) => name === 'tamamhealth_patients' });
+    const dirty = await getDirtyDatabases();
+    expect(dirty).toContain('tamamhealth_lab_results');
+    expect(dirty).not.toContain('tamamhealth_patients');
+  });
+
+  it('a database dropped from the predicate between the read and the stamp is not recorded', async () => {
+    await openDB('tamamhealth_patients').put({ _id: 'p1', name: 'A' });
+    let calls = 0;
+    await recordSyncedSequences({ only: (name) => name !== 'tamamhealth_patients' || ++calls < 2 });
+    expect(await getDirtyDatabases()).toContain('tamamhealth_patients');
+  });
+});

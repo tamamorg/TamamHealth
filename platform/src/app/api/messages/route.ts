@@ -115,32 +115,76 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (body.patientId && body.recipientType !== 'staff') {
+    // Per-sender limits. Messages can fan out to the SMS gateway (cost, and a
+    // way to text arbitrary people), so SMS-bearing sends get a tighter cap.
+    const { rateLimit } = await import('@/lib/rate-limit');
+    const channel = (body.channel as 'app' | 'sms' | 'both') || 'app';
+    const sendsSms = channel === 'sms' || channel === 'both';
+    const general = await rateLimit({ key: `messages:create:${auth.sub}`, limit: 30, windowMs: 60_000 });
+    const smsVerdict = sendsSms
+      ? await rateLimit({ key: `messages:sms:${auth.sub}`, limit: 10, windowMs: 10 * 60_000 })
+      : null;
+    if (!general.allowed || (smsVerdict && !smsVerdict.allowed)) {
+      return NextResponse.json({ error: 'Too many messages. Please try again later.' }, { status: 429 });
+    }
+    const recipientType = (body.recipientType as 'patient' | 'staff') || 'patient';
+    // The destination comes from a record inside the caller's scope -- never
+    // from the request body. A patient recipient must be in scope; a staff
+    // recipient must be a user of the caller's own organization.
+    let recipientName = '';
+    let recipientPhone = '';
+    // Tenant of the resolved recipient: stamped on the message so it is visible
+    // to the recipient's org even when the sender is an org-less super_admin.
+    let recipientOrgId: string | undefined;
+    if (recipientType === 'staff') {
+      const { getUserById } = await import('@/modules/identity/services/user-service');
+      const user = await getUserById(body.patientId as string);
+      const sameOrg = !!user && (auth.role === 'super_admin' || (!!auth.orgId && user.orgId === auth.orgId));
+      if (!user || user.isActive === false || !sameOrg) {
+        return NextResponse.json({ error: 'Recipient not found' }, { status: 404 });
+      }
+      recipientName = user.name || '';
+      recipientPhone = user.phone || '';
+      recipientOrgId = user.orgId;
+    } else {
       const { getPatientById } = await import('@/lib/services/patient-service');
       const { filterByScope, buildScopeFromAuth } = await import('@/lib/services/data-scope');
       const patient = await getPatientById(body.patientId as string);
-      if (!patient) return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
-      if (filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
-        return forbidden('Access denied to this patient record');
+      // Missing and out-of-scope read identically (404): a 403 here would tell
+      // a caller which patient ids exist in other tenants.
+      if (!patient || filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
+        return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
       }
+      recipientOrgId = patient.orgId;
+      recipientName = [patient.firstName, patient.surname].filter(Boolean).join(' ');
+      recipientPhone = patient.phone || '';
     }
     const { createMessage, updateMessage } = await import('@/modules/communication/services/message-service');
-    const channel = (body.channel as 'app' | 'sms' | 'both') || 'app';
+    // Sender facility name: the verified session or the caller's own facility
+    // record -- never the request body.
+    let fromHospitalName = (auth as { hospitalName?: string }).hospitalName || '';
+    if (!fromHospitalName && auth.hospitalId) {
+      try {
+        const { getHospitalById } = await import('@/lib/services/hospital-service');
+        fromHospitalName = (await getHospitalById(auth.hospitalId))?.name || '';
+      } catch {
+        fromHospitalName = '';
+      }
+    }
     const messageText = (body.content as string) || (body.body as string) || '';
-    const recipientType = (body.recipientType as 'patient' | 'staff') || 'patient';
     const message = await createMessage({
       patientId: body.patientId as string,
-      patientName: (body.patientName as string) || '',
-      patientPhone: (body.patientPhone as string) || '',
+      patientName: recipientName || (body.patientName as string) || '',
+      patientPhone: recipientPhone,
       recipientType,
       fromDoctorId: auth.sub,
-      fromDoctorName: (body.fromDoctorName as string) || '',
-      fromHospitalName: (body.fromHospitalName as string) || '',
+      fromDoctorName: auth.name,
+      fromHospitalName: fromHospitalName,
       subject: (body.subject as string) || '',
       body: messageText,
       channel,
       sentAt: new Date().toISOString(),
-      orgId: auth.orgId,
+      orgId: auth.orgId ?? recipientOrgId,
     });
 
     // Fan out to the SMS gateway for sms/both channels. Resolve the recipient
@@ -152,16 +196,8 @@ async function postHandler(request: NextRequest) {
     if (channel === 'sms' || channel === 'both') {
       void (async () => {
         try {
-          let phone = '';
-          if (recipientType === 'staff') {
-            const { getUserById } = await import('@/modules/identity/services/user-service');
-            const user = await getUserById(body.patientId as string);
-            phone = user?.phone || (body.patientPhone as string) || '';
-          } else {
-            const { getPatientById } = await import('@/lib/services/patient-service');
-            const patient = await getPatientById(body.patientId as string);
-            phone = patient?.phone || (body.patientPhone as string) || '';
-          }
+          // Only the scoped record's number is ever used (resolved above).
+          const phone = recipientPhone;
           if (!phone) {
             console.warn(`[API /messages POST] No phone for ${recipientType} ${body.patientId}; SMS skipped`);
             return;
@@ -169,9 +205,7 @@ async function postHandler(request: NextRequest) {
           const { sendSms } = await import('@/lib/sms');
           const result = await sendSms({ to: phone, body: messageText });
           await updateMessage(message._id, { smsResult: result }).catch(() => {
-            // updateMessage already swallows DB errors and returns null; the
-            // catch here guards against rejections from the dynamic import
-            // path itself (rare, but cheap to defend).
+            // updateMessage already swallows DB errors and returns null.
           });
         } catch (err) {
           logApiError('[API /messages POST] SMS dispatch', err);

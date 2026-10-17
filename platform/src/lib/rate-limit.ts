@@ -295,6 +295,35 @@ export async function resetRateLimit(key: string): Promise<void> {
   memReset(hashed);
 }
 
+/**
+ * Give back one count on `key`.
+ *
+ * The login limiters increment on every attempt, because the check has to run
+ * before the password is known. A per-IP bucket that also keeps the SUCCESSFUL
+ * ones turns "20 failed attempts" into "20 sign-ins": a facility behind one
+ * address is locked out at shift change. Clearing the bucket on success is not
+ * the answer either — an attacker would sign in to their own account between
+ * guesses. Refunding only the attempt that succeeded leaves every failure
+ * counted and every good sign-in free.
+ *
+ * Best-effort, like `resetRateLimit`: a failure here costs one count.
+ */
+export async function refundRateLimit(key: string): Promise<void> {
+  const hashed = await hashKey(key);
+  const cfg = getUpstashConfig();
+  if (cfg) {
+    try {
+      await withRetry(() => upstashPipeline(cfg, [['DECR', `rl:${hashed}`]]));
+    } catch (err) {
+      console.error('[rate-limit] Upstash refund failed:', err);
+      captureException(err, { tag: '[rate-limit] Upstash refund failed:' });
+    }
+    return;
+  }
+  const bucket = memStore.get(hashed);
+  if (bucket && bucket.count > 0) bucket.count -= 1;
+}
+
 // ---------------------------------------------------------------------------
 // Test helpers (not part of the public surface)
 // ---------------------------------------------------------------------------

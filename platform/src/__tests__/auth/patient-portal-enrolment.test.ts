@@ -187,3 +187,34 @@ describe('recording use', () => {
     await expect(recordPortalLogin('patient-nobody')).resolves.toBeUndefined();
   });
 });
+
+describe('credential epoch', () => {
+  it('stamps the epoch on suspend, enrol and activate', async () => {
+    const e = await enrolPatientInPortal(ID, 'mary.lado');
+    expect(e.ok).toBe(true);
+    expect(stored().portalCredentialEpoch).toBeTruthy();
+    if (!e.ok) return;
+    store.set(ID, { ...store.get(ID)!, portalCredentialEpoch: undefined });
+    await activatePortalAccount(e.enrolment.activationCode, 'a-long-enough-password');
+    expect(stored().portalCredentialEpoch).toBeTruthy();
+    store.set(ID, { ...store.get(ID)!, portalCredentialEpoch: undefined });
+    await disablePortalAccount(ID);
+    expect(stored().portalCredentialEpoch).toBeTruthy();
+  });
+
+  it('a token issued before suspend is rejected after re-enable', async () => {
+    const { rejectIfPortalSessionRevoked } = await import('@/lib/patient-portal-auth');
+    const iat = Math.floor(Date.now() / 1000) - 120;
+    // Healthy, activated account with no epoch yet: the old token is fine.
+    seed(ID, { portalUsername: 'mary.lado', portalPasswordHash: 'x' });
+    expect(await rejectIfPortalSessionRevoked({ sub: ID, iat })).toBeNull();
+    await disablePortalAccount(ID);
+    expect(await rejectIfPortalSessionRevoked({ sub: ID, iat })).not.toBeNull();
+    const re = await enrolPatientInPortal(ID, 'mary.lado');
+    expect(re.ok).toBe(true);
+    expect(stored().portalDisabledAt).toBeUndefined();
+    expect(await rejectIfPortalSessionRevoked({ sub: ID, iat })).not.toBeNull();
+    // A token minted after the re-enable is accepted.
+    expect(await rejectIfPortalSessionRevoked({ sub: ID, iat: Math.floor(Date.now() / 1000) + 2 })).toBeNull();
+  });
+});

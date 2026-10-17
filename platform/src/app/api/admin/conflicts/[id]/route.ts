@@ -8,7 +8,10 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 
-const ADMIN_ROLES: UserRole[] = ['super_admin', 'org_admin', 'medical_superintendent', 'hrio'];
+// Settling a clinical conflict changes the patient's record, so it is limited
+// to the roles accountable for it. The records officer (hrio) can still read
+// the queue (GET /api/admin/conflicts) but does not decide clinical content.
+const ADMIN_ROLES: UserRole[] = ['super_admin', 'org_admin', 'medical_superintendent'];
 
 async function postHandler(
   request: NextRequest,
@@ -44,14 +47,24 @@ async function postHandler(
     const { resolveConflict, dismissConflict } = await import('@/lib/services/conflict-service');
     const actor = { userId: auth.sub, username: auth.name || auth.username, note: body.note };
 
-    const result = body.action === 'resolve'
-      ? await resolveConflict(id, { ...actor, chosenRev: body.chosenRev! })
-      : await dismissConflict(id, actor);
+    // Tenant barrier: the row's org must be the caller's unless super_admin.
+    // `auth.role` is the BORROWED role for a super_admin signed in AS another
+    // role, so an impersonating super_admin gets no platform-wide reach here
+    // (stricter than keeping their real role; actualRole is deliberately ignored).
+    const scope = { orgId: auth.orgId, superAdmin: auth.role === 'super_admin' };
 
-    if (!result) {
-      return NextResponse.json({ error: 'Conflict not found' }, { status: 404 });
+    const result = body.action === 'resolve'
+      ? await resolveConflict(id, { ...actor, chosenRev: body.chosenRev! }, scope)
+      : await dismissConflict(id, actor, scope);
+
+    if (!result.ok) {
+      const status = result.error === 'not_found' || result.error === 'target_missing' ? 404
+        : result.error === 'already_closed' || result.error === 'invalid_rev' ? 409
+        : result.error === 'unsupported' ? 422
+        : 500;
+      return NextResponse.json({ error: result.message, code: result.error }, { status });
     }
-    return NextResponse.json({ conflict: result });
+    return NextResponse.json({ conflict: result.conflict });
   } catch (err) {
     logApiError('[API /admin/conflicts/:id POST]', err);
     return serverError();

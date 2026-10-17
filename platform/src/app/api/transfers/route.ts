@@ -85,16 +85,48 @@ async function postHandler(request: NextRequest) {
       return NextResponse.json({ error: 'referralId is required' }, { status: 400 });
     }
     const svc = await import('@/lib/services/referral-service');
+    // Tenant guard (same as /api/referrals): act only on a referral the caller's
+    // org/facility can see. 404 so out-of-scope reads like a missing id.
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const existingReferral = await svc.getReferralById(referralId);
+    if (!existingReferral || filterByScope([existingReferral], buildScopeFromAuth(auth)).length === 0) {
+      return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
+    }
     switch (action) {
       case 'acknowledge': {
         // Receiving facility confirms transfer received → mark accepted.
-        const updated = await svc.acceptReferral(referralId);
+        // Receiver-only: acknowledging re-homes the patient, so merely seeing
+        // the referral (e.g. as its sender) must not be enough.
+        const { isReceivingSide } = await import('@/lib/referral-parties');
+        if (!isReceivingSide(auth, existingReferral)) {
+          return forbidden('Only the receiving facility can acknowledge a transfer.');
+        }
+        let updated;
+        try {
+          updated = await svc.acceptReferral(referralId);
+        } catch (err) {
+          if (err instanceof Error && err.name === 'ReferralTenantError') {
+            return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
+          }
+          throw err;
+        }
         if (!updated) return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
         return NextResponse.json({ ok: true, referral: updated });
       }
       case 'status': {
         const status = typeof body.status === 'string' ? body.status : '';
         if (!status) return NextResponse.json({ error: 'status is required' }, { status: 400 });
+        const { isReceivingSide, isSendingSide, sideForStatus } = await import('@/lib/referral-parties');
+        const requiredSide = sideForStatus(status);
+        if (!requiredSide) return NextResponse.json({ error: 'Unsupported referral status' }, { status: 400 });
+        const onRequiredSide = requiredSide === 'receiver'
+          ? isReceivingSide(auth, existingReferral)
+          : isSendingSide(auth, existingReferral);
+        if (!onRequiredSide) {
+          return forbidden(requiredSide === 'receiver'
+            ? 'Only the receiving facility can make this status change.'
+            : 'Only the sending facility can make this status change.');
+        }
         const updated = await svc.updateReferralStatus(referralId, status as Parameters<typeof svc.updateReferralStatus>[1]);
         if (!updated) return NextResponse.json({ error: 'Referral not found' }, { status: 404 });
         return NextResponse.json({ ok: true, referral: updated });

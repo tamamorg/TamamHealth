@@ -81,7 +81,9 @@ export async function GET(request: NextRequest) {
   const isProduction = process.env.NODE_ENV === 'production';
   let fresh: {
     name?: string; role?: string; actualRole?: string; hospitalId?: string; hospitalName?: string;
-    orgId?: string; orgName?: string; mustChangePassword?: boolean;    /** Staff department — routes department-addressed patient transfers to the
+    orgId?: string; orgName?: string; mustChangePassword?: boolean;
+    facilityIds?: string[];
+    /** Staff department — routes department-addressed patient transfers to the
      *  right inbox. Not a JWT claim, so it is only populated from the live user
      *  record; a JWT-only fallback leaves it undefined rather than stale. */
     department?: string;
@@ -94,11 +96,14 @@ export async function GET(request: NextRequest) {
     hospitalId: payload.hospitalId,
     hospitalName: payload.hospitalName,
     orgId: payload.orgId,
+    facilityIds: payload.facilityIds,
     mustChangePassword: payload.mustChangePassword,
   };
   // Set when the live record was loaded — gates session renewal below, and
   // carries the current password epoch into any re-minted token.
-  let liveUser: { passwordUpdatedAt?: string } | null = null;
+  let liveUser: { passwordUpdatedAt?: string; countryId?: string; payam?: string; county?: string; state?: string } | null = null;
+  // True when the claims in `fresh` are the token's borrowed (impersonated) identity.
+  let impersonatingSession = false;
   try {
     const { getUserById } = await import('@/modules/identity/services/user-service');
     const user = await getUserById(payload.sub);
@@ -121,6 +126,7 @@ export async function GET(request: NextRequest) {
       // while the live record still IS a super_admin; if the account was
       // demoted mid-session, the live role wins and the impersonation ends.
       const impersonating = payload.actualRole === 'super_admin' && user.role === 'super_admin';
+      impersonatingSession = impersonating;
       fresh = {
         name: user.name,
         role: impersonating ? payload.role : user.role,
@@ -142,6 +148,7 @@ export async function GET(request: NextRequest) {
         // Doing it here rather than in a migration means existing users are
         // fixed on their next page load, with nothing to run.
         orgName: impersonating ? undefined : (user.orgName || await lookupOrgName(user.orgId)),
+        facilityIds: user.facilityIds,
         mustChangePassword: user.mustChangePassword,
         department: user.department,
         specialtyCode: user.specialtyCode,
@@ -207,11 +214,19 @@ export async function GET(request: NextRequest) {
         name: fresh.name ?? payload.name,
         hospitalId: fresh.hospitalId,
         hospitalName: fresh.hospitalName,
+        facilityIds: fresh.facilityIds,
         orgId: fresh.orgId,
-        countryId: payload.countryId,
-        payam: payload.payam,
-        county: payload.county,
-        state: payload.state,
+        // Geographic claims follow the live user document where it carries
+        // them (so a moved account is not pinned to its old payam/county/state
+        // by renewals); the token's values are kept only for fields the user
+        // document does not carry, and for an impersonated session, which
+        // deliberately keeps the borrowed identity.
+        countryId: impersonatingSession ? payload.countryId : (liveUser?.countryId ?? payload.countryId),
+        payam: impersonatingSession ? payload.payam : (liveUser?.payam ?? payload.payam),
+        county: impersonatingSession ? payload.county : (liveUser?.county ?? payload.county),
+        state: impersonatingSession ? payload.state : (liveUser?.state ?? payload.state),
+        // fresh.mustChangePassword is the live user's flag (token's only when
+        // there is no live record, e.g. a demo deployment).
         mustChangePassword: fresh.mustChangePassword,
         passwordUpdatedAt: liveUser?.passwordUpdatedAt,
         // Demo deployments have no live record; carry the claim forward.
@@ -221,6 +236,11 @@ export async function GET(request: NextRequest) {
         // exactly what re-applying `applySessionCookies` at its old default
         // would have done on every session's first renewal.
         persist,
+        // An impersonated session must not be extended past the lifetime it
+        // was originally capped to: renew with only the remaining life.
+        ...(fresh.actualRole && typeof payload.exp === 'number'
+          ? { ttlSeconds: Math.max(60, payload.exp - nowSec) }
+          : {}),
       });
       const csrf = await mintCsrfToken(payload.sub);
       applySessionCookies(response.cookies, renewed, csrf, persist);

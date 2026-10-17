@@ -7,6 +7,7 @@
  * (the patient portal and getMessagesByPatient only read MessageDocs).
  */
 import { v4 as uuidv4 } from 'uuid';
+import { resolveDocOrgId } from './register-org';
 import { patientNotesDB } from '../db';
 import type { PatientNoteDoc } from '../db-types';
 import { findByType } from './db-query';
@@ -32,6 +33,7 @@ export async function getNotesByPatient(patientId: string, scope?: DataScope): P
 export async function createPatientNote(
   data: Omit<PatientNoteDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
 ): Promise<PatientNoteDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.hospitalId, patientId: data.patientId }, 'patient note');
   const db = patientNotesDB();
   const now = new Date().toISOString();
   const id = `pnote-${uuidv4()}`;
@@ -39,6 +41,7 @@ export async function createPatientNote(
     _id: id,
     type: 'patient_note',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

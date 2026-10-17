@@ -204,8 +204,19 @@ export async function getLabResultById(id: string): Promise<LabResultDoc | null>
 
 export async function updateLabResult(id: string, data: Partial<LabResultDoc>): Promise<LabResultDoc | null> {
   const db = labResultsDB();
+  // Only a missing document is "not found". A conflict, a validator rejection
+  // or an encryption failure used to be swallowed into the same null, which
+  // callers reported as "not found" or as a bogus "Illegal lab order
+  // transition" on the next hop. Those now propagate.
+  let existing: LabResultDoc;
   try {
-    const existing = await db.get(id) as LabResultDoc;
+    existing = await db.get(id) as LabResultDoc;
+  } catch (err) {
+    const status = (err as { status?: number; name?: string } | null)?.status;
+    if (status === 404 || (err as { name?: string } | null)?.name === 'not_found') return null;
+    throw err;
+  }
+  {
     const updated = encryptLabFields(withPendingOfflineSync({ ...existing, ...data, _id: existing._id, _rev: existing._rev, updatedAt: new Date().toISOString() }));
     const resp = await db.put(updated);
     updated._rev = resp.rev;
@@ -236,8 +247,6 @@ export async function updateLabResult(id: string, data: Partial<LabResultDoc>): 
       await raiseCriticalResultTask(plaintextUpdated);
     }
     return plaintextUpdated;
-  } catch {
-    return null;
   }
 }
 
@@ -321,7 +330,9 @@ export async function getOverdueUnreviewedResults(scope?: DataScope): Promise<La
   const now = Date.now();
   return all.filter(r => {
     if (effectiveOrderStatus(r) !== 'resulted') return false;
-    const resultedAt = new Date(r.updatedAt || r.createdAt || '').getTime();
+    // The SLA runs from when the result landed. `updatedAt` moves on every
+    // later write (review notes, a status touch), which kept resetting the clock.
+    const resultedAt = new Date(r.completedAt || r.updatedAt || r.createdAt || '').getTime();
     if (!Number.isFinite(resultedAt)) return false;
     const sla = getResultReviewSLA();
     const slaHours = r.critical ? sla.criticalHours : sla.routineHours;

@@ -47,10 +47,11 @@ export function useANC() {
 
   const register = useCallback(async (data: Omit<ANCVisitDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createANCVisit } = await import('../services/anc-service');
-    const doc = await createANCVisit(data);
+    if (!scope) throw new Error('Your data scope is still loading - try again in a moment.');
+    const doc = await createANCVisit(data, scope);
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   const update = useCallback(async (id: string, data: Partial<ANCVisitDoc>) => {
     const { updateANCVisit } = await import('../services/anc-service');

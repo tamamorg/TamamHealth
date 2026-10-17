@@ -106,6 +106,9 @@ export async function enrolPatientInPortal(
     // Re-enrolling lifts a suspension; a disabled account whose owner is
     // standing at the desk asking for a new code is being re-admitted.
     portalDisabledAt: undefined,
+    // Tokens issued before this moment (including before a suspension this
+    // call is lifting) stay dead; re-enabling must not revive them.
+    portalCredentialEpoch: now,
     updatedAt: now,
   };
   await db.put(updated);
@@ -162,6 +165,7 @@ export async function activatePortalAccount(
     portalPasswordHash: await hashPassword(newPassword),
     portalInviteTokenHash: undefined,
     portalInviteExpiresAt: undefined,
+    portalCredentialEpoch: now,
     updatedAt: now,
   });
 
@@ -184,9 +188,11 @@ export async function disablePortalAccount(patientId: string, actorUsername?: st
   const db = patientsDB();
   try {
     const patient = await db.get(patientId) as PatientDoc;
+    const stamp = new Date().toISOString();
     await db.put({
       ...patient,
-      portalDisabledAt: new Date().toISOString(),
+      portalDisabledAt: stamp,
+      portalCredentialEpoch: stamp,
       // An outstanding activation code must die with the account, or a slip
       // handed out last week would reopen it.
       portalInviteTokenHash: undefined,

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ROLES_WITHOUT_HOSPITAL, issueSessionResponse, logApiError, resolveEffectiveIdentity } from '@/modules/identity';
 import { getClientIp } from '@/lib/request-utils';
 
-import { rateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { rateLimit, refundRateLimit, resetRateLimit } from '@/lib/rate-limit';
 import { logAuditSafe } from '@/lib/services/audit-service';
 
 const USER_LOCK_THRESHOLD = 5;       // failed tries before user lock
@@ -152,8 +152,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // The password was right, so clear both failed-attempt streaks.
-    await Promise.all([resetRateLimit(userRateKey), resetRateLimit(ipRateKey)]);
+    // The password was right, so clear this account's failed-attempt streak.
+    // Clear the per-ACCOUNT streak only. Resetting the per-IP counter on any
+    // success would let an attacker log into their own account between
+    // guesses and never trip the IP limit. The IP bucket gets back only this
+    // one attempt, so it counts failures rather than sign-ins.
+    await Promise.all([resetRateLimit(userRateKey), refundRateLimit(ipRateKey)]);
 
     const identity = await resolveEffectiveIdentity(user, requestedRole);
     if (!identity.ok) {

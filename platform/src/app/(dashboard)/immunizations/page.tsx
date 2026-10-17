@@ -12,6 +12,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useAuth, useUi } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { toCsvRows, downloadCsvText } from '@/lib/export-file';
@@ -45,6 +46,7 @@ export default function ImmunizationsPage() {
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { globalSearch } = useUi();
   const { immunizations, stats, coverage, loading, register, update } = useImmunizations();
   const { patients } = usePatients();
@@ -87,9 +89,9 @@ export default function ImmunizationsPage() {
       try {
         const svc = await import('@/lib/services/immunization-service');
         const [list, s, cohort] = await Promise.all([
-          svc.getDefaulters(),
-          svc.getDefaulterStats(),
-          svc.getCoverageByAgeCohort(),
+          svc.getDefaulters(scope),
+          svc.getDefaulterStats(scope),
+          svc.getCoverageByAgeCohort(scope),
         ]);
         if (cancelled) return;
         setDefaulters(list);
@@ -98,7 +100,7 @@ export default function ImmunizationsPage() {
       } catch { /* swallow */ }
     })();
     return () => { cancelled = true; };
-  }, [immunizations]);
+  }, [immunizations, scope]);
 
   // Build a {vaccine -> {cohort -> percentage}} grid for the heatmap
   const cohortGrid = useMemo(() => {
@@ -304,6 +306,7 @@ export default function ImmunizationsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
     await register({
       patientId: form.patientId || `child-new-${Date.now()}`,
       patientName: form.patientName,
@@ -327,6 +330,9 @@ export default function ImmunizationsPage() {
     });
     setShowModal(false);
     setForm({ patientId: '', patientName: '', gender: 'Male', dateOfBirth: '', vaccine: 'BCG', doseNumber: 1, dateGiven: todayIso(), nextDueDate: '', batchNumber: '', site: 'left arm', adverseReaction: false, adverseReactionDetails: '' });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+    }
   };
 
   // Persist a correction to a saved dose, then close the edit modal.
@@ -689,7 +695,7 @@ export default function ImmunizationsPage() {
                     const rowKey = `${d.patientId}-${d.vaccine}-${i}`;
                     const hasPhone = !!phoneForDefaulter(d.patientId);
                     return (
-                      <tr key={rowKey} className="cursor-pointer" onClick={() => router.push(`/patients/${d.patientId}?tab=immunizations`)}>
+                      <tr key={rowKey} className="cursor-pointer" tabIndex={0} role="link" onClick={() => router.push(`/patients/${d.patientId}?tab=immunizations`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); router.push(`/patients/${d.patientId}?tab=immunizations`); } }}>
                         <td><PatientName patientId={d.patientId} name={d.patientName} gender={d.gender} nameClassName="font-semibold text-sm" /></td>
                         <td className="text-xs">{Math.floor(d.ageMonths / 12)}y {d.ageMonths % 12}m</td>
                         <td className="text-xs">{d.gender}</td>

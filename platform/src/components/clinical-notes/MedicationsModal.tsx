@@ -26,6 +26,8 @@ import { Check, Info, Plus, X } from '@/components/icons/lucide';
 import PrescribeModal from './prescribe/PrescribeModal';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { filterByScope } from '@/lib/services/data-scope';
 import { pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
@@ -82,6 +84,8 @@ export default function MedicationsModal({
   patientId, patientName, currentUser, encounterId, onClose,
 }: MedicationsModalProps) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
   const scope = useDataScope();
   const [showPrescribe, setShowPrescribe] = useState(false);
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
@@ -197,9 +201,16 @@ export default function MedicationsModal({
   });
 
   const handleDiscontinue = () => selected && withBusy(async () => {
-    const reason = window.prompt('Reason for discontinuing (optional):') ?? '';
+    // null = Cancel: abort with no write. '' = confirmed without a reason.
+    const reason = await confirmPrompt({
+      title: t('confirm.discontinueMedTitle', { medication: selected.medication }),
+      inputLabel: t('confirm.discontinueMedLabel'),
+      confirmLabel: t('confirm.discontinueMedConfirm'),
+      tone: 'warning',
+    });
+    if (reason === null) return;
     const { updatePrescription } = await import('@/lib/services/prescription-service');
-    await updatePrescription(selected._id, stopFields(reason.trim() || 'Discontinued at medications review'));
+    await updatePrescription(selected._id, stopFields(reason || 'Discontinued at medications review'));
     showToast(`${selected.medication} discontinued.`, 'success');
     await load();
     setSelectedId(null);

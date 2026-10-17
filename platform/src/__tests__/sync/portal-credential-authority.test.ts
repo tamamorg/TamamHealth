@@ -8,8 +8,9 @@
  * The rule must stop that without refusing the ordinary case it resembles — a
  * device editing a patient while holding a copy from before they activated.
  */
-import { PORTAL_ENROL_ROLES, SERVER_HELD_BEFORE, applyPortalCredentialAuthority, canIssuePortalInvite } from '@/lib/sync/portal-credential-authority';
+import { PORTAL_ENROL_ROLES, SERVER_HELD_BEFORE, SLIP_LIFETIME_HOURS, applyPortalCredentialAuthority, canIssuePortalInvite } from '@/lib/sync/portal-credential-authority';
 import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
+import { PORTAL_INVITE_TTL_HOURS, normalisePortalUsername, suggestPortalUsername } from '@/modules/identity/provisioning/portal-invite';
 
 const HASH = 'a'.repeat(64);
 const NOW = new Date('2026-10-10T09:00:00.000Z');
@@ -152,4 +153,20 @@ describe('the registration form and the gateway agree on who issues an invitatio
     expect(canIssuePortalInvite(undefined)).toBe(false);
     expect(canIssuePortalInvite('')).toBe(false);
   });
+});
+
+test('the gateway’s idea of a slip is the desk’s', () => {
+  expect(SLIP_LIFETIME_HOURS).toBe(PORTAL_INVITE_TTL_HOURS);
+  // Every username the desk can produce is one the gateway accepts.
+  for (const patient of [
+    { firstName: 'Mary', surname: 'Deng', hospitalNumber: 'JTH-000042' },
+    { firstName: 'Nyabol', surname: 'Koang-Thiik', hospitalNumber: '' },
+    { firstName: 'Ély', surname: "O'Brien", hospitalNumber: 'X1' },
+  ]) {
+    const portalUsername = `${suggestPortalUsername(patient)}-2`;
+    expect(normalisePortalUsername(portalUsername)).toBe(portalUsername);
+    const { doc } = applyPortalCredentialAuthority(
+      { ...base, portalUsername, portalInviteTokenHash: HASH, portalInviteExpiresAt: '2026-10-20T09:00:00.000Z' }, null, 'nurse', NOW);
+    expect(doc.portalInviteTokenHash).toBe(HASH);
+  }
 });

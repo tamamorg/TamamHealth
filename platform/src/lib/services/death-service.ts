@@ -7,6 +7,7 @@ import { updatePatient } from './patient-service';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
+import { resolveRegisterOrgId } from './register-org';
 import { jubaYearMonth, jubaIsInMonth, isInRange } from '../time-juba';
 
 export async function getAllDeaths(scope?: DataScope): Promise<DeathRegistrationDoc[]> {
@@ -22,12 +23,14 @@ export async function getDeathsByFacility(facilityId: string): Promise<DeathRegi
   return all.filter(d => d.facilityId === facilityId);
 }
 
-export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>): Promise<DeathRegistrationDoc> {
+export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, scope: DataScope): Promise<DeathRegistrationDoc> {
+  const orgId = await resolveRegisterOrgId(data, scope);
   const db = deathsDB();
   if (data.patientId) {
     const duplicate = (await getAllDeaths()).find(death =>
       death.patientId === data.patientId
       && death.facilityId === data.facilityId
+      && (!death.orgId || death.orgId === orgId)
       && death.dateOfDeath === data.dateOfDeath
     );
     if (duplicate) {
@@ -41,6 +44,7 @@ export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev
     _id: id,
     type: 'death',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

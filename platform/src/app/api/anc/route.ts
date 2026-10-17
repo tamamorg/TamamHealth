@@ -85,9 +85,15 @@ async function postHandler(request: NextRequest) {
       else delete body.orgId;
     }
     const { createANCVisit } = await import('@/lib/services/anc-service');
-    const visit = await createANCVisit(body as Parameters<typeof createANCVisit>[0]);
+    const visit = await createANCVisit(
+      body as Parameters<typeof createANCVisit>[0],
+      (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
+    );
     return NextResponse.json({ visit }, { status: 201 });
   } catch (err) {
+    if (err instanceof Error && err.name === 'ValidationError') {
+      return NextResponse.json({ error: err.message, fields: (err as Error & { fields?: Record<string, string> }).fields }, { status: 400 });
+    }
     logApiError('[API /anc POST]', err);
     return serverError();
   }

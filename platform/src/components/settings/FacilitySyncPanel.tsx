@@ -20,6 +20,7 @@
  * all until there is something to show.
  */
 
+import { todayIso } from '@/lib/date-utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { RefreshCw, Check } from '@/components/icons/lucide';
@@ -77,7 +78,7 @@ export function useFacilitySync(): FacilitySync {
     setRunning(true);
     try {
       const { generateDHIS2Export, pushDataSetToDHIS2 } = await import('@/lib/services/dhis2-export-service');
-      const period = new Date().toISOString().slice(0, 7);
+      const period = todayIso().slice(0, 7);
       const scope: DHIS2ExportScope = { role: currentUser.role, orgId: currentUser.orgId, hospitalId: currentUser.hospitalId };
       const dataset = await generateDHIS2Export(period, scope);
       const push = await pushDataSetToDHIS2(dataset);

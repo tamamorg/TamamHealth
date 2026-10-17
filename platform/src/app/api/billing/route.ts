@@ -67,6 +67,9 @@ async function postHandler(request: NextRequest) {
     // /api/appointments. Out-of-scope resolves to 404, not 403, so the
     // response does not confirm the bill exists.
     if (body.action === 'record_payment' || body.action === 'waive') {
+      if (typeof body.billId !== 'string' || !body.billId) {
+        return NextResponse.json({ error: 'billId is required' }, { status: 400 });
+      }
       const { getBillById } = await import('@/lib/services/billing-service');
       const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
       const existing = await getBillById(body.billId as string);
@@ -76,31 +79,63 @@ async function postHandler(request: NextRequest) {
     }
     // Check if this is a payment recording action
     if (body.action === 'record_payment') {
-      const { recordPayment } = await import('@/lib/services/billing-service');
-      const result = await recordPayment(
-        body.billId as string,
-        body.amount as number,
-        body.method as Parameters<typeof recordPayment>[2],
-        auth.sub,
-        auth.name,
-        body.reference as string | undefined,
-        body.notes as string | undefined,
-      );
-      if (!result) return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
-      return NextResponse.json({ bill: result });
+      const { recordPayment, isPaymentMethod, BillingError } = await import('@/lib/services/billing-service');
+      if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
+        return NextResponse.json({ error: 'amount must be a number greater than zero' }, { status: 400 });
+      }
+      if (!isPaymentMethod(body.method)) {
+        return NextResponse.json({ error: 'method is not a recognised payment method' }, { status: 400 });
+      }
+      if (body.reference !== undefined && typeof body.reference !== 'string') {
+        return NextResponse.json({ error: 'reference must be a string' }, { status: 400 });
+      }
+      if (body.notes !== undefined && typeof body.notes !== 'string') {
+        return NextResponse.json({ error: 'notes must be a string' }, { status: 400 });
+      }
+      try {
+        const result = await recordPayment(
+          body.billId as string,
+          body.amount,
+          body.method,
+          auth.sub,
+          auth.name,
+          body.reference as string | undefined,
+          body.notes as string | undefined,
+        );
+        if (!result) return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+        return NextResponse.json({ bill: result });
+      } catch (err) {
+        if (err instanceof BillingError) {
+          const status = err.code === 'INVALID_AMOUNT' || err.code === 'INVALID_METHOD' ? 400 : 409;
+          return NextResponse.json({ error: err.message, code: err.code }, { status });
+        }
+        throw err;
+      }
     }
+
     // Check if this is a waiver action
     if (body.action === 'waive') {
-      const { waiveBill } = await import('@/lib/services/billing-service');
-      const result = await waiveBill(
-        body.billId as string,
-        auth.sub,
-        auth.name,
-        (body.reason as string) || 'Fee waiver',
-      );
-      if (!result) return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
-      return NextResponse.json({ bill: result });
+      const { waiveBill, BillingError } = await import('@/lib/services/billing-service');
+      if (body.reason !== undefined && (typeof body.reason !== 'string' || body.reason.length > 500)) {
+        return NextResponse.json({ error: 'reason must be a string of at most 500 characters' }, { status: 400 });
+      }
+      try {
+        const result = await waiveBill(
+          body.billId as string,
+          auth.sub,
+          auth.name,
+          (typeof body.reason === 'string' && body.reason.trim()) || 'Fee waiver',
+        );
+        if (!result) return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+        return NextResponse.json({ bill: result });
+      } catch (err) {
+        if (err instanceof BillingError) {
+          return NextResponse.json({ error: err.message, code: err.code }, { status: err.code === 'INVALID_REASON' ? 400 : 409 });
+        }
+        throw err;
+      }
     }
+
     // Create new bill
     if (!body.patientId || !body.items) {
       return NextResponse.json(

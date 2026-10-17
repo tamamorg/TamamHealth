@@ -14,8 +14,30 @@ function req(headers: Record<string, string>): NextRequest {
 }
 
 describe('getClientIp anti-spoofing', () => {
-  test('prefers x-real-ip over any client-supplied X-Forwarded-For', () => {
-    expect(getClientIp(req({ 'x-real-ip': '9.9.9.9', 'x-forwarded-for': '1.1.1.1, 2.2.2.2' }))).toBe('9.9.9.9');
+  test('a client-sent x-real-ip cannot override what the proxy wrote', () => {
+    // The host-level Caddy rewrites X-Forwarded-For but passes x-real-ip
+    // through untouched, so x-real-ip is only a fallback.
+    expect(getClientIp(req({ 'x-real-ip': '9.9.9.9', 'x-forwarded-for': '8.8.8.8' }))).toBe('8.8.8.8');
+    expect(getClientIp(req({ 'x-real-ip': '9.9.9.9' }))).toBe('9.9.9.9');
+  });
+
+  test('counts back the declared number of proxies', () => {
+    process.env.TRUSTED_PROXY_HOPS = '2';
+    try {
+      // client, then the load balancer's view appended by Caddy.
+      expect(getClientIp(req({ 'x-forwarded-for': '6.6.6.6, 8.8.8.8, 10.0.0.2' }))).toBe('8.8.8.8');
+    } finally {
+      delete process.env.TRUSTED_PROXY_HOPS;
+    }
+  });
+
+  test('with no proxy declared, no header is believed', () => {
+    process.env.TRUST_PROXY_HEADERS = 'false';
+    try {
+      expect(getClientIp(req({ 'x-real-ip': '9.9.9.9', 'x-forwarded-for': '8.8.8.8' }))).toBe('unknown');
+    } finally {
+      delete process.env.TRUST_PROXY_HEADERS;
+    }
   });
 
   test('uses the rightmost (closest-proxy) XFF entry, not the spoofable leftmost', () => {

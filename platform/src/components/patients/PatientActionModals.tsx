@@ -30,6 +30,12 @@ import type { PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import {
+  assessPrescriptionSafety,
+  AllergyHardStopError,
+  type PrescriptionSafetyAssessment,
+} from '@/lib/services/prescription-service';
+import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
 
 // Minimal shape of the logged-in user needed by these modals. The patient
 // detail page passes `currentUser` from useApp(); we only read these fields.
@@ -108,20 +114,62 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
   const [instructions, setInstructions] = useState('');
   const [urgency, setUrgency] = useState<'immediate' | 'definitive'>('definitive');
   const [submitting, setSubmitting] = useState(false);
+  const [safetyReview, setSafetyReview] = useState<(PrescriptionSafetyAssessment & { medication: string }) | null>(null);
+  const [safetyAcknowledged, setSafetyAcknowledged] = useState(false);
+
+  const activeAllergies = patient.structuredAllergies !== undefined
+    ? patient.structuredAllergies.filter(allergy => allergy.status === 'active')
+    : (patient.allergies || []).filter(Boolean).map((substance, index) => ({
+        id: `legacy-${index}`, substance, status: 'active' as const, criticality: 'unknown' as const,
+        reaction: undefined,
+      }));
 
   const reset = () => {
     setMedication(''); setDose(''); setRoute('Oral'); setFrequency('');
     setDuration(''); setInstructions(''); setUrgency('definitive');
+    setSafetyReview(null); setSafetyAcknowledged(false);
   };
   const close = () => { if (!submitting) { reset(); onClose(); } };
 
   // Required by validatePrescription: medication, dose, frequency, patientId.
   const canSubmit = !!medication.trim() && !!dose.trim() && !!frequency.trim();
+  const reviewedMedication = safetyReview?.medication === medication.trim() ? safetyReview : null;
+  const hasAdvisory = !!(reviewedMedication?.allergyWarnings?.length
+    || reviewedMedication?.interactionWarnings?.hasInteractions
+    || reviewedMedication?.duplicateWarnings?.length);
+  const hasSevereAllergy = !!reviewedMedication?.allergyWarnings?.some(warning => warning.requiresOverride);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     try {
       setSubmitting(true);
+      if (!reviewedMedication) {
+        // The chart already has the patient's allergies in memory. Check those
+        // first so a severe conflict is confronted immediately even if the
+        // local prescription index is rebuilding or remote sync is slow.
+        const immediateAllergyWarnings = checkAllergiesStructured(
+          [medication.trim()],
+          activeAllergies,
+        );
+        if (immediateAllergyWarnings.length) {
+          setSafetyReview({
+            medication: medication.trim(),
+            allergyWarnings: immediateAllergyWarnings,
+            interactionWarnings: null,
+            duplicateWarnings: null,
+          });
+          return;
+        }
+        const assessment = await assessPrescriptionSafety(patient._id, medication.trim());
+        const review = { ...assessment, medication: medication.trim() };
+        setSafetyReview(review);
+        const warnings = !!(assessment.allergyWarnings?.length
+          || assessment.interactionWarnings?.hasInteractions
+          || assessment.duplicateWarnings?.length);
+        if (warnings) return;
+      } else if (hasSevereAllergy || (hasAdvisory && !safetyAcknowledged)) {
+        return;
+      }
       // PrescriptionDoc has no dedicated free-text directions field, so — like
       // the consultation flow — instructions are appended to the duration note
       // (e.g. "5 days — take after meals") so they aren't lost.
@@ -158,7 +206,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
       onClose();
     } catch (err) {
       console.error('Prescribe failed', err);
-      showToast(t('error.title'), 'error');
+      showToast(err instanceof AllergyHardStopError || err instanceof Error ? err.message : t('error.title'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -181,9 +229,27 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
             <input
               type="text"
               value={medication}
-              onChange={e => setMedication(e.target.value)}
-              placeholder="e.g. Amoxicillin"
+              onChange={e => { setMedication(e.target.value); setSafetyReview(null); setSafetyAcknowledged(false); }}
+              placeholder={t('prescribe.medicationPlaceholder')}
             />
+          </div>
+          <div
+            className="rounded-lg p-3 text-sm"
+            style={{
+              border: `1px solid ${activeAllergies.length ? 'var(--color-danger, #D92B20)' : 'var(--border-light)'}`,
+              background: activeAllergies.length ? 'var(--color-danger-bg, #FAE6E4)' : 'var(--overlay-subtle)',
+            }}
+            aria-label={t('prescribe.recordedAllergies')}
+          >
+            <div className="font-semibold flex items-center gap-2" style={{ color: activeAllergies.length ? 'var(--color-danger, #D92B20)' : 'var(--text-primary)' }}>
+              {activeAllergies.length > 0 && <AlertTriangle className="w-4 h-4" aria-hidden />}
+              {t('prescribe.recordedAllergies')}
+            </div>
+            <div className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+              {activeAllergies.length
+                ? activeAllergies.map(allergy => `${allergy.substance}${allergy.reaction ? ` — ${allergy.reaction}` : ''}`).join('; ')
+                : t('prescribe.noRecordedAllergies')}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -221,11 +287,53 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
             <label>Instructions</label>
             <textarea rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="e.g. Take after meals" />
           </div>
+          {hasAdvisory && (
+            <div className="rounded-lg p-3 text-sm" style={{ border: '2px solid var(--color-danger, #D92B20)', background: 'var(--color-danger-bg, #FAE6E4)' }} role="alert">
+              <div className="font-bold flex items-center gap-2" style={{ color: 'var(--color-danger, #D92B20)' }}>
+                <AlertTriangle className="w-4 h-4" aria-hidden />
+                {t('prescribe.safetyReviewRequired')}
+              </div>
+              <ul className="list-disc ps-5 mt-2 space-y-1">
+                {reviewedMedication?.allergyWarnings?.map((warning, index) => (
+                  <li key={`allergy-${index}`}>
+                    {t('prescribe.allergyConflict', { allergy: warning.allergy, medication: warning.medication })}
+                    {warning.reaction ? ` — ${warning.reaction}` : ''}
+                  </li>
+                ))}
+                {reviewedMedication?.interactionWarnings?.interactions.map((warning, index) => (
+                  <li key={`interaction-${index}`}>{warning.drug1} + {warning.drug2}: {warning.clinicalAdvice}</li>
+                ))}
+                {reviewedMedication?.duplicateWarnings?.map((warning, index) => (
+                  <li key={`duplicate-${index}`}>{t('prescribe.duplicateOrder', { medication: warning })}</li>
+                ))}
+              </ul>
+              {hasSevereAllergy ? (
+                <p className="font-semibold mt-3" style={{ color: 'var(--color-danger, #D92B20)' }}>
+                  {t('prescribe.quickPathBlocked')}
+                </p>
+              ) : (
+                <label className="flex items-start gap-2 mt-3 font-medium">
+                  <input type="checkbox" checked={safetyAcknowledged} onChange={event => setSafetyAcknowledged(event.target.checked)} />
+                  <span>{t('prescribe.reviewAcknowledgement')}</span>
+                </label>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex gap-2 mt-5">
           <button onClick={close} className="btn btn-secondary flex-1" disabled={submitting}>{t('action.cancel')}</button>
-          <button onClick={handleSubmit} className="btn btn-primary flex-1" disabled={submitting || !canSubmit}>
-            {submitting ? t('referrals.saving') : t('action.prescribe')}
+          <button
+            onClick={handleSubmit}
+            className="btn btn-primary flex-1"
+            disabled={submitting || !canSubmit || hasSevereAllergy || (hasAdvisory && !safetyAcknowledged)}
+          >
+            {submitting
+              ? (!reviewedMedication ? t('prescribe.checkingSafety') : t('referrals.saving'))
+              : !reviewedMedication
+                ? t('prescribe.checkAndContinue')
+                : hasSevereAllergy
+                  ? t('prescribe.blocked')
+                  : t('action.prescribe')}
           </button>
         </div>
       </div>

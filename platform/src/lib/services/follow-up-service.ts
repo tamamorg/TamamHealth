@@ -1,4 +1,5 @@
 import { followUpsDB } from '../db';
+import { resolveDocOrgId } from './register-org';
 import type { FollowUpDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
@@ -37,12 +38,14 @@ export async function getPendingFollowUps(workerId?: string, scope?: DataScope):
 export async function createFollowUp(
   data: Omit<FollowUpDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
 ): Promise<FollowUpDoc> {
+  const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.hospitalId, patientId: data.patientId }, 'follow-up');
   const db = followUpsDB();
   const now = new Date().toISOString();
   const doc: FollowUpDoc = {
     _id: `followup-${uuidv4()}`,
     type: 'follow_up',
     ...data,
+    orgId,
     createdAt: now,
     updatedAt: now,
   };

@@ -15,6 +15,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import CodedSearchField, { type CodedOption } from '@/components/CodedSearchField';
 import { COMMON_ALLERGENS } from '@/data/allergens';
 import type { AllergyEntry } from '@/lib/types/patient-clinical';
@@ -40,6 +42,8 @@ interface AllergiesModalProps {
 
 export default function AllergiesModal({ patientId, currentUser, onClose }: AllergiesModalProps) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
 
   const [entries, setEntries] = useState<AllergyEntry[]>([]);
@@ -106,9 +110,20 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   });
 
   const handleRemove = (status: 'inactive' | 'resolved' | 'entered_in_error', verb: string) => selected && withBusy(async () => {
-    const reason = status === 'entered_in_error'
-      ? 'Entered in error'
-      : (window.prompt(`Reason for marking ${selected.substance} ${verb}:`) ?? '').trim();
+    let reason = 'Entered in error';
+    if (status !== 'entered_in_error') {
+      const answer = await confirmPrompt({
+        title: t('confirm.allergyUpdateTitle'),
+        inputLabel: t('confirm.allergyReasonLabel', {
+          substance: selected.substance,
+          verb: t(status === 'resolved' ? 'confirm.allergyVerbResolved' : 'confirm.allergyVerbDiscontinued'),
+        }),
+        inputRequired: true,
+        tone: 'warning',
+      });
+      if (answer === null) return;
+      reason = answer;
+    }
     if (!reason) { showToast('A reason is required.', 'error'); return; }
     const { removeAllergy } = await import('@/lib/services/allergy-service');
     const next = await removeAllergy(patientId, selected.id, reason, status);

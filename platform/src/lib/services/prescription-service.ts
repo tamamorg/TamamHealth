@@ -287,6 +287,12 @@ export interface PrescriptionCreateResult {
   duplicateWarnings: string[] | null;
 }
 
+export interface PrescriptionSafetyAssessment {
+  interactionWarnings: InteractionCheckResult | null;
+  allergyWarnings: StructuredAllergyAlert[] | null;
+  duplicateWarnings: string[] | null;
+}
+
 async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | undefined> {
   if (!hospitalId) return undefined;
   try {
@@ -309,6 +315,50 @@ export async function checkPrescriptionInteractions(
     .filter(rx => rx.status === 'pending')
     .map(rx => rx.medication);
   return checkNewPrescription(newMedication, activeRx);
+}
+
+/** Assess a proposed medication before it becomes an order. */
+export async function assessPrescriptionSafety(
+  patientId: string,
+  medication: string,
+): Promise<PrescriptionSafetyAssessment> {
+  let interactionWarnings: InteractionCheckResult | null = null;
+  let duplicateWarnings: string[] | null = null;
+  let allergyWarnings: StructuredAllergyAlert[] | null = null;
+
+  try {
+    if (!getRoleFlag('rx.interactions', true)) throw new SkipCheck();
+    interactionWarnings = await checkPrescriptionInteractions(patientId, medication);
+  } catch {
+    // Advisory only: unavailable decision support must not block urgent care.
+  }
+
+  try {
+    const activeRx = (await getPrescriptionsByPatient(patientId))
+      .filter(rx => rx.status === 'pending')
+      .map(rx => rx.medication);
+    // Compare the proposal to each active order. Running the duplicate finder
+    // across the entire list also reports old duplicate pairs unrelated to
+    // this medication, which makes the warning noisy and misleading.
+    const dupes = activeRx.filter(existing =>
+      findDuplicateMedications([existing, medication]).length > 0,
+    );
+    duplicateWarnings = dupes.length ? dupes : null;
+  } catch {
+    // Advisory only.
+  }
+
+  try {
+    if (!getRoleFlag('rx.allergyCheck', true)) throw new SkipCheck();
+    const { getActiveAllergies } = await import('./allergy-service');
+    const active = await getActiveAllergies(patientId);
+    const alerts = checkAllergiesStructured([medication], active);
+    allergyWarnings = alerts.length ? alerts : null;
+  } catch {
+    // Advisory only.
+  }
+
+  return { interactionWarnings, allergyWarnings, duplicateWarnings };
 }
 
 /**
@@ -408,7 +458,7 @@ async function billPrescription(doc: PrescriptionDoc): Promise<void> {
 }
 
 export async function createPrescription(
-  data: Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>
+  data: Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'medicationSafety'>
 ): Promise<PrescriptionCreateResult> {
   // Validate required prescription fields
   const errors = validatePrescription(data as unknown as Record<string, unknown>);
@@ -416,69 +466,36 @@ export async function createPrescription(
     throw new ValidationError(errors);
   }
 
-  // Check for drug interactions with patient's active prescriptions.
-  // "Interaction warnings" is the prescriber's own setting (`rx.interactions`)
-  // — off means they do not want the prompt, so the check is skipped rather
-  // than run and discarded.
-  let interactionWarnings: InteractionCheckResult | null = null;
-  let duplicateWarnings: string[] | null = null;
-  try {
-    if (!getRoleFlag('rx.interactions', true)) throw new SkipCheck();
-    interactionWarnings = await checkPrescriptionInteractions(
-      data.patientId,
-      data.medication,
-    );
-    // Log serious interactions to the audit trail
-    if (interactionWarnings.hasInteractions &&
-        (interactionWarnings.highestSeverity === 'contraindicated' ||
-         interactionWarnings.highestSeverity === 'serious')) {
-      await logAuditSafe(
-        'DRUG_INTERACTION_WARNING',
-        undefined,
-        data.prescribedBy,
-        // That a warning fired, how severe, and for whom — not which drugs.
-        // The pairs are saved on the prescription, which is access-controlled
-        // with the chart; the audit log is read by administrators.
-        `${interactionWarnings.highestSeverity?.toUpperCase()} interaction detected for patient ${data.patientId}: ` +
-        `${interactionWarnings.interactions.length} interaction(s), recorded on the prescription`,
-        true,
-        { patientId: data.patientId, resourceType: 'prescription' },
-      );
-    }
-  } catch {
-    // Drug interaction check is advisory — don't block prescription on failure
-  }
+  const { interactionWarnings, allergyWarnings, duplicateWarnings } =
+    await assessPrescriptionSafety(data.patientId, data.medication);
 
-  // Same-drug duplicate check against the patient's still-active orders.
-  try {
-    const activeRx = (await getPrescriptionsByPatient(data.patientId))
-      .filter(rx => rx.status === 'pending')
-      .map(rx => rx.medication);
-    const dupes = findDuplicateMedications([...activeRx, data.medication]);
-    duplicateWarnings = dupes.length ? dupes : null;
-  } catch {
-    // Advisory only.
+  if (interactionWarnings?.hasInteractions &&
+      (interactionWarnings.highestSeverity === 'contraindicated' ||
+       interactionWarnings.highestSeverity === 'serious')) {
+    await logAuditSafe(
+      'DRUG_INTERACTION_WARNING',
+      undefined,
+      data.prescribedBy,
+      `${interactionWarnings.highestSeverity?.toUpperCase()} interaction detected for patient ${data.patientId}: ` +
+      `${interactionWarnings.interactions.length} interaction(s), recorded on the prescription`,
+      true,
+      { patientId: data.patientId, resourceType: 'prescription' },
+    );
   }
 
   // Drug–allergy check against the patient's recorded active allergies. This
   // checker existed but was never wired in, so a recorded severe penicillin
   // allergy raised nothing when amoxicillin was prescribed. Advisory like the
   // interaction check — but severe matches are audit-logged.
-  let allergyWarnings: StructuredAllergyAlert[] | null = null;
   let allergyHardStop: StructuredAllergyAlert[] | null = null;
-  try {
-    if (!getRoleFlag('rx.allergyCheck', true)) throw new SkipCheck();
-    const { getActiveAllergies } = await import('./allergy-service');
-    const active = await getActiveAllergies(data.patientId);
-    const alerts = checkAllergiesStructured([data.medication], active);
-    allergyWarnings = alerts.length ? alerts : null;
-    const overrides = alerts.filter(a => a.requiresOverride);
-    if (overrides.length) {
+  const overrides = allergyWarnings?.filter(a => a.requiresOverride) || [];
+  if (overrides.length) {
+    try {
       await logAuditSafe(
         'DRUG_ALLERGY_WARNING',
         undefined,
         data.prescribedBy,
-        `Allergy alert for patient ${data.patientId}: ${alerts.length} match(es), ` +
+        `Allergy alert for patient ${data.patientId}: ${allergyWarnings?.length || 0} match(es), ` +
         `${overrides.length} requiring override; recorded on the prescription`,
         true,
         { patientId: data.patientId, resourceType: 'prescription' },
@@ -487,11 +504,9 @@ export async function createPrescription(
       // refusal. Collected here and thrown after the audit entry is written,
       // so a blocked order still leaves a record of why.
       if (await allergyHardStopEnabled(data.hospitalId)) allergyHardStop = overrides;
+    } catch {
+      // The warning is still returned and persisted if policy/audit lookup fails.
     }
-  } catch (err) {
-    // Advisory — a failed lookup must not block the prescription. A hard stop
-    // is not a failure, so it is re-thrown rather than swallowed here.
-    if (err instanceof AllergyHardStopError) throw err;
   }
 
   if (allergyHardStop) {
@@ -539,6 +554,14 @@ export async function createPrescription(
     criticalityTier: resolvePrescriptionTier(data.medication, data.criticalityTier),
     admissionId,
     orgId,
+    ...((allergyWarnings?.length || interactionWarnings?.hasInteractions || duplicateWarnings?.length) ? {
+      medicationSafety: {
+        assessedAt: now,
+        allergyWarnings: allergyWarnings || [],
+        interactionWarnings: interactionWarnings?.interactions || [],
+        duplicateWarnings: duplicateWarnings || [],
+      },
+    } : {}),
     createdAt: now,
     updatedAt: now,
   } as PrescriptionDoc, now);

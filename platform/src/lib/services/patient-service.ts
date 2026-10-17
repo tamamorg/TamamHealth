@@ -1,4 +1,5 @@
 import { patientsDB, hospitalsDB } from '../db';
+import { stripProtectedPatientFields } from '@/lib/patient-redaction';
 import type { PatientDoc, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -763,8 +764,20 @@ export async function createPatient(
   return doc;
 }
 
-export async function updatePatient(id: string, rawData: Partial<PatientDoc>): Promise<PatientDoc | null> {
-  const data = normalizePatientContact(rawData as unknown as Record<string, unknown>) as Partial<PatientDoc>;
+export async function updatePatient(
+  id: string,
+  rawData: Partial<PatientDoc>,
+  options: { allowRehome?: boolean } = {},
+): Promise<PatientDoc | null> {
+  // Portal credential fields and identity/ownership fields never move through
+  // a generic update (the offline UI path included). `orgId` is the tenant
+  // barrier, so it is ALSO refused unless the caller passes the explicit,
+  // internal `allowRehome` opt-in. The only legitimate re-homing is
+  // referral-service.acceptReferral (which verifies the patient currently
+  // belongs to the referring org first).
+  const stripped = stripProtectedPatientFields(rawData as unknown as Record<string, unknown>);
+  if (!options.allowRehome) delete (stripped as Record<string, unknown>).orgId;
+  const data = normalizePatientContact(stripped) as Partial<PatientDoc>;
   const db = patientsDB();
   let existing: PatientDoc;
   try {
@@ -851,8 +864,11 @@ export async function mutatePatient(
       if (e && (e.name === 'not_found' || e.status === 404)) return null;
       throw err;
     }
-    const patch = mutate(existing);
-    if (patch === null) return existing;
+    const rawPatch = mutate(existing);
+    if (rawPatch === null) return existing;
+    const patch = stripProtectedPatientFields(rawPatch as unknown as Record<string, unknown>) as Partial<PatientDoc>;
+    // The tenant (orgId) is never writable through a mutate callback.
+    delete (patch as Record<string, unknown>).orgId;
     const updated = withPendingOfflineSync({
       ...existing,
       ...patch,

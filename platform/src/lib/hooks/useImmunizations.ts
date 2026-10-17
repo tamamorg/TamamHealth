@@ -54,10 +54,11 @@ export function useImmunizations(patientId?: string) {
 
   const register = useCallback(async (data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createImmunization } = await import('../services/immunization-service');
-    const doc = await createImmunization(data);
+    if (!scope) throw new Error('Your data scope is still loading - try again in a moment.');
+    const doc = await createImmunization(data, scope);
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   const update = useCallback(async (id: string, data: Partial<ImmunizationDoc>) => {
     const { updateImmunization } = await import('../services/immunization-service');

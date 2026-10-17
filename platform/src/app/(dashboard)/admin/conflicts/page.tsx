@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConflictQueueDoc } from '@/lib/db-types';
 import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { apiFetch } from '@/lib/api-fetch';
 import { useToast } from '@/components/Toast';
 import { CONFLICT_RESOLUTION_ROLES } from '@/lib/permissions';
@@ -35,9 +36,25 @@ const RISK_LABEL: Record<ConflictQueueDoc['risk'], string> = {
 
 interface ResolveTarget { id: string; rev: string }
 
+// Mirrors the resolve/dismiss route (POST /api/admin/conflicts/:id): the
+// records officer (hrio) may open the queue but not decide clinical content.
+const CONFLICT_DECIDER_ROLES = ['super_admin', 'org_admin', 'medical_superintendent'];
+
+/** Translation key for a refused resolve/dismiss, by the route's status code. */
+function conflictErrorKey(status: number): string {
+  switch (status) {
+    case 403: return 'conflicts.errForbidden';
+    case 404: return 'conflicts.errNotFound';
+    case 409: return 'conflicts.errStale';
+    case 422: return 'conflicts.errUnsupported';
+    default: return 'conflicts.errGeneric';
+  }
+}
+
 export default function ConflictsPage() {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const [filterStatus, setFilterStatus] = useSadbTab('pending');
   const [conflicts, setConflicts] = useState<ConflictQueueDoc[]>([]);
@@ -129,11 +146,15 @@ export default function ConflictsPage() {
         setResolveTarget(null);
         await Promise.all([loadConflicts(), loadCounts()]);
       } else {
-        const body = await res.json().catch(() => ({}));
-        showToast(body?.error || 'Failed to resolve conflict', 'error');
+        // The row stays pending. A 409 means the chosen revision is no longer a
+        // live leaf, so reload the queue to show the row as it is now.
+        showToast(t(conflictErrorKey(res.status)), 'error');
+        if (res.status < 500) setResolveTarget(null);
+        if (res.status === 409) await Promise.all([loadConflicts(), loadCounts()]);
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to resolve conflict', 'error');
+      console.error('Failed to resolve conflict', err);
+      showToast(t('conflicts.errGeneric'), 'error');
     } finally {
       setResolveBusy(false);
     }
@@ -154,17 +175,20 @@ export default function ConflictsPage() {
         setDismissNote('');
         await Promise.all([loadConflicts(), loadCounts()]);
       } else {
-        const body = await res.json().catch(() => ({}));
-        showToast(body?.error || 'Failed to dismiss conflict', 'error');
+        showToast(t(conflictErrorKey(res.status)), 'error');
+        if (res.status < 500) setDismissTarget(null);
+        if (res.status === 409) await Promise.all([loadConflicts(), loadCounts()]);
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to dismiss conflict', 'error');
+      console.error('Failed to dismiss conflict', err);
+      showToast(t('conflicts.errGeneric'), 'error');
     } finally {
       setDismissBusy(false);
     }
   };
 
   const allowed = !!currentUser && CONFLICT_RESOLUTION_ROLES.includes(currentUser.role);
+  const canDecide = !!currentUser && CONFLICT_DECIDER_ROLES.includes(currentUser.role);
 
   if (!allowed) {
     return (
@@ -250,7 +274,11 @@ export default function ConflictsPage() {
                     </p>
                   )}
 
-                  {c.status === 'pending' && (
+                  {c.status === 'pending' && !canDecide && (
+                    <p className="sadb-setting-sub" style={{ padding: '10px 16px' }}>{t('conflicts.readOnlyNote')}</p>
+                  )}
+
+                  {c.status === 'pending' && canDecide && (
                     <div className="sadb-setting-row" style={{ flexWrap: 'wrap', gap: 8 }}>
                       <button
                         type="button"

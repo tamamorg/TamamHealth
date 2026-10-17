@@ -12,7 +12,7 @@
  * single button and cannot nest a second one.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -21,9 +21,9 @@ import { Plus, Save } from '@/components/icons/lucide';
 import {
   SadbPage, SadbCard, SadbSearch, SadbGridList, SadbGridRow, SadbChip, SadbConfirmModal,
 } from '@/components/admin/sadb-ui';
-import {
-  getFeeSchedule, createFee, updateFee, deleteFee, type FeeInput,
-} from '@/lib/services/fee-schedule-service';
+import { getFeeSchedule, type FeeInput } from '@/lib/services/fee-schedule-service';
+import { apiFetch } from '@/lib/api-fetch';
+import { getSyncManager } from '@/lib/sync/sync-manager';
 import type { FeeScheduleDoc, ChargeCategory, BillingUnit } from '@/lib/db-types-billing';
 import { formatMoney } from '@/lib/format-utils';
 import Select from '@/components/Select';
@@ -71,11 +71,45 @@ export default function ServicePricingPage() {
   // is recoverable (the row isn't deleted until the user confirms).
   const [removingFee, setRemovingFee] = useState<FeeScheduleDoc | null>(null);
 
-  const actor = { id: currentUser?._id, name: currentUser?.name };
+  // The catalog is server-written (its replication is pull-only), so a saved
+  // edit reaches this device by pull. Until it lands, show what the server
+  // confirmed: id -> the confirmed doc, or null once confirmed deleted.
+  const confirmed = useRef(new Map<string, FeeScheduleDoc | null>());
+
+  // Ask the server to change the catalog. Never writes the local database:
+  // a local-only edit would look saved and be silently invisible to everyone
+  // else's charges. Offline = an error, not a local write.
+  const callFeeApi = useCallback(async (payload: Record<string, unknown>): Promise<{ fee?: FeeScheduleDoc; id?: string } | null> => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+    try {
+      const res = await apiFetch('/api/fee-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setFees(await getFeeSchedule(scope));
+      const local = await getFeeSchedule(scope);
+      const byId = new Map(local.map(f => [f._id, f]));
+      for (const [id, doc] of confirmed.current) {
+        const have = byId.get(id);
+        if (doc === null) {
+          byId.delete(id);
+        } else if (!have || (have.updatedAt || '') < (doc.updatedAt || '')) {
+          byId.set(id, doc);
+        } else {
+          confirmed.current.delete(id); // pull caught up
+        }
+      }
+      setFees(Array.from(byId.values()).sort((a, b) => (a.category + a.serviceName).localeCompare(b.category + b.serviceName)));
     } catch {
       showToast('Failed to load price catalog', 'error');
     } finally {
@@ -112,17 +146,20 @@ export default function ServicePricingPage() {
     }
     setSaving(true);
     try {
-      if (editingId) {
-        await updateFee(editingId, form, actor);
-        showToast('Price updated', 'success');
-      } else {
-        await createFee({ ...form, orgId: currentUser?.orgId }, actor);
-        showToast('Service added to catalog', 'success');
+      // orgId is deliberately not sent: the server stamps it from the session.
+      const { isActive, ...rest } = form;
+      const result = editingId
+        ? await callFeeApi({ action: 'update', id: editingId, fee: { ...rest, isActive } })
+        : await callFeeApi({ action: 'create', fee: { ...rest, isActive } });
+      if (!result?.fee) {
+        showToast('Could not save the price', 'error');
+        return;
       }
+      confirmed.current.set(result.fee._id, result.fee);
+      showToast(editingId ? 'Price updated' : 'Service added to catalog', 'success');
       setShowForm(false);
+      void getSyncManager()?.syncNow().catch(() => undefined);
       await load();
-    } catch {
-      showToast('Could not save the price', 'error');
     } finally {
       setSaving(false);
     }
@@ -130,15 +167,17 @@ export default function ServicePricingPage() {
 
   const confirmRemove = async () => {
     if (!removingFee) return;
-    try {
-      await deleteFee(removingFee._id, actor);
-      showToast('Service removed', 'success');
-      setRemovingFee(null);
-      setShowForm(false);
-      await load();
-    } catch {
+    const result = await callFeeApi({ action: 'delete', id: removingFee._id });
+    if (!result) {
       showToast('Could not remove the service', 'error');
+      return;
     }
+    confirmed.current.set(removingFee._id, null);
+    showToast('Service removed', 'success');
+    setRemovingFee(null);
+    setShowForm(false);
+    void getSyncManager()?.syncNow().catch(() => undefined);
+    await load();
   };
 
   const q = search.trim().toLowerCase();

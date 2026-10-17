@@ -9,6 +9,7 @@
  * the queue all agree on "which step is this order on".
  */
 
+import { toIsoDate, todayIso } from '@/lib/date-utils';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 
 export type LabWorkflowStepKey = 'order' | 'collect' | 'receive' | 'process' | 'result' | 'report';
@@ -88,7 +89,7 @@ export function fallbackAccessionNumber(order: { _id: string; accessionNumber?: 
   if (order.accessionNumber) return order.accessionNumber;
   const ordered = new Date(order.orderedAt || Date.now());
   const day = Number.isNaN(ordered.getTime())
-    ? new Date().toISOString().slice(2, 10).replace(/-/g, '')
-    : ordered.toISOString().slice(2, 10).replace(/-/g, '');
+    ? todayIso().slice(2).replace(/-/g, '')
+    : toIsoDate(ordered).slice(2).replace(/-/g, '');
   return `ACC-${day}-${order._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
 }

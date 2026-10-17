@@ -8,6 +8,7 @@
  *
  * Body: { action: 'archive' | 'restore' }
  */
+import { redactPatient } from '@/lib/patient-redaction';
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
@@ -65,7 +66,7 @@ async function postHandler(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ patient: updated, action });
+    return NextResponse.json({ patient: redactPatient(updated), action });
   } catch (err) {
     logApiError('[API /patients/:id/archive POST]', err);
     return serverError();

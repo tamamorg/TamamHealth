@@ -5,6 +5,7 @@
  * ../hr-shared.tsx). Owns one period's register and its status transitions.
  */
 
+import { todayIso } from '@/lib/date-utils';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Plus, Wallet } from '@/components/icons/lucide';
@@ -54,7 +55,7 @@ export default function HrPayrollPage() {
 
   const [payroll, setPayroll] = useState<PayrollEntryDoc[]>([]);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
-  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [period, setPeriod] = useState(todayIso().slice(0, 7));
   const [open, setOpen] = useState(false);
 
   const reload = useCallback(async () => {
