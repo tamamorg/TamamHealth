@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { authorizeJson } from '@/lib/api-json-guard';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'medical_superintendent', 'government', 'county_health_director', 'hrio',
@@ -39,17 +40,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, WRITE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, WRITE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     // Validate required fields
     if (!body.facilityId || !body.facilityName || body.assessmentDate === undefined) {
       return NextResponse.json(

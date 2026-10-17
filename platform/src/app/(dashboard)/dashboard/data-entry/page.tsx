@@ -150,7 +150,7 @@ export default function DataEntryDashboard() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { saveFacilityCensus, getFacilityCensusByFacility } = await import('@/lib/services/facility-census-service');
+      const { saveFacilityCensus, getFacilityCensusByFacility } = await import('@/lib/services/census-submission-service');
       const facilityId = currentUser?.hospitalId || '';
       await saveFacilityCensus({
         facilityId,
@@ -181,7 +181,7 @@ export default function DataEntryDashboard() {
     let cancelled = false;
     async function loadSavedReports() {
       try {
-        const { getFacilityCensusByFacility } = await import('@/lib/services/facility-census-service');
+        const { getFacilityCensusByFacility } = await import('@/lib/services/census-submission-service');
         const facilityId = currentUser?.hospitalId || 'unknown';
         const existing = await getFacilityCensusByFacility(facilityId);
         if (!cancelled) setSavedReports(existing.map(r => ({ ...(r.census as unknown as CensusData), _submittedAt: r.createdAt, _submittedBy: r.submittedByName })).slice(0, 30));

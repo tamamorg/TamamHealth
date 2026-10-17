@@ -31,7 +31,7 @@ TAMAMHEALTH is purpose-built for the South Sudanese health system, addressing th
 - **Disease surveillance** — Real-time outbreak alerts, epidemic intelligence
 - **Vital registration** — Birth and death CRVS with ICD-11 cause coding
 - **Government oversight** — National health statistics, facility assessments, DHIS2 export
-- **Patient-facing access** — Patient portal, public online booking, telehealth visits
+- **Patient-facing access** — Patient portal, public online booking, payment links
 
 The system works entirely offline and syncs when connectivity is available.
 
@@ -51,7 +51,6 @@ The system works entirely offline and syncs when connectivity is available.
 | Client Database | PouchDB 9 (browser IndexedDB) |
 | Server Database | CouchDB 3 (sync), PostgreSQL 16 (analytics) |
 | Authentication | JWT (jose, HS256), bcryptjs |
-| Telehealth video | LiveKit (self-hosted; optional) |
 | Observability | Sentry (`@sentry/nextjs`, no-op without a DSN) |
 | Testing | Jest 30 (via `next/jest` / SWC, JSDOM) |
 | Linting | ESLint 9 (`eslint-config-next`) |
@@ -124,10 +123,14 @@ On serverless / multi-instance hosts where no shared writable filesystem
 exists, set `SEED_CREDENTIALS_SECRET` instead. Every instance then derives the
 same passwords by HMAC from that secret and no credentials file is written.
 
-The login page deliberately offers **no** account picker or role chips — a
-sign-in page that hands working credentials to anyone who loads it is not
-something to keep behind a flag. Accounts are issued by an administrator, or
-requested through `/request-account`.
+The login page has a searchable **role picker**: everyone signs in as their own
+assigned role, and only the platform super-admin may pick a different role and
+enter that workspace. A **demo-account roster** ("Choose a demo account", one
+tap to sign in) appears only on a standalone demo, i.e. a build with
+`NEXT_PUBLIC_DEMO_MODE=true` and no CouchDB configured; `/api/demo-credentials`
+declines everywhere else, so a real deployment never lists credentials.
+Accounts are issued by an administrator (`/admin/users`, `/org-admin/users`);
+there is no public account-request form.
 
 Seeded usernames include:
 
@@ -212,7 +215,7 @@ The platform uses a **single PouchDB API with two runtime backings** so the same
 
 Both share the same service functions (`patientsDB()`, `medicalRecordsDB()`, etc.), so route handlers don't care which runtime they run in. See [`src/lib/db.ts`](src/lib/db.ts). The server path deliberately avoids the full `pouchdb` package because it bundles leveldb native binaries.
 
-**Databases auto-create**: PouchDB's http adapter issues `PUT /<db>` on first access when the admin credentials permit it (they do on a fresh CouchDB install). No manual bootstrap is required — the 77 `tamamhealth_*` databases appear the first time a service touches them.
+**Databases auto-create**: PouchDB's http adapter issues `PUT /<db>` on first access when the admin credentials permit it (they do on a fresh CouchDB install). No manual bootstrap is required — the 76 replicating `tamamhealth_*` databases appear the first time a service touches them.
 
 ### Server-side CouchDB env (required for `/api/*` in production)
 
@@ -310,7 +313,6 @@ unsafe. The rules it enforces (all skipped when `NEXT_PUBLIC_DEMO_MODE=true`):
 - [ ] `NEXT_PUBLIC_SYNC_ENABLED=true` and `COUCHDB_URL` set (https, non-local hostname; the internal compose hop `http://couchdb:5984` is allowed)
 - [ ] `NEXT_PUBLIC_COUCHDB_URL` set and `COUCHDB_WEBHOOK_SECRET` >= 32 chars
 - [ ] `NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED=true` or `SINGLE_ORG_MODE=true`
-- [ ] LiveKit: all three of `LIVEKIT_URL` (wss://), `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` — or none
 - [ ] `DATABASE_URL` set if you want national analytics
 - [ ] HTTPS terminated in front of the app (secure cookies and CSP headers)
 
@@ -338,7 +340,6 @@ src/
 │   │   ├── triage/ rooming/   # ETAT triage and rooming stations
 │   │   ├── wards/             # Ward roster, MAR, handoff
 │   │   ├── appointments/      # Scheduling
-│   │   ├── telehealth/        # Video visit scheduling & sessions
 │   │   ├── referrals/         # Referral management
 │   │   ├── lab/ pharmacy/     # Orders, results, dispensing, inventory
 │   │   ├── blood-bank/        # Blood stock & transfusion
@@ -359,21 +360,18 @@ src/
 │   │   └── settings/          # User + facility preferences
 │   ├── (booking)/book/        # Public online booking (per-practice)
 │   ├── patient-portal/        # Patient-facing portal
-│   ├── telehealth/join/       # Patient video join links
 │   ├── checkout/[linkId]/     # Public payment links
-│   ├── request-account/       # Public account request form
 │   ├── login/ privacy/ terms/
 │   ├── api/                   # ~50 REST route groups (auth, patients, fhir, sync, …)
 │   └── globals.css            # Single source of design tokens
 ├── components/                # 44 shared components + 28 feature folders
 │   ├── ehr/chart/             # OpenMRS O3-style patient chart shell
 │   ├── icons/                 # Duotone icon set (+ lucide-name shim)
-│   ├── admin/ patients/ patient-portal/ telehealth/ payments/ …
+│   ├── admin/ patients/ patient-portal/ payments/ …
 │   ├── PrintListDialog.tsx    # Pick-lists + print/CSV, iframe output
-│   └── ClinicalScribe.tsx     # Voice/text clinical note parser
 ├── lib/
 │   ├── context.tsx            # AppContext & useApp hook
-│   ├── db.ts                  # PouchDB database factory (77 databases)
+│   ├── db.ts                  # PouchDB database factory (76 replicating databases)
 │   ├── db-types*.ts           # Document interfaces, split by domain
 │   ├── db-seed.ts             # Demo data seeding
 │   ├── permissions.ts         # Role permissions, nav, module gating
@@ -453,7 +451,6 @@ Unauthorized routes redirect to the user's default dashboard.
 - **Laboratory** — Test ordering, sample tracking, result entry with status workflow.
 - **Pharmacy** — Prescription queue, dispensing, inventory, plus a controlled-substances register.
 - **Blood Bank** — Stock, crossmatch, and transfusion records.
-- **Telehealth** — Scheduled video visits over LiveKit, with patient join links at `/telehealth/join/[sessionId]`, device checks, consent policy, and a maintenance sweep for abandoned sessions.
 
 ### Maternal & Child Health
 
@@ -492,8 +489,7 @@ Unauthorized routes redirect to the user's default dashboard.
 
 - **Messaging** — In-app messaging between providers and patients, with an optional SMS channel.
 - **Patient Portal** — Patient-facing record, appointments, and messages (optional SMS OTP second factor).
-- **Online Booking** — Public per-practice booking at `/book/[practice]` with slot holds and intake forms.
-- **Account Requests** — Public `/request-account` form feeding an `AccountRequestQueue` in the admin and org-admin user pages.
+- **Online Booking** — Public per-practice booking at `/book/[practice]` with slot holds.
 - **Reminders** — Appointment and patient reminders dispatched by a scheduled job.
 
 ### Platform Administration
@@ -515,13 +511,9 @@ Decision support runs entirely in the browser with no network dependency:
 - **Assessment instruments & symptom templates** — `lib/clinical/` holds the ETAT triage display, scored assessment instruments, vitals maths, and diagnosis validation.
 - **ICD-11 coding** — `lib/icd11-codes.ts` plus the terminology API back cause-of-death and diagnosis coding.
 
-### Clinical Scribe
+### AI note assistant (not wired in)
 
-`components/ClinicalScribe.tsx` with `lib/services/clinical-scribe-service.ts`:
-
-- Voice-to-text and typed transcription of clinical encounters
-- Extraction of chief complaint, vital signs, exam findings, and assessment into structured fields
-- Transcript / fields / SOAP preview before the clinician applies anything to the note
+`src/modules/ai-scribe/` holds a hospital-hosted note assistant (typed or recorded input → editable draft of one note section, applied only after clinician review). It is **deliberately not connected**: no `/api/ai-scribe` route is mounted and the clinical note editor has no entry point for it. See [`src/modules/ai-scribe/README.md`](src/modules/ai-scribe/README.md) for status and the wiring steps.
 
 ---
 
@@ -529,7 +521,7 @@ Decision support runs entirely in the browser with no network dependency:
 
 ### PouchDB Collections (Client-Side)
 
-77 `tamamhealth_*` databases are declared in [`src/lib/db.ts`](src/lib/db.ts). A representative sample:
+76 replicating `tamamhealth_*` databases are declared in [`src/lib/sync/sync-config.ts`](src/lib/sync/sync-config.ts) and opened through [`src/lib/db.ts`](src/lib/db.ts), which also wipes 6 non-replicating local ones (82 local names in all). A representative sample:
 
 | Database | Purpose |
 |----------|---------|
@@ -542,7 +534,6 @@ Decision support runs entirely in the browser with no network dependency:
 | `tamamhealth_lab_results` | Laboratory orders & results |
 | `tamamhealth_prescriptions` | Medication orders |
 | `tamamhealth_appointments` | Scheduling |
-| `tamamhealth_telehealth` | Video visit sessions |
 | `tamamhealth_wards` / `_handoffs` | Admissions, ward state, shift handoff |
 | `tamamhealth_triage` | Triage assessments |
 | `tamamhealth_messages` / `_conversations` | Messaging |
@@ -664,10 +655,9 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `NEXT_PUBLIC_AUTO_LOCK_DISABLED` | Turn off the inactivity screen lock (dev only) | `false` |
 | `MPESA_WEBHOOK_SECRET`, `AIRTEL_WEBHOOK_SECRET` | HMAC secrets; required only for the matching enabled callback | _(none)_ |
 | `MPESA_WEBHOOK_GATEWAY_VERIFIED`, `AIRTEL_WEBHOOK_GATEWAY_VERIFIED` | Set a provider to `true` only after its upstream gateway verifies provider state and adds the HMAC; otherwise its callback returns 503 | `false` |
-| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Telehealth video (all three or none) | _(video reports itself unavailable)_ |
 | `EMAIL_PROVIDER` + `RESEND_API_KEY` / `SENDGRID_API_KEY` / `SMTP_URL` | Outbound email | _(disabled)_ |
 | `FLUTTERWAVE_SECRET_HASH` + `FLUTTERWAVE_SECRET_KEY` | Optional Flutterwave signature and transaction-verification credentials | |
-| `NEXT_PUBLIC_APP_URL` | Base URL for payment and join links | |
+| `NEXT_PUBLIC_APP_URL` | Base URL for payment links | |
 | `NEXT_PUBLIC_DEFAULT_CURRENCY` | Default ledger currency | `SSP` |
 | `NEXT_PUBLIC_FHIR_NAMESPACE_BASE` | FHIR `identifier.system` / CodeSystem URL base | `https://tamamhealth.org` |
 | `NEXT_PUBLIC_DHIS2_BASE_URL` / `DHIS2_BASE_URL` + credentials | DHIS2 export target | |
@@ -675,7 +665,7 @@ Run `npm run setup` to configure automatically, or copy `.env.example` to `.env.
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_RELEASE` | Error reporting | _(no-op)_ |
 | `NEXT_PUBLIC_POSTHOG_KEY` / `_HOST` | Forward sanitized usage events (autocapture off) | _(CouchDB only)_ |
 | `PATIENT_PORTAL_OTP_ENABLED` | SMS second factor for the patient portal | `false` |
-| `REMINDER_DISPATCH_SECRET`, `TELEHEALTH_MAINTENANCE_SECRET` | Shared secrets for scheduled integrations; unset = no machine access | |
+| `REMINDER_DISPATCH_SECRET` | Shared secret for scheduled integrations; unset = no machine access | |
 | `TRANSFER_SWEEP_SECRET` | Legacy fallback for non-GitHub transfer schedulers; GitHub Actions uses repository-bound OIDC | _(none)_ |
 | `DOPPLER_TOKEN` | Fetch secrets via the Doppler CLI at boot | _(env-file path)_ |
 

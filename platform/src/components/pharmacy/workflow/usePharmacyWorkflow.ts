@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { getActiveAllergies } from '@/lib/services/allergy-service';
 import {
   checkAllergies,
@@ -69,6 +70,7 @@ export function usePharmacyWorkflow(
   activeMedications: string[] = [],
 ) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
   const { advance, dispense, markUnfilled } = usePrescriptions(rx.patientId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,10 +113,13 @@ export function usePharmacyWorkflow(
   });
 
   useEffect(() => {
+    // No scope yet (pre-hydration): stay in the loading state rather than
+    // reading allergies unscoped; the effect re-runs when the scope arrives.
+    if (!scope) return;
     let cancelled = false;
     (async () => {
       try {
-        const entries = await getActiveAllergies(rx.patientId);
+        const entries = await getActiveAllergies(rx.patientId, scope);
         const allergens = entries.map(a => a.substance).filter(Boolean);
         const withNew = [...activeMedications, rx.medication];
         if (cancelled) return;
@@ -138,7 +143,7 @@ export function usePharmacyWorkflow(
     return () => { cancelled = true; };
     // activeMedications is a fresh array each render at most call sites; key on
     // its content so the check does not re-run on every parent render.
-  }, [rx.patientId, rx.medication, activeMedications.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rx.patientId, rx.medication, scope, activeMedications.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Anything the pharmacist must look at before clearing. */
   const hasSafetySignal = useMemo(

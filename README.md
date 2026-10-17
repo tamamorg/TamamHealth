@@ -151,11 +151,10 @@ TamamHealth/
 | Platform | Next.js 16 (App Router) + React 19 + TypeScript 5 + Tailwind CSS 3 |
 | Website | Next.js 16 + React 19 (marketing site) |
 | Mobile | Expo / React Native |
-| Client database | PouchDB 9 on browser IndexedDB — offline-first, 76 databases |
+| Client database | PouchDB 9 on browser IndexedDB — offline-first, 76 replicating databases |
 | Sync | CouchDB 3 — one database per organization, optional |
 | Analytics database | PostgreSQL 16, fed by `sync-worker` |
 | Auth | JWT (jose, HS256) + bcryptjs; RBAC across 25 roles |
-| Telehealth | LiveKit (server SDK + browser client) |
 | Charts | Recharts |
 | Tests | Jest 30 |
 | Languages | English and Juba Arabic (RTL), checked by `npm run i18n:check` |
@@ -226,15 +225,14 @@ Route access is enforced in three places from the same table: the edge proxy
 - **Patient Registration** — Multi-step form with demographics, contact, next of kin, medical history, photo, fingerprint and QR identification
 - **Patient Chart** — OpenMRS O3-style chart shell at `/patients/[id]`: vitals, problems, allergies, medications, orders, notes and timeline
 - **Consultation Workflow** — Vitals, chief complaint, physical exam, ICD-11 diagnosis, prescriptions, lab and imaging orders, order sets and templates
-- **Clinical Decision Support** — WHO/IMAI-derived vital-sign bands that tint the chart, drug-interaction and allergy checking at prescribing time, care alerts, diagnosis validation, and a structured note scribe. (Rule-based, not a model — there is no AI diagnosis engine.)
+- **Clinical Decision Support** — WHO/IMAI-derived vital-sign bands that tint the chart, drug-interaction and allergy checking at prescribing time, care alerts, and diagnosis validation. (Rule-based, not a model — there is no AI diagnosis engine.)
 - **Triage & Rooming** — ETAT-based triage assessment, room assignment, patient queue
 - **Wards** — Bed management, medication administration record (MAR), SBAR shift handoff
 - **Laboratory & Imaging** — Order → accept → result entry → critical flagging, with imaging studies on the same order lifecycle
 - **Pharmacy** — Prescription queue, dispensing, inventory, drug-interaction and allergy checks, controlled-substance log
 - **Blood Bank** — Stock, cross-match and transfusion records
 - **Referrals & Transfers** — Transfer package assembly with full patient history and status tracking
-- **Telehealth** — LiveKit video consultations with device checks and consent capture
-- **Appointments & Online Booking** — Staff scheduling plus a public booking route (`/book/[practice]`) with slot holds and intake forms
+- **Appointments & Online Booking** — Staff scheduling plus a public booking route (`/book/[practice]`) with slot holds
 
 ### Public Health
 
@@ -251,7 +249,7 @@ Route access is enforced in three places from the same table: the edge proxy
 - **Billing & Payments** — Charges, invoices, fee schedules, insurance eligibility and claims, payment plans, refunds, an append-only ledger, and payment links with a public checkout page
 - **Facility Management** — Facility registry, settings, assessments, equipment/assets, emergency preparedness
 - **HR** — Leave requests, shift schedules, payroll
-- **User Accounts** — Admin-issued credentials, forced first-login password change, and a public account-request queue (`/request-account` → approval in `/admin/users` or `/org-admin/users`)
+- **User Accounts** — Admin-issued credentials from `/admin/users` or `/org-admin/users`, emailed invites (`/accept-invite`), and a forced first-login password change
 - **Multi-tenancy** — Organizations own facilities; every scoped read passes through a tenant filter, and CouchDB gives each organization its own database
 
 ### Government & Analytics
@@ -282,8 +280,8 @@ Route access is enforced in three places from the same table: the edge proxy
 
 ## Data Model
 
-Operational data lives in **76 PouchDB databases**, one per document family,
-declared in [`platform/src/lib/db.ts`](platform/src/lib/db.ts). A
+Operational data lives in **76 replicating PouchDB databases**, one per document family,
+declared in [`platform/src/lib/sync/sync-config.ts`](platform/src/lib/sync/sync-config.ts) and opened through [`platform/src/lib/db.ts`](platform/src/lib/db.ts). A
 representative slice:
 
 | Collection | Purpose |
@@ -371,7 +369,7 @@ platform/
 │   │   │   ├── patients/         # Registry + OpenMRS-style chart
 │   │   │   ├── consultation/  notes/  triage/  rooming/  wards/
 │   │   │   ├── lab/  pharmacy/  blood-bank/  controlled-substances/
-│   │   │   ├── referrals/  appointments/  telehealth/  messages/
+│   │   │   ├── referrals/  appointments/  messages/
 │   │   │   ├── anc/  births/  deaths/  immunizations/
 │   │   │   ├── billing/  payments/  hr/  equipment/  it/
 │   │   │   ├── surveillance/  epidemic-intelligence/  data-quality/
@@ -381,7 +379,7 @@ platform/
 │   │   │   └── org-admin/        # Organization admin console
 │   │   ├── (booking)/book/       # Public online booking
 │   │   ├── patient-portal/       # Patient-facing portal
-│   │   ├── login/  request-account/  checkout/  privacy/  terms/
+│   │   ├── login/  accept-invite/  checkout/  privacy/  terms/
 │   │   ├── api/                  # ~50 route groups (auth, fhir, mpi, sync, …)
 │   │   └── globals.css           # Design tokens — the only colour source
 │   ├── components/               # Shared UI (ehr/, patients/, admin/, …)

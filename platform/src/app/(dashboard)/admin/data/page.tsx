@@ -19,6 +19,7 @@ import { getAllPatients } from '@/lib/services/patient-service';
 import type { PatientDoc } from '@/lib/db-types';
 import { ArrowRight, Copy, BarChart3, AlertTriangle, GitCompareArrows } from '@/components/icons/lucide';
 import { useNow } from '@/lib/hooks/useNow';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const ROW_CAP = 50;
 
@@ -42,6 +43,7 @@ interface DupPair {
 export default function AdminDataGovernancePage() {
   const router = useRouter();
   const { hospitals, loading: hospitalsLoading } = useHospitals();
+  const scope = useDataScope();
 
   const [patients, setPatients] = useState<PatientDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,15 +55,16 @@ export default function AdminDataGovernancePage() {
   const [activeSection, setActiveSection] = useSadbTab('duplicates');
 
   const loadPatients = useCallback(async () => {
+    if (!scope) return;
     try {
-      const all = await getAllPatients();
+      const all = await getAllPatients(scope);
       setPatients(all);
     } catch (err) {
       console.error('Failed to load patients for data governance', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   const loadConflicts = useCallback(async () => {
     try {

@@ -14,7 +14,6 @@ import { getUserById } from '@/modules/identity/services/user-service';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
-import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { isPrnFrequency, isScheduledDoseAllowed } from '../clinical-flow/medication-schedule';
 
 export interface AdministrationInput {
@@ -235,7 +234,10 @@ export async function recordAdministration(input: AdministrationInput): Promise<
     ? `madm-prn-${uuidv4()}`
     : `madm:${rx._id}:${input.scheduledFor}${scheduledAttempt ? `:correction-${scheduledAttempt + 1}` : ''}`;
   const now = new Date().toISOString();
-  const doc: MedicationAdministrationDoc = withPendingOfflineSync({
+  // No offlineSync stamp: this is an append-only trail, so the device can
+  // never write the later "synced" revision (the gateway refuses any second
+  // revision of an entry) — a pending stamp here would read pending forever.
+  const doc: MedicationAdministrationDoc = {
     _id: id,
     type: 'medication_administration',
     eventKind: 'administration',
@@ -259,7 +261,7 @@ export async function recordAdministration(input: AdministrationInput): Promise<
     notes: input.notes?.trim() || undefined,
     createdAt: now,
     updatedAt: now,
-  }, now);
+  };
   try {
     const response = await db.put(doc);
     doc._rev = response.rev;
@@ -321,7 +323,8 @@ export async function voidAdministration(
   const prior = events.find(event => event.eventKind === 'void' && event.voidsAdministrationId === administrationId);
   if (prior) return prior;
   const now = new Date().toISOString();
-  const correction: MedicationAdministrationDoc = withPendingOfflineSync({
+  // No offlineSync stamp — append-only, see recordAdministration above.
+  const correction: MedicationAdministrationDoc = {
     _id: `mvoid-${uuidv4()}`,
     type: 'medication_administration',
     eventKind: 'void',
@@ -341,7 +344,7 @@ export async function voidAdministration(
     voidsAdministrationId: target._id,
     createdAt: now,
     updatedAt: now,
-  }, now);
+  };
   const response = await db.put(correction);
   correction._rev = response.rev;
   await logAuditSafe('MEDICATION_ADMIN_VOIDED', voidedBy, voidedByName, `Voided administration ${target._id} (Rx: ${rx._id}); reason recorded on the correction`);

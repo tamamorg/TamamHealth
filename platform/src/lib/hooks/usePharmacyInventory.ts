@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { PharmacyInventoryDoc } from '../db-types';
 import { pharmacyInventoryDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -27,23 +27,10 @@ export function usePharmacyInventory() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live subscription so the pharmacy page stays in sync with stock changes
   // (e.g. dispense triggered from a different browser tab, or a receipt
   // recorded by the pharmacist in parallel).
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = pharmacyInventoryDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: pharmacyInventoryDB });
 
   const create = useCallback(async (
     data: Omit<PharmacyInventoryDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'dispensedToday'>

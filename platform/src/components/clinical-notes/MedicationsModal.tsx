@@ -114,7 +114,7 @@ export default function MedicationsModal({
     const orgScope = scope ? { ...scope, hospitalId: undefined } : undefined;
     const [rx, pt] = await Promise.all([
       getPrescriptionsByPatient(patientId, orgScope),
-      getPatientById(patientId),
+      scope ? getPatientById(patientId, scope) : Promise.resolve(null),
     ]);
     rx.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     setPrescriptions(rx);
@@ -144,11 +144,12 @@ export default function MedicationsModal({
   const selected = rows.find(rx => rx._id === selectedId) || null;
 
   const savePatient = useCallback(async (patch: Partial<PatientDoc>) => {
+    if (!scope) throw new Error('Your patient data scope is unavailable');
     const { updatePatient } = await import('@/lib/services/patient-service');
-    const updated = await updatePatient(patientId, patch);
+    const updated = await updatePatient(patientId, patch, scope);
     if (updated) setPatient(updated);
     return updated;
-  }, [patientId]);
+  }, [patientId, scope]);
 
   // ── Row actions ─────────────────────────────────────────────────────────
   const withBusy = async (fn: () => Promise<void>) => {
@@ -171,7 +172,9 @@ export default function MedicationsModal({
     medication: string,
   ): Promise<PrescriptionCreateInput['medicationSafetyAcknowledgement'] | null> => {
     const { assessPrescriptionSafety } = await import('@/lib/services/prescription-service');
-    const safety = await assessPrescriptionSafety(patientId, medication);
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    const safety = await assessPrescriptionSafety(patientId, medication, scope);
+    if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
     const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
     if (!severeWarnings.length) return undefined;
     const reason = await confirmPrompt({
@@ -196,6 +199,7 @@ export default function MedicationsModal({
     const medicationSafetyAcknowledgement = await reviewSevereAllergy(selected.medication);
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
     const result = await createPrescription({
       patientId,
       patientName,
@@ -212,7 +216,7 @@ export default function MedicationsModal({
       hospitalId: currentUser?.hospitalId,
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
-    } as PrescriptionCreateInput);
+    } as PrescriptionCreateInput, scope);
     if (result.allergyWarnings?.length) {
       showToast(
         `ALLERGY ALERT — renewed against a recorded allergy: ${result.allergyWarnings
@@ -270,6 +274,7 @@ export default function MedicationsModal({
     const medicationSafetyAcknowledgement = await reviewSevereAllergy(medication);
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
     await createPrescription({
       patientId,
       patientName,
@@ -286,7 +291,7 @@ export default function MedicationsModal({
       hospitalId: currentUser?.hospitalId,
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
-    } as PrescriptionCreateInput);
+    } as PrescriptionCreateInput, scope);
     showToast(`${medication} added to the med list.`, 'success');
     setAddMed({ medication: '', dose: '', frequency: '' });
     setShowAddMed(false);

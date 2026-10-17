@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { NutritionScreeningDoc } from '../db-types';
 import { nutritionScreeningsDB } from '../db';
 import type { AddNutritionScreeningInput } from '../services/nutrition-screening-service';
@@ -25,20 +25,7 @@ export function useNutritionScreenings() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = nutritionScreeningsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: nutritionScreeningsDB });
 
   const add = useCallback(async (input: AddNutritionScreeningInput) => {
     const { addNutritionScreening } = await import('../services/nutrition-screening-service');
@@ -52,10 +39,11 @@ export function useNutritionScreenings() {
     patch: Partial<Pick<NutritionScreeningDoc, 'notes' | 'followUpAction' | 'followUpAt'>>,
   ) => {
     const { updateNutritionScreening } = await import('../services/nutrition-screening-service');
-    const doc = await updateNutritionScreening(id, patch);
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    const doc = await updateNutritionScreening(id, scope, patch);
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   return { screenings, loading, add, update, reload: load };
 }

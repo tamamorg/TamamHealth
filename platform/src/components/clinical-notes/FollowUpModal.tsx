@@ -39,8 +39,8 @@ interface FollowUpModalProps {
 
 /**
  * Today + 7 days, as YYYY-MM-DD — the default follow-up window. Local
- * calendar, not UTC: in Juba (UTC+3) a `toISOString()` slice taken before
- * 03:00 local names yesterday, dating the follow-up a day early.
+ * calendar, not UTC: in Juba (UTC+2) a `toISOString()` slice taken before
+ * 02:00 local names yesterday, dating the follow-up a day early.
  */
 function defaultScheduledDate(): string {
   const d = new Date();

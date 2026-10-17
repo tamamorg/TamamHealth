@@ -61,7 +61,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
  */
 export async function buildSuperbillPreview(
   selections: SuperbillSelection[],
-  scope?: DataScope,
+  scope: DataScope,
   currency = 'SSP',
 ): Promise<SuperbillPreview> {
   const lines: SuperbillLine[] = [];
@@ -138,7 +138,7 @@ export async function postSuperbill(
   let abnFailed = 0;
   for (const sel of selections.filter((s) => s.nonCovered)) {
     try {
-      await addDirective(ctx.patientId, {
+      await addDirective(ctx.patientId, ctx.scope, {
         type: 'abn_noncovered',
         description: `ABN: ${sel.description || sel.serviceCode || sel.category} — patient advised this service is not covered and accepts responsibility.`,
         recordedBy: ctx.generatedBy,

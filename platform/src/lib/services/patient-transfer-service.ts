@@ -201,11 +201,11 @@ function hideOthersDrafts(
 }
 
 export async function getAllTransfers(
-  scope?: DataScope,
+  scope: DataScope,
   viewerId?: string,
 ): Promise<PatientTransferDoc[]> {
   const rows = await findByType<PatientTransferDoc>(patientTransfersDB(), 'patient_transfer');
-  const visible = hideOthersDrafts(scope ? filterByScope(rows, scope) : rows, viewerId);
+  const visible = hideOthersDrafts(filterByScope(rows, scope), viewerId);
   return visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
@@ -220,7 +220,7 @@ export async function getTransferById(id: string): Promise<PatientTransferDoc | 
 /** Full transfer history for one patient, newest first. This is the chart tab. */
 export async function getTransfersByPatient(
   patientId: string,
-  scope?: DataScope,
+  scope: DataScope,
   viewerId?: string,
 ): Promise<PatientTransferDoc[]> {
   const rows = await findByType<PatientTransferDoc>(
@@ -229,7 +229,7 @@ export async function getTransfersByPatient(
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
-  const visible = hideOthersDrafts(scope ? filterByScope(rows, scope) : rows, viewerId);
+  const visible = hideOthersDrafts(filterByScope(rows, scope), viewerId);
   return visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
@@ -242,7 +242,7 @@ export async function getTransfersByPatient(
  */
 export async function getIncomingTransfers(
   user: { id: string; department?: string; hospitalId?: string; role?: UserRole },
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<PatientTransferDoc[]> {
   const all = await getAllTransfers(scope);
   return all.filter(t => {
@@ -261,7 +261,7 @@ export async function getIncomingTransfers(
 /** Transfers this user has sent and is waiting on. */
 export async function getOutgoingTransfers(
   userId: string,
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<PatientTransferDoc[]> {
   const all = await getAllTransfers(scope);
   return all.filter(t =>
@@ -271,7 +271,7 @@ export async function getOutgoingTransfers(
 
 /** Requests past their acknowledgement deadline, most overdue first. */
 export async function getOverdueTransfers(
-  scope?: DataScope,
+  scope: DataScope,
   now: Date = new Date(),
 ): Promise<PatientTransferDoc[]> {
   const all = await getAllTransfers(scope);
@@ -1346,7 +1346,7 @@ async function expireTransfer(
  */
 export async function getActiveTransferForPatient(
   patientId: string,
-  scope?: DataScope,
+  scope: DataScope,
   viewerId?: string,
 ): Promise<PatientTransferDoc | null> {
   const rows = await getTransfersByPatient(patientId, scope, viewerId);

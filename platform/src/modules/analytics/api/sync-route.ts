@@ -1,5 +1,38 @@
 import { logApiError } from '@/modules/identity';
 import { NATIONAL_PROJECTION_EXCLUDED_TYPES } from '../index';
+import { decryptDocument } from '@/lib/encrypted-db';
+import { blindIndex, encryptForOrg } from '@/lib/org-data-cipher';
+
+/**
+ * Columns that identify a person or hold free clinical text. The national
+ * analytics copy keeps them sealed under the record's organisation key — the
+ * indicators are computed from dates, codes, places and counts, none of which
+ * need a name. `name` is a person only in the patients table (elsewhere it is
+ * a facility or organisation).
+ */
+const SEALED_COLUMNS = new Set([
+  'patient_name', 'current_patient_name', 'mother_name', 'child_first_name', 'child_surname',
+  'deceased_first_name', 'deceased_surname', 'patient_phone', 'mobile_money_phone',
+  'body', 'subject', 'notes', 'details', 'comment', 'member_id', 'subscriber_name',
+  'donor_name', 'reason', 'chief_complaint', 'outcome',
+]);
+const SEALED_COLUMNS_BY_TABLE: Record<string, string[]> = { patients: ['name'] };
+
+/**
+ * Seal identifying columns in place. The national ID becomes its keyed
+ * fingerprint rather than ciphertext, so national de-duplication can still
+ * match on equality (and its index still serves) without holding the ID.
+ */
+async function sealIdentifyingColumns(table: string, row: Record<string, unknown>, orgId: string | undefined): Promise<void> {
+  const columns = [...SEALED_COLUMNS, ...(SEALED_COLUMNS_BY_TABLE[table] ?? [])];
+  await Promise.all(columns.map(async column => {
+    const value = row[column];
+    if (typeof value === 'string' && value) row[column] = await encryptForOrg(value, orgId);
+  }));
+  if (typeof row.national_id === 'string' && row.national_id) {
+    row.national_id = (await blindIndex(row.national_id)) ?? null;
+  }
+}
 /**
  * Analytics-domain implementation of the CouchDB → PostgreSQL Sync Webhook
  *
@@ -1319,12 +1352,18 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          const mapped = mapper(change.doc);
+          // Patient data arrives sealed (lib/encrypted-db.ts). The projection
+          // needs the values — dates for DATE columns, diagnoses and tests for
+          // the national indicators — so it reads them decrypted, then seals
+          // again whatever identifies a person before it reaches Postgres.
+          const plainDoc = await decryptDocument(change.doc);
+          const mapped = mapper(plainDoc);
           // Filter out undefined values
           const cleaned: Record<string, unknown> = {};
           for (const [k, v] of Object.entries(mapped)) {
             if (v !== undefined) cleaned[k] = v;
           }
+          await sealIdentifyingColumns(table, cleaned, (plainDoc as { orgId?: string }).orgId);
           await upsertDocument(table, cleaned);
         }
         processed++;

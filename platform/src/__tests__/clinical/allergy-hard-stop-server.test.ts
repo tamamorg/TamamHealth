@@ -15,7 +15,13 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { hospitalsDB, patientsDB } from '@/lib/db';
-import { createPrescription } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 
 afterEach(async () => {
   await teardownTestDBs();

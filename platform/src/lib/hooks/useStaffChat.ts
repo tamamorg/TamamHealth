@@ -134,9 +134,15 @@ export function useStaffChat(options: { enabled?: boolean; messagesEnabled?: boo
     const c1 = conversationsDB().changes({ since: 'now', live: true, include_docs: false })
       .on('change', () => reloadConversations.trigger())
       .on('error', () => {});
-    const c2 = messagesEnabled && activeId
+    // A message replicated in from a colleague is what moves a conversation to
+    // the top of the list, and it often lands before (or without) the
+    // conversation document's own update — so it reloads the list too.
+    const c2 = messagesEnabled
       ? messagesDB().changes({ since: 'now', live: true, include_docs: false })
-        .on('change', () => reloadMessages.trigger())
+        .on('change', () => {
+          reloadConversations.trigger();
+          if (activeId) reloadMessages.trigger();
+        })
         .on('error', () => {})
       : null;
     return () => {

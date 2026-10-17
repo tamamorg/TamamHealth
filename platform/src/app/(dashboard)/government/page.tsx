@@ -29,6 +29,7 @@ import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { getNationalDataQuality, type NationalDataQuality } from '@/lib/services/data-quality-service';
 import { getImmunizationStats } from '@/lib/services/immunization-service';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { isoWeek } from '@/lib/format-utils';
 import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
 import { toIsoDate } from '@/lib/date-utils';
@@ -185,6 +186,7 @@ export default function GovernmentNationalDashboard() {
   const { currentUser } = useAuth();
   const { alerts } = useSurveillance();
   const { hospitals } = useHospitals();
+  const scope = useDataScope();
 
   const [dq, setDq] = useState<NationalDataQuality | null>(null);
   const [imm, setImm] = useState<ImmunizationStats | null>(null);
@@ -195,17 +197,18 @@ export default function GovernmentNationalDashboard() {
   const [selectedDiseases, setSelectedDiseases] = useState<Set<string> | null>(null);
 
   useEffect(() => {
+    if (!scope) return; // pre-hydration; re-runs once the user is known
     let cancelled = false;
     (async () => {
       const [dqRes, immRes] = await Promise.all([
         getNationalDataQuality().catch(() => null),
-        getImmunizationStats().catch(() => null),
+        getImmunizationStats(scope).catch(() => null),
       ]);
       if (cancelled) return;
       setDq(dqRes); setImm(immRes);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [scope]);
 
   // ── Per-state aggregates for the map layers ──
   const stateAgg = useMemo(() => {

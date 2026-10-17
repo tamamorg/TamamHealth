@@ -84,6 +84,7 @@ export default function ImmunizationsPage() {
 
   // Load defaulter list + cohort coverage whenever immunization data changes
   useEffect(() => {
+    if (!scope) return; // pre-hydration; re-runs once the user is known
     let cancelled = false;
     (async () => {
       try {

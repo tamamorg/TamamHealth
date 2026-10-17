@@ -74,8 +74,9 @@ that ships is built on 20.
 
 ## Signing in during development
 
-Accounts come from the users database — there is no demo-credential roster on
-the login page and no demo branch in the authenticator. A fresh environment is
+Accounts come from the users database. The login page's demo-account roster
+appears only on a standalone demo (`NEXT_PUBLIC_DEMO_MODE=true` with no
+CouchDB configured); everywhere else there is none. A fresh environment is
 reachable through the bootstrap account `superadmin` (initial password
 `Superadmin!`, or `SUPERADMIN_INITIAL_PASSWORD` when set), which is forced to
 change its password on first login. From there, create accounts at
@@ -116,15 +117,16 @@ registers them.
 
 | Package | Command | What it covers |
 |---------|---------|----------------|
-| `platform` | `npm run lint` · `npx tsc --noEmit` · `npm test` · `npm run build` | The full CI job |
-| `platform` | `npm run i18n:check` | Missing/extra keys between `en` and `apd` (Juba Arabic) |
+| `platform` | `npm run lint` · `npm run i18n:check` · `npx tsc --noEmit` · `npm test` · `npm run build` | The full CI job |
+| `platform` | `npm run i18n:check` | Missing/extra keys between `en` and `apd` (Juba Arabic), plus the untranslated-text ratchet |
 | `website` | `npm run lint` · `npx tsc --noEmit` · `npm run build` | The full CI job |
 | `website` | `npm run i18n:check` | Same check for the marketing site |
 | `mobile` | `npm run lint` · `npx tsc --noEmit` | The full CI job |
 | `fingerprint-bridge` | `npm run check` · `npm test` | Syntax check + tests |
 
-`i18n:check` is **not** a CI gate — run it yourself when you add user-facing
-copy, or the Arabic build silently falls back to English.
+`i18n:check` **is** a CI gate for `platform` (the "Translation coverage" step
+in `ci.yml`) but **not** for `website` — run the website one yourself when you
+add user-facing copy, or the Arabic build silently falls back to English.
 
 Other platform scripts worth knowing: `npm run db:migrate` (Postgres analytics
 schema), `npm run setup:couchdb:validators`, `npm run db:migrate:couchdb-tenants`
@@ -222,7 +224,7 @@ Full operator guide: [docs/operations/jira-github-do-tracking.md](docs/operation
 | `docs`, `mobile-beta` | see the workflow files | API docs and Expo beta builds |
 
 Scheduled workflows (`backups-cron`, `reminders-cron`,
-`telehealth-maintenance-cron`, `transfers-sweep-cron`) run on their own timers
+`transfers-sweep-cron`) run on their own timers
 and are not part of the merge path.
 
 Always smoke-test staging before promoting to production.

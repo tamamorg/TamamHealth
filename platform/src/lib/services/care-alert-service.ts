@@ -11,17 +11,18 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CareAlertEntry, CareAlertCategory } from '../../data/mock';
 import type { PatientDoc } from '../db-types';
 import { getPatientById } from './patient-service';
+import type { DataScope } from './data-scope';
 import { mutatePatientListField } from './patient-list-field';
 
 /** All care alerts for a patient (active + resolved). */
-export async function getCareAlerts(patientId: string): Promise<CareAlertEntry[]> {
-  const patient = await getPatientById(patientId);
+export async function getCareAlerts(patientId: string, scope: DataScope): Promise<CareAlertEntry[]> {
+  const patient = await getPatientById(patientId, scope);
   return patient?.careAlerts ?? [];
 }
 
 /** Active care alerts only — what the chart banner shows. */
-export async function getActiveCareAlerts(patientId: string): Promise<CareAlertEntry[]> {
-  return (await getCareAlerts(patientId)).filter((a) => a.status === 'active');
+export async function getActiveCareAlerts(patientId: string, scope: DataScope): Promise<CareAlertEntry[]> {
+  return (await getCareAlerts(patientId, scope)).filter((a) => a.status === 'active');
 }
 
 export interface AddCareAlertInput {
@@ -33,7 +34,7 @@ export interface AddCareAlertInput {
 }
 
 /** Add a care alert. Returns the full updated list, or null if no patient. */
-export async function addCareAlert(patientId: string, input: AddCareAlertInput): Promise<CareAlertEntry[] | null> {
+export async function addCareAlert(patientId: string, scope: DataScope, input: AddCareAlertInput): Promise<CareAlertEntry[] | null> {
   if (!input.message || input.message.trim().length === 0) {
     throw new Error('Care alert message is required');
   }
@@ -49,6 +50,7 @@ export async function addCareAlert(patientId: string, input: AddCareAlertInput):
   };
   return mutatePatientListField<CareAlertEntry>(
     patientId,
+    scope,
     (patient) => {
       const next = [...(patient.careAlerts ?? []), entry];
       return { patch: { careAlerts: next } as Partial<PatientDoc>, entries: next };
@@ -63,6 +65,7 @@ export async function addCareAlert(patientId: string, input: AddCareAlertInput):
  */
 export async function resolveCareAlert(
   patientId: string,
+  scope: DataScope,
   alertId: string,
   resolutionReason: string,
 ): Promise<CareAlertEntry[] | null> {
@@ -71,6 +74,7 @@ export async function resolveCareAlert(
   }
   return mutatePatientListField<CareAlertEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.careAlerts ?? [];
       if (!existing.some((a) => a.id === alertId)) return null;

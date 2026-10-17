@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback, useMemo } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { PatientReminderDoc } from '../db-types';
 import { patientRemindersDB } from '../db';
 import type { QueueReminderInput } from '../services/patient-reminder-service';
@@ -26,20 +26,7 @@ export function usePatientReminders(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = patientRemindersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: patientRemindersDB });
 
   const queued = useMemo(() => reminders.filter(r => r.status === 'queued'), [reminders]);
 

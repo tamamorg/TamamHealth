@@ -1,36 +1,14 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { SESSION_TTL_SEC } from '@/modules/identity/core/session';
+import { resolveJwtSecret } from '@/modules/identity/core/jwt-secret';
 
 // Server-side secret (never leaves Node). All authoritative token creation and
 // verification runs server-side, so the client never needs the signing key.
 // The browser-side development fallback is intentionally separate from the
 // server secret. Never read a NEXT_PUBLIC_* signing key here: this module is
 // imported by client code and any such value would be bundled for every user.
-const HARDCODED_FALLBACK = 'tamamhealth-south-sudan-health-2026-secret-key';
-const secret =
-  process.env.JWT_SECRET ||
-  HARDCODED_FALLBACK;
-
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const IS_SERVER = typeof window === 'undefined';
-
-if (IS_SERVER && IS_PRODUCTION && secret === HARDCODED_FALLBACK) {
-  // Fail loudly instead of silently running with a public default. Any
-  // production deploy MUST set JWT_SECRET (at least 32 bytes of entropy).
-  throw new Error(
-    '[SECURITY] JWT_SECRET environment variable must be set in production. ' +
-    'Refusing to start with the default fallback secret.'
-  );
-}
-
-if (IS_SERVER && IS_PRODUCTION && secret.length < 32) {
-  throw new Error(
-    '[SECURITY] JWT_SECRET must be at least 32 characters in production ' +
-    `(got ${secret.length}). Generate one with: openssl rand -hex 32`
-  );
-}
-
-const JWT_SECRET = new TextEncoder().encode(secret);
+const JWT_SECRET = new TextEncoder().encode(resolveJwtSecret());
 
 const JWT_ISSUER = 'tamamhealth';
 const JWT_AUDIENCE = 'tamamhealth-web';

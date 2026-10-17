@@ -101,7 +101,7 @@ async function postHandler(req: NextRequest) {
     || filterByScope([payment as unknown as Record<string, unknown>], buildScopeFromAuth(auth)).length === 0) {
     return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
   }
-  const patient = await getPatientById(payment.patientId).catch(() => null);
+  const patient = await getPatientById(payment.patientId, buildScopeFromAuth(auth)).catch(() => null);
   if (!patient || filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
     return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
   }

@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
+import { authorizeJson } from '@/lib/api-json-guard';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 const READ_ROLES: UserRole[] = [
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     // could pull any patient's full dossier by id (cross-tenant IDOR).
     const { getPatientById } = await import('@/lib/services/patient-service');
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
-    const patient = await getPatientById(patientId);
+    const patient = await getPatientById(patientId, buildScopeFromAuth(auth));
     if (!patient) {
       return NextResponse.json({ error: `Patient ${patientId} not found` }, { status: 404 });
     }
@@ -65,17 +66,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, WRITE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, WRITE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     const action = String(body.action || '').toLowerCase();
     const referralId = typeof body.referralId === 'string' ? body.referralId : '';
     if (!action) {

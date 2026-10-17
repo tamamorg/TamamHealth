@@ -1,4 +1,4 @@
-import type { SpecialtyFieldDefinition, SpecialtyPathwayDefinition, SpecialtyPathwayCode } from './types';
+import type { SpecialtyPathwayDefinition, SpecialtyPathwayCode } from './types';
 import { withFieldGuidance } from './field-guidance';
 
 const yesNo = [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] as const;

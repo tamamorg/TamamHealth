@@ -18,6 +18,7 @@ import { checkInPatient } from '@/lib/services/check-in-service';
 import { getTriageByPatient } from '@/lib/services/triage-service';
 import { hospitalsDB } from '@/lib/db';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
 
@@ -37,7 +38,7 @@ test('a patient with no birthdate and no national ID registers on estimated age 
     // is the one piece of contact data this arrival has.
     primaryLanguage: 'Dinka', nokName: 'Kuol Manyang', nokRelationship: 'Husband', nokPhone: '+211925004001',
     hospitalNumber: '', registrationHospital: HOSP, orgId: ORG,
-  } as unknown as Parameters<typeof createPatient>[0]);
+  } as unknown as Parameters<typeof createPatient>[0], TEST_SCOPE);
 
   expect(p._id).toMatch(/^pat-/);
   expect(p.hospitalNumber).toBeTruthy(); // the facility number is the identity anchor
@@ -52,7 +53,7 @@ test('a patient with no birthdate and no national ID registers on estimated age 
     checkedInById: 'user-desk.amira', checkedInByName: 'Amira',
   });
   expect(checkIn.triage.encounterId).toBe(checkIn.encounter._id);
-  expect((await getTriageByPatient(p._id))).toHaveLength(1);
+  expect((await getTriageByPatient(p._id, TEST_SCOPE))).toHaveLength(1);
 });
 
 test('a returning patient is found by name search and the record is reused across visits', async () => {
@@ -61,7 +62,7 @@ test('a returning patient is found by name search and the record is reused acros
     phone: '+211925003001', state: 'Central Equatoria', county: 'Juba',
     primaryLanguage: 'Nuer', nokName: 'Rebecca Lueth', nokRelationship: 'Wife', nokPhone: '+211925003002',
     hospitalNumber: '', registrationHospital: HOSP, orgId: ORG,
-  } as unknown as Parameters<typeof createPatient>[0]);
+  } as unknown as Parameters<typeof createPatient>[0], TEST_SCOPE);
 
   // Visit 1 (walk-in) opens and — for this test — remains that day's record.
   const visit1 = await checkInPatient({
@@ -72,12 +73,12 @@ test('a returning patient is found by name search and the record is reused acros
   });
 
   // Months later the front desk searches by name — the returning-patient path.
-  const found = await searchPatients('Lueth');
+  const found = await searchPatients('Lueth', TEST_SCOPE);
   expect(found.map(r => r._id)).toContain(first._id);
 
   // The same hospital number answers, so the desk reuses the folder: the
   // record retrieved is the registered one, not a fresh registration.
-  const reused = await getPatientById(first._id);
+  const reused = await getPatientById(first._id, TEST_SCOPE);
   expect(reused?.hospitalNumber).toBe(first.hospitalNumber);
 
   // A same-day re-check-in joins the OPEN visit rather than forking a second

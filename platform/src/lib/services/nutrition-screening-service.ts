@@ -102,6 +102,7 @@ export async function addNutritionScreening(input: AddNutritionScreeningInput): 
 
 export async function updateNutritionScreening(
   id: string,
+  scope: DataScope,
   patch: Partial<Pick<NutritionScreeningDoc, 'notes' | 'followUpAction' | 'followUpAt'>>,
   actor?: { id?: string; name?: string },
 ): Promise<NutritionScreeningDoc | null> {
@@ -112,6 +113,8 @@ export async function updateNutritionScreening(
   } catch {
     return null;
   }
+  // Out-of-scope reads as "not found", like every scoped read.
+  if (filterByScope([existing], scope).length === 0) return null;
   const now = new Date().toISOString();
   const updated: NutritionScreeningDoc = {
     ...existing,

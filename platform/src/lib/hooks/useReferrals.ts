@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ReferralDoc } from '../db-types';
 import type { Attachment, ReferralOutcome } from '@/data/mock';
 import { referralsDB } from '../db';
@@ -32,24 +32,9 @@ export function useReferrals() {
     }
   }, [scope]);
 
-  useEffect(() => {
-    loadReferrals();
-  }, [loadReferrals]);
-
   // Live PouchDB subscription: re-load when a referral is created, accepted,
   // or status-updated anywhere in the app. Replaces 30s polling.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadReferrals(); });
-    const changes = referralsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadReferrals]);
+  usePouchLiveReload({ load: loadReferrals, database: referralsDB });
 
   const create = useCallback(async (data: Omit<ReferralDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createReferral } = await import('../services/referral-service');

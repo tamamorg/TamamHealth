@@ -2,7 +2,7 @@ import { captureException } from '@/lib/observability';
 import { referralsDB, hospitalsDB, medicalRecordsDB, patientsDB } from '../db';
 import type { ReferralDoc, HospitalDoc, MedicalRecordDoc } from '../db-types';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import type { Attachment, ReferralOutcome } from '@/data/mock';
 import { v4 as uuidv4 } from 'uuid';
 import { assembleTransferPackage } from './transfer-service';
@@ -153,7 +153,10 @@ async function notifySendingFacility(
       const verb = status === 'received' ? 'received' : 'been seen at';
       message = `Referral to ${referral.toHospital} (${referral.department}, ${referral.urgency}) has ${verb} the receiving facility.`;
     }
-    await addCareAlert(referral.patientId, {
+    // The alert lands on the SENDING facility's patient record, which may be a
+    // different org from the receiving staff member who triggered this, so the
+    // scope is the referral's own (sending) org, not the caller's.
+    await addCareAlert(referral.patientId, orgOnlyScope(referral.orgId), {
       category: 'administrative',
       // Emergency and urgent referrals are the ones a sending clinician is
       // actively waiting on, so they surface at high priority.
@@ -492,8 +495,8 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
       // the patient (forged via a known patient id) must not move it. A patient
       // already in the destination org is the idempotent re-run case. This
       // throws (outside the swallow below) so the referral is NOT marked seen.
+      let currentOrgId: string | undefined;
       {
-        let currentOrgId: string | undefined;
         try {
           currentOrgId = ((await patientsDB().get(referral.patientId)) as { orgId?: string }).orgId;
         } catch {
@@ -509,7 +512,7 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
           registrationHospital: referral.toHospitalId,
           lastVisitHospital: referral.toHospitalId,
           ...(toOrgId ? { orgId: toOrgId } : {}),
-        }, { allowRehome: true });
+        }, orgOnlyScope(currentOrgId), { allowRehome: true });
       } catch (err) {
         console.error('Failed to transfer patient on referral acceptance:', err);
         captureException(err, { tag: 'Failed to transfer patient on referral acceptance:' });

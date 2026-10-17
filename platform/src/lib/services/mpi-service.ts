@@ -115,9 +115,16 @@ export async function matchPatient(query: MpiQuery, limit = 10, scope?: DataScop
   // Each selector gets its own compound index ({type, field}) so CouchDB/PouchDB
   // can serve it directly; `ensureIndex` inside `findByType` is idempotent and
   // cached per process.
+  // The national ID is encrypted at rest (lib/encrypted-db.ts), so its exact
+  // match runs on the keyed fingerprint stored beside it, never the value.
+  const { blindIndex } = await import('../org-data-cipher');
+  const nationalIdIndex = query.nationalId ? (await blindIndex(query.nationalId)) ?? undefined : undefined;
+
   const deterministic: Array<{
     value: string | undefined;
-    field: 'nationalId' | 'geocodeId' | 'hospitalNumber';
+    field: 'nationalIdIndex' | 'geocodeId' | 'hospitalNumber';
+    /** Shown in the match reason; differs from `value` for an indexed identifier. */
+    shown?: string;
     score: number;
     method: MpiCandidate['method'];
     /** Geocode and hospital number were compared case-insensitively before
@@ -126,7 +133,7 @@ export async function matchPatient(query: MpiQuery, limit = 10, scope?: DataScop
     caseInsensitive: boolean;
     reason: (v: string) => string;
   }> = [
-    { value: query.nationalId, field: 'nationalId', score: 1.0, method: 'national_id',
+    { value: nationalIdIndex, shown: query.nationalId, field: 'nationalIdIndex', score: 1.0, method: 'national_id',
       caseInsensitive: false, reason: (v) => `Exact national ID match: ${v}` },
     { value: query.geocodeId, field: 'geocodeId', score: 0.99, method: 'geocode',
       caseInsensitive: true, reason: (v) => `Exact geocode match: ${v}` },
@@ -162,7 +169,7 @@ export async function matchPatient(query: MpiQuery, limit = 10, scope?: DataScop
         patient: p,
         score: rule.score,
         method: rule.method,
-        reasons: [rule.reason(rule.value)],
+        reasons: [rule.reason(rule.shown ?? rule.value)],
       });
     }
   }

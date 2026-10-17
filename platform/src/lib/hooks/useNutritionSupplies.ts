@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback, useRef } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type {
   NutritionSupplyDoc,
   CreateSupplyInput,
@@ -53,22 +53,9 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
     }
   }, [scope, demoSeed]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live subscription so the supplies card stays in sync with adjustments
   // recorded from another tab/device.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = nutritionSuppliesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: nutritionSuppliesDB });
 
   const create = useCallback(async (data: CreateSupplyInput) => {
     const { createSupplyItem } = await import('../services/nutrition-supply-service');

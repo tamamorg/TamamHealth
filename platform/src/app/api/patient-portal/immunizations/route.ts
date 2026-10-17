@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { getByPatient } = await import('@/lib/services/immunization-service');
-    const immunizations = await getByPatient(auth.sub);
+    const { getByPatientUnscopedForPortal } = await import('@/lib/services/immunization-service');
+    const immunizations = await getByPatientUnscopedForPortal(auth.sub);
     return NextResponse.json({ immunizations });
   } catch (err) {
     if (demoFallbackEnabled()) {

@@ -15,6 +15,7 @@
  * leaves the assignment standing rather than rolling it back.
  */
 import type { UserRole } from '../db-types';
+import { orgOnlyScope } from './data-scope';
 import { canAssignCareTeamRole, canAssignStaffAtFacility } from '../care-team-permissions';
 
 export interface AssignmentActor {
@@ -51,7 +52,14 @@ export async function completePatientAssignment(input: CompleteAssignmentInput):
   const actor = input.actor;
   if (!actor?.id) throw new Error('An identified user is required to end an assignment');
   const { getPatientById, updatePatient } = await import('./patient-service');
-  const patient = await getPatientById(input.patientId);
+  // Scope the read to the actor's own record, not the caller's say-so, so an
+  // assignment can only be ended inside the actor's organisation.
+  const { getUserById } = await import('@/modules/identity/services/user-service');
+  const actorUser = await getUserById(actor.id);
+  if (!actorUser || actorUser.isActive === false) throw new Error('An identified user is required to end an assignment');
+  const { buildScopeFromAuth } = await import('./data-scope');
+  const actorScope = buildScopeFromAuth({ ...actorUser, sub: actorUser._id });
+  const patient = await getPatientById(input.patientId, actorScope);
   if (!patient) throw new Error('Patient not found');
   const isReception = canAssignCareTeamRole(actor.role) || actor.role === 'super_admin';
   const isOwnAssignment = patient.assignedDoctor === actor.id || patient.assignedNurse === actor.id;
@@ -62,7 +70,7 @@ export async function completePatientAssignment(input: CompleteAssignmentInput):
     assignmentStatus: 'completed',
     assignedDoctor: undefined,
     assignedNurse: undefined,
-  });
+  }, actorScope);
   if (!updated) throw new Error('The patient could not be updated');
   const { logAuditSafe } = await import('./audit-service');
   await logAuditSafe('PATIENT_ASSIGNMENT_COMPLETED', actor.id, actor.name,
@@ -112,7 +120,7 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
     assignmentAcceptedAt: undefined,
     assignmentAcceptedBy: undefined,
     assignmentAcceptedByName: undefined,
-  });
+  }, orgOnlyScope(input.orgId));
   if (!updatedPatient) throw new Error('The patient could not be updated');
 
   const appointmentId = appointment?._id;
@@ -121,7 +129,7 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
     const updated = await updateAppointment(appointment._id, {
       providerId: input.provider?.id || '',
       providerName: input.provider?.name || '',
-    });
+    }, input.actor!.role as UserRole);
     if (!updated) {
       const error = new Error('Failed to update the assigned appointment');
       await recordAssignmentRepair(input, 'appointment', error, appointmentId, encounter?._id);
@@ -191,7 +199,7 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
         handoffToName: input.provider?.name,
         handoffAt: input.provider ? now : undefined,
         handoffStatus: input.provider ? 'assigned' : 'awaiting_provider',
-      });
+      }, orgOnlyScope(input.orgId));
     } catch (error) {
       await recordAssignmentRepair(input, 'triage_handoff', error, appointmentId, encounter?._id);
     }
@@ -230,7 +238,7 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
     assignedNurseAt: input.nurse ? now : undefined,
     assignedNurseBy: input.nurse ? input.actor?.id : undefined,
     assignedNurseByName: input.nurse ? input.actor?.name : undefined,
-  });
+  }, orgOnlyScope(input.orgId));
   if (!updatedPatient) throw new Error('The patient could not be updated');
 
   const appointmentId = appointment?._id;
@@ -239,7 +247,7 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
     const updated = await updateAppointment(appointment._id, {
       staffId: input.nurse?.id,
       staffName: input.nurse?.name,
-    });
+    }, input.actor!.role as UserRole);
     if (!updated) {
       const error = new Error('Failed to update the assigned appointment');
       await recordAssignmentRepair(input, 'appointment', error, appointmentId, encounter?._id);
@@ -303,7 +311,8 @@ export async function reconcileCareTeamFromAppointment(input: ReconcileCareTeamI
     const appointment = await getAppointmentById(input.appointmentId);
     if (!appointment?.patientId || !appointment.orgId || !appointment.facilityId) return;
     const { getPatientById } = await import('./patient-service');
-    const patient = await getPatientById(appointment.patientId);
+    const { orgOnlyScope } = await import('./data-scope');
+    const patient = await getPatientById(appointment.patientId, orgOnlyScope(appointment.orgId));
     if (!patient) return;
 
     if (appointment.providerId && appointment.providerId !== patient.assignedDoctor) {
@@ -399,7 +408,8 @@ export async function resolveAndValidateTargets(input: {
 }) {
   if (!input.orgId || !input.hospitalId) throw new Error('Organization and facility are required for assignment');
   const { getPatientById } = await import('./patient-service');
-  const patient = await getPatientById(input.patientId);
+  const { orgOnlyScope } = await import('./data-scope');
+  const patient = await getPatientById(input.patientId, orgOnlyScope(input.orgId));
   if (!patient) {
     const error = new Error('The linked patient record is not available on this device. Check sync and the appointment’s patient link, then retry. Do not register the patient again.');
     error.name = 'PatientRecordUnavailableError';

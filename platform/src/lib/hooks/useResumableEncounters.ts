@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useDataScope } from './useDataScope';
 import type { EncounterDoc, LabResultDoc } from '../db-types';
 import { encountersDB, labResultsDB } from '../db';
@@ -21,6 +21,8 @@ export interface ResumableEncounter extends EncounterDoc {
  * how many of their ordered investigations have come back. Powers the
  * dashboard "Awaiting results" worklist and the Resume action.
  */
+const encounterAndLabDatabases = () => [encountersDB(), labResultsDB()];
+
 export function useResumableEncounters() {
   const { currentUser } = useAuth();
   const clinicianId = currentUser?._id;
@@ -102,23 +104,8 @@ export function useResumableEncounters() {
     }
   }, [clinicianId, scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Reload when an encounter changes or a lab result is completed elsewhere.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const encChanges = encountersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    const labChanges = labResultsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { encChanges.cancel(); } catch { /* noop */ }
-      try { labChanges.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: encounterAndLabDatabases });
 
   return { encounters, loading, reload: load };
 }

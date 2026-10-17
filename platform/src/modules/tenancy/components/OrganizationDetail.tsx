@@ -120,7 +120,7 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
         import('@/lib/services/patient-service'),
       ]);
       const orgScope = { role: 'org_admin' as const, orgId };
-      const [allUsers, allPatients] = await Promise.all([getClientUsers(orgScope), getAllPatients()]);
+      const [allUsers, allPatients] = await Promise.all([getClientUsers(orgScope), getAllPatients(orgScope)]);
       const users = allUsers.filter(user => user.orgId === orgId);
       const patients = allPatients.filter(patient => patient.orgId === orgId);
       const staff = new Map<string, number>();

@@ -22,6 +22,7 @@ export default function PolicyEligibility({ patientId, policyId, facilityId, org
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    if (!scope) return;
     getLatestEligibility(patientId, scope, policyId).then(value => { if (!cancelled) setCheck(value); })
       .catch(() => { if (!cancelled) setMessage(t('insuranceFlow.failed')); });
     return () => { cancelled = true; };

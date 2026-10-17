@@ -56,18 +56,30 @@ export function generateGeocodeId(bomaCode: string, householdNumber: number): st
   return `BOMA-${code}-HH${householdNumber}`;
 }
 
-export async function getAllPatients(scope?: DataScope): Promise<PatientDoc[]> {
-  const db = patientsDB();
-  const all = await findByType<PatientDoc>(db, 'patient');
-  /* istanbul ignore next -- scope filter: tested with and without */
-  return scope ? filterByScope(all, scope) : all;
+export async function getAllPatients(scope: DataScope): Promise<PatientDoc[]> {
+  return filterByScope(await readEveryPatientOnDevice(), scope);
 }
+
+async function readEveryPatientOnDevice(): Promise<PatientDoc[]> {
+  return findByType<PatientDoc>(patientsDB(), 'patient');
+}
+
+/**
+ * Every patient this device holds, across every org it replicated. NOT for
+ * display. Registration-time reads that must be global to be correct:
+ *   - duplicate detection (a person registered at another facility still blocks
+ *     a second registration; `checkDuplicates` discloses nothing out of scope),
+ *   - hospital-number sequencing per facility prefix (a device joining a
+ *     facility must start above every number already issued),
+ *   - portal-username uniqueness (usernames are unique platform-wide).
+ * Module-private on purpose: no caller outside registration may reach it.
+ */
+const getAllPatientsUnscopedForRegistration = readEveryPatientOnDevice;
 
 /**
  * Fetch one patient by id.
  *
- * `scope` is optional so every existing caller keeps working unscoped — but
- * that is exactly the bug this parameter exists to let callers close (KAN
+ * `scope` is required — an unscoped fetch was exactly the bug (KAN
  * tenancy audit, 2026-08): `/patients/[id]` and several API routes fetch a
  * document straight out of `patientsDB()` with nothing checking whether the
  * caller's org/facility may see it. A device can hold patient docs outside
@@ -76,7 +88,7 @@ export async function getAllPatients(scope?: DataScope): Promise<PatientDoc[]> {
  * `MULTI_FACILITY_ROLES` in `sync/facility-entitlements.ts`), so "the id is
  * on my device" is not authorization to read it.
  *
- * When `scope` is supplied, the fetched doc is run through the SAME
+ * The fetched doc is run through the SAME
  * `filterByScope` every other read path uses, and an out-of-scope id comes
  * back as `null` — indistinguishable from "doesn't exist", which is the
  * correct response for both an IDOR probe and a genuine typo.
@@ -88,11 +100,11 @@ export class PatientRecordReadError extends Error {
   }
 }
 
-export async function getPatientById(id: string, scope?: DataScope): Promise<PatientDoc | null> {
+export async function getPatientById(id: string, scope: DataScope): Promise<PatientDoc | null> {
   try {
     const db = patientsDB();
     const doc = await db.get(id) as PatientDoc;
-    if (scope && filterByScope([doc], scope).length === 0) return null;
+    if (filterByScope([doc], scope).length === 0) return null;
     return doc;
   } catch (error) {
     const failure = error as { status?: number; name?: string } | null;
@@ -103,7 +115,24 @@ export async function getPatientById(id: string, scope?: DataScope): Promise<Pat
   }
 }
 
-export async function searchPatients(query: string, scope?: DataScope): Promise<PatientDoc[]> {
+/**
+ * UNSCOPED: the patient portal authenticates a patient (not a staff DataScope)
+ * and may read only that patient's own record, so the caller must pass the
+ * verified token subject (or, for portal ownership resolution, the patient id
+ * the portal session already proved it owns). Never expose to staff routes;
+ * use getPatientById with a scope there.
+ */
+export async function getPatientByIdUnscopedForPortal(id: string): Promise<PatientDoc | null> {
+  try {
+    return await patientsDB().get(id) as PatientDoc;
+  } catch (error) {
+    const failure = error as { status?: number; name?: string } | null;
+    if (failure?.status === 404 || failure?.name === 'not_found') return null;
+    throw new PatientRecordReadError();
+  }
+}
+
+export async function searchPatients(query: string, scope: DataScope): Promise<PatientDoc[]> {
   const all = await getAllPatients(scope);
   const q = query.toLowerCase();
   /* istanbul ignore next -- defensive null-safety in search filter */
@@ -247,7 +276,7 @@ async function inferCountryIdFromHospital(hospitalId?: string): Promise<string |
  * patients are legitimately "transient" per the identity model and can be
  * upgraded later without changing their UUID.
  */
-async function assignGeocodeId(data: Record<string, unknown>, scope?: DataScope): Promise<string | undefined> {
+async function assignGeocodeId(data: Record<string, unknown>, scope: DataScope): Promise<string | undefined> {
   const bomaCode = (data.bomaCode as string | undefined)?.trim();
   const householdNumber = data.householdNumber as string | number | undefined;
   const all = await getAllPatients(scope);
@@ -385,7 +414,7 @@ async function nextHospitalSequence(prefix: string): Promise<number> {
  * already in use, whichever shape wrote it.
  */
 async function highestExistingSequence(prefix: string): Promise<number> {
-  const all = await getAllPatients();
+  const all = await getAllPatientsUnscopedForRegistration();
   let highest = 0;
   for (const p of all) {
     if (typeof p.hospitalNumber === 'string' && p.hospitalNumber.startsWith(`${prefix}-`)) {
@@ -448,14 +477,10 @@ function outOfScopeDuplicateMessage(descriptor: string): string {
  * hospital number even though the caller could never otherwise see that
  * chart.
  */
-async function checkDuplicates(data: Record<string, unknown>, scope?: DataScope): Promise<string | null> {
-  const all = await getAllPatients();
-  // `scope` undefined means "no scoping requested" (e.g. a caller that hasn't
-  // been migrated yet) — preserve the original fully-disclosed behaviour by
-  // treating every match as in-scope, rather than defaulting to the more
-  // restrictive branch.
-  const inScopeIds = scope ? new Set(filterByScope(all, scope).map((p) => p._id)) : null;
-  const isInScope = (p: PatientDoc) => !inScopeIds || inScopeIds.has(p._id);
+async function checkDuplicates(data: Record<string, unknown>, scope: DataScope): Promise<string | null> {
+  const all = await getAllPatientsUnscopedForRegistration();
+  const inScopeIds = new Set(filterByScope(all, scope).map((p) => p._id));
+  const isInScope = (p: PatientDoc) => inScopeIds.has(p._id);
 
   const firstName = ((data.firstName as string) || '').toLowerCase().trim();
   const surname = ((data.surname as string) || '').toLowerCase().trim();
@@ -532,9 +557,27 @@ const MIN_NATIONAL_ID_LENGTH = 6;
  *
  * Returns true when the claim is ours, false when someone already holds it.
  */
+/**
+ * The claim document id. A national ID is encrypted on the patient record, so
+ * it must not sit in plain sight in a key on the same device either: the claim
+ * is named by the ID's keyed fingerprint (the same one the MPI matches on).
+ * Geocodes are lookup keys that stay plaintext on the record anyway.
+ */
+async function claimIdFor(kind: 'geocode' | 'national', value: string): Promise<string> {
+  if (kind === 'national') {
+    const { blindIndex } = await import('../org-data-cipher');
+    const index = await blindIndex(value);
+    if (index) return `_local/patient_uid_national_${index}`;
+    // No index key on this device yet: a local-only digest still keeps the ID out of the key.
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(`national:${value.trim().toLowerCase()}`)));
+    return `_local/patient_uid_national_sha_${Array.from(digest, b => b.toString(16).padStart(2, '0')).join('')}`;
+  }
+  return `_local/patient_uid_${kind}_${value.trim().toLowerCase()}`;
+}
+
 async function claimIdentifier(kind: 'geocode' | 'national', value: string): Promise<boolean> {
   const db = patientsDB();
-  const claimId = `_local/patient_uid_${kind}_${value.trim().toLowerCase()}`;
+  const claimId = await claimIdFor(kind, value);
   try {
     await db.get(claimId);
     return false; // Already claimed.
@@ -563,7 +606,7 @@ async function claimIdentifier(kind: 'geocode' | 'national', value: string): Pro
  */
 async function releaseIdentifier(kind: 'geocode' | 'national', value: string): Promise<void> {
   const db = patientsDB();
-  const claimId = `_local/patient_uid_${kind}_${value.trim().toLowerCase()}`;
+  const claimId = await claimIdFor(kind, value);
   try {
     const existing = await db.get(claimId) as { _id: string; _rev: string };
     await db.remove(existing);
@@ -608,7 +651,7 @@ async function portalFieldsAtRegistration(
 ): Promise<Partial<PatientDoc>> {
   const taken = new Set<string>();
   try {
-    for (const p of await getAllPatients()) {
+    for (const p of await getAllPatientsUnscopedForRegistration()) {
       const name = p.portalUsername?.trim().toLowerCase();
       if (name) taken.add(name);
     }
@@ -626,7 +669,7 @@ async function portalFieldsAtRegistration(
 
 export async function createPatient(
   rawData: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
-  scope?: DataScope,
+  scope: DataScope,
   options: CreatePatientOptions = {},
 ): Promise<PatientDoc> {
   const data = normalizePatientContact(rawData as unknown as Record<string, unknown>) as typeof rawData;
@@ -767,6 +810,7 @@ export async function createPatient(
 export async function updatePatient(
   id: string,
   rawData: Partial<PatientDoc>,
+  scope: DataScope,
   options: { allowRehome?: boolean } = {},
 ): Promise<PatientDoc | null> {
   // Portal credential fields and identity/ownership fields never move through
@@ -790,6 +834,9 @@ export async function updatePatient(
     if (e && (e.name === 'not_found' || e.status === 404)) return null;
     throw err;
   }
+  // Tenant barrier: an id on this device is not authorization to write it. An
+  // out-of-scope patient is indistinguishable from a missing one (null).
+  if (filterByScope([existing], scope).length === 0) return null;
   const inferredOrg = data.orgId || existing.orgId || await inferOrgIdFromHospital(data.registrationHospital || existing.registrationHospital);
   const updated = withPendingOfflineSync({
     ...existing,
@@ -950,7 +997,7 @@ export async function getPatientsByHospital(hospitalId: string): Promise<Patient
   return (r.docs || []) as PatientDoc[];
 }
 
-export async function archivePatient(id: string, actor?: string): Promise<PatientDoc | null> {
+export async function archivePatient(id: string, scope: DataScope, actor?: string): Promise<PatientDoc | null> {
   const db = patientsDB();
   // PouchDB.get throws on not-found (it never returns falsy), so translate that
   // into the documented null contract instead of letting it propagate.
@@ -960,6 +1007,7 @@ export async function archivePatient(id: string, actor?: string): Promise<Patien
   } catch {
     return null;
   }
+  if (filterByScope([existing], scope).length === 0) return null;
   const updated: PatientDoc = withPendingOfflineSync({
     ...existing,
     isActive: false,

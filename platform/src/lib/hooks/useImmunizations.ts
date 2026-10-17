@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ImmunizationDoc } from '../db-types';
 import { immunizationsDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -33,24 +33,10 @@ export function useImmunizations(patientId?: string) {
     }
   }, [scope, patientId]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live PouchDB subscription: re-load on any immunization create/update.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = immunizationsDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
-      .on('change', (change) => {
-        const doc = change.doc as ImmunizationDoc | undefined;
-        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
-      })
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load, patientId]);
+  const shouldReload = useCallback((change: { doc?: ImmunizationDoc; deleted?: boolean }) =>
+    !patientId || !change.doc || change.doc.patientId === patientId || Boolean(change.deleted), [patientId]);
+  usePouchLiveReload({ load: load, database: immunizationsDB, includeDocs: Boolean(patientId), shouldReload });
 
   const register = useCallback(async (data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createImmunization } = await import('../services/immunization-service');

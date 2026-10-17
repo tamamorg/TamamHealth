@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
 import { AlertTriangle, Plus, Edit3, Trash2, X } from '@/components/icons/lucide';
@@ -24,6 +25,11 @@ const EMPTY_FORM = { substance: '', classification: 'drug' as AllergyEntry['clas
 
 export default function AllergyList({ patient, hideAddButton = false }: { patient: PatientDoc; hideAddButton?: boolean }) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -123,7 +129,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
           onClose={() => setAdding(false)}
           onSave={async input => {
             const svc = await import('@/lib/services/allergy-service');
-            await svc.addAllergy(patient._id, { ...input, ...author });
+            await svc.addAllergy(patient._id, needScope(), { ...input, ...author });
           }}
         />
       )}
@@ -155,7 +161,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
+              <button className="btn btn-sm btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, needScope(), editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
             </div>
           </div>
         </Modal>
@@ -176,7 +182,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>
-              <button className="btn btn-sm" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm removal</button>
+              <button className="btn btn-sm" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm removal</button>
             </div>
           </div>
         </Modal>

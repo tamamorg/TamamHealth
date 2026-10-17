@@ -3,6 +3,7 @@ import { productionConfigWarnings, validateProductionConfig, type ConfigEnv } fr
 function validEnvironment(): ConfigEnv {
   return {
     JWT_SECRET: 'jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz',
+    ORG_DATA_KEY_SECRET: 'org-data-key-secret-0123456789-abcdefghijklmnop',
     PHI_ENCRYPTION_ENABLED: 'true',
     PHI_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
     NEXT_PUBLIC_DEMO_MODE: 'false',
@@ -285,5 +286,15 @@ describe('optional integrations are not boot-critical unless enabled', () => {
     expect(validateProductionConfig(env).join(' ')).toMatch(/UPSTASH/);
 
     expect(validateProductionConfig({ ...env, SINGLE_REPLICA_ACK: 'true' })).toEqual([]);
+  });
+});
+
+describe('organisation data key secret', () => {
+  test('is required in production, and must be real and long', () => {
+    const env = validEnvironment();
+    delete env.ORG_DATA_KEY_SECRET;
+    expect(validateProductionConfig(env).join(' ')).toMatch(/ORG_DATA_KEY_SECRET is unset/);
+    expect(validateProductionConfig({ ...env, ORG_DATA_KEY_SECRET: 'REPLACE_ME_with_a_real_secret_value_please' }).join(' ')).toMatch(/placeholder/);
+    expect(validateProductionConfig({ ...env, ORG_DATA_KEY_SECRET: 'short-secret' }).join(' ')).toMatch(/at least 32/);
   });
 });

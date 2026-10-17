@@ -6,32 +6,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from './rate-limit';
 import { SignJWT, jwtVerify } from 'jose';
+import { resolveJwtSecret } from '@/modules/identity/edge';
 
-// Mirrors the JWT_SECRET resolution + production refusal in lib/auth-token.ts
-// so the patient portal can't accidentally run with the hardcoded default.
-const HARDCODED_FALLBACK = 'tamamhealth-south-sudan-health-2026-secret-key';
-const secret =
-  process.env.JWT_SECRET ||
-  HARDCODED_FALLBACK;
-
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const IS_SERVER = typeof window === 'undefined';
-
-if (IS_SERVER && IS_PRODUCTION && secret === HARDCODED_FALLBACK) {
-  throw new Error(
-    '[SECURITY] JWT_SECRET environment variable must be set in production. ' +
-    'Refusing to start with the default fallback secret.'
-  );
-}
-
-if (IS_SERVER && IS_PRODUCTION && secret.length < 32) {
-  throw new Error(
-    '[SECURITY] JWT_SECRET must be at least 32 characters in production ' +
-    `(got ${secret.length}). Generate one with: openssl rand -hex 32`
-  );
-}
-
-const JWT_SECRET = new TextEncoder().encode(secret);
+// Shares JWT_SECRET resolution + production refusal with auth-token.ts so the
+// patient portal can't accidentally run with the hardcoded default.
+const JWT_SECRET = new TextEncoder().encode(resolveJwtSecret());
 
 const JWT_ISSUER = 'tamamhealth';
 const JWT_AUDIENCE = 'tamamhealth-patient';

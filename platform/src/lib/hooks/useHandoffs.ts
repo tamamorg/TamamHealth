@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ShiftHandoffDoc } from '../db-types';
 import { handoffsDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -36,21 +36,8 @@ export function useHandoffs() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live subscription — any handoff write anywhere re-renders consumers.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = handoffsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', (err) => { console.warn('Handoff subscription error:', err); });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: handoffsDB, onError: err => console.warn('Handoff subscription error:', err) });
 
   const create = useCallback(async (
     data: Omit<ShiftHandoffDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'signedAt' | 'status'>,

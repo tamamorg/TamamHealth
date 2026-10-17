@@ -15,27 +15,42 @@ import { resolveRegisterOrgId } from './register-org';
  */
 export const VACCINE_NAMES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'] as const;
 
-export async function getAllImmunizations(scope?: DataScope): Promise<ImmunizationDoc[]> {
+export async function getAllImmunizations(scope: DataScope): Promise<ImmunizationDoc[]> {
   const db = immunizationsDB();
   const all = await findByType<ImmunizationDoc>(db, 'immunization');
   /* istanbul ignore next -- defensive null-safety in sort */
   all.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
-export async function getByPatient(patientId: string, scope?: DataScope): Promise<ImmunizationDoc[]> {
+export async function getByPatient(patientId: string, scope: DataScope): Promise<ImmunizationDoc[]> {
   const rows = await findByType<ImmunizationDoc>(
     immunizationsDB(),
     'immunization',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
-  const visible = scope ? filterByScope(rows, scope) : rows;
+  const visible = filterByScope(rows, scope);
   return visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
-export async function getByFacility(facilityId: string): Promise<ImmunizationDoc[]> {
-  const all = await getAllImmunizations();
+/**
+ * UNSCOPED: the patient portal authenticates a patient (not a staff DataScope)
+ * and may read only that patient's own records, so the caller must pass the
+ * verified token subject. Never expose to staff routes; use getByPatient there.
+ */
+export async function getByPatientUnscopedForPortal(patientId: string): Promise<ImmunizationDoc[]> {
+  const rows = await findByType<ImmunizationDoc>(
+    immunizationsDB(),
+    'immunization',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  return rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+}
+
+export async function getByFacility(facilityId: string, scope: DataScope): Promise<ImmunizationDoc[]> {
+  const all = await getAllImmunizations(scope);
   return all.filter(i => i.facilityId === facilityId);
 }
 
@@ -129,7 +144,7 @@ export async function deleteImmunization(
   return true;
 }
 
-export async function getImmunizationStats(scope?: DataScope) {
+export async function getImmunizationStats(scope: DataScope) {
   const all = (await getAllImmunizations(scope)).filter(i => i.recordStatus !== 'entered_in_error');
   const completed = all.filter(i => i.status === 'completed');
   const overdue = all.filter(i => i.status === 'overdue');
@@ -191,7 +206,7 @@ export interface ImmunizationDefaulter {
   lastVaccineDate?: string;
 }
 
-export async function getDefaulters(scope?: DataScope): Promise<ImmunizationDefaulter[]> {
+export async function getDefaulters(scope: DataScope): Promise<ImmunizationDefaulter[]> {
   // Scope-aware: hospital users only see their slice.
   const all = (await getAllImmunizations(scope)).filter(i => i.recordStatus !== 'entered_in_error');
   const now = new Date();
@@ -251,13 +266,13 @@ export async function getDefaulters(scope?: DataScope): Promise<ImmunizationDefa
   return defaulters.sort((a, b) => b.daysOverdue - a.daysOverdue);
 }
 
-export async function getDefaultersByBoma(bomaCode?: string, scope?: DataScope): Promise<ImmunizationDefaulter[]> {
+export async function getDefaultersByBoma(bomaCode: string | undefined, scope: DataScope): Promise<ImmunizationDefaulter[]> {
   const defaulters = await getDefaulters(scope);
   if (!bomaCode) return defaulters;
   return defaulters.filter(d => d.facilityName.toLowerCase().includes(bomaCode.toLowerCase()));
 }
 
-export async function getDefaulterStats(scope?: DataScope) {
+export async function getDefaulterStats(scope: DataScope) {
   const defaulters = await getDefaulters(scope);
   const critical = defaulters.filter(d => d.urgency === 'critical').length;
   const high = defaulters.filter(d => d.urgency === 'high').length;
@@ -287,7 +302,7 @@ export async function getDefaulterStats(scope?: DataScope) {
  * show whether coverage is concentrated in older children (catching up) or
  * spread evenly through the EPI schedule.
  */
-export async function getCoverageByAgeCohort(scope?: DataScope) {
+export async function getCoverageByAgeCohort(scope: DataScope) {
   const all = await getAllImmunizations(scope);
   const completed = all.filter(i => i.status === 'completed');
 
@@ -338,7 +353,7 @@ export async function getCoverageByAgeCohort(scope?: DataScope) {
   return rows;
 }
 
-export async function getVaccineCoverage(scope?: DataScope) {
+export async function getVaccineCoverage(scope: DataScope) {
   const all = await getAllImmunizations(scope);
   const completed = all.filter(i => i.status === 'completed');
   const childIds = new Set(all.map(i => i.patientId));

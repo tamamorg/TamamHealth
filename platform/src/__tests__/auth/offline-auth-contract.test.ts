@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const contextSource = fs.readFileSync(path.join(process.cwd(), 'src/lib/context.tsx'), 'utf8');
+// context.tsx keeps the provider; its constants and pure helpers live in context/.
+const contextSource = ['src/lib/context.tsx', 'src/lib/context/helpers.ts', 'src/lib/context/types.ts']
+  .map(file => fs.readFileSync(path.join(process.cwd(), file), 'utf8'))
+  .join('\n');
 const clientIdentitySource = fs.readFileSync(path.join(process.cwd(), 'src/modules/identity/client.ts'), 'utf8');
 
 describe('offline authentication boundary', () => {

@@ -149,6 +149,20 @@
   /* Icons and borders only: 4.12:1 is under AA for text, on purpose. */
   --color-neutral-600: #6B7F96;  /* navy 62% */
 
+  /* ── Paper ── a signed clinical document reads as a page in both themes,
+     so these are deliberately NOT redefined under dark mode. Literal values
+     because the slate rungs above are re-pointed by the dark theme. */
+  --paper-bg:     #FFFFFF;
+  --paper-band:   #F5F7F8;  /* = light slate-50  */
+  --paper-rule:   #E2E6EB;  /* = light slate-150 */
+  --paper-ink:    #113055;  /* = tm-navy, 13.31:1 */
+  --paper-ink-2:  #3C5574;  /* = light slate-700, 7.65:1 */
+  --paper-muted:  #5D728B;  /* = light slate-500, 4.95:1 */
+  --paper-accent: #015697;  /* = tm-deep, 7.56:1 */
+  --paper-ok-bg:  #E2F2EC;  /* = light success-bg   */
+  --paper-ok-ink: #0A6E4A;  /* = light success-800, 6.28:1 */
+  --paper-danger: #9E1B14;  /* = light danger-800, 8.01:1 */
+
   /* ── Cream ── the page ground, and only ever the ground. */
   --color-cream-25:  #FEFFFB;  /* cream 50% on white */
   --color-cream-50:  var(--tm-cream);
@@ -1249,7 +1263,6 @@ svg.lucide:not([style*="color"]) {
   .cn-dx-acuity button[aria-pressed='true'],
   .labord-btn--primary,
   .tamam-nv-btn--primary,
-  .tamam-nl-chip[aria-pressed="true"],
   .labord-toggle--on,
   .labord-step--current,
   .labord-step--done,

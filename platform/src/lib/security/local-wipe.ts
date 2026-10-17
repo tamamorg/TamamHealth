@@ -246,6 +246,15 @@ export async function wipeLocalData(
     } catch {
       // Never block a wipe on this; the credential alone unlocks no PHI.
     }
+    // The organisation data key goes with the session too. Records kept here
+    // because they hold unsynced writes stay encrypted, and still push as
+    // ciphertext; the next member to sign in online fetches the key again.
+    try {
+      const { clearOrgKeys } = await import('../org-data-cipher');
+      await clearOrgKeys();
+    } catch {
+      // Never block a wipe on this.
+    }
   }
 
   const candidates = options.only ?? (await listLocalDatabases());

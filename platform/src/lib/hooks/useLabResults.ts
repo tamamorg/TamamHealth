@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { LabResultDoc } from '../db-types';
 import { labResultsDB } from '../db';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useDataScope } from './useDataScope';
 
 export function useLabResults(patientId?: string) {
@@ -31,29 +31,13 @@ export function useLabResults(patientId?: string) {
     }
   }, [scope, patientId]);
 
-  useEffect(() => {
-    loadResults();
-  }, [loadResults]);
-
   // Live subscription: re-load whenever any lab result doc changes anywhere
   // (consultation page creating an order, lab tech entering a result, etc.).
   // Replaces the previous 30-second polling so cross-module updates are
   // reflected immediately without manual refresh.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadResults(); });
-    const changes = labResultsDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
-      .on('change', (change) => {
-        const doc = change.doc as LabResultDoc | undefined;
-        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
-      })
-      .on('error', (err) => { console.warn('Lab results subscription error:', err); });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadResults, patientId]);
+  const shouldReload = useCallback((change: { doc?: LabResultDoc; deleted?: boolean }) =>
+    !patientId || !change.doc || change.doc.patientId === patientId || Boolean(change.deleted), [patientId]);
+  usePouchLiveReload({ load: loadResults, database: labResultsDB, includeDocs: Boolean(patientId), shouldReload, onError: err => console.warn('Lab results subscription error:', err) });
 
   const create = useCallback(async (data: Omit<LabResultDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createLabResult } = await import('../services/lab-service');

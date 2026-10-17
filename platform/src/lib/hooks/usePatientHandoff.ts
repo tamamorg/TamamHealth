@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { HandoffPatientEntry, ShiftHandoffDoc } from '../db-types';
 import { handoffsDB } from '../db';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useDataScope } from './useDataScope';
 
 export interface PatientShiftHandoff {
@@ -38,18 +38,7 @@ export function usePatientHandoff(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => { void load(); }, [load]);
-
-  useEffect(() => {
-    const reload = makeCoalescer(() => { void load(); });
-    const changes = handoffsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* offline or closed — retain the last loaded value */ });
-    return () => {
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: handoffsDB });
 
   return latest;
 }

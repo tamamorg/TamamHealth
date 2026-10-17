@@ -1,7 +1,7 @@
 import { medicalRecordsDB } from '../db';
 import type { MedicalRecordDoc, RecordAddendum } from '../db-types';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { validateMedicalRecord, ValidationError } from '../validation';
 import { logAuditSafe } from './audit-service';
@@ -201,7 +201,7 @@ async function raiseNotifiableDiseaseAlerts(record: MedicalRecordDoc): Promise<v
     if (record.patientId) {
       try {
         const { getPatientById } = await import('./patient-service');
-        const patient = await getPatientById(record.patientId);
+        const patient = await getPatientById(record.patientId, orgOnlyScope(record.orgId));
         state = patient?.state || '';
         county = patient?.county || '';
       } catch { /* best-effort — try the facility next */ }

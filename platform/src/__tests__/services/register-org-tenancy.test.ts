@@ -13,7 +13,7 @@ import { createBirth, getAllBirths } from '@/lib/services/birth-service';
 import { createDeath, getAllDeaths } from '@/lib/services/death-service';
 import { createANCVisit, getAllANCVisits } from '@/lib/services/anc-service';
 import { createImmunization, getAllImmunizations, getDefaulters, getDefaulterStats, getCoverageByAgeCohort } from '@/lib/services/immunization-service';
-import { saveFacilityCensus } from '@/lib/services/facility-census-service';
+import { saveFacilityCensus } from '@/lib/services/census-submission-service';
 import { repairRegisterOrgIds } from '@/lib/services/register-org';
 import { ValidationError } from '@/lib/validation';
 import type { DataScope } from '@/lib/services/data-scope';

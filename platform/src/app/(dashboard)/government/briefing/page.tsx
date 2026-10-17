@@ -48,6 +48,7 @@ export default function ExecutiveBriefingPage() {
 
   const [defaulterStats, setDefaulterStats] = useState<{ totalDefaulters: number; uniqueChildren: number; critical: number } | null>(null);
   useEffect(() => {
+    if (!scope) return; // pre-hydration; re-runs once the user is known
     let cancelled = false;
     (async () => {
       const { getDefaulterStats } = await import('@/lib/services/immunization-service');

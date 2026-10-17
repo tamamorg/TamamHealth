@@ -25,7 +25,7 @@ export async function GET(
     const { getPatientById } = await import('@/lib/services/patient-service');
     const { filterByScope, buildScopeFromAuth } = await import('@/lib/services/data-scope');
     const { toFhirPatient } = await import('@/lib/fhir');
-    const patient = await getPatientById(id);
+    const patient = await getPatientById(id, buildScopeFromAuth(auth));
     if (!patient) {
       return NextResponse.json(
         { resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'not-found', diagnostics: 'Patient not found' }] },

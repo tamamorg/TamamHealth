@@ -130,10 +130,11 @@ describe('GET /api/patients/:id emits logPhiRead on a successful read', () => {
     );
   });
 
-  test('does not audit a read denied by cross-org scope (403)', async () => {
+  test('does not audit a read denied by cross-org scope (404)', async () => {
     mockGetAuth.mockResolvedValue(authFor(ORG_B, HOSP_B));
     const res = await patientByIdGET(getRequest(`http://test/api/patients/${PATIENT_ID}`), { params: Promise.resolve({ id: PATIENT_ID }) });
-    expect(res.status).toBe(403);
+    // Out-of-scope reads as missing: the scoped read never reveals the id exists.
+    expect(res.status).toBe(404);
     await flushPhiReadAudit();
     expect(mockLogPhiRead).not.toHaveBeenCalled();
   });
@@ -163,7 +164,8 @@ describe('GET /api/fhir/Patient/:id emits logPhiRead', () => {
   test('does not audit a cross-org denial', async () => {
     mockGetAuth.mockResolvedValue(authFor(ORG_B, HOSP_B));
     const res = await fhirPatientGET(getRequest(`http://test/api/fhir/Patient/${PATIENT_ID}`), { params: Promise.resolve({ id: PATIENT_ID }) });
-    expect(res.status).toBe(403);
+    // Out-of-scope reads as missing: the scoped read never reveals the id exists.
+    expect(res.status).toBe(404);
     await flushPhiReadAudit();
     expect(mockLogPhiRead).not.toHaveBeenCalled();
   });

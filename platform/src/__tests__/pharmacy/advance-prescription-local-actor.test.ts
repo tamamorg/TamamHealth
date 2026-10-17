@@ -25,8 +25,14 @@ import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { usersDB, hospitalsDB, patientsDB } from '@/lib/db';
 import { apiFetch } from '@/lib/api-fetch';
 import {
-  createPrescription, advancePrescription, PrescriptionClearanceError,
+  createPrescription as createPrescriptionScoped, advancePrescription, PrescriptionClearanceError,
 } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 import type { PrescriptionDoc } from '@/lib/db-types';
 
 const apiFetchMock = apiFetch as jest.Mock;

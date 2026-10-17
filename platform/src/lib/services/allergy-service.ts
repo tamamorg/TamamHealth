@@ -18,7 +18,6 @@ import { getPatientById } from './patient-service';
 import { isNoAllergySentinel } from '../clinical-roles';
 import { mutatePatientListField } from './patient-list-field';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
 
 /** Active substance names, for the denormalised `Patient.allergies` mirror. */
 function activeSubstanceNames(entries: AllergyEntry[]): string[] {
@@ -54,8 +53,8 @@ export function migrateLegacyAllergies(patient: PatientDoc): AllergyEntry[] | nu
 }
 
 /** All structured allergy entries for a patient (active + inactive). */
-export async function getAllergies(patientId: string): Promise<AllergyEntry[]> {
-  const patient = await getPatientById(patientId);
+export async function getAllergies(patientId: string, scope: DataScope): Promise<AllergyEntry[]> {
+  const patient = await getPatientById(patientId, scope);
   if (!patient) return [];
   return entriesOf(patient);
 }
@@ -63,7 +62,7 @@ export async function getAllergies(patientId: string): Promise<AllergyEntry[]> {
 /**
  * Active allergies only — the clinically relevant set for decision support.
  *
- * `scope`, when passed, is checked against the OWNING PATIENT record rather
+ * `scope` is checked against the OWNING PATIENT record rather
  * than the individual entries: unlike `PrescriptionDoc`/`ProblemDoc`, an
  * `AllergyEntry` carries no `hospitalId`/`orgId` of its own (it lives embedded
  * in `PatientDoc.structuredAllergies`), so `filterByScope` cannot be applied to
@@ -72,10 +71,9 @@ export async function getAllergies(patientId: string): Promise<AllergyEntry[]> {
  * boundary: a patient out of scope returns no allergies rather than resolving
  * PHI for another org/facility's patient.
  */
-export async function getActiveAllergies(patientId: string, scope?: DataScope): Promise<AllergyEntry[]> {
-  const patient = await getPatientById(patientId);
+export async function getActiveAllergies(patientId: string, scope: DataScope): Promise<AllergyEntry[]> {
+  const patient = await getPatientById(patientId, scope);
   if (!patient) return [];
-  if (scope && filterByScope([patient], scope).length === 0) return [];
   return entriesOf(patient).filter((e) => e.status === 'active');
 }
 
@@ -94,7 +92,7 @@ export interface AddAllergyInput {
 }
 
 /** Record a new allergy. Returns the full updated list, or null if no patient. */
-export async function addAllergy(patientId: string, input: AddAllergyInput): Promise<AllergyEntry[] | null> {
+export async function addAllergy(patientId: string, scope: DataScope, input: AddAllergyInput): Promise<AllergyEntry[] | null> {
   if (!input.substance || input.substance.trim().length === 0) {
     throw new Error('Allergy substance is required');
   }
@@ -102,6 +100,7 @@ export async function addAllergy(patientId: string, input: AddAllergyInput): Pro
   const now = new Date().toISOString();
   return mutatePatientListField<AllergyEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = entriesOf(patient);
       const dupe = existing.find((e) => e.substance.trim().toLowerCase() === substance.toLowerCase());
@@ -138,11 +137,13 @@ export async function addAllergy(patientId: string, input: AddAllergyInput): Pro
 /** Edit fields of an existing allergy in place. */
 export async function updateAllergy(
   patientId: string,
+  scope: DataScope,
   allergyId: string,
   patch: Partial<Omit<AllergyEntry, 'id'>>,
 ): Promise<AllergyEntry[] | null> {
   return mutatePatientListField<AllergyEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = entriesOf(patient);
       if (!existing.some((e) => e.id === allergyId)) return null;
@@ -159,6 +160,7 @@ export async function updateAllergy(
  */
 export async function removeAllergy(
   patientId: string,
+  scope: DataScope,
   allergyId: string,
   removalReason: string,
   status: 'inactive' | 'resolved' | 'entered_in_error' = 'inactive',
@@ -168,6 +170,7 @@ export async function removeAllergy(
   }
   return mutatePatientListField<AllergyEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = entriesOf(patient);
       if (!existing.some((e) => e.id === allergyId)) return null;

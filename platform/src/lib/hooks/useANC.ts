@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ANCVisitDoc } from '../db-types';
 import { ancDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -29,21 +29,8 @@ export function useANC() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live PouchDB subscription: re-load when ANC visits change.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = ancDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: ancDB });
 
   const register = useCallback(async (data: Omit<ANCVisitDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createANCVisit } = await import('../services/anc-service');

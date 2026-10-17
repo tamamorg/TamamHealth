@@ -19,7 +19,13 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { hospitalsDB, patientsDB, prescriptionsDB } from '@/lib/db';
-import { assessPrescriptionSafety, createPrescription } from '@/lib/services/prescription-service';
+import { assessPrescriptionSafety, createPrescription as createPrescriptionScoped } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 
 afterEach(async () => {
   await teardownTestDBs();
@@ -77,7 +83,7 @@ describe('createPrescription — allergy safety', () => {
     await seedHospital();
     await seedPatient([SEVERE_PENICILLIN_ALLERGY]);
 
-    const assessment = await assessPrescriptionSafety('pat-00001', 'Amoxicillin 500mg');
+    const assessment = await assessPrescriptionSafety('pat-00001', 'Amoxicillin 500mg', TEST_SCOPE);
 
     expect(assessment.allergyWarnings?.[0]).toMatchObject({
       allergy: 'Penicillin',
@@ -181,7 +187,7 @@ describe('createPrescription — duplicate orders', () => {
     await createPrescription(rxInput({ medication: 'Ferrous Sulfate 200mg' }) as never);
     await createPrescription(rxInput({ medication: 'Ferrous Sulfate 300mg' }) as never);
 
-    const assessment = await assessPrescriptionSafety('pat-00001', 'Paracetamol 500mg');
+    const assessment = await assessPrescriptionSafety('pat-00001', 'Paracetamol 500mg', TEST_SCOPE);
 
     expect(assessment.duplicateWarnings ?? []).toHaveLength(0);
   });

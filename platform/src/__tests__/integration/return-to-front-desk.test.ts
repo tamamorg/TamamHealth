@@ -17,7 +17,7 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 jest.setTimeout(30000);
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
-import { hospitalsDB, patientsDB } from '@/lib/db';
+import { hospitalsDB, patientsDB, usersDB } from '@/lib/db';
 import { checkInPatient } from '@/lib/services/check-in-service';
 import { completeTriageHandoff, returnVisitToFrontDesk } from '@/lib/services/triage-handoff-service';
 import { updateTriage, getTriageByPatient } from '@/lib/services/triage-service';
@@ -31,6 +31,7 @@ import { assembleDoctorWorklist } from '@/components/dashboards/DoctorDashboardP
 import { returnedToDeskItems } from '@/modules/communication/notifications/visit-updates';
 import type { EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const ORG = 'org-moh-ss';
 const HOSP1 = 'hosp-001';
 const DOC = 'user-dr.wani';
@@ -44,8 +45,8 @@ async function walkInTriagedAndHandedToDoc() {
   await updateTriage(checkin.triage._id, {
     priority: 'YELLOW', assessmentSource: 'clinician',
     triagedAt: new Date().toISOString(), triagedBy: 'user-nurse', triagedByName: 'Nurse Stella',
-  } as Partial<TriageDoc>);
-  await completeTriageHandoff({
+  } as Partial<TriageDoc>, TEST_SCOPE);
+  await completeTriageHandoff({ scope: TEST_SCOPE,
     triageId: checkin.triage._id, patientId: 'pat-teny', patientName: 'Teny Makuach',
     appointmentId: checkin.appointmentId, disposition: 'general_clinic',
     assignedProviderId: DOC, assignedProviderName: 'Dr. Wani',
@@ -82,12 +83,12 @@ describe('return to front desk', () => {
   it('releases the handoff, parks the encounter at the desk, and keeps the visit In Facility for reception', async () => {
     const checkin = await walkInTriagedAndHandedToDoc();
 
-    await returnVisitToFrontDesk({
+    await returnVisitToFrontDesk({ scope: TEST_SCOPE,
       triageId: checkin.triage._id, patientId: 'pat-teny', patientName: 'Teny Makuach',
       reason: 'Patient stepped out', actorId: DOC, actorName: 'Dr. Wani', actorRole: 'doctor',
     });
 
-    const [triage] = await getTriageByPatient('pat-teny');
+    const [triage] = await getTriageByPatient('pat-teny', TEST_SCOPE);
     expect(triage.handoffStatus).toBe('returned_to_desk');
     expect(triage.assignedProviderId).toBeUndefined();
     expect(triage.status).toBe('seen'); // NOT terminal — the visit is still open
@@ -102,12 +103,12 @@ describe('return to front desk', () => {
 
   it('removes the patient from the doctor worklist and every clinical queue', async () => {
     const checkin = await walkInTriagedAndHandedToDoc();
-    await returnVisitToFrontDesk({
+    await returnVisitToFrontDesk({ scope: TEST_SCOPE,
       triageId: checkin.triage._id, patientId: 'pat-teny', patientName: 'Teny Makuach',
       actorId: DOC, actorName: 'Dr. Wani', actorRole: 'doctor',
     });
 
-    const triages = await getTriageByPatient('pat-teny');
+    const triages = await getTriageByPatient('pat-teny', TEST_SCOPE);
     const patient = await patientsDB().get('pat-teny') as PatientDoc;
     expect(doctorRows(patient, triages, true)).toHaveLength(0);
     expect(doctorRows(patient, triages, false)).toHaveLength(0); // not "unclaimed" either
@@ -116,7 +117,7 @@ describe('return to front desk', () => {
 
   it('tells reception — and only reception — through the returned-to-desk feed', async () => {
     const checkin = await walkInTriagedAndHandedToDoc();
-    await returnVisitToFrontDesk({
+    await returnVisitToFrontDesk({ scope: TEST_SCOPE,
       triageId: checkin.triage._id, patientId: 'pat-teny', patientName: 'Teny Makuach',
       reason: 'Needs rebooking', actorId: DOC, actorName: 'Dr. Wani', actorRole: 'doctor',
     });
@@ -146,6 +147,10 @@ describe('return to front desk', () => {
 
 describe('end assignment', () => {
   beforeEach(async () => {
+    // The service scopes the patient read to the actor's own user record.
+    for (const [id, role] of [[DOC, 'doctor'], ['user-dr.someone-else', 'doctor'], ['user-desk.amira', 'front_desk']]) {
+      await putDoc(usersDB(), { _id: id, type: 'user', username: id, name: id, role, hospitalId: HOSP1, orgId: ORG, isActive: true } as never);
+    }
     await putDoc(patientsDB(), {
       ...(await patientsDB().get('pat-teny') as PatientDoc),
       assignedDoctor: DOC, assignedDoctorName: 'Dr. Wani', assignmentStatus: 'assigned',

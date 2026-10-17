@@ -82,6 +82,33 @@ export function recordViewerSections(
   return out.filter(s => s.text || (s.diagnoses && s.diagnoses.length > 0));
 }
 
+/**
+ * A body made only of short "Label: value" lines (the vitals block) splits
+ * into pairs so it can render as an aligned grid; anything else is null and
+ * stays prose. Exported for tests.
+ */
+export function keyValueLines(text: string): { label: string; value: string }[] | null {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return null;
+  const pairs: { label: string; value: string }[] = [];
+  for (const line of lines) {
+    const m = /^([^:•]{1,24}):\s+(.+)$/.exec(line);
+    if (!m) return null;
+    pairs.push({ label: m[1].trim(), value: m[2].trim() });
+  }
+  return pairs;
+}
+
+function SectionText({ text }: { text: string }) {
+  const pairs = keyValueLines(text);
+  if (!pairs) return <p className="tamam-nv-text">{text}</p>;
+  return (
+    <dl className="tamam-nv-kv">
+      {pairs.map((p, i) => <div key={`${p.label}-${i}`}><dt>{p.label}</dt><dd>{p.value}</dd></div>)}
+    </dl>
+  );
+}
+
 interface ViewModel {
   kind: 'clinical' | 'record';
   id: string;
@@ -204,7 +231,7 @@ export default function ClinicalNoteViewer({
         <header className="tamam-nv-head">
           <div>
             <h3 className="tamam-nv-title">{vm.typeLabel}</h3>
-            {vm.patientName && <p className="tamam-nv-muted">{vm.patientName}</p>}
+            {vm.patientName && <p className="tamam-nv-patient">{vm.patientName}</p>}
           </div>
           <span className={`cn-badge ${status.cls}`}>{t(status.key)}</span>
         </header>
@@ -221,26 +248,30 @@ export default function ClinicalNoteViewer({
         {vm.sections.map(s => (
           <section key={s.id} className="tamam-nv-section">
             <h4>{s.label}</h4>
-            {s.diagnoses && s.diagnoses.length > 0 && (
-              <ul className="tamam-nv-dx">
-                {s.diagnoses.map((d, i) => (
-                  <li key={`${d.name}-${i}`}>{d.name}{d.code ? <span className="tamam-nv-code"> {d.code}</span> : null}</li>
-                ))}
-              </ul>
-            )}
-            {s.text && <p className="tamam-nv-text">{s.text}</p>}
+            <div className="tamam-nv-body">
+              {s.diagnoses && s.diagnoses.length > 0 && (
+                <ul className="tamam-nv-dx">
+                  {s.diagnoses.map((d, i) => (
+                    <li key={`${d.name}-${i}`}>{d.name}{d.code ? <span className="tamam-nv-code"> {d.code}</span> : null}</li>
+                  ))}
+                </ul>
+              )}
+              {s.text && <SectionText text={s.text} />}
+            </div>
           </section>
         ))}
 
         {vm.addenda.length > 0 && (
           <section className="tamam-nv-section">
             <h4>{t('noteViewer.addenda')}</h4>
-            {vm.addenda.map(a => (
-              <div key={a.id} className="tamam-nv-addendum">
-                <p className="tamam-nv-text">{a.text}</p>
-                <small className="tamam-nv-muted">{a.authorName} · {formatDateTime(a.createdAt)}</small>
-              </div>
-            ))}
+            <div className="tamam-nv-body">
+              {vm.addenda.map(a => (
+                <div key={a.id} className="tamam-nv-addendum">
+                  <p className="tamam-nv-text">{a.text}</p>
+                  <small className="tamam-nv-muted">{a.authorName} · {formatDateTime(a.createdAt)}</small>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 

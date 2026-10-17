@@ -23,6 +23,7 @@ import { completeTriageHandoff } from '@/lib/services/triage-handoff-service';
 import { getEncounter } from '@/lib/services/encounter-service';
 import { hospitalsDB } from '@/lib/db';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
 
@@ -37,7 +38,7 @@ async function registerAkot() {
     phone: '+211925002001', state: 'Central Equatoria', county: 'Juba',
     primaryLanguage: 'Bari', nokName: 'Mary Deng', nokRelationship: 'Wife', nokPhone: '+211925002002',
     hospitalNumber: '', registrationHospital: HOSP, orgId: ORG,
-  } as unknown as Parameters<typeof createPatient>[0]);
+  } as unknown as Parameters<typeof createPatient>[0], TEST_SCOPE);
 }
 
 test('urgent walk-in: check-in opens one linked visit thread, triage resumes it, emergency escalates it', async () => {
@@ -76,11 +77,11 @@ test('urgent walk-in: check-in opens one linked visit thread, triage resumes it,
       triagedBy: 'user-triage.mary', triagedByName: 'Mary', orgId: ORG,
       encounterId: checkIn.encounter._id,
     } as unknown as Parameters<typeof createTriage>[0],
-    { resumePendingId: checkIn.triage._id, actor: { userId: 'user-triage.mary', username: 'Mary' } },
+    { scope: TEST_SCOPE, resumePendingId: checkIn.triage._id, actor: { userId: 'user-triage.mary', username: 'Mary' } },
   );
   expect(assessed?._id).toBe(checkIn.triage._id);
 
-  const triagesForPatient = await getTriageByPatient(p._id);
+  const triagesForPatient = await getTriageByPatient(p._id, TEST_SCOPE);
   expect(triagesForPatient).toHaveLength(1); // resumed, not duplicated
 
   // 3. While that triage is active, a second create without resume is refused.
@@ -88,10 +89,10 @@ test('urgent walk-in: check-in opens one linked visit thread, triage resumes it,
     patientId: p._id, patientName: `${p.firstName} ${p.surname}`, facilityId: HOSP,
     priority: 'GREEN', status: 'pending', chiefComplaint: 'duplicate',
     triagedBy: 'user-triage.mary', triagedByName: 'Mary', orgId: ORG,
-  } as unknown as Parameters<typeof createTriage>[0])).rejects.toThrow(DuplicateActiveTriageError);
+  } as unknown as Parameters<typeof createTriage>[0], { scope: TEST_SCOPE })).rejects.toThrow(DuplicateActiveTriageError);
 
   // 4. Emergency disposition escalates the SAME visit thread.
-  await completeTriageHandoff({
+  await completeTriageHandoff({ scope: TEST_SCOPE,
     triageId: checkIn.triage._id,
     patientId: p._id, patientName: `${p.firstName} ${p.surname}`,
     disposition: 'emergency',
@@ -103,7 +104,7 @@ test('urgent walk-in: check-in opens one linked visit thread, triage resumes it,
   expect(visit?.status).toBe('escalated_to_emergency');
 
   // The active triage remains the one document, now dispositioned.
-  const active = await findActiveTriageForPatient(p._id);
+  const active = await findActiveTriageForPatient(p._id, TEST_SCOPE);
   expect(active?._id).toBe(checkIn.triage._id);
   expect(active?.disposition).toBe('emergency');
 });

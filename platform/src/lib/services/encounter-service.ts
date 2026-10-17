@@ -23,7 +23,7 @@ import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { appointmentStatusForEncounter, nonRegressingAppointmentStatus } from '../clinical-flow/visit-state';
 
 /** Statuses where the clinician has handed off and is waiting on a parallel order. */
@@ -886,7 +886,7 @@ export async function dischargeEncounter(
     const newerOpen = await findOpenEncounterForPatient(current.patientId, current.hospitalId);
     if (!newerOpen || newerOpen._id === current._id) {
       const { getPatientById, updatePatient } = await import('./patient-service');
-      const patient = await getPatientById(current.patientId);
+      const patient = await getPatientById(current.patientId, orgOnlyScope(current.orgId));
       const clinicianId = current.assignedClinicianId || current.clinicianId;
       const ownsProvider = Boolean(clinicianId && patient?.assignedDoctor === clinicianId);
       const ownsNurse = Boolean(current.assignedNurseId && patient?.assignedNurse === current.assignedNurseId);
@@ -911,7 +911,7 @@ export async function dischargeEncounter(
             assignedNurseByName: undefined,
           } : {}),
           assignmentStatus: 'completed',
-        });
+        }, orgOnlyScope(current.orgId));
       }
     }
   } catch {
