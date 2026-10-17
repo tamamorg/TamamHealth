@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Order basket workspace panel — Tamam-style: two collapsible groups (drug
+ * Active orders workspace panel — Tamam-style: two collapsible groups (drug
  * orders, lab orders), each listing the patient's active orders with an
  * "Add +" affordance that opens the SAME modals already wired into the
  * patient chart page (PrescribeModal / OrderLabModal via
@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
-import { Plus, ChevronDown, Pill, FlaskConical, Check } from '@/components/icons/lucide';
+import { Plus, ChevronDown, Pill, FlaskConical, Check, AlertTriangle } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { PatientDoc } from '@/lib/db-types';
@@ -35,7 +35,7 @@ export default function OrderBasketPanel({
   const [drugsOpen, setDrugsOpen] = useState(true);
   const [labsOpen, setLabsOpen] = useState(true);
 
-  const activeDrugOrders = (prescriptions || []).filter(rx => rx.patientId === patient._id && rx.status !== 'dispensed');
+  const activeDrugOrders = (prescriptions || []).filter(rx => rx.patientId === patient._id && rx.status === 'pending');
   const activeLabOrders = (results || []).filter(l => l.patientId === patient._id && l.status !== 'completed');
 
   return (
@@ -71,6 +71,14 @@ export default function OrderBasketPanel({
                   <div>
                     <div className="tamam-panel-row-main">{rx.medication}</div>
                     <div className="tamam-panel-row-sub">{formatRxSig(rx)}</div>
+                    {!!(rx.medicationSafety?.allergyWarnings.length
+                      || rx.medicationSafety?.interactionWarnings.length
+                      || rx.medicationSafety?.duplicateWarnings.length) && (
+                      <div className="tamam-panel-row-sub" style={{ color: 'var(--color-danger, #D92B20)', fontWeight: 700 }}>
+                        <AlertTriangle aria-hidden style={{ width: 12, height: 12, display: 'inline', marginInlineEnd: 4 }} />
+                        Safety warning recorded — review before dispensing
+                      </div>
+                    )}
                   </div>
                   <span className={`tamam-panel-badge ${rx.status === 'pending' ? 'tamam-panel-badge--pending' : rx.status === 'discontinued' ? 'tamam-panel-badge--muted' : 'tamam-panel-badge--active'}`}>
                     {rx.status}
@@ -126,7 +134,7 @@ export default function OrderBasketPanel({
             modals — there is no separate signing step in the data model, so a
             "Sign and close" affordance here would be a no-op lie. */}
         <span className="tamam-panel-row-sub" style={{ marginInlineEnd: 'auto', alignSelf: 'center' }}>
-          Orders are saved as soon as they&rsquo;re added.
+          These are already-saved active orders. There is no separate signing step here.
         </span>
         <button type="button" className="tamam-btn-primary" onClick={onClose}><Check aria-hidden /> Done</button>
       </div>

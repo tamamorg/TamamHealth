@@ -55,7 +55,7 @@ interface DrawerPanelDef {
 // Right-rail workspace panels — icon + title only; the actual body is
 // resolved per-id in renderPanelBody() below.
 const DRAWER_PANELS: DrawerPanelDef[] = [
-  { id: 'order-basket', title: 'Order basket', icon: ShoppingCart, clinical: true },
+  { id: 'order-basket', title: 'Active orders', icon: ShoppingCart, clinical: true },
   // Stethoscope, not a pencil: this panel's primary action starts a
   // consultation, so it should read as clinical work rather than note-taking.
   { id: 'visit-note', title: 'Visit note', icon: Stethoscope, clinical: true },

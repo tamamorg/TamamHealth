@@ -2957,3 +2957,16 @@
   color: var(--color-white) !important;
   stroke: currentColor !important;
 }
+
+/* Screenings row actions: one height for the three buttons. The chart's
+   primary-button rule gives .btn-primary a 36px minimum, which made Done
+   taller than Decline and remove beside it. */
+.tamam-root .scr-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tamam-root .scr-actions .btn.btn-xs {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: 1;
+}
+.scr-note { margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--text-muted); }

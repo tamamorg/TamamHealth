@@ -181,7 +181,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/patients/AssessmentsPanel.tsx': 2,
   'src/components/patients/RecordSignatureBar.tsx': 2,
   'src/components/patients/RemindersPanel.tsx': 2,
-  'src/components/patients/ScreeningsPanel.tsx': 2,
   'src/components/settings/FacilityPolicySections.tsx': 2,
   'src/app/(booking)/book/[practice]/[provider]/page.tsx': 1,
   'src/app/(dashboard)/appointments/page.tsx': 1,

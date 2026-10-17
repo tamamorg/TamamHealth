@@ -637,6 +637,30 @@ export interface PrescriptionDoc extends BaseDoc {
   frequency: string;
   duration: string;
   prescribedBy: string;
+  /**
+   * Safety decision support captured when the order was written. Persisting
+   * this matters: a toast disappears, while the pharmacist and the next
+   * clinician still need to know that a warning was present at prescribing.
+   */
+  medicationSafety?: {
+    assessedAt: string;
+    allergyWarnings: Array<{
+      medication: string;
+      allergy: string;
+      reason: 'direct' | 'class';
+      criticality: 'mild' | 'moderate' | 'severe' | 'unknown';
+      reaction?: string;
+      requiresOverride: boolean;
+    }>;
+    interactionWarnings: Array<{
+      drug1: string;
+      drug2: string;
+      severity: 'contraindicated' | 'serious' | 'moderate';
+      description: string;
+      clinicalAdvice: string;
+    }>;
+    duplicateWarnings: string[];
+  };
   /** Coarse status kept for backward compatibility + queue filters. Derived
    *  from the granular `orderStatus` below. */
   status: 'pending' | 'dispensed' | 'discontinued';

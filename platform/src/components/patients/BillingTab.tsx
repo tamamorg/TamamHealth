@@ -549,7 +549,7 @@ export default function BillingTab({
         <div>
           <span className="bl-stat-label">{t('billing.insuranceCoverage')}</span>
           <span className="bl-stat-value" style={{ fontSize: 16 }}>
-            {hasInsurance ? primaryPolicy.payerName : (t('billing.selfPayNoInsurance') || 'Self-pay')}
+            {hasInsurance ? primaryPolicy.payerName : '—'}
           </span>
         </div>
         <div>
