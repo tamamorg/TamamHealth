@@ -53,3 +53,6 @@ describe('sync is on by default', () => {
     expect((await loadRule())()).toBe(false);
   });
 });
+
+// A module, not a global script: keeps `ORIGINAL` out of the shared global scope.
+export {};

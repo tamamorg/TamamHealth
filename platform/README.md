@@ -244,6 +244,20 @@ COUCHDB_URL=http://admin:<password>@localhost:5984 bash scripts/setup-couchdb.sh
 #    COUCHDB_WEBHOOK_SECRET=<32+ chars>
 ```
 
+#### Demo data on a sync-enabled stack
+
+With `NEXT_PUBLIC_DEMO_MODE=true` **and** a CouchDB configured, browsers do **not** seed the demo data: every device writing its own copy of the same ids produced one conflicting revision per device, a pharmacy queue that grew with each new profile, and pushes the server rejected as creates (a pharmacist's amend built on a revision the server never saw). The server holds the one copy; devices receive it by replication. Write it once per stack:
+
+```bash
+cd platform
+export COUCHDB_URL=http://localhost:5984 COUCHDB_ADMIN_USER=admin COUCHDB_ADMIN_PASSWORD=<password>
+DRY_RUN=true npm run db:seed:demo-corpus     # preview
+npm run db:seed:demo-corpus                  # create what is missing; re-running changes nothing
+DRY_RUN=false npm run db:cleanup:stale-demo-seed   # optional: drop old drifted demo_seed ids (dry run by default)
+```
+
+The script runs the real seed in memory and only creates documents the server lacks, so it never overwrites live changes. Accounts are not part of it (the server bootstraps those). The standalone demo (no CouchDB, or `NEXT_PUBLIC_SYNC_ENABLED=false`) still seeds in the browser. Both scripts refuse a non-loopback CouchDB unless `ALLOW_REMOTE_DEMO_SEED=true`.
+
 > **Windows users**: The CouchDB setup script requires bash. Use WSL2, Git Bash, or run CouchDB via Docker.
 
 **Pull replication polls, it does not longpoll.** A single client runs ~76

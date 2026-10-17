@@ -209,18 +209,37 @@ function importHmacKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
 const KEYSTORE_DB = 'tamamhealth-org-keys';
 const KEYSTORE_STORE = 'keys';
 
-function openKeystore(): Promise<IDBDatabase | null> {
-  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+function openKeystoreAt(version?: number): Promise<IDBDatabase | null> {
   return new Promise(resolve => {
     try {
-      const req = indexedDB.open(KEYSTORE_DB, 1);
-      req.onupgradeneeded = () => { req.result.createObjectStore(KEYSTORE_STORE); };
+      const req = version === undefined ? indexedDB.open(KEYSTORE_DB) : indexedDB.open(KEYSTORE_DB, version);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(KEYSTORE_STORE)) req.result.createObjectStore(KEYSTORE_STORE);
+      };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
     } catch {
       resolve(null);
     }
   });
+}
+
+/**
+ * The keystore, with its object store guaranteed. A database that already
+ * exists without the store — created by anything that opened the name first,
+ * or an upgrade that was interrupted — would never run `onupgradeneeded` at
+ * the same version, and every key write would fail silently for good; so a
+ * missing store is repaired by reopening one version higher.
+ */
+async function openKeystore(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') return null;
+  const db = await openKeystoreAt();
+  if (!db) return null;
+  if (db.objectStoreNames.contains(KEYSTORE_STORE)) return db;
+  const next = db.version + 1;
+  db.close();
+  return openKeystoreAt(next);
 }
 
 async function keystoreGet(id: string): Promise<CryptoKey | null> {

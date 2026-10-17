@@ -45,12 +45,21 @@ const RX_STATUS_LABEL: Record<string, string> = {
  * A script for an outside pharmacy is never "dispensed" here, so its status is
  * whether the patient has been given it — the thing checkout waits on.
  */
-function rxStatusLabel(rx: PrescriptionDoc): string {
+export function rxStatusLabel(rx: PrescriptionDoc, t: (key: string) => string): string {
   if (rx.status === 'pending' && rx.fulfilment === 'external') {
     return rx.issuedToPatientAt ? 'Script given to patient' : 'Script not yet given';
   }
+  // Once the pharmacy has acted on an in-house order, say where it is
+  // ("Cleared for dispensing", "Held for clarification") instead of a flat
+  // "Prescribed" — the prescriber otherwise can't see the pharmacist's step.
+  if (rx.status === 'pending' && rx.orderStatus && !PRE_PHARMACY_STAGES.has(rx.orderStatus)) {
+    return t(`rxFlow.stage_${rx.orderStatus}`);
+  }
   return RX_STATUS_LABEL[rx.status] || rx.status;
 }
+
+/** Stages before the pharmacy has done anything: still just "Prescribed". */
+const PRE_PHARMACY_STAGES = new Set<string>(['prescribed', 'received_in_pharmacy_queue']);
 
 const STATUS_BADGE: Record<string, string> = {
   pending: 'tamam-panel-badge tamam-panel-badge--pending',
@@ -273,7 +282,7 @@ export default function MedicationsSection({
                 <td style={{ fontWeight: 600 }}>{rx.medication}</td>
                 <td>{formatRxSig(rx)}</td>
                 <td>{formatDate(rx.createdAt)}</td>
-                <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{rxStatusLabel(rx)}</span></td>
+                <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{rxStatusLabel(rx, t)}</span></td>
               </tr>
             ))}
           </tbody>
@@ -286,14 +295,14 @@ export default function MedicationsSection({
           <PopupHeader
             title={selectedRx.medication}
             titleId="medication-row-title"
-            subtitle={`${formatRxSig(selectedRx)} · ${rxStatusLabel(selectedRx)}`}
+            subtitle={`${formatRxSig(selectedRx)} · ${rxStatusLabel(selectedRx, t)}`}
             onClose={() => setSelectedRx(null)}
             surface="panel"
           />
           <div className="clinical-row-dialog__facts">
             <div><span>Medication</span><strong>{selectedRx.medication}</strong></div>
             <div><span>Dosage instructions</span><strong>{formatRxSig(selectedRx)}</strong></div>
-            <div><span>Status</span><strong>{rxStatusLabel(selectedRx)}</strong></div>
+            <div><span>Status</span><strong>{rxStatusLabel(selectedRx, t)}</strong></div>
             <div><span>Start date</span><strong>{formatDate(selectedRx.createdAt)}</strong></div>
           </div>
           {showStopReason && (

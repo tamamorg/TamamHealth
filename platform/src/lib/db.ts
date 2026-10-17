@@ -29,6 +29,20 @@ const IS_BROWSER = typeof window !== 'undefined';
 let PouchDBRef: PouchDBCtor | null = null;
 const databases: Record<string, PouchDatabase> = {};
 
+/**
+ * Server-side only: back every database with an in-memory PouchDB instead of
+ * CouchDB. `scripts/seed-demo-corpus.mjs` uses it to run the real demo seed
+ * (db-seed.ts) into a scratch copy it can then diff against the server, so the
+ * server-side seed and the standalone-demo browser seed can never describe
+ * different data. Must be called before the first database is opened.
+ */
+let inMemoryMode = false;
+export function useInMemoryDatabases(): void {
+  if (IS_BROWSER) throw new Error('[db] in-memory mode is a server-side tool');
+  if (PouchDBRef) throw new Error('[db] useInMemoryDatabases() must run before any database is opened');
+  inMemoryMode = true;
+}
+
 // pouchdb-find still calls PouchDB's internal, deprecated `db.type()` on every
 // query. The warning is harmless but fires on each find(), flooding dev logs.
 // Drop only that exact message (once); every other console.warn is untouched.
@@ -77,6 +91,11 @@ function loadPouchDB(): PouchDBCtor {
       .plugin(httpMod.default || httpMod)
       .plugin(mapReduceMod.default || mapReduceMod)
       .plugin(findMod.default || findMod);
+    if (inMemoryMode) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const memoryMod = require('pouchdb-adapter-memory');
+      PouchDB.plugin(memoryMod.default || memoryMod);
+    }
     PouchDBRef = PouchDB;
   }
   return PouchDBRef;
@@ -153,6 +172,8 @@ export function getRawDB(name: string): PouchDatabase {
       // the default 10, tripping a spurious MaxListenersExceededWarning. Raise
       // the cap — the feeds are cancelled on unmount, so this isn't a leak.
       (databases[name] as unknown as { setMaxListeners?: (n: number) => void }).setMaxListeners?.(50);
+    } else if (inMemoryMode) {
+      databases[name] = new PouchDB(name, { adapter: 'memory' });
     } else {
       const base = serverCouchBaseUrl();
       const authHeader = serverAuthHeader!; // serverCouchBaseUrl() above already threw if missing
@@ -474,7 +495,12 @@ export const specialtyCareDB = () => getDB('tamamhealth_specialty_care');
 // the same document ids, so `safePut`'s skip-if-exists puts would never
 // correct them without this bump forcing a fresh seed.
 // Bumped to 77: `labOrders` (lab-001..010) `patientName` literals corrected to match the generated roster (e.g. lab-005/pat-00022 is "Anna Laku Bol", not "Kuol Akot Ajith"), forcing browsers stuck on a stale pre-fix seed to reseed.
-export const SEED_VERSION = 78;
+// Bumped to 79: demo data on a sync-enabled stack is now written to the server
+// once (scripts/seed-demo-corpus.mjs) instead of by every browser. Devices
+// holding a locally seeded corpus drop it (dirty-checked, so unsynced work is
+// kept) and receive the server's copy by replication. Standalone demos still
+// seed in the browser, and reseed because of this bump.
+export const SEED_VERSION = 79;
 
 /**
  * Delete local PouchDB databases whose IndexedDB backing is corrupt.

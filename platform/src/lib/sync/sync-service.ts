@@ -684,15 +684,13 @@ export class SyncService {
       captureException(err, { tag: 'sync.markDocsConflicted' })
     );
     // A doc that just ARRIVED BY PULL is on the server by definition, so a
-    // stale pending/failed stamp baked into it (written by some other device
-    // in the pre-fix era) is a lie the moment it lands — flip it here,
-    // doc-targeted, instead of waiting for the next full heal sweep.
-    // markDocsSynced's own guards make this safe: it skips docs already
-    // marked synced, and skips docs with live `_conflicts` — and a pulled
-    // rev can never cleanly replace an unpushed local edit (PouchDB keeps
-    // both as a conflict), so an actually-unsynced local write is never
-    // masked.
-    void markDocsSynced(this.localDB, changedDocs).catch(err =>
+    // pending/failed stamp THIS device wrote (its own edit coming back) is
+    // stale — flip it here. Another device's stamp is left for that device to
+    // clear: every puller re-stamping the same doc wrote its own revision and
+    // the copies collided as sibling conflicts (one demo prescription reached
+    // rev 357). markDocsSynced also skips docs already synced or with live
+    // `_conflicts`, so an unpushed local write is never masked.
+    void markDocsSynced(this.localDB, changedDocs, undefined, 'pull').catch(err =>
       captureException(err, { tag: 'sync.markDocsSynced.pull' })
     );
   }
