@@ -19,7 +19,7 @@ export default function RouteContextBar() {
   // roles that share such a prefix do not share a dashboard — so it has to be
   // resolved per role, not hard-coded in the route table.
   const homeHref = currentUser ? getDefaultDashboard(currentUser.role) : '/dashboard';
-  const context = resolveRouteContext(pathname, homeHref);
+  const context = resolveRouteContext(pathname, homeHref, searchParams.get('returnTo'));
   /* A record page (organization → facility → person) publishes a trail that
      names the records themselves. It wins over the URL-derived context, which
      cannot know that `/admin/facilities/abc123` sits under Juba Teaching

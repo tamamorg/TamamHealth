@@ -74,6 +74,9 @@ it('closes the visit once the last prescription is dispensed on a signed visit',
     hospitalId: HOSP, orgId: ORG,
   } as never);
   await saveNoteSection(note._id, 'subjective', { text: 'Fever and cough for 4 days.' });
+  // A consultation can't be signed without an assessment and a plan.
+  await saveNoteSection(note._id, 'assessment', { text: 'Working diagnosis recorded.' });
+  await saveNoteSection(note._id, 'plan', { text: 'Treat and review.' });
 
   const { prescription } = await createPrescription({
     patientId: PATIENT._id, patientName: PATIENT.name, encounterId: claimed._id,
@@ -147,6 +150,9 @@ it('does not close the visit while a second prescription is still outstanding', 
     hospitalId: HOSP, orgId: ORG,
   } as never);
   await saveNoteSection(note._id, 'subjective', { text: 'Fever and cough for 4 days.' });
+  // A consultation can't be signed without an assessment and a plan.
+  await saveNoteSection(note._id, 'assessment', { text: 'Working diagnosis recorded.' });
+  await saveNoteSection(note._id, 'plan', { text: 'Treat and review.' });
 
   const { prescription: amox } = await createPrescription({
     patientId: PATIENT._id, patientName: PATIENT.name, encounterId: claimed._id,

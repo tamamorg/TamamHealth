@@ -18,6 +18,7 @@ import { formatDobOmrs } from '@/lib/date-utils';
 import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
+import { orderBannerAllergies, type BannerAllergy } from './allergy-order';
 
 
 interface ChartHeaderProps {
@@ -35,7 +36,8 @@ interface ChartHeaderProps {
   onOrders: () => void;
   onExchange: () => void;
   onEdit: () => void;
-  onStickyNote: () => void;
+  /** @deprecated No sticky-note model exists; the menu item was removed. */
+  onStickyNote?: () => void;
   onAssignProvider?: () => void;
   /** End the standing care-team assignment — the exit for an assigned patient
    *  who left and never came back. Lives here in the chart's actions menu, not
@@ -53,58 +55,84 @@ interface ChartHeaderProps {
   onShowAllergies?: () => void;
 }
 
-/** Active allergens for the banner, from the same source AllergiesSection and
+/** Active allergies for the banner, from the same source AllergiesSection and
  *  AllergyList read: `structuredAllergies` when the patient has been migrated,
- *  the legacy string list otherwise. `undefined` means the record has never
- *  been assessed, which is NOT the same claim as "no known allergies" — the
- *  banner says so rather than implying the patient is safe. */
-function activeAllergens(patient: PatientDoc): string[] | undefined {
+ *  the legacy string list otherwise (no grading, so criticality is unknown).
+ *  `undefined` means the record has never been assessed, which is NOT the same
+ *  claim as "no known allergies" — the banner says so rather than implying the
+ *  patient is safe. */
+function activeAllergies(patient: PatientDoc): BannerAllergy[] | undefined {
   if (patient.structuredAllergies !== undefined) {
-    return patient.structuredAllergies.filter(a => a.status === 'active').map(a => a.substance);
+    return patient.structuredAllergies
+      .filter(a => a.status === 'active')
+      .map(a => ({ substance: a.substance, criticality: a.criticality }));
   }
   if (!patient.allergies) return undefined;
-  return patient.allergies.filter(a => a && !isNoAllergySentinel(a));
+  return patient.allergies
+    .filter(a => a && !isNoAllergySentinel(a))
+    .map(substance => ({ substance }));
 }
 
 /** The banner's allergy line. Three states, deliberately distinct: allergies
- *  on record, an assessment that found none, and no assessment at all. */
-function AllergyBanner({ allergens, onShow }: { allergens?: string[]; onShow?: () => void }) {
-  const has = !!allergens && allergens.length > 0;
-
-  // Every allergen, not a truncated head with a "+N more" — the one the
-  // clinician needs is as likely to be fourth as first, and a count is not
-  // something you can check a prescription against.
-  const label = has
-    ? allergens!.join(', ')
-    : allergens === undefined
-      ? 'Not recorded'
-      : 'No known allergies';
+ *  on record, an assessment that found none, and no assessment at all. Severe
+ *  and ungraded allergies lead in bold; beyond the first three the rest fold
+ *  into "+N more" (never hiding a severe/ungraded one). */
+function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onShow?: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const has = !!allergies && allergies.length > 0;
+  const { ordered, visibleCount } = orderBannerAllergies(allergies ?? []);
+  const shown = expanded ? ordered : ordered.slice(0, visibleCount);
+  const hidden = ordered.length - shown.length;
 
   const cls = [
     'tamam-allergy-banner',
-    has ? 'tamam-allergy-banner--alert' : allergens === undefined ? 'tamam-allergy-banner--unknown' : '',
+    has ? 'tamam-allergy-banner--alert' : allergies === undefined ? 'tamam-allergy-banner--unknown' : '',
     onShow ? 'tamam-allergy-banner--link' : '',
   ].filter(Boolean).join(' ');
 
-  const body = (
+  const list = has ? (
+    <span className="tamam-allergy-value">
+      {shown.map((a, i) => (
+        <span key={`${a.substance}-${i}`} className={a.highConcern ? 'tamam-allergy-item tamam-allergy-item--severe' : 'tamam-allergy-item'}>
+          {a.substance}{i < shown.length - 1 ? ', ' : ''}
+        </span>
+      ))}
+    </span>
+  ) : (
+    <span className="tamam-allergy-value">{allergies === undefined ? 'Not recorded' : 'No known allergies'}</span>
+  );
+
+  const lead = (
     <>
       <DuotoneIcon name={has ? 'alert' : 'shield'} size={14} />
       <span className="tamam-allergy-label">Allergies</span>
-      <span className="tamam-allergy-value">{label}</span>
+      {list}
     </>
   );
 
-  if (!onShow) return <div className={cls}>{body}</div>;
+  // The "+N more" control is a sibling of the link button, never nested in it.
   return (
-    <button type="button" className={cls} onClick={onShow}>
-      {body}
-    </button>
+    <div className={cls}>
+      {onShow ? (
+        <button type="button" className="tamam-allergy-open" onClick={onShow}>{lead}</button>
+      ) : lead}
+      {has && ordered.length > visibleCount && (
+        <button
+          type="button"
+          className="tamam-allergy-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(v => !v)}
+        >
+          {expanded ? 'Show less' : `+${hidden} more`}
+        </button>
+      )}
+    </div>
   );
 }
 
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
-  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onNote, onScripts, onOrders, onExchange, onEdit, onStickyNote, onAssignProvider,
+  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onNote, onScripts, onOrders, onExchange, onEdit, onAssignProvider,
   onShowAllergies, onEndAssignment, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
@@ -119,7 +147,7 @@ export default function ChartHeader({
     canSendMessages, canViewClinical, canPrescribe, canDispense,
     canOrderLabs, canEnterLabResults, canManageReferrals, canRegisterPatients,
   } = usePermissions();
-  const allergens = activeAllergens(patient);
+  const allergies = activeAllergies(patient);
 
   const initials = patientInitials(patient);
   const photoUrl = (patient as { photoUrl?: string }).photoUrl;
@@ -162,7 +190,7 @@ export default function ChartHeader({
           {/* Top line, beside the name: allergies are the first thing read
               about a patient and the one item here that changes what is safe
               to prescribe. */}
-          <AllergyBanner allergens={allergens} onShow={onShowAllergies} />
+          <AllergyBanner allergies={allergies} onShow={onShowAllergies} />
         </div>
         <div className="tamam-header-meta">
           {patientAgeLabel(patient)} &middot; {formatDobOmrs(patient.dateOfBirth)} &middot; Facility ID: {patientIdDisplay}
@@ -230,11 +258,6 @@ export default function ChartHeader({
                 {canViewClinical && onVisitSummary && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onVisitSummary(); }}>
                     <DuotoneIcon name="fileText" size={15} /> Visit summary
-                  </button>
-                )}
-                {canViewClinical && (
-                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onStickyNote(); }}>
-                    <DuotoneIcon name="record" size={15} /> Patient notes
                   </button>
                 )}
                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onPrint(); }}>

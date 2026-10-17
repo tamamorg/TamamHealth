@@ -2830,7 +2830,9 @@ async function seedDatabaseExclusive(): Promise<void> {
       { testName: 'Renal Function', specimen: 'Blood', result: 'Creatinine 0.9 mg/dL', ref: 'Cr 0.6-1.2', abnormal: false },
     ];
     const GEN_MEDS = [
-      { medication: 'Amoxicillin', dose: '500mg TDS x 7 days', frequency: 'TDS', duration: '7 days' },
+      // Not a beta-lactam: the shared sample chart carries a severe penicillin
+      // allergy, and seeding Amoxicillin against it normalised an unsafe order.
+      { medication: 'Azithromycin', dose: '500mg OD x 3 days', frequency: 'OD', duration: '3 days' },
       { medication: 'Paracetamol', dose: '1g QDS PRN x 5 days', frequency: 'QDS PRN', duration: '5 days' },
       { medication: 'Artemether-Lumefantrine', dose: '80/480mg BD x 3 days', frequency: 'BD', duration: '3 days' },
       { medication: 'Metformin', dose: '500mg BD x 30 days', frequency: 'BD', duration: '30 days' },
@@ -4274,7 +4276,9 @@ async function seedDatabaseExclusive(): Promise<void> {
     { medication: 'Omeprazole', dose: '20mg', frequency: 'OD', duration: '14 days' },
     { medication: 'Ferrous Sulfate + Folic Acid', dose: '200mg', frequency: 'OD', duration: '30 days' },
     { medication: 'Paracetamol', dose: '1g', frequency: 'QDS PRN', duration: '5 days' },
-    { medication: 'Amoxicillin', dose: '500mg', frequency: 'TDS', duration: '7 days' },
+    // Azithromycin, not Amoxicillin — see GEN_MEDS: SAMPLE_ALLERGIES records a
+    // severe penicillin allergy on these same patients.
+    { medication: 'Azithromycin', dose: '500mg', frequency: 'OD', duration: '3 days' },
   ];
   const allChartPatients: { id: string; name: string; hosp?: string; hospName?: string }[] = [
     ...patients.map((p) => ({

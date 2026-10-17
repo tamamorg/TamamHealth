@@ -102,6 +102,20 @@ export function buildCreateNoteInput(
   };
 }
 
+/**
+ * The one way to start a note from a screen, including a list's "Create note"
+ * button. Resolves the visit's encounter, reopens an existing draft for the
+ * same appointment instead of forking a second, then creates and (by default)
+ * navigates to `/notes/<id>`.
+ *
+ *   const { createNote, creating } = useCreateNote(currentUser);
+ *   await createNote({ patientId, patientName, mrn, patientDob, noteType }, { navigate: false });
+ *
+ * `createNote(input: CreateNoteFromVisitInput, options?: { navigate?: boolean })`
+ * resolves to the draft (new or reopened) or rejects on a write failure, so
+ * callers show their own error. Pass `{ navigate: false }` to open the draft in
+ * an in-page drawer instead of the standalone route.
+ */
 export function useCreateNote(currentUser: CurrentUserLike | null) {
   const router = useRouter();
   const scope = useDataScope();

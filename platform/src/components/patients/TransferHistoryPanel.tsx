@@ -10,6 +10,7 @@
  * a fortnight in March is only visible in the events).
  */
 import { useState } from 'react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { usePatientTransfers } from '@/lib/hooks/usePatientTransfers';
 import { useWards } from '@/lib/hooks/useWards';
@@ -473,6 +474,7 @@ export default function TransferHistoryPanel({
    */
   canViewClinical?: boolean;
 }) {
+  const { t } = useTranslation();
   const { transfers, loading, accept, reject, cancel, complete, updateLogistics, arrive, close } = usePatientTransfers(patient._id);
   const [showModal, setShowModal] = useState(false);
 
@@ -482,10 +484,10 @@ export default function TransferHistoryPanel({
         style={{ borderColor: 'var(--border-light)' }}>
         <div>
           <h3 className="font-semibold text-sm flex items-center gap-2">
-            <ArrowRightLeft className="w-4 h-4" /> Transfers
+            <ArrowRightLeft className="w-4 h-4" /> {t('chartRows.careCoordination')}
           </h3>
           <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            Every change of care ownership for this patient, with who approved it and why.
+            {t('chartRows.transfersSub')}
           </p>
         </div>
         {canViewClinical && (

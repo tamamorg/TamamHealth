@@ -18,6 +18,7 @@
  */
 
 import { AlertTriangle, Info, History, Activity } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { assessVitalsForDisplay, type VitalDisplayFlag, type VitalDisplayLevel } from '@/lib/clinical/vitals';
 import { formatDateTime } from '@/lib/format-utils';
 import { useNow } from '@/lib/hooks/useNow';
@@ -72,12 +73,17 @@ interface ChartVitalsBandProps {
   onViewVitalsHistory: () => void;
   onRecordVitals: () => void;
   canRecordVitals: boolean;
+  /** True until every vitals source (records, triage) has resolved. The band
+   *  then shows a placeholder instead of an older reading that would be
+   *  replaced a moment later. */
+  loading?: boolean;
 }
 
 export default function ChartVitalsBand({
   latestVitals, latestRecordDate, patientAgeYears, isPregnant,
-  onViewVitalsHistory, onRecordVitals, canRecordVitals,
+  onViewVitalsHistory, onRecordVitals, canRecordVitals, loading,
 }: ChartVitalsBandProps) {
+  const { t } = useTranslation();
   // How old the last set of vitals is has to keep counting while the chart is
   // open, and must not differ between two renders of the same reading.
   const now = useNow(60_000);
@@ -127,6 +133,25 @@ export default function ChartVitalsBand({
     : topLevel === 'high_risk' ? 'High-risk readings'
     : topLevel === 'abnormal' ? 'Outside normal range' : '';
   const alertReasons = [ageFlag?.message, ...flagged.map(cell => cell.flag!.message)].filter(Boolean).join(' ');
+
+  if (loading) {
+    return (
+      <div className="tamam-vitals-band" aria-busy="true">
+        <div className="tamam-vitals-head">
+          <span className="tamam-vitals-title">Vitals and biometrics</span>
+          <span className="tamam-vitals-timestamp" role="status">{t('chart.vitalsLoading')}</span>
+        </div>
+        <div className="tamam-vitals-grid">
+          {cells.map(cell => (
+            <div className="tamam-vitals-cell" key={cell.label}>
+              <div className="tamam-vitals-label">{cell.label}</div>
+              <div className="tamam-vitals-value tamam-vitals-value--loading" aria-hidden>--</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tamam-vitals-band">

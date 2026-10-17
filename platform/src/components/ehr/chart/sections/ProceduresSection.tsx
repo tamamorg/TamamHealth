@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react';
+import { rowActivation } from './rowFocus';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
 import { X } from '@/components/icons/lucide';
@@ -192,7 +193,13 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 </tr>
               )}
               {visibleProcedures.map(p => (
-                <tr key={p._id} style={p.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
+                <tr
+                  key={p._id}
+                  // Opens the correction dialog, behind the same gate as the Correct button.
+                  {...(canConsult && p.recordStatus !== 'entered_in_error' ? rowActivation(() => startCorrection(p), `${t('chart.correct')} — ${p.name}`) : {})}
+                  className={canConsult && p.recordStatus !== 'entered_in_error' ? 'tamam-clickable-row' : undefined}
+                  style={p.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}
+                >
                   <td style={{ fontWeight: 600 }}>
                     {p.name}
                     {p.code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.code}</span> : null}

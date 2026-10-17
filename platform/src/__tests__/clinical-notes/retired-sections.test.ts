@@ -53,6 +53,10 @@ async function legacyDraft(noteType: NoteTypeId, texts: Partial<Record<NoteSecti
   for (const [sectionId, text] of Object.entries(texts)) {
     if (sectionId !== 'recommendations') await saveNoteSection(note._id, sectionId as NoteSectionId, { text });
   }
+  // Signable: the sections the type requires hold something.
+  for (const sectionId of ['assessment'] as NoteSectionId[]) {
+    if (!(sectionId in texts)) await saveNoteSection(note._id, sectionId, { text: 'Assessed.' });
+  }
   return note._id;
 }
 

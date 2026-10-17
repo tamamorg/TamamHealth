@@ -11,6 +11,8 @@ import { formatDateTime } from '@/lib/format-utils';
 import { patientFullName } from '@/lib/patient-utils';
 import { isClinicalAuthorRole } from '@/lib/clinical-roles';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import '@/components/clinical-notes/note-viewer.css';
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   open: { cls: 'tamam-panel-badge tamam-panel-badge--pending', label: 'Open' },
@@ -24,6 +26,7 @@ const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
  * the Centricity phone note workflow.
  */
 export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { users } = useUsers();
   const { notes } = usePhoneNotes(patient._id);
@@ -85,6 +88,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
 
   return (
     <ChartSection title="Phone notes" addLabel="Log call" onAdd={() => setAdding(true)}>
+      <p className="tamam-nl-helper">{t('notesList.phoneHelper')}</p>
       {adding && (
         <div className="rounded-lg p-3 mb-3 space-y-2" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
           <div className="grid grid-cols-2 gap-2">

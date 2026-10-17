@@ -14,6 +14,8 @@ import { formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { priorityBadge } from '@/lib/clinical/triage-display';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import { clickable, stopsClickPropagation } from '@/lib/a11y';
+import { toIsoDate } from '@/lib/date-utils';
+import { ChevronDown, ChevronRight } from '@/components/icons/lucide';
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -52,10 +54,14 @@ export interface PatientTimelineProps {
   focusId?: string;
 }
 
-interface TimelineEvent {
+export type TimelineCategory = 'triage' | 'consultation' | 'note' | 'lab' | 'prescription' | 'immunization' | 'referral' | 'anc' | 'appointment';
+
+export interface TimelineEvent {
   id: string;
+  /** The visit this event belongs to, when the source record carries one. */
+  encounterId?: string;
   date: string;            // ISO or YYYY-MM-DD
-  category: 'triage' | 'consultation' | 'note' | 'lab' | 'prescription' | 'immunization' | 'referral' | 'anc' | 'appointment';
+  category: TimelineCategory;
   title: string;
   subtitle?: string;
   meta?: string;
@@ -93,7 +99,7 @@ function notePreviewLine(note: ClinicalNoteDoc): string | undefined {
   return undefined;
 }
 
-function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
+export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
   const events: TimelineEvent[] = [];
 
   for (const tr of props.triages || []) {
@@ -105,6 +111,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
     if (tr.systolic && tr.diastolic) vitals.push(`BP ${tr.systolic}/${tr.diastolic}`);
     events.push({
       id: `triage-${tr._id}`,
+      encounterId: tr.encounterId || undefined,
       date: tr.triagedAt || tr.createdAt,
       category: 'triage',
       title: tr.chiefComplaint || t('timeline.titleTriage'),
@@ -131,6 +138,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
         : { label: 'Unsigned', bg: 'rgba(253, 217, 95,0.16)', color: 'var(--color-warning)' };
     events.push({
       id: `mr-${r._id}`,
+      encounterId: r.encounterId || undefined,
       docId: r._id,
       date: r.consultedAt || r.visitDate || r.createdAt,
       category: 'consultation',
@@ -154,6 +162,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
     const signed = n.status === 'signed' || n.status === 'amended';
     events.push({
       id: `cn-${n._id}`,
+      encounterId: n.encounterId || undefined,
       docId: n._id,
       date: n.serviceTime ? `${n.serviceDate}T${n.serviceTime}` : n.serviceDate,
       category: 'note',
@@ -171,6 +180,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
     const status = lr.status === 'completed' ? lr.result || t('timeline.statusCompleted') : lr.status.replace('_', ' ');
     events.push({
       id: `lab-${lr._id}`,
+      encounterId: lr.encounterId || undefined,
       date: lr.completedAt || lr.orderedAt || lr.createdAt,
       category: 'lab',
       title: lr.testName,
@@ -187,6 +197,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
   for (const rx of props.prescriptions || []) {
     events.push({
       id: `rx-${rx._id}`,
+      encounterId: rx.encounterId || undefined,
       date: rx.createdAt,
       category: 'prescription',
       title: rx.medication,
@@ -201,6 +212,7 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
   for (const im of props.immunizations || []) {
     events.push({
       id: `imm-${im._id}`,
+      encounterId: im.encounterId || undefined,
       date: im.dateGiven || im.createdAt,
       category: 'immunization',
       title: `${im.vaccine} ${im.doseNumber > 0 ? t('timeline.doseNumber', { number: im.doseNumber }) : ''}`.trim(),
@@ -254,42 +266,141 @@ function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEvent[] {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** Calendar day an event belongs to, in the clinic's local time. */
+function dayKeyOf(date: string): string {
+  if (date.length <= 10) return date;
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? date.slice(0, 10) : toIsoDate(d);
+}
+
+/** One visit (or, for events with no encounter, one calendar day). */
+export interface TimelineGroup {
+  id: string;
+  /** Set when the group is a real encounter; absent for calendar-day groups. */
+  encounterId?: string;
+  /** Latest event date in the group, used to order groups newest-first. */
+  date: string;
+  events: TimelineEvent[];
+}
+
+/**
+ * Group events by encounter; events with no encounter fall back to one group
+ * per calendar day. Groups and the events inside them are newest-first.
+ */
+export function groupTimelineEvents(events: TimelineEvent[]): TimelineGroup[] {
+  const byId = new Map<string, TimelineGroup>();
+  for (const e of events) {
+    const id = e.encounterId ? `enc-${e.encounterId}` : `day-${dayKeyOf(e.date)}`;
+    let g = byId.get(id);
+    if (!g) {
+      g = { id, encounterId: e.encounterId, date: e.date, events: [] };
+      byId.set(id, g);
+    }
+    g.events.push(e);
+    if (e.date.localeCompare(g.date) > 0) g.date = e.date;
+  }
+  const groups = [...byId.values()];
+  for (const g of groups) g.events.sort((a, b) => b.date.localeCompare(a.date));
+  return groups.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export interface TimelineGroupSummary {
+  title: string;
+  detail?: string;
+  counts: string;
+  badge?: TimelineEvent['badge'];
+}
+
+/** Header content for a group: reason, who/where, and what the visit produced. */
+export function summarizeGroup(group: TimelineGroup, t: TFunc): TimelineGroupSummary {
+  const by = (c: TimelineCategory) => group.events.filter(e => e.category === c);
+  const consult = by('consultation')[0];
+  const triage = by('triage')[0];
+  const note = by('note')[0];
+  const lead = consult || triage || note || group.events[0];
+  const title = group.encounterId
+    ? (consult?.title || triage?.title || t('timeline.visit'))
+    : t('timeline.dayActivity');
+  const detail = group.encounterId ? (consult?.meta || lead?.meta) : undefined;
+
+  const plural = (n: number, one: string, many: string) => t(n === 1 ? one : many, { count: n });
+  const parts: string[] = [];
+  const meds = by('prescription').length;
+  const labs = by('lab').length;
+  const vaccines = by('immunization').length;
+  const referrals = by('referral').length;
+  const other = by('appointment').length + by('anc').length;
+  if (meds) parts.push(plural(meds, 'timeline.groupMed', 'timeline.groupMeds'));
+  if (labs) parts.push(plural(labs, 'timeline.groupLab', 'timeline.groupLabs'));
+  if (vaccines) parts.push(plural(vaccines, 'timeline.groupVaccine', 'timeline.groupVaccines'));
+  if (referrals) parts.push(plural(referrals, 'timeline.groupReferral', 'timeline.groupReferrals'));
+  if (other) parts.push(t('timeline.groupOther', { count: other }));
+  const signingDoc = note || consult;
+  if (signingDoc) {
+    const signed = signingDoc.badge?.label === 'Signed' || signingDoc.badge?.label === 'Amended';
+    parts.push(t(signed ? 'timeline.groupNoteSigned' : 'timeline.groupNoteUnsigned'));
+  }
+  if (triage) parts.push(t('timeline.groupTriaged'));
+
+  return { title, detail, counts: parts.join(' · '), badge: (consult || note)?.badge };
+}
+
+function formatEventDate(date: string): string {
+  try {
+    return new Date(date).toLocaleDateString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric',
+      ...(date.includes('T') ? { hour: '2-digit', minute: '2-digit' } : {}),
+    });
+  } catch { return date; }
+}
+
 export default function PatientTimeline(props: PatientTimelineProps) {
   const { t } = useTranslation();
   const events = buildEvents(props, t);
+  const allGroups = groupTimelineEvents(events);
   const [filter, setFilter] = useState<'all' | TimelineEvent['category']>('all');
   const [search, setSearch] = useState('');
   // Rows expanded to show their subtitle/meta. Kept as a set so several can be
   // open at once — comparing two events is the common reason to expand.
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const toggleDetail = (id: string) => setExpanded(prev => {
+  // Visit groups opened to their item-level rows.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
+  const toggleIn = (setter: typeof setExpanded) => (id: string) => setter(prev => {
     const next = new Set(prev);
     if (!next.delete(id)) next.add(id);
     return next;
   });
+  const toggleDetail = toggleIn(setExpanded);
+  const toggleGroup = toggleIn(setOpenGroups);
 
-  // Deep-link arrival: the row the caller asked for opens itself, so the
-  // signature controls the user was sent here to use are on screen rather than
-  // one more click away behind a disclosure they have to find first.
+  // Deep-link arrival: the row the caller asked for opens itself (and the visit
+  // it belongs to), so the signature controls the user was sent here to use
+  // are on screen rather than one more click away.
   const { focusId } = props;
   const focusedEvent = focusId ? events.find(e => e.docId === focusId) : undefined;
   const focusedRowId = focusedEvent?.id;
+  const focusedGroupId = focusedRowId ? allGroups.find(g => g.events.some(e => e.id === focusedRowId))?.id : undefined;
   useEffect(() => {
     if (!focusedRowId) return;
     setExpanded(prev => (prev.has(focusedRowId) ? prev : new Set(prev).add(focusedRowId)));
+    if (focusedGroupId) setOpenGroups(prev => (prev.has(focusedGroupId) ? prev : new Set(prev).add(focusedGroupId)));
     // The row mounts with the expansion, so the scroll waits a frame for it.
     const raf = requestAnimationFrame(() => {
       document.getElementById(`timeline-row-${focusedRowId}`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     return () => cancelAnimationFrame(raf);
-  }, [focusedRowId]);
+  }, [focusedRowId, focusedGroupId]);
 
-  const categoryEvents = filter === 'all' ? events : events.filter(event => event.category === filter);
   const searchQuery = search.trim().toLowerCase();
-  const visibleEvents = searchQuery
-    ? categoryEvents.filter(event => `${event.title} ${event.subtitle || ''} ${event.meta || ''} ${event.badge?.label || ''}`.toLowerCase().includes(searchQuery))
-    : categoryEvents;
+  const matches = (event: TimelineEvent) =>
+    (filter === 'all' || event.category === filter)
+    && (!searchQuery || `${event.title} ${event.subtitle || ''} ${event.meta || ''} ${event.badge?.label || ''}`.toLowerCase().includes(searchQuery));
+  // Filters apply to the items inside each group; groups left empty disappear.
+  const visibleGroups = allGroups
+    .map(group => ({ group, items: group.events.filter(matches) }))
+    .filter(entry => entry.items.length > 0);
+  const visibleCount = visibleGroups.reduce((n, entry) => n + entry.items.length, 0);
   const categoryOptions: Array<{ id: 'all' | TimelineEvent['category']; label: string }> = [
     { id: 'all', label: 'All activity' },
     { id: 'consultation', label: 'Consultations' },
@@ -302,9 +413,68 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     { id: 'anc', label: 'ANC' },
   ];
 
+  const renderEvent = (e: TimelineEvent, nested: boolean) => {
+    const cfg = CATEGORY_CONFIG[e.category];
+    const dateLabel = formatEventDate(e.date);
+    // An event counts as "alarming" when its badge text reads as a
+    // clinical emergency (critical lab, high-risk triage, etc.).
+    // Color-sniffing is fragile (hexes vary), so we match the label.
+    const badgeLabel = (e.badge?.label || '').toLowerCase();
+    const badgeIsAlarm = /critical|emergency|red|severe|abnormal|high risk|overdue|hypo|hyper/.test(badgeLabel);
+    // Only rows that actually carry more than the four columns show
+    // get a disclosure — an expander that opens onto nothing is worse
+    // than no expander.
+    // A consultation row always has detail once the signature slot is
+    // available, even when the record itself carries no subtitle/meta.
+    const signatureSlot = e.category === 'consultation' && e.docId
+      ? props.renderRecordSignature?.(e.docId)
+      : undefined;
+    const hasDetail = Boolean(e.subtitle || e.meta || signatureSlot);
+    const isOpen = hasDetail && expanded.has(e.id);
+    const isFocused = !!e.docId && e.docId === focusId;
+    return (
+      <Fragment key={e.id}>
+        <tr
+          id={`timeline-row-${e.id}`}
+          className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${hasDetail ? ' has-detail' : ''}${isOpen ? ' is-open' : ''}${nested ? ' is-nested' : ''}`}
+          style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
+          {...(hasDetail ? clickable(() => toggleDetail(e.id), { label: `${isOpen ? 'Hide' : 'Show'} details for ${e.title}` }) : {})}
+          aria-expanded={hasDetail ? isOpen : undefined}
+        >
+          <td className="tamam-activity-date" style={nested ? { paddingLeft: 28 } : undefined}><time dateTime={e.date}>{dateLabel}</time></td>
+          <td>
+            <span className="tamam-activity-type">
+              {t(cfg.labelKey)}
+            </span>
+          </td>
+          <td className="tamam-activity-title">{e.title}</td>
+          <td>
+            {e.badge?.dot
+              ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title="Priority indicator" />
+              : e.badge?.label
+                ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
+                : <span className="tamam-activity-dash">—</span>}
+          </td>
+        </tr>
+        {isOpen && (
+          <tr className="tamam-activity-detail">
+            {/* The detail cell stops click propagation: the parent row
+                toggles the disclosure, and a click on Sign inside it
+                would otherwise collapse the panel it was aimed at. */}
+            <td colSpan={4} {...stopsClickPropagation}>
+              {e.subtitle && <p>{e.subtitle}</p>}
+              {e.meta && <small>{e.meta}</small>}
+              {signatureSlot && <div style={{ marginTop: 10 }}>{signatureSlot}</div>}
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    );
+  };
+
   return (
     <ChartSection
-      title="Activity"
+      title={t('timeline.pageTitle')}
       filterSlot={(
         <div className="tamam-activity-filters" role="tablist" aria-label="Filter patient activity">
           {categoryOptions.map(option => (
@@ -325,14 +495,13 @@ export default function PatientTimeline(props: PatientTimelineProps) {
       onSearchChange={setSearch}
     >
       <div className="tamam-activity-summary">
-        <span><strong>{visibleEvents.length}</strong> {filter === 'all' ? 'events' : 'matching events'}</span>
+        <span><strong>{visibleCount}</strong> {filter === 'all' ? 'events' : 'matching events'}</span>
         <span>Most recent first</span>
       </div>
-      {/* One line per event. The timeline rail (dot + connector) is gone: it
-         cost a 30px column and ~34px of height per row to say only "these are
-         in order", which the date column already says. Detail that used to
-         sit under every title now lives behind a per-row disclosure, so the
-         table stays scannable and only the row you ask about expands. */}
+      {/* One line per VISIT (encounter), or per calendar day for events that
+         belong to no encounter. A visit opens onto its item-level rows, which
+         are the original event rows. A lone event with no encounter has
+         nothing to group, so it renders as a plain row. */}
       <table className="tamam-table tamam-table--fixed tamam-activity-table">
         <colgroup>
           <col /><col /><col /><col />
@@ -346,75 +515,46 @@ export default function PatientTimeline(props: PatientTimelineProps) {
           </tr>
         </thead>
         <tbody>
-          {visibleEvents.length === 0 && (
+          {visibleGroups.length === 0 && (
             <tr>
               <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
                 <OmrsEmptyState itemLabel={events.length === 0 ? 'activity' : 'matching activity'} />
               </td>
             </tr>
           )}
-          {visibleEvents.map(e => {
-            const cfg = CATEGORY_CONFIG[e.category];
-            const dateLabel = (() => {
-              try {
-                return new Date(e.date).toLocaleDateString(undefined, {
-                  year: 'numeric', month: 'short', day: 'numeric',
-                  ...(e.date.includes('T') ? { hour: '2-digit', minute: '2-digit' } : {}),
-                });
-              } catch { return e.date; }
-            })();
-            // An event counts as "alarming" when its badge text reads as a
-            // clinical emergency (critical lab, high-risk triage, etc.).
-            // Color-sniffing is fragile (hexes vary), so we match the label.
-            const badgeLabel = (e.badge?.label || '').toLowerCase();
-            const badgeIsAlarm = /critical|emergency|red|severe|abnormal|high risk|overdue|hypo|hyper/.test(badgeLabel);
-            // Only rows that actually carry more than the four columns show
-            // get a disclosure — an expander that opens onto nothing is worse
-            // than no expander.
-            // A consultation row always has detail once the signature slot is
-            // available, even when the record itself carries no subtitle/meta.
-            const signatureSlot = e.category === 'consultation' && e.docId
-              ? props.renderRecordSignature?.(e.docId)
-              : undefined;
-            const hasDetail = Boolean(e.subtitle || e.meta || signatureSlot);
-            const isOpen = hasDetail && expanded.has(e.id);
-            const isFocused = !!e.docId && e.docId === focusId;
+          {visibleGroups.map(({ group, items }) => {
+            if (!group.encounterId && group.events.length === 1) return renderEvent(items[0], false);
+            const summary = summarizeGroup(group, t);
+            // While searching, groups open so a match is never hidden behind a collapsed visit.
+            const isOpen = openGroups.has(group.id) || searchQuery !== '';
+            const Chevron = isOpen ? ChevronDown : ChevronRight;
             return (
-              <Fragment key={e.id}>
+              <Fragment key={group.id}>
                 <tr
-                  id={`timeline-row-${e.id}`}
-                  className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${hasDetail ? ' has-detail' : ''}${isOpen ? ' is-open' : ''}`}
-                  style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
-                  {...(hasDetail ? clickable(() => toggleDetail(e.id), { label: `${isOpen ? 'Hide' : 'Show'} details for ${e.title}` }) : {})}
-                  aria-expanded={hasDetail ? isOpen : undefined}
+                  id={`timeline-group-${group.id}`}
+                  className={`tamam-activity-tr tamam-activity-group has-detail${isOpen ? ' is-open' : ''}`}
+                  {...clickable(() => toggleGroup(group.id), { label: `${isOpen ? 'Hide' : 'Show'} items for ${summary.title}` })}
+                  aria-expanded={isOpen}
                 >
-                  <td className="tamam-activity-date"><time dateTime={e.date}>{dateLabel}</time></td>
+                  <td className="tamam-activity-date"><time dateTime={group.date}>{formatEventDate(group.date)}</time></td>
                   <td>
                     <span className="tamam-activity-type">
-                      {t(cfg.labelKey)}
+                      <Chevron className="w-3.5 h-3.5" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 4 }} />
+                      {group.encounterId ? t('timeline.visit') : t('timeline.dayType')}
                     </span>
                   </td>
-                  <td className="tamam-activity-title">{e.title}</td>
+                  <td className="tamam-activity-title">
+                    <strong>{summary.title}</strong>
+                    {summary.detail && <div className="tamam-cell-sub">{summary.detail}</div>}
+                    {summary.counts && <div className="tamam-cell-sub">{summary.counts}</div>}
+                  </td>
                   <td>
-                    {e.badge?.dot
-                      ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title="Priority indicator" />
-                      : e.badge?.label
-                        ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
-                        : <span className="tamam-activity-dash">—</span>}
+                    {summary.badge?.label
+                      ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: summary.badge.bg, color: summary.badge.color, borderColor: `${summary.badge.color}30` }}>{summary.badge.label}</em>
+                      : <span className="tamam-activity-dash">—</span>}
                   </td>
                 </tr>
-                {isOpen && (
-                  <tr className="tamam-activity-detail">
-                    {/* The detail cell stops click propagation: the parent row
-                        toggles the disclosure, and a click on Sign inside it
-                        would otherwise collapse the panel it was aimed at. */}
-                    <td colSpan={4} {...stopsClickPropagation}>
-                      {e.subtitle && <p>{e.subtitle}</p>}
-                      {e.meta && <small>{e.meta}</small>}
-                      {signatureSlot && <div style={{ marginTop: 10 }}>{signatureSlot}</div>}
-                    </td>
-                  </tr>
-                )}
+                {isOpen && items.map(e => renderEvent(e, true))}
               </Fragment>
             );
           })}

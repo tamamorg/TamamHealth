@@ -21,16 +21,19 @@ import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSectio
 import { noteTypeMenuOrder } from './CreateNoteButton';
 import { useToast } from '@/components/Toast';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
 import { clickable } from '@/lib/a11y';
+import { listClinicalNotes } from '@/lib/clinical-notes/note-service';
+import { noteTypeLabel } from '@/lib/clinical-notes/note-labels';
+import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
+import { NOTE_TYPES, type NoteTypeId } from '@/lib/clinical-notes/note-catalog';
+import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import {
-  listClinicalNotes, notePreview, createClinicalNote,
-} from '@/lib/clinical-notes/note-service';
-import {
-  NOTE_TYPES, getNoteType, type NoteTypeId,
-} from '@/lib/clinical-notes/note-catalog';
-import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
+  mergeNoteRows, filterNoteRows, statusCounts, typeCounts, STATUS_FILTERS,
+  RECORD_TYPE_KEY, type NoteRow, type StatusFilter,
+} from './notes-list-model';
 import './clinical-notes.css';
-import { todayIso } from '@/lib/date-utils';
+import './note-viewer.css';
 
 const PAGE_SIZE = 10;
 
@@ -43,18 +46,26 @@ interface NotesListProps {
   currentUser: { _id: string; name?: string; username?: string; hospitalId?: string; hospitalName?: string; orgId?: string } | null;
   /** Hides the create controls where the caller has its own. */
   showCreate?: boolean;
-  /** Open a note in place (the chart's drawer) instead of the /notes route. */
-  onOpenNote?: (noteId: string) => void;
-  /** Bump to reload — the chart increments this when its note drawer closes,
-   *  since the autosaving editor may have changed what the rows should say. */
+  /** Open a note in place (the chart's drawer) instead of the /notes route.
+   *  `kind` is 'record' for a read-only consultation record. */
+  onOpenNote?: (noteId: string, kind: 'clinical' | 'record') => void;
+  /** Bump to reload, since the autosaving editor may have changed the rows. */
   refreshToken?: number;
 }
 
-const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
-  draft: { text: 'Unsigned', cls: 'is-draft' },
-  signed: { text: 'Signed', cls: 'is-signed' },
-  amended: { text: 'Amended', cls: 'is-amended' },
-  awaiting_cosign: { text: 'Awaiting co-sign', cls: 'is-cosign' },
+const STATUS_BADGE: Record<NoteStatus, { key: string; cls: string }> = {
+  draft: { key: 'notesList.statusUnsigned', cls: 'is-draft' },
+  signed: { key: 'notesList.statusSigned', cls: 'is-signed' },
+  amended: { key: 'notesList.statusAmended', cls: 'is-amended' },
+  awaiting_cosign: { key: 'notesList.statusCosign', cls: 'is-cosign' },
+};
+
+const STATUS_CHIP_KEY: Record<StatusFilter, string> = {
+  all: 'notesList.statusAll',
+  unsigned: 'notesList.statusUnsigned',
+  signed: 'notesList.statusSigned',
+  awaiting_cosign: 'notesList.statusCosign',
+  amended: 'notesList.statusAmended',
 };
 
 export default function NotesList({
@@ -65,12 +76,15 @@ export default function NotesList({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const scope = useDataScope();
+  const { createNote, creating } = useCreateNote(currentUser);
+  const { records } = useMedicalRecords(patientId);
 
   const [notes, setNotes] = useState<ClinicalNoteDoc[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const [newType, setNewType] = useState<NoteTypeId>('soap');
   const [search, setSearch] = useState('');
+  const [typeKey, setTypeKey] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
 
@@ -93,43 +107,35 @@ export default function NotesList({
 
   const handleCreate = async (noteType: NoteTypeId = newType) => {
     if (!patientId || !patientName) return;
-    setCreating(true);
     try {
-      const note = await createClinicalNote({
-        patientId,
-        patientName,
-        mrn,
-        patientDob,
-        noteType,
-        serviceDate: todayIso(),
-        serviceTime: new Date().toTimeString().slice(0, 5),
-        assignedToId: currentUser?._id,
-        assignedToName: currentUser?.name || currentUser?.username,
-        authorId: currentUser?._id,
-        authorName: currentUser?.name || currentUser?.username,
-        hospitalId: currentUser?.hospitalId,
-        hospitalName: currentUser?.hospitalName,
-        orgId: currentUser?.orgId,
-      });
-      if (onOpenNote) { onOpenNote(note._id); setCreating(false); void load(); }
-      else router.push(`/notes/${note._id}`);
+      const note = await createNote(
+        { patientId, patientName, mrn, patientDob, noteType },
+        { navigate: !onOpenNote },
+      );
+      if (note && onOpenNote) { onOpenNote(note._id, 'clinical'); void load(); }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not start the note.', 'error');
-      setCreating(false);
     }
   };
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter(n => [
-      getNoteType(n.noteType).label,
-      notePreview(n),
-      n.signedByName, n.assignedToName, n.authorName,
-      n.serviceDate,
-      STATUS_LABEL[n.status]?.text,
-    ].some(field => field?.toLowerCase().includes(q)));
-  }, [notes, search]);
+  const labelOf = useCallback((r: NoteRow) => {
+    if (r.kind === 'record') return t('notesList.recordConsultation');
+    if (r.typeKey === 'phone') return t('notesList.phoneEncounter');
+    if (r.kind === 'legacy') return t('notesList.legacyNote');
+    return noteTypeLabel(t, r.typeKey);
+  }, [t]);
+  const statusLabelOf = useCallback((s: NoteStatus) => t(STATUS_BADGE[s]?.key ?? STATUS_BADGE.draft.key), [t]);
+
+  const allRows = useMemo(
+    () => mergeNoteRows(notes, patientId ? records : [], [], patientName),
+    [notes, records, patientId, patientName],
+  );
+  const types = useMemo(() => typeCounts(allRows), [allRows]);
+  const counts = useMemo(() => statusCounts(allRows, typeKey), [allRows, typeKey]);
+  const filtered = useMemo(
+    () => filterNoteRows(allRows, { typeKey, status: statusFilter, search, labelOf, statusLabelOf }),
+    [allRows, typeKey, statusFilter, search, labelOf, statusLabelOf],
+  );
 
   const unsignedCount = useMemo(
     () => notes.filter(n => n.status === 'draft' || n.status === 'awaiting_cosign').length,
@@ -138,6 +144,13 @@ export default function NotesList({
 
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const canCreate = showCreate && Boolean(patientId);
+  const filtering = search.trim() !== '' || typeKey !== 'all' || statusFilter !== 'all';
+
+  const openRow = (row: NoteRow) => {
+    if (row.kind === 'legacy') return;
+    if (onOpenNote) onOpenNote(row.id, row.kind);
+    else if (row.kind === 'clinical') router.push(`/notes/${row.id}`);
+  };
 
   return (
     <ChartSection
@@ -175,10 +188,36 @@ export default function NotesList({
       )}
 
       {unsignedCount > 0 && (
-        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
-          {unsignedCount} unsigned {unsignedCount === 1 ? 'note' : 'notes'} — unsigned notes are not
-          yet part of the record.
+        <p className="tamam-nl-helper">
+          {unsignedCount} {t('notesList.statusUnsigned').toLowerCase()} · {t('notesList.count', { shown: filtered.length, total: allRows.length })}
         </p>
+      )}
+
+      {allRows.length > 0 && (
+        <div className="tamam-nl-filters">
+          <div className="tamam-nl-chipgroup" role="group" aria-label={t('notesList.filterType')}>
+            <button type="button" className="tamam-nl-chip" aria-pressed={typeKey === 'all'}
+              onClick={() => { setTypeKey('all'); setPage(1); }}>
+              {t('notesList.typeAll')} <span className="tamam-nl-chip-count">{allRows.length}</span>
+            </button>
+            {types.map(ty => (
+              <button key={ty.typeKey} type="button" className="tamam-nl-chip" aria-pressed={typeKey === ty.typeKey}
+                onClick={() => { setTypeKey(ty.typeKey); setPage(1); }}>
+                {ty.typeKey === RECORD_TYPE_KEY ? t('notesList.recordConsultation')
+                  : ty.typeKey === 'phone' ? t('notesList.phoneEncounter') : noteTypeLabel(t, ty.typeKey)}
+                {' '}<span className="tamam-nl-chip-count">{ty.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="tamam-nl-chipgroup" role="group" aria-label={t('notesList.filterStatus')}>
+            {STATUS_FILTERS.map(sf => (
+              <button key={sf} type="button" className="tamam-nl-chip" aria-pressed={statusFilter === sf}
+                onClick={() => { setStatusFilter(sf); setPage(1); }}>
+                {t(STATUS_CHIP_KEY[sf])} <span className="tamam-nl-chip-count">{counts[sf]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {loading && <div className="cn-empty">Loading notes…</div>}
@@ -205,10 +244,10 @@ export default function NotesList({
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={patientId ? 5 : 6} style={{ cursor: 'default', background: 'transparent' }}>
-                  {search.trim() ? (
+                  {filtering && allRows.length > 0 ? (
                     <div className="cn-empty">
                       <FileText size={22} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
-                      No notes match &ldquo;{search.trim()}&rdquo;.
+                      {t('notesList.noMatch')}
                     </div>
                   ) : (
                     <OmrsEmptyState
@@ -220,26 +259,27 @@ export default function NotesList({
                 </td>
               </tr>
             )}
-            {pageRows.map((note) => {
-              const status = STATUS_LABEL[note.status] ?? STATUS_LABEL.draft;
+            {pageRows.map((row) => {
+              const status = STATUS_BADGE[row.status] ?? STATUS_BADGE.draft;
+              const openable = row.kind !== 'legacy' && (Boolean(onOpenNote) || row.kind === 'clinical');
+              const label = labelOf(row);
               return (
                 <tr
-                  key={note._id}
-                  className="tamam-clickable-row"
-                  {...clickable(
-                    () => (onOpenNote ? onOpenNote(note._id) : router.push(`/notes/${note._id}`)),
-                    { label: `Open ${getNoteType(note.noteType).label} note — ${note.serviceDate}` },
-                  )}
+                  key={row.key}
+                  className={openable ? 'tamam-clickable-row' : undefined}
+                  {...(openable
+                    ? clickable(() => openRow(row), { label: t('notesList.openNote', { type: label, date: row.date }) })
+                    : {})}
                 >
-                  <td className="tamam-cell-strong">{getNoteType(note.noteType).label}</td>
-                  <td className="tamam-cell-note">{notePreview(note)}</td>
-                  <td>{note.signedByName || note.assignedToName || note.authorName || '—'}</td>
-                  {!patientId && <td>{note.patientName}</td>}
+                  <td className="tamam-cell-strong">{label}</td>
+                  <td className="tamam-cell-note">{row.preview}</td>
+                  <td>{row.author || '—'}</td>
+                  {!patientId && <td>{row.patientName}</td>}
                   <td>
-                    {note.serviceDate}
-                    {note.serviceTime ? ` ${note.serviceTime}` : ''}
+                    {row.date}
+                    {row.time ? ` ${row.time}` : ''}
                   </td>
-                  <td><span className={`cn-badge ${status.cls}`}>{status.text}</span></td>
+                  <td><span className={`cn-badge ${status.cls}`}>{t(status.key)}</span></td>
                 </tr>
               );
             })}

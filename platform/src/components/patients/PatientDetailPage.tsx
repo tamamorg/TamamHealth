@@ -3,6 +3,7 @@ import { PostConsultPanel } from '@/modules/post-consult/client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/Modal';
+import ClinicalNoteViewer from '@/components/clinical-notes/ClinicalNoteViewer';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -85,7 +86,8 @@ import { usePatientAppointments } from '@/lib/hooks/useAppointments';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTriage } from '@/lib/hooks/useTriage';
-import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
+import { FOCUSED_ROW_STYLE } from '@/components/ehr/chart/sections/rowFocus';
+import { buildChartLatestVitals } from '@/lib/chart-latest-vitals';
 import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
@@ -284,6 +286,9 @@ export default function PatientDetailPage() {
   // Bumped when the note drawer closes so the Notes tab under it reloads —
   // the editor autosaves, so whatever was typed is already on disk by then.
   const [notesRefreshToken, setNotesRefreshToken] = useState(0);
+  // A note opened from the Notes tab is read over the chart, not by leaving
+  // it; a draft's Edit hands it to the note drawer.
+  const [noteViewer, setNoteViewer] = useState<{ id: string; kind: 'clinical' | 'record' } | null>(null);
   // One-shot request for a tab's ChartSection to pop its own "Add" form open
   // (e.g. the Facesheet Problems card's "Add" → Conditions tab + add modal).
   const [sectionAddRequest, setSectionAddRequest] = useState<'problems' | 'allergies' | null>(null);
@@ -382,14 +387,30 @@ export default function PatientDetailPage() {
   }, [id, loading, scopedPatient, currentUser?.orgId, currentUser?.role]);
 
   const patient = scopedPatient ?? (fallbackPatient?._id === id ? fallbackPatient : undefined);
-  const { records, reload: reloadRecords } = useMedicalRecords(patient?._id);
+  const { records, loading: recordsLoading, reload: reloadRecords } = useMedicalRecords(patient?._id);
   const { referrals: patientReferrals } = usePatientReferrals(patient?._id);
   const { results: allLabResults, reload: reloadLabResults } = useLabResults(patient?._id);
   const { immunizations: allImmunizations } = useImmunizations(patient?._id);
   const { visits: allANCVisits } = useANC();
   const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
+  // Deep-linked appointment: page to its slice of the newest-first list, then
+  // scroll it into view (same pattern as the other focus-capable sections).
+  useEffect(() => {
+    if (activeTab !== 'appointments' || !focusId) return;
+    const ts = (a: { appointmentDate: string; appointmentTime?: string }) =>
+      new Date(`${a.appointmentDate}T${a.appointmentTime || '00:00'}:00`).getTime();
+    const sorted = [...(patientAppointments || [])].sort((a, b) => ts(b) - ts(a));
+    const idx = sorted.findIndex(a => a._id === focusId);
+    if (idx < 0) return;
+    setApptSearch('');
+    setApptPage(Math.floor(idx / APPT_PAGE_SIZE) + 1);
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`appointment-row-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab, focusId, patientAppointments]);
   const { prescriptions: allPrescriptions } = usePrescriptions(patient?._id);
-  const { triages: patientTriages } = useTriage(patient?._id);
+  const { triages: patientTriages, loading: triageLoading } = useTriage(patient?._id);
   const latestShiftHandoff = usePatientHandoff(patient?._id);
   // Merged vitals history across both places they're captured — a consult's
   // own vitalSigns and a triage stop's own vitals fields — normalized and
@@ -398,7 +419,15 @@ export default function PatientDetailPage() {
   // those readings instead of an older or blank one. Declared before the
   // loading/not-found early return below, alongside the other data hooks —
   // no hook in this component is called after that return.
-  const vitalsTimeline = useMemo(() => mergeVitalsTimeline(records, patientTriages), [records, patientTriages]);
+  // Both sources must have resolved before any reading is called "latest":
+  // drawing whichever arrived first showed an older consult reading, then
+  // swapped to the newer triage set a moment later.
+  const { ready: vitalsReady, timeline: vitalsTimeline } = useMemo(() => buildChartLatestVitals({
+    records,
+    triages: patientTriages,
+    recordsReady: !recordsLoading && !!scope,
+    triageReady: !triageLoading && !!scope,
+  }), [records, patientTriages, recordsLoading, triageLoading, scope]);
   const latestPatientTriage = useMemo(
     () => [...patientTriages].sort((a, b) => (b.triagedAt || b.createdAt || '').localeCompare(a.triagedAt || a.createdAt || ''))[0],
     [patientTriages],
@@ -419,7 +448,12 @@ export default function PatientDetailPage() {
   // Defence in depth: if a restricted viewer lands on (or deep-links to) a tab
   // outside their set, snap them back so those panels never render.
   useEffect(() => {
-    if (allowedTabIds && !allowedTabIds.includes(activeTab)) {
+    // A restricted viewer who opened the chart without naming a section also
+    // moves on: their summary only says "clinical information is restricted",
+    // so the tab their role came for is the useful first screen. Choosing
+    // "Patient summary" from the rail sets ?tab=overview and is respected.
+    const openedWithoutSection = activeTab === 'overview' && !searchParams.get('tab');
+    if (allowedTabIds && (!allowedTabIds.includes(activeTab) || openedWithoutSection)) {
       const landing = chartLandingTab(allowedTabIds);
       setActiveTab(landing);
       // A correction, not navigation: replace the denied `?tab=` rather than
@@ -1631,7 +1665,6 @@ export default function PatientDetailPage() {
                 onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onEdit={openEditModal}
-                onStickyNote={() => { if (canViewClinical) selectTab('notes'); }}
                 // Only a link for roles that can open the section — for the
                 // desk, bench and imaging roles the click bounced them to their
                 // landing tab instead.
@@ -1651,6 +1684,7 @@ export default function PatientDetailPage() {
             }
             vitalsBand={canViewClinical ? (
               <ChartVitalsBand
+                loading={!vitalsReady}
                 // The newest reading overall, including a triage stop the
                 // patient hasn't been formally seen for yet — not only the
                 // newest medical_record, which would leave the band showing
@@ -1696,6 +1730,7 @@ export default function PatientDetailPage() {
             <PatientFacesheetView
               patient={patient}
               latestVitals={latestVitals}
+              vitalsLoading={!vitalsReady}
               latestTriage={latestPatientTriage}
               problems={patientProblems}
               prescriptions={(allPrescriptions || []).filter(rx => rx.patientId === patient._id)}
@@ -1756,7 +1791,11 @@ export default function PatientDetailPage() {
                           </tr>
                         )}
                         {apptPageRows.map(appt => (
-                          <tr key={appt._id}>
+                          <tr
+                            key={appt._id}
+                            id={`appointment-row-${appt._id}`}
+                            style={appt._id === focusId ? FOCUSED_ROW_STYLE : undefined}
+                          >
                             <td className="font-mono">{formatDate(appt.appointmentDate)}</td>
                             <td>{formatClockTime(appt.appointmentTime) || '—'}</td>
                             <td>
@@ -1813,6 +1852,7 @@ export default function PatientDetailPage() {
           {activeTab === 'problems' && patient && (
             <div className="space-y-4">
               <ConditionsSection
+                focusId={focusId}
                 patientId={patient._id}
                 patientName={patientFullName(patient)}
                 noKnownProblems={patient.noKnownProblems}
@@ -1828,6 +1868,7 @@ export default function PatientDetailPage() {
           {activeTab === 'allergies' && patient && (
             <div className="space-y-4">
               <AllergiesSection
+                focusId={focusId}
                 patient={patient}
                 autoOpenAdd={sectionAddRequest === 'allergies'}
                 onAutoOpenHandled={() => setSectionAddRequest(null)}
@@ -1849,16 +1890,30 @@ export default function PatientDetailPage() {
                 patientDob={patient.dateOfBirth}
                 currentUser={currentUser}
                 showCreate={canConsult}
-                // Opening a note leaves the chart for /notes/[id]: the note
-                // is a document to be read and signed in full, and the
-                // drawer gave it a third of the screen next to the chart it
-                // was already summarising.
+                // Reading a note no longer leaves the chart: it opens over it,
+                // read-only, with addendum and print. Drafts continue in the
+                // note drawer from the viewer's Edit.
+                onOpenNote={(id, kind) => setNoteViewer({ id, kind })}
                 refreshToken={notesRefreshToken}
               />
               {/* Telephone contacts stay separate: they are care-team messages
                   about a patient, not documentation of an encounter. PhoneNotes
                   brings its own ChartSection card. */}
               <PhoneNotes patient={patient} />
+              {noteViewer && (
+                <Modal
+                  className="tamam-dialog"
+                  width={880}
+                  onClose={() => { setNoteViewer(null); setNotesRefreshToken(n => n + 1); }}
+                >
+                  <ClinicalNoteViewer
+                    noteId={noteViewer.id}
+                    kind={noteViewer.kind}
+                    onClose={() => { setNoteViewer(null); setNotesRefreshToken(n => n + 1); }}
+                    onEdit={id => { setNoteViewer(null); setChartPanelRequest(`clinical-note:${id}`); }}
+                  />
+                </Modal>
+              )}
             </div>
           )}
 
@@ -1893,6 +1948,11 @@ export default function PatientDetailPage() {
 
           {activeTab === 'careChecklist' && patient && (
             <div className="space-y-4">
+              {/* The rail calls this section "Care plan"; without a page title
+                  it opened under whichever panel came first ("Screenings"). */}
+              <div className="tebra-facesheet">
+                <div className="tebra-section-title"><h1>{t('chart.carePlanTitle')}</h1></div>
+              </div>
               <PostConsultPanel key={patient._id} patientId={patient._id} embedded />
               <ScreeningsPanel patient={patient} />
               <RemindersPanel patient={patient} />
@@ -2104,6 +2164,7 @@ export default function PatientDetailPage() {
               same service the /immunizations module writes with. */}
           {activeTab === 'immunizations' && (
             <ImmunizationsSection
+              focusId={focusId}
               patient={patient}
               patientName={patientFullName(patient)}
               canRecord={canConsult || canRecordVitalEvents}
@@ -2657,6 +2718,7 @@ function FacesheetPanelHead({
 function PatientFacesheetView({
   patient,
   latestVitals,
+  vitalsLoading = false,
   latestTriage,
   problems,
   prescriptions,
@@ -2673,6 +2735,8 @@ function PatientFacesheetView({
 }: {
   patient: PatientDoc;
   latestVitals?: ChartVitalsLike;
+  /** True until every vitals source has resolved — never show a stale reading as latest. */
+  vitalsLoading?: boolean;
   latestTriage?: TriageDoc;
   problems: ProblemDoc[];
   prescriptions: PrescriptionDoc[];
@@ -2689,6 +2753,7 @@ function PatientFacesheetView({
   onTogglePanel: (panelId: FacesheetPanelId) => void;
   onResetPanels: () => void;
 }) {
+  const { t } = useTranslation();
   const activeProblems = problems.filter(problem => problem.status === 'active' || problem.status === 'chronic');
   // "Current" = anything not stopped. A dispensed medicine is the one the
   // patient is actually taking — excluding it (the old filter) made the panel
@@ -2815,7 +2880,9 @@ function PatientFacesheetView({
             )}
           </div>
         )}
-        {latestVitals ? (
+        {vitalsLoading ? (
+          <p className="tebra-none">{t('chart.vitalsLoading')}</p>
+        ) : latestVitals ? (
           <div className="tebra-vitals">
             <span className={bpElevated ? 'is-out-of-range' : ''}>BP <strong>{latestVitals.systolic && latestVitals.diastolic ? `${latestVitals.systolic}/${latestVitals.diastolic}` : '-'}</strong></span>
             <span>Pulse <strong>{latestVitals.pulse ?? '-'}</strong></span>

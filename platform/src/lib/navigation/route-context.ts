@@ -125,14 +125,26 @@ const DYNAMIC_ROUTES: DynamicRoute[] = [
  * not share a dashboard (an org admin lands on /facility-management, a medical
  * superintendent on /dashboard).
  */
-export function resolveRouteContext(pathname: string, homeHref = '/dashboard'): RouteContext | null {
+export function resolveRouteContext(
+  pathname: string,
+  homeHref = '/dashboard',
+  returnTo?: string | null,
+): RouteContext | null {
   const normalizedPath = normalizePath(pathname);
   const exact = EXACT_ROUTES[normalizedPath];
   if (exact) return exact;
 
   const segments = normalizedPath.split('/').filter(Boolean);
   const dynamicRoute = DYNAMIC_ROUTES.find(route => route.matches(segments));
-  if (dynamicRoute) return dynamicRoute.context;
+  if (dynamicRoute) {
+    // A patient chart opened from a worklist names that worklist as its first
+    // crumb, so the one back affordance returns to where the clinician was.
+    if (segments[0] === 'patients') {
+      const origin = chartOriginCrumb(returnTo, normalizedPath);
+      if (origin) return context(origin.href, origin.labelKey, 'routeContext.patientRecord');
+    }
+    return dynamicRoute.context;
+  }
 
   for (const group of GROUPS) {
     if (!normalizedPath.startsWith(`${group.root}/`)) continue;
@@ -145,6 +157,38 @@ export function resolveRouteContext(pathname: string, homeHref = '/dashboard'): 
   }
 
   return null;
+}
+
+/** Label for the screen a chart was opened from, keyed on its first path segment. */
+const ORIGIN_LABELS: Record<string, string> = {
+  dashboard: 'breadcrumb.dashboard',
+  appointments: 'routeContext.appointments',
+  lab: 'breadcrumb.lab',
+  pharmacy: 'breadcrumb.pharmacy',
+  billing: 'routeContext.billing',
+  messages: 'breadcrumb.messages',
+  notes: 'routeContext.notes',
+  referrals: 'breadcrumb.referrals',
+  wards: 'routeContext.wards',
+  rooming: 'routeContext.rooming',
+  triage: 'routeContext.triage',
+  'front-desk': 'chart.crumb.frontDesk',
+  immunizations: 'nav.immunizations',
+};
+
+/** Crumb for a safe, non-self, non-/patients returnTo; null otherwise. */
+export function chartOriginCrumb(
+  returnTo: string | null | undefined,
+  currentPathname: string,
+): { href: string; labelKey: string } | null {
+  if (!returnTo) return null;
+  const href = safeReturnTo(returnTo, '');
+  if (href !== returnTo) return null;
+  const path = normalizePath(href);
+  if (path === normalizePath(currentPathname)) return null;
+  const first = path.split('/').filter(Boolean)[0];
+  if (!first || first === 'patients') return null;
+  return { href, labelKey: ORIGIN_LABELS[first] ?? 'chart.crumb.worklist' };
 }
 
 /** Resolve a validated returnTo, falling back to the route's real parent. */

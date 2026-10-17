@@ -18,8 +18,10 @@ import { emitSyncEvent } from '../services/sync-event-service';
 import type { DataScope } from '../services/data-scope';
 import { filterByScope } from '../services/data-scope';
 import { isProviderRole } from '../clinical-roles';
+import { ValidationError } from '../validation';
 import {
-  getNoteType, resolveSections, isNoteTypeId, RETIRED_SECTIONS, HISTORY_SECTION_IDS,
+  getNoteType, getSectionLabel, getSectionDef, resolveSections, isNoteTypeId, requiredSectionsFor,
+  RETIRED_SECTIONS, HISTORY_SECTION_IDS,
   type NoteTypeId, type NoteSectionId,
 } from './note-catalog';
 import { stripTemplateMarkers } from './section-templates';
@@ -37,8 +39,29 @@ export class NoteLockedError extends Error {
   }
 }
 
+/**
+ * Thrown when a note is signed with required sections still blank. Extends the
+ * platform `ValidationError`; `missing` lets callers list the section ids.
+ */
+export class NoteIncompleteError extends ValidationError {
+  constructor(public readonly missing: NoteSectionId[]) {
+    super({ sections: `Cannot sign: complete ${missing.map(getSectionLabel).join(', ')} first.` });
+    this.name = 'NoteIncompleteError';
+  }
+}
+
 export function isNoteLocked(note: Pick<ClinicalNoteDoc, 'status'>): boolean {
   return note.status === 'signed' || note.status === 'amended';
+}
+
+/**
+ * Locked, or signed and waiting for a co-signature. The editor already shows
+ * an awaiting note read-only; the writes refuse it too, so the supervisor
+ * co-signs exactly what the trainee signed and not a later edit made from
+ * another device or a stale tab.
+ */
+export function isNoteAttested(note: Pick<ClinicalNoteDoc, 'status'>): boolean {
+  return isNoteLocked(note) || note.status === 'awaiting_cosign';
 }
 
 /**
@@ -389,7 +412,7 @@ export async function updateClinicalNote(
   } catch {
     return null;
   }
-  if (isNoteLocked(existing)) throw new NoteLockedError(id);
+  if (isNoteAttested(existing)) throw new NoteLockedError(id);
 
   const updated: ClinicalNoteDoc = { ...existing, ...patch, updatedAt: nowIso() };
   const resp = await db.put(updated);
@@ -433,7 +456,7 @@ export async function saveNoteSection(
   return inNoteOrder(id, async () => {
     const existing = await getClinicalNoteById(id);
     if (!existing) return null;
-    if (isNoteLocked(existing)) throw new NoteLockedError(id);
+    if (isNoteAttested(existing)) throw new NoteLockedError(id);
 
     const sections = [...existing.sections];
     const idx = sections.findIndex(s => s.sectionId === sectionId);
@@ -452,7 +475,7 @@ export async function addNoteSection(
   return inNoteOrder(id, async () => {
     const existing = await getClinicalNoteById(id);
     if (!existing) return null;
-    if (isNoteLocked(existing)) throw new NoteLockedError(id);
+    if (isNoteAttested(existing)) throw new NoteLockedError(id);
     if (existing.sections.some(s => s.sectionId === sectionId)) return existing;
 
     const addedSections = [...(existing.addedSections || []), sectionId];
@@ -539,7 +562,7 @@ export async function removeNoteSection(
   return inNoteOrder(id, async () => {
     const existing = await getClinicalNoteById(id);
     if (!existing) return null;
-    if (isNoteLocked(existing)) throw new NoteLockedError(id);
+    if (isNoteAttested(existing)) throw new NoteLockedError(id);
 
     const def = getNoteType(existing.noteType);
     if (def.sections.includes(sectionId)) return existing;   // not removable
@@ -679,6 +702,8 @@ export interface SignNoteInput {
   signerRole?: string;
   /** Trainee signature that still needs a supervisor's countersignature. */
   awaitingCosign?: boolean;
+  /** Supervisor asked to countersign. Implies `awaitingCosign`. */
+  requestCosignFrom?: { id: string; name: string };
 }
 
 /**
@@ -695,6 +720,7 @@ export async function signClinicalNote(
   input: SignNoteInput,
 ): Promise<ClinicalNoteDoc | null> {
   const db = clinicalNotesDB();
+  const awaitingCosign = Boolean(input.awaitingCosign || input.requestCosignFrom);
   // The lock is taken in the note's write order, behind any section save
   // already on its way. Taken outside it, the signature could read the note
   // before an autosave landed: that save was then refused as "locked" and the
@@ -716,11 +742,16 @@ export async function signClinicalNote(
     if (!hasContent(current)) {
       throw new Error('Cannot sign an empty note — document the encounter first.');
     }
+    const missing = missingRequiredSections(current);
+    if (missing.length > 0) throw new NoteIncompleteError(missing);
 
     const ts = nowIso();
     const next: ClinicalNoteDoc = {
       ...current,
-      status: input.awaitingCosign ? 'awaiting_cosign' : 'signed',
+      status: awaitingCosign ? 'awaiting_cosign' : 'signed',
+      ...(input.requestCosignFrom
+        ? { cosignRequestedId: input.requestCosignFrom.id, cosignRequestedName: input.requestCosignFrom.name }
+        : {}),
       signedBy: input.signedBy,
       signedByName: input.signedByName,
       signedAt: ts,
@@ -753,7 +784,7 @@ export async function signClinicalNote(
   //
   // Best-effort: the signature is the clinical act and must stand even if the
   // visit thread cannot be advanced.
-  if (existing.encounterId && !input.awaitingCosign) {
+  if (existing.encounterId && !awaitingCosign) {
     try {
       if (isProviderRole(input.signerRole)) {
         const { ensurePostConsultHandoff } = await import('@/modules/post-consult/services/handoff-service');
@@ -803,7 +834,7 @@ export async function signClinicalNote(
     }
   }
 
-  if (!input.awaitingCosign) {
+  if (!awaitingCosign) {
     await raiseNotifiableDiseaseAlertsFromNote(updated);
     await closeConsultationProgressForNote(updated, input.signedBy);
   }
@@ -937,7 +968,7 @@ export async function copyNoteForward(
 
   const noteType = input.noteType ?? source.noteType;
   const carried = source.sections
-    .filter(s => (s.text || '').trim().length > 0)
+    .filter(s => (s.text || '').trim().length > 0 && getSectionDef(s.sectionId)?.kind !== 'derived')
     .map(s => ({
       sectionId: s.sectionId,
       text: s.text,
@@ -964,9 +995,81 @@ export async function copyNoteForward(
   return updateClinicalNote(created._id, patch);
 }
 
-/** Any narrative at all — used by the signing guard and list previews. */
+/**
+ * The patient's most recent signed note of a type — the source for
+ * "copy forward from last note". Newest by date of service. Drafts are never
+ * a source (not attested), nor is `excludeId`.
+ */
+export async function findLastSignedNote(
+  patientId: string,
+  noteType: NoteTypeId,
+  scope: DataScope,
+  excludeId?: string,
+): Promise<ClinicalNoteDoc | null> {
+  const rows = await listClinicalNotes({ patientId, noteType, display: 'signed' }, scope);
+  return rows.find(n => n._id !== excludeId && isNoteLocked(n)) ?? null;
+}
+
+/**
+ * Copy the last signed note's narrative into an existing draft (SALT, in
+ * place). Only narrative sections the draft already carries are filled; derived
+ * sections (vitals, medications, allergies, history), coded diagnoses and
+ * signatures are never copied, so today's chart values are read fresh and
+ * nothing is attested twice. Existing text in the draft is overwritten
+ * section-by-section only for sections the source actually has text in; the
+ * caller confirms with the clinician first when the draft already has text.
+ *
+ * Returns null when the draft or a source note cannot be found.
+ */
+export async function copyForwardIntoDraft(
+  draftId: string,
+  scope: DataScope,
+): Promise<ClinicalNoteDoc | null> {
+  const draft = await getClinicalNoteById(draftId, scope);
+  if (!draft || draft.status !== 'draft') return null;
+  const source = await findLastSignedNote(draft.patientId, draft.noteType, scope, draftId);
+  if (!source) return null;
+
+  const carried = new Map(source.sections
+    .filter(s => getSectionDef(s.sectionId)?.kind === 'narrative' && stripTemplateMarkers(s.text || '').trim())
+    .map(s => [s.sectionId, s]));
+  if (carried.size === 0) return null;
+
+  return inNoteOrder(draftId, async () => {
+    const current = await getClinicalNoteById(draftId);
+    if (!current || current.status !== 'draft') return null;
+    const sections = current.sections.map((s) => {
+      const from = carried.get(s.sectionId);
+      return from ? { ...s, text: from.text, templateSelection: from.templateSelection } : s;
+    });
+    return updateClinicalNote(draftId, { sections, copiedFromId: source._id });
+  });
+}
+
+/** Whether one section holds anything: narrative, or coded diagnoses. */
+export function sectionHasContent(section: Pick<NoteSectionContent, 'text' | 'diagnoses'>): boolean {
+  return stripTemplateMarkers(section.text || '').trim().length > 0
+    || (section.diagnoses ?? []).length > 0;
+}
+
+/** Any content at all — used by the signing guard and list previews. */
 export function hasContent(note: Pick<ClinicalNoteDoc, 'sections'>): boolean {
-  return note.sections.some(s => stripTemplateMarkers(s.text || '').trim().length > 0);
+  return note.sections.some(sectionHasContent);
+}
+
+/**
+ * Required sections (see `REQUIRED_SECTIONS`) that are still blank on this
+ * note, in the order the note lays them out. A coded diagnosis counts as an
+ * Assessment; a derived section is never required.
+ */
+export function missingRequiredSections(
+  note: Pick<ClinicalNoteDoc, 'sections' | 'noteType'>,
+): NoteSectionId[] {
+  const required = new Set(requiredSectionsFor(note.noteType));
+  return note.sections
+    .filter(s => required.has(s.sectionId) && getSectionDef(s.sectionId)?.kind !== 'derived')
+    .filter(s => !sectionHasContent(s))
+    .map(s => s.sectionId);
 }
 
 /** First line of narrative, for the note card in the list. */

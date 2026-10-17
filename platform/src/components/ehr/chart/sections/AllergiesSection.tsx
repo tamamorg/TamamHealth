@@ -86,9 +86,11 @@ interface AllergiesSectionProps {
    *  "Add") to open the add-allergy modal as soon as this tab mounts. */
   autoOpenAdd?: boolean;
   onAutoOpenHandled?: () => void;
+  /** Deep-link focus: the allergy `id` to scroll to and highlight. */
+  focusId?: string;
 }
 
-export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandled }: AllergiesSectionProps) {
+export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandled, focusId }: AllergiesSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   // Recording an allergy is a clinical write like Conditions/Problems — gate
@@ -128,6 +130,19 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const rows = query
     ? visibleByStatus.filter(a => `${a.substance} ${a.reaction || ''} ${a.classification || ''} ${a.criticality || ''} ${a.status}`.toLowerCase().includes(query))
     : visibleByStatus;
+  // Deep-link focus: reveal a retired allergy if that is what was linked, then
+  // scroll the row into view once it is rendered.
+  useEffect(() => {
+    if (!focusId) return;
+    const target = entries.find(e => e.id === focusId);
+    if (target && target.status !== 'active') setShowInactive(true);
+  }, [focusId, entries]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`allergy-row-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, showInactive, entries]);
+
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
 
   /** Legacy string-list entries have no stable id to write against — each id is
@@ -254,8 +269,10 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                 return (
                   <tr
                     key={a.id}
+                    id={`allergy-row-${a.id}`}
                     {...clickable(() => setSelectedAllergy(a), { label: `Open allergy — ${a.substance}` })}
                     className={`tamam-clickable-row${a.status === 'active' ? '' : ' is-retired'}`}
+                    style={a.id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
                   >
                     <td className="tamam-cell-strong">{a.substance}</td>
                     <td>

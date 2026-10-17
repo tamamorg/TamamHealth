@@ -25,6 +25,8 @@ import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { formatDate , humanizeStatus } from '@/lib/format-utils';
 import type { ProblemStatus } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { FOCUSED_ROW_STYLE, rowActivation } from './rowFocus';
+import type { ProblemDoc } from '@/lib/db-types';
 
 const STATUS_BADGE: Record<ProblemStatus, string> = {
   active: 'tamam-panel-badge tamam-panel-badge--active',
@@ -46,10 +48,12 @@ interface ConditionsSectionProps {
    *  "Add") to open the add-condition modal as soon as this tab mounts. */
   autoOpenAdd?: boolean;
   onAutoOpenHandled?: () => void;
+  /** Deep-link focus: the condition `_id` to scroll to and highlight. */
+  focusId?: string;
 }
 
 export default function ConditionsSection({
-  patientId, patientName, autoOpenAdd, onAutoOpenHandled, noKnownProblems, reconciledAt,
+  patientId, patientName, autoOpenAdd, onAutoOpenHandled, noKnownProblems, reconciledAt, focusId,
 }: ConditionsSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
@@ -60,6 +64,7 @@ export default function ConditionsSection({
   const { canEditClinical } = usePermissions();
   const { problems, create, setStatus } = useProblems(patientId);
   const [adding, setAdding] = useState(false);
+  const [detail, setDetail] = useState<ProblemDoc | null>(null);
   /** The row mid-save, so a slow write can't be fired twice. */
   const [savingStatus, setSavingStatus] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -89,6 +94,11 @@ export default function ConditionsSection({
     const query = tableSearch.trim().toLowerCase();
     return query ? ordered.filter(problem => `${problem.name} ${problem.icd11Code || ''} ${problem.status} ${problem.onsetDate || ''}`.toLowerCase().includes(query)) : ordered;
   }, [ordered, tableSearch]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`condition-row-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, visibleConditions]);
 
   const handleStatusChange = async (id: string, status: ProblemStatus) => {
     setSavingStatus(id);
@@ -168,7 +178,13 @@ export default function ConditionsSection({
             </thead>
             <tbody>
             {visibleConditions.map(p => (
-                <tr key={p._id}>
+                <tr
+                  key={p._id}
+                  id={`condition-row-${p._id}`}
+                  {...rowActivation(() => setDetail(p), `Open condition — ${p.name}`)}
+                  className="tamam-clickable-row"
+                  style={p._id === focusId ? FOCUSED_ROW_STYLE : undefined}
+                >
                   <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
                   <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>
                   <td>
@@ -196,6 +212,36 @@ export default function ConditionsSection({
           </table>
         )}
       </ChartSection>
+
+      {detail && (
+        <Modal className="tamam-dialog" onClose={() => setDetail(null)} width={480} labelledBy="condition-detail-title">
+          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
+            <div className="flex items-center justify-between">
+              <h2 id="condition-detail-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{detail.name}</h2>
+              <button className="p-1 rounded" onClick={() => setDetail(null)} aria-label="Close" style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+              {([
+                ['Status', humanizeStatus(detail.status)],
+                ['ICD-11 code', detail.icd11Code || detail.icd10Code || '—'],
+                ['Date of onset', detail.onsetDate ? formatDate(detail.onsetDate) : '—'],
+                ['Resolved', detail.resolvedDate ? formatDate(detail.resolvedDate) : '—'],
+                ['Severity', detail.severity ? humanizeStatus(detail.severity) : '—'],
+                ['Recorded by', detail.recordedByName || '—'],
+                ['Recorded', detail.createdAt ? formatDate(detail.createdAt) : '—'],
+                ['Last updated', detail.updatedAt ? formatDate(detail.updatedAt) : '—'],
+              ] as const).map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</dt>
+                  <dd style={{ color: 'var(--text-primary)' }}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {detail.notes && <p className="text-[13px]" style={{ color: 'var(--text-primary)' }}>{detail.notes}</p>}
+            <div className="flex justify-end"><button className="btn btn-sm btn-secondary" onClick={() => setDetail(null)}>Close</button></div>
+          </div>
+        </Modal>
+      )}
 
       {adding && (
         <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-condition-title">
