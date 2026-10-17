@@ -26,7 +26,6 @@ const wrapped: Record<string, PouchDB.Database> = {};
 function getTestDB(name: string): PouchDB.Database {
   if (!databases[name]) {
     databases[name] = new PouchDB(name, { adapter: 'memory' });
-     
     const { wrapEncrypted } = require('@/lib/encrypted-db') as typeof import('@/lib/encrypted-db');
     wrapped[name] = wrapEncrypted(databases[name], name.replace(/^test_/, ''));
   }
