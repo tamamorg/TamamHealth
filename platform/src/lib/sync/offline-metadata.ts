@@ -63,6 +63,12 @@ export async function markDocsSynced(
       // comparing lastSyncedRev to the CURRENT rev (the old check) can never
       // be true for the revision this function just created.
       if (current.offlineSync?.status === 'synced') continue;
+      // No stamp, nothing to clear: hasUnsyncedWrite is already false for it.
+      // Stamping one anyway gave every such doc an extra revision after its
+      // push — and on an append-only trail (audit_log) that second revision is
+      // a rewrite the gateway refuses, which surfaced as "A change was
+      // rejected by the server" on every checkout.
+      if (!current.offlineSync) continue;
       // A doc with live sibling revisions belongs to the conflict path — do
       // not paper over it with "synced".
       if (current._conflicts?.length) continue;

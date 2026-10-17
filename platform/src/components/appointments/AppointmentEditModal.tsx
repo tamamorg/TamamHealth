@@ -28,7 +28,7 @@ import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, Appointmen
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { usePermissions } from '@/lib/hooks/usePermissions';
-import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
+import { canAssignStaffAtFacility, canRescheduleAppointmentRole } from '@/lib/care-team-permissions';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -93,6 +93,10 @@ export default function AppointmentEditModal({
 }) {
   const { currentUser } = useAuth();
   const { canAssignCareTeam } = usePermissions();
+  // Moving the slot is reception's: the server refuses a date/time/duration
+  // change from a clinical role (DOC_UPDATE_ONLY_FIELDS.appointment), so the
+  // fields are locked here rather than saved and then rejected at sync.
+  const canReschedule = canRescheduleAppointmentRole(currentUser?.role);
   const { showToast } = useToast();
   const { t } = useTranslation();
   const { departments } = useSettings();
@@ -242,7 +246,7 @@ export default function AppointmentEditModal({
         room: detail.room || undefined,
         isRecurring: Boolean(detail.recurrence),
         recurrencePattern: detail.recurrence || undefined,
-      });
+      }, currentUser?.role);
       if (!updated) throw new Error('The appointment could not be updated');
 
       // Provider/staff are visit assignments, not merely calendar decoration.
@@ -395,10 +399,15 @@ export default function AppointmentEditModal({
 
           {!inline && <h4 className="appt-edit-section">Date &amp; time</h4>}
           <div className="appt-edit-row">
-            <div><label>Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
-            <div><label>Time</label><Select value={time} onChange={e => setTime(e.target.value)}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</Select></div>
-            <div><label>Duration</label><Select value={duration} onChange={e => setDuration(Number(e.target.value))}>{DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}</Select></div>
+            <div><label>Date</label><input type="date" value={date} disabled={!canReschedule} onChange={e => setDate(e.target.value)} /></div>
+            <div><label>Time</label><Select value={time} disabled={!canReschedule} onChange={e => setTime(e.target.value)}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</Select></div>
+            <div><label>Duration</label><Select value={duration} disabled={!canReschedule} onChange={e => setDuration(Number(e.target.value))}>{DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}</Select></div>
           </div>
+          {!canReschedule && (
+            <p className="appt-edit-hint" style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+              {t('appointments.rescheduleAtFrontDesk')}
+            </p>
+          )}
           <div><label>Notes</label><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} /></div>
         </div>
         )}
@@ -448,7 +457,9 @@ export default function AppointmentEditModal({
           {!inline && <h4 className="appt-edit-section">Visit detail</h4>}
           <div>
             <label>Department</label>
-            <Select value={department} onChange={e => setDepartment(e.target.value)}>
+            {/* Locked with the slot: a department change re-links departmentId,
+                which only reception may amend. */}
+            <Select value={department} disabled={!canReschedule} onChange={e => setDepartment(e.target.value)}>
               {(departments.length ? departments : [department]).map(d => <option key={d} value={d}>{d}</option>)}
             </Select>
           </div>

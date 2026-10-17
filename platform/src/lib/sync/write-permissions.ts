@@ -443,6 +443,41 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
 };
 
 /**
+ * The fields an edit changes that `role` is not allowed to amend on `type`,
+ * judged the way the generated validator judges an amend-only write (below):
+ * every key whose JSON differs between the two revisions, plus every key the
+ * edit removes, that is not on DOC_UPDATE_ONLY_FIELDS. Empty means the
+ * server will accept the edit (or the role has the full-write grant).
+ *
+ * The push filter cannot run this check — the device never sees the server's
+ * copy — so a refused amend used to be written to local PouchDB, look saved,
+ * and come back as a standing "denied" on the sync banner. Services call it
+ * before the local write instead, while the old revision is in hand.
+ */
+export function fieldsOutsideAmendGrant(
+  type: string,
+  role: string | undefined,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): string[] {
+  if (!role) return [];
+  if ((DOC_WRITE_ROLES[type] as readonly string[] | undefined)?.includes(role)) return [];
+  // A role with no amend grant either may change nothing on an existing doc.
+  const amender = (DOC_UPDATE_ONLY_ROLES[type] as readonly string[] | undefined)?.includes(role) === true;
+  const allowed = new Set(amender ? (DOC_UPDATE_ONLY_FIELDS[type] ?? []) : []);
+  const changed = new Set<string>();
+  for (const key of Object.keys(after)) {
+    if (key === '_rev' || after[key] === undefined) continue;
+    if (JSON.stringify(after[key]) !== JSON.stringify(before[key]) && !allowed.has(key)) changed.add(key);
+  }
+  for (const key of Object.keys(before)) {
+    if (key === '_rev') continue;
+    if (after[key] === undefined && before[key] !== undefined && !allowed.has(key)) changed.add(key);
+  }
+  return [...changed];
+}
+
+/**
  * Fields that must never change after a document is created.
  *
  * `orgId` and `hospitalId` are the tenant boundary — a client able to rewrite

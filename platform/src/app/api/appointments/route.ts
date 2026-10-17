@@ -176,8 +176,8 @@ async function postHandler(request: NextRequest) {
       if (!existingForReschedule || filterByScope([existingForReschedule], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       }
-      const { APPOINTMENT_SCHEDULING_ROLES } = await import('@/lib/appointment-status');
-      if (!APPOINTMENT_SCHEDULING_ROLES.includes(auth.role as UserRole)) return forbidden();
+      const { canRescheduleAppointmentRole } = await import('@/lib/care-team-permissions');
+      if (!canRescheduleAppointmentRole(auth.role as UserRole)) return forbidden();
       const newDateErr = validateFutureDate(body.newDate as string, body.newTime as string);
       if (newDateErr) return NextResponse.json({ error: newDateErr }, { status: 400 });
       const { rescheduleAppointment } = await import('@/lib/services/appointment-service');
@@ -185,6 +185,7 @@ async function postHandler(request: NextRequest) {
         body.appointmentId as string,
         body.newDate as string,
         body.newTime as string,
+        auth.role as UserRole,
       );
       if (!result) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       return NextResponse.json({ appointment: result });

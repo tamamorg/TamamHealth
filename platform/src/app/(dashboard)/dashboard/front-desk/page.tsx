@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/lib/context';
+import { useAuth, useSync } from '@/lib/context';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -14,10 +14,10 @@ import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, Triag
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
   APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
   appointmentStatusLabel, appointmentStatusGroup,
-  APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup,
+  APPOINTMENT_STATUS_GROUP_LABELS, APPOINTMENT_SLOT_RELEASED_STATUSES, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { formatCompactDateTime, formatClockTime } from '@/lib/format-utils';
-import { patientRegisteredAt, patientFullName, patientGenderAge, patientAgeLabel } from '@/lib/patient-utils';
+import { patientRegisteredAt, patientDisplayName, patientFullName, patientGenderAge, patientAgeLabel } from '@/lib/patient-utils';
 import { PRIORITY_META, appointmentPriorityLabel, appointmentTriage, isTriagePriority, type TriagePriority } from '@/lib/clinical/triage-display';
 import { buildQueueFromTriage, STAGE_LABELS, deriveAppointmentWait, type QueueStage } from '@/lib/services/patient-queue-service';
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
@@ -163,6 +163,13 @@ export default function FrontDeskDashboardPage() {
   // nothing else prompts anyone to close it). Opened from the Reception
   // panel's "Needs close-out" tile.
   const [closeoutOpen, setCloseoutOpen] = useState(false);
+  // The records behind the "Pending sync" tile, and the patients a doctor
+  // holds with no booking today — both opened from Reception rail tiles.
+  const [pendingSyncOpen, setPendingSyncOpen] = useState(false);
+  const [unbookedOpen, setUnbookedOpen] = useState(false);
+  // Pre-selects the patient when booking is started from the unbooked list.
+  const [bookingPatientId, setBookingPatientId] = useState<string | undefined>(undefined);
+  const { syncStatus, syncNow } = useSync();
 
   const [queueNowMs, setQueueNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -1160,7 +1167,7 @@ export default function FrontDeskDashboardPage() {
   // dialog), so the booking is the one place a visit is started from rather
   // than a second, parallel front door.
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
-    { label: 'Book appointment', icon: Plus, onClick: () => setBookingOpen(true), tone: 'primary' as const },
+    { label: 'Book appointment', icon: Plus, onClick: () => { setBookingPatientId(undefined); setBookingOpen(true); }, tone: 'primary' as const },
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
   ]), [canUseRoute, t]);
 
@@ -1618,19 +1625,63 @@ export default function FrontDeskDashboardPage() {
   // same patient can't appear twice within one of these arrays. Feeds the
   // Reception rail tile below: with the per-row sync chip gone, this count is
   // the whole "is anything unpushed at all" signal on the board.
-  const pendingSyncCount = useMemo(() => {
+  const pendingSyncDocs = useMemo(() => {
     const seen = new Set<string>();
-    let count = 0;
-    const consider = (doc: { _id?: string; offlineSync?: PatientDoc['offlineSync'] }) => {
+    const out: Array<{ id: string; kind: 'patient' | 'appointment' | 'triage'; name: string; status: string; error?: string; at?: string }> = [];
+    const consider = (
+      kind: 'patient' | 'appointment' | 'triage',
+      doc: { _id?: string; offlineSync?: PatientDoc['offlineSync'] },
+      name: string,
+    ) => {
       if (!doc._id || seen.has(doc._id)) return;
       seen.add(doc._id);
-      if (hasUnsyncedWrite(doc)) count++;
+      if (!hasUnsyncedWrite(doc)) return;
+      out.push({
+        id: doc._id, kind, name,
+        status: doc.offlineSync?.status || 'pending',
+        error: doc.offlineSync?.error,
+        at: doc.offlineSync?.lastLocalChangeAt,
+      });
     };
-    patients.forEach(consider);
-    appointments.forEach(consider);
-    triages.forEach(consider);
-    return count;
+    patients.forEach(p => consider('patient', p, patientFullName(p)));
+    appointments.forEach(a => consider('appointment', a, a.patientName));
+    triages.forEach(tr => consider('triage', tr, tr.patientName || ''));
+    return out.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
   }, [patients, appointments, triages]);
+  const pendingSyncCount = pendingSyncDocs.length;
+
+  // The server's own reason for any record it refused this session, by doc id
+  // (sync-service keeps these in memory; see describeDenial).
+  const deniedReasonById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const db of Object.values(syncStatus?.databases ?? {})) {
+      for (const denial of db.deniedDocs ?? []) if (denial.id) map.set(denial.id, denial.reason);
+    }
+    return map;
+  }, [syncStatus]);
+
+  // Patients a doctor holds (patient.assignedDoctor) who have no booking and
+  // no visit today. The doctor's board lists every one of them as an
+  // assigned patient; the desk board is built from appointments and the live
+  // queue, so it never saw them — the two boards disagreed about who was
+  // expected. Listed here so reception can book them in.
+  const assignedUnbooked = useMemo(() => {
+    if (!viewingToday) return [];
+    const seenToday = new Set<string>();
+    // A cancelled / no-show / moved booking leaves the patient unbooked today.
+    for (const a of todaysAppointments) {
+      if (a.patientId && !APPOINTMENT_SLOT_RELEASED_STATUSES.includes(a.status)) seenToday.add(a.patientId);
+    }
+    for (const enc of encounters) {
+      if (isoDateKey(enc.startedAt || enc.createdAt) === today) seenToday.add(enc.patientId);
+    }
+    for (const tr of triages) {
+      if (isoDateKey(tr.triagedAt || tr.createdAt) === today) seenToday.add(tr.patientId);
+    }
+    return patients
+      .filter(p => p.assignedDoctor && p.assignmentStatus !== 'completed' && !seenToday.has(p._id))
+      .sort((a, b) => (b.assignedAt ?? '').localeCompare(a.assignedAt ?? ''));
+  }, [encounters, patients, today, todaysAppointments, triages, viewingToday]);
 
   const metrics = useMemo<EhrCareDashboardMetric[]>(() => {
     const counts = new Map<TriagePriority, number>();
@@ -1656,7 +1707,16 @@ export default function FrontDeskDashboardPage() {
     // Only shown when there is something to say — a synced device adds no
     // tile here, same rule the acuity rows follow for a quiet lane.
     if (pendingSyncCount > 0) {
-      acuityMetrics.push({ label: t('sync.docPendingLabel'), value: pendingSyncCount, tone: 'neutral' });
+      acuityMetrics.push({
+        label: t('sync.docPendingLabel'), value: pendingSyncCount, tone: 'neutral',
+        onClick: () => setPendingSyncOpen(true),
+      });
+    }
+    if (assignedUnbooked.length > 0) {
+      acuityMetrics.push({
+        label: t('frontDesk.assignedUnbooked'), value: assignedUnbooked.length, tone: 'neutral',
+        onClick: () => setUnbookedOpen(true),
+      });
     }
     // Open visits left over from a previous day, waiting for a person to
     // close them (see staleOpenVisits). Clicking opens the close-out list.
@@ -1667,7 +1727,7 @@ export default function FrontDeskDashboardPage() {
       });
     }
     return acuityMetrics;
-  }, [boardQueue, pendingSyncCount, staleVisits, t]);
+  }, [assignedUnbooked.length, boardQueue, pendingSyncCount, staleVisits, t]);
 
   // No subtitle line under the board title: the lane tabs and the Reception
   // status panel already carry the counts, so the "24 patients scheduled"
@@ -1777,7 +1837,8 @@ export default function FrontDeskDashboardPage() {
         {bookingOpen && (
           <BookAppointmentModal
             defaultDate={boardDate}
-            onClose={() => setBookingOpen(false)}
+            defaultPatientId={bookingPatientId}
+            onClose={() => { setBookingOpen(false); setBookingPatientId(undefined); }}
           />
         )}
 
@@ -1824,6 +1885,88 @@ export default function FrontDeskDashboardPage() {
                   </button>
                 </div>
               ))}
+            </div>
+          </Modal>
+        )}
+
+        {unbookedOpen && (
+          <Modal onClose={() => setUnbookedOpen(false)} width={560} labelledBy="fd-unbooked-title">
+            <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <h3 id="fd-unbooked-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{t('frontDesk.assignedUnbooked')}</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('frontDesk.assignedUnbookedBody')}</p>
+              </div>
+              {assignedUnbooked.length === 0 && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('frontDesk.assignedUnbookedEmpty')}</p>
+              )}
+              {assignedUnbooked.map(p => (
+                <div key={p._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border-light)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{patientDisplayName(p)}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                      {p.assignedDoctorName || ''}{p.assignedAt ? ` · ${formatCompactDateTime(p.assignedAt)}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setUnbookedOpen(false); setBookingPatientId(p._id); setBookingOpen(true); }}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--accent-primary)', background: 'var(--accent-primary)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {t('frontDesk.bookThisPatient')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setUnbookedOpen(false); router.push(`/patients/${p._id}`); }}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {t('frontDesk.openChart')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Modal>
+        )}
+
+        {pendingSyncOpen && (
+          <Modal onClose={() => setPendingSyncOpen(false)} width={600} labelledBy="fd-pending-sync-title">
+            <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <h3 id="fd-pending-sync-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{t('sync.docPendingLabel')}</h3>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('frontDesk.pendingSyncBody')}</p>
+              </div>
+              {pendingSyncDocs.length === 0 && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('frontDesk.pendingSyncEmpty')}</p>
+              )}
+              {pendingSyncDocs.map(doc => {
+                const refused = deniedReasonById.get(doc.id) || (doc.status === 'failed' ? doc.error : undefined);
+                return (
+                  <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border-light)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {doc.name || doc.id}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                        {t(`frontDesk.syncKind.${doc.kind}`)} · {t(`frontDesk.syncStatus.${doc.status}`)}
+                        {doc.at ? ` · ${formatCompactDateTime(doc.at)}` : ''}
+                      </p>
+                      {(refused || (doc.status === 'conflict' && doc.error)) && (
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-danger-text)' }}>
+                          {refused ? t('frontDesk.syncRefused', { reason: refused }) : doc.error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => { void syncNow(); }}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('frontDesk.syncNow')}
+                </button>
+              </div>
             </div>
           </Modal>
         )}

@@ -175,13 +175,36 @@ export async function evaluateCheckoutGate(
   try {
     const { getPrescriptionsByPatient } = await import('./prescription-service');
     const rxs = await getPrescriptionsByPatient(patientId, scope);
-    const outstanding = rxs.filter((r) => !RESOLVED_RX_STATUSES.has(r.status) && !isHandedToPatient(r));
+    const { isTier1 } = await import('../clinical-flow/medication-tiers');
+    const unresolved = rxs.filter((r) => !RESOLVED_RX_STATUSES.has(r.status) && !isHandedToPatient(r));
+    // THIS visit's prescriptions, not the patient's lifetime list. Read
+    // patient-wide, one undispensed script from a visit long closed blocked
+    // every later checkout until a clerk overrode it — and an override that
+    // is needed every time stops meaning anything. So a script is set aside
+    // only when it is linked to a DIFFERENT encounter that exists and is
+    // closed. Everything else still counts (fail closed): an unlinked script,
+    // one on another visit that is still open (an admission alongside a clinic
+    // visit), a link that does not resolve, and — whatever visit it is on —
+    // any life-sustaining Tier-1 order.
+    const otherIds = encounter
+      ? [...new Set(unresolved.map((r) => r.encounterId).filter((id): id is string => !!id && id !== encounter._id))]
+      : [];
+    const closedElsewhere = new Set<string>();
+    if (otherIds.length) {
+      const { getEncounter } = await import('./encounter-service');
+      for (const id of otherIds) {
+        try {
+          const other = await getEncounter(id);
+          if (other && other.patientId === patientId && isTerminal(other.status)) closedElsewhere.add(id);
+        } catch { /* unreadable: leave it counting */ }
+      }
+    }
+    const outstanding = unresolved.filter((r) => !r.encounterId || !closedElsewhere.has(r.encounterId) || isTier1(r));
     // Scripts for an outside pharmacy are closed by giving the patient their
     // copy, not by the dispensing queue — say which, and link accordingly.
     const awaitingHandover = outstanding.filter((r) => r.fulfilment === 'external');
     const awaitingDispense = outstanding.length - awaitingHandover.length;
     // Life-sustaining orders among them, for the separate safety signal above.
-    const { isTier1 } = await import('../clinical-flow/medication-tiers');
     tier1Outstanding = outstanding
       .filter(isTier1)
       .map((r) => ({ id: r._id, medication: r.medication }));

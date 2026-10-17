@@ -15,7 +15,7 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 jest.setTimeout(30000);
 
 import { teardownTestDBs } from '../helpers/test-db';
-import { prescriptionsDB } from '@/lib/db';
+import { encountersDB, prescriptionsDB } from '@/lib/db';
 import { evaluateCheckoutGate } from '@/lib/services/checkout-gate-service';
 import {
   OUTSIDE_PHARMACY_REFUSAL, advancePrescription, createPrescription, recordPrescriptionPatientCopy,
@@ -263,5 +263,46 @@ describe('checkout gate — prescriptions', () => {
     expect(gate.detail).toMatch(/1 prescription\(s\) not yet dispensed: Amoxicillin\./);
     expect(gate.detail).toMatch(/1 outside-pharmacy script\(s\) not yet given to the patient — print or text: Paracetamol\./);
     expect(gate.resolveHref).toBe('/pharmacy');
+  });
+});
+
+describe('checkout gate — prescriptions belong to their own visit', () => {
+  const gateRx = async () => (await evaluateCheckoutGate('pat-1', closedEncounter()))
+    .conditions.find(r => r.key === 'prescriptions_dispensed')?.satisfied;
+  const seedEncounter = async (id: string, status: EncounterDoc['status']) => {
+    await encountersDB().put({ ...closedEncounter(), _id: id, status });
+  };
+
+  it('sets aside an undispensed script from a different visit that is closed', async () => {
+    await seedEncounter('enc-last-month', 'discharged');
+    await seedRx({ encounterId: 'enc-last-month' });
+    expect(await gateRx()).toBe(true);
+  });
+
+  it('still holds for a script on another visit that is still open', async () => {
+    await seedEncounter('enc-other-clinic', 'with_clinician');
+    await seedRx({ encounterId: 'enc-other-clinic' });
+    expect(await gateRx()).toBe(false);
+  });
+
+  it('still holds for a link that resolves to no encounter', async () => {
+    await seedRx({ encounterId: 'enc-missing' });
+    expect(await gateRx()).toBe(false);
+  });
+
+  it('still holds for a Tier-1 order whatever visit it is on', async () => {
+    await seedEncounter('enc-last-month', 'discharged');
+    await seedRx({ encounterId: 'enc-last-month', medication: 'Insulin', criticalityTier: 1 });
+    expect(await gateRx()).toBe(false);
+  });
+
+  it('still holds for a script linked to this encounter', async () => {
+    await seedRx({ encounterId: 'enc-test' });
+    expect(await gateRx()).toBe(false);
+  });
+
+  it('still holds for an unlinked script, which cannot be placed in a visit', async () => {
+    await seedRx();
+    expect(await gateRx()).toBe(false);
   });
 });

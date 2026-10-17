@@ -829,8 +829,11 @@ export async function signClinicalNote(
           actorId: input.signedBy,
         });
       }
-    } catch {
-      // Leave the visit where it is; the desk can move it by hand.
+    } catch (err) {
+      // Leave the visit where it is; the desk can move it by hand. Said out
+      // loud, though: a signed note whose visit never reached clinic checkout
+      // is invisible to the desk, and the reason must not vanish with it.
+      console.warn('[note-service] signed note could not advance its visit', existing.encounterId, err);
     }
   }
 
