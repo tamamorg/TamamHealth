@@ -186,7 +186,7 @@ export function buildProgressFeed(
       label,
       detail: d.medicationName,
       at,
-      href: `/patients/${d.patientId}?tab=medications`,
+      href: `/patients/${d.patientId}?tab=prescriptions&focus=${encodeURIComponent(d._id)}`,
       approximate: !exact,
     });
   }

@@ -517,7 +517,7 @@ export default function PharmacyPage() {
           <button
             type="button"
             className="ehr-visit-pop-link"
-            onClick={() => router.push(`/patients/${rx.patientId}?tab=prescriptions`)}
+            onClick={() => router.push(`/patients/${rx.patientId}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`)}
             title={`Open ${rx.patientName}'s chart`}
           >
             <ExternalLink className="w-3.5 h-3.5" aria-hidden />
@@ -1017,7 +1017,7 @@ export default function PharmacyPage() {
                           )}
                           <div className="ehr-appointment-main appointment-card-patient">
                             {rx.patientId ? (
-                              <Link href={`/patients/${rx.patientId}?tab=prescriptions`} {...stopsClickPropagation}>
+                              <Link href={`/patients/${rx.patientId}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`} {...stopsClickPropagation}>
                                 {shortenPersonName(rx.patientName)}
                               </Link>
                             ) : (

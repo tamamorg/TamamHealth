@@ -861,7 +861,7 @@ export default function PharmacyDashboardPage() {
           <button
             type="button"
             className="ehr-visit-pop-icon ehr-visit-pop-labelled"
-            onClick={() => router.push(`/patients/${encodeURIComponent(rx.patientId)}`)}
+            onClick={() => router.push(`/patients/${encodeURIComponent(rx.patientId)}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`)}
             title="Open chart"
             aria-label="Open chart"
           >

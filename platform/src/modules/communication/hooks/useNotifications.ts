@@ -30,6 +30,13 @@ import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
 const nameFirst = (name: string | null | undefined, event: string) =>
   `${shortenPersonName(name) || 'Patient'} · ${event}`;
 
+/** A result alert opens the result in the patient's chart, like the overdue
+ *  alert does — not the lab queue filtered by a name two patients can share. */
+const labResultHref = (lab: { _id: string; patientId?: string }) =>
+  lab.patientId
+    ? `/patients/${encodeURIComponent(lab.patientId)}?tab=labs&focus=${encodeURIComponent(lab._id)}`
+    : '/lab';
+
 /**
  * Aggregates every facility-level event a user should be notified about into
  * one list for the TopBar notification bell:
@@ -379,7 +386,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // raised above as overdue is skipped — the overdue row says strictly
       // more about the same result.
       for (const l of labs.filter(x => x.critical && x.status === 'completed' && !overdueIds.has(x._id))) {
-        out.push({ id: `lab-${l._id}`, type: 'lab', severity: 'critical', title: nameFirst(l.patientName, 'Critical result'), subtitle: l.testName, time: l.completedAt || l.orderedAt || l.createdAt, href: l.patientName ? `/lab?patient=${encodeURIComponent(l.patientName)}` : '/lab' });
+        out.push({ id: `lab-${l._id}`, type: 'lab', severity: 'critical', title: nameFirst(l.patientName, 'Critical result'), subtitle: l.testName, time: l.completedAt || l.orderedAt || l.createdAt, href: labResultHref(l) });
       }
       const readyLabs = labs
         .filter(x => !x.critical && x.status === 'completed' && !overdueIds.has(x._id))
@@ -392,7 +399,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         })
         .slice(0, perSourceLimit);
       for (const l of readyLabs) {
-        out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: nameFirst(l.patientName, 'Result ready'), subtitle: `${l.testName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: l.patientName ? `/lab?patient=${encodeURIComponent(l.patientName)}` : '/lab' });
+        out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: nameFirst(l.patientName, 'Result ready'), subtitle: `${l.testName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: labResultHref(l) });
       }
     } catch { /* offline */ }
 

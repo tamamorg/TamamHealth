@@ -116,62 +116,11 @@ import type { AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import Select from '@/components/Select';
 import { safeReturnTo } from '@/lib/navigation/return-to';
 import { clickable, stopsClickPropagation } from '@/lib/a11y';
+import { allowedChartTabIds, chartLandingTab, chartTabHref, resolveChartTab } from '@/lib/chart-tabs';
+export { allowedChartTabIds, chartLandingTab, chartTabHref, resolveChartTab };
+export type { ChartAccess } from '@/lib/chart-tabs';
 import { useNow } from '@/lib/hooks/useNow';
 
-// Administrative tabs are the only ones a non-clinical role (e.g. Medical
-// Receptionist) may see — the "minimum necessary" rule: contact details,
-// referral follow-up, and billing/scheduling, but NOT clinical notes, test
-// results, diagnoses, vitals, or medications.
-// 'transfers' is admin-visible because "who is responsible for this patient?"
-// is a question the front desk fields constantly. The panel redacts the
-// clinical detail (reason, hand-off notes, problem/medication snapshot) for
-// these roles — see TransferHistoryPanel's canViewClinical prop — so the tab
-// answers accountability without exposing the chart.
-const ADMIN_TAB_IDS = ['overview', 'appointments', 'demographics', 'billing', 'documents', 'recall', 'referrals'];
-// A lab technician works orders inside the chart (the bench steps live on the
-// Labs tab) but has no business in the notes, medications or problem list, so
-// their chart is exactly the two tabs the work needs: who the patient is, and
-// the labs. Minimum necessary access, enforced the same way ADMIN_TAB_IDS is.
-const LAB_TAB_IDS = ['overview', 'labs'];
-// A pharmacist dispenses against the prescription and the allergy list; a
-// radiographer reads the order and reports on it. Each gets the tabs their work
-// needs and nothing else — same minimum-necessary rule as LAB_TAB_IDS.
-const PHARMACY_TAB_IDS = ['overview', 'prescriptions', 'allergies'];
-const IMAGING_TAB_IDS = ['overview', 'labs'];
-
-/** The capabilities that decide how much of the chart a viewer gets. */
-export interface ChartAccess {
-  canViewClinical: boolean;
-  canEnterLabResults: boolean;
-  canDispense: boolean;
-  role?: string;
-}
-
-/**
- * The tab ids a viewer may open, or `null` for "the whole chart".
- *
- * Exported so the minimum-necessary rule can be asserted directly: this is the
- * only thing standing between a cashier looking up a balance and the patient's
- * notes, and the order of these branches is load-bearing — a clinical role is
- * checked first, so a doctor who also happens to hold a lab permission is not
- * narrowed to the bench's two tabs.
- */
-export function allowedChartTabIds(access: ChartAccess): string[] | null {
-  if (access.canViewClinical) return null;
-  if (access.canEnterLabResults) return LAB_TAB_IDS;
-  if (access.canDispense) return PHARMACY_TAB_IDS;
-  if (access.role === 'radiologist') return IMAGING_TAB_IDS;
-  return ADMIN_TAB_IDS;
-}
-
-/**
- * Where a restricted viewer lands when the tab they asked for isn't theirs —
- * the tab their role came for, not a generic overview.
- */
-export function chartLandingTab(allowedIds: string[] | null): string {
-  if (!allowedIds) return 'overview';
-  return allowedIds.find(id => id !== 'overview') || 'overview';
-}
 type PrintSectionId = 'consultation' | 'problems' | 'vitals' | 'medications' | 'allergies' | 'labs' | 'immunizations' | 'appointments';
 const PRINT_SECTION_OPTIONS: Array<{ id: PrintSectionId; label: string; description: string }> = [
   { id: 'consultation', label: 'Latest consultation', description: 'Reason for visit, examination, assessment, and plan' },
@@ -192,7 +141,7 @@ type FacesheetPanelId = 'medications' | 'problems' | 'vitals' | 'recommendations
 type ChartVitalsLike = Partial<NonNullable<MedicalRecordDoc['vitalSigns']>>;
 
 const FACESHEET_PANEL_OPTIONS: Array<{ id: FacesheetPanelId; label: string }> = [
-  { id: 'problems', label: 'Safety alerts' },
+  { id: 'problems', label: 'Conditions' },
   { id: 'medications', label: 'Medications' },
   { id: 'vitals', label: 'Latest observations' },
   { id: 'recommendations', label: 'Next care actions' },
@@ -210,35 +159,19 @@ type FacesheetActions = Partial<Record<FacesheetPanelId, {
   icon?: typeof Plus;
 }>>;
 
-// Tab ids that a `?tab=` deep-link is allowed to open. Mirrors `allTabs` (in the
-// component) plus the other reachable `activeTab` targets (`referrals`, `sbar`).
-// Clinical-permission gating still runs in the effect below, so a non-clinical
-// user deep-linked to a clinical tab is bounced back to overview.
-const DEEP_LINK_TAB_IDS = new Set([
-    'overview', 'appointments', 'history', 'problems', 'prescriptions', 'immunizations',
-  'allergies', 'vitals', 'notes', 'labs', 'demographics', 'billing', 'careChecklist',
-    'documents', 'recall', 'referrals', 'sbar', 'transfers',
-    'orders', 'procedures', 'programs', 'medicalHistory', 'messages',
-]);
+const ARRIVAL_PARAMS = ['focus', 'value', 'unit', 'range'];
 
-/** Legacy/alias `?tab=` values that don't have a section of their own: transfers
- *  are read on Care coordination, recall reminders on Appointments. */
-const TAB_ALIASES: Record<string, string> = {
-  transfers: 'referrals',
-  recall: 'appointments',
-  // The Medications section's id is `prescriptions`. The prescribe page and the
-  // progress feed both link `?tab=medications`, which resolved to nothing and
-  // dropped the prescriber on the summary instead of the list they just changed.
-  medications: 'prescriptions',
-};
-
-/** The section a `?tab=` value opens, or null when the value isn't a section.
- *  Shared by the initial read and the browser-navigation resync so a Back
- *  button and a deep link can never resolve the same URL differently. */
-export function resolveChartTab(tabParam: string | null | undefined): string | null {
-  if (!tabParam) return null;
-  const mapped = TAB_ALIASES[tabParam] ?? tabParam;
-  return DEEP_LINK_TAB_IDS.has(mapped) ? mapped : null;
+/** Drop the one-shot arrival params from the address bar. The current history
+ *  state is passed through rather than replaced with null: the App Router
+ *  keeps its own bookkeeping in that object, and blanking it mid-navigation
+ *  made the next history event restore the entry we came from. */
+function stripArrivalParams() {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  if (!ARRIVAL_PARAMS.some(k => params.has(k))) return;
+  ARRIVAL_PARAMS.forEach(k => params.delete(k));
+  const qs = params.toString();
+  window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
 }
 
 export default function PatientDetailPage() {
@@ -273,21 +206,30 @@ export default function PatientDetailPage() {
    * clinician out of the chart. One-shot arrival params are dropped on the way
    * — they belong to the section you arrived at, not the one you moved to.
    */
-  const selectTab = useCallback((next: string) => {
+  const selectTab = useCallback((next: string, focus?: string) => {
     setActiveTab(prev => {
-      if (prev !== next) setFocusId(undefined);
+      if (prev !== next || focus) setFocusId(focus);
       return next;
     });
-    router.push(`${pathname}?tab=${encodeURIComponent(next)}`, { scroll: false });
-  }, [router, pathname]);
+    router.push(chartTabHref(pathname, next, searchParams.get('returnTo')), { scroll: false });
+  }, [router, pathname, searchParams]);
 
   // Browser navigation (Back/Forward, or a `?tab=` link followed while this
   // page instance stays mounted) drives `activeTab` from the URL. Clinical-tab
   // gating still runs afterward in the allowedTabIds effect below, so a
   // non-clinical viewer deep-linked to a clinical tab is still bounced back.
+  //
+  // A `focus` arriving this way (a bell notification or a dashboard row for
+  // the chart already open) is read here too — otherwise the tab switched but
+  // the record it named was never highlighted, and `focus=` stuck in the URL.
   useEffect(() => {
     const resolved = resolveChartTab(searchParams.get('tab'));
     if (resolved) setActiveTab(resolved);
+    const focus = searchParams.get('focus');
+    if (focus) {
+      setFocusId(focus);
+      stripArrivalParams();
+    }
   }, [searchParams]);
 
   // Strip the one-shot arrival params once they have been read into state, so
@@ -298,14 +240,7 @@ export default function PatientDetailPage() {
   // it mid-navigation made the next history event restore the entry we came
   // from — arriving from the dashboard's "documents to sign" list bounced
   // straight back to the dashboard.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (!['focus', 'value', 'unit', 'range'].some(k => params.has(k))) return;
-    ['focus', 'value', 'unit', 'range'].forEach(k => params.delete(k));
-    const qs = params.toString();
-    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
-  }, []);
+  useEffect(() => { stripArrivalParams(); }, []);
   const [demographicsTab, setDemographicsTab] = useState('profile');
   const [vitalsView, setVitalsView] = useState<'table' | 'flowsheet'>('table');
   const [showCustomizeView, setShowCustomizeView] = useState(false);
@@ -491,9 +426,9 @@ export default function PatientDetailPage() {
       // pushing a history entry, so Back doesn't walk into the bounce again —
       // and so the address bar can't claim to be on a section that isn't
       // rendering.
-      router.replace(`${pathname}?tab=${encodeURIComponent(landing)}`, { scroll: false });
+      router.replace(chartTabHref(pathname, landing, searchParams.get('returnTo')), { scroll: false });
     }
-  }, [allowedTabIds, activeTab, router, pathname]);
+  }, [allowedTabIds, activeTab, router, pathname, searchParams]);
   const { balance: patientBalance, reload: reloadPayments } = usePatientPayments(patient?._id);
   const { problems: patientProblems } = useProblems(patient?._id);
   const patientIdForNotes = patient?._id;
@@ -1694,10 +1629,13 @@ export default function PatientDetailPage() {
                 onNote={() => (canConsult ? void openClinicalNoteDrawer() : selectTab('notes'))}
                 onScripts={() => (canPrescribe ? setShowPrescribeModal(true) : selectTab('prescriptions'))}
                 onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
-                onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('appointments'))}
+                onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onEdit={openEditModal}
                 onStickyNote={() => { if (canViewClinical) selectTab('notes'); }}
-                onShowAllergies={() => selectTab('allergies')}
+                // Only a link for roles that can open the section — for the
+                // desk, bench and imaging roles the click bounced them to their
+                // landing tab instead.
+                onShowAllergies={tabs.some(tab => tab.id === 'allergies') ? () => selectTab('allergies') : undefined}
                 onEndAssignment={canEndAssignment ? () => void handleEndAssignment() : undefined}
                 // Same gate as Edit details: the roles that may correct the
                 // record (all present in DOC_WRITE_ROLES.patient, so the write
@@ -1737,7 +1675,10 @@ export default function PatientDetailPage() {
               because a clinician who doesn't know a transfer is pending can
               start work the receiving team is about to take over. */}
           {patient && (
-            <TransferBanner patient={patient} onOpenHistory={() => selectTab('referrals')} />
+            <TransferBanner
+              patient={patient}
+              onOpenHistory={tabs.some(tab => tab.id === 'referrals') ? () => selectTab('referrals') : undefined}
+            />
           )}
 
           {/* Chart-permanent safety alerts (fall risk, difficult IV access,
@@ -2738,7 +2679,7 @@ function PatientFacesheetView({
   labResults: LabResultDoc[];
   immunizations: ImmunizationDoc[];
   canViewClinical: boolean;
-  onOpenTab: (tab: string) => void;
+  onOpenTab: (tab: string, focus?: string) => void;
   /** Per-panel primary actions. A missing entry hides that panel's action
    *  button (the role lacks the permission); the card itself stays clickable. */
   actions: FacesheetActions;
@@ -2767,7 +2708,7 @@ function PatientFacesheetView({
             <h2>Facesheet</h2>
           </div>
           <div className="tebra-empty">
-            Clinical information is restricted for your role. Use Demographics, Account, Documents, and Recall for administrative work.
+            Clinical information is restricted for your role. Use Demographics, Appointments, Billing history, Documents, and Care coordination for administrative work.
           </div>
         </section>
       </div>
@@ -2812,7 +2753,11 @@ function PatientFacesheetView({
         {currentMeds.length ? (
           <div className="tebra-list">
             {currentMeds.map(rx => (
-              <div key={rx._id} className="tebra-list-row">
+              <div
+                key={rx._id}
+                className="tebra-list-row"
+                {...clickable(event => { event.stopPropagation(); onOpenTab('prescriptions', rx._id); }, { label: `Open ${rx.medication}` })}
+              >
                 <strong>{rx.medication}</strong>
                 <span>{formatRxSig(rx)}</span>
               </div>
@@ -2823,8 +2768,8 @@ function PatientFacesheetView({
       )}
 
       {showPanel('problems') && (
-      <section className="tebra-panel" {...clickable(() => onOpenTab('problems'), { label: 'Open safety alerts' })}>
-        <FacesheetPanelHead icon={ShieldAlert} title="Safety alerts" action={actions.problems} />
+      <section className="tebra-panel" {...clickable(() => onOpenTab('problems'), { label: 'Open conditions' })}>
+        <FacesheetPanelHead icon={AlertTriangle} title="Conditions" action={actions.problems} />
         {activeProblems.length ? (
           <div className="tebra-list">
             {activeProblems.slice(0, 4).map(problem => (
@@ -2888,7 +2833,11 @@ function PatientFacesheetView({
           >
             <div className="tebra-list-row"><strong>Recent results</strong><span>{recentLabs.length} recorded</span></div>
             {recentLabs.slice(0, 2).map(lab => (
-              <div key={lab._id} className="tebra-list-row">
+              <div
+                key={lab._id}
+                className="tebra-list-row"
+                {...clickable(event => { event.stopPropagation(); onOpenTab('labs', lab._id); }, { label: `Open ${lab.testName}` })}
+              >
                 <strong>{lab.testName}</strong>
                 <span>{[lab.result, lab.unit].filter(Boolean).join(' ') || lab.status || 'Pending'}</span>
               </div>

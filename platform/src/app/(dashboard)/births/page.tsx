@@ -29,12 +29,15 @@ export default function BirthsPage() {
   // chart when a real registered patient matches it (same guard idea as ANC:
   // never link demo/seed-only identities).
   const motherChartId = useMemo(() => {
-    const byName = new Map<string, string>();
+    // A name shared by two patients links neither: guessing would open the
+    // wrong mother's chart. Records that carry motherPatientId bypass this.
+    const byName = new Map<string, string | null>();
     for (const p of patients) {
       if (p._id.startsWith('demo-') || p._id.includes('_demo')) continue;
-      byName.set(patientFullName(p).trim().toLowerCase(), p._id);
+      const key = patientFullName(p).trim().toLowerCase();
+      byName.set(key, byName.has(key) ? null : p._id);
     }
-    return (name?: string) => (name ? byName.get(name.trim().toLowerCase()) : undefined);
+    return (name?: string) => (name ? byName.get(name.trim().toLowerCase()) ?? undefined : undefined);
   }, [patients]);
   const { currentUser } = useAuth();
   const { globalSearch } = useUi();
@@ -221,9 +224,9 @@ export default function BirthsPage() {
                     <td className="text-sm">{b.birthWeight}g</td>
                     <td className="text-xs capitalize">{b.deliveryType}</td>
                     <td className="text-sm">
-                      {motherChartId(b.motherName) ? (
+                      {(b.motherPatientId || motherChartId(b.motherName)) ? (
                         <Link
-                          href={`/patients/${motherChartId(b.motherName)}`}
+                          href={`/patients/${b.motherPatientId || motherChartId(b.motherName)}`}
                           className="hover:underline"
                           style={{ color: 'var(--accent-primary)', fontWeight: 600 }}
                           {...stopsClickPropagation}
