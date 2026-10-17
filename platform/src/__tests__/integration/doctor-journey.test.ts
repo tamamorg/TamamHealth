@@ -91,6 +91,10 @@ it('carries one visit from arrival to discharge without forking the encounter', 
     frequency: 'TDS', duration: '5 days',
     prescribedBy: DOCTOR.name, status: 'pending',
     hospitalId: HOSP,
+    medicationSafetyAcknowledgement: {
+      reviewedBy: DOCTOR.name,
+      reason: 'No clinically suitable alternative is available today.',
+    },
   } as never);
   expect(rx.prescription.encounterId).toBe(claimed._id);
   expect(rx.prescription.orgId).toBe(ORG);           // inferred from the facility

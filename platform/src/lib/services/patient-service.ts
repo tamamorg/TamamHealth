@@ -876,7 +876,18 @@ export async function mutatePatient(
       _rev: existing._rev,
       updatedAt: new Date().toISOString(),
     } as PatientDoc);
-    const errors = validatePatientData(updated as unknown as Record<string, unknown>);
+    // Judge the change, not the record. A patient registered before a field
+    // became required (or arriving from an API or another system) is
+    // incomplete through no fault of this write; refusing every chart edit
+    // until somebody fixes their next of kin blocked recording a screening,
+    // an allergy or an alert. A problem the patch touches, or one it
+    // introduces, still refuses.
+    const allErrors = validatePatientData(updated as unknown as Record<string, unknown>);
+    const already = validatePatientData(existing as unknown as Record<string, unknown>);
+    const errors: Record<string, string> = {};
+    for (const [field, message] of Object.entries(allErrors)) {
+      if (!(field in already) || field in patch) errors[field] = message;
+    }
     if (Object.keys(errors).length > 0) {
       throw new ValidationError(errors);
     }

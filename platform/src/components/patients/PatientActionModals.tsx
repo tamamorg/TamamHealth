@@ -195,6 +195,12 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
         hospitalId: currentUser?.hospitalId || patient.registrationHospital,
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
+        ...(hasAdvisory ? {
+          medicationSafetyAcknowledgement: {
+            reviewedBy: currentUser?.name || '',
+            reason: 'Prescriber reviewed the displayed medication safety advisories before ordering.',
+          },
+        } : {}),
       });
       // A facility with no dispensary has no pharmacy to send to: the service
       // saves the order as a script for the patient, and saying "sent to

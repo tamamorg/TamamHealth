@@ -37,6 +37,7 @@ import './clinical-notes.css';
 import Select from '@/components/Select';
 import { FORMULARY } from '@/lib/data/formulary';
 import { stopsClickPropagation } from '@/lib/a11y';
+import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 
 /** Ordered but never given: held, stockout-referred, or recalled. */
 const NOT_ADMINISTERED_STAGES = new Set<PrescriptionStatus>([
@@ -166,7 +167,34 @@ export default function MedicationsModal({
     stoppedReason: reason,
   });
 
+  const reviewSevereAllergy = async (
+    medication: string,
+  ): Promise<PrescriptionCreateInput['medicationSafetyAcknowledgement'] | null> => {
+    const { assessPrescriptionSafety } = await import('@/lib/services/prescription-service');
+    const safety = await assessPrescriptionSafety(patientId, medication);
+    const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
+    if (!severeWarnings.length) return undefined;
+    const reason = await confirmPrompt({
+      title: t('prescribe.overrideTitle'),
+      message: t('prescribe.overrideMessage', {
+        medication,
+        allergy: severeWarnings.map(warning => warning.allergy).join(', '),
+      }),
+      inputLabel: t('prescribe.overrideReason'),
+      confirmLabel: t('prescribe.overrideConfirm'),
+      tone: 'danger',
+    });
+    if (reason === null) return null;
+    if (reason.trim().length < 10) {
+      showToast(t('prescribe.overrideReasonRequired'), 'error');
+      return null;
+    }
+    return { reviewedBy: userName, reason: reason.trim() };
+  };
+
   const handleRenew = () => selected && withBusy(async () => {
+    const medicationSafetyAcknowledgement = await reviewSevereAllergy(selected.medication);
+    if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
     const result = await createPrescription({
       patientId,
@@ -183,7 +211,8 @@ export default function MedicationsModal({
       orgId: currentUser?.orgId,
       hospitalId: currentUser?.hospitalId,
       hospitalName: currentUser?.hospitalName,
-    } as Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
+      medicationSafetyAcknowledgement,
+    } as PrescriptionCreateInput);
     if (result.allergyWarnings?.length) {
       showToast(
         `ALLERGY ALERT — renewed against a recorded allergy: ${result.allergyWarnings
@@ -237,12 +266,15 @@ export default function MedicationsModal({
       showToast('Medication, dose and frequency are required.', 'error');
       return;
     }
+    const medication = addMed.medication.trim();
+    const medicationSafetyAcknowledgement = await reviewSevereAllergy(medication);
+    if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
     await createPrescription({
       patientId,
       patientName,
       encounterId,
-      medication: addMed.medication.trim(),
+      medication,
       dose: addMed.dose.trim(),
       route: '',
       frequency: addMed.frequency.trim(),
@@ -253,8 +285,9 @@ export default function MedicationsModal({
       orgId: currentUser?.orgId,
       hospitalId: currentUser?.hospitalId,
       hospitalName: currentUser?.hospitalName,
-    } as Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
-    showToast(`${addMed.medication.trim()} added to the med list.`, 'success');
+      medicationSafetyAcknowledgement,
+    } as PrescriptionCreateInput);
+    showToast(`${medication} added to the med list.`, 'success');
     setAddMed({ medication: '', dose: '', frequency: '' });
     setShowAddMed(false);
     await load();

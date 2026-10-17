@@ -89,11 +89,28 @@ describe('createPrescription — allergy safety', () => {
     expect(clinicalOrders).toHaveLength(0);
   });
 
+  it('refuses a severe allergy override without a documented justification', async () => {
+    await seedHospital();
+    await seedPatient([SEVERE_PENICILLIN_ALLERGY]);
+
+    await expect(createPrescription(rxInput() as never)).rejects.toMatchObject({
+      name: 'ValidationError',
+    });
+    const clinicalOrders = (await prescriptionsDB().allDocs()).rows
+      .filter(row => !row.id.startsWith('_design/'));
+    expect(clinicalOrders).toHaveLength(0);
+  });
+
   it('flags a class match against a recorded severe allergy and requires override', async () => {
     await seedHospital();
     await seedPatient([SEVERE_PENICILLIN_ALLERGY]);
 
-    const result = await createPrescription(rxInput() as never);
+    const result = await createPrescription(rxInput({
+      medicationSafetyAcknowledgement: {
+        reviewedBy: 'Dr. Wani',
+        reason: 'No clinically suitable alternative is available today.',
+      },
+    }) as never);
 
     expect(result.allergyWarnings).toHaveLength(1);
     expect(result.allergyWarnings?.[0]).toMatchObject({
@@ -103,14 +120,18 @@ describe('createPrescription — allergy safety', () => {
       criticality: 'severe',
       requiresOverride: true,
     });
-    // The prescription itself is still written — the alert is decision
-    // support, and blocking would need an override UI; the audit trail and
-    // the returned alerts are the record.
+    // The prescription is written only after the prescriber records why the
+    // severe conflict is clinically justified.
     expect(result.prescription._id).toMatch(/^rx-/);
     expect(result.prescription.medicationSafety?.allergyWarnings[0]).toMatchObject({
       allergy: 'Penicillin',
       requiresOverride: true,
     });
+    expect(result.prescription.medicationSafety?.acknowledgement).toMatchObject({
+      reviewedBy: 'Dr. Wani',
+      reason: 'No clinically suitable alternative is available today.',
+    });
+    expect(result.prescription.medicationSafety?.acknowledgement?.reviewedAt).toBeTruthy();
   });
 
   it('ignores inactive allergies and reports nothing for a clean patient', async () => {

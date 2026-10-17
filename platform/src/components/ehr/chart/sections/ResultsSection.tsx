@@ -20,6 +20,7 @@ import { effectiveOrderStatus } from '@/lib/services/lab-service';
 import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { clickable } from '@/lib/a11y';
+import type { LabResultDoc } from '@/lib/db-types';
 
 const PAGE_SIZE = 8;
 
@@ -27,7 +28,18 @@ const STATUS_BADGE: Record<string, string> = {
   pending: 'tamam-panel-badge tamam-panel-badge--pending',
   in_progress: 'tamam-panel-badge tamam-panel-badge--active',
   completed: 'tamam-panel-badge tamam-panel-badge--done',
+  resulted: 'tamam-panel-badge tamam-panel-badge--pending',
+  reviewed_by_clinician: 'tamam-panel-badge tamam-panel-badge--active',
+  acted_upon: 'tamam-panel-badge tamam-panel-badge--active',
+  communicated_to_patient: 'tamam-panel-badge tamam-panel-badge--done',
 };
+
+/** Results that are clinically significant and have not yet been reviewed. */
+export function unreviewedAbnormalResults(results: readonly LabResultDoc[]): LabResultDoc[] {
+  return results.filter(result =>
+    result.abnormal && effectiveOrderStatus(result) === 'resulted',
+  );
+}
 
 /** Defensive sort key: an invalid/missing date sorts as oldest (0) rather
  *  than winning a lexicographic string comparison it has no business in. */
@@ -63,6 +75,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
     const query = search.trim().toLowerCase();
     return query ? patientLabs.filter(l => `${l.testName} ${l.result || ''} ${l.referenceRange || ''} ${l.status}`.toLowerCase().includes(query)) : patientLabs;
   }, [patientLabs, search]);
+  const awaitingReview = useMemo(() => unreviewedAbnormalResults(patientLabs), [patientLabs]);
 
   // Deep-link focus: jump to the page holding the focused result once the data
   // loads, then scroll it into view and let the highlight draw attention.
@@ -94,6 +107,21 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
       onSearchChange={value => { setSearch(value); setPage(1); }}
       pagination={{ page, pageSize: PAGE_SIZE, total: filteredLabs.length, onPageChange: setPage }}
     >
+      {awaitingReview.length > 0 && (
+        <div
+          role="status"
+          className="mb-3 rounded-md px-3 py-2 text-sm"
+          style={{
+            border: '1px solid var(--color-danger, #D92B20)',
+            background: 'var(--color-danger-bg, #FAE6E4)',
+            color: 'var(--color-danger-text)',
+          }}
+        >
+          <strong>{t('results.awaitingReview', { count: awaitingReview.length })}</strong>{' '}
+          {awaitingReview.slice(0, 3).map(result => result.testName).join(', ')}.
+          <span className="block mt-1">{t('results.openToCloseLoop')}</span>
+        </div>
+      )}
       <table className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
             <col /><col /><col /><col /><col /><col />
@@ -116,7 +144,9 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 </td>
               </tr>
             )}
-            {pageRows.map(l => (
+            {pageRows.map(l => {
+              const lifecycleStatus = effectiveOrderStatus(l);
+              return (
               <tr
                 key={l._id}
                 id={`lab-row-${l._id}`}
@@ -133,9 +163,10 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 <td>{l.referenceRange || '—'}</td>
                 <td>{t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))])}</td>
                 <td>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
-                <td><span className={STATUS_BADGE[l.status] || 'tamam-panel-badge tamam-panel-badge--pending'}>{humanizeStatus(l.status)}</span></td>
+                <td><span className={STATUS_BADGE[lifecycleStatus] || STATUS_BADGE[l.status] || 'tamam-panel-badge tamam-panel-badge--pending'}>{humanizeStatus(lifecycleStatus)}</span></td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
     </ChartSection>
