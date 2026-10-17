@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { useConfirm } from '@/components/ConfirmDialog';
+import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { cannotFillOnSite, stockPositionFor } from '@/lib/pharmacy-stock-position';
@@ -34,6 +34,9 @@ import { emptyDraft, type RxDraft } from './types';
 import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc, ProblemDoc } from '@/lib/db-types';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
+import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 import './../clinical-notes.css';
 
 /** The destination that hands the script to the patient instead of a queue. */
@@ -70,6 +73,8 @@ export default function PrescribeModal({
   const router = useRouter();
   const { showToast } = useToast();
   const confirm = useConfirm();
+  const confirmPrompt = useConfirmPrompt();
+  const { t } = useTranslation();
   const scope = useDataScope();
   // Facility policy: a clinic with no dispensary has no queue to send to, so
   // every prescription is issued to the patient as a script.
@@ -109,6 +114,14 @@ export default function PrescribeModal({
   const [showReasons, setShowReasons] = useState(false);
 
   const patch = useCallback((p: Partial<RxDraft>) => setDraft(d => ({ ...d, ...p })), []);
+  const allergyWarnings = useMemo(() => draft.drug ? checkAllergiesStructured(
+    [draft.drug.name],
+    (patient?.structuredAllergies || []).filter(entry => entry.status === 'active'),
+  ) : [], [draft.drug, patient?.structuredAllergies]);
+  const severeAllergyWarnings = useMemo(
+    () => allergyWarnings.filter(alert => alert.requiresOverride),
+    [allergyWarnings],
+  );
 
   // ── Chart context. Each source fails independently: a missing ledger or
   //    inventory must not stop a prescriber writing a prescription. ──
@@ -158,7 +171,10 @@ export default function PrescribeModal({
     const drug = draft.drug;
     if (!drug) { setWarnings([]); return; }
     (async () => {
-      const found: MonographWarning[] = [];
+      const found: MonographWarning[] = allergyWarnings.map(alert => ({
+        severity: 'allergy',
+        text: `ALLERGY: ${alert.medication} conflicts with ${alert.allergy}${alert.reaction ? ` — ${alert.reaction}` : ''}.`,
+      }));
       try {
         const { checkNewPrescription } = await import('@/lib/services/drug-interaction-service');
         const result = checkNewPrescription(drug.name, activeRx.map(r => r.medication));
@@ -169,19 +185,10 @@ export default function PrescribeModal({
           });
         }
       } catch { /* no interaction data bundled */ }
-      for (const a of (patient?.structuredAllergies || []).filter(e => e.status === 'active')) {
-        const stem = a.substance.split(/[\s(]/)[0].toLowerCase();
-        if (stem.length > 3 && drug.name.toLowerCase().includes(stem)) {
-          found.push({
-            severity: 'allergy',
-            text: `ALLERGY: recorded ${a.substance} allergy${a.reaction ? ` — ${a.reaction}` : ''}.`,
-          });
-        }
-      }
       if (!cancelled) setWarnings(found);
     })();
     return () => { cancelled = true; };
-  }, [draft.drug, activeRx, patient]);
+  }, [draft.drug, activeRx, allergyWarnings]);
 
   // ── Favourite state for the picked drug ──
   useEffect(() => {
@@ -244,6 +251,25 @@ export default function PrescribeModal({
     const drug = draft.drug;
     if (!drug) { showToast('Pick the drug first.', 'error'); return null; }
     if (!draft.instructions.trim()) { showToast('Patient instructions are required.', 'error'); return null; }
+    let medicationSafetyAcknowledgement: { reviewedBy: string; reason: string } | undefined;
+    if (severeAllergyWarnings.length) {
+      const reason = await confirmPrompt({
+        title: t('prescribe.overrideTitle'),
+        message: t('prescribe.overrideMessage', {
+          medication: drug.name,
+          allergy: severeAllergyWarnings.map(alert => alert.allergy).join(', '),
+        }),
+        inputLabel: t('prescribe.overrideReason'),
+        confirmLabel: t('prescribe.overrideConfirm'),
+        tone: 'danger',
+      });
+      if (reason === null) return null;
+      if (reason.trim().length < 10) {
+        showToast(t('prescribe.overrideReasonRequired'), 'error');
+        return null;
+      }
+      medicationSafetyAcknowledgement = { reviewedBy: userName, reason: reason.trim() };
+    }
     setBusy(true);
     try {
       const { createPrescription } = await import('@/lib/services/prescription-service');
@@ -272,7 +298,8 @@ export default function PrescribeModal({
         hospitalId: currentUser?.hospitalId,
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
-      } as Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
+        medicationSafetyAcknowledgement,
+      } as PrescriptionCreateInput);
 
       if (result.allergyWarnings?.length) {
         // The loudest of the three checks: a recorded allergy matched the drug
@@ -308,7 +335,7 @@ export default function PrescribeModal({
     } finally {
       setBusy(false);
     }
-  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length]);
+  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length, severeAllergyWarnings, confirmPrompt, t]);
 
   // Every way out of the dialog goes through here. Scripts already saved for
   // an outside pharmacy still have to reach the patient, so leaving — Cancel,

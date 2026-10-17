@@ -660,6 +660,13 @@ export interface PrescriptionDoc extends BaseDoc {
       clinicalAdvice: string;
     }>;
     duplicateWarnings: string[];
+    /** Explicit clinical justification when the prescriber continued despite
+     * a severe or unknown-criticality allergy match. */
+    acknowledgement?: {
+      reviewedBy: string;
+      reviewedAt: string;
+      reason: string;
+    };
   };
   /** Coarse status kept for backward compatibility + queue filters. Derived
    *  from the granular `orderStatus` below. */

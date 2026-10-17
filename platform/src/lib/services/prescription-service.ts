@@ -293,6 +293,17 @@ export interface PrescriptionSafetyAssessment {
   duplicateWarnings: string[] | null;
 }
 
+export type PrescriptionCreateInput = Omit<
+  PrescriptionDoc,
+  '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'medicationSafety'
+> & {
+  /** Supplied only after the UI confronted the prescriber with the warning. */
+  medicationSafetyAcknowledgement?: {
+    reviewedBy: string;
+    reason: string;
+  };
+};
+
 async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | undefined> {
   if (!hospitalId) return undefined;
   try {
@@ -458,7 +469,7 @@ async function billPrescription(doc: PrescriptionDoc): Promise<void> {
 }
 
 export async function createPrescription(
-  data: Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'medicationSafety'>
+  data: PrescriptionCreateInput,
 ): Promise<PrescriptionCreateResult> {
   // Validate required prescription fields
   const errors = validatePrescription(data as unknown as Record<string, unknown>);
@@ -513,8 +524,27 @@ export async function createPrescription(
     throw new AllergyHardStopError(data.medication, allergyHardStop);
   }
 
+  const acknowledgementReason = data.medicationSafetyAcknowledgement?.reason.trim() || '';
+  if (overrides.length && acknowledgementReason.length < 10) {
+    throw new ValidationError({
+      medicationSafetyAcknowledgement: 'A clinical justification of at least 10 characters is required to override a severe allergy warning.',
+    });
+  }
+
   const db = prescriptionsDB();
   const now = new Date().toISOString();
+  const acknowledgement = acknowledgementReason
+    ? {
+        reviewedBy: data.medicationSafetyAcknowledgement?.reviewedBy || data.prescribedBy,
+        reviewedAt: now,
+        reason: acknowledgementReason,
+      }
+    : undefined;
+  // This is input to the computed safety record, not a top-level prescription
+  // field. Keeping it out of the spread prevents two competing sources of
+  // truth for the same acknowledgement.
+  const prescriptionData = { ...data };
+  delete prescriptionData.medicationSafetyAcknowledgement;
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
   let admissionId = data.admissionId;
   // An outside-pharmacy script is for the patient to take away (discharge
@@ -545,7 +575,7 @@ export async function createPrescription(
   const doc: PrescriptionDoc = withPendingOfflineSync({
     _id: `rx-${uuidv4()}`,
     type: 'prescription',
-    ...data,
+    ...prescriptionData,
     ...(external ? { fulfilment: 'external' as const, orderStatus: 'prescribed' as const } : {}),
     // Stamped at write time, not derived on read: the tier is what the queue
     // sorts on and what the checkout safety flag reads, and both must agree
@@ -560,6 +590,7 @@ export async function createPrescription(
         allergyWarnings: allergyWarnings || [],
         interactionWarnings: interactionWarnings?.interactions || [],
         duplicateWarnings: duplicateWarnings || [],
+        ...(acknowledgement ? { acknowledgement } : {}),
       },
     } : {}),
     createdAt: now,

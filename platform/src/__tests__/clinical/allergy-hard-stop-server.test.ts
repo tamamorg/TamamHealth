@@ -58,6 +58,14 @@ const rx = {
   status: 'pending' as const, hospitalId: 'hosp-001',
 };
 
+const documentedOverride = {
+  ...rx,
+  medicationSafetyAcknowledgement: {
+    reviewedBy: 'Dr. Wani',
+    reason: 'No clinically suitable alternative is available today.',
+  },
+};
+
 describe('allergy hard stop, resolved from the facility', () => {
   it('refuses the order when the facility has the policy on', async () => {
     await seedWorld(true);
@@ -68,7 +76,7 @@ describe('allergy hard stop, resolved from the facility', () => {
 
   it('keeps the advisory behaviour when the facility has it off', async () => {
     await seedWorld(false);
-    const result = await createPrescription(rx);
+    const result = await createPrescription(documentedOverride);
     expect(result.allergyWarnings).toHaveLength(1);
     expect(result.prescription._id).toBeTruthy();
   });
@@ -82,7 +90,7 @@ describe('allergy hard stop, resolved from the facility', () => {
       structuredAllergies: [SEVERE_PENICILLIN_ALLERGY], allergies: ['Penicillin'],
       registrationHospital: 'hosp-001', orgId: 'org-moh-ss',
     } as never);
-    const result = await createPrescription(rx);
+    const result = await createPrescription(documentedOverride);
     expect(result.prescription._id).toBeTruthy();
     expect(result.allergyWarnings).toHaveLength(1);
   });

@@ -26,6 +26,9 @@ import type { PrescriptionDoc } from '@/lib/db-types';
 import { clickable } from '@/lib/a11y';
 import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
 import { isScriptable } from '@/lib/prescription-script';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 
 const PAGE_SIZE = 8;
 
@@ -84,6 +87,8 @@ export default function MedicationsSection({
 }: MedicationsSectionProps) {
   const { prescriptions } = usePrescriptions(patientId);
   const { showToast } = useToast();
+  const confirmPrompt = useConfirmPrompt();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [tableSearch, setTableSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -149,7 +154,28 @@ export default function MedicationsSection({
   const handleRenew = async (rx: PrescriptionDoc) => {
     setBusyId(rx._id);
     try {
-      const { createPrescription } = await import('@/lib/services/prescription-service');
+      const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
+      const safety = await assessPrescriptionSafety(patientId, rx.medication);
+      const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
+      let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
+      if (severeWarnings.length) {
+        const reason = await confirmPrompt({
+          title: t('prescribe.overrideTitle'),
+          message: t('prescribe.overrideMessage', {
+            medication: rx.medication,
+            allergy: severeWarnings.map(warning => warning.allergy).join(', '),
+          }),
+          inputLabel: t('prescribe.overrideReason'),
+          confirmLabel: t('prescribe.overrideConfirm'),
+          tone: 'danger',
+        });
+        if (reason === null) return;
+        if (reason.trim().length < 10) {
+          showToast(t('prescribe.overrideReasonRequired'), 'error');
+          return;
+        }
+        medicationSafetyAcknowledgement = { reviewedBy: userName, reason: reason.trim() };
+      }
       const result = await createPrescription({
         patientId,
         patientName,
@@ -164,9 +190,10 @@ export default function MedicationsSection({
         orgId: currentUser?.orgId,
         hospitalId: currentUser?.hospitalId,
         hospitalName: currentUser?.hospitalName,
+        medicationSafetyAcknowledgement,
         // Deliberately not set — a renewal from the chart isn't tied to the
         // encounter the original order came from.
-      } as Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>);
+      } as PrescriptionCreateInput);
       if (result.allergyWarnings?.length) {
         showToast(
           `ALLERGY ALERT — renewed against a recorded allergy: ${result.allergyWarnings

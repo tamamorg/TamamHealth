@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { PrescriptionDoc } from '../db-types';
+import type { PrescriptionCreateInput } from '../services/prescription-service';
 import { medicationAdministrationsDB, prescriptionsDB } from '../db';
 import { makeCoalescer } from './live-reload';
 import { useDataScope } from './useDataScope';
@@ -53,7 +54,7 @@ export function usePrescriptions(patientId?: string) {
     };
   }, [loadPrescriptions]);
 
-  const create = useCallback(async (data: Omit<PrescriptionDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
+  const create = useCallback(async (data: PrescriptionCreateInput) => {
     const { createPrescription } = await import('../services/prescription-service');
     const result = await createPrescription(data);
     await loadPrescriptions();
