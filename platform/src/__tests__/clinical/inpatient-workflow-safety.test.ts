@@ -6,7 +6,7 @@ let uuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-ward-test` }));
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
-import { followUpsDB, prescriptionsDB, wardDB } from '@/lib/db';
+import { followUpsDB, medicationAdministrationsDB, prescriptionsDB, wardDB } from '@/lib/db';
 import { putDoc, teardownTestDBs } from '../helpers/test-db';
 import {
   admitPatient,
@@ -185,6 +185,18 @@ describe('MAR revision safety', () => {
     expect(new Set(prescription.administrations?.map(row => row.scheduledFor))).toEqual(new Set([
       '2026-08-24T06:00:00.000Z', '2026-08-24T18:00:00.000Z',
     ]));
+  });
+
+  it('writes no offlineSync stamp on an append-only MAR entry (it could never be marked synced)', async () => {
+    await seedPrescription();
+    await recordAdministration({
+      prescriptionId: 'rx-1', scheduledFor: '2026-08-24T06:00:00.000Z', status: 'given',
+      administeredBy: 'nurse-1', administeredByName: 'Nurse Nyandeng',
+    });
+    const rows = await medicationAdministrationsDB().allDocs({ include_docs: true });
+    const events = rows.rows.map(r => r.doc as { type?: string; offlineSync?: unknown }).filter(d => d.type === 'medication_administration');
+    expect(events).toHaveLength(1);
+    expect(events[0].offlineSync).toBeUndefined();
   });
 
   it('refuses a second active record for the same scheduled dose', async () => {
