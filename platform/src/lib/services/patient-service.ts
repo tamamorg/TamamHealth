@@ -532,9 +532,27 @@ const MIN_NATIONAL_ID_LENGTH = 6;
  *
  * Returns true when the claim is ours, false when someone already holds it.
  */
+/**
+ * The claim document id. A national ID is encrypted on the patient record, so
+ * it must not sit in plain sight in a key on the same device either: the claim
+ * is named by the ID's keyed fingerprint (the same one the MPI matches on).
+ * Geocodes are lookup keys that stay plaintext on the record anyway.
+ */
+async function claimIdFor(kind: 'geocode' | 'national', value: string): Promise<string> {
+  if (kind === 'national') {
+    const { blindIndex } = await import('../org-data-cipher');
+    const index = await blindIndex(value);
+    if (index) return `_local/patient_uid_national_${index}`;
+    // No index key on this device yet: a local-only digest still keeps the ID out of the key.
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(`national:${value.trim().toLowerCase()}`)));
+    return `_local/patient_uid_national_sha_${Array.from(digest, b => b.toString(16).padStart(2, '0')).join('')}`;
+  }
+  return `_local/patient_uid_${kind}_${value.trim().toLowerCase()}`;
+}
+
 async function claimIdentifier(kind: 'geocode' | 'national', value: string): Promise<boolean> {
   const db = patientsDB();
-  const claimId = `_local/patient_uid_${kind}_${value.trim().toLowerCase()}`;
+  const claimId = await claimIdFor(kind, value);
   try {
     await db.get(claimId);
     return false; // Already claimed.
@@ -563,7 +581,7 @@ async function claimIdentifier(kind: 'geocode' | 'national', value: string): Pro
  */
 async function releaseIdentifier(kind: 'geocode' | 'national', value: string): Promise<void> {
   const db = patientsDB();
-  const claimId = `_local/patient_uid_${kind}_${value.trim().toLowerCase()}`;
+  const claimId = await claimIdFor(kind, value);
   try {
     const existing = await db.get(claimId) as { _id: string; _rev: string };
     await db.remove(existing);

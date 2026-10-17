@@ -77,6 +77,8 @@ enforced until the first, and review routing is not either until the second.
 
 **Data access.** The browser calls services directly (hooks → `lib/services/*` → local PouchDB); that is what makes the app work offline, and CouchDB replication carries writes to the server. `/api/*` is for consumers with no browser — mobile, integrations, cron. Do not route UI writes through `/api`.
 
+**Encryption at rest.** `getDB()` returns a wrapper (`lib/encrypted-db.ts`) that seals every field listed in `lib/phi-field-catalog.json` under the record's organisation key on write and opens it on read; storage, replication, CouchDB and the analytics copy hold only `oenc:` envelopes. Consequences: never filter a Mango selector on a catalogued field (the wrapper throws — filter after reading, or use a blind index like `nationalIdIndex`); replication and wipe code use `getRawDB()`; a new PHI field goes in the catalog, and a field a sync validator or lookup must read stays out of it. Keys derive from `ORG_DATA_KEY_SECRET` (server) and reach devices via `/api/crypto/org-key`.
+
 **Tenancy.** `filterByScope` (`lib/services/data-scope.ts`) is the only tenant barrier — the local database holds documents for every org the device replicated. Always pass a `DataScope`; never call a scoped service bare. It fails closed (missing `orgId` returns nothing); only `super_admin` and `government` see everything.
 
 **Roles.** `lib/role-routes.ts` is the Edge-safe source of truth for 25 roles → allowed routes + default dashboard. `lib/permissions.ts` derives `allowedRoutes` from it and adds nav/icons/colours (not Edge-safe). Add a route in both directions or the proxy will 302 it away. Nurse-family roles have no station dashboard — they land on `/dashboard`; handoff is `/wards/handoff`.

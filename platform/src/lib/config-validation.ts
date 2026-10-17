@@ -131,6 +131,23 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     }
   }
 
+  // --- Organisation data keys ---------------------------------------------
+  // Patient data is encrypted on the device under a key derived from this
+  // secret. Without it the server cannot hand devices a key, so they could
+  // neither send nor read; with a placeholder or short value, every
+  // organisation's key is guessable. The standalone demo holds no real
+  // record, so it may run on the development fallback.
+  if (!isDemo) {
+    const orgSecret = env.ORG_DATA_KEY_SECRET || '';
+    if (!orgSecret) {
+      errors.push('ORG_DATA_KEY_SECRET is unset — patient data cannot be encrypted. Generate one with `openssl rand -base64 48` and back it up.');
+    } else if (PLACEHOLDER.test(orgSecret)) {
+      errors.push('ORG_DATA_KEY_SECRET still contains a placeholder — generate a real one with `openssl rand -base64 48`.');
+    } else if (orgSecret.length < 32) {
+      errors.push(`ORG_DATA_KEY_SECRET must be at least 32 characters in production (got ${orgSecret.length}).`);
+    }
+  }
+
   // --- Shared security state (Upstash Redis) -------------------------------
   // Rate-limit counters and the JWT revocation list are per-instance unless a
   // shared store is configured. With more than one replica that means an
@@ -353,6 +370,16 @@ export function syncConfigProblems(env: ConfigEnv): string[] {
 export function productionConfigWarnings(env: ConfigEnv): string[] {
   const warnings: string[] = [];
   if (env.NEXT_PUBLIC_DEMO_MODE === 'true') return warnings;
+
+  // The emergency switch for patient-data encryption (lib/encrypted-db.ts).
+  // It never decrypts what is sealed, but while it is off new patient data is
+  // stored and replicated in plaintext — say so on every boot.
+  if (env.NEXT_PUBLIC_PHI_ENCRYPTION === 'false') {
+    warnings.push(
+      'NEXT_PUBLIC_PHI_ENCRYPTION=false — new patient data is being stored and replicated in plaintext. '
+      + 'Remove it once the incident that called for it is over.',
+    );
+  }
 
   // Without a DSN, instrumentation.ts never loads the Sentry SDK, so nothing
   // reports server errors anywhere. Real failures — a provisioning conflict

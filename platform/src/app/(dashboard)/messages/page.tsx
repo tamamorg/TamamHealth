@@ -167,9 +167,12 @@ export default function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversations, convSearch, meId]);
 
+  // One list, newest activity first, the way every chat app reads. Splitting
+  // direct messages from groups put a group that had just been written to
+  // under every DM, however old. Pinned stays on top; the service already
+  // returns both halves newest-first.
   const pinned = filtered.filter(c => c.pinnedBy?.includes(meId));
-  const dms = filtered.filter(c => c.kind === 'dm' && !c.pinnedBy?.includes(meId));
-  const groups = filtered.filter(c => c.kind === 'group' && !c.pinnedBy?.includes(meId));
+  const recent = filtered.filter(c => !c.pinnedBy?.includes(meId));
 
   const handleSend = async () => {
     const body = draft.trim();
@@ -269,10 +272,8 @@ export default function MessagesPage() {
             {filtered.length === 0 && <p className="text-center text-[12px] py-10" style={{ color: 'var(--ehr-muted)' }}>No conversations yet.</p>}
             {pinned.length > 0 && <p className="msgs-sec-label">Pinned</p>}
             {pinned.map(c => <ConvItem key={c._id} c={c} />)}
-            {dms.length > 0 && <p className="msgs-sec-label">Direct messages</p>}
-            {dms.map(c => <ConvItem key={c._id} c={c} />)}
-            {groups.length > 0 && <p className="msgs-sec-label">Group chats</p>}
-            {groups.map(c => <ConvItem key={c._id} c={c} />)}
+            {pinned.length > 0 && recent.length > 0 && <p className="msgs-sec-label">Recent</p>}
+            {recent.map(c => <ConvItem key={c._id} c={c} />)}
           </div>
 
           {/* Current-user presence, tucked into the panel footer */}

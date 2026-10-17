@@ -38,3 +38,9 @@ Object.defineProperty(globalThis, 'crypto', {
   writable: true,
   configurable: true,
 });
+
+// Organisation data keys (lib/org-data-cipher.ts) derive from this secret.
+// Set here so services under test encrypt and decrypt patient data the way a
+// signed-in device does, without a network fetch for the key. Every suite
+// runs through the encrypting database layer (helpers/test-db.ts).
+process.env.ORG_DATA_KEY_SECRET = process.env.ORG_DATA_KEY_SECRET || 'test-org-data-key-secret-0123456789abcdef';

@@ -29,7 +29,11 @@ describe('production data and bundle boundaries', () => {
 
     const hook = source('lib/hooks/useStaffChat.ts');
     expect(hook).toContain('if (!enabled) return;');
-    expect(hook).toContain('messagesEnabled && activeId');
+    // The live message feed is gated on messagesEnabled (false while the dock
+    // is closed). Open, it also runs with no thread selected so a colleague's
+    // message re-sorts the list — but thread bodies only load for an open one.
+    expect(hook).toContain('const c2 = messagesEnabled');
+    expect(hook).toContain('if (activeId) reloadMessages.trigger();');
   });
 
   it('keeps patient chart workspaces behind dynamic tab/action boundaries', () => {

@@ -1,4 +1,5 @@
 import { generateTempPassword, hashPassword } from '@/modules/identity/client';
+import { runWithoutEncryption } from './encrypted-db';
 
 import {
   usersDB, patientsDB, hospitalsDB, referralsDB,
@@ -1955,6 +1956,15 @@ async function clearSeededClinicalDataOnce(): Promise<void> {
 const SEED_LOCK_WAIT_MS = 30_000;
 
 export async function seedDatabase(): Promise<void> {
+  // Seeding runs before anyone signs in, so before any organisation key is on
+  // the device. Its records are reference data and fictional demo patients;
+  // they are written as they are, and readers pass plaintext through
+  // (lib/encrypted-db.ts). Real records written after sign-in are encrypted.
+  // Imported statically: the lock below must be requested in this same tick.
+  return runWithoutEncryption(seedDatabaseUnderLock);
+}
+
+async function seedDatabaseUnderLock(): Promise<void> {
   // Serialize seeding across tabs. Two tabs seeding concurrently is how the
   // demo DB gets corrupted: one tab's resetAllDatabases() destroys IndexedDB
   // stores while the other still holds open connections, the version-change
@@ -3653,7 +3663,6 @@ async function seedDatabaseExclusive(): Promise<void> {
       participantNames: c.members.map(m => m.name),
       createdByName: c.members[0].name,
       lastMessageAt: tsAgo(last.minsAgo),
-      lastMessagePreview: last.body.slice(0, 120),
       lastMessageFromName: last.from.name,
       pinnedBy: [],
       hospitalId: H.id, hospitalName: H.name, orgId: PUBLIC_ORG_ID,
