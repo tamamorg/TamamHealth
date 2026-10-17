@@ -14,10 +14,15 @@
  * bug. These tests pin the terminating conditions.
  */
 import {
+  hasUnsyncedWrite,
   healStaleOfflineMetadata,
+  localDeviceId,
   markDocsConflicted,
   markDocsSynced,
+  withPendingOfflineSync,
 } from '@/lib/sync/offline-metadata';
+
+const ME = localDeviceId()!;
 
 type AnyDoc = Record<string, unknown>;
 
@@ -121,8 +126,8 @@ describe('markDocsConflicted', () => {
 describe('healStaleOfflineMetadata', () => {
   it('flips stale pending/failed stamps to synced once push is caught up', async () => {
     const { db, bulkDocs } = fakeDb({
-      stale: { _id: 'stale', _rev: '9-a', type: 'patient', offlineSync: { status: 'pending' } },
-      failed: { _id: 'failed', _rev: '4-b', type: 'patient', offlineSync: { status: 'failed', error: 'x' } },
+      stale: { _id: 'stale', _rev: '9-a', type: 'patient', offlineSync: { status: 'pending', deviceId: ME } },
+      failed: { _id: 'failed', _rev: '4-b', type: 'patient', offlineSync: { status: 'failed', error: 'x', deviceId: ME } },
       fine: { _id: 'fine', _rev: '2-c', type: 'patient', offlineSync: { status: 'synced' } },
       unstamped: { _id: 'unstamped', _rev: '1-d', type: 'patient' },
     });
@@ -146,8 +151,8 @@ describe('healStaleOfflineMetadata', () => {
 
   it('leaves docs the push filter excludes — their pending is the truth', async () => {
     const { db, bulkDocs } = fakeDb({
-      mine: { _id: 'mine', _rev: '3-a', type: 'patient', offlineSync: { status: 'pending' } },
-      notMine: { _id: 'notMine', _rev: '3-b', type: 'lab_result', offlineSync: { status: 'pending' } },
+      mine: { _id: 'mine', _rev: '3-a', type: 'patient', offlineSync: { status: 'pending', deviceId: ME } },
+      notMine: { _id: 'notMine', _rev: '3-b', type: 'lab_result', offlineSync: { status: 'pending', deviceId: ME } },
     });
     const healed = await healStaleOfflineMetadata(db, doc => doc.type === 'patient');
     expect(healed).toBe(1);
@@ -161,5 +166,43 @@ describe('healStaleOfflineMetadata', () => {
     const healed = await healStaleOfflineMetadata(db);
     expect(healed).toBe(0);
     expect(bulkDocs).not.toHaveBeenCalled();
+  });
+});
+
+describe('only the device that wrote a stamp clears it', () => {
+  it('a local write records this device', () => {
+    const doc = withPendingOfflineSync({ _id: 'p', type: 'patient' } as never) as AnyDoc;
+    expect((doc.offlineSync as AnyDoc).deviceId).toBe(ME);
+  });
+
+  it('a pulled doc stamped by another device is left alone (no colliding revision)', async () => {
+    const { db, put } = fakeDb({
+      theirs: { _id: 'theirs', _rev: '5-a', type: 'prescription', offlineSync: { status: 'pending', deviceId: 'other-device' } },
+      legacy: { _id: 'legacy', _rev: '5-b', type: 'prescription', offlineSync: { status: 'pending' } },
+      ours: { _id: 'ours', _rev: '5-c', type: 'prescription', offlineSync: { status: 'pending', deviceId: ME } },
+    });
+    await markDocsSynced(db, [{ _id: 'theirs' }, { _id: 'legacy' }, { _id: 'ours' }], undefined, 'pull');
+    expect(put.mock.calls.map(c => (c[0] as AnyDoc)._id)).toEqual(['ours']);
+  });
+
+  it('after its own push, a device still marks what it pushed', async () => {
+    const { db, put } = fakeDb({ a: { _id: 'a', _rev: '2-a', type: 'patient', offlineSync: { status: 'pending', deviceId: ME } } });
+    await markDocsSynced(db, [{ _id: 'a' }]);
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  it('the heal sweep skips other devices\' and pre-deviceId stamps', async () => {
+    const { db, bulkDocs } = fakeDb({
+      theirs: { _id: 'theirs', _rev: '9-a', type: 'patient', offlineSync: { status: 'pending', deviceId: 'other-device' } },
+      legacy: { _id: 'legacy', _rev: '9-b', type: 'patient', offlineSync: { status: 'pending' } },
+    });
+    expect(await healStaleOfflineMetadata(db)).toBe(0);
+    expect(bulkDocs).not.toHaveBeenCalled();
+  });
+
+  it('another device\'s in-flight stamp is not counted as pending here', () => {
+    expect(hasUnsyncedWrite({ offlineSync: { status: 'pending', deviceId: 'other-device' } })).toBe(false);
+    expect(hasUnsyncedWrite({ offlineSync: { status: 'pending', deviceId: ME } })).toBe(true);
+    expect(hasUnsyncedWrite({ offlineSync: { status: 'pending' } })).toBe(true);
   });
 });

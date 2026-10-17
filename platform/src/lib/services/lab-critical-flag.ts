@@ -188,11 +188,13 @@ export const LAB_REFERENCE_RANGES: LabReferenceRange[] = [
   { test: 'Hemoglobin', unit: 'g/dL', normalMin: 12, normalMax: 17, ruleName: 'Hemoglobin', toRuleUnit: 1, referenceStr: '12-17 g/dL' },
   // ×10⁹/L = 10³/µL, so /µL ÷ 1000 lands in the rule's unit.
   { test: 'WBC', unit: '/μL', normalMin: 4000, normalMax: 11000, ruleName: 'White Blood Cell', toRuleUnit: 1 / 1000, referenceStr: '4000-11000 /μL' },
-  { test: 'Platelets', unit: '/μL', normalMin: 150000, normalMax: 400000, ruleName: 'Platelets', toRuleUnit: 1 / 1000, referenceStr: '150000-400000 /μL' },
+  { test: 'Platelet', unit: '/μL', normalMin: 150000, normalMax: 400000, ruleName: 'Platelets', toRuleUnit: 1 / 1000, referenceStr: '150000-400000 /μL' },
   // 1 mmol/L glucose = 18 mg/dL.
   { test: 'Blood Glucose', unit: 'mg/dL', normalMin: 70, normalMax: 140, ruleName: 'Glucose', toRuleUnit: 1 / 18, referenceStr: '70-140 mg/dL' },
   // 1 mg/dL creatinine = 88.4 µmol/L.
   { test: 'Creatinine', unit: 'mg/dL', normalMin: 0.6, normalMax: 1.2, ruleName: 'Creatinine', toRuleUnit: 88.4, referenceStr: '0.6-1.2 mg/dL' },
+  // Glycated haemoglobin; no QC critical rule, so it flags abnormal at most.
+  { test: 'HbA1c', unit: '%', normalMin: 4, normalMax: 5.6, referenceStr: '4.0-5.6 %' },
   { test: 'Malaria RDT', unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
   { test: 'HIV', unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
 ];
@@ -214,20 +216,23 @@ export function criticalBoundsInEntryUnit(range: LabReferenceRange): { low?: num
   };
 }
 
-export type LabFlag = 'NORMAL' | 'ABNORMAL' | 'CRITICAL';
+/** '' = not evaluated: no range to judge against, so no claim either way. */
+export type LabFlag = 'NORMAL' | 'ABNORMAL' | 'CRITICAL' | '';
 
 /**
  * Flag a single entered result: critical per the QC table (inclusive bounds,
- * unit-converted), otherwise abnormal outside the normal range.
+ * unit-converted), otherwise abnormal outside the normal range. A test with no
+ * normal range (a panel such as Full Blood Count, or an unlisted analyte) is
+ * never called NORMAL — a green pill there would vouch for a value nothing
+ * checked. It can still be flagged CRITICAL when the QC table knows it.
  */
 export function flagLabResult(testName: string, value: string): { flag: LabFlag; abnormal: boolean; critical: boolean } {
   const normal = { flag: 'NORMAL' as const, abnormal: false, critical: false };
   const range = getLabReferenceRange(testName);
   if (!range) {
-    // No dashboard range, but the QC table may still know the analyte.
     return evaluateCritical(testName, value).isCriticalValue
       ? { flag: 'CRITICAL', abnormal: true, critical: true }
-      : normal;
+      : { flag: '', abnormal: false, critical: false };
   }
 
   if (range.normalValues) {
@@ -238,7 +243,7 @@ export function flagLabResult(testName: string, value: string): { flag: LabFlag;
   }
 
   const num = parseFloat(value);
-  if (!Number.isFinite(num)) return normal;
+  if (!Number.isFinite(num)) return { flag: '', abnormal: false, critical: false };
 
   const rule = range.ruleName ? matchCriticalRule(range.ruleName) : undefined;
   if (rule && isCritical(num * (range.toRuleUnit ?? 1), rule)) {

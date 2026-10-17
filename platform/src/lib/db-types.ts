@@ -22,6 +22,12 @@ export interface BaseDoc {
     lastSyncedAt?: string;
     lastSyncedRev?: string;
     error?: string;
+    /**
+     * The device that wrote a pending/failed stamp. Only that device clears it:
+     * when every device that pulled the doc re-stamped it "synced", each wrote
+     * its own revision and the copies collided as sibling conflicts.
+     */
+    deviceId?: string;
   };
   /**
    * ISO 3166-1 alpha-2 country code of the facility that owns this record.

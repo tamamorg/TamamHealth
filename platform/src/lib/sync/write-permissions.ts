@@ -467,11 +467,11 @@ export function fieldsOutsideAmendGrant(
   const allowed = new Set(amender ? (DOC_UPDATE_ONLY_FIELDS[type] ?? []) : []);
   const changed = new Set<string>();
   for (const key of Object.keys(after)) {
-    if (key === '_rev' || after[key] === undefined) continue;
+    if (key === '_rev' || key === '_revisions' || after[key] === undefined) continue;
     if (JSON.stringify(after[key]) !== JSON.stringify(before[key]) && !allowed.has(key)) changed.add(key);
   }
   for (const key of Object.keys(before)) {
-    if (key === '_rev') continue;
+    if (key === '_rev' || key === '_revisions') continue;
     if (after[key] === undefined && before[key] !== undefined && !allowed.has(key)) changed.add(key);
   }
   return [...changed];
@@ -1056,14 +1056,17 @@ export function buildValidateDocUpdateFn(
           if (docType === 'admission' && contains(['cashier', 'medical_biller', 'hospital_manager'], actingRole)) {
             allowedFields = ['admissionDepositBillId', 'admissionDepositPaid', 'admissionDepositStatus', 'admissionDepositRefunded', 'admissionDepositRefundDue', 'admissionDepositRefundId', 'admissionDepositPendingRefund', 'admissionDepositDecisionReason', 'admissionDepositReconciledAt', 'updatedAt', 'offlineSync'];
           }
+          // _rev and _revisions are replication bookkeeping, not content: a
+          // replicated push (new_edits=false) carries _revisions in newDoc,
+          // which oldDoc never has, so every amend read as editing it.
           for (var changed in newDoc) {
-            if (!newDoc.hasOwnProperty(changed) || changed === '_rev') continue;
+            if (!newDoc.hasOwnProperty(changed) || changed === '_rev' || changed === '_revisions') continue;
             if (JSON.stringify(newDoc[changed]) !== JSON.stringify(oldDoc[changed]) && !contains(allowedFields, changed)) {
               throw({ forbidden: 'role ' + actingRole + ' may not amend ' + changed + ' on ' + docType });
             }
           }
           for (var removed in oldDoc) {
-            if (!oldDoc.hasOwnProperty(removed) || removed === '_rev') continue;
+            if (!oldDoc.hasOwnProperty(removed) || removed === '_rev' || removed === '_revisions') continue;
             if (newDoc[removed] === undefined && oldDoc[removed] !== undefined && !contains(allowedFields, removed)) {
               throw({ forbidden: 'role ' + actingRole + ' may not remove ' + removed + ' from ' + docType });
             }

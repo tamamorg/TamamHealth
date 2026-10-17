@@ -46,11 +46,12 @@ describe('dashboard flagging uses the QC critical table', () => {
 
   it('falls back to the QC table for analytes the dashboard has no range for', () => {
     expect(flagLabResult('Potassium', '7').flag).toBe('CRITICAL');
-    expect(flagLabResult('Potassium', '4').flag).toBe('NORMAL');
+    // Known to the QC table but with no normal range: not critical, not vouched for.
+    expect(flagLabResult('Potassium', '4').flag).toBe('');
   });
 
-  it('every numeric range resolves to a QC rule', () => {
-    for (const range of LAB_REFERENCE_RANGES.filter(r => !r.normalValues)) {
+  it('every range that names a QC rule resolves to it', () => {
+    for (const range of LAB_REFERENCE_RANGES.filter(r => r.ruleName)) {
       const bounds = criticalBoundsInEntryUnit(range);
       expect(bounds.low ?? bounds.high).toBeDefined();
     }
@@ -59,5 +60,25 @@ describe('dashboard flagging uses the QC critical table', () => {
   it('shows critical bounds in the unit the technician types', () => {
     expect(criticalBoundsInEntryUnit(getLabReferenceRange('WBC')!)).toEqual({ low: 1000, high: 50000 });
     expect(criticalBoundsInEntryUnit(getLabReferenceRange('Creatinine')!).high).toBeCloseTo(6.79, 2);
+  });
+});
+
+it('matches the seeded "Platelet Count" order name, not only "Platelets"', () => {
+  expect(flagLabResult('Platelet Count', '15000').flag).toBe('CRITICAL');
+  expect(getLabReferenceRange('Platelet Count')?.test).toBe('Platelet');
+});
+
+describe('tests with no normal range are not called NORMAL', () => {
+  it.each(['Full Blood Count', 'Renal Function', 'Sputum AFB', 'CD4 Count'])('%s → not evaluated', test => {
+    expect(flagLabResult(test, '7').flag).toBe('');
+  });
+
+  it('HbA1c has a range now', () => {
+    expect(flagLabResult('HbA1c', '5.2').flag).toBe('NORMAL');
+    expect(flagLabResult('HbA1c', '7.1').flag).toBe('ABNORMAL');
+  });
+
+  it('a non-numeric entry is not evaluated rather than normal', () => {
+    expect(flagLabResult('Hemoglobin', 'haemolysed').flag).toBe('');
   });
 });

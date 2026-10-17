@@ -39,6 +39,9 @@ afterEach(async () => {
 
 async function runSeedAndLoad() {
   process.env.NEXT_PUBLIC_DEMO_MODE = 'true';
+  // The standalone demo (no replication) is what seeds in the browser; on a
+  // sync-enabled stack the server seeds and the browser seeds nothing.
+  process.env.NEXT_PUBLIC_SYNC_ENABLED = 'false';
   const { seedDatabase } = await import('@/lib/db-seed');
   await seedDatabase();
 

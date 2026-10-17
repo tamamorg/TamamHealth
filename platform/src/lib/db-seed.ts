@@ -18,6 +18,7 @@ import {
   isSeeded, markSeeded, resetAllDatabases, getDB,
   isSeedInProgress, markSeedStarted
 } from './db';
+import { syncFlagAllowsSync } from './sync/sync-config';
 // `@/data/mock` carries 88 KB of fake patient PHI (50+ patient records, fake
 // hospitals, sample referrals/alerts). It is imported dynamically inside the
 // demo branch only — a static value-import here would bundle that PHI into
@@ -2040,8 +2041,52 @@ async function migrateRemoveOverlappingAppointments(): Promise<void> {
   }
 }
 
+/**
+ * True when this is a browser that should NOT plant the demo corpus itself:
+ * the demo is on and a CouchDB is configured to replicate with.
+ *
+ * Seeding the same ids on every device is what broke shared stacks. Each fresh
+ * browser wrote its own rev 1 of every demo document (own clock), so the server
+ * collected one conflicting sibling per device, and an amend-only role (the
+ * pharmacist clearing a prescription) built rev 2 on a parent the server had
+ * never seen. CouchDB then validates that push as a CREATE and refuses it.
+ * On such a stack the corpus is written to the server ONCE by
+ * `scripts/seed-demo-corpus.mjs`, and devices receive it by replication, so
+ * every copy shares one revision lineage.
+ *
+ * The standalone demo has no CouchDB (`syncFlagAllowsSync()` is false), so it
+ * keeps seeding in the browser, unchanged. The seed script itself runs in Node
+ * (`window` is undefined) and so takes the full path below.
+ */
+export function seedComesFromServer(): boolean {
+  return IS_DEMO && typeof window !== 'undefined' && syncFlagAllowsSync();
+}
+
+async function adoptServerSeed(): Promise<void> {
+  // A device that holds an older locally-seeded corpus keeps none of it: those
+  // documents sit on revision lineages the server does not know. The same
+  // dirty-checked wipe the production reset uses keeps any database that still
+  // holds unsynced work. Nothing is seeded; pull fills the stores after
+  // sign-in, and sign-in itself only needs the server's users database.
+  if (await isSeeded()) return;
+  const { wipeLocalData } = await import('./security/local-wipe');
+  const result = await wipeLocalData('seed-reset');
+  if (result.kept.length) {
+    console.warn(
+      '[db-seed] Kept databases holding unsynced writes; they will be cleared once those changes reach the server.',
+      { kept: result.kept },
+    );
+  }
+  await markSeeded();
+}
+
 async function seedDatabaseExclusive(): Promise<void> {
   await clearSeededClinicalDataOnce();
+
+  if (seedComesFromServer()) {
+    await adoptServerSeed();
+    return;
+  }
 
   if (await isSeeded()) {
     // Self-heal a corrupted "marked-seeded but empty" state. The seed marker is

@@ -87,6 +87,29 @@ test('an untouched field keeps its exact envelope, so amend-only roles still pas
   expect(fieldsOutsideAmendGrant('prescription', 'pharmacist', before, after)).toEqual([]);
 });
 
+test('an untouched field still stored in plaintext stays as stored, so an amend-only save is not an edit', async () => {
+  // Written before the rollout, or seeded: plaintext at rest.
+  await runWithoutEncryption(() => db.put({
+    _id: 'rx-old', type: 'prescription', orgId: 'org-a', patientId: 'pat-1',
+    patientName: 'Tut Ring Thiik', medication: 'Amlodipine 5 mg', status: 'pending',
+  }));
+  const before = await raw.get('rx-old') as Record<string, unknown>;
+
+  const current = await db.get('rx-old') as Record<string, unknown>;
+  await db.put({ ...current, status: 'cleared_for_dispensing', dispenseNote: 'checked' });
+  const after = await raw.get('rx-old') as Record<string, unknown>;
+
+  expect(after.patientName).toBe('Tut Ring Thiik');
+  expect(after.medication).toBe('Amlodipine 5 mg');
+  expect(isOrgEncrypted(after.dispenseNote)).toBe(true); // what was written now is sealed
+  expect(fieldsOutsideAmendGrant('prescription', 'pharmacist', before, after)).toEqual([]);
+
+  // An actual edit of a plaintext field is sealed as usual.
+  const again = await db.get('rx-old') as Record<string, unknown>;
+  await db.put({ ...again, patientName: 'Tut Thiik' });
+  expect(isOrgEncrypted((await raw.get('rx-old') as Record<string, unknown>).patientName)).toBe(true);
+});
+
 test('bulkDocs keeps untouched envelopes too', async () => {
   await db.put({ _id: 'n1', type: 'patient_note', orgId: 'org-a', patientId: 'p', body: 'first' });
   const before = await raw.get('n1') as Record<string, unknown>;

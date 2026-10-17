@@ -384,6 +384,14 @@ describe('org-scoped validate_doc_update', () => {
       expect(reasonFor({ ...order, orderStatus: 'dispensed' }, order, pharmacist)).toBeNull();
     });
 
+    it('accepts the advance when it arrives by replication, carrying _revisions', () => {
+      // new_edits=false pushes put _revisions on newDoc; the stored oldDoc never has it.
+      const replicated = { ...order, _rev: '2-b', _revisions: { start: 2, ids: ['b', 'a'] }, orderStatus: 'dispensed' };
+      expect(reasonFor(replicated, { ...order, _rev: '1-a' }, pharmacist)).toBeNull();
+      expect(reasonFor({ ...replicated, patientName: 'changed' }, { ...order, _rev: '1-a' }, pharmacist))
+        .toMatch(/may not amend patientName/);
+    });
+
     it('refuses to let a nurse rewrite the order and accepts a new dose event', () => {
       expect(reasonFor({ ...order, administrations: [{ id: 'madm-1' }] }, order, nurseUser))
         .toMatch(/role nurse may not write documents of type prescription/);

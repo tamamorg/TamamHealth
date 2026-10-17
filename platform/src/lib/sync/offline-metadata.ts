@@ -11,7 +11,12 @@ export type OfflineSyncMeta = NonNullable<BaseDoc['offlineSync']>;
  * (2026-09-01); the counts and the registry filter outlived it.
  */
 export function hasUnsyncedWrite(doc?: { offlineSync?: OfflineSyncMeta }): boolean {
-  return !!doc?.offlineSync && doc.offlineSync.status !== 'synced';
+  if (!doc?.offlineSync || doc.offlineSync.status === 'synced') return false;
+  // Another device's in-flight stamp, pulled before that device marked it
+  // synced, is not a write waiting on THIS device. (A stamp with no deviceId
+  // predates the field and still counts.)
+  const writer = doc.offlineSync.deviceId;
+  return !writer || writer === localDeviceId();
 }
 
 type PouchDoc = BaseDoc & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta;
@@ -20,7 +25,58 @@ function isDesignDoc(doc: { _id?: string } | null | undefined): boolean {
   return !!doc?._id?.startsWith('_design/');
 }
 
+const DEVICE_ID_KEY = 'tamamhealth.sync.device-id';
+let cachedDeviceId: string | undefined;
+
+/**
+ * A stable id for this browser profile, kept in localStorage. Undefined on the
+ * server, where a write lands on CouchDB directly and has no device to clear it.
+ */
+export function localDeviceId(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  if (cachedDeviceId) return cachedDeviceId;
+  try {
+    let id = window.localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      window.localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    cachedDeviceId = id;
+  } catch {
+    // Storage blocked: an id for this page's lifetime still keeps the
+    // only-the-writer-clears rule sound within the session.
+    cachedDeviceId ??= `dev-session-${Math.random().toString(36).slice(2)}`;
+  }
+  return cachedDeviceId;
+}
+
+/** Test seam: forget the cached id (and let a new one be read or minted). */
+export function resetLocalDeviceIdForTests(): void { cachedDeviceId = undefined; }
+
+/** Whether this device wrote the doc's current stamp — the one allowed to clear it. */
+function stampedHere(doc: { offlineSync?: OfflineSyncMeta }): boolean {
+  const mine = localDeviceId();
+  return !!mine && doc.offlineSync?.deviceId === mine;
+}
+
 export function withPendingOfflineSync<T extends BaseDoc>(doc: T, at = new Date().toISOString()): T {
+  // On the server the write IS the server copy: stamping it pending put a
+  // stamp at rest that no device would ever be the right one to clear.
+  if (typeof window === 'undefined') {
+    return {
+      ...doc,
+      offlineSync: {
+        ...(doc.offlineSync || {}),
+        status: 'synced',
+        lastLocalChangeAt: at,
+        lastSyncedAt: at,
+        error: undefined,
+        deviceId: undefined,
+      },
+    };
+  }
   return {
     ...doc,
     offlineSync: {
@@ -28,6 +84,7 @@ export function withPendingOfflineSync<T extends BaseDoc>(doc: T, at = new Date(
       status: 'pending',
       lastLocalChangeAt: at,
       error: undefined,
+      deviceId: localDeviceId(),
     },
   };
 }
@@ -40,6 +97,7 @@ export function withFailedOfflineSync<T extends BaseDoc>(doc: T, error: string, 
       status: 'failed',
       lastLocalChangeAt: doc.offlineSync?.lastLocalChangeAt || at,
       error,
+      deviceId: localDeviceId(),
     },
   };
 }
@@ -48,6 +106,12 @@ export async function markDocsSynced(
   db: PouchDB.Database,
   docs: Array<{ _id?: string; _rev?: string }>,
   at = new Date().toISOString(),
+  /**
+   * 'pull': the docs arrived from the server, so only stamps this device wrote
+   * may be cleared. Clearing another device's stamp writes a revision that
+   * device writes too, and the two collide as sibling conflicts.
+   */
+  source: 'push' | 'pull' = 'push',
 ): Promise<void> {
   for (const landed of docs) {
     if (isDesignDoc(landed) || !landed._id) continue;
@@ -72,6 +136,7 @@ export async function markDocsSynced(
       // A doc with live sibling revisions belongs to the conflict path — do
       // not paper over it with "synced".
       if (current._conflicts?.length) continue;
+      if (source === 'pull' && !stampedHere(current)) continue;
       await db.put({
         ...current,
         offlineSync: {
@@ -163,6 +228,10 @@ export async function healStaleOfflineMetadata(
       continue;
     }
     if (status === 'synced') continue;
+    // Another device's (or a pre-deviceId) stale stamp is not ours to clear:
+    // every device healing the same doc wrote colliding revisions. The server
+    // cleanup (scripts/cleanup-offline-metadata-conflicts.mjs) heals those once.
+    if (!stampedHere(doc)) continue;
     // PouchDoc has no index signature; the filter's shape is wider on purpose.
     if (wouldPush && !wouldPush(doc as unknown as Parameters<typeof wouldPush>[0])) continue;
     fixes.push({

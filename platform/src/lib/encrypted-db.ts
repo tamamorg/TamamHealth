@@ -246,6 +246,12 @@ export async function encryptDocument<T extends Record<string, unknown>>(
       if (previous !== undefined) { setAt(out, path, previous); return; }
       throw new Error('This record has a field that cannot be read on this device, so it cannot be saved from it.');
     }
+    // Rule 3: an untouched field still stored in plaintext (written before the
+    // rollout, or seeded) stays as stored. Sealing it here would make an
+    // amend-only role's save change a field it may not touch — a pharmacist
+    // clearing an order "edited" patientName and the validator refused the
+    // whole document. Records at rest are sealed by the server-side migration.
+    if (previous !== undefined && !isOrgEncrypted(previous) && previous === value) return;
     // Rule 1: an untouched field keeps the envelope it already has.
     if (previous && isOrgEncrypted(previous) && sameSet(envelopeOrgIds(previous), keyIds)) {
       if ((await readOrgField(previous)) === value) { setAt(out, path, previous); return; }

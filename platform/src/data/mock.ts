@@ -2367,7 +2367,46 @@ function generateLabResults(): LabResult[] {
   return allLabs.slice(0, count);
 }
 
+/**
+ * Run `draw` against a PRNG stream derived from `key` alone, then put the
+ * module's shared stream back exactly where it was.
+ *
+ * `rand()` is one module-level stream, advanced by every draw. That is fine
+ * for the roster built once at module load (the order is fixed), but
+ * `generateMedicalRecords` runs LATER, once per patient, so its output used to
+ * depend on how many draws had already happened in this process: a second
+ * seed pass in the same page, a portal-demo lookup, or any earlier caller moved
+ * the stream and changed how many prescriptions each visit had. Seed ids such
+ * as `rx-${patientId}-${visit}-${k}` are built from those counts, so every
+ * fresh device planted a slightly different set of ids and the shared
+ * prescription store grew with each one (273 -> 279 -> 298 -> 317 in the
+ * pharmacy queue across fresh browser profiles).
+ *
+ * Keying the stream by (patient, count) makes the output a pure function of
+ * the arguments; restoring the shared state leaves every other consumer's
+ * draws exactly where they were.
+ */
+function withKeyedRand<T>(key: string, draw: () => T): T {
+  const saved = _randState;
+  let h = 0x811c9dc5; // FNV-1a over the key
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  _randState = h | 0;
+  try {
+    return draw();
+  } finally {
+    _randState = saved;
+  }
+}
+
 export function generateMedicalRecords(patientId: string, count: number, homeHospitalId?: string): MedicalRecord[] {
+  return withKeyedRand(`medical-records:${patientId}:${count}:${homeHospitalId ?? ''}`, () =>
+    buildMedicalRecords(patientId, count, homeHospitalId));
+}
+
+function buildMedicalRecords(patientId: string, count: number, homeHospitalId?: string): MedicalRecord[] {
   // Generate a coherent chronological series so trend charts are meaningful.
   // Records are spaced roughly monthly going back from "now".
   const startMonth = 8; // months back
