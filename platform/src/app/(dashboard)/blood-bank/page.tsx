@@ -244,9 +244,10 @@ export default function BloodBankPage() {
       showToast('Select a patient to reserve this unit', 'error');
       return;
     }
+    if (!scope) return;
     setReserving(true);
     try {
-      const result = await reserveUnit(reserveUnitId, reservePatient._id);
+      const result = await reserveUnit(reserveUnitId, reservePatient._id, scope);
       if (!result) throw new Error('reserve-failed');
       showToast(`Unit reserved for ${patientFullName(reservePatient)}`, 'success');
       closeReserve();
@@ -264,9 +265,10 @@ export default function BloodBankPage() {
       showToast('A reason is required to discard a unit', 'error');
       return;
     }
+    if (!scope) return;
     setDiscarding(true);
     try {
-      const result = await discardUnit(discardUnitId, discardReason.trim());
+      const result = await discardUnit(discardUnitId, discardReason.trim(), scope);
       if (!result) throw new Error('discard-failed');
       showToast('Unit discarded', 'success');
       closeDiscard();
@@ -280,10 +282,10 @@ export default function BloodBankPage() {
   };
 
   const handleCrossmatch = async () => {
-    if (!crossmatchUnitId) return;
+    if (!crossmatchUnitId || !scope) return;
     setCrossmatching(true);
     try {
-      const result = await crossmatchUnit(crossmatchUnitId, crossmatchChoice);
+      const result = await crossmatchUnit(crossmatchUnitId, crossmatchChoice, scope);
       if (!result) throw new Error('crossmatch-failed');
       showToast(
         crossmatchChoice === 'compatible'
@@ -308,10 +310,11 @@ export default function BloodBankPage() {
       showToast('No patient reservation found for this unit', 'error');
       return;
     }
+    if (!scope) return;
     setTransfusing(true);
     try {
       const transfusedBy = currentUser?.name || currentUser?.username || currentUser?._id || 'Staff';
-      const result = await recordTransfusion(transfuseUnitId, unit.reservedForPatient, transfusedBy);
+      const result = await recordTransfusion(transfuseUnitId, unit.reservedForPatient, transfusedBy, scope);
       if (!result) throw new Error('transfuse-failed');
       showToast('Transfusion recorded', 'success');
       closeTransfuse();

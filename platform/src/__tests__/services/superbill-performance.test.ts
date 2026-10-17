@@ -27,7 +27,7 @@ it('prices every catalog-backed line with one database load', async () => {
     { category: 'consultation', serviceCode: 'CONSULT' },
     { category: 'laboratory', serviceCode: 'CBC' },
     { category: 'consultation', serviceCode: 'CONSULT', quantity: 2 },
-  ]);
+  ], { role: 'super_admin' });
 
   expect(getActiveFees).toHaveBeenCalledTimes(1);
   expect(preview.lines.map(line => line.unitPrice)).toEqual([50, 20, 50]);
@@ -38,6 +38,6 @@ it('does not load the catalog when every line has an explicit price', async () =
   await buildSuperbillPreview([
     { category: 'consultation', unitPrice: 75 },
     { category: 'laboratory', unitPrice: 25 },
-  ]);
+  ], { role: 'super_admin' });
   expect(getActiveFees).not.toHaveBeenCalled();
 });

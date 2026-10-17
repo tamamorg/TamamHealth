@@ -3,7 +3,7 @@ import { resolveDocOrgId } from './register-org';
 import type { PatientDoc, TriageDoc, TriagePriority } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
@@ -22,7 +22,7 @@ import { patientAgeYearsExact } from '../patient-utils';
  * "apply adult ranges" and flags every such warning as resting on that
  * assumption.
  */
-async function resolvePatientAgeYears(patientId?: string, scope?: DataScope): Promise<number | undefined> {
+async function resolvePatientAgeYears(patientId: string | undefined, scope: DataScope): Promise<number | undefined> {
   if (!patientId) return undefined;
   try {
     const patient = await patientsDB().get(patientId) as PatientDoc;
@@ -30,9 +30,8 @@ async function resolvePatientAgeYears(patientId?: string, scope?: DataScope): Pr
     // /api/triage route) must resolve an out-of-tenant patient exactly like
     // a lookup failure — age unknown — rather than let their real age reach
     // the vitals-warning text and become a cross-tenant existence oracle.
-    // Callers with no scope (e.g. the browser's own PouchDB, which only
-    // ever holds documents the device is entitled to) keep the bare lookup.
-    if (scope && filterByScope([patient], scope).length === 0) return undefined;
+    // The scope is required: the local database holds every replicated org.
+    if (filterByScope([patient], scope).length === 0) return undefined;
     return patientAgeYearsExact(patient) ?? undefined;
   } catch {
     return undefined;
@@ -49,7 +48,7 @@ async function resolvePatientAgeYears(patientId?: string, scope?: DataScope): Pr
  * go through the override path regardless of what it claims the
  * recommendation was.
  */
-async function computeVitalUrgencyRecommendation(doc: Partial<TriageDoc>, capillaryRefill: number | null, scope?: DataScope): Promise<TriagePriority> {
+async function computeVitalUrgencyRecommendation(doc: Partial<TriageDoc>, capillaryRefill: number | null, scope: DataScope): Promise<TriagePriority> {
   const patientAgeYears = await resolvePatientAgeYears(doc.patientId, scope);
   const warnings = getTriageVitalWarnings(
     {
@@ -77,7 +76,7 @@ async function computeVitalUrgencyRecommendation(doc: Partial<TriageDoc>, capill
   return highestTriagePriority(structuredRecommendation, vitalsRecommendation) as TriagePriority;
 }
 
-async function assertTriageVitalSafety(doc: Partial<TriageDoc>, scope?: DataScope): Promise<void> {
+async function assertTriageVitalSafety(doc: Partial<TriageDoc>, scope: DataScope): Promise<void> {
   const errors = validateTriageVitals({
     temperature: doc.temperature,
     pulse: doc.pulse,
@@ -145,12 +144,12 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   lwbs: [],
 };
 
-export async function getAllTriage(scope?: DataScope): Promise<TriageDoc[]> {
+export async function getAllTriage(scope: DataScope): Promise<TriageDoc[]> {
   const db = triageDB();
   const all = await findByType<TriageDoc>(db, 'triage');
   /* istanbul ignore next -- defensive null-safety in sort */
   all.sort((a, b) => (b.triagedAt || '').localeCompare(a.triagedAt || ''));
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
 /** Exact triage lookup for workflows that must validate a supplied record id. */
@@ -163,14 +162,14 @@ export async function getTriageById(id: string): Promise<TriageDoc | null> {
 }
 
 /** Triages for a specific patient, newest first. */
-export async function getTriageByPatient(patientId: string, scope?: DataScope): Promise<TriageDoc[]> {
+export async function getTriageByPatient(patientId: string, scope: DataScope): Promise<TriageDoc[]> {
   const rows = await findByType<TriageDoc>(
     triageDB(),
     'triage',
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
-  const visible = scope ? filterByScope(rows, scope) : rows;
+  const visible = filterByScope(rows, scope);
   return visible.sort((a, b) => (b.triagedAt || '').localeCompare(a.triagedAt || ''));
 }
 
@@ -180,7 +179,7 @@ export async function getTriageByEncounter(encounterId: string): Promise<TriageD
 }
 
 /** Active (pending) triages for the current facility — feeds the nurse queue. */
-export async function getActiveTriage(scope?: DataScope): Promise<TriageDoc[]> {
+export async function getActiveTriage(scope: DataScope): Promise<TriageDoc[]> {
   const all = await getAllTriage(scope);
   return all.filter(t => t.status === 'pending' || t.status === 'seen');
 }
@@ -222,7 +221,7 @@ const ACTIVE_TRIAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
  * so a patient with (incorrectly) more than one active record still resolves
  * to a single, most-recent one.
  */
-export async function findActiveTriageForPatient(patientId: string, scope?: DataScope): Promise<TriageDoc | undefined> {
+export async function findActiveTriageForPatient(patientId: string, scope: DataScope): Promise<TriageDoc | undefined> {
   const rows = await getTriageByPatient(patientId, scope);
   const cutoff = Date.now() - ACTIVE_TRIAGE_WINDOW_MS;
   return rows.find(t => {
@@ -260,14 +259,13 @@ export interface CreateTriageOptions {
    * Scope the duplicate-active-triage lookup and the vitals-safety gate's own
    * patient-age lookup to the caller's tenant — required for an authenticated
    * API caller (e.g. /api/triage) so it neither finds another org's active
-   * triage nor lets another org's patient's real age reach the gate. Local
-   * PouchDB callers (the browser only ever replicates data it is entitled
-   * to) may omit it and keep the previous unscoped lookup — in particular
-   * check-in-service.ts's clerical placeholder deliberately checks across
-   * every facility the device holds, so a walk-in returning to a DIFFERENT
-   * facility is still caught as a duplicate rather than missed.
+   * triage nor lets another org's patient's real age reach the gate. Required
+   * for every caller: the local database holds every replicated org. A caller
+   * that must catch a duplicate at a DIFFERENT facility of the same org
+   * (check-in-service.ts's clerical placeholder) passes an org-level scope
+   * with no `hospitalId`.
    */
-  scope?: DataScope;
+  scope: DataScope;
 }
 
 /**
@@ -352,10 +350,10 @@ async function applyTriageAllergiesToPatient(
 
 export async function createTriage(
   data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
-  options: CreateTriageOptions = {},
+  options: CreateTriageOptions,
 ): Promise<TriageDoc> {
   if (options.resumePendingId) {
-    return updateTriage(options.resumePendingId, data, options.actor);
+    return updateTriage(options.resumePendingId, data, options.scope, options.actor);
   }
 
   const existingActive = await findActiveTriageForPatient(data.patientId, options.scope);
@@ -364,7 +362,7 @@ export async function createTriage(
   }
 
   await assertTriageVitalSafety(data, options.scope);
-  const orgId = await resolveDocOrgId(data, 'triage', options.scope?.orgId);
+  const orgId = await resolveDocOrgId(data, 'triage', options.scope.orgId);
   const db = triageDB();
   const now = new Date().toISOString();
   const doc: TriageDoc = withPendingOfflineSync({
@@ -443,11 +441,17 @@ function updateAffectsVitalUrgencyRecommendation(updates: Partial<TriageDoc>, ex
 export async function updateTriage(
   id: string,
   updates: Partial<TriageDoc>,
+  scope: DataScope,
   actor?: TriageActor,
 ): Promise<TriageDoc> {
   const db = triageDB();
   for (let attempt = 0; attempt < 3; attempt++) {
     const existing = await db.get(id) as TriageDoc;
+    // Tenant barrier: an out-of-scope triage is refused exactly like a
+    // missing one (PouchDB's not_found), never mutated.
+    if (filterByScope([existing], scope).length === 0) {
+      throw Object.assign(new Error('missing'), { name: 'not_found', status: 404, reason: 'missing' });
+    }
 
     // Enforce valid status transitions
     if (updates.status && updates.status !== existing.status) {
@@ -470,7 +474,9 @@ export async function updateTriage(
     // or the escalate/LWBS encounter transition that runs ahead of it) could
     // ever succeed.
     if (updateAffectsVitalUrgencyRecommendation(updates, existing)) {
-      await assertTriageVitalSafety(updated);
+      // The age lookup is pinned to the tenant of the triage being updated,
+      // so it can never resolve a patient from another org.
+      await assertTriageVitalSafety(updated, orgOnlyScope(existing.orgId));
     }
     let resp: Awaited<ReturnType<typeof db.put>>;
     try {
@@ -526,7 +532,7 @@ export async function updateTriage(
 }
 
 /** Stats for the nurse dashboard header (active reds, today's totals). */
-export async function getTriageStats(scope?: DataScope) {
+export async function getTriageStats(scope: DataScope) {
   const all = await getAllTriage(scope);
   const today = jubaDate();
   /* istanbul ignore next -- defensive null-safety in filter */

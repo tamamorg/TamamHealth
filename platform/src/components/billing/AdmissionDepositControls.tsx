@@ -28,7 +28,7 @@ export default function AdmissionDepositControls({ admissionId }: { admissionId:
     setAdmission(row);
     if (!row) return;
     const { getBillById } = await import('@/lib/services/billing-service');
-    const bill = row.admissionDepositBillId ? await getBillById(row.admissionDepositBillId) : null;
+    const bill = row.admissionDepositBillId ? await getBillById(row.admissionDepositBillId, scope) : null;
     setPayments(bill?.payments ?? []);
   }, [admissionId, scope]);
   useEffect(() => { void load().catch(cause => setError(String(cause))); }, [load]);

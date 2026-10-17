@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { AssessmentDoc } from '../db-types';
 import { assessmentsDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -25,20 +25,7 @@ export function useAssessments(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    if (!patientId) return;
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = assessmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [patientId, load]);
+  usePouchLiveReload({ load, database: assessmentsDB, enabled: Boolean(patientId) });
 
   return { assessments, loading, reload: load };
 }

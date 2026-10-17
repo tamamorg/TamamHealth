@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from '@/lib/hooks/live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import type { MessageDoc } from '@/lib/db-types';
 import { messagesDB } from '@/lib/db';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -31,23 +31,8 @@ export function useMessages() {
     }
   }, [scope]);
 
-  useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
-
   // Live PouchDB subscription: re-load on any new/edited message.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadMessages(); });
-    const changes = messagesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadMessages]);
+  usePouchLiveReload({ load: loadMessages, database: messagesDB });
 
   const send = useCallback(async (data: Omit<MessageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'status'>) => {
     const { createMessage } = await import('@/modules/communication/services/message-service');

@@ -9,7 +9,7 @@
  * local capability checks keep the UI honest, while CouchDB validation remains
  * the authoritative boundary when those revisions reach the server.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type {
   PatientTransferDoc,
   PatientTransferChecklistItem,
@@ -18,7 +18,7 @@ import type {
   PatientDoc,
 } from '../db-types';
 import { patientTransfersDB } from '../db';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useAuth } from '../context';
 import { useDataScope } from './useDataScope';
 import {
@@ -98,27 +98,11 @@ export function usePatientTransfers(patientId?: string) {
     }
   }, [patientId, scope, viewerId]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live-refresh: an accept/reject landing on another device must update this
   // chart, otherwise two clinicians can each believe they own the patient.
-  useEffect(() => {
-    if (!patientId) return;
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = patientTransfersDB()
-      .changes({ since: 'now', live: true, include_docs: true })
-      .on('change', change => {
-        const doc = change.doc as PatientTransferDoc | undefined;
-        if (!doc || doc.patientId === patientId || change.deleted) reload.trigger();
-      })
-      .on('error', () => { /* offline-first: next local change retries */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [patientId, load]);
+  const shouldReload = useCallback((change: { doc?: PatientTransferDoc; deleted?: boolean }) =>
+    !change.doc || change.doc.patientId === patientId || Boolean(change.deleted), [patientId]);
+  usePouchLiveReload({ load, database: patientTransfersDB, includeDocs: true, shouldReload, enabled: Boolean(patientId) });
 
   /** The live transfer worth showing in a chart banner, if any. */
   const now = useNow();
@@ -350,21 +334,7 @@ export function useTransferQueue() {
     userRole, userDepartment,
   ]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = patientTransfersDB()
-      .changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* offline-first: next local change retries */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: patientTransfersDB });
 
   return { incoming, outgoing, loading, reload: load };
 }

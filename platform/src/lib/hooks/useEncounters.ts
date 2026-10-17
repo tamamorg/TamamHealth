@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { EncounterDoc } from '../db-types';
 import { encountersDB } from '../db';
 import { useDataScope } from './useDataScope';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 
 /** Live, tenant-scoped encounter state for cross-station operational displays. */
 export function useEncounters() {
@@ -26,19 +26,7 @@ export function useEncounters() {
     }
   }, [scope]);
 
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) void load(); });
-    const changes = encountersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => undefined);
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: encountersDB });
 
   return { encounters, loading, reload: load };
 }

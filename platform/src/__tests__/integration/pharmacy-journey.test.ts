@@ -28,12 +28,21 @@ import {
   usersDB, hospitalsDB, patientsDB, pharmacyInventoryDB, feeScheduleDB,
 } from '@/lib/db';
 import { createArrivalEncounter, advanceEncounterToClinician, getEncounter } from '@/lib/services/encounter-service';
-import { createPrescription, advancePrescription, getPrescriptionsByPatient } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, advancePrescription, getPrescriptionsByPatient } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 import { dispenseMedication } from '@/lib/services/dispensing-service';
 import { getPatientBalance } from '@/lib/services/ledger-service';
 import { evaluateCheckoutGate } from '@/lib/services/checkout-gate-service';
 import { createProcedure, advanceProcedure } from '@/lib/services/procedure-service';
 import { comparePharmacyPriority } from '@/lib/clinical-flow/medication-tiers';
+import type { DataScope as __DS } from '@/lib/services/data-scope';
+// Legacy fixtures carry no org; super_admin keeps the national view that filterByScope grants.
+const SUPER: __DS = { role: 'super_admin' };
 
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
@@ -111,7 +120,7 @@ it('carries a visit from arrival to a dispensed, billed, tier-aware medication',
 
   // (1) The medication is billed. This is what the pay-first gate reads; a
   //     medication-only visit used to sit at a balance of zero forever.
-  const balanceAfterRx = await getPatientBalance(PATIENT._id);
+  const balanceAfterRx = await getPatientBalance(PATIENT._id, SUPER);
   expect(balanceAfterRx).toBe(2000); // 2 vials × SSP 1000
 
   // ── The queue puts it ahead of routine work ─────────────────────────
@@ -123,7 +132,7 @@ it('carries a visit from arrival to a dispensed, billed, tier-aware medication',
   } as never);
   expect(vitamins.criticalityTier).toBe(3);
   // Every prescription is billed, not just the first: 2 vials + 1 dose.
-  expect(await getPatientBalance(PATIENT._id)).toBe(3000);
+  expect(await getPatientBalance(PATIENT._id, SUPER)).toBe(3000);
   const queue = [vitamins, insulin].sort(comparePharmacyPriority);
   expect(queue[0].medication).toBe('Insulin (soluble/regular)');
 
@@ -137,7 +146,7 @@ it('carries a visit from arrival to a dispensed, billed, tier-aware medication',
   ]);
 
   // ── Dispense it, for real ───────────────────────────────────────────
-  const balanceBeforeDispense = await getPatientBalance(PATIENT._id);
+  const balanceBeforeDispense = await getPatientBalance(PATIENT._id, SUPER);
   await clearForDispensing(insulin._id);
   const refreshed = (await getPrescriptionsByPatient(PATIENT._id)).find(r => r._id === insulin._id)!;
   const result = await dispenseMedication({
@@ -165,7 +174,7 @@ it('carries a visit from arrival to a dispensed, billed, tier-aware medication',
   // Dispensing does not bill again — the charge was raised at prescribing, so
   // the counter hands over stock without touching the account. Double-billing
   // here would be the obvious way to get this wrong.
-  expect(await getPatientBalance(PATIENT._id)).toBe(balanceBeforeDispense);
+  expect(await getPatientBalance(PATIENT._id, SUPER)).toBe(balanceBeforeDispense);
 });
 
 it('refuses to dispense an order nobody cleared', async () => {

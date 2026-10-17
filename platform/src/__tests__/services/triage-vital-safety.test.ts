@@ -5,6 +5,7 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 import { teardownTestDBs } from '../helpers/test-db';
 import { createTriage } from '@/lib/services/triage-service';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 afterEach(async () => {
   await teardownTestDBs();
   uuidCounter = 0;
@@ -31,11 +32,11 @@ function triageInput(overrides: Record<string, unknown> = {}) {
 
 describe('triage persistence safety', () => {
   test('the service refuses impossible vitals even when the UI is bypassed', async () => {
-    await expect(createTriage(triageInput({ pulse: 'abc' }))).rejects.toThrow('Pulse must be a number');
-    await expect(createTriage(triageInput({ oxygenSaturation: '999' }))).rejects.toThrow('Oxygen saturation must be between');
-    await expect(createTriage(triageInput({ height: '999' }))).rejects.toThrow('Height must be between');
-    await expect(createTriage(triageInput({ capillaryRefillSeconds: '11' }))).rejects.toThrow('Capillary refill must be between');
-    await expect(createTriage(triageInput({ gestationalAgeWeeks: '38.5' }))).rejects.toThrow('Gestational age must be a whole number');
+    await expect(createTriage(triageInput({ pulse: 'abc' }), { scope: TEST_SCOPE })).rejects.toThrow('Pulse must be a number');
+    await expect(createTriage(triageInput({ oxygenSaturation: '999' }), { scope: TEST_SCOPE })).rejects.toThrow('Oxygen saturation must be between');
+    await expect(createTriage(triageInput({ height: '999' }), { scope: TEST_SCOPE })).rejects.toThrow('Height must be between');
+    await expect(createTriage(triageInput({ capillaryRefillSeconds: '11' }), { scope: TEST_SCOPE })).rejects.toThrow('Capillary refill must be between');
+    await expect(createTriage(triageInput({ gestationalAgeWeeks: '38.5' }), { scope: TEST_SCOPE })).rejects.toThrow('Gestational age must be a whole number');
   });
 
   test('saving below the recommendation is refused without a recorded reason', async () => {
@@ -45,12 +46,12 @@ describe('triage persistence safety', () => {
       vitalUrgencyWarnings: [{ field: 'pulse', code: 'IITT_ADULT_PULSE_RED', urgency: 'RED', message: 'RED pulse' }],
       vitalUrgencyOverridden: true,
       vitalUrgencyOverrideReason: '   ',
-    }))).rejects.toThrow('reason is required');
+    }), { scope: TEST_SCOPE })).rejects.toThrow('reason is required');
 
     await expect(createTriage(triageInput({
       capillaryRefillSeconds: '4',
       priority: 'GREEN',
-    }))).rejects.toThrow('Saving below the recommended triage urgency');
+    }), { scope: TEST_SCOPE })).rejects.toThrow('Saving below the recommended triage urgency');
   });
 
   test('a reasoned override is persisted for the clinical record and audit trail', async () => {
@@ -60,7 +61,7 @@ describe('triage persistence safety', () => {
       vitalUrgencyWarnings: [{ field: 'pulse', code: 'IITT_ADULT_PULSE_RED', urgency: 'RED', message: 'RED pulse' }],
       vitalUrgencyOverridden: true,
       vitalUrgencyOverrideReason: 'Pulse repeated manually at 88 bpm after monitor artefact.',
-    }));
+    }), { scope: TEST_SCOPE });
 
     expect(saved.priority).toBe('GREEN');
     expect(saved.vitalUrgencyOverridden).toBe(true);

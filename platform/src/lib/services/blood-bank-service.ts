@@ -19,14 +19,14 @@ function emitBloodBank(doc: BloodBankDoc, operation: 'create' | 'update'): void 
   });
 }
 
-export async function getAllUnits(scope?: DataScope): Promise<BloodBankDoc[]> {
+export async function getAllUnits(scope: DataScope): Promise<BloodBankDoc[]> {
   const db = bloodBankDB();
   const all = (await findByType<BloodBankDoc>(db, 'blood_bank'))
     .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
-export async function getAvailableUnits(bloodGroup?: string, facilityId?: string, scope?: DataScope): Promise<BloodBankDoc[]> {
+export async function getAvailableUnits(bloodGroup: string | undefined, facilityId: string | undefined, scope: DataScope): Promise<BloodBankDoc[]> {
   const all = await getAllUnits(scope);
   return all.filter(u =>
     u.status === 'available' &&
@@ -63,12 +63,12 @@ export async function addUnit(
 export async function updateUnit(
   id: string,
   updates: Partial<BloodBankDoc>,
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<BloodBankDoc | null> {
   const db = bloodBankDB();
   try {
     const existing = await db.get(id) as BloodBankDoc;
-    if (scope && filterByScope([existing], scope).length === 0) return null;
+    if (filterByScope([existing], scope).length === 0) return null;
     const updated = {
       ...existing,
       ...updates,
@@ -86,11 +86,11 @@ export async function updateUnit(
   }
 }
 
-export async function reserveUnit(id: string, patientId: string, scope?: DataScope): Promise<BloodBankDoc | null> {
+export async function reserveUnit(id: string, patientId: string, scope: DataScope): Promise<BloodBankDoc | null> {
   const db = bloodBankDB();
   try {
     const existing = await db.get(id) as BloodBankDoc;
-    if (scope && filterByScope([existing], scope).length === 0) return null;
+    if (filterByScope([existing], scope).length === 0) return null;
     if (existing.status !== 'available') {
       throw new Error(`Unit ${id} is not available for reservation`);
     }
@@ -115,12 +115,12 @@ export async function reserveUnit(id: string, patientId: string, scope?: DataSco
 export async function crossmatchUnit(
   id: string,
   result: 'compatible' | 'incompatible' | 'pending',
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<BloodBankDoc | null> {
   const db = bloodBankDB();
   try {
     const existing = await db.get(id) as BloodBankDoc;
-    if (scope && filterByScope([existing], scope).length === 0) return null;
+    if (filterByScope([existing], scope).length === 0) return null;
     const updated = {
       ...existing,
       status: result === 'compatible' ? 'crossmatched' as const : 'available' as const,
@@ -143,12 +143,12 @@ export async function recordTransfusion(
   id: string,
   patientId: string,
   transfusedBy: string,
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<BloodBankDoc | null> {
   const db = bloodBankDB();
   try {
     const existing = await db.get(id) as BloodBankDoc;
-    if (scope && filterByScope([existing], scope).length === 0) return null;
+    if (filterByScope([existing], scope).length === 0) return null;
     const now = new Date().toISOString();
     const updated = {
       ...existing,
@@ -170,11 +170,11 @@ export async function recordTransfusion(
   }
 }
 
-export async function discardUnit(id: string, reason: string, scope?: DataScope): Promise<BloodBankDoc | null> {
+export async function discardUnit(id: string, reason: string, scope: DataScope): Promise<BloodBankDoc | null> {
   const db = bloodBankDB();
   try {
     const existing = await db.get(id) as BloodBankDoc;
-    if (scope && filterByScope([existing], scope).length === 0) return null;
+    if (filterByScope([existing], scope).length === 0) return null;
     const updated = {
       ...existing,
       status: 'discarded' as const,
@@ -193,7 +193,7 @@ export async function discardUnit(id: string, reason: string, scope?: DataScope)
   }
 }
 
-export async function getBloodInventorySummary(facilityId?: string, scope?: DataScope): Promise<{
+export async function getBloodInventorySummary(facilityId: string | undefined, scope: DataScope): Promise<{
   totalUnits: number;
   availableUnits: number;
   reservedUnits: number;
@@ -234,7 +234,7 @@ export async function getBloodInventorySummary(facilityId?: string, scope?: Data
   };
 }
 
-export async function getExpiringUnits(daysThreshold?: number, facilityId?: string, scope?: DataScope): Promise<BloodBankDoc[]> {
+export async function getExpiringUnits(daysThreshold: number | undefined, facilityId: string | undefined, scope: DataScope): Promise<BloodBankDoc[]> {
   /* istanbul ignore next -- defensive default */
   const effectiveThreshold = daysThreshold ?? 7;
   const all = await getAllUnits(scope);

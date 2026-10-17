@@ -7,16 +7,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { authorizeJson } from '@/lib/api-json-guard';
+import { VITAL_EVENTS_REGISTER_ROLES } from '@/lib/api-capabilities';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'midwife', 'medical_superintendent',
   'data_entry_clerk', 'government',
   'hrio', 'nutritionist', 'front_desk',
 ];
-const CREATE_ROLES: UserRole[] = [
-  'super_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
-  'medical_superintendent', 'data_entry_clerk',
-];
+const CREATE_ROLES = VITAL_EVENTS_REGISTER_ROLES;
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
@@ -58,17 +57,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, CREATE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, CREATE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     if (!body.motherId || !body.motherName || !body.visitNumber) {
       return NextResponse.json(
         { error: 'motherId, motherName, and visitNumber are required' },

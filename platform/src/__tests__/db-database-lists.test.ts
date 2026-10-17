@@ -43,7 +43,7 @@ describe('databases opened anywhere in the tree are wipeable', () => {
    *
    * This is the check that would have caught the drift: `clinical_notes`,
    * `text_shortcuts` and `facility_census` are opened by module-local accessors
-   * (`clinical-notes/note-service.ts`, `services/facility-census-service.ts`)
+   * (`clinical-notes/note-service.ts`, `services/census-submission-service.ts`)
    * rather than by an accessor in `db.ts`, so nothing connected them to the
    * wipe list.
    */

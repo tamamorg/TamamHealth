@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
+import { authorizeJson } from '@/lib/api-json-guard';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 const READ_ROLES: UserRole[] = [
@@ -51,17 +52,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, CREATE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, CREATE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     // Both by-id actions must prove the target bill is inside the caller's
     // tenant scope before mutating it — same guard as /api/referrals and
     // /api/appointments. Out-of-scope resolves to 404, not 403, so the
@@ -72,7 +65,7 @@ async function postHandler(request: NextRequest) {
       }
       const { getBillById } = await import('@/lib/services/billing-service');
       const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
-      const existing = await getBillById(body.billId as string);
+      const existing = await getBillById(body.billId as string, buildScopeFromAuth(auth));
       if (!existing || filterByScope([existing], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
       }

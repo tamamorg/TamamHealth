@@ -22,12 +22,14 @@ jest.mock('@/lib/validation', () => ({
 
 import { updatePatient } from '@/lib/services/patient-service';
 
+const SCOPE_A = { orgId: 'org-a', role: 'org_admin' } as import('@/lib/services/data-scope').DataScope;
+
 it('does not let a generic update change portal credentials or the hospital number', async () => {
   await updatePatient('pat-1', {
     phone: '+211911111111',
     portalPasswordHash: 'evil', portalUsername: 'evil', portalDisabledAt: '2020-01-01',
     hospitalNumber: 'HACK',
-  } as never);
+  } as never, SCOPE_A);
   const written = (put.mock.calls[0] as unknown as [Record<string, unknown>])[0];
   expect(written.portalPasswordHash).toBe('orig-hash');
   expect(written.portalUsername).toBe('asha');

@@ -168,7 +168,7 @@ export default function PatientPortalPage() {
     let cancelled = false;
     const patientId = (currentUser as { patientId?: string; _id?: string } | null)?.patientId
       || (currentUser as { _id?: string } | null)?._id;
-    if (!patientId) { setRealBills([]); return; }
+    if (!patientId || !scope) { setRealBills([]); return; }
     (async () => {
       try {
         const { getBillsByPatient } = await import('@/lib/services/billing-service');

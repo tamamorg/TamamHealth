@@ -19,6 +19,7 @@ import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
 import { RefreshCw, Ban, Printer } from '@/components/icons/lucide';
@@ -86,6 +87,7 @@ export default function MedicationsSection({
   patientId, patientName, canPrescribe, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId, onSelect,
 }: MedicationsSectionProps) {
   const { prescriptions } = usePrescriptions(patientId);
+  const scope = useDataScope();
   const { showToast } = useToast();
   const confirmPrompt = useConfirmPrompt();
   const { t } = useTranslation();
@@ -155,7 +157,9 @@ export default function MedicationsSection({
     setBusyId(rx._id);
     try {
       const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
-      const safety = await assessPrescriptionSafety(patientId, rx.medication);
+      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+      const safety = await assessPrescriptionSafety(patientId, rx.medication, scope);
+      if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
       const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
       let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
       if (severeWarnings.length) {
@@ -193,7 +197,7 @@ export default function MedicationsSection({
         medicationSafetyAcknowledgement,
         // Deliberately not set — a renewal from the chart isn't tied to the
         // encounter the original order came from.
-      } as PrescriptionCreateInput);
+      } as PrescriptionCreateInput, scope);
       if (result.allergyWarnings?.length) {
         showToast(
           `ALLERGY ALERT — renewed against a recorded allergy: ${result.allergyWarnings

@@ -35,6 +35,7 @@ const ctx = {
   orgId: ORG,
   generatedBy: 'user-pharma-rose',
   generatedByName: 'Pharmacist Rose',
+  scope: { orgId: ORG, hospitalId: HOSP, role: 'org_admin' as const },
 };
 
 afterEach(async () => {

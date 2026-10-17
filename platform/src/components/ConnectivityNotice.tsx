@@ -7,6 +7,7 @@
  * Triggers:
  *  - isOnline flips (going online / going offline)
  *  - syncStatus.state transitions to 'error' (with the underlying message)
+ *  - the server refuses a pushed record (named, with the validator's reason)
  *  - User-initiated pause/resume (via the toggleOnline preference flipping)
  *
  * UX:
@@ -79,6 +80,9 @@ export default function ConnectivityNotice() {
   const prevOnline = useRef<boolean | null>(null);
   const prevPaused = useRef<boolean | null>(null);
   const prevSyncErrState = useRef<string | null>(null);
+  // Refusals already announced, by database + document id — so one refused
+  // record is announced once, not on every poll cycle that re-pauses push.
+  const announcedDenials = useRef<Set<string>>(new Set());
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -143,25 +147,53 @@ export default function ConnectivityNotice() {
     prevPaused.current = syncPaused;
   }, [isOnline, isNetworkUp, syncPaused, isAuthenticated, syncStatus?.state, t]);
 
-  // Sync errors: notify on entering the 'error' state. Find a database error
-  // message if available so we can show a useful body.
+  // A record the server refused. This is NOT an authentication failure (the
+  // session is fine and every other change keeps syncing): CouchDB's
+  // validator rejected one document. Name it and give the validator's reason,
+  // and never say "Retrying…" — a refused record is not retried, it stays on
+  // the device until the edit is corrected.
+  useEffect(() => {
+    if (!isAuthenticated || !syncStatus) return;
+    for (const [dbName, s] of Object.entries(syncStatus.databases)) {
+      for (const denial of s.deniedDocs ?? []) {
+        const key = `${dbName}/${denial.id}/${denial.reason}`;
+        if (announcedDenials.current.has(key)) continue;
+        announcedDenials.current.add(key);
+        const record = dbName.replace(/^tamamhealth_/, '').replace(/_/g, ' ');
+        show(
+          'danger',
+          t('connectivity.changeRejected'),
+          t('connectivity.changeRejectedBody', { record, reason: denial.reason }),
+        );
+        return;
+      }
+    }
+  }, [syncStatus, isAuthenticated, t]);
+
+  // Sync errors: notify on entering the 'error' state with a real replication
+  // error (network, session, server). Refusals are announced above instead.
   useEffect(() => {
     if (!isAuthenticated) return;
     const state = syncStatus?.state ?? null;
     const prev = prevSyncErrState.current;
     if (state === 'error' && prev !== 'error') {
       let msg: string | undefined;
+      let onlyRefusals = true;
       if (syncStatus) {
         for (const s of Object.values(syncStatus.databases)) {
-          if (s.state === 'error' && s.error) { msg = s.error; break; }
-          if (s.state === 'denied') { msg = t('connectivity.authDenied'); break; }
+          if (s.state === 'error') {
+            onlyRefusals = false;
+            if (s.error) { msg = s.error; break; }
+          }
         }
       }
-      show(
-        'danger',
-        msg ? t('connectivity.syncErrorDetail', { msg }) : t('connectivity.syncError'),
-        t('connectivity.retrying'),
-      );
+      if (!onlyRefusals) {
+        show(
+          'danger',
+          msg ? t('connectivity.syncErrorDetail', { msg }) : t('connectivity.syncError'),
+          t('connectivity.retrying'),
+        );
+      }
     }
     prevSyncErrState.current = state;
   }, [syncStatus, isAuthenticated, t]);

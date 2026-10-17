@@ -32,6 +32,7 @@ import { createEncounter, getEncounter, transitionEncounter } from '@/lib/servic
 import { createAppointment, updateAppointmentStatus } from '@/lib/services/appointment-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
 
@@ -127,7 +128,7 @@ describe('completeReferralWithOutcome', () => {
       recordedAt: new Date().toISOString(),
     });
 
-    const patient = await getPatientById('pat-00002');
+    const patient = await getPatientById('pat-00002', TEST_SCOPE);
     const alerts = patient?.careAlerts ?? [];
     expect(alerts.length).toBeGreaterThan(0);
     const closingAlert = alerts.find(a => a.message.toLowerCase().includes('completed'));

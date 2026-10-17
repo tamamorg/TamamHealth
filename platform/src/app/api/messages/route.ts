@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { AUDIT_ACTION_HEADER, withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { authorizeJson } from '@/lib/api-json-guard';
 // hospital_manager and medical_biller both hold the /messages route in
 // role-routes.ts (and DOC_WRITE_ROLES.message is ALL_STAFF, which already
 // covers both) — this pair of lists had drifted behind that grant.
@@ -52,17 +53,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, WRITE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, WRITE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     const action = body.action as string;
     // Update message status
     if (action === 'update-status' && body.messageId) {
@@ -149,7 +142,7 @@ async function postHandler(request: NextRequest) {
     } else {
       const { getPatientById } = await import('@/lib/services/patient-service');
       const { filterByScope, buildScopeFromAuth } = await import('@/lib/services/data-scope');
-      const patient = await getPatientById(body.patientId as string);
+      const patient = await getPatientById(body.patientId as string, buildScopeFromAuth(auth));
       // Missing and out-of-scope read identically (404): a 403 here would tell
       // a caller which patient ids exist in other tenants.
       if (!patient || filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {

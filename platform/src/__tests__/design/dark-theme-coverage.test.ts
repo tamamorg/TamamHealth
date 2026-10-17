@@ -23,7 +23,7 @@ const LIGHT_BACKGROUND = /background(?:-color)?\s*:\s*(?:white\b|#fff(?:fff)?\b|
 
 const PRINT_DOCUMENTS = new Set([
   'components/PublicLegalShell.tsx',
-  'components/patients/PatientDetailPage.tsx',
+  'components/patients/detail/PatientChartPrintStyles.tsx',
   'lib/print-document.ts',
 ]);
 

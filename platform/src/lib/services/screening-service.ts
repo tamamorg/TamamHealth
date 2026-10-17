@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ScreeningEntry } from '../../data/mock';
 import type { PatientDoc } from '../db-types';
 import { getPatientById } from './patient-service';
+import type { DataScope } from './data-scope';
 import { mutatePatientListField } from './patient-list-field';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 
@@ -34,14 +35,14 @@ export function isScreeningOverdue(s: ScreeningEntry, asOf: string = todayISO())
 }
 
 /** All screenings for a patient. */
-export async function getScreenings(patientId: string): Promise<ScreeningEntry[]> {
-  const patient = await getPatientById(patientId);
+export async function getScreenings(patientId: string, scope: DataScope): Promise<ScreeningEntry[]> {
+  const patient = await getPatientById(patientId, scope);
   return patient?.screenings ?? [];
 }
 
 /** Outstanding (due) screenings — what the reminder bell counts. */
-export async function getDueScreenings(patientId: string): Promise<ScreeningEntry[]> {
-  return (await getScreenings(patientId)).filter((s) => s.status === 'due');
+export async function getDueScreenings(patientId: string, scope: DataScope): Promise<ScreeningEntry[]> {
+  return (await getScreenings(patientId, scope)).filter((s) => s.status === 'due');
 }
 
 export interface AddScreeningInput {
@@ -55,7 +56,7 @@ export interface AddScreeningInput {
 }
 
 /** Add a screening reminder. Returns the full updated list, or null if no patient. */
-export async function addScreening(patientId: string, input: AddScreeningInput): Promise<ScreeningEntry[] | null> {
+export async function addScreening(patientId: string, scope: DataScope, input: AddScreeningInput): Promise<ScreeningEntry[] | null> {
   if (!input.type || input.type.trim().length === 0) {
     throw new Error('Screening type is required');
   }
@@ -73,6 +74,7 @@ export async function addScreening(patientId: string, input: AddScreeningInput):
   };
   return mutatePatientListField<ScreeningEntry>(
     patientId,
+    scope,
     (patient) => {
       const next = [...(patient.screenings ?? []), entry];
       return { patch: { screenings: next } as Partial<PatientDoc>, entries: next };
@@ -85,10 +87,11 @@ export async function addScreening(patientId: string, input: AddScreeningInput):
  * Mark a screening done. If it has a recall interval the due date rolls forward
  * (status stays "due" so it re-arms); otherwise it becomes "completed".
  */
-export async function completeScreening(patientId: string, screeningId: string, doneDate?: string): Promise<ScreeningEntry[] | null> {
+export async function completeScreening(patientId: string, scope: DataScope, screeningId: string, doneDate?: string): Promise<ScreeningEntry[] | null> {
   const done = doneDate || todayISO();
   return mutatePatientListField<ScreeningEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.screenings ?? [];
       const target = existing.find((s) => s.id === screeningId);
@@ -107,9 +110,10 @@ export async function completeScreening(patientId: string, screeningId: string, 
 }
 
 /** Record that the patient declined a screening (kept for the record). */
-export async function declineScreening(patientId: string, screeningId: string, reason?: string): Promise<ScreeningEntry[] | null> {
+export async function declineScreening(patientId: string, scope: DataScope, screeningId: string, reason?: string): Promise<ScreeningEntry[] | null> {
   return mutatePatientListField<ScreeningEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.screenings ?? [];
       if (!existing.some((s) => s.id === screeningId)) return null;
@@ -121,9 +125,10 @@ export async function declineScreening(patientId: string, screeningId: string, r
 }
 
 /** Remove a screening entry entirely. */
-export async function removeScreening(patientId: string, screeningId: string): Promise<ScreeningEntry[] | null> {
+export async function removeScreening(patientId: string, scope: DataScope, screeningId: string): Promise<ScreeningEntry[] | null> {
   return mutatePatientListField<ScreeningEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.screenings ?? [];
       if (!existing.some((s) => s.id === screeningId)) return null;

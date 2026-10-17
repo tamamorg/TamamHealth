@@ -46,7 +46,8 @@ export { verifyToken, type VerifiedTokenPayload } from './core/auth-token';
 
 // ── CSRF ────────────────────────────────────────────────────────────────────
 // The double-submit check the proxy runs on every state-changing request.
-// `csrf.ts` imports nothing at all, which is the reason it can be here.
+// `csrf.ts` imports only pure, Web-Crypto-free helpers (jwt-secret, base64url),
+// which is the reason it can be here.
 export {
   mintCsrfToken, verifyCsrfToken, CSRF_COOKIE_NAME, CSRF_HEADER_NAME,
 } from './core/csrf';
@@ -55,3 +56,8 @@ export {
 // Cookie names and lifetimes — constants the proxy needs to set and read
 // cookies without knowing how a session is created.
 export { SESSION_TTL_SEC, SESSION_COOKIE_NAME } from './core/session';
+
+// ── Secret resolution ───────────────────────────────────────────────────────
+// The one JWT/HMAC secret resolver (env-only, Edge-safe) shared by auth-token,
+// csrf and the patient portal.
+export { resolveJwtSecret, JWT_SECRET_FALLBACK } from './core/jwt-secret';

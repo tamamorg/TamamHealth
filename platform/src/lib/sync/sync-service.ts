@@ -78,6 +78,32 @@ export interface SyncStatus {
   docsWritten: number;
   docsRead: number;
   error: string | null;
+  /** Documents the server refused on push since the last restart, newest
+   *  last. Kept in memory only — stamping the refusal into the document would
+   *  be a new revision, offered and refused again. */
+  deniedDocs?: DeniedDoc[];
+}
+
+/** One document the server refused, with the validator's own reason. */
+export interface DeniedDoc {
+  id: string;
+  reason: string;
+  at: string;
+}
+
+/**
+ * Read PouchDB's 'denied' payload. It is a plain object, not an Error —
+ * `{ id, error: 'forbidden', reason, status: 403 }` — so the old
+ * `err instanceof Error` check threw away both the document id and the
+ * validator's reason and left only a generic "Access denied".
+ */
+export function describeDenial(err: unknown, at = new Date().toISOString()): DeniedDoc {
+  const e = (err && typeof err === 'object' ? err : {}) as {
+    id?: unknown; reason?: unknown; message?: unknown; error?: unknown; doc?: { _id?: unknown };
+  };
+  const id = typeof e.id === 'string' ? e.id : typeof e.doc?._id === 'string' ? e.doc._id : '';
+  const reason = [e.reason, e.message, e.error].find(v => typeof v === 'string' && v.trim()) as string | undefined;
+  return { id, reason: reason || 'Access denied', at };
 }
 
 import {
@@ -269,6 +295,8 @@ export class SyncService {
   // since. Any doubt leaves these false, which keeps data on the device.
   private pushClean = false;
   private pushDenied = false;
+  private deniedDocs: DeniedDoc[] = [];
+  private readonly appendOnly: boolean;
   private pullClean = false;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private _status: SyncStatus = {
@@ -305,10 +333,11 @@ export class SyncService {
     // `localDB.name` is the local PouchDB database name, which is exactly the
     // key `isAppendOnlyDatabase` is stated in — the remote may be a tenant
     // database (`…--org-x`), the local one never is.
+    this.appendOnly = isAppendOnlyDatabase((opts.localDB as { name?: string }).name ?? '');
     this.pushFilter = buildPushFilter(
       opts.writableRole,
       entitlement,
-      isAppendOnlyDatabase((opts.localDB as { name?: string }).name ?? ''),
+      this.appendOnly,
       opts.userId,
     );
     this.pullMode = opts.pullMode ?? 'poll';
@@ -338,8 +367,9 @@ export class SyncService {
     this.stopped = false;
     this.pushClean = false;
     this.pushDenied = false;
+    this.deniedDocs = [];
     this.pullClean = false;
-    this.updateStatus({ state: 'connecting', error: null });
+    this.updateStatus({ state: 'connecting', error: null, deniedDocs: [] });
 
     // `live` and `retry` MUST sit at the top level of the sync options — PouchDB
     // reads them there, not inside the per-direction `push`/`pull` sub-objects.
@@ -626,6 +656,10 @@ export class SyncService {
     });
 
     if (changedDocs.length === 0) return;
+    // Append-only trails are never re-stamped: any later revision of an entry
+    // the server holds is refused as a rewrite (couch gateway), so per-device
+    // sync metadata cannot live in them.
+    if (this.appendOnly) return;
 
     if (repDirection === 'push') {
       void markDocsSynced(this.localDB, changedDocs).catch(err =>
@@ -686,7 +720,7 @@ export class SyncService {
       // moment a stale "pending" stamp is provably a lie — repair them.
       // See healStaleOfflineMetadata for why docs the push filter excludes
       // and docs with live conflicts are left alone.
-      if (repDirection === 'push' && !err && Date.now() - this.lastHealAt > HEAL_INTERVAL_MS) {
+      if (repDirection === 'push' && !err && !this.appendOnly && Date.now() - this.lastHealAt > HEAL_INTERVAL_MS) {
         this.lastHealAt = Date.now();
         void healStaleOfflineMetadata(this.localDB, this.pushFilter).catch(e =>
           captureException(e, { tag: 'sync.healStaleOfflineMetadata' })
@@ -709,12 +743,13 @@ export class SyncService {
     });
 
     rep.on('denied', (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Access denied';
+      const denial = describeDenial(err);
       if (repDirection === 'push') {
         this.pushDenied = true;
         this.pushClean = false;
       }
-      this.updateStatus({ state: 'denied', error: msg });
+      this.deniedDocs = [...this.deniedDocs.filter(d => d.id !== denial.id || !denial.id), denial].slice(-20);
+      this.updateStatus({ state: 'denied', error: denial.reason, deniedDocs: this.deniedDocs });
     });
 
     rep.on('error', (err: unknown) => {

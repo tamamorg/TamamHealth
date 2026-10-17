@@ -147,7 +147,7 @@ async function postHandler(request: NextRequest) {
       const { getPatientById } = await import('@/lib/services/patient-service');
       const [ward, patient, bed] = await Promise.all([
         getWardById(body.wardId as string, scope),
-        getPatientById(body.patientId as string),
+        getPatientById(body.patientId as string, scope),
         body.bedId ? getBedById(body.bedId as string, scope) : Promise.resolve(null),
       ]);
       if (!ward) return forbidden('Ward is outside your assigned facilities');

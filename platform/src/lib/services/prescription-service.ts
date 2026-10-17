@@ -2,7 +2,7 @@ import { prescriptionsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
 import type { PrescriptionDoc, PrescriptionPatientCopy, UserRole, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
@@ -291,6 +291,14 @@ export interface PrescriptionSafetyAssessment {
   interactionWarnings: InteractionCheckResult | null;
   allergyWarnings: StructuredAllergyAlert[] | null;
   duplicateWarnings: string[] | null;
+  /**
+   * True when the allergy check could not run: the patient record was not
+   * readable in the caller's scope (other org / missing / storage error) or the
+   * check threw. `allergyWarnings: null` then means "unknown", NOT "no
+   * allergies" — callers must not present it as safe. (Facility switch
+   * `rx.allergyCheck` = off is a deliberate skip and is not flagged.)
+   */
+  allergyCheckUnavailable: boolean;
 }
 
 export type PrescriptionCreateInput = Omit<
@@ -320,8 +328,9 @@ async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | und
 export async function checkPrescriptionInteractions(
   patientId: string,
   newMedication: string,
+  scope: DataScope,
 ): Promise<InteractionCheckResult> {
-  const patientRx = await getPrescriptionsByPatient(patientId);
+  const patientRx = await getPrescriptionsByPatient(patientId, scope);
   const activeRx = patientRx
     .filter(rx => rx.status === 'pending')
     .map(rx => rx.medication);
@@ -332,20 +341,22 @@ export async function checkPrescriptionInteractions(
 export async function assessPrescriptionSafety(
   patientId: string,
   medication: string,
+  scope: DataScope,
 ): Promise<PrescriptionSafetyAssessment> {
   let interactionWarnings: InteractionCheckResult | null = null;
   let duplicateWarnings: string[] | null = null;
   let allergyWarnings: StructuredAllergyAlert[] | null = null;
+  let allergyCheckUnavailable = false;
 
   try {
     if (!getRoleFlag('rx.interactions', true)) throw new SkipCheck();
-    interactionWarnings = await checkPrescriptionInteractions(patientId, medication);
+    interactionWarnings = await checkPrescriptionInteractions(patientId, medication, scope);
   } catch {
     // Advisory only: unavailable decision support must not block urgent care.
   }
 
   try {
-    const activeRx = (await getPrescriptionsByPatient(patientId))
+    const activeRx = (await getPrescriptionsByPatient(patientId, scope))
       .filter(rx => rx.status === 'pending')
       .map(rx => rx.medication);
     // Compare the proposal to each active order. Running the duplicate finder
@@ -361,15 +372,24 @@ export async function assessPrescriptionSafety(
 
   try {
     if (!getRoleFlag('rx.allergyCheck', true)) throw new SkipCheck();
-    const { getActiveAllergies } = await import('./allergy-service');
-    const active = await getActiveAllergies(patientId);
-    const alerts = checkAllergiesStructured([medication], active);
-    allergyWarnings = alerts.length ? alerts : null;
-  } catch {
-    // Advisory only.
+    const { getPatientById } = await import('./patient-service');
+    const patient = await getPatientById(patientId, scope);
+    if (!patient) {
+      // Out of scope or missing: getActiveAllergies would return [] here, which
+      // is indistinguishable from "no allergies". Say we do not know instead.
+      allergyCheckUnavailable = true;
+    } else {
+      const { getActiveAllergies } = await import('./allergy-service');
+      const active = await getActiveAllergies(patientId, scope);
+      const alerts = checkAllergiesStructured([medication], active);
+      allergyWarnings = alerts.length ? alerts : null;
+    }
+  } catch (err) {
+    if (!(err instanceof SkipCheck)) allergyCheckUnavailable = true;
+    // Advisory only: still never blocks urgent care, but flagged as unknown.
   }
 
-  return { interactionWarnings, allergyWarnings, duplicateWarnings };
+  return { interactionWarnings, allergyWarnings, duplicateWarnings, allergyCheckUnavailable };
 }
 
 /**
@@ -429,7 +449,7 @@ async function billPrescription(doc: PrescriptionDoc): Promise<void> {
     const { chargeForServices } = await import('./fee-schedule-service');
     const { getPatientById } = await import('./patient-service');
     const [patient, hospital] = await Promise.all([
-      getPatientById(doc.patientId).catch(() => null),
+      getPatientById(doc.patientId, orgOnlyScope(doc.orgId)).catch(() => null),
       hospitalsDB().get(doc.hospitalId).then(h => h as HospitalDoc).catch(() => null),
     ]);
 
@@ -470,6 +490,7 @@ async function billPrescription(doc: PrescriptionDoc): Promise<void> {
 
 export async function createPrescription(
   data: PrescriptionCreateInput,
+  scope: DataScope,
 ): Promise<PrescriptionCreateResult> {
   // Validate required prescription fields
   const errors = validatePrescription(data as unknown as Record<string, unknown>);
@@ -477,8 +498,21 @@ export async function createPrescription(
     throw new ValidationError(errors);
   }
 
-  const { interactionWarnings, allergyWarnings, duplicateWarnings } =
-    await assessPrescriptionSafety(data.patientId, data.medication);
+  const { interactionWarnings, allergyWarnings, duplicateWarnings, allergyCheckUnavailable } =
+    await assessPrescriptionSafety(data.patientId, data.medication, scope);
+
+  if (allergyCheckUnavailable) {
+    // Never block urgent care, but leave a record that this order went out
+    // without an allergy screen so it is reviewable.
+    await logAuditSafe(
+      'DRUG_ALLERGY_CHECK_UNAVAILABLE',
+      undefined,
+      data.prescribedBy,
+      `Allergy check could not run for patient ${data.patientId} (record unreadable in scope); ${data.medication} ordered without it`,
+      true,
+      { patientId: data.patientId, resourceType: 'prescription' },
+    );
+  }
 
   if (interactionWarnings?.hasInteractions &&
       (interactionWarnings.highestSeverity === 'contraindicated' ||
@@ -746,7 +780,7 @@ export async function rerouteToOutsidePharmacy(
 async function cancelPrescriptionCharge(rx: PrescriptionDoc, actor: { id?: string; name: string }): Promise<void> {
   try {
     const { getBillsByPatient, cancelBill, reversePaidBillCharge } = await import('./billing-service');
-    const bills = await getBillsByPatient(rx.patientId);
+    const bills = await getBillsByPatient(rx.patientId, orgOnlyScope(rx.orgId));
     for (const bill of bills) {
       const isThisOrder = bill.items.length > 0 && bill.items.every(
         item => item.referenceType === 'prescription' && item.referenceId === rx._id);

@@ -223,7 +223,7 @@ export default function BillDetailPage() {
     setAddItemsOpen(true);
     setPendingItems([]);
     setFeeSearch('');
-    if (fees.length === 0) {
+    if (fees.length === 0 && scope) {
       setFeesLoading(true);
       try {
         const { getActiveFees } = await import('@/lib/services/fee-schedule-service');

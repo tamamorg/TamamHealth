@@ -38,6 +38,16 @@ function fakeDb(docs: Record<string, AnyDoc>) {
 }
 
 describe('markDocsSynced', () => {
+  it('never stamps a doc that carries no sync metadata (an audit row is append-only)', async () => {
+    // Stamping it was a second revision of an entry the server already held,
+    // which the gateway refuses as a rewrite — a sync error on every checkout.
+    const { db, put } = fakeDb({
+      'audit-1': { _id: 'audit-1', _rev: '1-a', type: 'audit_log', action: 'UPDATE_APPOINTMENT' },
+    });
+    await markDocsSynced(db, [{ _id: 'audit-1', _rev: '1-a' }]);
+    expect(put).not.toHaveBeenCalled();
+  });
+
   it('flips a pending doc to synced', async () => {
     const { db, put } = fakeDb({
       d1: { _id: 'd1', _rev: '2-a', type: 'patient', offlineSync: { status: 'pending' } },

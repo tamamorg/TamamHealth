@@ -37,6 +37,8 @@
  *     }
  */
 
+import { base64UrlFromBytes, bytesFromBase64Url } from '@/lib/base64url';
+
 const STORAGE_PREFIX = 'tamamhealth.draft.';
 const SESSION_KEY_NAME = 'tamamhealth.draft.k';
 const LEGACY_PLAINTEXT_PREFIX = 'plain:';
@@ -50,22 +52,6 @@ interface PersistedDraft {
 }
 
 // ── Encoding helpers ────────────────────────────────────────────────────────
-
-function base64UrlFromBytes(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  // btoa is universally available in browsers and modern Node; jsdom provides it.
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function bytesFromBase64Url(s: string): Uint8Array {
-  const pad = (4 - (s.length % 4)) % 4;
-  const b64 = (s + '='.repeat(pad)).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(b64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
-}
 
 function base64FromBytes(bytes: Uint8Array): string {
   let s = '';

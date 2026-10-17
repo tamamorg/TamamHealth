@@ -148,7 +148,7 @@ describe('targeted in-page printing', () => {
   });
 
   it('prints the signed chart record through a named page, released from the shell', () => {
-    const chart = read('components/patients/PatientDetailPage.tsx');
+    const chart = read('components/patients/PatientDetailPage.tsx') + read('components/patients/detail/PatientChartPrintStyles.tsx');
     expect(chart).toContain('@page chart-record');
     expect(chart).toContain('page: chart-record;');
     // An unscoped zero margin applied to every print made from the chart.

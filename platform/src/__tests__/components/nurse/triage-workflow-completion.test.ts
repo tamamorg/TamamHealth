@@ -5,7 +5,12 @@ const source = (relative: string) =>
   fs.readFileSync(path.join(process.cwd(), 'src', relative), 'utf8');
 
 describe('focused triage completion', () => {
-  const workflow = source('components/nurse/TriageWorkflow.tsx');
+  // The workflow is split across TriageWorkflow.tsx and components/nurse/triage/*.
+  const workflowDir = path.join(process.cwd(), 'src', 'components', 'nurse', 'triage');
+  const workflow = [
+    source('components/nurse/TriageWorkflow.tsx'),
+    ...fs.readdirSync(workflowDir).sort().map(file => source(`components/nurse/triage/${file}`)),
+  ].join('\n');
   const page = source('app/(dashboard)/triage/[patientId]/page.tsx');
 
   test('returns to the safe dashboard target only after a successful save', () => {

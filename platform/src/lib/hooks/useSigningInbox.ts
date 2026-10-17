@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { MedicalRecordDoc, AssessmentDoc } from '../db-types';
 import { medicalRecordsDB, assessmentsDB, getDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -37,6 +37,8 @@ export interface SigningInboxState {
  * pending co-signature, scoped to the user's facility/org, and live-reloads as
  * records are signed or created elsewhere.
  */
+const signingDatabases = () => [medicalRecordsDB(), assessmentsDB(), clinicalNotesDB()];
+
 export function useSigningInbox(): SigningInboxState {
   const scope = useDataScope();
   const [unsignedDrafts, setUnsignedDrafts] = useState<MedicalRecordDoc[]>([]);
@@ -74,25 +76,7 @@ export function useSigningInbox(): SigningInboxState {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const recChanges = medicalRecordsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    const asmtChanges = assessmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    const noteChanges = clinicalNotesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger()).on('error', () => { /* noop */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { recChanges.cancel(); } catch { /* noop */ }
-      try { asmtChanges.cancel(); } catch { /* noop */ }
-      try { noteChanges.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: signingDatabases });
 
   return { unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes, loading, reload: load };
 }

@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
+import { authorizeJson } from '@/lib/api-json-guard';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { CARE_TEAM_ASSIGNMENT_ROLES } from '@/lib/care-team-permissions';
@@ -112,17 +113,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, CREATE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, CREATE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     // Status update action
     if (body.action === 'update_status') {
       if (!body.appointmentId || !body.status) {
@@ -176,8 +169,8 @@ async function postHandler(request: NextRequest) {
       if (!existingForReschedule || filterByScope([existingForReschedule], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       }
-      const { APPOINTMENT_SCHEDULING_ROLES } = await import('@/lib/appointment-status');
-      if (!APPOINTMENT_SCHEDULING_ROLES.includes(auth.role as UserRole)) return forbidden();
+      const { canRescheduleAppointmentRole } = await import('@/lib/care-team-permissions');
+      if (!canRescheduleAppointmentRole(auth.role as UserRole)) return forbidden();
       const newDateErr = validateFutureDate(body.newDate as string, body.newTime as string);
       if (newDateErr) return NextResponse.json({ error: newDateErr }, { status: 400 });
       const { rescheduleAppointment } = await import('@/lib/services/appointment-service');
@@ -185,6 +178,7 @@ async function postHandler(request: NextRequest) {
         body.appointmentId as string,
         body.newDate as string,
         body.newTime as string,
+        auth.role as UserRole,
       );
       if (!result) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       return NextResponse.json({ appointment: result });

@@ -27,7 +27,7 @@ export interface FacilityCensusEntry {
 
 /** Per-facility counts, keyed by hospitalId. Facilities with no records are
  *  simply absent — read with `censusFor` so they render 0, not undefined. */
-export async function getFacilityCensus(scope?: DataScope): Promise<Map<string, FacilityCensusEntry>> {
+export async function getFacilityCensus(scope: DataScope): Promise<Map<string, FacilityCensusEntry>> {
   const [{ getAllPatients }, { getAllEncounters }] = await Promise.all([
     import('@/lib/services/patient-service'),
     import('@/lib/services/encounter-service'),

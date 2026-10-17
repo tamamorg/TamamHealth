@@ -68,6 +68,7 @@ export function useSuperbill({
     let cancelled = false;
     (async () => {
       try {
+        if (!scope) return;
         const { getActiveFees } = await import('@/lib/services/fee-schedule-service');
         const f = await getActiveFees(scope);
         if (!cancelled) setFees(f);
@@ -95,6 +96,7 @@ export function useSuperbill({
     setBusy(true);
     setError(null);
     try {
+      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
       const { postSuperbill } = await import('@/lib/services/superbill-service');
       const selections: SuperbillSelection[] = lines.map((l) => ({
         category: l.fee.category,

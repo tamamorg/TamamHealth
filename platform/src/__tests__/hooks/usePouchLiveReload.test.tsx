@@ -67,3 +67,47 @@ it('loads once, filters changes, coalesces bursts, and cancels its feed', () => 
   act(() => root.unmount());
   expect(feed.cancel).toHaveBeenCalledTimes(1);
 });
+
+it('shares one coalescer across several databases, skips the feed when disabled, and cancels every feed', () => {
+  const feedA = createFeed();
+  const feedB = createFeed();
+  const load = jest.fn();
+  const databases = () => [{ changes: jest.fn(() => feedA) }, { changes: jest.fn(() => feedB) }];
+  const onError = jest.fn();
+
+  function Harness({ enabled }: { enabled: boolean }) {
+    usePouchLiveReload<Doc>({ load, database: databases, enabled, onError });
+    return null;
+  }
+
+  // Disabled: the mount load still runs but no feed is opened.
+  act(() => root.render(<Harness enabled={false} />));
+  expect(load).toHaveBeenCalledTimes(1);
+
+  act(() => root.render(<Harness enabled />));
+  act(() => {
+    feedA.emit({});
+    feedB.emit({});
+  });
+  // Leading edge fires once; the second database's change joins the trailing reload.
+  expect(load).toHaveBeenCalledTimes(2);
+  act(() => jest.advanceTimersByTime(300));
+  expect(load).toHaveBeenCalledTimes(3);
+
+  act(() => root.unmount());
+  expect(feedA.cancel).toHaveBeenCalledTimes(1);
+  expect(feedB.cancel).toHaveBeenCalledTimes(1);
+});
+
+it('skips the mount load when loadOnMount is false', () => {
+  const load = jest.fn();
+  const feed = createFeed();
+  function Harness() {
+    usePouchLiveReload<Doc>({ load, database: () => ({ changes: () => feed }), loadOnMount: false });
+    return null;
+  }
+  act(() => root.render(<Harness />));
+  expect(load).not.toHaveBeenCalled();
+  act(() => feed.emit({}));
+  expect(load).toHaveBeenCalledTimes(1);
+});

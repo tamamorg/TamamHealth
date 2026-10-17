@@ -49,6 +49,7 @@ import { teardownTestDBs } from '../helpers/test-db';
 import { createTriage, updateTriage } from '@/lib/services/triage-service';
 import { completeTriageHandoff } from '@/lib/services/triage-handoff-service';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 afterEach(async () => {
   await teardownTestDBs();
   uuidCounter = 0;
@@ -78,10 +79,10 @@ describe.each(['admitted', 'discharged', 'referred', 'lwbs'] as const)(
   'editing a triage already at a terminal status (%s)',
   (terminalStatus) => {
     test('the correction persists without re-opening the encounter/appointment flow', async () => {
-      const created = await createTriage(triageInput());
-      await updateTriage(created._id, { status: terminalStatus });
+      const created = await createTriage(triageInput(), { scope: TEST_SCOPE });
+      await updateTriage(created._id, { status: terminalStatus }, TEST_SCOPE);
 
-      const result = await completeTriageHandoff({
+      const result = await completeTriageHandoff({ scope: TEST_SCOPE,
         triageId: created._id,
         patientId: created.patientId,
         patientName: created.patientName,
@@ -111,9 +112,9 @@ describe.each(['admitted', 'discharged', 'referred', 'lwbs'] as const)(
 );
 
 test('a fresh (pending) triage still runs the full handoff walk, unaffected by the terminal-status skip', async () => {
-  const created = await createTriage(triageInput());
+  const created = await createTriage(triageInput(), { scope: TEST_SCOPE });
 
-  const result = await completeTriageHandoff({
+  const result = await completeTriageHandoff({ scope: TEST_SCOPE,
     triageId: created._id,
     patientId: created.patientId,
     patientName: created.patientName,
@@ -128,9 +129,9 @@ test('a fresh (pending) triage still runs the full handoff walk, unaffected by t
 });
 
 test('home_care disposition from pending still reaches "discharged", unaffected by the terminal-status skip', async () => {
-  const created = await createTriage(triageInput());
+  const created = await createTriage(triageInput(), { scope: TEST_SCOPE });
 
-  const result = await completeTriageHandoff({
+  const result = await completeTriageHandoff({ scope: TEST_SCOPE,
     triageId: created._id,
     patientId: created.patientId,
     patientName: created.patientName,

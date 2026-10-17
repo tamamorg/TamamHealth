@@ -18,9 +18,19 @@ import { createAppointment, updateAppointmentStatus, getAppointmentsByPatient } 
 import { createTriage, getTriageByPatient } from '@/lib/services/triage-service';
 import { calculatePriority } from '@/lib/services/triage-service';
 import { createLabResult, updateLabResult, getLabResultsByPatient } from '@/lib/services/lab-service';
-import { createPrescription, getPrescriptionsByPatient } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, getPrescriptionsByPatient } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const RX_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, RX_SCOPE);
 import { createBill, recordPayment, getBillsByPatient } from '@/lib/services/billing-service';
 import { hospitalsDB } from '@/lib/db';
+import type { DataScope as __DS } from '@/lib/services/data-scope';
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
+// Legacy fixtures carry no org; super_admin keeps the national view that filterByScope grants.
+const SUPER: __DS = { role: 'super_admin' };
 
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
@@ -36,7 +46,7 @@ async function registerNyathon() {
     phone: '+211925001001', state: 'Central Equatoria', county: 'Juba',
     primaryLanguage: 'Dinka', nokName: 'Deng Majok', nokRelationship: 'Father', nokPhone: '+211925001002',
     hospitalNumber: '', registrationHospital: HOSP, orgId: ORG,
-  } as unknown as Parameters<typeof createPatient>[0]);
+  } as unknown as Parameters<typeof createPatient>[0], TEST_SCOPE);
 }
 
 describe('Journey A: routine outpatient visit end-to-end', () => {
@@ -46,10 +56,10 @@ describe('Journey A: routine outpatient visit end-to-end', () => {
     expect(p.hospitalNumber).toBeTruthy();          // auto-generated MRN
     expect(p.orgId).toBe(ORG);
 
-    const fetched = await getPatientById(p._id);
+    const fetched = await getPatientById(p._id, TEST_SCOPE);
     expect(fetched?.firstName).toBe('Nyathon');
 
-    const results = await searchPatients('Nyathon');
+    const results = await searchPatients('Nyathon', TEST_SCOPE);
     expect(results.map((r) => r._id)).toContain(p._id);
   });
 
@@ -79,9 +89,9 @@ describe('Journey A: routine outpatient visit end-to-end', () => {
       priority: 'YELLOW', status: 'pending', chiefComplaint: 'Fever',
       vitals: { temperature: 39.1, pulse: 104, systolic: 118, diastolic: 76, spo2: 98 },
       triagedBy: 'user-triage.mary', triagedByName: 'Mary', orgId: ORG,
-    } as unknown as Parameters<typeof createTriage>[0]);
+    } as unknown as Parameters<typeof createTriage>[0], { scope: TEST_SCOPE });
     expect(triage.patientId).toBe(p._id);
-    const triageForPatient = await getTriageByPatient(p._id);
+    const triageForPatient = await getTriageByPatient(p._id, TEST_SCOPE);
     expect(triageForPatient).toHaveLength(1);
 
     // 4. Lab order → result review, anchored to the patient
@@ -126,7 +136,7 @@ describe('Journey A: routine outpatient visit end-to-end', () => {
     expect(paid?.amountPaid).toBe(70);
     expect(paid?.status).toBe('paid');
 
-    const billsForPatient = await getBillsByPatient(p._id);
+    const billsForPatient = await getBillsByPatient(p._id, SUPER);
     expect(billsForPatient).toHaveLength(1);
     expect(billsForPatient[0].status).toBe('paid');
   });
@@ -135,7 +145,7 @@ describe('Journey A: routine outpatient visit end-to-end', () => {
 describe('Journey G: abnormal / edge outcomes', () => {
   test('missing required fields are rejected with per-field errors', async () => {
     await expect(
-      createPatient({ firstName: 'X' } as unknown as Parameters<typeof createPatient>[0]),
+      createPatient({ firstName: 'X' } as unknown as Parameters<typeof createPatient>[0], TEST_SCOPE),
     ).rejects.toMatchObject({ name: 'ValidationError' });
   });
 
@@ -146,8 +156,8 @@ describe('Journey G: abnormal / edge outcomes', () => {
       nokName: 'K', nokRelationship: 'Sister', nokPhone: '+211900000001',
       hospitalNumber: '', registrationHospital: HOSP, orgId: ORG, nationalId: 'SSD-DUP-0001',
     } as unknown as Parameters<typeof createPatient>[0];
-    await createPatient(base);
-    await expect(createPatient({ ...base })).rejects.toMatchObject({ name: 'ValidationError' });
+    await createPatient(base, TEST_SCOPE);
+    await expect(createPatient({ ...base }, TEST_SCOPE)).rejects.toMatchObject({ name: 'ValidationError' });
   });
 
   test('cancelling an appointment moves it to a closed status', async () => {
@@ -164,9 +174,9 @@ describe('Journey G: abnormal / edge outcomes', () => {
 
   test('archive is a soft-delete: the record persists but is flagged archived', async () => {
     const p = await registerNyathon();
-    const archived = await archivePatient(p._id, 'user-supt.lado');
+    const archived = await archivePatient(p._id, TEST_SCOPE, 'user-supt.lado');
     expect(archived).toBeTruthy();
-    const still = await getPatientById(p._id);
+    const still = await getPatientById(p._id, TEST_SCOPE);
     expect(still).toBeTruthy();               // not hard-deleted
     expect(still?.isActive).toBe(false);      // archive = soft-delete via isActive
   });

@@ -41,6 +41,7 @@ const HOSP_B1 = 'hosp-b1'; // Mercy Hospital — different org entirely
 // The scope a front-desk clerk at HOSP_A1 carries. Non-admin + has a
 // hospitalId, so `filterByScope` narrows by facility as well as org.
 const DESK_A1_SCOPE: DataScope = { orgId: ORG_A, hospitalId: HOSP_A1, role: 'front_desk' };
+const SUPER_SCOPE: DataScope = { role: 'super_admin' };
 
 beforeEach(async () => {
   await putDoc(hospitalsDB(), {
@@ -184,7 +185,7 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
     expect(err.fields.duplicate).toMatch(/another facility/i);
   });
 
-  test('no scope passed preserves the original fully-disclosed message (backward compatible)', async () => {
+  test('a super_admin scope sees every match, so the message is fully disclosed', async () => {
     const existing = await seedPatient({
       _id: 'pat-noscope', orgId: ORG_B, registrationHospital: HOSP_B1,
       firstName: 'Malith', surname: 'Ayen', dateOfBirth: '1985-05-05',
@@ -192,7 +193,7 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
     });
     const err = await createPatient(
       registration({ phone: '+211900000001', firstName: 'Malith', surname: 'Ayen', dateOfBirth: '1985-05-05' }),
-      // no scope argument at all
+      SUPER_SCOPE,
     ).catch((e) => e);
     expect(err.fields.duplicate).toContain(existing.firstName);
     expect(err.fields.duplicate).toContain(existing.surname);
@@ -200,10 +201,9 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
 
   test('createPatient forwards its scope argument through to the duplicate check', async () => {
     // Same fact pattern as the in-scope test, but this time proves the wiring:
-    // calling createPatient WITHOUT a scope on data that collides with an
-    // in-scope-shaped record still discloses in full (no scope = unfiltered),
-    // while passing DESK_A1_SCOPE on an out-of-org collision is what
-    // triggers the redacted branch. Together these show `scope` actually
+    // a super_admin scope on data that collides with another org's record
+    // discloses in full, while DESK_A1_SCOPE on the same out-of-org collision
+    // is what triggers the redacted branch. Together these show `scope` actually
     // reaches `checkDuplicates` rather than being silently dropped.
     await seedPatient({
       _id: 'pat-wiring-check', orgId: ORG_B, registrationHospital: HOSP_B1,
@@ -212,6 +212,7 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
     });
     const withoutScope = await createPatient(
       registration({ phone: '+211900000099', firstName: 'Wiring', surname: 'Check', dateOfBirth: '1960-06-06' }),
+      SUPER_SCOPE,
     ).catch((e) => e);
     const withScope = await createPatient(
       registration({ phone: '+211900000099', firstName: 'Wiring', surname: 'Check', dateOfBirth: '1960-06-06' }),
@@ -232,15 +233,14 @@ describe('shared family phone registration', () => {
     expect(child._id).not.toBe('parent');
     expect(child.phone).toBe('+211912345678');
     expect(await getPatientById(child._id, DESK_A1_SCOPE)).toMatchObject({ firstName: 'Child' });
-    expect((await getPatientById('parent'))?.firstName).toBe('Parent');
+    expect((await getPatientById('parent', SUPER_SCOPE))?.firstName).toBe('Parent');
   });
 });
 
 describe('getPatientById: scoped reads', () => {
-  test('returns the document when no scope is given (unchanged default behaviour)', async () => {
+  test('a scope with no organisation sees nothing (fail closed)', async () => {
     const p = await seedPatient({ _id: 'pat-a1', orgId: ORG_A, registrationHospital: HOSP_A1 });
-    const doc = await getPatientById(p._id);
-    expect(doc?._id).toBe('pat-a1');
+    expect(await getPatientById(p._id, { role: 'front_desk' })).toBeNull();
   });
 
   test('returns the document when the scope includes it', async () => {
@@ -275,8 +275,7 @@ describe('getPatientById: scoped reads', () => {
     expect(doc?._id).toBe('pat-b1-super');
   });
 
-  test('a non-existent id returns null with or without a scope', async () => {
-    expect(await getPatientById('pat-does-not-exist')).toBeNull();
+  test('a non-existent id returns null ', async () => {
     expect(await getPatientById('pat-does-not-exist', DESK_A1_SCOPE)).toBeNull();
   });
 });

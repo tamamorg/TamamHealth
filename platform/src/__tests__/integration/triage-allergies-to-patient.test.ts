@@ -16,6 +16,7 @@ import { patientsDB } from '@/lib/db';
 import { createTriage, updateTriage } from '@/lib/services/triage-service';
 import type { PatientDoc, TriageDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const ORG = 'org-moh-ss';
 const HOSP1 = 'hosp-001';
 
@@ -47,7 +48,7 @@ afterEach(async () => {
 
 describe('triage allergies reach the patient document', () => {
   it('createTriage merges knownAllergies onto patient.allergies and clears the NKDA attestation', async () => {
-    await createTriage(triagePayload({ knownAllergies: 'Penicillin, Sulfa drugs' }));
+    await createTriage(triagePayload({ knownAllergies: 'Penicillin, Sulfa drugs' }), { scope: TEST_SCOPE });
 
     const patient = await patientsDB().get('pat-nyibol') as PatientDoc;
     expect(patient.allergies).toEqual(['Penicillin', 'Sulfa drugs']);
@@ -60,18 +61,18 @@ describe('triage allergies reach the patient document', () => {
       allergies: ['Penicillin'],
     } as never);
 
-    const created = await createTriage(triagePayload({ knownAllergies: 'none' }));
+    const created = await createTriage(triagePayload({ knownAllergies: 'none' }), { scope: TEST_SCOPE });
     let patient = await patientsDB().get('pat-nyibol') as PatientDoc;
     expect(patient.allergies).toEqual(['Penicillin']);
 
-    await updateTriage(created._id, { knownAllergies: 'penicillin, Latex' });
+    await updateTriage(created._id, { knownAllergies: 'penicillin, Latex' }, TEST_SCOPE);
     patient = await patientsDB().get('pat-nyibol') as PatientDoc;
     expect(patient.allergies).toEqual(['Penicillin', 'Latex']);
   });
 
   it('a triage save without allergies leaves the patient document untouched', async () => {
     const before = await patientsDB().get('pat-nyibol') as PatientDoc;
-    await createTriage(triagePayload());
+    await createTriage(triagePayload(), { scope: TEST_SCOPE });
     const after = await patientsDB().get('pat-nyibol') as PatientDoc;
     expect(after._rev).toBe(before._rev);
     expect(after.allergies).toBeUndefined();

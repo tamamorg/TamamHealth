@@ -13,7 +13,7 @@ let uuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-tuid` }));
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
-import { teardownTestDBs, putDoc } from '../helpers/test-db';
+import { teardownTestDBs } from '../helpers/test-db';
 import { pharmacyInventoryDB } from '@/lib/db';
 import {
   getAllInventory,

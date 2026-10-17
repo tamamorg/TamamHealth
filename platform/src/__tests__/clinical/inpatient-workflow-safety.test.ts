@@ -16,12 +16,18 @@ import {
   WardWorkflowError,
 } from '@/lib/services/ward-service';
 import {
-  createPrescription,
+  createPrescription as createPrescriptionScoped,
   getPrescriptionsByPatient,
   recordAdministration,
   voidAdministration,
   MedicationAdministrationError,
 } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 import type { PrescriptionDoc } from '@/lib/db-types';
 import type { AdmissionDoc, BedDoc, WardDoc } from '@/lib/db-types-ward';
 

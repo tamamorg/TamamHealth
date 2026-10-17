@@ -34,17 +34,17 @@ Never rewrite `package-lock.json` casually; the repo regenerates lockfiles with 
 ## Layout
 
 - `src/app/(dashboard)/**` — ~45 protected modules (patients, consultation, notes, triage, rooming, wards, lab, pharmacy, blood-bank, controlled-substances, anc, births, deaths, immunizations, surveillance, epidemic-intelligence, billing, payments, hr, it, equipment, facility-*, government, admin, org-admin, system-admin, …).
-- `src/app/` also holds `(booking)/book`, `patient-portal/`, `checkout/[linkId]`, `request-account/`, `login/`, `privacy/`, `terms/`, and `api/`.
+- `src/app/` also holds `(booking)/book`, `patient-portal/`, `checkout/[linkId]`, `accept-invite/`, `forgot-password/`, `login/`, `privacy/`, `terms/`, and `api/`.
 - `src/proxy.ts` — Edge middleware (auth gate, role routing, CSRF). Next 16 name for `middleware.ts`. Only import Edge-safe modules from it.
 - `src/instrumentation.ts` — server boot: fail-closed config validation, Sentry, Postgres migrations.
 - `src/modules/<domain>/**` — **domain modules, and where new code goes.** The
   codebase is migrating from by-kind to by-domain (ADR 0003). `identity` (auth,
-  sessions, provisioning, MFA, account requests), `communication` (messages,
+  sessions, provisioning, MFA, invites), `communication` (messages,
   announcements, the notification bell), `tenancy`, and the first `analytics`
   route have landed; see the ADR for the remaining migration sequence.
 - `src/lib/services/**` (95 left) — business logic and DB access for domains that
   have not moved yet. `src/lib/hooks/**` — one hook per service area.
-- `src/lib/db.ts` — 76 `tamamhealth_*` PouchDB databases; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
+- `src/lib/db.ts` — 76 replicating `tamamhealth_*` PouchDB databases (from `DATABASE_SYNC_CONFIGS` in `lib/sync/sync-config.ts`) plus 6 non-replicating local names, 82 in `LOCAL_DATABASE_NAMES`; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
 - `src/app/globals.css` — the single source of design tokens.
 - `src/__tests__/**` — Jest test files, including `architecture/` which asserts the module boundaries hold.
 

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { PrescriptionDoc } from '../db-types';
 import type { PrescriptionCreateInput } from '../services/prescription-service';
 import { medicationAdministrationsDB, prescriptionsDB } from '../db';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useDataScope } from './useDataScope';
 import { useAuth } from '../context';
 import { isStandaloneDemoDeployment } from '../sync/sync-config';
+
+const prescriptionDatabases = () => [prescriptionsDB(), medicationAdministrationsDB()];
 
 export function usePrescriptions(patientId?: string) {
   const [prescriptions, setPrescriptions] = useState<PrescriptionDoc[]>([]);
@@ -34,32 +36,17 @@ export function usePrescriptions(patientId?: string) {
     }
   }, [scope, patientId]);
 
-  useEffect(() => {
-    loadPrescriptions();
-  }, [loadPrescriptions]);
-
   // Live subscription: re-load whenever a prescription is created or
   // dispensed anywhere in the app (consultation page, pharmacy queue, etc.).
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadPrescriptions(); });
-    const changes = [prescriptionsDB(), medicationAdministrationsDB()].map(database => database
-      .changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', (err) => { console.warn('Prescriptions subscription error:', err); }));
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      for (const feed of changes) try { feed.cancel(); } catch { /* noop */ }
-    };
-  }, [loadPrescriptions]);
+  usePouchLiveReload({ load: loadPrescriptions, database: prescriptionDatabases, onError: err => console.warn('Prescriptions subscription error:', err) });
 
   const create = useCallback(async (data: PrescriptionCreateInput) => {
     const { createPrescription } = await import('../services/prescription-service');
-    const result = await createPrescription(data);
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    const result = await createPrescription(data, scope);
     await loadPrescriptions();
     return result;
-  }, [loadPrescriptions]);
+  }, [loadPrescriptions, scope]);
 
   /**
    * Dispense through the single guarded transaction (stock gate → FEFO

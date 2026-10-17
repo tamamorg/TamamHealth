@@ -238,6 +238,7 @@ export default function ClinicalNoteEditor({
     let cancelled = false;
     (async () => {
       try {
+        if (!scope) return;
         const { getPatientById } = await import('@/lib/services/patient-service');
         const doc = await getPatientById(patientId, scope);
         if (!cancelled) setPatient(doc);
@@ -417,6 +418,7 @@ export default function ClinicalNoteEditor({
   ): Promise<ChartSnapshotInput | null> => {
     markChart(ids, 'loading');
     try {
+      if (!scope) throw new Error('session scope not ready');
       const snapshot = await withTimeout(loadChartSnapshot(patientId, scope), CHART_LOAD_TIMEOUT_MS);
       markChart(ids.filter(id => snapshotLoadFailed(id, snapshot)), 'error');
       markChart(ids.filter(id => !snapshotLoadFailed(id, snapshot)), 'ready');

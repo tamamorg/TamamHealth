@@ -22,6 +22,7 @@ import { createAppointment, getAppointmentsByPatient } from '@/lib/services/appo
 import { jubaDate } from '@/lib/time-juba';
 import type { TriageDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const ORG = 'org-moh-ss';
 const HOSP1 = 'hosp-001';
 const HOSP2 = 'hosp-002';
@@ -199,7 +200,7 @@ describe('checkInPatient — re-attendance while an old triage is still "active"
     expect(result.triage.encounterId).toBe(result.encounter._id);
     expect(result.triage.status).toBe('seen'); // real ETAT findings untouched
 
-    const allForPatient = await getTriageByPatient('pat-agok');
+    const allForPatient = await getTriageByPatient('pat-agok', TEST_SCOPE);
     expect(allForPatient).toHaveLength(1);
   });
 });

@@ -157,3 +157,94 @@ export function evaluateCriticalObservations(
   }
   return { isCriticalValue: hits.length > 0, hits };
 }
+
+// ===== Reference ranges + one-call result flagging =====
+
+/**
+ * Normal ranges for the single-value tests the lab dashboard's batch-entry
+ * screen accepts. `unit` is what a technician types the result in; critical
+ * thresholds are NOT stored here — they come from `DEFAULT_CRITICAL_VALUES`
+ * (via `ruleName`), converted with `toRuleUnit`, so the dashboard and the
+ * result-entry workflow can never disagree about what is critical.
+ */
+export interface LabReferenceRange {
+  /** Matched case-insensitively as a substring of the order's test name. */
+  test: string;
+  unit: string;
+  normalMin?: number;
+  normalMax?: number;
+  /** Qualitative tests: every result the entry picker offers. */
+  qualitative?: string[];
+  /** Qualitative tests: the subset of `qualitative` that reads as normal. */
+  normalValues?: string[];
+  /** QC rule to take critical thresholds from (matched like a test name). */
+  ruleName?: string;
+  /** Multiply an entered value by this to get the QC rule's unit. */
+  toRuleUnit?: number;
+  referenceStr: string;
+}
+
+export const LAB_REFERENCE_RANGES: LabReferenceRange[] = [
+  { test: 'Hemoglobin', unit: 'g/dL', normalMin: 12, normalMax: 17, ruleName: 'Hemoglobin', toRuleUnit: 1, referenceStr: '12-17 g/dL' },
+  // ×10⁹/L = 10³/µL, so /µL ÷ 1000 lands in the rule's unit.
+  { test: 'WBC', unit: '/μL', normalMin: 4000, normalMax: 11000, ruleName: 'White Blood Cell', toRuleUnit: 1 / 1000, referenceStr: '4000-11000 /μL' },
+  { test: 'Platelets', unit: '/μL', normalMin: 150000, normalMax: 400000, ruleName: 'Platelets', toRuleUnit: 1 / 1000, referenceStr: '150000-400000 /μL' },
+  // 1 mmol/L glucose = 18 mg/dL.
+  { test: 'Blood Glucose', unit: 'mg/dL', normalMin: 70, normalMax: 140, ruleName: 'Glucose', toRuleUnit: 1 / 18, referenceStr: '70-140 mg/dL' },
+  // 1 mg/dL creatinine = 88.4 µmol/L.
+  { test: 'Creatinine', unit: 'mg/dL', normalMin: 0.6, normalMax: 1.2, ruleName: 'Creatinine', toRuleUnit: 88.4, referenceStr: '0.6-1.2 mg/dL' },
+  { test: 'Malaria RDT', unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'HIV', unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
+];
+
+export function getLabReferenceRange(testName: string): LabReferenceRange | undefined {
+  const name = (testName || '').toLowerCase();
+  return LAB_REFERENCE_RANGES.find(r => name.includes(r.test.toLowerCase()));
+}
+
+/** Critical bounds for a range, expressed in the range's own entry unit. */
+export function criticalBoundsInEntryUnit(range: LabReferenceRange): { low?: number; high?: number } {
+  const rule = range.ruleName ? matchCriticalRule(range.ruleName) : undefined;
+  if (!rule) return {};
+  const factor = range.toRuleUnit ?? 1;
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return {
+    low: rule.criticalLow != null ? round(rule.criticalLow / factor) : undefined,
+    high: rule.criticalHigh != null ? round(rule.criticalHigh / factor) : undefined,
+  };
+}
+
+export type LabFlag = 'NORMAL' | 'ABNORMAL' | 'CRITICAL';
+
+/**
+ * Flag a single entered result: critical per the QC table (inclusive bounds,
+ * unit-converted), otherwise abnormal outside the normal range.
+ */
+export function flagLabResult(testName: string, value: string): { flag: LabFlag; abnormal: boolean; critical: boolean } {
+  const normal = { flag: 'NORMAL' as const, abnormal: false, critical: false };
+  const range = getLabReferenceRange(testName);
+  if (!range) {
+    // No dashboard range, but the QC table may still know the analyte.
+    return evaluateCritical(testName, value).isCriticalValue
+      ? { flag: 'CRITICAL', abnormal: true, critical: true }
+      : normal;
+  }
+
+  if (range.normalValues) {
+    const v = value.trim().toLowerCase();
+    return range.normalValues.some(n => n.toLowerCase() === v)
+      ? normal
+      : { flag: 'ABNORMAL', abnormal: true, critical: false };
+  }
+
+  const num = parseFloat(value);
+  if (!Number.isFinite(num)) return normal;
+
+  const rule = range.ruleName ? matchCriticalRule(range.ruleName) : undefined;
+  if (rule && isCritical(num * (range.toRuleUnit ?? 1), rule)) {
+    return { flag: 'CRITICAL', abnormal: true, critical: true };
+  }
+  if (range.normalMin !== undefined && num < range.normalMin) return { flag: 'ABNORMAL', abnormal: true, critical: false };
+  if (range.normalMax !== undefined && num > range.normalMax) return { flag: 'ABNORMAL', abnormal: true, critical: false };
+  return normal;
+}

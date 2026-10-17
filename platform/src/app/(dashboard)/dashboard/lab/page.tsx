@@ -20,62 +20,13 @@ import {
 import PatientName from '@/components/PatientName';
 import Select from '@/components/Select';
 import { formatClockTime } from '@/lib/format-utils';
+import {
+  flagLabResult as flagResult,
+  getLabReferenceRange as getRefRange,
+  criticalBoundsInEntryUnit,
+} from '@/lib/services/lab-critical-flag';
 
 const ACCENT = 'var(--accent-primary)';
-
-// ===== Reference Ranges for Auto-Flagging =====
-interface ReferenceRange {
-  test: string;
-  unit: string;
-  normalMin?: number;
-  normalMax?: number;
-  criticalLow?: number;
-  criticalHigh?: number;
-  qualitative?: string[]; // For qualitative tests like Malaria RDT, HIV
-  referenceStr: string;
-}
-
-const REFERENCE_RANGES: ReferenceRange[] = [
-  { test: 'Hemoglobin', unit: 'g/dL', normalMin: 12, normalMax: 17, criticalLow: 7, criticalHigh: 20, referenceStr: '12-17 g/dL' },
-  { test: 'WBC', unit: '/μL', normalMin: 4000, normalMax: 11000, criticalLow: 2000, criticalHigh: 30000, referenceStr: '4000-11000 /μL' },
-  { test: 'Platelets', unit: '/μL', normalMin: 150000, normalMax: 400000, criticalLow: 50000, referenceStr: '150000-400000 /μL' },
-  { test: 'Blood Glucose', unit: 'mg/dL', normalMin: 70, normalMax: 140, criticalLow: 40, criticalHigh: 400, referenceStr: '70-140 mg/dL' },
-  { test: 'Creatinine', unit: 'mg/dL', normalMin: 0.6, normalMax: 1.2, criticalHigh: 5, referenceStr: '0.6-1.2 mg/dL' },
-  { test: 'Malaria RDT', unit: '', qualitative: ['Positive', 'Negative'], referenceStr: 'Negative' },
-  { test: 'HIV', unit: '', qualitative: ['Reactive', 'Non-reactive'], referenceStr: 'Non-reactive' },
-];
-
-function getRefRange(testName: string): ReferenceRange | undefined {
-  return REFERENCE_RANGES.find(r => testName.toLowerCase().includes(r.test.toLowerCase()));
-}
-
-function flagResult(testName: string, value: string): { flag: 'NORMAL' | 'ABNORMAL' | 'CRITICAL'; abnormal: boolean; critical: boolean } {
-  const ref = getRefRange(testName);
-  if (!ref) return { flag: 'NORMAL', abnormal: false, critical: false };
-
-  // Qualitative tests
-  if (ref.qualitative) {
-    const normalValues = ['Negative', 'Non-reactive'];
-    const isNormal = normalValues.some(n => value.toLowerCase() === n.toLowerCase());
-    return isNormal
-      ? { flag: 'NORMAL', abnormal: false, critical: false }
-      : { flag: 'ABNORMAL', abnormal: true, critical: false };
-  }
-
-  // Numeric tests
-  const num = parseFloat(value);
-  if (isNaN(num)) return { flag: 'NORMAL', abnormal: false, critical: false };
-
-  // Check critical first
-  if (ref.criticalLow !== undefined && num < ref.criticalLow) return { flag: 'CRITICAL', abnormal: true, critical: true };
-  if (ref.criticalHigh !== undefined && num > ref.criticalHigh) return { flag: 'CRITICAL', abnormal: true, critical: true };
-
-  // Check abnormal
-  if (ref.normalMin !== undefined && num < ref.normalMin) return { flag: 'ABNORMAL', abnormal: true, critical: false };
-  if (ref.normalMax !== undefined && num > ref.normalMax) return { flag: 'ABNORMAL', abnormal: true, critical: false };
-
-  return { flag: 'NORMAL', abnormal: false, critical: false };
-}
 
 const FLAG_COLORS = {
   NORMAL: { bg: 'rgba(79, 199, 155,0.12)', color: 'var(--color-success)', border: 'rgba(79, 199, 155,0.25)' },
@@ -83,7 +34,7 @@ const FLAG_COLORS = {
   CRITICAL: { bg: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger)', border: 'rgba(224, 49, 39,0.25)' },
 };
 
-// Juba is UTC+3 — a result filed in the first three hours of the local day has
+// Juba is UTC+2 — a result filed in the first two hours of the local day has
 // a UTC instant that still reads as the previous day. `completedAt`/`orderedAt`
 // stay full ISO instants (correct, and how the SLA math elsewhere needs them);
 // only the CALENDAR DATE shown/bucketed here must be derived in local time
@@ -593,12 +544,13 @@ export default function LabDashboardPage() {
                   {/* Reference range for selected test */}
                   {batchTestType && (() => {
                     const ref = getRefRange(batchTestType);
+                    const crit = ref ? criticalBoundsInEntryUnit(ref) : {};
                     return ref ? (
                       <div className="p-2.5 rounded-xl" style={{ background: 'rgba(33, 145, 208, 0.06)', border: '1px solid var(--accent-border)' }}>
                         <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: ACCENT }}>
                           {t('lab.reference')}: {ref.referenceStr}
-                          {ref.criticalLow !== undefined && ` | ${t('lab.criticalLabel')}: <${ref.criticalLow}`}
-                          {ref.criticalHigh !== undefined && ` | ${t('lab.criticalLabel')}: >${ref.criticalHigh}`}
+                          {crit.low !== undefined && ` | ${t('lab.criticalLabel')}: ≤${crit.low}`}
+                          {crit.high !== undefined && ` | ${t('lab.criticalLabel')}: ≥${crit.high}`}
                         </p>
                       </div>
                     ) : null;

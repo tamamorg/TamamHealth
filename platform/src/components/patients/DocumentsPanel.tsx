@@ -22,7 +22,7 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import FileUpload from '@/components/FileUpload';
 import { usePatientDocuments } from '@/lib/hooks/usePatientDocuments';
 import ClinicalImageViewer, { type ClinicalImageItem } from '@/components/clinical-images/ClinicalImageViewer';
-import { makeCoalescer } from '@/lib/hooks/live-reload';
+import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import { messagesDB } from '@/lib/db';
 import { formatDate } from '@/lib/format-utils';
 import ChartSection from '@/components/ehr/chart/ChartSection';
@@ -164,20 +164,9 @@ export default function DocumentsPanel({
     }
   }, [patient._id, scope]);
 
-  useEffect(() => { loadSentEducation(); }, [loadSentEducation]);
-
   // The composer that sends education lives in the chart, not here, so the list
   // follows the messages database rather than waiting for a prop to change.
-  useEffect(() => {
-    const reload = makeCoalescer(() => { loadSentEducation(); });
-    const changes = messagesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* offline or closed — the mount load stands */ });
-    return () => {
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadSentEducation]);
+  usePouchLiveReload({ load: loadSentEducation, database: messagesDB });
 
   // Mirrors the open preview's URL for the unmount cleanup below, which cannot
   // read state from its own teardown.

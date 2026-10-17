@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback, useMemo } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ClinicianTaskDoc } from '../db-types';
 import { clinicianTasksDB } from '../db';
 import { useAuth } from '../context';
@@ -29,20 +29,7 @@ export function useTasks() {
     }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = clinicianTasksDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: clinicianTasksDB });
 
   const open = useMemo(() => tasks.filter(t => t.status === 'open'), [tasks]);
   const completed = useMemo(() => tasks.filter(t => t.status === 'completed'), [tasks]);

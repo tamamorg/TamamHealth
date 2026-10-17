@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/context';
-import { makeCoalescer } from '@/lib/hooks/live-reload';
+import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB, encountersDB, messagesDB, conversationsDB } from '@/lib/db';
 import { isForViewer, isKindRelevantToRole } from '@/modules/communication/notifications/notification-scope';
 import type { NotificationKind } from '@/modules/communication/notifications/notification-scope';
@@ -551,45 +551,27 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // moment the receiving facility's `seen` update replicates in — otherwise the
   // sender's "patient received" notification only surfaces on a manual reopen.
   // Coalesced to avoid re-render churn on bursty replication.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    // Only the databases whose source this role actually receives — a write to
-    // the pharmacy queue should not wake a session that will skip that source
-    // anyway. Transfers and progress stay unconditional: both can address any
-    // user directly. Labs and prescriptions matter here because without their
-    // feeds a new critical result never chimes (or badges) until reopen.
-    const role = currentUser?.role;
-    const feeds = [
-      isKindRelevantToRole('referral', role) ? referralsDB() : null,
-      isKindRelevantToRole('appointment', role) ? appointmentsDB() : null,
-      isKindRelevantToRole('lab', role) ? labResultsDB() : null,
-      // The visit kind's dispensed loop-closer also reads prescriptions, so a
-      // doctor's bell must wake on a dispense even though they skip the
-      // pharmacy-queue source itself.
-      isKindRelevantToRole('prescription', role) || isKindRelevantToRole('visit', role) ? prescriptionsDB() : null,
-      patientTransfersDB(),
-      consultationProgressDB(),
-      // A patient triaged RED must badge the bell now, not on the next reopen.
-      isKindRelevantToRole('triage', role) ? triageDB() : null,
-      // Every encounter transition re-mints a visit item; without this feed the
-      // "ready — call them in" rung only surfaces on the next manual reload.
-      isKindRelevantToRole('visit', role) ? encountersDB() : null,
-      isKindRelevantToRole('message', role) ? messagesDB() : null,
-      isKindRelevantToRole('message', role) ? conversationsDB() : null,
-    ].filter((db): db is NonNullable<typeof db> => db !== null)
-      .map(db => db.changes({ since: 'now', live: true, include_docs: false })
-        .on('change', () => reload.trigger())
-        .on('error', () => { /* swallow — offline */ }));
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      for (const feed of feeds) {
-        try { feed.cancel(); } catch { /* noop */ }
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load]);
+  const role = currentUser?.role;
+  const notificationDatabases = useCallback(() => [
+    isKindRelevantToRole('referral', role) ? referralsDB() : null,
+    isKindRelevantToRole('appointment', role) ? appointmentsDB() : null,
+    isKindRelevantToRole('lab', role) ? labResultsDB() : null,
+    // The visit kind's dispensed loop-closer also reads prescriptions, so a
+    // doctor's bell must wake on a dispense even though they skip the
+    // pharmacy-queue source itself.
+    isKindRelevantToRole('prescription', role) || isKindRelevantToRole('visit', role) ? prescriptionsDB() : null,
+    patientTransfersDB(),
+    consultationProgressDB(),
+    // A patient triaged RED must badge the bell now, not on the next reopen.
+    isKindRelevantToRole('triage', role) ? triageDB() : null,
+    // Every encounter transition re-mints a visit item; without this feed the
+    // "ready - call them in" rung only surfaces on the next manual reload.
+    isKindRelevantToRole('visit', role) ? encountersDB() : null,
+    isKindRelevantToRole('message', role) ? messagesDB() : null,
+    isKindRelevantToRole('message', role) ? conversationsDB() : null,
+  ].filter((db): db is NonNullable<typeof db> => db !== null), [role]);
+  // The mount load and the 30s poll live in the effect above.
+  usePouchLiveReload({ load, database: notificationDatabases, loadOnMount: false });
 
   const decorated = useMemo(
     () => items.map(n => (readIds.has(n.id) ? { ...n, read: true } : n)),

@@ -12,6 +12,33 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { CLINICIANS } from '@/lib/sync/write-permissions';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { allowedChartTabIds, chartHrefOpensForViewer } from '@/lib/chart-tabs';
+import { makeCoalescer } from '@/lib/hooks/live-reload';
+import { postConsultReady } from '@/modules/post-consult/client';
+
+/** Encounter statuses at or past the clinician closing their part of a visit. */
+const CLOSES_CLINIC_PORTION_OR_LATER = new Set<string>([
+  'ready_for_clinic_checkout', 'referred_out', 'in_clinic_checkout',
+  'clinic_complete_awaiting_next_station', 'awaiting_facility_checkout', 'in_facility_checkout',
+]);
+
+/**
+ * True when checkout is blocked only by records the clinician has already
+ * produced but this device has not received: the encounter is at or past
+ * clinic checkout (signing a note is what moves it there), and every blocker
+ * is the missing signed note, or a post-consult handoff whose tasks this
+ * device already shows done (so only the care plan it was checked against
+ * is missing). Undone tasks are a person's job, not sync, and return false.
+ */
+export function isAwaitingClinicianRecords(
+  blocking: ReadonlyArray<{ key: string }>,
+  encounterStatus: string | null,
+  handoffDoneHere: boolean,
+): boolean {
+  if (!blocking.length || !encounterStatus || !CLOSES_CLINIC_PORTION_OR_LATER.has(encounterStatus)) return false;
+  const syncShaped = (key: string) => key === 'required_documentation_generated'
+    || (key === 'post_consult_handoff' && handoffDoneHere);
+  return blocking.every(c => syncShaped(c.key));
+}
 
 // ── Final-checkout modal: confirm balance settled, mark the visit complete ──
 export default function CheckoutModal({
@@ -47,6 +74,11 @@ export default function CheckoutModal({
   // resolved or explicitly overridden with a reason.
   const [gate, setGate] = useState<import('@/lib/services/checkout-gate-service').CheckoutGateEvaluation | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  const [encounterStatus, setEncounterStatus] = useState<string | null>(null);
+  // Whether this device's copy of the encounter shows the post-consult tasks
+  // done — a handoff that still blocks then means the care plan it was
+  // reviewed against has not synced here yet, not that work is outstanding.
+  const [handoffDoneHere, setHandoffDoneHere] = useState(false);
   // An override needs a named authorizer, not just a reason — "reason +
   // authorization, logged" is the documented gate rule (Principle 2.12).
   const [disposition, setDisposition] = useState<import('@/lib/services/encounter-service').DischargeDisposition>('discharged');
@@ -58,7 +90,7 @@ export default function CheckoutModal({
       return;
     }
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       try {
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
         const b = await getPatientBalance(target.patientId, scope);
@@ -81,11 +113,49 @@ export default function CheckoutModal({
         // the desk can resolve conditions before pressing the button.
         const { evaluateCheckoutGate } = await import('@/lib/services/checkout-gate-service');
         const evaluation = await evaluateCheckoutGate(target.patientId, (enc ?? undefined) as never, scope);
-        if (!cancelled) setGate(evaluation);
+        if (!cancelled) {
+          setGate(evaluation);
+          setEncounterStatus(enc?.status ?? null);
+          setHandoffDoneHere(!!enc && postConsultReady(enc.postConsult));
+        }
       } catch { /* non-fatal — balance still shows */ }
+    };
+    void load();
+    // Re-evaluate as records arrive. The gate reads this device's copy, and
+    // the doctor's signed note and care plan reach the desk by sync up to a
+    // minute or more after the encounter itself does — evaluating once left
+    // a legitimate checkout reading "blocked" until the dialog was reopened.
+    const reload = makeCoalescer(() => { if (!cancelled) void load(); }, 1000);
+    const feeds: Array<{ cancel: () => void }> = [];
+    void (async () => {
+      const db = await import('@/lib/db');
+      const { clinicalNotesDB } = await import('@/lib/clinical-notes/note-service');
+      if (cancelled) return;
+      for (const open of [db.encountersDB, clinicalNotesDB, db.medicalRecordsDB, db.prescriptionsDB,
+        db.labResultsDB, db.proceduresDB, db.ledgerDB]) {
+        try {
+          feeds.push(open().changes({ since: 'now', live: true, include_docs: false })
+            .on('change', () => reload.trigger())
+            .on('error', () => { /* a dead feed only stops live refresh */ }));
+        } catch { /* same */ }
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      reload.cancel();
+      for (const feed of feeds) { try { feed.cancel(); } catch { /* noop */ } }
+    };
   }, [scope, target.encounterId, target.patientId]);
+
+  // The encounter says the clinician closed their part of the visit, yet the
+  // only open items are ones the clinician's records answer, and they read
+  // as missing on THIS device: no signed note here (signing is what moved
+  // the encounter, so one exists), or tasks shown done against a care plan
+  // that has not arrived. Those records are still syncing — say so, rather
+  // than leave the desk reading a block it cannot resolve. Post-consult tasks
+  // that are simply not done yet are a person's job, not sync, and keep the
+  // ordinary blocked message.
+  const awaitingClinicianRecords = isAwaitingClinicianRecords(gate?.blocking ?? [], encounterStatus, handoffDoneHere);
 
   const owes = (balance ?? 0) > 0;
 
@@ -184,6 +254,11 @@ export default function CheckoutModal({
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-warning-text)' }}>
                 Checkout blocked — unresolved items
               </p>
+              {awaitingClinicianRecords && (
+                <p role="status" className="text-[12px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  {t('checkout.awaitingClinicianRecords')}
+                </p>
+              )}
               <ul className="space-y-1.5">
                 {gate.blocking.map(condition => (
                   <li key={condition.key} className="text-[12px]" style={{ color: 'var(--text-primary)' }}>

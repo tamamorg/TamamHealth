@@ -17,7 +17,13 @@ import { patientsDB } from '@/lib/db';
 import { assembleTransferPackage } from '@/lib/services/transfer-service';
 import { createClinicalNote, saveNoteSection, signClinicalNote } from '@/lib/clinical-notes/note-service';
 import { createProblem } from '@/lib/services/problem-service';
-import { createPrescription, updatePrescription } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, updatePrescription } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 
 const PATIENT_ID = 'pat-00001';
 const HOSP = 'hosp-001';

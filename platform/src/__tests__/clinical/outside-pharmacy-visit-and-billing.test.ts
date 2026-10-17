@@ -26,7 +26,13 @@ jest.setTimeout(30000);
 import { teardownTestDBs } from '../helpers/test-db';
 import { billingDB, encountersDB } from '@/lib/db';
 import { clinicalNotesDB, createClinicalNote, getClinicalNoteById, saveNoteSection, recordPlanAction } from '@/lib/clinical-notes/note-service';
-import { createPrescription, rerouteToOutsidePharmacy } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, rerouteToOutsidePharmacy } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 import { getEncounter } from '@/lib/services/encounter-service';
 import { reversePaidBillCharge } from '@/lib/services/billing-service';
 import { createLedgerEntry, getPatientBalance } from '@/lib/services/ledger-service';
@@ -35,6 +41,9 @@ import { isScriptable, scriptableOnly, buildPrescriptionText } from '@/lib/presc
 import { isControlledMedicine } from '@/lib/data/formulary';
 import type { EncounterDoc, PrescriptionDoc } from '@/lib/db-types';
 import type { BillingDoc } from '@/lib/db-types-billing';
+import type { DataScope as __DS } from '@/lib/services/data-scope';
+// Legacy fixtures carry no org; super_admin keeps the national view that filterByScope grants.
+const SUPER: __DS = { role: 'super_admin' };
 
 afterEach(async () => {
   await teardownTestDBs();
@@ -138,7 +147,7 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
     // What billing and paying it had put in the ledger.
     await createLedgerEntry({ ...LEDGER, entryType: 'charge', amount: 3000, description: 'Paracetamol — INV-1' });
     await createLedgerEntry({ ...LEDGER, entryType: 'payment', amount: -3000, description: 'Cash' });
-    expect(await getPatientBalance('pat-1')).toBe(0);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(0);
 
     await rerouteToOutsidePharmacy(prescription._id, { id: 'user-1', name: 'Dr. James Wani' });
 
@@ -153,7 +162,7 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
     expect(after.chargeReversalReason).toBe('Prescription sent to an outside pharmacy');
     expect(after.notes).toMatch(/3000 SSP was collected and is owed back/);
     // …and the account is in credit by what was paid, for the cashier to refund.
-    expect(await getPatientBalance('pat-1')).toBe(-3000);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(-3000);
   });
 
   it('reverses a part-paid charge the same way, and stops asking for the rest', async () => {
@@ -171,7 +180,7 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
     const after = await bill(prescription._id);
     expect(after.balanceDue).toBe(0);
     expect(after.chargeReversedAt).toBeTruthy();
-    expect(await getPatientBalance('pat-1')).toBe(-1000);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(-1000);
   });
 
   it('reverses a paid charge once, however often it is asked', async () => {
@@ -184,7 +193,7 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
 
     expect(await reversePaidBillCharge('bill-rx-x', 'user-1', 'Dr. James Wani', 'Sent out')).not.toBeNull();
     expect(await reversePaidBillCharge('bill-rx-x', 'user-1', 'Dr. James Wani', 'Sent out')).toBeNull();
-    expect(await getPatientBalance('pat-1')).toBe(-3000);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(-3000);
   });
 
   it('has nothing to reverse on a bill nobody has paid — that one is cancelled', async () => {

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { PatientDoc } from '../db-types';
 import type { CreatePatientOptions } from '../services/patient-service';
 import { patientsDB } from '../db';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useDataScope } from './useDataScope';
 import { withTimeout, CLINICAL_WRITE_TIMEOUT_MS } from '../write-timeout';
 
@@ -34,25 +34,9 @@ export function usePatients(enabled = true) {
     }
   }, [enabled, scope]);
 
-  useEffect(() => {
-    loadPatients();
-  }, [loadPatients]);
-
   // Live PouchDB subscription: re-load whenever a patient is created,
   // updated, or marked deceased anywhere in the app. Replaces 30s polling.
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadPatients(); });
-    const changes = patientsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [enabled, loadPatients]);
+  usePouchLiveReload({ load: loadPatients, database: patientsDB, enabled });
 
   const search = useCallback(async (query: string) => {
     if (!scope) {
@@ -89,11 +73,12 @@ export function usePatients(enabled = true) {
   }, [loadPatients, scope]);
 
   const update = useCallback(async (id: string, data: Partial<PatientDoc>) => {
+    if (!scope) throw new Error('Your patient data scope is unavailable');
     const { updatePatient } = await import('../services/patient-service');
-    const patient = await updatePatient(id, data);
+    const patient = await updatePatient(id, data, scope);
     await loadPatients();
     return patient;
-  }, [loadPatients]);
+  }, [loadPatients, scope]);
 
   return { patients, loading, error, search, create, update, reload: loadPatients };
 }

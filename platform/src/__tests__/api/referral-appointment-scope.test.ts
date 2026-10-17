@@ -301,3 +301,54 @@ describe('BUG 3 — auth wins over a client-supplied orgId on create', () => {
     expect(body.labResult.orgId).toBe(ORG_B);
   });
 });
+
+describe('reschedule — one policy across API, service and UI', () => {
+  async function bookInOrgA() {
+    return createAppointment({
+      patientId: 'pat-move', patientName: 'Move Patient',
+      providerId: 'doctor-a', providerName: 'Dr Test',
+      facilityId: HOSP_A, facilityName: 'Hospital A', facilityLevel: 'payam',
+      appointmentDate: futureDateString(20), appointmentTime: '09:00', duration: 30,
+      appointmentType: 'general', priority: 'routine', department: 'OPD',
+      status: 'scheduled', reason: 'Review', reminderSent: false, isRecurring: false,
+      bookedBy: 'desk-a', bookedByName: 'Desk A', state: 'Central Equatoria', orgId: ORG_A,
+    } as Parameters<typeof createAppointment>[0]);
+  }
+  const reschedule = (appointmentId: string) => appointmentsPOST(postRequest('http://test/api/appointments', {
+    action: 'reschedule', appointmentId, newDate: futureDateString(25), newTime: '11:00',
+  }));
+
+  test.each(['org_admin', 'medical_superintendent', 'super_admin', 'doctor'] as const)(
+    '%s — locked out of the edit modal — is refused by the API too',
+    async role => {
+      const appt = await bookInOrgA();
+      mockGetAuth.mockResolvedValue({ ...authFor(ORG_A, HOSP_A), role });
+      expect((await reschedule(appt._id)).status).toBe(403);
+      expect((await getAppointmentById(appt._id))?.appointmentTime).toBe('09:00');
+    },
+  );
+
+  test('front desk may reschedule through the API', async () => {
+    const appt = await bookInOrgA();
+    mockGetAuth.mockResolvedValue({ ...authFor(ORG_A, HOSP_A, 'desk-a'), role: 'front_desk' });
+    expect((await reschedule(appt._id)).status).toBe(200);
+    expect((await getAppointmentById(appt._id))?.appointmentTime).toBe('11:00');
+  });
+
+  test('the predicate is exactly the replication validator\'s appointment row', async () => {
+    const { canRescheduleAppointmentRole } = await import('@/lib/care-team-permissions');
+    const { DOC_WRITE_ROLES } = await import('@/lib/sync/write-permissions');
+    const { ROLE_ROUTE_TABLE } = await import('@/lib/role-routes');
+    const roles = Object.keys(ROLE_ROUTE_TABLE);
+    for (const role of roles) {
+      expect(canRescheduleAppointmentRole(role as never)).toBe((DOC_WRITE_ROLES.appointment ?? []).includes(role as never));
+    }
+  });
+
+  test('the service refuses a reschedule with no actor role instead of skipping the guard', async () => {
+    const appt = await bookInOrgA();
+    const { rescheduleAppointment, AppointmentAmendNotAllowedError } = await import('@/lib/services/appointment-service');
+    await expect(rescheduleAppointment(appt._id, futureDateString(25), '11:00', undefined as never))
+      .rejects.toBeInstanceOf(AppointmentAmendNotAllowedError);
+  });
+});

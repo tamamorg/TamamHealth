@@ -145,7 +145,7 @@ async function postHandler(request: NextRequest) {
       const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
       let patient: Awaited<ReturnType<typeof getPatientById>> = null;
       try {
-        patient = await getPatientById(patientId);
+        patient = await getPatientById(patientId, buildScopeFromAuth(auth));
       } catch {
         // A storage outage is not "no such patient" — let the device retry.
         return NextResponse.json({ error: 'patient_lookup_failed' }, { status: 503 });

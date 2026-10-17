@@ -57,7 +57,8 @@ function boundaryPatterns(names) {
 /**
  * The boundary rules, as ESLint path restrictions.
  *
- * Errors, not warnings. This repo carries 449 warnings, which is the empirical
+ * Errors, not warnings. This repo carries hundreds of warnings (the ceiling is
+ * `--max-warnings` in package.json), which is the empirical
  * case for the distinction: a rule nobody has to act on is a rule that records
  * violations rather than preventing them.
  *

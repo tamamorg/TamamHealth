@@ -142,6 +142,52 @@ export class BookingConflictError extends Error {
 }
 
 /**
+ * An edit the server would refuse from this role. Clinical roles may book an
+ * appointment and advance its status, but moving the slot, re-routing it or
+ * changing its department is reception's (DOC_UPDATE_ONLY_FIELDS). Thrown
+ * before the local write: saving it anyway looked fine on screen, then sat on
+ * the device as "pending sync" behind a "Sync error" banner.
+ */
+const AMEND_FIELD_LABELS: Record<string, string> = {
+  appointmentDate: 'the date', appointmentTime: 'the time', duration: 'the length',
+  departmentId: 'the department', providerId: 'the provider', providerName: 'the provider',
+  staffId: 'the nurse', staffName: 'the nurse', facilityId: 'the facility', facilityName: 'the facility',
+};
+
+export class AppointmentAmendNotAllowedError extends Error {
+  readonly fields: string[];
+  constructor(fields: string[]) {
+    const named = [...new Set(fields.map(field => AMEND_FIELD_LABELS[field] ?? field))];
+    super(`Only the front desk can change ${named.join(', ')} of a booked appointment. Ask reception to reschedule or re-route it.`);
+    this.name = 'AppointmentAmendNotAllowedError';
+    this.fields = fields;
+  }
+}
+
+/**
+ * Refuse an edit `actorRole` may not make. A booking this device created and
+ * has not pushed yet is still a CREATE to the server, which a create-only role
+ * may shape freely, so it is let through.
+ */
+async function assertMayAmendAppointment(
+  existing: AppointmentDoc,
+  updated: AppointmentDoc,
+  actorRole: UserRole | undefined,
+): Promise<void> {
+  if (!actorRole) return;
+  const { fieldsOutsideAmendGrant, DOC_CREATE_ONLY_ROLES } = await import('../sync/write-permissions');
+  const sync = existing.offlineSync;
+  const neverPushed = !!sync && !sync.lastSyncedAt && (sync.status === 'pending' || sync.status === 'local');
+  if (neverPushed && DOC_CREATE_ONLY_ROLES.appointment?.includes(actorRole)) return;
+  const fields = fieldsOutsideAmendGrant(
+    'appointment', actorRole,
+    existing as unknown as Record<string, unknown>,
+    updated as unknown as Record<string, unknown>,
+  );
+  if (fields.length) throw new AppointmentAmendNotAllowedError(fields);
+}
+
+/**
  * The single conflict rule every write path runs through — create, reschedule,
  * field edits that move the slot, and approving a portal request. Throws with
  * a human-readable message the booking surfaces show as-is.
@@ -533,8 +579,11 @@ export async function updateAppointmentStatus(
 
 export async function updateAppointment(
   id: string,
-  updates: Partial<AppointmentDoc>
+  updates: Partial<AppointmentDoc>,
+  /** Required, as for rescheduleAppointment: a missing role skipped the amend guard. */
+  actorRole: UserRole,
 ): Promise<AppointmentDoc | null> {
+  if (!actorRole) throw new AppointmentAmendNotAllowedError(Object.keys(updates));
   const db = appointmentsDB();
   try {
     const existing = await db.get(id) as AppointmentDoc;
@@ -553,6 +602,7 @@ export async function updateAppointment(
       normalizedUpdates.departmentId = await linkedDepartmentId({ ...existing, ...updates });
     }
     const updated = withPendingOfflineSync({ ...existing, ...normalizedUpdates, updatedAt: new Date().toISOString() });
+    await assertMayAmendAppointment(existing, updated, actorRole);
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('UPDATE_APPOINTMENT', undefined, undefined, `Appointment ${id} updated`);
@@ -566,7 +616,7 @@ export async function updateAppointment(
     });
     return updated;
   } catch (err) {
-    if (err instanceof BookingConflictError) throw err;
+    if (err instanceof BookingConflictError || err instanceof AppointmentAmendNotAllowedError) throw err;
     return null;
   }
 }
@@ -574,8 +624,14 @@ export async function updateAppointment(
 export async function rescheduleAppointment(
   id: string,
   newDate: string,
-  newTime: string
+  newTime: string,
+  /**
+   * Required: every reschedule is user-initiated, and a missing role used to
+   * skip the amend guard entirely (the API route never passed one).
+   */
+  actorRole: UserRole,
 ): Promise<AppointmentDoc | null> {
+  if (!actorRole) throw new AppointmentAmendNotAllowedError(['appointmentDate', 'appointmentTime']);
   const db = appointmentsDB();
   try {
     const existing = await db.get(id) as AppointmentDoc;
@@ -592,6 +648,7 @@ export async function rescheduleAppointment(
       status: 'scheduled' as const,
       updatedAt: new Date().toISOString(),
     });
+    await assertMayAmendAppointment(existing, updated, actorRole);
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('RESCHEDULE_APPOINTMENT', undefined, undefined,
@@ -607,7 +664,7 @@ export async function rescheduleAppointment(
     });
     return updated;
   } catch (err) {
-    if (err instanceof BookingConflictError) throw err;
+    if (err instanceof BookingConflictError || err instanceof AppointmentAmendNotAllowedError) throw err;
     return null;
   }
 }

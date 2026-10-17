@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { authorizeJson } from '@/lib/api-json-guard';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'midwife', 'medical_superintendent', 'front_desk',
@@ -61,17 +62,9 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, CREATE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, CREATE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     const action = body.action as string;
     // Accept a referral (transfers patient to receiving hospital)
     if (action === 'accept') {
@@ -158,7 +151,7 @@ async function postHandler(request: NextRequest) {
     {
       const { getPatientById } = await import('@/lib/services/patient-service');
       const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
-      const patient = await getPatientById(String(body.patientId));
+      const patient = await getPatientById(String(body.patientId), buildScopeFromAuth(auth));
       if (!patient || filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
       }

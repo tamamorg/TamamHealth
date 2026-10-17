@@ -197,7 +197,7 @@ export function snapshotLoadFailed(sectionId: NoteSectionId, input: ChartSnapsho
  * sections must not surface another facility's or org's data that the chart
  * would hide, especially once that text is frozen into a signed note.
  */
-export async function loadChartSnapshot(patientId: string, scope?: DataScope): Promise<ChartSnapshotInput> {
+export async function loadChartSnapshot(patientId: string, scope: DataScope): Promise<ChartSnapshotInput> {
   const [prescriptions, allergies, problems, vitals, historyEntries, procedures] = await Promise.all([
     safelyTagged(async () => {
       const { getPrescriptionsByPatient } = await import('../services/prescription-service');
@@ -263,7 +263,7 @@ export async function loadChartSnapshot(patientId: string, scope?: DataScope): P
  */
 async function newestVitals(
   patientId: string,
-  scope?: DataScope,
+  scope: DataScope,
 ): Promise<{ value: Partial<Pick<MedicalRecordDoc, 'vitalSigns' | 'triageVitals'>> | null; failed: boolean }> {
   const [recordsRead, triagesRead] = await Promise.all([
     safelyTagged(async () => {

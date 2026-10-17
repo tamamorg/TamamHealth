@@ -14,6 +14,7 @@
  */
 import { useState } from 'react';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ScreeningEntry } from '@/lib/types/patient-clinical';
 import { Check, X } from '@/components/icons/lucide';
@@ -42,6 +43,11 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
   const confirmPrompt = useConfirmPrompt();
   const { showToast } = useToast();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -84,7 +90,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
   async function add() {
     const svc = await import('@/lib/services/screening-service');
     const type = form.type.trim();
-    const ok = await run(() => svc.addScreening(patient._id, {
+    const ok = await run(() => svc.addScreening(patient._id, needScope(), {
       type,
       dueDate: form.dueDate || undefined,
       intervalMonths: form.intervalMonths ? parseInt(form.intervalMonths, 10) : undefined,
@@ -98,7 +104,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
 
   async function complete(s: ScreeningEntry) {
     const svc = await import('@/lib/services/screening-service');
-    await run(() => svc.completeScreening(patient._id, s.id), t('screenings.markedDone', { type: s.type }));
+    await run(() => svc.completeScreening(patient._id, needScope(), s.id), t('screenings.markedDone', { type: s.type }));
   }
 
   async function decline(s: ScreeningEntry) {
@@ -111,7 +117,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
     });
     if (reason === null) return;
     const svc = await import('@/lib/services/screening-service');
-    await run(() => svc.declineScreening(patient._id, s.id, reason), t('screenings.declined', { type: s.type }));
+    await run(() => svc.declineScreening(patient._id, needScope(), s.id, reason), t('screenings.declined', { type: s.type }));
   }
 
   async function remove(s: ScreeningEntry) {
@@ -123,7 +129,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
     });
     if (!ok) return;
     const svc = await import('@/lib/services/screening-service');
-    await run(() => svc.removeScreening(patient._id, s.id), t('screenings.removed', { type: s.type }));
+    await run(() => svc.removeScreening(patient._id, needScope(), s.id), t('screenings.removed', { type: s.type }));
   }
 
   function recall(s: ScreeningEntry): string {

@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useDataScope } from './useDataScope';
 import { birthsDB, deathsDB } from '../db';
+import { usePouchLiveReload } from './usePouchLiveReload';
 
 interface VitalStats {
   birthStats: Awaited<ReturnType<typeof import('../services/birth-service').getBirthStats>>;
   deathStats: Awaited<ReturnType<typeof import('../services/death-service').getDeathStats>>;
 }
+
+const vitalDatabases = () => [birthsDB(), deathsDB()];
 
 export function useVitalStatistics() {
   const [data, setData] = useState<VitalStats | null>(null);
@@ -31,26 +34,11 @@ export function useVitalStatistics() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live PouchDB subscriptions: refresh aggregate counts whenever a birth
   // or death is registered anywhere in the app. Previously the page had to
   // be manually reloaded to pick up new births — the CRVS dashboard at the
   // national level needs to track in near-real-time, not on cron.
-  useEffect(() => {
-    let cancelled = false;
-    const birthsChanges = birthsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => { if (!cancelled) load(); })
-      .on('error', () => { /* swallow */ });
-    const deathsChanges = deathsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => { if (!cancelled) load(); })
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      try { birthsChanges.cancel(); } catch { /* noop */ }
-      try { deathsChanges.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: vitalDatabases });
 
   return { data, loading, error, reload: load };
 }

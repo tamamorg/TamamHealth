@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { PaymentDoc, InsurancePolicyDoc, ClaimDoc, PaymentPlanDoc, LedgerEntryDoc, PatientFinancialSummary } from '../db-types-payments';
 import { paymentsDB, insurancePoliciesDB, claimsDB, paymentPlansDB, ledgerDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -31,27 +31,15 @@ export function usePayments() {
     }
   }, [scope]);
 
-  useEffect(() => {
-    loadPayments();
-  }, [loadPayments]);
-
   // Live PouchDB subscription: re-load whenever a payment is created,
   // updated, or deleted anywhere in the app.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadPayments(); });
-    const changes = paymentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadPayments]);
+  usePouchLiveReload({ load: loadPayments, database: paymentsDB });
 
   return { payments, loading, error, reload: loadPayments };
 }
+
+// One shared feed pair so a payment or a policy change reloads the patient ledger once.
+const patientPaymentDatabases = () => [paymentsDB(), insurancePoliciesDB()];
 
 export function usePatientPayments(patientId?: string) {
   const [payments, setPayments] = useState<PaymentDoc[]>([]);
@@ -94,38 +82,8 @@ export function usePatientPayments(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => {
-    loadPatientPayments();
-  }, [loadPatientPayments]);
-
   // Live PouchDB subscriptions for payments and policies
-  useEffect(() => {
-    if (!patientId) return;
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadPatientPayments(); });
-    const changesPayments = paymentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changesPayments.cancel(); } catch { /* noop */ }
-    };
-  }, [loadPatientPayments, patientId]);
-
-  useEffect(() => {
-    if (!patientId) return;
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadPatientPayments(); });
-    const changesPolicies = insurancePoliciesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changesPolicies.cancel(); } catch { /* noop */ }
-    };
-  }, [loadPatientPayments, patientId]);
+  usePouchLiveReload({ load: loadPatientPayments, database: patientPaymentDatabases, enabled: Boolean(patientId) });
 
   return { payments, policies, balance, summary, loading, error, reload: loadPatientPayments };
 }
@@ -155,24 +113,8 @@ export function useInsurancePolicies(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => {
-    loadInsurancePolicies();
-  }, [loadInsurancePolicies]);
-
   // Live PouchDB subscription
-  useEffect(() => {
-    if (!patientId) return;
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadInsurancePolicies(); });
-    const changes = insurancePoliciesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadInsurancePolicies, patientId]);
+  usePouchLiveReload({ load: loadInsurancePolicies, database: insurancePoliciesDB, enabled: Boolean(patientId) });
 
   return { policies, loading, error, reload: loadInsurancePolicies };
 }
@@ -194,23 +136,8 @@ export function useInsuredPatientIds(): Set<string> {
     } catch { /* leave empty — rows fall back to Not insured */ }
   }, [scope]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
   // Live PouchDB subscription
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = insurancePoliciesDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: insurancePoliciesDB });
 
   return insuredIds;
 }
@@ -240,23 +167,8 @@ export function useClaims() {
     }
   }, [scope]);
 
-  useEffect(() => {
-    loadClaims();
-  }, [loadClaims]);
-
   // Live PouchDB subscription
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadClaims(); });
-    const changes = claimsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadClaims]);
+  usePouchLiveReload({ load: loadClaims, database: claimsDB });
 
   return { claims, loading, error, reload: loadClaims };
 }
@@ -286,23 +198,8 @@ export function usePaymentPlans() {
     }
   }, [scope]);
 
-  useEffect(() => {
-    loadPaymentPlans();
-  }, [loadPaymentPlans]);
-
   // Live PouchDB subscription
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadPaymentPlans(); });
-    const changes = paymentPlansDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadPaymentPlans]);
+  usePouchLiveReload({ load: loadPaymentPlans, database: paymentPlansDB });
 
   return { paymentPlans, loading, error, reload: loadPaymentPlans };
 }
@@ -332,23 +229,8 @@ export function useLedger(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => {
-    loadLedger();
-  }, [loadLedger]);
-
   // Live PouchDB subscription
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) loadLedger(); });
-    const changes = ledgerDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [loadLedger]);
+  usePouchLiveReload({ load: loadLedger, database: ledgerDB });
 
   return { ledger, loading, error, reload: loadLedger };
 }

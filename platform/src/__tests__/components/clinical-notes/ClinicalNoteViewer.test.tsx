@@ -1,7 +1,7 @@
 import React from 'react';
 import { act } from 'react';
 import { mountAndFlush, actFlush, setValue } from './test-utils';
-import ClinicalNoteViewer, { clinicalViewerSections } from '@/components/clinical-notes/ClinicalNoteViewer';
+import ClinicalNoteViewer, { clinicalViewerSections, keyValueLines } from '@/components/clinical-notes/ClinicalNoteViewer';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 
 const getById = jest.fn();
@@ -85,5 +85,21 @@ describe('ClinicalNoteViewer', () => {
     await actFlush(() => btn(m.container, 'Save addendum')!.click());
     expect(addAddendum).toHaveBeenCalledWith('n1', 'Late result', 'u1', 'Dr. Igga');
     m.unmount();
+  });
+});
+
+describe('keyValueLines', () => {
+  it('splits a vitals block into label/value pairs', () => {
+    expect(keyValueLines('Temp: 39 °C\nBP: 120/80 mmHg\nSpO₂: 98%')).toEqual([
+      { label: 'Temp', value: '39 °C' },
+      { label: 'BP', value: '120/80 mmHg' },
+      { label: 'SpO₂', value: '98%' },
+    ]);
+  });
+
+  it('leaves prose, bullets and single lines as text', () => {
+    expect(keyValueLines('Temp: 39 °C')).toBeNull();
+    expect(keyValueLines('Plan: rest\nReview in 48 hours.')).toBeNull();
+    expect(keyValueLines('• Coartem: twice daily\n• Paracetamol: as needed')).toBeNull();
   });
 });

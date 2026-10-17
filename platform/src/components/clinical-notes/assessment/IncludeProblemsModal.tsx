@@ -87,6 +87,7 @@ export default function IncludeProblemsModal({
   const [comments, setComments] = useState('');
 
   const load = useCallback(async () => {
+    if (!scope) return;
     const { getProblemsByPatient } = await import('@/lib/services/problem-service');
     const { getPatientById } = await import('@/lib/services/patient-service');
     const [rows, pt] = await Promise.all([getProblemsByPatient(patientId, scope), getPatientById(patientId, scope)]);
@@ -196,10 +197,11 @@ export default function IncludeProblemsModal({
   };
 
   const handleReconcile = (performed: boolean) => withBusy(async () => {
+    if (!scope) throw new Error('Your patient data scope is unavailable');
     const { updatePatient } = await import('@/lib/services/patient-service');
     const updated = await updatePatient(patientId, {
       problemReconciledAt: performed ? new Date().toISOString() : undefined,
-    });
+    }, scope);
     if (updated) setPatient(updated);
   });
 

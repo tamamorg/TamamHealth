@@ -202,3 +202,16 @@ export function buildScopeFromAuth(auth: {
     userId: auth.sub,
   };
 }
+
+/**
+ * Org-only scope for server-side/internal financial work that holds a document's
+ * `orgId` but no staff session (settling bills for a payment, unsettling on a
+ * reversal, linking a deposit bill). 'org_admin' is a synthetic role chosen only
+ * because filterByScope applies it as org-wide without per-facility narrowing,
+ * so a payment at one facility can reach a bill at another facility of the SAME
+ * org. A missing orgId yields a scope that sees nothing (fail closed), never
+ * "every org".
+ */
+export function orgOnlyScope(orgId: string | undefined): DataScope {
+  return { role: 'org_admin', orgId };
+}

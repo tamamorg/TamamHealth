@@ -1,2 +1,3 @@
-export type { DepartmentDoc, DepartmentCode, ClinicalSpecialty, ClinicDay } from './core/types';
-export { TAMAM_DEPARTMENT_CATALOG, CLINICAL_SPECIALTIES, departmentDefinitionFor, appointmentBelongsToDepartment, buildDepartmentReport, sortDepartmentAppointments, isClinicalSpecialty, specialtyFromLegacy, specialtyLabel } from './core/catalog';
+// Every export of this module is browser-safe, so the server surface is the
+// client surface. Re-exported rather than copied so the two cannot drift.
+export * from './client';

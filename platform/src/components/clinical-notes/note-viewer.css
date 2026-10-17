@@ -1,32 +1,77 @@
 /* Read-only note view (ClinicalNoteViewer). Namespaced `tamam-nv-` so the
-   global label/svg/box-shadow rules in globals.css have nothing to grab. */
-.tamam-note-viewer { display: flex; flex-direction: column; gap: 12px; padding: 20px 24px; color: var(--text-primary); }
-.tamam-nv-doc { display: flex; flex-direction: column; gap: 12px; }
-.tamam-nv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.tamam-nv-title { margin: 0; font-size: 16px; font-weight: 700; }
+   global label/svg/box-shadow rules in globals.css have nothing to grab.
+
+   The note is a document, so it renders on paper in both themes: the root
+   re-points the theme tokens it uses at the theme-stable --paper-* set, and
+   everything below reads the ordinary tokens. */
+.tamam-note-viewer {
+  --text-primary: var(--paper-ink);
+  --text-secondary: var(--paper-ink-2);
+  --text-muted: var(--paper-muted);
+  --border-light: var(--paper-rule);
+  --accent-text: var(--paper-accent);
+  --accent-primary: var(--paper-accent);
+  --overlay-subtle: var(--paper-band);
+  --bg-card: var(--paper-bg);
+  display: flex; flex-direction: column;
+  background: var(--paper-bg);
+  color: var(--text-primary);
+  color-scheme: light;
+}
+.tamam-nv-doc { display: flex; flex-direction: column; padding: 28px 32px 8px; }
+
+/* Header: note type + patient on the left, status on the right. */
+.tamam-nv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 2px solid var(--text-primary); }
+.tamam-nv-title { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -.005em; }
+.tamam-nv-patient { margin: 4px 0 0; font-size: 13.5px; font-weight: 600; color: var(--text-secondary); }
 .tamam-nv-muted { margin: 0; font-size: 12.5px; color: var(--text-muted); }
-.tamam-nv-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 16px; margin: 0; padding: 10px 0; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
-.tamam-nv-meta dt { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
-.tamam-nv-meta dd { margin: 2px 0 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.tamam-nv-section h4 { margin: 0 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-text); }
-.tamam-nv-text { margin: 0; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.tamam-nv-dx { margin: 0 0 6px; padding-left: 18px; font-size: 13.5px; }
+.tamam-note-viewer .cn-badge { flex-shrink: 0; }
+.tamam-note-viewer .cn-badge.is-signed { background: var(--paper-ok-bg); color: var(--paper-ok-ink); }
+
+/* Meta band: date, author, encounter. */
+.tamam-nv-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px 24px; margin: 16px 0 8px; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--overlay-subtle); }
+.tamam-nv-meta dt { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.tamam-nv-meta dd { margin: 3px 0 0; font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tamam-nv-doc > .tamam-nv-muted { margin: 8px 0; }
+
+/* Sections: label column + body column, hairline between. */
+.tamam-nv-section { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 4px 24px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
+.tamam-nv-section:last-of-type { border-bottom: 0; }
+.tamam-nv-section h4 { margin: 0; padding-top: 2px; font-size: 11px; font-weight: 700; line-height: 1.5; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); }
+.tamam-nv-body { min-width: 0; }
+.tamam-nv-text { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }
+.tamam-nv-dx { margin: 0 0 6px; padding-left: 18px; font-size: 14px; line-height: 1.6; }
 .tamam-nv-code { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 12px; }
-.tamam-nv-addendum { padding: 8px 10px; margin-bottom: 6px; border-left: 3px solid var(--accent-primary); background: var(--overlay-subtle); }
-.tamam-nv-sign { padding-top: 10px; border-top: 1px solid var(--border-light); font-size: 12.5px; }
+
+/* "Label: value" lines (vitals) as an aligned two-column table. */
+.tamam-nv-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin: 0; }
+.tamam-nv-kv > div { padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 6px; }
+.tamam-nv-kv dt { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+.tamam-nv-kv dd { margin: 1px 0 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.tamam-nv-addendum { padding: 8px 12px; margin-bottom: 6px; border-left: 3px solid var(--accent-primary); background: var(--overlay-subtle); }
+.tamam-nv-sign { margin-top: 8px; padding: 14px 0 20px; border-top: 2px solid var(--text-primary); font-size: 13px; color: var(--text-secondary); }
 .tamam-nv-sign p { margin: 0 0 2px; }
-.tamam-nv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Actions sit in a footer bar below the page. */
+.tamam-nv-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 14px 32px; border-top: 1px solid var(--border-light); background: var(--overlay-subtle); }
+.tamam-note-viewer > .tamam-nv-muted { padding: 28px 32px 12px; }
+.tamam-nv-addendum-form { padding: 0 32px 4px; }
+.tamam-nv-addendum-form .tamam-nv-actions { padding: 10px 0; border: 0; background: none; }
 .tamam-nv-addendum-form textarea { width: 100%; padding: 8px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); color: var(--text-primary); font-size: 13px; }
-.tamam-nv-error { margin: 4px 0 0; font-size: 12px; color: var(--color-danger-text); }
-.tamam-nv-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--accent-text); border-radius: 6px; background: transparent; color: var(--accent-text); font-size: 12px; font-weight: 700; cursor: pointer; }
+.tamam-nv-error { margin: 4px 0 0; font-size: 12px; color: var(--paper-danger); }
+.tamam-nv-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--accent-text); border-radius: 6px; background: var(--paper-bg); color: var(--accent-text); font-size: 12px; font-weight: 700; cursor: pointer; }
 .tamam-nv-btn:disabled { opacity: .5; cursor: default; }
 .tamam-nv-btn--primary { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--color-white); }
-.tamam-nv-btn--primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.tamam-nv-btn--primary:hover:not(:disabled) { background: var(--brand-800); border-color: var(--brand-800); }
 
-/* Notes list filter chips. */
-.tamam-nl-filters { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; }
-.tamam-nl-chipgroup { display: flex; flex-wrap: wrap; gap: 6px; }
-.tamam-nl-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 10px; border: 1px solid var(--border-light); border-radius: 999px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; }
-.tamam-nl-chip[aria-pressed="true"] { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--color-white); }
-.tamam-nl-chip-count { font-variant-numeric: tabular-nums; opacity: .8; }
+@media (max-width: 599px) {
+  .tamam-nv-doc { padding: 20px 16px 4px; }
+  .tamam-nv-section { grid-template-columns: minmax(0, 1fr); }
+  .tamam-nv-actions { padding: 12px 16px; }
+  .tamam-nv-addendum-form { padding: 0 16px 4px; }
+  .tamam-note-viewer > .tamam-nv-muted { padding: 20px 16px 8px; }
+}
+
+/* Helper line above a notes list (phone notes). */
 .tamam-nl-helper { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); }

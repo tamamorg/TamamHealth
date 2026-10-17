@@ -73,7 +73,7 @@ export async function GET(
       return forbidden('Access denied to this referral');
     }
 
-    const patient = referral.patientId ? await getPatientById(referral.patientId) : null;
+    const patient = referral.patientId ? await getPatientById(referral.patientId, scope) : null;
     // The patient itself must also be in-scope for this caller — otherwise the
     // packet would expose patient demographics outside their own org.
     if (patient && filterByScope([patient], scope).length === 0) {

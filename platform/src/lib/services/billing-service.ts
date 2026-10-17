@@ -82,7 +82,9 @@ async function generateInvoiceNumber(): Promise<string> {
 async function highestInvoiceSeq(dateStr: string): Promise<number> {
   const prefix = `INV-${dateStr}-`;
   let highest = 0;
-  for (const bill of await getAllBills()) {
+  // System read on purpose: invoice numbers must be unique across every org on
+  // this replica, so the sequence floor is taken from all bills, unscoped.
+  for (const bill of await findByType<BillingDoc>(billingDB(), 'billing')) {
     const num = (bill as { invoiceNumber?: string }).invoiceNumber;
     if (typeof num !== 'string' || !num.startsWith(prefix)) continue;
     const parsed = Number.parseInt(num.slice(prefix.length), 10);
@@ -103,40 +105,44 @@ function calculateTotals(items: BillLineItem[], discount: number, taxRate: numbe
 
 // ===== CRUD Operations =====
 
-export async function getAllBills(scope?: DataScope): Promise<BillingDoc[]> {
+export async function getAllBills(scope: DataScope): Promise<BillingDoc[]> {
   const db = billingDB();
   const all = await findByType<BillingDoc>(db, 'billing');
   /* istanbul ignore next -- defensive null-safety in sort */
   all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
-export async function getBillById(id: string, scope?: DataScope): Promise<BillingDoc | null> {
+export async function getBillById(id: string, scope: DataScope): Promise<BillingDoc | null> {
   try {
     const db = billingDB();
     const bill = await db.get(id) as BillingDoc;
-    return scope && filterByScope([bill], scope).length === 0 ? null : bill;
+    return filterByScope([bill], scope).length === 0 ? null : bill;
   } catch {
     return null;
   }
 }
 
 /**
- * Bills for one patient. `scope` is optional (and left unscoped by callers
- * like the patient-portal, where a patient legitimately sees their own bills
- * across every org/facility they've been treated at) but any caller that has
- * a real DataScope — a staff member, or anything about to mutate a bill —
- * MUST pass it: a patient can have bills in more than one org (e.g. seen at
- * both a public facility and a private one), and without scoping, a query by
- * patientId alone returns every org's bills for that patient from the local
- * replica, which holds all tenants' data.
+ * Bills for one patient. `scope` is required: a patient can have bills in more
+ * than one org, and a query by patientId alone returns every org's bills for
+ * that patient from the local replica, which holds all tenants' data.
  */
-export async function getBillsByPatient(patientId: string, scope?: DataScope): Promise<BillingDoc[]> {
+export async function getBillsByPatient(patientId: string, scope: DataScope): Promise<BillingDoc[]> {
   const rows = await findByType<BillingDoc>(billingDB(), 'billing', { patientId }, { indexFields: ['type', 'patientId'] });
-  return scope ? filterByScope(rows, scope) : rows;
+  return filterByScope(rows, scope);
 }
 
-export async function getUnpaidBills(scope?: DataScope): Promise<BillingDoc[]> {
+/**
+ * UNSCOPED: the patient portal authenticates a patient (not a staff DataScope),
+ * who legitimately sees their own bills across every org/facility that treated
+ * them. Caller must pass the verified portal token subject. Never use for staff.
+ */
+export async function getBillsByPatientUnscopedForPortal(patientId: string): Promise<BillingDoc[]> {
+  return findByType<BillingDoc>(billingDB(), 'billing', { patientId }, { indexFields: ['type', 'patientId'] });
+}
+
+export async function getUnpaidBills(scope: DataScope): Promise<BillingDoc[]> {
   const all = await getAllBills(scope);
   return all.filter(b => b.status === 'pending' || b.status === 'partial');
 }
@@ -462,10 +468,10 @@ export interface SettleOpenBillsInput {
    * org's receivable. Only the org boundary is enforced (not facility —
    * `filterByScope` is driven with a synthetic 'org_admin' role below so a
    * payment collected at any facility in the org can settle bills at any
-   * facility in that same org). Omit only when the caller genuinely has no
-   * org context; scoping is then skipped, not defaulted to "every org".
+   * facility in that same org). Required: a scope with no orgId settles
+   * nothing (fail closed), never "every org".
    */
-  scope?: DataScope;
+  scope: DataScope;
 }
 
 /**
@@ -583,9 +589,10 @@ export async function unsettleBillsForPayment(
   patientId: string,
   reversedBy: string,
   reversedByName: string,
+  scope: DataScope,
 ): Promise<{ unsettledBills: BillingDoc[]; failedBillIds: string[] }> {
   const db = billingDB();
-  const bills = await getBillsByPatient(patientId);
+  const bills = await getBillsByPatient(patientId, scope);
   const now = new Date().toISOString();
   const unsettledBills: BillingDoc[] = [];
   const failedBillIds: string[] = [];
@@ -993,7 +1000,7 @@ export async function waiveBill(
 /**
  * Get billing summary statistics for a facility or organization.
  */
-export async function getBillingSummary(scope?: DataScope): Promise<{
+export async function getBillingSummary(scope: DataScope): Promise<{
   totalRevenue: number;
   totalOutstanding: number;
   totalWaived: number;

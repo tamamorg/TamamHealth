@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { PatientDocumentDoc } from '../db-types';
 import { patientDocumentsDB } from '../db';
 import type { AddImageAnnotationInput, AddPatientDocumentInput, ImageAnnotationActor } from '../services/patient-document-service';
@@ -25,20 +25,7 @@ export function usePatientDocuments(patientId?: string) {
     }
   }, [patientId, scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = patientDocumentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: patientDocumentsDB });
 
   const add = useCallback(async (input: AddPatientDocumentInput) => {
     const { addPatientDocument } = await import('../services/patient-document-service');

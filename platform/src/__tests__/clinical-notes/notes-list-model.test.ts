@@ -72,6 +72,12 @@ describe('filters', () => {
     expect(filterNoteRows(rows, { ...base, search: 'igga' }).map(r => r.id)).toEqual(['r1']);
   });
 
+  it('a status typed in full in search matches only that status', () => {
+    expect(filterNoteRows(rows, { ...base, search: 'Signed' }).map(r => r.id).sort()).toEqual(['b', 'r1']);
+    expect(filterNoteRows(rows, { ...base, search: 'draft' }).map(r => r.id)).toEqual(['a']);
+    expect(filterNoteRows(rows, { ...base, search: 'cosign' }).map(r => r.id)).toEqual(['c']);
+  });
+
   it('counts per status within the chosen type and lists types present', () => {
     expect(statusCounts(rows, 'all')).toEqual({ all: 5, unsigned: 1, signed: 2, awaiting_cosign: 1, amended: 1 });
     expect(statusCounts(rows, 'soap').all).toBe(2);

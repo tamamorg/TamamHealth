@@ -37,9 +37,11 @@ describe('production data and bundle boundaries', () => {
   });
 
   it('keeps patient chart workspaces behind dynamic tab/action boundaries', () => {
+    // The lazy boundaries live in detail/lazy-panels.tsx (split out of the chart page).
     const chart = source('components/patients/PatientDetailPage.tsx');
+    const lazy = source('components/patients/detail/lazy-panels.tsx');
     for (const component of ['BillingTab', 'LabWorkspace', 'PharmacyWorkspace', 'PatientTimeline']) {
-      expect(chart).toMatch(new RegExp(`const ${component} = dynamic\\(`));
+      expect(lazy).toMatch(new RegExp(`const ${component} = dynamic\\(`));
       expect(chart).not.toMatch(new RegExp(`import ${component} from`));
     }
   });

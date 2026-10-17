@@ -14,7 +14,7 @@
  */
 import PouchDB from 'pouchdb-browser';
 import memoryAdapter from 'pouchdb-adapter-memory';
-import { DOC_UPDATE_ONLY_FIELDS } from '@/lib/sync/write-permissions';
+import { fieldsOutsideAmendGrant } from '@/lib/sync/write-permissions';
 import { encryptDocument, runWithoutEncryption, wrapEncrypted } from '@/lib/encrypted-db';
 import {
   UNREADABLE_ORG_FIELD_TEXT, blindIndex, envelopeOrgIds, encryptForOrg, isOrgEncrypted,
@@ -24,17 +24,6 @@ import {
 const findPlugin = require('pouchdb-find');
 PouchDB.plugin(memoryAdapter);
 PouchDB.plugin(findPlugin.default || findPlugin);
-
-/**
- * The amend-only rule the sync validator enforces: an amend-only role may
- * change only the fields its grant lists; any other field must be identical.
- */
-function fieldsOutsideAmendGrant(type: string, before: Record<string, unknown>, after: Record<string, unknown>): string[] {
-  const allowed = new Set(DOC_UPDATE_ONLY_FIELDS[type] ?? []);
-  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
-  return [...keys].filter(key => key !== '_rev' && !allowed.has(key)
-    && JSON.stringify(after[key]) !== JSON.stringify(before[key]));
-}
 
 let n = 0;
 let raw: PouchDB.Database;
@@ -95,7 +84,7 @@ test('an untouched field keeps its exact envelope, so amend-only roles still pas
   expect(after.patientName).toBe(before.patientName);
   expect(after.medication).toBe(before.medication);
   expect(isOrgEncrypted(after.dispenseNote)).toBe(true);
-  expect(fieldsOutsideAmendGrant('prescription', before, after)).toEqual([]);
+  expect(fieldsOutsideAmendGrant('prescription', 'pharmacist', before, after)).toEqual([]);
 });
 
 test('bulkDocs keeps untouched envelopes too', async () => {

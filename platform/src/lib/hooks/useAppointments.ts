@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { AppointmentDoc, AppointmentStatus } from '../db-types';
+import type { AppointmentDoc, AppointmentStatus, UserRole } from '../db-types';
 import { appointmentsDB } from '../db';
 import { useAuth } from '../context';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { useDataScope } from './useDataScope';
 import type { AppointmentStatusUpdateExtra } from '../services/appointment-service';
 
@@ -34,21 +34,8 @@ export function useAppointments() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live PouchDB subscription: re-load on any appointment change.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = appointmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: appointmentsDB });
 
   const create = useCallback(async (data: Omit<AppointmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createAppointment } = await import('../services/appointment-service');
@@ -75,15 +62,15 @@ export function useAppointments() {
 
   const reschedule = useCallback(async (id: string, newDate: string, newTime: string) => {
     const { rescheduleAppointment } = await import('../services/appointment-service');
-    await rescheduleAppointment(id, newDate, newTime);
+    await rescheduleAppointment(id, newDate, newTime, currentUser?.role as UserRole);
     await load();
-  }, [load]);
+  }, [currentUser?.role, load]);
 
   const update = useCallback(async (id: string, updates: Partial<AppointmentDoc>) => {
     const { updateAppointment } = await import('../services/appointment-service');
-    await updateAppointment(id, updates);
+    await updateAppointment(id, updates, currentUser?.role as UserRole);
     await load();
-  }, [load]);
+  }, [currentUser?.role, load]);
 
   return { appointments, loading, error, create, updateStatus, reschedule, update, reload: load };
 }
@@ -132,19 +119,7 @@ export function useAppointmentStats() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = appointmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: appointmentsDB });
 
   return { stats, loading, reload: load };
 }
