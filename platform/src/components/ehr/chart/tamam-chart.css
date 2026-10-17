@@ -2015,11 +2015,54 @@
   border-bottom: 1px solid var(--ehr-border);
 }
 
-/* Hover was a tint; make it an edge so rows still answer the pointer. */
+/* Rows rest on the warm cream fill (what used to be the hover tint), so every
+   record reads as a field. Hover lifts the row back to the plain card white
+   and keeps the teal edge, so the pointer still has a clear answer.
+   The fill lives on the row, not the cells, so a row's own inline highlight
+   (the deep-link focus row) still shows through. */
+.tamam-root .tamam-table tbody tr,
+.tamam-root .tebra-panel table tbody tr {
+  background: var(--bg-card-hover);
+}
+
+.tamam-root .tamam-table tbody td,
+.tamam-root .tamam-table tbody tr:hover td,
+.tamam-root .tebra-panel table tbody td,
+.tamam-root .tebra-panel table tbody tr:hover td {
+  background: transparent;
+}
+
 .tamam-root .tamam-table tbody tr:hover,
 .tamam-root .tebra-panel table tbody tr:hover {
   background: var(--bg-card-solid);
   box-shadow: inset 2px 0 0 var(--tamam-teal);
+}
+
+/* Active allergies are the chart's safety alerts: they change what is safe to
+   prescribe, so they sit on a red-washed row with a red edge and red allergen
+   ink — the row reads as a warning before anyone reads the words. Hover keeps
+   the red edge so the alert never disappears under the pointer. */
+.tamam-root .tamam-table--allergies tbody tr.is-alert {
+  background: color-mix(in srgb, var(--color-danger) 7%, var(--bg-card-solid));
+  box-shadow: inset 3px 0 0 var(--color-danger);
+}
+
+.tamam-root .tamam-table--allergies tbody tr.is-alert:hover {
+  background: var(--bg-card-solid);
+  box-shadow: inset 3px 0 0 var(--color-danger);
+}
+
+.tamam-root .tamam-table--allergies tbody tr.is-alert .tamam-cell-strong {
+  color: var(--color-danger-text);
+  font-weight: 700;
+}
+
+/* An active allergy's status pill is red, not the info blue the other
+   sections use for "active" — here active means "still dangerous". */
+.tamam-root .tamam-table--allergies .tamam-panel-badge--active {
+  background: var(--color-danger-bg) !important;
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 /* Selected states: the accent moves from the fill to the edge and the ink.

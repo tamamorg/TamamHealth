@@ -271,7 +271,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     key={a.id}
                     id={`allergy-row-${a.id}`}
                     {...clickable(() => setSelectedAllergy(a), { label: `Open allergy — ${a.substance}` })}
-                    className={`tamam-clickable-row${a.status === 'active' ? '' : ' is-retired'}`}
+                    className={`tamam-clickable-row${a.status === 'active' ? ' is-alert' : ' is-retired'}`}
                     style={a.id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
                   >
                     <td className="tamam-cell-strong">{a.substance}</td>
