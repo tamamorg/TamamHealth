@@ -2362,6 +2362,7 @@ const en: TranslationMap = {
   'frontDesk.syncStatus.failed': 'Failed to send',
   'frontDesk.syncStatus.conflict': 'Conflicting edits',
   'frontDesk.syncStatus.synced': 'Synced',
+  'checkout.awaitingClinicianRecords': "The clinician has finished this visit, but their notes have not reached this device yet. This list updates on its own as they sync — usually within a minute or two.",
   'frontDesk.checkout': 'Checkout',
   'frontDesk.reassign': 'Reassign',
   'frontDesk.assignToProvider': 'Assign to care provider',

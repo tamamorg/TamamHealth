@@ -2359,6 +2359,7 @@ const apd: TranslationMap = {
   'frontDesk.syncStatus.failed': 'ما اترسل',
   'frontDesk.syncStatus.conflict': 'تعديلات متضاربة',
   'frontDesk.syncStatus.synced': 'اتزامن',
+  'checkout.awaitingClinicianRecords': "الدكتور كمّل الزيارة دي، لكن ملاحظاته لسه ما وصلت الجهاز دا. القائمة دي بتتحدّث براها لمّا تتزامن — عادةً في دقيقة أو دقيقتين.",
   'frontDesk.checkout': 'الخروج',
   'frontDesk.reassign': 'غير التخصيص',
   'frontDesk.assignToProvider': 'خصص لمقدم رعاية',
