@@ -34,6 +34,7 @@ import {
 } from '@/lib/appointment-status';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
 import { useEncounters } from '@/lib/hooks/useEncounters';
@@ -1026,6 +1027,7 @@ export default function EhrClinicalDashboard({
   // last 24 hours (older docs are unclosed visits, not waiting patients) and
   // deduped to the newest record per patient.
   const { currentUser } = useAuth();
+  const dataScope = useDataScope();
   const { triages, update: updateTriageDoc } = useTriage();
   const { encounters } = useEncounters();
   const encounterByPatient = useMemo(() => {
@@ -1373,7 +1375,9 @@ export default function EhrClinicalDashboard({
     setMoveSaving(true);
     try {
       const { returnVisitToFrontDesk } = await import('@/lib/services/triage-handoff-service');
+      if (!dataScope) throw new Error('Your data scope is unavailable.');
       await returnVisitToFrontDesk({
+        scope: dataScope,
         triageId: triage._id,
         patientId: triage.patientId,
         patientName: triage.patientName,

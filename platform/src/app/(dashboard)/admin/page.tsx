@@ -138,7 +138,7 @@ export default function AdminDashboardPage() {
             import('@/lib/services/sync-event-service'),
           ]);
         const [allUsers, allPatients, allEncounters, logs, sync, resolutions] = await Promise.all([
-          getClientUsers({ role: 'super_admin' }), getAllPatients(), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(),
+          getClientUsers({ role: 'super_admin' }), scope ? getAllPatients(scope) : Promise.resolve([]), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(),
           getRiskResolutions(),
         ]);
         if (cancelled) return;

@@ -1,3 +1,8 @@
+/**
+ * Census figures a data clerk SUBMITS for a facility (stored `facility_census`
+ * documents). Not to be confused with `facility-census.ts`, which COMPUTES
+ * live patient/visit totals from the records that exist.
+ */
 import { getDB } from '../db';
 import type { BaseDoc } from '../db-types';
 import { findByType } from './db-query';

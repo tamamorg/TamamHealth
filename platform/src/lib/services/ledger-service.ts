@@ -54,7 +54,9 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
   const now = new Date().toISOString();
 
   // Calculate running balance
-  const currentBalance = await getPatientBalance(input.patientId);
+  // Running balance is the patient's whole account, across every org they have
+  // been billed by, so this system write reads the unscoped ledger on purpose.
+  const currentBalance = sumLedger(await readPatientLedger(input.patientId));
   const runningBalance = Math.round((currentBalance + input.amount) * 100) / 100;
 
   const doc: LedgerEntryDoc = {
@@ -102,8 +104,7 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
 
 // ═══ Balance Queries ═══════════════════════════════════════════════
 
-export async function getPatientBalance(patientId: string, scope?: DataScope): Promise<number> {
-  const entries = await getPatientLedger(patientId, undefined, scope);
+function sumLedger(entries: LedgerEntryDoc[]): number {
   if (entries.length === 0) return 0;
   // Sum all entry amounts (debits positive, credits negative). This is robust
   // to entries that share a createdAt timestamp — e.g. a bill that posts a
@@ -113,17 +114,43 @@ export async function getPatientBalance(patientId: string, scope?: DataScope): P
   return Math.round(entries.reduce((sum, e) => sum + e.amount, 0) * 100) / 100;
 }
 
+export async function getPatientBalance(patientId: string, scope: DataScope): Promise<number> {
+  return sumLedger(await getPatientLedger(patientId, undefined, scope));
+}
+
+/**
+ * UNSCOPED: the patient portal authenticates a patient (not a staff DataScope)
+ * who may legitimately owe at every org that treated them. The caller must pass
+ * the verified token subject. Never expose to staff routes; use getPatientBalance.
+ */
+export async function getPatientBalanceUnscopedForPortal(patientId: string): Promise<number> {
+  return sumLedger(await readPatientLedger(patientId));
+}
+
 export async function getEncounterBalance(encounterId: string): Promise<number> {
   const entries = await getEncounterLedger(encounterId);
   return entries.reduce((sum, e) => sum + e.amount, 0);
 }
 
-export async function getPatientLedger(patientId: string, limit?: number, scope?: DataScope): Promise<LedgerEntryDoc[]> {
-  const db = ledgerDB();
-  const entries = await findByType<LedgerEntryDoc>(db, 'ledger_entry', { patientId }, { indexFields: ['type', 'patientId'] });
-  const visible = scope ? filterByScope(entries, scope) : entries;
-  visible.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return limit ? visible.slice(0, limit) : visible;
+async function readPatientLedger(patientId: string): Promise<LedgerEntryDoc[]> {
+  return findByType<LedgerEntryDoc>(ledgerDB(), 'ledger_entry', { patientId }, { indexFields: ['type', 'patientId'] });
+}
+
+function newestFirst(entries: LedgerEntryDoc[], limit?: number): LedgerEntryDoc[] {
+  entries.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return limit ? entries.slice(0, limit) : entries;
+}
+
+export async function getPatientLedger(patientId: string, limit: number | undefined, scope: DataScope): Promise<LedgerEntryDoc[]> {
+  return newestFirst(filterByScope(await readPatientLedger(patientId), scope), limit);
+}
+
+/**
+ * UNSCOPED: patient-portal read of the patient's own ledger across all orgs.
+ * Caller must pass the verified portal token subject. Never use for staff.
+ */
+export async function getPatientLedgerUnscopedForPortal(patientId: string, limit?: number): Promise<LedgerEntryDoc[]> {
+  return newestFirst(await readPatientLedger(patientId), limit);
 }
 
 export async function getEncounterLedger(encounterId: string): Promise<LedgerEntryDoc[]> {
@@ -135,14 +162,14 @@ export async function getEncounterLedger(encounterId: string): Promise<LedgerEnt
 
 // ═══ Aggregation Queries ═══════════════════════════════════════════
 
-export async function getAllLedgerEntries(scope?: DataScope): Promise<LedgerEntryDoc[]> {
+export async function getAllLedgerEntries(scope: DataScope): Promise<LedgerEntryDoc[]> {
   const db = ledgerDB();
   const all = await findByType<LedgerEntryDoc>(db, 'ledger_entry');
   all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
-export async function getLedgerSummary(scope?: DataScope): Promise<{
+export async function getLedgerSummary(scope: DataScope): Promise<{
   totalCharged: number;
   totalCollected: number;
   totalInsurancePaid: number;
@@ -178,7 +205,7 @@ export async function getLedgerSummary(scope?: DataScope): Promise<{
 
 // ═══ Daily Reconciliation ══════════════════════════════════════════
 
-export async function reconcileDay(date: string, scope?: DataScope): Promise<{
+export async function reconcileDay(date: string, scope: DataScope): Promise<{
   ledgerTotal: number;
   paymentTotal: number;
   discrepancy: number;

@@ -34,17 +34,17 @@ Never rewrite `package-lock.json` casually; the repo regenerates lockfiles with 
 ## Layout
 
 - `src/app/(dashboard)/**` — ~45 protected modules (patients, consultation, notes, triage, rooming, wards, lab, pharmacy, blood-bank, controlled-substances, anc, births, deaths, immunizations, surveillance, epidemic-intelligence, billing, payments, hr, it, equipment, facility-*, government, admin, org-admin, system-admin, …).
-- `src/app/` also holds `(booking)/book`, `patient-portal/`, `checkout/[linkId]`, `request-account/`, `login/`, `privacy/`, `terms/`, and `api/`.
+- `src/app/` also holds `(booking)/book`, `patient-portal/`, `checkout/[linkId]`, `accept-invite/`, `forgot-password/`, `login/`, `privacy/`, `terms/`, and `api/`.
 - `src/proxy.ts` — Edge middleware (auth gate, role routing, CSRF). Next 16 name for `middleware.ts`. Only import Edge-safe modules from it.
 - `src/instrumentation.ts` — server boot: fail-closed config validation, Sentry, Postgres migrations.
 - `src/modules/<domain>/**` — **domain modules, and where new code goes.** The
   codebase is migrating from by-kind to by-domain (ADR 0003). `identity` (auth,
-  sessions, provisioning, MFA, account requests), `communication` (messages,
+  sessions, provisioning, MFA, invites), `communication` (messages,
   announcements, the notification bell), `tenancy`, and the first `analytics`
   route have landed; see the ADR for the remaining migration sequence.
 - `src/lib/services/**` (95 left) — business logic and DB access for domains that
   have not moved yet. `src/lib/hooks/**` — one hook per service area.
-- `src/lib/db.ts` — 76 `tamamhealth_*` PouchDB databases; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
+- `src/lib/db.ts` — 76 replicating `tamamhealth_*` PouchDB databases (from `DATABASE_SYNC_CONFIGS` in `lib/sync/sync-config.ts`) plus 6 non-replicating local names, 82 in `LOCAL_DATABASE_NAMES`; `src/lib/sync/**` — replication, tenant DBs, CouchDB auth/policy.
 - `src/app/globals.css` — the single source of design tokens.
 - `src/__tests__/**` — Jest test files, including `architecture/` which asserts the module boundaries hold.
 
@@ -76,6 +76,8 @@ When you finish migrating a domain, add its name to `MIGRATED_MODULES` in
 enforced until the first, and review routing is not either until the second.
 
 **Data access.** The browser calls services directly (hooks → `lib/services/*` → local PouchDB); that is what makes the app work offline, and CouchDB replication carries writes to the server. `/api/*` is for consumers with no browser — mobile, integrations, cron. Do not route UI writes through `/api`.
+
+**Encryption at rest.** `getDB()` returns a wrapper (`lib/encrypted-db.ts`) that seals every field listed in `lib/phi-field-catalog.json` under the record's organisation key on write and opens it on read; storage, replication, CouchDB and the analytics copy hold only `oenc:` envelopes. Consequences: never filter a Mango selector on a catalogued field (the wrapper throws — filter after reading, or use a blind index like `nationalIdIndex`); replication and wipe code use `getRawDB()`; a new PHI field goes in the catalog, and a field a sync validator or lookup must read stays out of it. Keys derive from `ORG_DATA_KEY_SECRET` (server) and reach devices via `/api/crypto/org-key`.
 
 **Tenancy.** `filterByScope` (`lib/services/data-scope.ts`) is the only tenant barrier — the local database holds documents for every org the device replicated. Always pass a `DataScope`; never call a scoped service bare. It fails closed (missing `orgId` returns nothing); only `super_admin` and `government` see everything.
 

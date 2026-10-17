@@ -7,10 +7,9 @@
  *
  * Sorting is fixed to date of service: a chart is read chronologically by
  * encounter, and "when did I see this patient" is the question the list
- * answers. The old toolbar of dropdown filters (sort / user / display /
- * type) is gone — the search box covers those lookups in one control.
- * Unsigned notes are called out because an unsigned note is work in
- * progress, not a record.
+ * answers. There are no filter chips or dropdowns — the search box covers
+ * type, status ("unsigned", "signed", …), author, date and note text in
+ * one control.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,10 +27,7 @@ import { noteTypeLabel } from '@/lib/clinical-notes/note-labels';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import { NOTE_TYPES, type NoteTypeId } from '@/lib/clinical-notes/note-catalog';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
-import {
-  mergeNoteRows, filterNoteRows, statusCounts, typeCounts, STATUS_FILTERS,
-  RECORD_TYPE_KEY, type NoteRow, type StatusFilter,
-} from './notes-list-model';
+import { mergeNoteRows, filterNoteRows, type NoteRow } from './notes-list-model';
 import './clinical-notes.css';
 import './note-viewer.css';
 
@@ -60,14 +56,6 @@ const STATUS_BADGE: Record<NoteStatus, { key: string; cls: string }> = {
   awaiting_cosign: { key: 'notesList.statusCosign', cls: 'is-cosign' },
 };
 
-const STATUS_CHIP_KEY: Record<StatusFilter, string> = {
-  all: 'notesList.statusAll',
-  unsigned: 'notesList.statusUnsigned',
-  signed: 'notesList.statusSigned',
-  awaiting_cosign: 'notesList.statusCosign',
-  amended: 'notesList.statusAmended',
-};
-
 export default function NotesList({
   patientId, patientName, mrn, patientDob, currentUser, showCreate = true,
   onOpenNote, refreshToken,
@@ -83,8 +71,6 @@ export default function NotesList({
   const [loading, setLoading] = useState(true);
   const [newType, setNewType] = useState<NoteTypeId>('soap');
   const [search, setSearch] = useState('');
-  const [typeKey, setTypeKey] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
 
@@ -130,21 +116,14 @@ export default function NotesList({
     () => mergeNoteRows(notes, patientId ? records : [], [], patientName),
     [notes, records, patientId, patientName],
   );
-  const types = useMemo(() => typeCounts(allRows), [allRows]);
-  const counts = useMemo(() => statusCounts(allRows, typeKey), [allRows, typeKey]);
   const filtered = useMemo(
-    () => filterNoteRows(allRows, { typeKey, status: statusFilter, search, labelOf, statusLabelOf }),
-    [allRows, typeKey, statusFilter, search, labelOf, statusLabelOf],
-  );
-
-  const unsignedCount = useMemo(
-    () => notes.filter(n => n.status === 'draft' || n.status === 'awaiting_cosign').length,
-    [notes],
+    () => filterNoteRows(allRows, { typeKey: 'all', status: 'all', search, labelOf, statusLabelOf }),
+    [allRows, search, labelOf, statusLabelOf],
   );
 
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const canCreate = showCreate && Boolean(patientId);
-  const filtering = search.trim() !== '' || typeKey !== 'all' || statusFilter !== 'all';
+  const filtering = search.trim() !== '';
 
   const openRow = (row: NoteRow) => {
     if (row.kind === 'legacy') return;
@@ -181,39 +160,6 @@ export default function NotesList({
                 onClick={() => { setAddMenuOpen(false); setNewType(id); void handleCreate(id); }}
               >
                 <FileText /> {NOTE_TYPES[id].label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {unsignedCount > 0 && (
-        <p className="tamam-nl-helper">
-          {unsignedCount} {t('notesList.statusUnsigned').toLowerCase()} · {t('notesList.count', { shown: filtered.length, total: allRows.length })}
-        </p>
-      )}
-
-      {allRows.length > 0 && (
-        <div className="tamam-nl-filters">
-          <div className="tamam-nl-chipgroup" role="group" aria-label={t('notesList.filterType')}>
-            <button type="button" className="tamam-nl-chip" aria-pressed={typeKey === 'all'}
-              onClick={() => { setTypeKey('all'); setPage(1); }}>
-              {t('notesList.typeAll')} <span className="tamam-nl-chip-count">{allRows.length}</span>
-            </button>
-            {types.map(ty => (
-              <button key={ty.typeKey} type="button" className="tamam-nl-chip" aria-pressed={typeKey === ty.typeKey}
-                onClick={() => { setTypeKey(ty.typeKey); setPage(1); }}>
-                {ty.typeKey === RECORD_TYPE_KEY ? t('notesList.recordConsultation')
-                  : ty.typeKey === 'phone' ? t('notesList.phoneEncounter') : noteTypeLabel(t, ty.typeKey)}
-                {' '}<span className="tamam-nl-chip-count">{ty.count}</span>
-              </button>
-            ))}
-          </div>
-          <div className="tamam-nl-chipgroup" role="group" aria-label={t('notesList.filterStatus')}>
-            {STATUS_FILTERS.map(sf => (
-              <button key={sf} type="button" className="tamam-nl-chip" aria-pressed={statusFilter === sf}
-                onClick={() => { setStatusFilter(sf); setPage(1); }}>
-                {t(STATUS_CHIP_KEY[sf])} <span className="tamam-nl-chip-count">{counts[sf]}</span>
               </button>
             ))}
           </div>

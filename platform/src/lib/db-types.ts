@@ -180,6 +180,12 @@ export interface PatientDoc extends BaseDoc, Omit<Patient, 'id'> {
   type: 'patient';
   orgId?: string;
   /**
+   * Keyed fingerprint of `nationalId` (lib/org-data-cipher.ts `blindIndex`),
+   * written by the database layer. The ID itself is encrypted at rest, so the
+   * MPI's exact-match tier queries this instead. Reveals only equality.
+   */
+  nationalIdIndex?: string;
+  /**
    * Patient-portal enrolment.
    *
    * `portalUsername` / `portalPasswordHash` (on `Patient`) are what the portal
@@ -1927,6 +1933,13 @@ export interface ConversationDoc extends BaseDoc {
   createdById?: string;
   createdByName?: string;
   lastMessageAt?: string;
+  /**
+   * List preview — DERIVED at read time from the newest message, never stored.
+   * Message text lives only on the message, under the message encryption
+   * rules; a copy here would sit outside them. Older documents may still
+   * carry one: readers ignore it and every write drops it
+   * (scripts/scrub-conversation-previews.mjs clears the server).
+   */
   lastMessagePreview?: string;
   lastMessageFromName?: string;
   /** User ids who have pinned this conversation to the top of their list. */

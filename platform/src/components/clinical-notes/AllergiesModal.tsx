@@ -21,6 +21,7 @@ import CodedSearchField, { type CodedOption } from '@/components/CodedSearchFiel
 import { COMMON_ALLERGENS } from '@/data/allergens';
 import type { AllergyEntry } from '@/lib/types/patient-clinical';
 import type { PatientDoc } from '@/lib/db-types';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import './clinical-notes.css';
 import Select from '@/components/Select';
 
@@ -44,6 +45,11 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   const { showToast } = useToast();
   const { t } = useTranslation();
   const confirmPrompt = useConfirmPrompt();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
 
   const [entries, setEntries] = useState<AllergyEntry[]>([]);
@@ -61,11 +67,11 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   const load = useCallback(async () => {
     const { getAllergies } = await import('@/lib/services/allergy-service');
     const { getPatientById } = await import('@/lib/services/patient-service');
-    const [rows, pt] = await Promise.all([getAllergies(patientId), getPatientById(patientId)]);
+    const [rows, pt] = await Promise.all([scope ? getAllergies(patientId, scope) : Promise.resolve([]), scope ? getPatientById(patientId, scope) : Promise.resolve(null)]);
     setEntries(rows);
     setPatient(pt);
     setLoading(false);
-  }, [patientId]);
+  }, [patientId, scope]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -93,7 +99,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   const handleAdd = () => withBusy(async () => {
     if (!draft.substance.trim()) { showToast('Pick or enter the allergen first.', 'error'); return; }
     const { addAllergy } = await import('@/lib/services/allergy-service');
-    const next = await addAllergy(patientId, {
+    const next = await addAllergy(patientId, needScope(), {
       substance: draft.substance,
       classification: draft.classification,
       criticality: draft.criticality,
@@ -126,7 +132,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
     }
     if (!reason) { showToast('A reason is required.', 'error'); return; }
     const { removeAllergy } = await import('@/lib/services/allergy-service');
-    const next = await removeAllergy(patientId, selected.id, reason, status);
+    const next = await removeAllergy(patientId, needScope(), selected.id, reason, status);
     if (next) setEntries(next);
     showToast(`${selected.substance} marked ${verb}.`, 'success');
     setSelectedId(null);
@@ -134,15 +140,16 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
 
   const handleReactivate = () => selected && withBusy(async () => {
     const { updateAllergy } = await import('@/lib/services/allergy-service');
-    const next = await updateAllergy(patientId, selected.id, { status: 'active', removalReason: undefined });
+    const next = await updateAllergy(patientId, needScope(), selected.id, { status: 'active', removalReason: undefined });
     if (next) setEntries(next);
     showToast(`${selected.substance} reactivated.`, 'success');
     setSelectedId(null);
   });
 
   const savePatient = (patch: Partial<PatientDoc>) => withBusy(async () => {
+    if (!scope) throw new Error('Your patient data scope is unavailable');
     const { updatePatient } = await import('@/lib/services/patient-service');
-    const updated = await updatePatient(patientId, patch);
+    const updated = await updatePatient(patientId, patch, scope);
     if (updated) setPatient(updated);
   });
 

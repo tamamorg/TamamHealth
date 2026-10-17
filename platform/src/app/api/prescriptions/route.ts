@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized, validationError } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+import { authorizeJson } from '@/lib/api-json-guard';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'pharmacist', 'medical_superintendent',
@@ -49,17 +50,9 @@ async function postHandler(request: NextRequest) {
     const { checkRateLimit } = await import('@/lib/api-security');
     const rateLimitResponse = await checkRateLimit(request, 'prescriptions:write', 30);
     if (rateLimitResponse) return rateLimitResponse;
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, CREATE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, CREATE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     if (!body.prescribedBy) body.prescribedBy = auth.name;
     // Tenancy is stamped from the verified auth claim, never trusted from the
     // client — see the matching comment in /api/referrals for the rationale.
@@ -70,7 +63,8 @@ async function postHandler(request: NextRequest) {
     }
     if (!body.hospitalId && auth.hospitalId) body.hospitalId = auth.hospitalId;
     const { createPrescription } = await import('@/lib/services/prescription-service');
-    const result = await createPrescription(body as Parameters<typeof createPrescription>[0]);
+    const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+    const result = await createPrescription(body as Parameters<typeof createPrescription>[0], buildScopeFromAuth(auth));
     return NextResponse.json({
       prescription: result.prescription,
       interactionWarnings: result.interactionWarnings,

@@ -18,9 +18,15 @@ import { teardownTestDBs } from '../helpers/test-db';
 import { encountersDB, prescriptionsDB } from '@/lib/db';
 import { evaluateCheckoutGate } from '@/lib/services/checkout-gate-service';
 import {
-  OUTSIDE_PHARMACY_REFUSAL, advancePrescription, createPrescription, recordPrescriptionPatientCopy,
+  OUTSIDE_PHARMACY_REFUSAL, advancePrescription, createPrescription as createPrescriptionScoped, recordPrescriptionPatientCopy,
   rerouteToOutsidePharmacy,
 } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 import { saveFacilitySettings } from '@/lib/settings/settings-service';
 import { dispenseMedication } from '@/lib/services/dispensing-service';
 import { isOutsidePharmacyOrder } from '@/lib/pharmacy-workflow';

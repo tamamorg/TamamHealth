@@ -12,6 +12,8 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { patientsDB } from '@/lib/db';
 import { addScreening, completeScreening, declineScreening } from '@/lib/services/screening-service';
+
+const SCOPE = { role: 'super_admin' } as const;
 import { mutatePatient } from '@/lib/services/patient-service';
 
 const incomplete = {
@@ -24,14 +26,14 @@ beforeAll(async () => { await putDoc(patientsDB(), { ...incomplete }); });
 afterAll(async () => { await teardownTestDBs(); });
 
 test('a screening can be added, completed and declined on a patient with gaps in their registration', async () => {
-  const added = await addScreening('pat-incomplete', { type: 'Cervical cancer (VIA)', dueDate: '2026-10-16' });
+  const added = await addScreening('pat-incomplete', SCOPE, { type: 'Cervical cancer (VIA)', dueDate: '2026-10-16' });
   expect(added).toHaveLength(1);
   const id = added![0].id;
-  expect((await completeScreening('pat-incomplete', id, '2026-10-16'))![0]).toMatchObject({ status: 'completed', lastDoneDate: '2026-10-16' });
+  expect((await completeScreening('pat-incomplete', SCOPE, id, '2026-10-16'))![0]).toMatchObject({ status: 'completed', lastDoneDate: '2026-10-16' });
 
-  const second = await addScreening('pat-incomplete', { type: 'HIV test' });
+  const second = await addScreening('pat-incomplete', SCOPE, { type: 'HIV test' });
   const hiv = second!.find(s => s.type === 'HIV test')!;
-  expect((await declineScreening('pat-incomplete', hiv.id, 'Tested elsewhere'))!.find(s => s.id === hiv.id)).toMatchObject({ status: 'declined', notes: 'Tested elsewhere' });
+  expect((await declineScreening('pat-incomplete', SCOPE, hiv.id, 'Tested elsewhere'))!.find(s => s.id === hiv.id)).toMatchObject({ status: 'declined', notes: 'Tested elsewhere' });
 });
 
 test('a write that itself breaks a field is still refused', async () => {

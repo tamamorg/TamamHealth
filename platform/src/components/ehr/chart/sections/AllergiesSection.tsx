@@ -29,6 +29,7 @@ import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
@@ -92,6 +93,11 @@ interface AllergiesSectionProps {
 
 export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandled, focusId }: AllergiesSectionProps) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const { showToast } = useToast();
   // Recording an allergy is a clinical write like Conditions/Problems — gate
   // it the same way rather than leaving the Add button open to every viewer
@@ -168,7 +174,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     setBusy(true);
     try {
       const svc = await import('@/lib/services/allergy-service');
-      await svc.updateAllergy(patient._id, editing.id, { ...editForm, substance: editForm.substance.trim(), ...author });
+      await svc.updateAllergy(patient._id, needScope(), editing.id, { ...editForm, substance: editForm.substance.trim(), ...author });
       showToast('Allergy updated', 'success');
       setEditing(null);
     } catch (err) {
@@ -183,7 +189,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     setBusy(true);
     try {
       const svc = await import('@/lib/services/allergy-service');
-      await svc.removeAllergy(patient._id, retiring.id, retireReason.trim(), retireStatus);
+      await svc.removeAllergy(patient._id, needScope(), retiring.id, retireReason.trim(), retireStatus);
       showToast(`${retiring.substance} marked ${retireStatus.replace(/_/g, ' ')}`, 'success');
       setRetiring(null);
       setRetireReason('');
@@ -199,7 +205,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     setBusy(true);
     try {
       const svc = await import('@/lib/services/allergy-service');
-      await svc.updateAllergy(patient._id, a.id, { status: 'active', removalReason: undefined, ...author });
+      await svc.updateAllergy(patient._id, needScope(), a.id, { status: 'active', removalReason: undefined, ...author });
       showToast(`${a.substance} reinstated`, 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not reinstate this allergy.', 'error');
@@ -342,7 +348,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
           onClose={() => setAdding(false)}
           onSave={async input => {
             const svc = await import('@/lib/services/allergy-service');
-            await svc.addAllergy(patient._id, { ...input, ...author });
+            await svc.addAllergy(patient._id, needScope(), { ...input, ...author });
           }}
         />
       )}

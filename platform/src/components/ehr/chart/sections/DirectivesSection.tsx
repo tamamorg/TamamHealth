@@ -22,6 +22,7 @@ import Select from '@/components/Select';
 import { Lock, X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate, formatDateTime } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
@@ -58,6 +59,11 @@ const cardStyle = { background: 'var(--bg-card)', border: '1px solid var(--borde
 
 export default function DirectivesSection({ patient }: { patient: PatientDoc }) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const { showToast } = useToast();
   const { canEditClinical, canRegisterPatients } = usePermissions();
   // Consent is taken by the front desk as often as by a clinician — this is the
@@ -226,7 +232,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !addForm.description.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.addDirective(patient._id, { ...addForm, description: addForm.description.trim(), ...author });
+                  await svc.addDirective(patient._id, needScope(), { ...addForm, description: addForm.description.trim(), ...author });
                 }, () => setAdding(false), 'Directive recorded')}
               >
                 {busy ? 'Saving…' : 'Save'}
@@ -261,7 +267,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !editForm.description.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.updateDirective(patient._id, editing.id, {
+                  await svc.updateDirective(patient._id, needScope(), editing.id, {
                     type: editForm.type,
                     description: editForm.description.trim(),
                     startDate: editForm.startDate || undefined,
@@ -313,7 +319,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !signForm.name.trim() || (signForm.signedBy !== 'patient' && !signForm.relationship.trim())}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.signDirective(patient._id, signing.id, {
+                  await svc.signDirective(patient._id, needScope(), signing.id, {
                     name: signForm.name,
                     signedBy: signForm.signedBy,
                     relationship: signForm.relationship,
@@ -352,7 +358,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !revokeReason.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.removeDirective(patient._id, revoking.id, revokeReason.trim());
+                  await svc.removeDirective(patient._id, needScope(), revoking.id, revokeReason.trim());
                 }, () => setRevoking(null), 'Directive revoked')}
               >
                 {busy ? 'Saving…' : 'Revoke'}

@@ -381,7 +381,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" className="pp-btn pp-btn-secondary" style={{ flex: 1 }} onClick={() => setStep('method')} disabled={paying}>{t('action.cancel')}</button>
             <button type="button" className="pp-btn pp-btn-primary" style={{ flex: 1 }} onClick={() => { void submitPayment(); }} disabled={paying}>
-              {paying ? t('patientPortal.recording') : t('patientPortal.payAmount', { amount: `${selectedTotal.toLocaleString()} SSP` })}
+              {paying ? t('patientPortal.recording') : t('patientPortal.payAmount', { amount: formatMoney(selectedTotal) })}
             </button>
           </div>
         </div>

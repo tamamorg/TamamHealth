@@ -16,12 +16,26 @@ PouchDB.plugin(findPlugin.default || findPlugin);
 
 // We mock the @/lib/db module to intercept all database accessors
 const databases: Record<string, PouchDB.Database> = {};
+const wrapped: Record<string, PouchDB.Database> = {};
 
+/**
+ * Services under test see the database the way they do in the app: through
+ * the encrypting layer (lib/encrypted-db.ts), so every suite exercises
+ * patient data being sealed on write and opened on read.
+ */
 function getTestDB(name: string): PouchDB.Database {
   if (!databases[name]) {
     databases[name] = new PouchDB(name, { adapter: 'memory' });
+    const { wrapEncrypted } = require('@/lib/encrypted-db') as typeof import('@/lib/encrypted-db');
+    wrapped[name] = wrapEncrypted(databases[name], name.replace(/^test_/, ''));
   }
-  return databases[name];
+  return wrapped[name];
+}
+
+/** The same database as stored — ciphertext — for asserting what reaches disk. */
+export function rawTestDB(name: string): PouchDB.Database {
+  getTestDB(`test_${name}`);
+  return databases[`test_${name}`];
 }
 
 /**
@@ -36,6 +50,7 @@ export async function teardownTestDBs(): Promise<void> {
       // ignore
     }
     delete databases[name];
+    delete wrapped[name];
   }
 }
 
@@ -47,6 +62,7 @@ export async function teardownTestDBs(): Promise<void> {
 export function createDBMock() {
   return {
     getDB: (name: string) => getTestDB(`test_${name}`),
+    getRawDB: (name: string) => rawTestDB(name),
     usersDB: () => getTestDB('test_tamamhealth_users'),
     patientsDB: () => getTestDB('test_tamamhealth_patients'),
     hospitalsDB: () => getTestDB('test_tamamhealth_hospitals'),

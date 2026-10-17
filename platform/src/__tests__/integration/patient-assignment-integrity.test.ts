@@ -8,6 +8,7 @@ import { assignProviderToPatient, reconcileCareTeamFromAppointment, resolveAndVa
 import { getConsultationProgressByAppointment } from '@/lib/services/consultation-progress-service';
 import { checkInAppointment } from '@/lib/services/check-in-service';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const ORG = 'org-a';
 const FACILITY = 'facility-a';
 
@@ -73,7 +74,7 @@ describe('patient assignment target integrity', () => {
     // never reconstruct a patient from the cached appointment name.
     await seedPatient('patient-1');
     await assignProviderToPatient(input('patient-1', 'appointment-1'));
-    expect((await getPatientById('patient-1'))?.assignedDoctor).toBe('doctor-1');
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBe('doctor-1');
   });
 
   it('reports storage failure separately without modifying the appointment', async () => {
@@ -97,7 +98,7 @@ describe('patient assignment target integrity', () => {
 
     await expect(assignProviderToPatient(input('patient-1', 'appointment-2')))
       .rejects.toThrow('appointment is outside this patient visit');
-    expect((await getPatientById('patient-1'))?.assignedDoctor).toBeUndefined();
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBeUndefined();
     expect((await getAppointmentById('appointment-2'))?.providerId).toBe('');
   });
 
@@ -107,14 +108,14 @@ describe('patient assignment target integrity', () => {
     await seedAppointment('appointment-1', 'patient-1');
 
     await assignProviderToPatient(input('patient-1', 'appointment-1'));
-    expect((await getPatientById('patient-1'))?.assignedDoctor).toBe('doctor-1');
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBe('doctor-1');
     expect((await getAppointmentById('appointment-1'))?.providerId).toBe('doctor-1');
     expect((await getConsultationProgressByAppointment('patient-1', 'appointment-1'))?.ownerId)
       .toBe('doctor-1');
 
     await assignProviderToPatient({ ...input('patient-1', 'appointment-1'), provider: null });
-    expect((await getPatientById('patient-1'))?.assignedDoctor).toBeUndefined();
-    expect((await getPatientById('patient-1'))?.assignmentStatus).toBeUndefined();
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBeUndefined();
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignmentStatus).toBeUndefined();
     expect((await getAppointmentById('appointment-1'))?.providerId).toBe('');
     expect((await getConsultationProgressByAppointment('patient-1', 'appointment-1'))?.ownerId)
       .toBeUndefined();
@@ -132,7 +133,7 @@ describe('care-team reconciliation from a booked appointment', () => {
       actor: { id: 'desk-1', name: 'Desk One', role: 'front_desk' },
     });
 
-    const patient = await getPatientById('patient-1');
+    const patient = await getPatientById('patient-1', TEST_SCOPE);
     expect(patient?.assignedDoctor).toBe('doctor-1');
     expect(patient?.assignedDoctorName).toBe('Dr One');
     expect(patient?.assignedNurse).toBe('nurse-1');
@@ -153,8 +154,8 @@ describe('care-team reconciliation from a booked appointment', () => {
       actor: { id: 'doctor-1', name: 'Dr One', role: 'doctor' },
     });
 
-    expect((await getPatientById('patient-1'))?.assignedDoctor).toBeUndefined();
-    expect((await getPatientById('patient-1'))?.assignedNurse).toBeUndefined();
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBeUndefined();
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedNurse).toBeUndefined();
   });
 
   it('never clears a patient-level assignment the booking knows nothing about', async () => {
@@ -172,7 +173,7 @@ describe('care-team reconciliation from a booked appointment', () => {
       actor: { id: 'desk-1', name: 'Desk One', role: 'front_desk' },
     });
 
-    const patient = await getPatientById('patient-1');
+    const patient = await getPatientById('patient-1', TEST_SCOPE);
     expect(patient?.assignedDoctor).toBe('doctor-1');
     expect(patient?.assignedNurse).toBe('nurse-1');
   });
@@ -199,7 +200,7 @@ describe('care-team reconciliation from a booked appointment', () => {
     });
 
     expect((await getAppointmentById('appointment-1'))?.status).toBe('checked_in');
-    const patient = await getPatientById('patient-1');
+    const patient = await getPatientById('patient-1', TEST_SCOPE);
     expect(patient?.assignedDoctor).toBe('doctor-1');
     expect(patient?.assignedNurse).toBe('nurse-1');
   });

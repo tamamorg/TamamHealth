@@ -68,7 +68,7 @@ async function postHandler(request: NextRequest) {
     }
     const { getPatientById } = await import('@/lib/services/patient-service');
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
-    const patient = await getPatientById(patientId);
+    const patient = await getPatientById(patientId, buildScopeFromAuth(auth));
     if (!patient || filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }

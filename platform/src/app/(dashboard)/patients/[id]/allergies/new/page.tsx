@@ -12,6 +12,7 @@ import { useParams, useRouter } from 'next/navigation';
 import CreateRecordPage from '@/components/create-dialogs/CreateRecordPage';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useReturnTo } from '@/lib/navigation/expand-to-page';
 
@@ -20,6 +21,11 @@ export default function NewAllergyPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const patientId = params?.id ?? '';
   const chart = `/patients/${encodeURIComponent(patientId)}?tab=allergies`;
   const returnTo = useReturnTo(chart);
@@ -37,7 +43,7 @@ export default function NewAllergyPage() {
         onClose={() => router.push(returnTo)}
         onSave={async input => {
           const svc = await import('@/lib/services/allergy-service');
-          await svc.addAllergy(patientId, {
+          await svc.addAllergy(patientId, needScope(), {
             ...input,
             recordedBy: currentUser?._id,
             recordedByName: currentUser?.name || currentUser?.username,

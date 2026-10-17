@@ -25,11 +25,11 @@ type Entry = { id: string; type: string; status: 'due' | 'completed' | 'declined
 let store: Entry[] = [];
 const write = (next: Entry[]) => { store = next; return next; };
 jest.mock('@/lib/services/screening-service', () => ({
-  completeScreening: jest.fn(async (_p: string, id: string) => write(store.map(s => (s.id === id
+  completeScreening: jest.fn(async (_p: string, _scope: unknown, id: string) => write(store.map(s => (s.id === id
     ? (s.intervalMonths ? { ...s, lastDoneDate: '2026-10-16', dueDate: '2027-10-16' } : { ...s, status: 'completed', lastDoneDate: '2026-10-16' })
     : s)))),
-  declineScreening: jest.fn(async (_p: string, id: string, reason?: string) => write(store.map(s => (s.id === id ? { ...s, status: 'declined', notes: reason } : s)))),
-  removeScreening: jest.fn(async (_p: string, id: string) => write(store.filter(s => s.id !== id))),
+  declineScreening: jest.fn(async (_p: string, _scope: unknown, id: string, reason?: string) => write(store.map(s => (s.id === id ? { ...s, status: 'declined', notes: reason } : s)))),
+  removeScreening: jest.fn(async (_p: string, _scope: unknown, id: string) => write(store.filter(s => s.id !== id))),
   addScreening: jest.fn(),
 }));
 

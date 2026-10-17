@@ -11,18 +11,19 @@ import type { DirectiveEntry, DirectiveType } from '../../data/mock';
 import type { DirectiveSignature } from '../types/patient-clinical';
 import type { PatientDoc } from '../db-types';
 import { getPatientById } from './patient-service';
+import type { DataScope } from './data-scope';
 import { mutatePatientListField } from './patient-list-field';
 import { todayIso } from '@/lib/date-utils';
 
 /** All directive entries for a patient (active + inactive). */
-export async function getDirectives(patientId: string): Promise<DirectiveEntry[]> {
-  const patient = await getPatientById(patientId);
+export async function getDirectives(patientId: string, scope: DataScope): Promise<DirectiveEntry[]> {
+  const patient = await getPatientById(patientId, scope);
   return patient?.directives ?? [];
 }
 
 /** Active directives only. */
-export async function getActiveDirectives(patientId: string): Promise<DirectiveEntry[]> {
-  return (await getDirectives(patientId)).filter((d) => d.status === 'active');
+export async function getActiveDirectives(patientId: string, scope: DataScope): Promise<DirectiveEntry[]> {
+  return (await getDirectives(patientId, scope)).filter((d) => d.status === 'active');
 }
 
 export interface AddDirectiveInput {
@@ -34,7 +35,7 @@ export interface AddDirectiveInput {
 }
 
 /** Record a new directive. Returns the full updated list, or null if no patient. */
-export async function addDirective(patientId: string, input: AddDirectiveInput): Promise<DirectiveEntry[] | null> {
+export async function addDirective(patientId: string, scope: DataScope, input: AddDirectiveInput): Promise<DirectiveEntry[] | null> {
   if (!input.description || input.description.trim().length === 0) {
     throw new Error('Directive description is required');
   }
@@ -50,6 +51,7 @@ export async function addDirective(patientId: string, input: AddDirectiveInput):
   };
   return mutatePatientListField<DirectiveEntry>(
     patientId,
+    scope,
     (patient) => {
       const next = [...(patient.directives ?? []), entry];
       return { patch: { directives: next } as Partial<PatientDoc>, entries: next };
@@ -61,11 +63,13 @@ export async function addDirective(patientId: string, input: AddDirectiveInput):
 /** Edit fields of an existing directive in place. */
 export async function updateDirective(
   patientId: string,
+  scope: DataScope,
   directiveId: string,
   patch: Partial<Omit<DirectiveEntry, 'id'>>,
 ): Promise<DirectiveEntry[] | null> {
   return mutatePatientListField<DirectiveEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.directives ?? [];
       if (!existing.some((d) => d.id === directiveId)) return null;
@@ -97,6 +101,7 @@ export interface SignDirectiveInput {
  */
 export async function signDirective(
   patientId: string,
+  scope: DataScope,
   directiveId: string,
   input: SignDirectiveInput,
 ): Promise<DirectiveEntry[] | null> {
@@ -115,6 +120,7 @@ export async function signDirective(
   };
   return mutatePatientListField<DirectiveEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.directives ?? [];
       const target = existing.find((d) => d.id === directiveId);
@@ -140,6 +146,7 @@ export async function signDirective(
  */
 export async function removeDirective(
   patientId: string,
+  scope: DataScope,
   directiveId: string,
   removalReason: string,
   status: 'inactive' | 'expired' | 'revoked' = 'revoked',
@@ -149,6 +156,7 @@ export async function removeDirective(
   }
   return mutatePatientListField<DirectiveEntry>(
     patientId,
+    scope,
     (patient) => {
       const existing = patient.directives ?? [];
       if (!existing.some((d) => d.id === directiveId)) return null;

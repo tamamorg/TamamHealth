@@ -51,8 +51,9 @@ export async function resolvePortalOwnership(
 ): Promise<PortalOwnership> {
   let patient: PatientDoc | null = null;
   try {
-    const { getPatientById } = await import('./services/patient-service');
-    patient = await getPatientById(patientId);
+    const { getPatientByIdUnscopedForPortal } = await import('./services/patient-service');
+    // Portal-session callers only: ownership is resolved FROM the patient.
+    patient = await getPatientByIdUnscopedForPortal(patientId);
   } catch { /* fall through with what we have */ }
 
   const own: PortalOwnership = {

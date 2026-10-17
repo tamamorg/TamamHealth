@@ -86,6 +86,7 @@ export default function PrescriptionCopyDialog({
     let cancelled = false;
     (async () => {
       try {
+        if (!scope) throw new Error('no scope');
         const { getPatientById } = await import('@/lib/services/patient-service');
         const doc = await getPatientById(patientId, scope);
         if (!cancelled) setPatient(doc);

@@ -27,11 +27,11 @@ describe('appointment department links', () => {
     };
     await hospitalsDB().put(dental);
     await appointmentsDB().put(baseAppointment);
-    expect((await updateAppointment(baseAppointment._id, { department: 'Dentistry' }))?.departmentId).toBe(dental._id);
+    expect((await updateAppointment(baseAppointment._id, { department: 'Dentistry' }, 'front_desk'))?.departmentId).toBe(dental._id);
   });
 
   it('clears a stale link when the renamed department is not configured', async () => {
     await appointmentsDB().put(baseAppointment);
-    expect((await updateAppointment(baseAppointment._id, { department: 'Unconfigured clinic' }))?.departmentId).toBeUndefined();
+    expect((await updateAppointment(baseAppointment._id, { department: 'Unconfigured clinic' }, 'front_desk'))?.departmentId).toBeUndefined();
   });
 });

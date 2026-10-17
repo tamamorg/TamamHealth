@@ -8,7 +8,7 @@
  *   manager.syncNow();     // force one-time sync
  */
 
-import { getDB } from '../db';
+import { getRawDB } from '../db';
 import { SyncService, type SyncStatus } from './sync-service';
 import {
   DATABASE_SYNC_CONFIGS,
@@ -271,7 +271,9 @@ export class SyncManager {
         if (config.orgScoped && useTenantDatabases && !this.orgId) continue;
         let localDB, remoteUrl;
         try {
-          localDB = getDB(config.localName);
+          // Raw, never the decrypting wrapper: replication must move the
+          // stored envelopes as they are (lib/encrypted-db.ts).
+          localDB = getRawDB(config.localName);
           remoteUrl = getRemoteUrl(config.localName, couchdbUrl, {
             orgScoped: config.orgScoped,
             orgId: this.orgId,

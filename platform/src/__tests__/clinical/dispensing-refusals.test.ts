@@ -25,7 +25,13 @@ jest.setTimeout(30000);
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { usersDB, hospitalsDB, patientsDB, pharmacyInventoryDB, controlledSubstanceLogDB } from '@/lib/db';
-import { createPrescription, advancePrescription, getPrescriptionsByPatient, updatePrescription } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, advancePrescription, getPrescriptionsByPatient, updatePrescription } from '@/lib/services/prescription-service';
+
+// Fixtures here are single-tenant; a system-wide scope reads every doc, so the
+// tenant barrier is exercised by the dedicated cross-org suite instead.
+const TEST_SCOPE = { role: 'super_admin' } as const;
+const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]) =>
+  createPrescriptionScoped(data, TEST_SCOPE);
 import { dispenseMedication, DispenseError, getDispensableBatches } from '@/lib/services/dispensing-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 

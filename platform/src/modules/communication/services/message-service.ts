@@ -6,50 +6,81 @@ import { filterByScope } from '@/lib/services/data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
-import { UNREADABLE_FIELD_TEXT, maybeEncryptReplicated, readReplicatedField } from '@/lib/field-encryption';
-
-const ENCRYPTED_MESSAGE_FIELDS = ['subject', 'body'] as const;
+import { EncryptionKeyError, UNREADABLE_FIELD_TEXT, readReplicatedField } from '@/lib/field-encryption';
+import { UNREADABLE_ORG_FIELD_TEXT, encryptForOrg, isOrgEncrypted, readOrgField } from '@/lib/org-data-cipher';
 
 /** Shown in place of text this device cannot decrypt. */
 export const UNREADABLE_MESSAGE_TEXT = UNREADABLE_FIELD_TEXT;
 
-/**
- * Message text replicates to devices, so it follows the replicated-field
- * rule: field-encrypted only in a deployment with no browser sync. See
- * `encryptsReplicatedFields` in lib/field-encryption.ts.
- */
-export function encryptMessageText(plaintext: string): string {
-  return maybeEncryptReplicated(plaintext);
+/** Whether a decrypted value is one of the "cannot read it here" placeholders. */
+export function isUnreadableMessageText(value: string): boolean {
+  return value === UNREADABLE_FIELD_TEXT || value === UNREADABLE_ORG_FIELD_TEXT;
 }
 
-const readMessageText = readReplicatedField;
-
-/** Read-side decrypt of a stored message, including its retained edit history. */
-export function decryptMessage(doc: MessageDoc): MessageDoc {
-  const out = { ...doc };
-  for (const field of ENCRYPTED_MESSAGE_FIELDS) {
-    const value = out[field];
-    if (typeof value === 'string') out[field] = readMessageText(value);
+/**
+ * Message text is encrypted under its organisation's data key on the device
+ * that writes it (lib/org-data-cipher.ts), so CouchDB, its backups and the
+ * analytics copy only ever hold ciphertext. Covered: subject, body, every
+ * retained earlier wording, and each attachment's name and bytes.
+ *
+ * Refuses the unreadable placeholder: a form loaded on a device that could not
+ * decrypt a field holds the placeholder, and saving it back would overwrite
+ * the ciphertext — the only copy of what the message said.
+ */
+export async function encryptMessageText(plaintext: string, orgId: string | undefined): Promise<string> {
+  if (isUnreadableMessageText(plaintext)) {
+    throw new EncryptionKeyError('This message cannot be read on this device, so it cannot be saved from it.');
   }
+  return encryptForOrg(plaintext, orgId);
+}
+
+/** Either layer: this device's organisation key, or the legacy server key. */
+async function readMessageText(value: string): Promise<string> {
+  return isOrgEncrypted(value) ? readOrgField(value) : readReplicatedField(value);
+}
+
+/** Read-side decrypt of a stored message, including its history and attachments. */
+export async function decryptMessage(doc: MessageDoc): Promise<MessageDoc> {
+  const out = { ...doc };
+  if (typeof out.subject === 'string') out.subject = await readMessageText(out.subject);
+  if (typeof out.body === 'string') out.body = await readMessageText(out.body);
   if (out.editHistory?.length) {
-    out.editHistory = out.editHistory.map(entry => ({ ...entry, body: readMessageText(entry.body) }));
+    out.editHistory = await Promise.all(out.editHistory.map(async entry => ({ ...entry, body: await readMessageText(entry.body) })));
+  }
+  if (out.attachments?.length) {
+    out.attachments = await Promise.all(out.attachments.map(async a => ({
+      ...a,
+      name: await readMessageText(a.name),
+      base64Data: await readMessageText(a.base64Data),
+    })));
   }
   return out;
 }
 
-function encryptMessageFields<T extends Partial<MessageDoc>>(data: T): T {
+/**
+ * Encrypt every text field still in plaintext. Values already encrypted are
+ * left byte-for-byte as stored, and so is `editHistory`: the integrity rule
+ * (lib/sync/message-integrity.ts) requires every earlier wording to survive
+ * exactly, so history is only ever appended to, never re-encoded.
+ */
+async function encryptMessageFields<T extends Partial<MessageDoc>>(data: T): Promise<T> {
   const out = { ...data };
-  for (const field of ENCRYPTED_MESSAGE_FIELDS) {
-    const value = out[field];
-    if (typeof value === 'string' && value.length > 0) out[field] = encryptMessageText(value);
+  const orgId = out.orgId;
+  if (typeof out.subject === 'string' && out.subject.length > 0) out.subject = await encryptMessageText(out.subject, orgId);
+  if (typeof out.body === 'string' && out.body.length > 0) out.body = await encryptMessageText(out.body, orgId);
+  if (out.attachments?.length) {
+    out.attachments = await Promise.all(out.attachments.map(async a => ({
+      ...a,
+      name: a.name ? await encryptMessageText(a.name, orgId) : a.name,
+      base64Data: a.base64Data ? await encryptMessageText(a.base64Data, orgId) : a.base64Data,
+    })));
   }
   return out;
 }
 
 async function getAllMessagesUnscoped(): Promise<MessageDoc[]> {
   const db = messagesDB();
-  return (await findByType<MessageDoc>(db, 'message'))
-    .map(decryptMessage)
+  return (await Promise.all((await findByType<MessageDoc>(db, 'message')).map(decryptMessage)))
     .sort((a, b) => new Date(b.sentAt || '').getTime() - new Date(a.sentAt || '').getTime());
 }
 
@@ -116,7 +147,7 @@ export async function updateMessage(id: string, data: Partial<MessageDoc>): Prom
   const db = messagesDB();
   try {
     const existing = await db.get(id) as MessageDoc;
-    const updated = encryptMessageFields({
+    const updated = await encryptMessageFields({
       ...existing,
       ...data,
       _id: existing._id,
@@ -125,7 +156,7 @@ export async function updateMessage(id: string, data: Partial<MessageDoc>): Prom
     });
     const resp = await db.put(updated);
     updated._rev = resp.rev;
-    return decryptMessage(updated);
+    return await decryptMessage(updated);
   } catch {
     return null;
   }
@@ -181,7 +212,7 @@ export async function createMessage(data: Omit<MessageDoc, '_id' | '_rev' | 'typ
   const db = messagesDB();
   const now = new Date().toISOString();
   const id = `msg-${uuidv4()}`;
-  const doc: MessageDoc = encryptMessageFields({
+  const doc: MessageDoc = await encryptMessageFields({
     _id: id,
     type: 'message',
     ...data,
@@ -191,14 +222,15 @@ export async function createMessage(data: Omit<MessageDoc, '_id' | '_rev' | 'typ
   });
   const resp = await db.put(doc);
   doc._rev = resp.rev;
-  const plaintextDoc = decryptMessage(doc);
+  const plaintextDoc = await decryptMessage(doc);
   // Audit trail: every message write is patient-related communication, so
   // it belongs in the audit log alongside other PHI-touching mutations.
   // Previously createMessage wrote silently — the admin audit-log page
   // showed Rx and lab activity but nothing for patient↔staff chats.
   await logAuditSafe(
     'CREATE_MESSAGE', undefined, plaintextDoc.fromDoctorName,
-    `Message ${plaintextDoc._id}: ${plaintextDoc.direction || 'staff_to_patient'} — ${plaintextDoc.subject || '(no subject)'}`
+    // Identifiers only: the subject is message text, and the audit log is not encrypted.
+    `Message ${plaintextDoc._id}: ${plaintextDoc.direction || 'staff_to_patient'}`
   );
   // Sync event so the Postgres `messages` analytics table receives the row.
   // The /api/sync route already has a field mapper for it (DB_TABLE_MAP +

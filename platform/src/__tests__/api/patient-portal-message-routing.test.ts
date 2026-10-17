@@ -23,7 +23,7 @@ jest.mock('@/lib/patient-portal-demo', () => ({
   demoFallbackEnabled: () => demoFallback, logDemoFallback: jest.fn(),
   getDemoMessagesByPatient: jest.fn(), recordDemoMessage: jest.fn(),
 }));
-jest.mock('@/lib/services/patient-service', () => ({ getPatientById: (...a: unknown[]) => getPatientById(...a) }));
+jest.mock('@/lib/services/patient-service', () => ({ getPatientByIdUnscopedForPortal: (...a: unknown[]) => getPatientById(...a) }));
 jest.mock('@/modules/communication/services/message-service', () => ({
   createMessage: (...a: [Partial<MessageDoc>]) => createMessage(...a),
   getPortalMessagesByPatient: () => getPortalMessagesByPatient(),

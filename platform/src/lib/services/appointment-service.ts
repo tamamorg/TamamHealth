@@ -580,8 +580,10 @@ export async function updateAppointmentStatus(
 export async function updateAppointment(
   id: string,
   updates: Partial<AppointmentDoc>,
-  actorRole?: UserRole,
+  /** Required, as for rescheduleAppointment: a missing role skipped the amend guard. */
+  actorRole: UserRole,
 ): Promise<AppointmentDoc | null> {
+  if (!actorRole) throw new AppointmentAmendNotAllowedError(Object.keys(updates));
   const db = appointmentsDB();
   try {
     const existing = await db.get(id) as AppointmentDoc;

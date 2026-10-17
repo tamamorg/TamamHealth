@@ -29,13 +29,19 @@ describe('production data and bundle boundaries', () => {
 
     const hook = source('lib/hooks/useStaffChat.ts');
     expect(hook).toContain('if (!enabled) return;');
-    expect(hook).toContain('messagesEnabled && activeId');
+    // The live message feed is gated on messagesEnabled (false while the dock
+    // is closed). Open, it also runs with no thread selected so a colleague's
+    // message re-sorts the list — but thread bodies only load for an open one.
+    expect(hook).toContain('const c2 = messagesEnabled');
+    expect(hook).toContain('if (activeId) reloadMessages.trigger();');
   });
 
   it('keeps patient chart workspaces behind dynamic tab/action boundaries', () => {
+    // The lazy boundaries live in detail/lazy-panels.tsx (split out of the chart page).
     const chart = source('components/patients/PatientDetailPage.tsx');
+    const lazy = source('components/patients/detail/lazy-panels.tsx');
     for (const component of ['BillingTab', 'LabWorkspace', 'PharmacyWorkspace', 'PatientTimeline']) {
-      expect(chart).toMatch(new RegExp(`const ${component} = dynamic\\(`));
+      expect(lazy).toMatch(new RegExp(`const ${component} = dynamic\\(`));
       expect(chart).not.toMatch(new RegExp(`import ${component} from`));
     }
   });

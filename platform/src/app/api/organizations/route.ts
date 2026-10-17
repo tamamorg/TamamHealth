@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
+import { authorizeJson } from '@/lib/api-json-guard';
 import type { UserRole, OrganizationDoc } from '@/lib/db-types';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { TENANCY_WORKSPACE_ROLES } from '@/modules/tenancy';
@@ -121,17 +122,9 @@ async function postHandler(request: NextRequest) {
     const { checkRateLimit } = await import('@/lib/api-security');
     const rateLimitResponse = await checkRateLimit(request, 'organizations:write', 10);
     if (rateLimitResponse) return rateLimitResponse;
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, WRITE_ROLES)) return forbidden();
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, WRITE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
     const action = body.action as string;
     // Deactivate organization
     if (action === 'deactivate') {

@@ -24,8 +24,9 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { getPatientById } = await import('@/lib/services/patient-service');
-    const patient = await getPatientById(auth.sub);
+    const { getPatientByIdUnscopedForPortal } = await import('@/lib/services/patient-service');
+    // Portal token subject is the patient's own id; no staff DataScope exists here.
+    const patient = await getPatientByIdUnscopedForPortal(auth.sub);
 
     if (!patient) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });

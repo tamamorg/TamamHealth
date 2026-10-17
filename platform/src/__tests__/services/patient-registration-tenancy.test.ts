@@ -27,6 +27,7 @@ import { filterByScope } from '@/lib/services/data-scope';
 import { hospitalsDB, patientsDB } from '@/lib/db';
 import type { PatientDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
 
@@ -50,19 +51,19 @@ function registration(overrides: Record<string, unknown> = {}) {
 
 describe('registration resolves the patient organisation', () => {
   test('a facility on the registration infers the organisation that owns the record', async () => {
-    const patient = await createPatient(registration());
+    const patient = await createPatient(registration(), TEST_SCOPE);
     expect(patient.orgId).toBe(ORG);
   });
 
   test('an explicit orgId is honoured even when the facility is unknown', async () => {
     const patient = await createPatient(registration({
       registrationHospital: 'hosp-not-in-directory', orgId: ORG,
-    }));
+    }), TEST_SCOPE);
     expect(patient.orgId).toBe(ORG);
   });
 
   test('no facility and no orgId is refused, naming the field to fix', async () => {
-    await expect(createPatient(registration({ registrationHospital: '' })))
+    await expect(createPatient(registration({ registrationHospital: '' }), TEST_SCOPE))
       .rejects.toMatchObject({
         name: 'ValidationError',
         fields: { registrationHospital: expect.stringContaining('facility') },
@@ -74,8 +75,8 @@ describe('registration resolves the patient organisation', () => {
     // one. The accepted record must be the first patient in the database and
     // must hold the first MRN — a rejected attempt that had already consumed
     // either would leave a gap in the register.
-    await expect(createPatient(registration({ registrationHospital: '' }))).rejects.toThrow();
-    const saved = await createPatient(registration());
+    await expect(createPatient(registration({ registrationHospital: '' }), TEST_SCOPE)).rejects.toThrow();
+    const saved = await createPatient(registration(), TEST_SCOPE);
     const all = await patientsDB().allDocs({ include_docs: true });
     const patients = all.rows
       .map(r => r.doc as unknown as PatientDoc)
@@ -89,7 +90,7 @@ describe('registration resolves the patient organisation', () => {
   });
 
   test('the organisation is what makes the patient visible to their own facility', async () => {
-    const patient = await createPatient(registration());
+    const patient = await createPatient(registration(), TEST_SCOPE);
     // The scope a front-desk clerk at the registering facility carries.
     const deskScope = { orgId: ORG, hospitalId: HOSP, role: 'front_desk' as const };
     expect(filterByScope([patient], deskScope)).toHaveLength(1);

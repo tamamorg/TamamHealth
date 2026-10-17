@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
 import type { CareAlertCategory } from '@/data/mock';
 import { AlertTriangle, Plus, X } from '@/components/icons/lucide';
@@ -18,6 +19,11 @@ import CareAlertFields, { CARE_ALERT_CATEGORY_LABELS } from '@/components/patien
  */
 export default function CareAlertsBanner({ patient, hideAddButton = false }: { patient: PatientDoc; hideAddButton?: boolean }) {
   const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const needScope = () => {
+    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    return scope;
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -48,11 +54,11 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
   }
   async function doAdd() {
     const svc = await import('@/lib/services/care-alert-service');
-    await svc.addCareAlert(patient._id, { ...form, ...author });
+    await svc.addCareAlert(patient._id, needScope(), { ...form, ...author });
   }
   async function doResolve(id: string) {
     const svc = await import('@/lib/services/care-alert-service');
-    await svc.resolveCareAlert(patient._id, id, reason);
+    await svc.resolveCareAlert(patient._id, needScope(), id, reason);
   }
 
   // Nothing active and not composing → a slim "add" affordance only. When the

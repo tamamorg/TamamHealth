@@ -102,6 +102,27 @@ export default function PreferenceEffects() {
     return subscribeUserPrefs(p => applyTheme(p.theme));
   }, []);
 
+  // Organisation data key: fetch it while online so patient data can be
+  // encrypted and read on this device, including after it goes offline.
+  // Retried whenever connectivity returns — the first sign-in may have been
+  // made on a flaky line. The user's organisation is also the key a record
+  // written without an orgId is sealed under, so their colleagues can read it.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void import('@/lib/org-data-cipher')
+      .then(({ setDefaultOrgKeyId, orgKeyIdFor }) => { if (!cancelled) setDefaultOrgKeyId(orgKeyIdFor(orgId)); });
+    const provision = () => {
+      if (cancelled || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+      void import('@/lib/org-data-cipher')
+        .then(({ provisionOrgKey, orgKeyIdFor }) => provisionOrgKey(orgKeyIdFor(orgId)))
+        .catch(() => { /* retried on the next reconnect; reads show a placeholder meanwhile */ });
+    };
+    provision();
+    window.addEventListener('online', provision);
+    return () => { cancelled = true; window.removeEventListener('online', provision); };
+  }, [userId, orgId]);
+
   // Desktop notifications for new staff messages addressed to me.
   useEffect(() => {
     if (!userId) return;
@@ -120,13 +141,18 @@ export default function PreferenceEffects() {
           if (!doc || doc.type !== 'message' || doc.recipientType !== 'staff') return;
           if (doc.patientId !== userId) return;     // not addressed to me
           if (doc.fromDoctorId === userId) return;  // my own message echoing back
-          try {
-            const n = new Notification(doc.fromDoctorName || 'New message', {
-              body: (doc.body || 'You have a new message').slice(0, 140),
-              tag: doc.conversationId || doc._id,
-            });
-            n.onclick = () => { try { window.focus(); } catch { /* noop */ } n.close(); };
-          } catch { /* notification failed — ignore */ }
+          // The stored body is ciphertext; decrypt it the way every view does.
+          void import('@/modules/communication/services/message-service')
+            .then(({ decryptMessage }) => decryptMessage(doc))
+            .then(plain => {
+              if (cancelled) return;
+              const n = new Notification(plain.fromDoctorName || 'New message', {
+                body: (plain.body || 'You have a new message').slice(0, 140),
+                tag: plain.conversationId || plain._id,
+              });
+              n.onclick = () => { try { window.focus(); } catch { /* noop */ } n.close(); };
+            })
+            .catch(() => { /* notification failed — ignore */ });
         })
         .on('error', () => { /* swallow */ }) as unknown as { cancel: () => void };
     } catch {

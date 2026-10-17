@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback, useMemo } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ProgramEnrollmentDoc, ProgramEnrollmentStatus } from '../db-types';
 import { programEnrollmentsDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -27,20 +27,7 @@ export function usePrograms(patientId?: string) {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = programEnrollmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* swallow */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: programEnrollmentsDB });
 
   const create = useCallback(async (data: Omit<ProgramEnrollmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createProgramEnrollment } = await import('../services/program-service');

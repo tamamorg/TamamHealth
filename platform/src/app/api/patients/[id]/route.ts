@@ -30,11 +30,11 @@ export async function GET(
     if (!auth) return unauthorized();
     if (!hasRole(auth, READ_ROLES)) return forbidden();
     const { getPatientById } = await import('@/lib/services/patient-service');
-    const patient = await getPatientById(id);
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const patient = await getPatientById(id, buildScopeFromAuth(auth));
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
-    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
     if (filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
       return forbidden('Access denied to this patient record');
     }
@@ -93,13 +93,13 @@ async function patchHandler(
       if (v === undefined || v === '') delete sanitized[key];
     }
     const { updatePatient, getPatientById } = await import('@/lib/services/patient-service');
-    const existing = await getPatientById(id);
-    if (!existing) return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const existing = await getPatientById(id, buildScopeFromAuth(auth));
+    if (!existing) return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     if (filterByScope([existing], buildScopeFromAuth(auth)).length === 0) {
       return forbidden('Access denied to this patient record');
     }
-    const updated = await updatePatient(id, sanitized);
+    const updated = await updatePatient(id, sanitized, buildScopeFromAuth(auth));
     if (!updated) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }

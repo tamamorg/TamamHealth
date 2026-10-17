@@ -3,12 +3,11 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import TableCols from '@/components/TableCols';
-import Modal from '@/components/Modal';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
 import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
-import { Pill, AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download, Check, ExternalLink } from '@/components/icons/lucide';
+import { AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download, Check, ExternalLink } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUi } from '@/lib/context';
@@ -18,7 +17,6 @@ import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
-import { medications } from '@/lib/data/formulary';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -34,47 +32,12 @@ import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { useRoleChoice } from '@/lib/settings/useRoleSetting';
 import { stopsClickPropagation } from '@/lib/a11y';
+import PatientMedHistoryModal from '@/components/pharmacy/PatientMedHistoryModal';
+import StockInModal from '@/components/pharmacy/StockInModal';
+import RestockModal from '@/components/pharmacy/RestockModal';
+import DispenseConfirmModal from '@/components/pharmacy/DispenseConfirmModal';
+import { RX_STAGE_PILL_CLASS, prescriptionSig, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
-const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
-
-type PharmacyTab = 'queue' | 'inventory' | 'reorder' | 'expiry' | 'overview' | 'patients';
-
-/**
- * The prescription sig for display.
- *
- * Seeded and clinician-entered `dose` values often already carry the whole sig
- * ("1g QDS PRN x 5 days") while `frequency` and `duration` repeat those same
- * parts as separate fields. Concatenating all three printed the tail twice —
- * "1g QDS PRN x 5 days QDS PRN x 5 days" — which is both wrong and what made
- * the Dosage column the widest one on the page. Only append a part the dose
- * does not already state.
- */
-/* The registry/appointments pill vocabulary mapped onto the pharmacy ladder,
-   exactly as the lab queue maps its bench stages: waiting reads calm blue,
-   active reads active, cleared reads ready, closed goes green, holds and
-   recalls take the attention/danger tones. */
-const RX_STAGE_PILL_CLASS: Record<PrescriptionStatus, string> = {
-  prescribed: 'status-scheduled',
-  received_in_pharmacy_queue: 'status-scheduled',
-  under_review: 'status-checked-in',
-  clinician_consultation_in_progress: 'status-in-progress',
-  cleared_for_dispensing: 'status-confirmed',
-  dispensed: 'status-completed',
-  counseled: 'status-completed',
-  complete: 'status-completed',
-  stockout_partial_referred: 'status-attention',
-  held_awaiting_clarification: 'status-attention',
-  dispensing_error_recalled: 'status-cancelled',
-};
-
-function prescriptionSig(rx: { dose?: string; frequency?: string; duration?: string }): string {
-  const dose = (rx.dose || '').trim();
-  const stated = dose.toLowerCase();
-  const extras = [rx.frequency?.trim(), rx.duration?.trim() ? `x ${rx.duration.trim()}` : '']
-    .filter((part): part is string => !!part)
-    .filter(part => !stated.includes(part.replace(/^x /i, '').toLowerCase()));
-  return [dose, ...extras].filter(Boolean).join(' ');
-}
 
 export default function PharmacyPage() {
   const searchParams = useSearchParams();
@@ -1294,226 +1257,49 @@ export default function PharmacyPage() {
       </div>
 
       {activeTab === 'patients' && activePatient && (
-        <Modal onClose={() => setSelectedPatient(null)} width={720} labelledBy="pharmacy-patient-med-history-title">
-          <div className="modal-content card-elevated w-full overflow-hidden" style={{ maxHeight: 'calc(100vh - 48px)' }}>
-            <div className="flex items-start justify-between gap-4 p-5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="min-w-0">
-                <h3 id="pharmacy-patient-med-history-title" className="text-base font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                  {patientName(activePatient)}
-                </h3>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {activePatient.hospitalNumber} · {t('pharmacy.prescriptionsOnRecord', { count: activeRxs.length })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/patients/${activePatient._id}?tab=prescriptions`)}>{t('pharmacy.viewAll')}</button>
-                <button onClick={() => setSelectedPatient(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} aria-label={t('action.close')}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="overflow-auto" style={{ maxHeight: 'min(62vh, 520px)' }}>
-              <table className="data-table" style={{ minWidth: 640, tableLayout: 'fixed' }}>
-                <TableCols widths={[1.9, 1.1, 1.3, 0.8, 0.9]} />
-                <thead className="appointment-table-head">
-                  <tr>
-                    <th>{t('pharmacy.medication')}</th>
-                    <th>{t('pharmacy.dosage')}</th>
-                    <th>{t('pharmacy.prescribedBy')}</th>
-                    <th>{t('pharmacy.time')}</th>
-                    <th>{t('pharmacy.statusLabel')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeRxs.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-10 px-5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {t('pharmacy.noPrescriptionsFound')}
-                      </td>
-                    </tr>
-                  ) : activeRxs.map(rx => {
-                      const stage = pharmacyStage(rx);
-                      return (
-                        <tr key={rx._id}>
-                          <td className="font-semibold text-sm">{rx.medication}</td>
-                          <td className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{prescriptionSig(rx)}</td>
-                          <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{rx.prescribedBy}</td>
-                          <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{rx.createdAt ? new Date(rx.createdAt).toLocaleDateString('en-GB') : '—'}</td>
-                          <td>
-                            <span className={`badge text-[10px] ${stage === 'dispensed' || stage === 'counseled' || stage === 'complete' ? 'badge-normal' : 'badge-warning'}`}>
-                              {pharmacyStageLabel(stage)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </Modal>
+        <PatientMedHistoryModal
+          activePatient={activePatient}
+          activeRxs={activeRxs}
+          onClose={() => setSelectedPatient(null)}
+          onViewAll={() => router.push(`/patients/${activePatient._id}?tab=prescriptions`)}
+        />
       )}
 
 
       {/* Stock-in modal */}
       {showStockInModal && (
-        <Modal onClose={() => setShowStockInModal(false)}>
-          <div className="modal-content card-elevated p-6 max-w-lg w-full" {...stopsClickPropagation}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="icon-box-sm">
-                  <Pill className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                </div>
-                <h3 className="text-base font-semibold">{t('pharmacy.receiveStock')}</h3>
-              </div>
-              <button onClick={() => setShowStockInModal(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <hr className="section-divider" />
-            <div className="data-row-divider-sm">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.medication')}</label>
-                <input
-                  list="medication-list"
-                  type="text"
-                  value={stockForm.medicationName}
-                  onChange={e => {
-                    const med = medications.find(m => m.name === e.target.value);
-                    setStockForm({ ...stockForm, medicationName: e.target.value, category: med?.category || stockForm.category });
-                  }}
-                  placeholder={t('pharmacy.medicationPlaceholder')}
-                />
-                <datalist id="medication-list">
-                  {medications.map(m => <option key={m.name} value={m.name}>{m.category}</option>)}
-                </datalist>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.quantity')}</label>
-                  <input type="number" step="1" min={1} value={stockForm.stockLevel || ''} onChange={e => setStockForm({ ...stockForm, stockLevel: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.unit')}</label>
-                  <Select value={stockForm.unit} onChange={e => setStockForm({ ...stockForm, unit: e.target.value })}>
-                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.reorderLevel')}</label>
-                  <input type="number" step="1" min={0} value={stockForm.reorderLevel} onChange={e => setStockForm({ ...stockForm, reorderLevel: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.batchNumber')}</label>
-                  <input type="text" value={stockForm.batchNumber} onChange={e => setStockForm({ ...stockForm, batchNumber: e.target.value })} placeholder={t('pharmacy.optional')} />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.expiryDate')}</label>
-                <input type="date" value={stockForm.expiryDate} onChange={e => setStockForm({ ...stockForm, expiryDate: e.target.value })} />
-              </div>
-            </div>
-            <hr className="section-divider" />
-            <div className="flex gap-2 mt-2">
-              <button onClick={() => setShowStockInModal(false)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-              <button onClick={handleStockIn} className="btn btn-primary flex-1">{t('pharmacy.saveStockReceipt')}</button>
-            </div>
-          </div>
-        </Modal>
+        <StockInModal
+          stockForm={stockForm}
+          setStockForm={setStockForm}
+          onClose={() => setShowStockInModal(false)}
+          onSave={handleStockIn}
+        />
       )}
 
       {/* Restock modal — top up an existing inventory line with quantity + optional batch/expiry */}
       {restockTarget && (
-        <Modal onClose={() => setRestockTarget(null)} width={448}>
-          <div className="modal-content card-elevated p-6 w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-semibold">{t('pharmacy.receiveStock')}</h3>
-                <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{restockTarget.name}</p>
-              </div>
-              <button onClick={() => setRestockTarget(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
-                  {t('pharmacy.quantityReceived', { unit: restockTarget.unit })} <span style={{ color: 'var(--color-danger-text)' }}>*</span>
-                </label>
-                <input
-                  type="number" step="any"
-                  min={1}
-                  autoFocus
-                  value={restockForm.qty || ''}
-                  onChange={e => setRestockForm({ ...restockForm, qty: parseInt(e.target.value) || 0 })}
-                  placeholder="0"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.batchNo')}</label>
-                  <input
-                    type="text"
-                    value={restockForm.batchNumber}
-                    onChange={e => setRestockForm({ ...restockForm, batchNumber: e.target.value })}
-                    placeholder={t('pharmacy.autoGenerate')}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.expiryDate')}</label>
-                  <input
-                    type="date"
-                    value={restockForm.expiryDate}
-                    onChange={e => setRestockForm({ ...restockForm, expiryDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                {t('pharmacy.leaveBlankKeepExisting')}
-              </p>
-            </div>
-            <hr className="section-divider" />
-            <div className="flex gap-2 mt-2">
-              <button onClick={() => setRestockTarget(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-              <button onClick={handleRestock} className="btn btn-primary flex-1">{t('pharmacy.addToStock')}</button>
-            </div>
-          </div>
-        </Modal>
+        <RestockModal
+          restockTarget={restockTarget}
+          restockForm={restockForm}
+          setRestockForm={setRestockForm}
+          onClose={() => setRestockTarget(null)}
+          onSave={handleRestock}
+        />
       )}
 
       {/* Single medication handover; controlled medicines add witness sign-off. */}
       {dispenseTarget && (
-        <Modal onClose={() => setDispenseTarget(null)}>
-          <div className="modal-panel modal-panel--sm">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertOctagon className="w-5 h-5" style={{ color: 'var(--color-warning)' }} />
-              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Counsel and dispense</h3>
-            </div>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Hand over <strong>{dispenseTarget.qty} {dispenseTarget.inv.unit}</strong> of <strong>{dispenseTarget.inv.medicationName}</strong> to {dispenseTarget.rx.patientName}.
-            </p>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" checked={counsellingConfirmed} onChange={event => setCounsellingConfirmed(event.target.checked)} />
-              <span>I explained the dose, timing, important side effects, storage, and when to return.</span>
-            </label>
-            {(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness) && <>
-              <label>Witnessing staff</label>
-              <Select value={witnessId} onChange={e => setWitnessId(e.target.value)}>
-                <option value="">Select witness…</option>
-                {users.filter(u => u._id !== currentUser?._id && u.isActive !== false).map(u => (
-                  <option key={u._id} value={u._id}>{u.name} — {u.role}</option>
-                ))}
-              </Select>
-            </>}
-            <div className="flex gap-2 mt-5">
-              <button className="btn btn-secondary flex-1" onClick={() => setDispenseTarget(null)}>Cancel</button>
-              <button className="btn btn-primary flex-1" onClick={confirmControlledDispense} disabled={!counsellingConfirmed || (Boolean(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness) && !witnessId)}>Counsel &amp; dispense</button>
-            </div>
-          </div>
-        </Modal>
+        <DispenseConfirmModal
+          dispenseTarget={dispenseTarget}
+          counsellingConfirmed={counsellingConfirmed}
+          setCounsellingConfirmed={setCounsellingConfirmed}
+          witnessId={witnessId}
+          setWitnessId={setWitnessId}
+          users={users}
+          currentUserId={currentUser?._id}
+          onClose={() => setDispenseTarget(null)}
+          onConfirm={confirmControlledDispense}
+        />
       )}
     </main>
   );

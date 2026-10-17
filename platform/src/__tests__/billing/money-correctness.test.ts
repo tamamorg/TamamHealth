@@ -20,6 +20,9 @@ import { collectPayment, reversePayment, issueRefund } from '@/lib/services/paym
 import { getPatientBalance, getPatientLedger } from '@/lib/services/ledger-service';
 import * as ledger from '@/lib/services/ledger-service';
 import { getDB } from '@/lib/db';
+import type { DataScope as __DS } from '@/lib/services/data-scope';
+// Legacy fixtures carry no org; super_admin keeps the national view that filterByScope grants.
+const SUPER: __DS = { role: 'super_admin' };
 
 afterEach(async () => {
   await teardownTestDBs();
@@ -52,7 +55,7 @@ function refundInput(paymentId: string, amount: number, extra: Record<string, un
   };
 }
 
-const refundEntries = async () => (await getPatientLedger('pat-1')).filter(e => e.entryType === 'refund');
+const refundEntries = async () => (await getPatientLedger('pat-1', undefined, SUPER)).filter(e => e.entryType === 'refund');
 
 describe('issueRefund', () => {
   test('refuses a second full refund', async () => {
@@ -101,9 +104,9 @@ describe('issueRefund', () => {
   test('full refund undoes bill settlement; a void after refund is refused and refund after void too', async () => {
     const bill = await seedBill(100);
     const p = await pay(100);
-    expect((await getBillById(bill._id))?.status).toBe('paid');
+    expect((await getBillById(bill._id, SUPER))?.status).toBe('paid');
     await issueRefund(refundInput(p._id, 100));
-    expect((await getBillById(bill._id))?.status).toBe('pending');
+    expect((await getBillById(bill._id, SUPER))?.status).toBe('pending');
     await expect(reversePayment(p._id, 'x', 'u', 'U')).rejects.toMatchObject({ code: 'PAYMENT_REFUNDED' });
 
     const p2 = await pay(50);
@@ -159,10 +162,10 @@ describe('reversePayment', () => {
     const res = await reversePayment(p._id, 'dup', 'u', 'U');
     expect(res?.status).toBe('reversed');
     await reversePayment(p._id, 'dup', 'u', 'U');
-    const reversals = (await getPatientLedger('pat-1')).filter(e => e.description.startsWith('Payment reversal'));
+    const reversals = (await getPatientLedger('pat-1', undefined, SUPER)).filter(e => e.description.startsWith('Payment reversal'));
     expect(reversals).toHaveLength(1);
     expect(reversals[0]).toMatchObject({ currency: p.currency, createdBy: 'u' });
-    expect(await getPatientBalance('pat-1')).toBe(0);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(0);
   });
 
   test('returns null only when not found', async () => {
@@ -173,10 +176,10 @@ describe('reversePayment', () => {
 describe('waiveBill', () => {
   test('posts a ledger adjustment for the waived balance', async () => {
     const bill = await seedBill(100);
-    expect(await getPatientBalance('pat-1')).toBe(100);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(100);
     const w = await waiveBill(bill._id, 'u', 'U', 'hardship');
     expect(w?.status).toBe('waived');
-    expect(await getPatientBalance('pat-1')).toBe(0);
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(0);
   });
 
   test('refuses paid, cancelled-style, already waived and partly paid bills', async () => {
@@ -203,7 +206,7 @@ describe('recordPayment validation', () => {
     }
     await expect(recordPayment(bill._id, 100.01, 'cash', 'u', 'U')).rejects.toMatchObject({ code: 'AMOUNT_EXCEEDS_BALANCE' });
     await expect(recordPayment(bill._id, 10, 'bitcoin' as never, 'u', 'U')).rejects.toMatchObject({ code: 'INVALID_METHOD' });
-    expect((await getBillById(bill._id))?.amountPaid).toBe(0);
+    expect((await getBillById(bill._id, SUPER))?.amountPaid).toBe(0);
   });
 
   test('refuses cancelled / waived / paid bills, accepts exact balance, null for missing', async () => {
@@ -222,8 +225,8 @@ describe('unsettleBillsForPayment', () => {
     const bill = await seedBill(100);
     const p = await pay(100);
     await reversePaidBillCharge(bill._id, 'u', 'U', 'outside pharmacy');
-    await unsettleBillsForPayment(p._id, 'pat-1', 'u', 'U');
-    const after = await getBillById(bill._id);
+    await unsettleBillsForPayment(p._id, 'pat-1', 'u', 'U', SUPER);
+    const after = await getBillById(bill._id, SUPER);
     expect(after?.balanceDue).toBe(0);
     expect(after?.chargeReversedAt).toBeTruthy();
     expect(after?.payments[0].reversed).toBe(true);

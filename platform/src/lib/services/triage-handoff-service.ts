@@ -5,6 +5,7 @@ import { updateTriage } from './triage-service';
 import { syncConsultationProgressStage } from './consultation-progress-service';
 import { logAuditSafe } from './audit-service';
 import { triageDB } from '../db';
+import type { DataScope } from './data-scope';
 
 /** Triage statuses with no further clinical transition (see
  *  `VALID_TRANSITIONS` in triage-service.ts) — the visit's triage phase is
@@ -12,6 +13,8 @@ import { triageDB } from '../db';
 const TERMINAL_TRIAGE_STATUSES = new Set<TriageDoc['status']>(['admitted', 'discharged', 'referred', 'lwbs']);
 
 export interface CompleteTriageHandoffInput {
+  /** Caller's tenant scope; the triage write is refused outside it. */
+  scope: DataScope;
   triageId: string;
   patientId: string;
   patientName: string;
@@ -30,6 +33,8 @@ export interface CompleteTriageHandoffInput {
 }
 
 export interface ReturnVisitToFrontDeskInput {
+  /** Caller's tenant scope; the triage write is refused outside it. */
+  scope: DataScope;
   triageId: string;
   patientId: string;
   patientName: string;
@@ -63,7 +68,7 @@ export async function returnVisitToFrontDesk(input: ReturnVisitToFrontDeskInput)
     assignedProviderId: undefined,
     assignedProviderName: undefined,
     handoffNote: input.reason || undefined,
-  }, { userId: input.actorId, username: input.actorName });
+  }, input.scope, { userId: input.actorId, username: input.actorName });
   if (!triage) throw new Error('The triage record could not be updated.');
 
   if (triage.encounterId) {
@@ -129,7 +134,7 @@ export async function completeTriageHandoff(input: CompleteTriageHandoffInput) {
     // terminal, so `updateTriage`'s `updates.status !== existing.status`
     // check never fires and the transition guard is never consulted.
     ...(alreadyTerminal ? {} : { status: input.disposition === 'home_care' ? 'discharged' as const : 'seen' as const }),
-  }, { userId: input.actorId, username: input.actorName });
+  }, input.scope, { userId: input.actorId, username: input.actorName });
   if (!triage) throw new Error('The triage record could not be updated.');
 
   if (alreadyTerminal) {

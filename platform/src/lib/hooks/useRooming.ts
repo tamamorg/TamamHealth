@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { encountersDB } from '../db';
 import { useDataScope } from './useDataScope';
 import type { RoomingWorklistEntry } from '../services/rooming-service';
@@ -34,20 +34,7 @@ export function useRooming() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = encountersDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', (err) => { console.warn('Rooming subscription error:', err); });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: encountersDB, onError: err => console.warn('Rooming subscription error:', err) });
 
   const markArrived = useCallback(async (encounterId: string, actorId?: string) => {
     const svc = await import('../services/rooming-service');

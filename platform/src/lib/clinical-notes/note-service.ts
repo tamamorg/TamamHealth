@@ -16,7 +16,7 @@ import { findByType } from '../services/db-query';
 import { logAuditSafe } from '../services/audit-service';
 import { emitSyncEvent } from '../services/sync-event-service';
 import type { DataScope } from '../services/data-scope';
-import { filterByScope } from '../services/data-scope';
+import { filterByScope, orgOnlyScope } from '../services/data-scope';
 import { isProviderRole } from '../clinical-roles';
 import { ValidationError } from '../validation';
 import {
@@ -175,7 +175,7 @@ async function raiseNotifiableDiseaseAlertsFromNote(note: ClinicalNoteDoc): Prom
     if (note.patientId) {
       try {
         const { getPatientById } = await import('../services/patient-service');
-        const patient = await getPatientById(note.patientId);
+        const patient = await getPatientById(note.patientId, orgOnlyScope(note.orgId));
         state = patient?.state || '';
         county = patient?.county || '';
       } catch { /* best-effort — try the facility next */ }

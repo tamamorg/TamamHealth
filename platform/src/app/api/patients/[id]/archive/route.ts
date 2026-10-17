@@ -47,19 +47,19 @@ async function postHandler(
       '@/lib/services/patient-service'
     );
 
-    const existing = await getPatientById(id);
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    const existing = await getPatientById(id, buildScopeFromAuth(auth));
     if (!existing) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
     if (filterByScope([existing], buildScopeFromAuth(auth)).length === 0) {
       return forbidden('Access denied to this patient record');
     }
 
     const actor = auth.name || auth.username;
     const updated = action === 'archive'
-      ? await archivePatient(id, actor)
+      ? await archivePatient(id, buildScopeFromAuth(auth), actor)
       : await unarchivePatient(id, actor);
 
     if (!updated) {

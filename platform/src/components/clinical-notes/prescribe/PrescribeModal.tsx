@@ -129,6 +129,7 @@ export default function PrescribeModal({
     let cancelled = false;
     (async () => {
       try {
+        if (!scope) throw new Error('no scope');
         const { getPatientById } = await import('@/lib/services/patient-service');
         const pt = await getPatientById(patientId, scope);
         if (!cancelled) setPatient(pt);
@@ -149,11 +150,13 @@ export default function PrescribeModal({
         if (!cancelled) setInventory(items);
       } catch { /* Cautions says "not stocked" */ }
       try {
+        if (!scope) throw new Error('no scope');
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
         const value = await getPatientBalance(patientId, scope);
         if (!cancelled) setBalance(value);
       } catch { if (!cancelled) setBalance(0); }
       try {
+        if (!scope) throw new Error('no scope');
         const { loadChartSnapshot } = await import('@/lib/clinical-notes/chart-snapshot');
         const snap = await loadChartSnapshot(patientId, scope);
         const vitals = snap.vitalsRecord?.vitalSigns as { weight?: number } | undefined;
@@ -273,6 +276,7 @@ export default function PrescribeModal({
     setBusy(true);
     try {
       const { createPrescription } = await import('@/lib/services/prescription-service');
+      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
       const result = await createPrescription({
         patientId,
         patientName,
@@ -299,7 +303,7 @@ export default function PrescribeModal({
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
         medicationSafetyAcknowledgement,
-      } as PrescriptionCreateInput);
+      } as PrescriptionCreateInput, scope);
 
       if (result.allergyWarnings?.length) {
         // The loudest of the three checks: a recorded allergy matched the drug
@@ -335,7 +339,7 @@ export default function PrescribeModal({
     } finally {
       setBusy(false);
     }
-  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length, severeAllergyWarnings, confirmPrompt, t]);
+  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length, severeAllergyWarnings, confirmPrompt, t, scope]);
 
   // Every way out of the dialog goes through here. Scripts already saved for
   // an outside pharmacy still have to reach the patient, so leaving — Cancel,

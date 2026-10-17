@@ -1,0 +1,138 @@
+{
+  "$comment": [
+    "Which fields of which document types are encrypted at rest under the organisation data key.",
+    "Read by lib/encrypted-db.ts (every app and server read/write) and scripts/encrypt-phi-at-rest.mjs (one-time migration).",
+    "Pattern syntax: dot paths. 'a' encrypts a string at a (or each string in an array at a); 'a[].b' walks array elements;",
+    "'a.**' encrypts every string under a, at any depth. Only strings are encrypted: numbers (vital measurements, ages) and",
+    "booleans stay as they are, which keeps the sync validators' type checks valid and identifies no one once names and IDs are sealed.",
+    "MUST stay plaintext (and so are deliberately absent): every id and patientId, type, orgId/toOrgId, hospital/facility fields,",
+    "status and date fields, state/county/payam/boma (reports, surveillance, DHIS2), hospitalNumber/geocodeId/householdNumber",
+    "(lookup keys), bookingReference and payment references (lookups), every portal* field (portal sign-in and the gateway's",
+    "credential authority), staff names and care-team fields read by the gateway, encounter statusHistory and postConsult",
+    "(the validator checks their reasons' length and structure), and icd/loinc codes on disease_alert.",
+    "alsoFor: other organisation-id fields whose organisation must also be able to read the record.",
+    "blindIndex: field -> sibling field holding its keyed fingerprint, for exact-match lookups."
+  ],
+  "version": 1,
+  "types": {
+    "patient": {
+      "fields": [
+        "firstName", "middleName", "surname", "maidenName", "name",
+        "nationalId", "dateOfBirth", "phone", "altPhone", "whatsapp", "email",
+        "preferredPharmacy", "address", "tribe", "primaryLanguage", "bloodType",
+        "allergies", "structuredAllergies.**", "directives.**", "careAlerts.**", "screenings.**",
+        "chronicConditions", "nokName", "nokRelationship", "nokPhone", "nokAddress",
+        "additionalNextOfKin.**", "payorInfo.**", "ngoName", "exemptionReason", "assignmentNote",
+        "deathCause", "deathPlace", "deathInformant", "photoUrl", "medReconciliation.**", "programEnrollment"
+      ],
+      "blindIndex": { "nationalId": "nationalIdIndex" }
+    },
+    "medical_record": {
+      "fields": [
+        "patientName", "chiefComplaint", "chiefComplaints", "historyOfPresentIllness", "reviewOfSystems.**",
+        "pastMedicalHistory", "familyHistory", "socialHistory", "drugHistory", "vitalSigns.**", "triageVitals.**",
+        "physicalExamination.**", "diagnoses.**", "prescriptions.**", "labResults.**", "treatmentPlan",
+        "attachments.**", "followUp.**", "addenda.**", "correctionReason", "fluidBalance.**"
+      ]
+    },
+    "referral": {
+      "fields": ["patientName", "reason", "notes", "outcome", "transferPackage.**", "referralAttachments.**"],
+      "alsoFor": ["toOrgId"]
+    },
+    "lab_result": {
+      "fields": [
+        "patientName", "testName", "specimen", "result", "unit", "referenceRange", "observations.**",
+        "findings", "impression", "clinicalNotes", "orderComment", "indications", "aoeAnswers.**",
+        "safetyChecks.**", "amendedFrom.**", "amendmentReason", "specimenRejectionNotes", "specimenRejectionReason",
+        "bodyRegion", "technique", "repeatReason"
+      ]
+    },
+    "prescription": {
+      "fields": [
+        "patientName", "medication", "dose", "route", "frequency", "duration", "indication",
+        "pharmacyInstructions", "stoppedReason", "medicationSafety.**", "dispenseNote", "counsellingNote",
+        "counselledPoints", "linkedProblemLabel", "patientCopies.**", "administrations[].notes", "administrations[].reason"
+      ]
+    },
+    "medication_administration": { "fields": ["patientName", "doseGiven", "reason", "notes"] },
+    "problem": { "fields": ["patientName", "name", "notes"] },
+    "history_entry": { "fields": ["patientName", "title", "relation", "factor", "detail"] },
+    "program_enrollment": { "fields": ["patientName", "programName", "outcomeReason", "notes"] },
+    "procedure": { "fields": ["patientName", "name", "bodySite", "outcome", "notes", "abortedReason", "amendmentReason", "statusReason"] },
+    "clinical_note": { "fields": ["patientName", "mrn", "patientDob", "sections.**", "addenda.**", "planActions.**"] },
+    "clinical_encounter": { "fields": ["patientName", "snapshot.**"] },
+    "consultation_progress": { "fields": ["patientName", "nextAction", "blockedReason", "milestones.**", "tasks.**", "events.**"] },
+    "triage": {
+      "fields": [
+        "patientName", "chiefComplaint", "notes", "symptomDuration", "knownAllergies", "injuryMechanism",
+        "preArrivalCare", "immediateInterventions", "handoffNote", "vitalUrgencyOverrideReason", "infectionRiskSigns"
+      ]
+    },
+    "shift_handoff": { "fields": ["notes", "patients.**"] },
+    "patient_transfer": {
+      "fields": [
+        "patientName", "reason", "handoffNotes", "summary.**", "decisionNotes", "events[].message",
+        "events[].reason", "events[].notes", "communication.**", "transport.notes", "clinicalReadiness.**"
+      ],
+      "alsoFor": ["toOrgId"]
+    },
+    "appointment": {
+      "fields": ["patientName", "patientPhone", "reason", "notes", "patientNotes", "cancelledReason", "requester.**", "insuranceSubmitted.**"]
+    },
+    "message": {
+      "fields": [
+        "patientName", "patientPhone", "subject", "body", "editHistory[].body",
+        "attachments[].name", "attachments[].base64Data", "smsDelivery.to"
+      ]
+    },
+    "conversation": { "fields": ["name", "lastMessagePreview"] },
+    "patient_note": { "fields": ["body"] },
+    "phone_note": { "fields": ["patientName", "callerName", "callerPhone", "subject", "message", "response"] },
+    "assessment": { "fields": ["patientName", "answers.**", "interpretation"] },
+    "patient_document": { "fields": ["title", "fileName", "base64Data", "note", "imageAnnotations.**"] },
+    "patient_reminder": { "fields": ["patientName", "message"] },
+    "clinician_task": { "fields": ["title", "description", "patientName"] },
+    "nutrition_screening": { "fields": ["patientName", "notes"] },
+    "immunization": { "fields": ["patientName", "dateOfBirth", "adverseReactionDetails"] },
+    "anc_visit": {
+      "fields": [
+        "motherName", "hivStatus", "syphilisTest", "malariaTest", "riskFactors", "birthPlan.**", "notes"
+      ]
+    },
+    "birth": { "fields": ["childFirstName", "childSurname", "dateOfBirth", "motherName", "fatherName"] },
+    "death": {
+      "fields": [
+        "deceasedFirstName", "deceasedSurname", "dateOfBirth", "immediateCause", "antecedentCause1",
+        "antecedentCause2", "underlyingCause", "contributingConditions"
+      ]
+    },
+    "follow_up": { "fields": ["patientName", "condition", "notes", "outcome"] },
+    "admission": {
+      "fields": [
+        "patientName", "admittingDiagnosis", "dischargeDiagnosis", "dischargeSummary", "dietaryRequirements",
+        "isolationReason", "followUpInstructions"
+      ]
+    },
+    "bed": { "fields": ["currentPatientName"] },
+    "biometric_template": { "fields": ["template", "patientName"] },
+    "specialty_care_episode": { "fields": ["patientName", "notes"] },
+    "controlled_substance_log": { "fields": ["patientName", "reason"] },
+    "blood_bank": { "fields": ["donorName", "reservedForPatient", "transfusedTo", "notes"] },
+    "billing": { "fields": ["patientName", "notes", "payerName", "memberId", "phoneNumber"] },
+    "charge": { "fields": ["patientName", "notes"] },
+    "claim": { "fields": ["patientName", "memberId", "subscriberName", "notes"] },
+    "payment": { "fields": ["patientName", "phoneNumber", "payerName", "notes"] },
+    "refund": { "fields": ["patientName", "reason", "notes"] },
+    "payment_plan": { "fields": ["patientName", "notes"] },
+    "invoice": { "fields": ["patientName", "notes"] },
+    "insurance_policy": { "fields": ["patientName", "memberId", "subscriberName", "subscriberPhone", "notes"] },
+    "eligibility_check": { "fields": ["patientName", "memberId", "responseNote"] },
+    "saved_payment_method": { "fields": ["patientName", "phoneNumber", "holderName", "label"] },
+    "ledger_entry": { "fields": ["patientName", "memo"] },
+    "audit_log": { "fields": ["details", "query"] },
+    "sync_event": { "fields": ["payloadJson"] },
+    "workflow_repair": { "fields": ["patientName", "lastError"] },
+    "patient_feedback": { "fields": ["patientName", "comment", "comments"] },
+    "provider_review": { "fields": ["patientName", "comment", "comments"] }
+  }
+}

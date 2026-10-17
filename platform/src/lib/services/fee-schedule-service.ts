@@ -37,13 +37,13 @@ interface Actor { id?: string; name?: string }
 
 // ===== CRUD =====
 
-export async function getFeeSchedule(scope?: DataScope): Promise<FeeScheduleDoc[]> {
+export async function getFeeSchedule(scope: DataScope): Promise<FeeScheduleDoc[]> {
   const all = await findByType<FeeScheduleDoc>(feeDB(), 'fee_schedule');
   all.sort((a, b) => (a.category + a.serviceName).localeCompare(b.category + b.serviceName));
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
-export async function getActiveFees(scope?: DataScope): Promise<FeeScheduleDoc[]> {
+export async function getActiveFees(scope: DataScope): Promise<FeeScheduleDoc[]> {
   return (await getFeeSchedule(scope)).filter(f => f.isActive);
 }
 
@@ -120,7 +120,7 @@ export async function deleteFee(id: string, by: Actor = {}): Promise<void> {
  */
 export async function priceFor(
   category: ChargeCategory,
-  scope?: DataScope,
+  scope: DataScope,
   serviceCode?: string,
 ): Promise<FeeScheduleDoc | null> {
   const fees = await getActiveFees(scope);
@@ -169,7 +169,8 @@ export interface ChargeContext {
   generatedBy: string;
   generatedByName: string;
   currency?: string;
-  scope?: DataScope;
+  /** Required: scopes the fee catalog and the insurance lookup to the caller's tenant. */
+  scope: DataScope;
 }
 
 /**
@@ -234,7 +235,7 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
   // never fails because of an insurance lookup.
   try {
     const { getPrimaryPolicy } = await import('./payment-service');
-    const policy = await getPrimaryPolicy(ctx.patientId);
+    const policy = await getPrimaryPolicy(ctx.patientId, ctx.scope);
     if (policy?.payerName && policy.isActive) {
       input.insuranceProvider = policy.payerName;
       const subtotal = items.reduce((sum, it) => sum + it.totalPrice, 0);

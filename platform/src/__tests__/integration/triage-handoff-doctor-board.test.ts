@@ -31,6 +31,7 @@ import {
 import { assembleDoctorWorklist } from '@/components/dashboards/DoctorDashboardPage';
 import type { PatientDoc, TriageDoc, EncounterDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const ORG = 'org-moh-ss';
 const HOSP1 = 'hosp-001';
 const DOC = 'user-dr.wani';
@@ -44,8 +45,8 @@ async function walkInTriagedAndHandedTo(providerId?: string) {
   await updateTriage(checkin.triage._id, {
     priority: 'YELLOW', assessmentSource: 'clinician',
     triagedAt: new Date().toISOString(), triagedBy: 'user-nurse', triagedByName: 'Nurse Stella',
-  } as Partial<TriageDoc>);
-  await completeTriageHandoff({
+  } as Partial<TriageDoc>, TEST_SCOPE);
+  await completeTriageHandoff({ scope: TEST_SCOPE,
     triageId: checkin.triage._id, patientId: 'pat-teny', patientName: 'Teny Makuach',
     appointmentId: checkin.appointmentId, disposition: 'general_clinic',
     assignedProviderId: providerId, assignedProviderName: providerId ? 'Dr. Wani' : undefined,
@@ -80,7 +81,7 @@ afterEach(async () => { await teardownTestDBs(); uuidCounter = 0; });
 
 it('a walk-in handed to THIS doctor at triage is on their board — with "only my patients" ON — filed In Facility', async () => {
   const checkin = await walkInTriagedAndHandedTo(DOC);
-  const triages = await getTriageByPatient('pat-teny');
+  const triages = await getTriageByPatient('pat-teny', TEST_SCOPE);
   const patient = await patientsDB().get('pat-teny') as PatientDoc;
   const encounter = await getEncounter(checkin.encounter._id) as EncounterDoc;
 
@@ -104,14 +105,14 @@ it('a walk-in handed to THIS doctor at triage is on their board — with "only m
 
 it('a triaged walk-in handed to a DIFFERENT doctor is not on this board, and not claimable as unclaimed', async () => {
   await walkInTriagedAndHandedTo('user-dr.someone-else');
-  const triages = await getTriageByPatient('pat-teny');
+  const triages = await getTriageByPatient('pat-teny', TEST_SCOPE);
   const patient = await patientsDB().get('pat-teny') as PatientDoc;
   expect(doctorRows(patient, triages, false)).toHaveLength(0);
 });
 
 it('a triaged walk-in with NO named provider still appears as an unclaimed row (any doctor can pick them up)', async () => {
   await walkInTriagedAndHandedTo(undefined);
-  const triages = await getTriageByPatient('pat-teny');
+  const triages = await getTriageByPatient('pat-teny', TEST_SCOPE);
   const patient = await patientsDB().get('pat-teny') as PatientDoc;
   const rows = doctorRows(patient, triages, false);
   expect(rows).toHaveLength(1);

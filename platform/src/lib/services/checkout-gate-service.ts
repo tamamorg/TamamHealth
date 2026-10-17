@@ -308,6 +308,7 @@ export async function evaluateCheckoutGate(
 
   // ── Payment status determined (non-critical) ──────────────────────────
   try {
+    if (!scope) throw new Error('no tenant scope');
     const { getPatientBalance } = await import('./ledger-service');
     const balance = await getPatientBalance(patientId, scope);
     // Non-critical by design: an outstanding balance is flagged, not a reason

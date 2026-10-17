@@ -21,6 +21,7 @@ import { Pill, ArrowRightLeft, X, AlertTriangle } from '@/components/icons/lucid
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -106,6 +107,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { create } = usePrescriptions();
+  const scope = useDataScope();
   const [medication, setMedication] = useState('');
   const [dose, setDose] = useState('');
   const [route, setRoute] = useState('Oral');
@@ -135,6 +137,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
   const canSubmit = !!medication.trim() && !!dose.trim() && !!frequency.trim();
   const reviewedMedication = safetyReview?.medication === medication.trim() ? safetyReview : null;
   const hasAdvisory = !!(reviewedMedication?.allergyWarnings?.length
+    || reviewedMedication?.allergyCheckUnavailable
     || reviewedMedication?.interactionWarnings?.hasInteractions
     || reviewedMedication?.duplicateWarnings?.length);
   const hasSevereAllergy = !!reviewedMedication?.allergyWarnings?.some(warning => warning.requiresOverride);
@@ -157,13 +160,16 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
             allergyWarnings: immediateAllergyWarnings,
             interactionWarnings: null,
             duplicateWarnings: null,
+            allergyCheckUnavailable: false,
           });
           return;
         }
-        const assessment = await assessPrescriptionSafety(patient._id, medication.trim());
+        if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+        const assessment = await assessPrescriptionSafety(patient._id, medication.trim(), scope);
         const review = { ...assessment, medication: medication.trim() };
         setSafetyReview(review);
         const warnings = !!(assessment.allergyWarnings?.length
+          || assessment.allergyCheckUnavailable
           || assessment.interactionWarnings?.hasInteractions
           || assessment.duplicateWarnings?.length);
         if (warnings) return;
@@ -300,6 +306,9 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
                 {t('prescribe.safetyReviewRequired')}
               </div>
               <ul className="list-disc ps-5 mt-2 space-y-1">
+                {reviewedMedication?.allergyCheckUnavailable && (
+                  <li>{t('prescribe.allergyCheckUnavailable')}</li>
+                )}
                 {reviewedMedication?.allergyWarnings?.map((warning, index) => (
                   <li key={`allergy-${index}`}>
                     {t('prescribe.allergyConflict', { allergy: warning.allergy, medication: warning.medication })}

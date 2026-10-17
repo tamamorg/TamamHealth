@@ -21,6 +21,7 @@ import {
   getEncounter,
 } from '@/lib/services/encounter-service';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 afterEach(async () => {
   await teardownTestDBs();
 });
@@ -82,9 +83,9 @@ describe('dischargeEncounter dispositions', () => {
 
     await documentCheckout(enc);
     await dischargeEncounter(enc._id, { actorId: 'user-frontdesk-1', actorRole: 'front_desk' });
-    expect(await getPatientById('pat-00001')).toMatchObject({ assignmentStatus: 'completed' });
-    expect((await getPatientById('pat-00001'))?.assignedDoctor).toBeUndefined();
-    expect((await getPatientById('pat-00001'))?.assignedNurse).toBeUndefined();
+    expect(await getPatientById('pat-00001', TEST_SCOPE)).toMatchObject({ assignmentStatus: 'completed' });
+    expect((await getPatientById('pat-00001', TEST_SCOPE))?.assignedDoctor).toBeUndefined();
+    expect((await getPatientById('pat-00001', TEST_SCOPE))?.assignedNurse).toBeUndefined();
   });
 });
 

@@ -149,13 +149,17 @@ export interface NoteRowFilter {
 
 export function filterNoteRows(rows: readonly NoteRow[], f: NoteRowFilter): NoteRow[] {
   const q = f.search.trim().toLowerCase();
+  const statusOf = (s: NoteStatus) => (f.statusLabelOf ? f.statusLabelOf(s) : s).toLowerCase();
+  // A status typed in full filters to exactly that status, so "signed"
+  // does not also pull in every "Unsigned" note by substring.
+  const exactStatus = q !== '' && rows.some(r => statusOf(r.status) === q);
   return rows.filter(r => {
     if (f.typeKey !== 'all' && r.typeKey !== f.typeKey) return false;
     if (!matchesStatus(r.status, f.status)) return false;
     if (!q) return true;
+    if (exactStatus) return statusOf(r.status) === q;
     return [
-      f.labelOf ? f.labelOf(r) : r.typeLabel, r.preview, r.author, r.date,
-      f.statusLabelOf ? f.statusLabelOf(r.status) : r.status,
+      f.labelOf ? f.labelOf(r) : r.typeLabel, r.preview, r.author, r.date, statusOf(r.status),
     ].some(s => s?.toLowerCase().includes(q));
   });
 }

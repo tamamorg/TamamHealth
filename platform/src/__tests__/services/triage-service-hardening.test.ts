@@ -32,6 +32,7 @@ import {
 } from '@/lib/services/triage-service';
 import type { PatientDoc, TriageDoc } from '@/lib/db-types';
 
+const TEST_SCOPE = { role: 'super_admin' } as import('@/lib/services/data-scope').DataScope;
 const mockLogAudit = logAuditSafe as jest.MockedFunction<typeof logAuditSafe>;
 
 afterEach(async () => {
@@ -70,7 +71,7 @@ describe('service-side recompute, not trust (item 6)', () => {
       priority: 'GREEN',
       vitalUrgencyRecommendation: 'GREEN',
       vitalUrgencyWarnings: [],
-    }))).rejects.toThrow('Saving below the recommended triage urgency');
+    }), { scope: TEST_SCOPE })).rejects.toThrow('Saving below the recommended triage urgency');
   });
 
   test('the same dangerous vitals, saved with a recorded override reason, are accepted', async () => {
@@ -79,39 +80,39 @@ describe('service-side recompute, not trust (item 6)', () => {
       priority: 'GREEN',
       vitalUrgencyOverridden: true,
       vitalUrgencyOverrideReason: 'Repeat reading pending; patient stable on room air, monitored.',
-    }));
+    }), { scope: TEST_SCOPE });
     expect(saved.priority).toBe('GREEN');
     expect(saved.vitalUrgencyOverridden).toBe(true);
   });
 
   test('omitting vitalUrgencyRecommendation entirely does not bypass the gate either', async () => {
-    await expect(createTriage(triageInput({ oxygenSaturation: '70', priority: 'GREEN' })))
+    await expect(createTriage(triageInput({ oxygenSaturation: '70', priority: 'GREEN' }), { scope: TEST_SCOPE }))
       .rejects.toThrow('Saving below the recommended triage urgency');
   });
 });
 
 describe('duplicate-active-triage guard (item 9)', () => {
   test('findActiveTriageForPatient finds a pending or seen triage but not a terminal one', async () => {
-    expect(await findActiveTriageForPatient('patient-2')).toBeUndefined();
+    expect(await findActiveTriageForPatient('patient-2', TEST_SCOPE)).toBeUndefined();
 
-    await createTriage(triageInput({ patientId: 'patient-2', status: 'discharged' }));
-    expect(await findActiveTriageForPatient('patient-2')).toBeUndefined();
+    await createTriage(triageInput({ patientId: 'patient-2', status: 'discharged' }), { scope: TEST_SCOPE });
+    expect(await findActiveTriageForPatient('patient-2', TEST_SCOPE)).toBeUndefined();
 
     // Move a fresh patient's triage to 'pending' and confirm it now resolves.
-    await createTriage(triageInput({ patientId: 'patient-3', status: 'pending' }));
-    const active = await findActiveTriageForPatient('patient-3');
+    await createTriage(triageInput({ patientId: 'patient-3', status: 'pending' }), { scope: TEST_SCOPE });
+    const active = await findActiveTriageForPatient('patient-3', TEST_SCOPE);
     expect(active?.status).toBe('pending');
   });
 
   test('a second createTriage for the same active patient is refused with a coded error', async () => {
-    await createTriage(triageInput({ patientId: 'patient-4', status: 'pending' }));
-    await expect(createTriage(triageInput({ patientId: 'patient-4', status: 'seen' })))
+    await createTriage(triageInput({ patientId: 'patient-4', status: 'pending' }), { scope: TEST_SCOPE });
+    await expect(createTriage(triageInput({ patientId: 'patient-4', status: 'seen' }), { scope: TEST_SCOPE }))
       .rejects.toBeInstanceOf(DuplicateActiveTriageError);
   });
 
   test('a NEW createTriage for a patient whose only triage is terminal is allowed', async () => {
-    await createTriage(triageInput({ patientId: 'patient-5', status: 'discharged' }));
-    const second = await createTriage(triageInput({ patientId: 'patient-5', status: 'pending' }));
+    await createTriage(triageInput({ patientId: 'patient-5', status: 'discharged' }), { scope: TEST_SCOPE });
+    const second = await createTriage(triageInput({ patientId: 'patient-5', status: 'pending' }), { scope: TEST_SCOPE });
     expect(second.patientId).toBe('patient-5');
   });
 
@@ -124,9 +125,9 @@ describe('duplicate-active-triage guard (item 9)', () => {
       patientId: 'patient-7',
       status: 'pending',
       triagedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-    }));
-    expect(await findActiveTriageForPatient('patient-7')).toBeUndefined();
-    const fresh = await createTriage(triageInput({ patientId: 'patient-7', status: 'pending' }));
+    }), { scope: TEST_SCOPE });
+    expect(await findActiveTriageForPatient('patient-7', TEST_SCOPE)).toBeUndefined();
+    const fresh = await createTriage(triageInput({ patientId: 'patient-7', status: 'pending' }), { scope: TEST_SCOPE });
     expect(fresh.patientId).toBe('patient-7');
   });
 
@@ -137,32 +138,33 @@ describe('duplicate-active-triage guard (item 9)', () => {
       airway: 'not_assessed', breathing: 'not_assessed', circulation: 'not_assessed', consciousness: 'not_assessed',
       assessmentSource: 'clerical_checkin',
       status: 'pending',
-    }));
+    }), { scope: TEST_SCOPE });
 
     // The nurse's real ETAT assessment for the SAME visit must not be
     // refused just because the placeholder is still active.
     const completed = await createTriage(
       triageInput({ patientId: 'patient-6', status: 'seen' }),
-      { resumePendingId: placeholder._id },
+      { scope: TEST_SCOPE, resumePendingId: placeholder._id },
     );
     expect(completed._id).toBe(placeholder._id);
     expect(completed.status).toBe('seen');
     expect(completed.assessmentSource).toBe('clinician');
 
     // One triage record for the visit, not two.
-    const all = await findActiveTriageForPatient('patient-6');
+    const all = await findActiveTriageForPatient('patient-6', TEST_SCOPE);
     expect(all?._id).toBe(placeholder._id);
   });
 });
 
 describe('updateTriage actor + amendment audit (item 8)', () => {
   test('a status change audits the passed-in actor, not handoffTo/handoffToName', async () => {
-    const created = await createTriage(triageInput({ patientId: 'patient-7', status: 'pending' }));
+    const created = await createTriage(triageInput({ patientId: 'patient-7', status: 'pending' }), { scope: TEST_SCOPE });
     mockLogAudit.mockClear();
 
     await updateTriage(
       created._id,
       { status: 'seen', handoffTo: 'clinician-9', handoffToName: 'Dr Someone Else' },
+      TEST_SCOPE,
       { userId: 'nurse-42', username: 'nurse.grace' },
     );
 
@@ -173,22 +175,23 @@ describe('updateTriage actor + amendment audit (item 8)', () => {
   });
 
   test('a status change with no actor logs an honest undefined rather than a wrong handoffTo value', async () => {
-    const created = await createTriage(triageInput({ patientId: 'patient-8', status: 'pending' }));
+    const created = await createTriage(triageInput({ patientId: 'patient-8', status: 'pending' }), { scope: TEST_SCOPE });
     mockLogAudit.mockClear();
 
-    await updateTriage(created._id, { status: 'seen', handoffTo: 'clinician-9' });
+    await updateTriage(created._id, { status: 'seen', handoffTo: 'clinician-9' }, TEST_SCOPE);
 
     const statusChangeCall = mockLogAudit.mock.calls.find(call => call[0] === 'TRIAGE_STATUS_CHANGE');
     expect(statusChangeCall![1]).toBeUndefined();
   });
 
   test('a pure content amendment (no status change) audits which fields changed, by name only', async () => {
-    const created = await createTriage(triageInput({ patientId: 'patient-9', status: 'seen' }));
+    const created = await createTriage(triageInput({ patientId: 'patient-9', status: 'seen' }), { scope: TEST_SCOPE });
     mockLogAudit.mockClear();
 
     await updateTriage(
       created._id,
       { chiefComplaint: 'Corrected: severe headache, not mild', temperature: '38.2' },
+      TEST_SCOPE,
       { userId: 'nurse-42', username: 'nurse.grace' },
     );
 
@@ -204,10 +207,10 @@ describe('updateTriage actor + amendment audit (item 8)', () => {
   });
 
   test('a no-op update (nothing actually changed) does not emit an amendment audit', async () => {
-    const created = await createTriage(triageInput({ patientId: 'patient-10', status: 'seen', chiefComplaint: 'Fever' }));
+    const created = await createTriage(triageInput({ patientId: 'patient-10', status: 'seen', chiefComplaint: 'Fever' }), { scope: TEST_SCOPE });
     mockLogAudit.mockClear();
 
-    await updateTriage(created._id, { chiefComplaint: 'Fever' }, { userId: 'nurse-42', username: 'nurse.grace' });
+    await updateTriage(created._id, { chiefComplaint: 'Fever' }, TEST_SCOPE, { userId: 'nurse-42', username: 'nurse.grace' });
 
     expect(mockLogAudit.mock.calls.some(call => call[0] === 'TRIAGE_AMENDED')).toBe(false);
   });
@@ -215,12 +218,12 @@ describe('updateTriage actor + amendment audit (item 8)', () => {
   test('resending an identical redCriteria array is not treated as a changed field (item F4)', async () => {
     const created = await createTriage(triageInput({
       patientId: 'patient-11', status: 'seen', priority: 'RED', redCriteria: ['unresponsive_convulsions'],
-    }));
+    }), { scope: TEST_SCOPE });
     mockLogAudit.mockClear();
 
     // A different array instance holding the SAME codes, alone, must not be
     // reported as an amendment at all — the whole point of the value compare.
-    await updateTriage(created._id, { redCriteria: ['unresponsive_convulsions'] }, { userId: 'nurse-42', username: 'nurse.grace' });
+    await updateTriage(created._id, { redCriteria: ['unresponsive_convulsions'] }, TEST_SCOPE, { userId: 'nurse-42', username: 'nurse.grace' });
     expect(mockLogAudit.mock.calls.some(call => call[0] === 'TRIAGE_AMENDED')).toBe(false);
 
     // Alongside a genuine change, the genuine field is audited but the
@@ -228,6 +231,7 @@ describe('updateTriage actor + amendment audit (item 8)', () => {
     await updateTriage(
       created._id,
       { redCriteria: ['unresponsive_convulsions'], chiefComplaint: 'Same complaint, resent' },
+      TEST_SCOPE,
       { userId: 'nurse-42', username: 'nurse.grace' },
     );
     const amendedCall = mockLogAudit.mock.calls.find(call => call[0] === 'TRIAGE_AMENDED');
@@ -262,16 +266,16 @@ describe('updateTriage vitals-safety gate only recomputes on a relevant change (
       updatedAt: new Date().toISOString(),
     } as unknown as TriageDoc & { _id: string });
 
-    const updated = await updateTriage(legacy._id, { status: 'discharged' }, { userId: 'nurse-42', username: 'nurse.grace' });
+    const updated = await updateTriage(legacy._id, { status: 'discharged' }, TEST_SCOPE, { userId: 'nurse-42', username: 'nurse.grace' });
     expect(updated.status).toBe('discharged');
     expect(updated.priority).toBe('GREEN'); // untouched — the gate never ran
   });
 
   test('an update that lowers priority against present dangerous vitals still throws without an override', async () => {
-    const created = await createTriage(triageInput({ patientId: 'patient-12', status: 'seen', priority: 'GREEN' }));
+    const created = await createTriage(triageInput({ patientId: 'patient-12', status: 'seen', priority: 'GREEN' }), { scope: TEST_SCOPE });
 
     await expect(
-      updateTriage(created._id, { oxygenSaturation: '70' }, { userId: 'nurse-42', username: 'nurse.grace' }),
+      updateTriage(created._id, { oxygenSaturation: '70' }, TEST_SCOPE, { userId: 'nurse-42', username: 'nurse.grace' }),
     ).rejects.toThrow('Saving below the recommended triage urgency');
   });
 
@@ -292,7 +296,7 @@ describe('updateTriage vitals-safety gate only recomputes on a relevant change (
       updatedAt: new Date().toISOString(),
     } as unknown as TriageDoc & { _id: string });
 
-    const updated = await updateTriage(legacy._id, { assignedRoom: 'Bay 3' } as Partial<TriageDoc>);
+    const updated = await updateTriage(legacy._id, { assignedRoom: 'Bay 3' } as Partial<TriageDoc>, TEST_SCOPE);
     expect(updated.assignedRoom).toBe('Bay 3');
   });
 });
@@ -301,7 +305,7 @@ describe('updateTriage vitals-safety gate only recomputes on a relevant change (
 // database has never seen must not block or crash triage creation.
 describe('age lookup resilience', () => {
   test('creating a triage for a patient with no local record still succeeds', async () => {
-    const saved = await createTriage(triageInput({ patientId: 'patient-unknown-to-this-device' }));
+    const saved = await createTriage(triageInput({ patientId: 'patient-unknown-to-this-device' }), { scope: TEST_SCOPE });
     expect(saved.patientId).toBe('patient-unknown-to-this-device');
   });
 
@@ -317,7 +321,7 @@ describe('age lookup resilience', () => {
     // Adult pulse 160 is RED (>150 per IITT); priority GREEN below that must
     // be refused without a recorded override — proof the patient's real age
     // (adult, from dateOfBirth) reached the recompute, not just a bare id.
-    await expect(createTriage(triageInput({ patientId: 'patient-with-dob', pulse: '160' })))
+    await expect(createTriage(triageInput({ patientId: 'patient-with-dob', pulse: '160' }), { scope: TEST_SCOPE }))
       .rejects.toThrow('Saving below the recommended triage urgency');
   });
 });

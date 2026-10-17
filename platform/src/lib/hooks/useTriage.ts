@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { makeCoalescer } from './live-reload';
+import { useState, useCallback } from 'react';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import type { TriageDoc } from '../db-types';
 import { triageDB } from '../db';
 import { useDataScope } from './useDataScope';
@@ -41,24 +41,10 @@ export function useTriage(patientId?: string) {
     }
   }, [scope, patientId]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live subscription — any triage write anywhere re-renders consumers.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = triageDB().changes({ since: 'now', live: true, include_docs: Boolean(patientId) })
-      .on('change', (change) => {
-        const doc = change.doc as TriageDoc | undefined;
-        if (!patientId || !doc || doc.patientId === patientId || change.deleted) reload.trigger();
-      })
-      .on('error', (err) => { console.warn('Triage subscription error:', err); });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load, patientId]);
+  const shouldReload = useCallback((change: { doc?: TriageDoc; deleted?: boolean }) =>
+    !patientId || !change.doc || change.doc.patientId === patientId || Boolean(change.deleted), [patientId]);
+  usePouchLiveReload({ load: load, database: triageDB, includeDocs: Boolean(patientId), shouldReload, onError: err => console.warn('Triage subscription error:', err) });
 
   // Both writes are bounded (see lib/write-timeout.ts): a triage save stalled
   // by initial-sync IndexedDB contention must reject into the ETAT form's
@@ -66,28 +52,31 @@ export function useTriage(patientId?: string) {
   // rather than leave "Save Triage" spinning forever mid-assessment.
   const create = useCallback(async (
     data: Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
-    options?: CreateTriageOptions,
+    options?: Omit<CreateTriageOptions, 'scope'>,
   ) => {
+    // The hook owns the tenant scope; callers never pass (or forget) it.
+    if (!scope) throw new Error('Cannot save triage before the session scope is ready.');
     const { createTriage } = await import('../services/triage-service');
     const doc = await withTimeout(
-      createTriage(data, options),
+      createTriage(data, { ...options, scope }),
       CLINICAL_WRITE_TIMEOUT_MS,
       'Saving triage timed out — the local database did not respond. Please try again.',
     );
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   const update = useCallback(async (id: string, updates: Partial<TriageDoc>, actor?: TriageActor) => {
+    if (!scope) throw new Error('Cannot update triage before the session scope is ready.');
     const { updateTriage } = await import('../services/triage-service');
     const doc = await withTimeout(
-      updateTriage(id, updates, actor),
+      updateTriage(id, updates, scope, actor),
       CLINICAL_WRITE_TIMEOUT_MS,
       'Updating triage timed out — the local database did not respond. Please try again.',
     );
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope]);
 
   return { triages, loading, error, create, update, reload: load };
 }

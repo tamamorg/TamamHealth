@@ -31,6 +31,7 @@ jest.mock('@/lib/validation', () => ({
 
 import { acceptReferral } from '@/lib/services/referral-service';
 import { updatePatient, mutatePatient } from '@/lib/services/patient-service';
+const SCOPE_A = { orgId: 'org-a', role: 'org_admin' } as import('@/lib/services/data-scope').DataScope;
 
 beforeEach(() => {
   for (const k of Object.keys(store)) store[k] = {};
@@ -69,12 +70,12 @@ describe('acceptReferral', () => {
 
 describe('orgId is not writable through the generic patient updates', () => {
   test('updatePatient ignores orgId without the opt-in', async () => {
-    await updatePatient('pat-1', { orgId: 'org-evil', phone: '+211911111111' } as never);
+    await updatePatient('pat-1', { orgId: 'org-evil', phone: '+211911111111' } as never, SCOPE_A);
     expect(store.patients['pat-1'].orgId).toBe('org-a');
     expect(store.patients['pat-1'].phone).toBe('+211911111111');
   });
   test('updatePatient honours orgId only with allowRehome', async () => {
-    await updatePatient('pat-1', { orgId: 'org-b' } as never, { allowRehome: true });
+    await updatePatient('pat-1', { orgId: 'org-b' } as never, SCOPE_A, { allowRehome: true });
     expect(store.patients['pat-1'].orgId).toBe('org-b');
   });
   test('mutatePatient never writes orgId', async () => {
@@ -82,7 +83,7 @@ describe('orgId is not writable through the generic patient updates', () => {
     expect(store.patients['pat-1'].orgId).toBe('org-a');
   });
   test('toOrgId cannot be written onto a patient', async () => {
-    await updatePatient('pat-1', { toOrgId: 'org-b' } as never);
+    await updatePatient('pat-1', { toOrgId: 'org-b' } as never, SCOPE_A);
     expect(store.patients['pat-1'].toOrgId).toBeUndefined();
   });
 });

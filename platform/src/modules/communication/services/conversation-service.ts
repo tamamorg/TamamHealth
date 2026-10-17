@@ -12,7 +12,7 @@ import type { ConversationDoc, MessageDoc, StaffPresence, UserDoc } from '@/lib/
 import type { DataScope } from '@/lib/services/data-scope';
 import { filterByScope } from '@/lib/services/data-scope';
 import { findByType } from '@/lib/services/db-query';
-import { UNREADABLE_MESSAGE_TEXT, createMessage, decryptMessage, encryptMessageText, retractMessage } from '@/modules/communication/services/message-service';
+import { createMessage, decryptMessage, encryptMessageText, isUnreadableMessageText, retractMessage } from '@/modules/communication/services/message-service';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { EDIT_WINDOW_MS, REMOVED_MESSAGE_PREVIEW, isMessageEditable } from '@/modules/communication/message-rules';
 
@@ -44,12 +44,80 @@ export async function getConversationsForUser(
   const { getLeftConversationIds } = await import('@/modules/communication/services/conversation-sync');
   const left = await getLeftConversationIds(userId);
   if (left.size > 0) all = all.filter(d => !left.has(d._id));
+  all = await withLatestMessage(all);
   return all.sort((a, b) => {
     const ap = a.pinnedBy?.includes(userId) ? 1 : 0;
     const bp = b.pinnedBy?.includes(userId) ? 1 : 0;
     if (ap !== bp) return bp - ap;
-    return new Date(b.lastMessageAt || b.createdAt || '').getTime() - new Date(a.lastMessageAt || a.createdAt || '').getTime();
+    return activityAt(b).localeCompare(activityAt(a));
   });
+}
+
+/** When a message was written, as a sortable ISO string. */
+function messageAt(message: MessageDoc): string {
+  return message.sentAt || message.createdAt || '';
+}
+
+/** A conversation's last activity: its newest message, or its creation. */
+function activityAt(conv: ConversationDoc): string {
+  return conv.lastMessageAt || conv.createdAt || '';
+}
+
+/**
+ * Overlay each conversation's list metadata (time, preview, sender) with its
+ * newest message as this device actually holds it.
+ *
+ * The stamps on the conversation document are a denormalised copy, and they
+ * go stale: the write after a send is best-effort and drops on a conflict, two
+ * devices sending at once leave a replication conflict whose winner may be the
+ * older stamp, and a recipient often receives the message before (or without)
+ * the conversation update. Each of those left the list ordered by an old time
+ * and showing an old line. The messages themselves are the truth.
+ */
+async function withLatestMessage(conversations: ConversationDoc[]): Promise<ConversationDoc[]> {
+  if (conversations.length === 0) return conversations;
+  const ids = new Set(conversations.map(conv => conv._id));
+  const latest = new Map<string, MessageDoc>();
+  for (const message of await findByType<MessageDoc>(messagesDB(), 'message')) {
+    const id = message.conversationId;
+    if (!id || !ids.has(id)) continue;
+    const current = latest.get(id);
+    if (!current || messageAt(message) > messageAt(current)) latest.set(id, message);
+  }
+  return Promise.all(conversations.map(async conv => {
+    // The preview is never read from the document: message text lives only on
+    // the message, where it is encrypted under the message rules. Older
+    // documents may still carry a plaintext copy; it is ignored here and
+    // dropped on the next write (see `withoutStoredText`).
+    const { lastMessagePreview: _stale, ...rest } = conv;
+    void _stale;
+    const newest = latest.get(conv._id);
+    if (!newest) return rest;
+    const at = messageAt(newest);
+    const preview = previewFor(await decryptMessage(newest));
+    // A stamp newer than any message here means the message has not arrived
+    // on this device yet; keep the stamp rather than step backwards.
+    if (conv.lastMessageAt && conv.lastMessageAt > at) return { ...rest, lastMessagePreview: preview };
+    return {
+      ...rest,
+      lastMessageAt: at,
+      lastMessagePreview: preview,
+      lastMessageFromName: newest.fromDoctorName,
+    };
+  }));
+}
+
+/**
+ * A conversation document as it may be written: without any copy of message
+ * text. The list preview used to be stored here in plaintext, outside the
+ * encryption that covers the message body, and replicated to every member's
+ * device. Every write path in this service goes through this, so documents
+ * written before the change lose their copy the next time they are touched.
+ */
+function withoutStoredText(conv: ConversationDoc): ConversationDoc {
+  const { lastMessagePreview: _dropped, ...rest } = conv;
+  void _dropped;
+  return rest;
 }
 
 /**
@@ -91,29 +159,25 @@ async function readConversationMessages(conversationId: string): Promise<Message
     { conversationId },
     { indexFields: ['type', 'conversationId'] },
   );
-  return rows
-    .map(decryptMessage)
-    .sort((a, b) => new Date(a.sentAt || '').getTime() - new Date(b.sentAt || '').getTime());
+  return (await Promise.all(rows.map(decryptMessage)))
+    // A message without `sentAt` used to sort as NaN, which leaves the
+    // comparator inconsistent and the thread order undefined.
+    .sort((a, b) => messageAt(a).localeCompare(messageAt(b)) || a._id.localeCompare(b._id));
 }
 
 /**
- * Re-derive the list preview from the newest message. Called after an edit or
- * a removal, so the list never keeps showing wording the thread no longer does.
+ * After an edit or a removal the list re-derives its preview from the thread,
+ * so all that is left to do here is drop any plaintext copy an older document
+ * still carries — otherwise the old wording would outlive the edit on disk.
  */
 async function refreshConversationPreview(conversationId: string): Promise<void> {
   try {
-    const messages = await readConversationMessages(conversationId);
-    const latest = messages[messages.length - 1];
-    if (!latest) return;
     const db = conversationsDB();
     const conv = (await db.get(conversationId)) as ConversationDoc;
-    const preview = previewFor(latest);
-    if (conv.lastMessagePreview === preview) return;
-    conv.lastMessagePreview = preview;
-    conv.updatedAt = new Date().toISOString();
-    await db.put(conv);
+    if (conv.lastMessagePreview === undefined) return;
+    await db.put({ ...withoutStoredText(conv), updatedAt: new Date().toISOString() });
   } catch {
-    /* preview is a convenience; the thread itself is already correct */
+    /* the list derives the preview anyway; the thread itself is already correct */
   }
 }
 
@@ -189,6 +253,12 @@ export async function getUnreadStaffMessagesForUser(
 
   let messages = await findByType<MessageDoc>(messagesDB(), 'message');
   messages = filterByScope(messages, scope);
+  // The bell shows the text, so it reads decrypted messages like every other
+  // view — only those in this user's conversations.
+  const mine = new Set(conversations.map(conversation => conversation._id));
+  messages = await Promise.all(messages
+    .filter(message => !!message.conversationId && mine.has(message.conversationId))
+    .map(decryptMessage));
   return selectUnreadStaffMessages(conversations, messages, userId);
 }
 
@@ -211,7 +281,7 @@ export async function getOrCreateDM(
       existing.archivedBy = existing.archivedBy.filter(id => id !== me.id);
       existing.updatedAt = new Date().toISOString();
       try {
-        const resp = await db.put(existing);
+        const resp = await db.put(withoutStoredText(existing));
         existing._rev = resp.rev;
       } catch {
         /* still usable; it will resurface on the next message */
@@ -324,13 +394,12 @@ export async function sendConversationMessage(data: {
     const db = conversationsDB();
     const conv = (await db.get(data.conversationId)) as ConversationDoc;
     conv.lastMessageAt = now;
-    conv.lastMessagePreview = previewFor(msg);
     conv.lastMessageFromName = data.fromName;
     // New activity un-archives the conversation for everyone, or a participant
     // who archived it would never learn a colleague had written to them.
     if (conv.archivedBy?.length) conv.archivedBy = [];
     conv.updatedAt = now;
-    await db.put(conv);
+    await db.put(withoutStoredText(conv));
   } catch {
     /* conversation may have been removed — message still persists */
   }
@@ -379,7 +448,7 @@ async function toggleMembership(conversationId: string, field: 'pinnedBy' | 'mut
     if (set.has(userId)) set.delete(userId); else set.add(userId);
     conv[field] = Array.from(set);
     conv.updatedAt = new Date().toISOString();
-    await db.put(conv);
+    await db.put(withoutStoredText(conv));
   } catch {
     /* noop */
   }
@@ -401,14 +470,14 @@ export async function editMessage(messageId: string, userId: string, body: strin
   try {
     const m = (await db.get(messageId)) as MessageDoc;
     if (!isMessageEditable(m, userId)) return false;
-    const current = decryptMessage(m).body;
+    const current = (await decryptMessage(m)).body;
     if (next === current) return true;
     // Text this device cannot decrypt cannot be edited from it: the save would
     // be judged against a placeholder, not against what the message says.
-    if (current === UNREADABLE_MESSAGE_TEXT) return false;
+    if (isUnreadableMessageText(current)) return false;
     const now = new Date().toISOString();
     m.editHistory = [...(m.editHistory || []), { body: m.body, at: m.editedAt || m.sentAt || m.createdAt }];
-    m.body = encryptMessageText(next);
+    m.body = await encryptMessageText(next, m.orgId);
     m.editedAt = now;
     m.updatedAt = now;
     await db.put(m);
@@ -487,7 +556,7 @@ export async function renameGroup(conversationId: string, name: string, actorId:
     if (conv.kind !== 'group' || !conv.participantIds?.includes(actorId) || !next) return false;
     conv.name = next;
     conv.updatedAt = new Date().toISOString();
-    await db.put(conv);
+    await db.put(withoutStoredText(conv));
     await logAuditSafe('RENAME_CONVERSATION', actorId, undefined, `Renamed conversation ${conversationId}`);
     return true;
   } catch {
@@ -517,7 +586,7 @@ export async function addMembers(conversationId: string, members: Member[], acto
     conv.participantIds = ids;
     conv.participantNames = names;
     conv.updatedAt = new Date().toISOString();
-    await db.put(conv);
+    await db.put(withoutStoredText(conv));
     await logAuditSafe(
       'ADD_CONVERSATION_MEMBER', actorId, undefined,
       `Gave ${added.join(', ')} access to conversation ${conversationId}`,
@@ -539,7 +608,7 @@ export async function removeMember(conversationId: string, userId: string, actor
     conv.participantIds.splice(idx, 1);
     if (conv.participantNames) conv.participantNames.splice(idx, 1);
     conv.updatedAt = new Date().toISOString();
-    await db.put(conv);
+    await db.put(withoutStoredText(conv));
     await logAuditSafe(
       'REMOVE_CONVERSATION_MEMBER', actorId, undefined,
       userId === actorId
@@ -569,7 +638,7 @@ export async function archiveConversation(conversationId: string, userId: string
     if (conv.archivedBy?.includes(userId)) return true;
     conv.archivedBy = [...(conv.archivedBy || []), userId];
     conv.updatedAt = new Date().toISOString();
-    await db.put(conv);
+    await db.put(withoutStoredText(conv));
     await logAuditSafe('ARCHIVE_CONVERSATION', userId, undefined, `Archived conversation ${conversationId} from own list; messages retained`);
     return true;
   } catch {

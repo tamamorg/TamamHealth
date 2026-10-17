@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { MedicalRecordDoc } from '../db-types';
 import { medicalRecordsDB } from '../db';
 import { useDataScope } from './useDataScope';
+import { usePouchLiveReload } from './usePouchLiveReload';
 
 export function useMedicalRecords(patientId?: string) {
   const [records, setRecords] = useState<MedicalRecordDoc[]>([]);
@@ -37,24 +38,17 @@ export function useMedicalRecords(patientId?: string) {
 
   // Live PouchDB subscription scoped to this patient: re-load when any
   // medical record changes (matching by patientId on the changed doc).
-  useEffect(() => {
-    if (!patientId) return;
-    let cancelled = false;
-    const changes = medicalRecordsDB().changes({ since: 'now', live: true, include_docs: true })
-      .on('change', (change) => {
-        if (cancelled) return;
-        const doc = change.doc as MedicalRecordDoc | undefined;
-        // Reload when: doc is for this patient, doc was deleted, or doc is missing (safety)
-        if (!doc || doc.patientId === patientId || change.deleted) {
-          loadRecords();
-        }
-      })
-      .on('error', (err) => { console.warn('Medical records subscription error:', err); });
-    return () => {
-      cancelled = true;
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [patientId, loadRecords]);
+  const shouldReload = useCallback((change: { doc?: MedicalRecordDoc; deleted?: boolean }) =>
+    // Reload when: doc is for this patient, doc was deleted, or doc is missing (safety)
+    !change.doc || change.doc.patientId === patientId || Boolean(change.deleted), [patientId]);
+  usePouchLiveReload({
+    load: loadRecords,
+    database: medicalRecordsDB,
+    includeDocs: true,
+    shouldReload,
+    enabled: Boolean(patientId),
+    onError: err => console.warn('Medical records subscription error:', err),
+  });
 
   const create = useCallback(async (data: Omit<MedicalRecordDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createMedicalRecord } = await import('../services/medical-record-service');

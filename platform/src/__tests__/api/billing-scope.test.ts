@@ -43,6 +43,9 @@ import { teardownTestDBs } from '../helpers/test-db';
 import { getAuthPayload, type AuthPayload } from '@/modules/identity/core/api-auth';
 import { createBill, getBillById } from '@/lib/services/billing-service';
 import { POST as billingPOST } from '@/app/api/billing/route';
+import type { DataScope as __DS } from '@/lib/services/data-scope';
+// Legacy fixtures carry no org; super_admin keeps the national view that filterByScope grants.
+const SUPER: __DS = { role: 'super_admin' };
 
 const mockGetAuth = getAuthPayload as jest.MockedFunction<typeof getAuthPayload>;
 
@@ -92,7 +95,7 @@ describe('/api/billing record_payment / waive scope guard', () => {
     }));
 
     expect(res.status).toBe(404);
-    const after = await getBillById(bill._id);
+    const after = await getBillById(bill._id, SUPER);
     expect(after?.amountPaid ?? 0).toBe(0);
     expect(after?.status).toBe(bill.status);
   });
@@ -106,7 +109,7 @@ describe('/api/billing record_payment / waive scope guard', () => {
     }));
 
     expect(res.status).toBe(404);
-    expect((await getBillById(bill._id))?.status).toBe(bill.status);
+    expect((await getBillById(bill._id, SUPER))?.status).toBe(bill.status);
   });
 
   test('a cashier in the owning org can still record a payment', async () => {
@@ -118,7 +121,7 @@ describe('/api/billing record_payment / waive scope guard', () => {
     }));
 
     expect(res.status).toBe(200);
-    const after = await getBillById(bill._id);
+    const after = await getBillById(bill._id, SUPER);
     expect(after?.amountPaid).toBe(100);
   });
 });

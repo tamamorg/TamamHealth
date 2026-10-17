@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useSync } from '@/lib/context';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -1044,11 +1045,11 @@ export default function FrontDeskDashboardPage() {
       setRescheduleTarget(null);
     } catch (err) {
       // A booking conflict names the clash — show it rather than a shrug.
-      showToast(err instanceof Error ? err.message : 'Failed to reschedule appointment', 'error');
+      showToast(appointmentAmendRefusalMessage(err, t) ?? (err instanceof Error ? err.message : 'Failed to reschedule appointment'), 'error');
     } finally {
       setReschedSaving(false);
     }
-  }, [rescheduleTarget, rescheduleDate, rescheduleTime, rescheduleAppointment, showToast]);
+  }, [rescheduleTarget, rescheduleDate, rescheduleTime, rescheduleAppointment, showToast, t]);
 
   // ── Reverse an appointment check-in: send the patient back to scheduled so
   //    a mistaken "arrived" can be corrected. Appointment status has no

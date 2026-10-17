@@ -17,7 +17,7 @@ import { useMemo, type ReactNode } from 'react';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
 import { useSettings } from '@/lib/settings/SettingsProvider';
-import { formatDate } from '@/lib/format-utils';
+import { formatDate, formatMoney } from '@/lib/format-utils';
 import { isTimeOverlap } from '@/lib/appointment-time';
 import { APPOINTMENT_SLOT_RELEASED_STATUSES } from '@/lib/appointment-status';
 import { staffOptionLabel, type StaffSlotContext } from '@/lib/appointment-staff';
@@ -188,12 +188,12 @@ export default function AppointmentDetailFields({
 
       {showBilling && (
       <div className="appointment-billing-panel">
-          <div><dt>Balance</dt><dd>{balance ? `SSP ${balance.toLocaleString()}` : 'Nothing due'}</dd></div>
+          <div><dt>Balance</dt><dd>{balance ? formatMoney(balance) : 'Nothing due'}</dd></div>
           {primaryPolicy ? (
             <>
               <div><dt>Insurer</dt><dd>{primaryPolicy.payerName}</dd></div>
               <div><dt>Cover from</dt><dd>{primaryPolicy.effectiveDate ? formatDate(primaryPolicy.effectiveDate) : 'Not specified'}</dd></div>
-              <div><dt>Co-pay</dt><dd>{typeof primaryPolicy.copayAmount === 'number' ? `SSP ${primaryPolicy.copayAmount.toLocaleString()}` : '—'}</dd></div>
+              <div><dt>Co-pay</dt><dd>{typeof primaryPolicy.copayAmount === 'number' ? formatMoney(primaryPolicy.copayAmount) : '—'}</dd></div>
               <div><dt>Cover status</dt><dd>{primaryPolicy.isActive ? 'Active' : 'Lapsed — patient pays'}</dd></div>
             </>
           ) : (

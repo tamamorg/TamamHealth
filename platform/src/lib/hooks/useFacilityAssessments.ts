@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { FacilityAssessmentDoc } from '../db-types';
 import { useDataScope } from './useDataScope';
-import { makeCoalescer } from './live-reload';
+import { usePouchLiveReload } from './usePouchLiveReload';
 import { facilityAssessmentsDB } from '../db';
 
 export function useFacilityAssessments() {
@@ -29,21 +29,8 @@ export function useFacilityAssessments() {
     }
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
-
   // Live PouchDB subscription — reflect writes arriving from sync/other tabs.
-  useEffect(() => {
-    let cancelled = false;
-    const reload = makeCoalescer(() => { if (!cancelled) load(); });
-    const changes = facilityAssessmentsDB().changes({ since: 'now', live: true, include_docs: false })
-      .on('change', () => reload.trigger())
-      .on('error', () => { /* transient feed errors; next load resyncs */ });
-    return () => {
-      cancelled = true;
-      reload.cancel();
-      try { changes.cancel(); } catch { /* noop */ }
-    };
-  }, [load]);
+  usePouchLiveReload({ load, database: facilityAssessmentsDB });
 
   const create = useCallback(async (data: Omit<FacilityAssessmentDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createAssessment } = await import('../services/facility-assessment-service');

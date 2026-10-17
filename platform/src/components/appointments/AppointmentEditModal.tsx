@@ -24,11 +24,12 @@ import { useAuth } from '@/lib/context';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { useUsers } from '@/lib/hooks/useUsers';
-import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, AppointmentType, PatientDoc } from '@/lib/db-types';
+import type { AppointmentDoc, AppointmentPriority, AppointmentStatus, AppointmentType, PatientDoc, UserRole } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { canAssignStaffAtFacility, canRescheduleAppointmentRole } from '@/lib/care-team-permissions';
+import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -246,7 +247,7 @@ export default function AppointmentEditModal({
         room: detail.room || undefined,
         isRecurring: Boolean(detail.recurrence),
         recurrencePattern: detail.recurrence || undefined,
-      }, currentUser?.role);
+      }, currentUser?.role as UserRole);
       if (!updated) throw new Error('The appointment could not be updated');
 
       // Provider/staff are visit assignments, not merely calendar decoration.
@@ -320,7 +321,7 @@ export default function AppointmentEditModal({
         ? t('appointments.linkedPatientUnavailable')
         : err instanceof Error && err.name === 'PatientRecordReadError'
           ? t('appointments.linkedPatientReadFailed')
-          : err instanceof Error ? err.message : 'Could not save the appointment';
+          : appointmentAmendRefusalMessage(err, t) ?? (err instanceof Error ? err.message : 'Could not save the appointment');
       // A persistent, single alert preserves the draft and avoids a stack of
       // identical toasts when reception retries an unavailable patient link.
       setSaveError(message);

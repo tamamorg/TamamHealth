@@ -20,6 +20,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
+import { authorizeJson } from '@/lib/api-json-guard';
 import type { AuthPayload } from '@/modules/identity';
 
 import { withAuditLog } from '@/lib/audit/with-audit';
@@ -39,7 +40,7 @@ async function loadScopedPatient(
 ): Promise<{ patient: PatientDoc } | { error: NextResponse }> {
   const { getPatientById } = await import('@/lib/services/patient-service');
   const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
-  const patient = await getPatientById(patientId);
+  const patient = await getPatientById(patientId, buildScopeFromAuth(auth));
   if (!patient) {
     return { error: NextResponse.json({ error: 'Patient not found' }, { status: 404 }) };
   }
@@ -123,18 +124,9 @@ export async function GET(request: NextRequest) {
 
 async function postHandler(request: NextRequest) {
   try {
-    const auth = await getAuthPayload(request);
-    if (!auth) return unauthorized();
-    if (!hasRole(auth, TRANSFER_WRITE_ROLES)) return forbidden();
-
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-    const { sanitizePayload } = await import('@/lib/validation');
-    body = sanitizePayload(body);
+    const guarded = await authorizeJson(request, TRANSFER_WRITE_ROLES);
+    if (guarded.response) return guarded.response;
+    const { auth, body } = guarded;
 
     const action = String(body.action || '').toLowerCase();
     if (!action) {

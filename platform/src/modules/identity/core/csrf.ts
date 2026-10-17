@@ -20,34 +20,16 @@
  * SameSite stance or a misbehaving browser ignores it.
  */
 
+import { resolveJwtSecret } from '@/modules/identity/core/jwt-secret';
+import { base64UrlFromBytes, bytesFromBase64Url } from '@/lib/base64url';
+
 const ENCODER = new TextEncoder();
 
 export const CSRF_COOKIE_NAME = 'tamamhealth-csrf';
 export const CSRF_HEADER_NAME = 'x-csrf-token';
 
-const HARDCODED_FALLBACK = 'tamamhealth-south-sudan-health-2026-secret-key';
-
 function getSecret(): string {
-  const s = process.env.JWT_SECRET || HARDCODED_FALLBACK;
-  if (process.env.NODE_ENV === 'production' && s === HARDCODED_FALLBACK) {
-    throw new Error('[CSRF] JWT_SECRET must be set in production.');
-  }
-  return s;
-}
-
-function base64UrlFromBytes(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function bytesFromBase64Url(s: string): Uint8Array {
-  const pad = (4 - (s.length % 4)) % 4;
-  const b64 = (s + '='.repeat(pad)).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(b64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
+  return resolveJwtSecret();
 }
 
 async function hmac(message: string): Promise<Uint8Array> {

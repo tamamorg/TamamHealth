@@ -13,6 +13,7 @@ import {
 } from './triage-service';
 import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus, BookingConflictError } from './appointment-service';
 import { jubaDate, jubaTime } from '../time-juba';
+import { orgOnlyScope } from './data-scope';
 import { APPOINTMENT_PENDING_STATUSES } from '../appointment-status';
 import { createArrivalEncounter, findOpenEncounterForPatient, hasClosedEncounterForPatient, PRE_CLINICIAN_STATUSES } from './encounter-service';
 import { getRecordsByPatient } from './medical-record-service';
@@ -393,7 +394,7 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
       encounterId: encounter._id,
     } as Omit<TriageDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>;
     try {
-      triage = await createTriage(triagePayload);
+      triage = await createTriage(triagePayload, { scope: orgOnlyScope(input.orgId) });
     } catch (error) {
       if (!(error instanceof DuplicateActiveTriageError)) throw error;
       // The patient already has an active (pending/seen, <24h) triage that
@@ -402,13 +403,13 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
       // closed without the triage itself ever reaching a terminal status, or
       // a same-day return after discharge. The clerical placeholder must
       // never dead-end here: re-attendance has to succeed.
-      const existingActive = await findActiveTriageForPatient(input.patientId);
+      const existingActive = await findActiveTriageForPatient(input.patientId, orgOnlyScope(input.orgId));
       if (!existingActive) {
         // Raced with something that resolved the duplicate between
         // createTriage's own check and this one (e.g. discharged on another
         // workstation) — retry once rather than surface a now-stale
         // conflict to the clerk.
-        triage = await createTriage(triagePayload);
+        triage = await createTriage(triagePayload, { scope: orgOnlyScope(input.orgId) });
       } else if (existingActive.facilityId === input.facilityId) {
         // Same-facility re-attendance: attach THIS check-in's encounter to
         // the existing active triage instead of fabricating a second one.
@@ -416,7 +417,7 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
         // only re-runs for fields that affect the recommendation, so a
         // 'seen' triage's real ETAT findings are never overwritten by the
         // front desk's not_assessed placeholder.
-        triage = await updateTriage(existingActive._id, { encounterId: encounter._id }, {
+        triage = await updateTriage(existingActive._id, { encounterId: encounter._id }, orgOnlyScope(input.orgId), {
           userId: input.checkedInById, username: input.checkedInByName,
         });
       } else {

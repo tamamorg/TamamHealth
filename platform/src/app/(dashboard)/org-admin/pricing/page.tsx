@@ -97,6 +97,7 @@ export default function ServicePricingPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      if (!scope) return;
       const local = await getFeeSchedule(scope);
       const byId = new Map(local.map(f => [f._id, f]));
       for (const [id, doc] of confirmed.current) {
@@ -116,7 +117,7 @@ export default function ServicePricingPage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role]);
+  }, [currentUser?.orgId, currentUser?.hospitalId, currentUser?.role, scope]);
 
   useEffect(() => { load(); }, [load]);
 

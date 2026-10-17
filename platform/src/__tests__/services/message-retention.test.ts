@@ -7,7 +7,7 @@
  * edit overwrote the wording a colleague had already read. None of them may
  * destroy content now — the thread changes, the record does not.
  */
-import { createDBMock, teardownTestDBs } from '../helpers/test-db';
+import { createDBMock, rawTestDB, teardownTestDBs } from '../helpers/test-db';
 
 jest.mock('@/lib/db', () => createDBMock());
 jest.mock('@/lib/services/sync-event-service', () => ({ emitSyncEvent: jest.fn() }));
@@ -15,7 +15,8 @@ jest.mock('@/lib/services/sync-event-service', () => ({ emitSyncEvent: jest.fn()
 import { messagesDB, conversationsDB, auditLogDB } from '@/lib/db';
 import type { AuditLogDoc, ConversationDoc, MessageDoc } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
-import { UNREADABLE_MESSAGE_TEXT, createMessage, getAllMessages, retractMessage } from '@/modules/communication/services/message-service';
+import { UNREADABLE_MESSAGE_TEXT, createMessage, decryptMessage, getAllMessages, retractMessage } from '@/modules/communication/services/message-service';
+import { encryptField } from '@/lib/field-encryption';
 import { leftConversationIds } from '@/modules/communication/services/conversation-sync';
 import {
   REMOVED_MESSAGE_PREVIEW,
@@ -49,8 +50,14 @@ async function say(conv: ConversationDoc, from: typeof ana, body: string): Promi
   });
 }
 
+/** The stored document as a member's device reads it (text decrypted). */
 async function stored(id: string): Promise<MessageDoc> {
-  return await messagesDB().get(id) as MessageDoc;
+  return decryptMessage(await raw(id));
+}
+
+/** The stored document exactly as CouchDB holds it. */
+async function raw(id: string): Promise<MessageDoc> {
+  return await rawTestDB('tamamhealth_messages').get(id) as unknown as MessageDoc;
 }
 
 async function auditActions(): Promise<string[]> {
@@ -115,8 +122,10 @@ describe('removing a message', () => {
     const msg = await say(conv, ana, 'sent to the wrong chat');
     await deleteMessage(msg._id, ana.id);
 
+    const [listed] = await getConversationsForUser(ana.id, scope);
+    expect(listed.lastMessagePreview).toBe(REMOVED_MESSAGE_PREVIEW);
     const fresh = await conversationsDB().get(conv._id) as ConversationDoc;
-    expect(fresh.lastMessagePreview).toBe(REMOVED_MESSAGE_PREVIEW);
+    expect(fresh.lastMessagePreview).toBeUndefined();
   });
 
   test('a removed message is closed to edits and reactions, and is not unread', async () => {
@@ -185,8 +194,12 @@ describe('editing a message', () => {
     const msg = await say(conv, ana, 'tpyo');
     await editMessage(msg._id, ana.id, 'typo');
 
+    const [listed] = await getConversationsForUser(ana.id, scope);
+    expect(listed.lastMessagePreview).toBe('typo');
+    // The wording before the edit must not survive anywhere outside the
+    // message's own retained history.
     const fresh = await conversationsDB().get(conv._id) as ConversationDoc;
-    expect(fresh.lastMessagePreview).toBe('typo');
+    expect(JSON.stringify(fresh)).not.toContain('tpyo');
   });
 });
 
@@ -334,7 +347,7 @@ describe('staff chat is not an organisation-wide read', () => {
   });
 });
 
-describe('server field-encryption and synced devices', () => {
+describe('message text at rest', () => {
   const KEY = Buffer.alloc(32, 7).toString('base64');
   const patientMessage = {
     patientId: 'pat-1', patientName: 'Mary', patientPhone: '', recipientType: 'patient' as const,
@@ -345,35 +358,37 @@ describe('server field-encryption and synced devices', () => {
   const saved = { ...process.env };
   afterEach(() => { process.env = { ...saved }; });
 
-  test('with sync on, message text is stored as written even when field encryption is enabled', async () => {
-    process.env.PHI_ENCRYPTION_ENABLED = 'true';
-    process.env.PHI_ENCRYPTION_KEY = KEY;
+  test('is stored under the organisation key with sync on — the database never holds the wording', async () => {
     delete process.env.NEXT_PUBLIC_SYNC_ENABLED; // sync is on by default
-
     const msg = await createMessage(patientMessage);
+    const doc = await raw(msg._id);
+    expect(doc.body).toMatch(/^oenc:v1:/);
+    expect(doc.subject).toMatch(/^oenc:v1:/);
+    expect(JSON.stringify(doc)).not.toContain('results are ready');
+    expect(msg.body).toBe('Your results are ready');
     expect((await stored(msg._id)).body).toBe('Your results are ready');
   });
 
-  test('a server-only deployment still encrypts it', async () => {
-    process.env.PHI_ENCRYPTION_ENABLED = 'true';
-    process.env.PHI_ENCRYPTION_KEY = KEY;
-    process.env.NEXT_PUBLIC_SYNC_ENABLED = 'false';
-
-    const msg = await createMessage(patientMessage);
-    expect((await stored(msg._id)).body).toMatch(/^enc:v1:/);
-    expect(msg.body).toBe('Your results are ready');
-  });
-
-  test('one message this device cannot decrypt does not empty the inbox', async () => {
-    process.env.PHI_ENCRYPTION_ENABLED = 'true';
-    process.env.PHI_ENCRYPTION_KEY = KEY;
-    process.env.NEXT_PUBLIC_SYNC_ENABLED = 'false';
-    await createMessage(patientMessage); // encrypted by a server
-    process.env = { ...saved };          // …and now read on a device with no key
+  test('stays readable when written by a server whose old field key is gone, as a placeholder', async () => {
+    // A message the retired server-only layer encrypted, read on a device
+    // that never held that key: it must not take the inbox down with it.
+    await messagesDB().put({
+      _id: 'msg-legacy', type: 'message', ...patientMessage,
+      body: encryptField('legacy text', Buffer.from(KEY, 'base64')),
+      status: 'sent', createdAt: '2026-10-08T09:00:00.000Z', updatedAt: '2026-10-08T09:00:00.000Z',
+    });
     delete process.env.PHI_ENCRYPTION_KEY;
     await createMessage({ ...patientMessage, body: 'readable' });
 
     const inbox = await getAllMessages(scope);
     expect(inbox.map(m => m.body).sort()).toEqual([UNREADABLE_MESSAGE_TEXT, 'readable'].sort());
+  });
+
+  test('plaintext written before encryption existed still reads', async () => {
+    await messagesDB().put({
+      _id: 'msg-plain', type: 'message', ...patientMessage, body: 'from before',
+      status: 'sent', createdAt: '2026-10-08T09:00:00.000Z', updatedAt: '2026-10-08T09:00:00.000Z',
+    });
+    expect((await stored('msg-plain')).body).toBe('from before');
   });
 });

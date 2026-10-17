@@ -5,7 +5,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { updatePatient } from './patient-service';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { findByType } from './db-query';
 import { resolveRegisterOrgId } from './register-org';
 import { jubaYearMonth, jubaIsInMonth, isInRange } from '../time-juba';
@@ -69,7 +69,7 @@ export async function createDeath(data: Omit<DeathRegistrationDoc, '_id' | '_rev
         deceasedDate: data.dateOfDeath || now.slice(0, 10),
         followUpStatus: 'died',
         isActive: false,
-      });
+      }, orgOnlyScope(doc.orgId));
     } catch {
       // Don't fail the death registration if the patient patch fails;
       // the death record itself is the source of truth for CRVS.

@@ -9,7 +9,7 @@ import type { WardDoc, BedDoc, AdmissionDoc, BedStatus } from '../db-types-ward'
 import type { UserRole } from '../db-types';
 import type { PaymentMethodType } from '../db-types-payments';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { findByType } from './db-query';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
@@ -23,18 +23,18 @@ const wardDB = () => getDB('tamamhealth_wards');
 
 // ===== Ward Operations =====
 
-export async function getAllWards(scope?: DataScope): Promise<WardDoc[]> {
+export async function getAllWards(scope: DataScope): Promise<WardDoc[]> {
   const db = wardDB();
   const all = (await findByType<WardDoc>(db, 'ward'))
     .sort((a, b) => a.name.localeCompare(b.name));
-  return scope ? filterByScope(all, scope) : all;
+  return filterByScope(all, scope);
 }
 
-export async function getWardById(id: string, scope?: DataScope): Promise<WardDoc | null> {
+export async function getWardById(id: string, scope: DataScope): Promise<WardDoc | null> {
   try {
     const db = wardDB();
     const ward = await db.get(id) as WardDoc;
-    return !scope || filterByScope([ward], scope).length > 0 ? ward : null;
+    return filterByScope([ward], scope).length > 0 ? ward : null;
   } catch {
     return null;
   }
@@ -68,25 +68,35 @@ export async function createWard(data: Omit<WardDoc, '_id' | '_rev' | 'type' | '
 
 // ===== Bed Operations =====
 
-export async function getBedsByWard(wardId: string, scope?: DataScope): Promise<BedDoc[]> {
+export async function getBedsByWard(wardId: string, scope: DataScope): Promise<BedDoc[]> {
   const db = wardDB();
   const rows = await findByType<BedDoc>(db, 'bed', { wardId }, { indexFields: ['type', 'wardId'] });
-  const visible = scope ? filterByScope(rows, scope) : rows;
+  const visible = filterByScope(rows, scope);
   return visible
     .sort((a, b) => a.bedNumber.localeCompare(b.bedNumber));
 }
 
-export async function getBedById(id: string, scope?: DataScope): Promise<BedDoc | null> {
+/**
+ * UNSCOPED, system-internal. Only for bookkeeping that recounts beds of a ward
+ * the caller already mutated under its own scope (see updateWardOccupancy).
+ * Never return its result to a caller or use it in a read path.
+ */
+async function getBedsByWardUnscopedForSystem(wardId: string): Promise<BedDoc[]> {
+  const rows = await findByType<BedDoc>(wardDB(), 'bed', { wardId }, { indexFields: ['type', 'wardId'] });
+  return rows.sort((a, b) => a.bedNumber.localeCompare(b.bedNumber));
+}
+
+export async function getBedById(id: string, scope: DataScope): Promise<BedDoc | null> {
   try {
     const bed = await wardDB().get(id) as BedDoc;
-    return !scope || filterByScope([bed], scope).length > 0 ? bed : null;
+    return filterByScope([bed], scope).length > 0 ? bed : null;
   } catch {
     return null;
   }
 }
 
 /** Beds visible through the same ward scope as admissions. */
-export async function getAllBeds(scope?: DataScope): Promise<BedDoc[]> {
+export async function getAllBeds(scope: DataScope): Promise<BedDoc[]> {
   const db = wardDB();
   const [beds, wards] = await Promise.all([
     findByType<BedDoc>(db, 'bed'),
@@ -98,8 +108,8 @@ export async function getAllBeds(scope?: DataScope): Promise<BedDoc[]> {
     .sort((a, b) => `${a.wardName}:${a.bedNumber}`.localeCompare(`${b.wardName}:${b.bedNumber}`));
 }
 
-export async function getAvailableBeds(wardId: string): Promise<BedDoc[]> {
-  const beds = await getBedsByWard(wardId);
+export async function getAvailableBeds(wardId: string, scope: DataScope): Promise<BedDoc[]> {
+  const beds = await getBedsByWard(wardId, scope);
   return beds.filter(b => b.status === 'available');
 }
 
@@ -230,10 +240,10 @@ async function restoreBedClaimIfUnassigned(bedId: string, admission: AdmissionDo
 
 // ===== Admission Operations =====
 
-export async function getAdmissionById(id: string, scope?: DataScope): Promise<AdmissionDoc | null> {
+export async function getAdmissionById(id: string, scope: DataScope): Promise<AdmissionDoc | null> {
   try {
     const admission = await wardDB().get(id) as AdmissionDoc;
-    return !scope || filterByScope([admission], scope).length > 0 ? admission : null;
+    return filterByScope([admission], scope).length > 0 ? admission : null;
   } catch {
     return null;
   }
@@ -507,9 +517,10 @@ async function ensureAdmissionDepositBillForAdmission(admission: AdmissionDoc): 
   }
 
   const { createBill, getBillById, getBillsByPatient } = await import('./billing-service');
-  let bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId) : null;
+  const billScope = orgOnlyScope(admission.orgId);
+  let bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId, billScope) : null;
   if (!bill) {
-    const existing = (await getBillsByPatient(admission.patientId)).find((candidate) =>
+    const existing = (await getBillsByPatient(admission.patientId, billScope)).find((candidate) =>
       candidate.items.some((item) => item.category === 'admission_deposit' && item.referenceId === admission._id));
     bill = existing ?? await createBill({
       patientId: admission.patientId,
@@ -607,7 +618,7 @@ export async function refundAdmissionDeposit(input: {
   const { issueRefund, getRefundsByPatient } = await import('./payment-service');
   const { getBillById } = await import('./billing-service');
   if (!input.reason.trim()) throw new Error('A refund requires a reason');
-  const bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId) : null;
+  const bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId, input.scope) : null;
   const payment = bill?.payments.find(item => item.id === input.paymentId);
   if (!bill || !payment || bill.patientId !== admission.patientId || bill.orgId !== admission.orgId || bill.facilityId !== admission.facilityId || bill.currency !== (admission.tariffCurrency || 'SSP')) throw new Error('Select a payment recorded on this admission deposit invoice');
   let pending = admission.admissionDepositPendingRefund;
@@ -954,7 +965,9 @@ async function updateWardOccupancy(wardId: string): Promise<void> {
   const db = wardDB();
   try {
     const ward = await db.get(wardId) as WardDoc;
-    const beds = await getBedsByWard(wardId);
+    // SYSTEM-INTERNAL: recounts beds of a ward the caller already mutated under
+    // its own scope (ward fetched by id above); no caller-visible data returned.
+    const beds = await getBedsByWardUnscopedForSystem(wardId);
     ward.occupiedBeds = beds.filter(b => b.status === 'occupied').length;
     ward.availableBeds = ward.totalBeds - ward.occupiedBeds;
     ward.updatedAt = new Date().toISOString();
@@ -978,7 +991,7 @@ async function updateWardOccupancy(wardId: string): Promise<void> {
 /**
  * Get occupancy statistics across all wards for a facility.
  */
-export async function getOccupancyStats(facilityId: string, scope?: DataScope): Promise<{
+export async function getOccupancyStats(facilityId: string, scope: DataScope): Promise<{
   totalBeds: number;
   occupiedBeds: number;
   availableBeds: number;

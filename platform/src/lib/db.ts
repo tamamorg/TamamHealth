@@ -18,6 +18,7 @@
  */
 
 import { DATABASE_SYNC_CONFIGS } from './sync/sync-config';
+import { wrapEncrypted } from './encrypted-db';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PouchDBCtor = any;
@@ -120,7 +121,29 @@ function computeServerAuthHeader(): string | null {
 }
 const serverAuthHeader = computeServerAuthHeader();
 
+/**
+ * Every database as app and server code should see it: patient-data fields
+ * are decrypted on read and encrypted on write (lib/encrypted-db.ts). The
+ * wrapper is cached alongside the raw instance it fronts.
+ */
+const encryptedDatabases: Record<string, { raw: PouchDatabase; wrapped: PouchDatabase }> = {};
+
 export function getDB(name: string): PouchDatabase {
+  const raw = getRawDB(name);
+  const cached = encryptedDatabases[name];
+  // A wiped database is recreated as a new raw instance; wrap that one.
+  if (cached && cached.raw === raw) return cached.wrapped;
+  const wrapped = wrapEncrypted(raw, name);
+  encryptedDatabases[name] = { raw, wrapped };
+  return wrapped;
+}
+
+/**
+ * The database exactly as stored — ciphertext in, ciphertext out. Only
+ * replication, conflict bookkeeping and the local wipe use it; anything that
+ * reads or writes record content goes through `getDB`.
+ */
+export function getRawDB(name: string): PouchDatabase {
   if (!databases[name]) {
     const PouchDB = loadPouchDB();
     if (IS_BROWSER) {

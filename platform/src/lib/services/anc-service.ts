@@ -1,5 +1,5 @@
-import { ancDB, messagesDB } from '../db';
-import type { ANCVisitDoc, MessageDoc } from '../db-types';
+import { ancDB } from '../db';
+import type { ANCVisitDoc } from '../db-types';
 import { v4 as uuidv4 } from 'uuid';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
@@ -58,14 +58,15 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
   // any extra wiring.
   if (data.riskLevel === 'high') {
     try {
-      const msgs = messagesDB();
       const factors = (data.riskFactors || []).join(', ') || 'unspecified';
       /* istanbul ignore next -- defensive: motherId/motherName always provided in practice */
       const safeMotherIdVal = data.motherId || '';
       const safeMotherNameVal = data.motherName || 'Unknown mother';
-      const alertDoc: MessageDoc = {
-        _id: `msg-${uuidv4()}`,
-        type: 'message',
+      // Through createMessage, not a raw put: the subject and body name the
+      // mother and her risk factors, so they take the same field encryption,
+      // audit row and sync event as every other message.
+      const { createMessage } = await import('@/modules/communication/services/message-service');
+      await createMessage({
         patientId: safeMotherIdVal,
         patientName: safeMotherNameVal,
         patientPhone: '',
@@ -75,13 +76,9 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
         subject: `HIGH-RISK PREGNANCY: ${data.motherName || 'patient'}`,
         body: `${data.motherName || 'patient'} (ANC visit ${data.visitNumber}) flagged HIGH-RISK. Risk factors: ${factors}. Schedule prompt obstetric review.`,
         channel: 'app',
-        status: 'sent',
         sentAt: now,
         orgId,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await msgs.put(alertDoc);
+      });
       await logAuditSafe('ANC_HIGH_RISK_ALERT', undefined, undefined,
         `Auto-alert: high-risk ANC visit ${data.visitNumber} for patient ${data.motherId || 'unknown'}; factors recorded on the visit`
       );
