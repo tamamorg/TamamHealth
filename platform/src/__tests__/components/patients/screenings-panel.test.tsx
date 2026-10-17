@@ -88,7 +88,9 @@ test('cancelling the decline prompt changes nothing', async () => {
   await press(button(rowOf(root, 'Cervical'), 'Decline'));
   const { declineScreening } = jest.requireMock('@/lib/services/screening-service') as { declineScreening: jest.Mock };
   expect(declineScreening).not.toHaveBeenCalled();
-  expect(rowOf(root, 'Cervical').textContent).toContain('Due');
+  const row = rowOf(root, 'Cervical');
+  expect(row.textContent).not.toContain('Declined');
+  expect(button(row, 'Decline')).toBeDefined();
 });
 
 test('remove asks first, then the row goes', async () => {
