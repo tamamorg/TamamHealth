@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, logApiError, unauthorized } from '@/modules/identity';
-import { ensureCouchGatewayUser, ensureOrganizationProvisioned } from '@/lib/sync/couch-auth';
+import { couchAdminAuthorization, ensureCouchGatewayUser, ensureOrganizationProvisioned } from '@/lib/sync/couch-auth';
 import {
   gatewayRequestAllowed,
   isCouchDocumentWrite,
@@ -29,7 +29,7 @@ import {
   type ParticipantScopeKind,
 } from '@/lib/sync/participant-scope';
 import { messageIntegrityViolation } from '@/lib/sync/message-integrity';
-import { applyPortalCredentialAuthority } from '@/lib/sync/portal-credential-authority';
+import { SERVER_HELD_BEFORE, applyPortalCredentialAuthority } from '@/lib/sync/portal-credential-authority';
 
 export const dynamic = 'force-dynamic';
 const MAX_PROXY_BODY_BYTES = 25 * 1024 * 1024;
@@ -107,6 +107,14 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
         } catch {
           return NextResponse.json({ error: 'Sync request contains invalid JSON' }, { status: 400 });
         }
+      }
+      // A single-document write names its document in the path, and every
+      // check below reads the id from the body when it has one. The two must
+      // be the same document.
+      const pathId = pathAfterDatabase[0];
+      const bodyId = (parsed as { _id?: unknown } | null)?._id;
+      if (pathId && !pathId.startsWith('_') && typeof bodyId === 'string' && bodyId !== pathId) {
+        return NextResponse.json({ error: 'Document id does not match the request path.' }, { status: 400 });
       }
       const validationError = validateGatewayWriteBody(config, request.method, path.slice(1), parsed);
       if (validationError) {
@@ -199,18 +207,45 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
     if (config.localName === 'tamamhealth_patients' && isMutatingWrite && parsed) {
       const live = liveDocsInBody(parsed, pathAfterDatabase[0]).filter(entry => entry.doc.type === 'patient');
       const current = await readCouchDocuments(databaseUrl, live.map(entry => entry.id), authorization);
+      // A patient with no live copy here is new only if the server has never
+      // held them: not as a tombstone in this database (delete, then write
+      // back), and not in the server's own register, which activation and
+      // sign-in read and which holds every organization's patients.
+      const unseen = live
+        .filter(entry => !current.has(entry.id) && Object.keys(entry.doc).some(key => key.startsWith('portal')))
+        .map(entry => entry.id);
+      const heldBefore = await readHeldIds(databaseUrl, unseen, authorization);
+      if (database !== config.localName) {
+        const inRegister = await readHeldIds(`${base}/${encodeURIComponent(config.localName)}`, unseen, couchAdminAuthorization());
+        for (const id of inRegister) heldBefore.add(id);
+      }
       const batch = (parsed as { docs?: unknown[] }).docs;
       const planted: string[] = [];
       for (const entry of live) {
-        const result = applyPortalCredentialAuthority(entry.doc, current.get(entry.id), auth.role);
+        const serverCopy = current.get(entry.id) ?? (heldBefore.has(entry.id) ? SERVER_HELD_BEFORE : null);
+        const result = applyPortalCredentialAuthority(entry.doc, serverCopy, auth.role);
         if (!result.changed) continue;
         rewritten = true;
         if (Array.isArray(batch)) batch[entry.index] = result.doc;
         else parsed = result.doc;
-        // Only a brand-new patient arriving with credentials it may not carry
-        // is worth an audit row; a stale copy of an existing patient is routine.
+        // Only a patient with no live copy arriving with credentials it may
+        // not carry is worth an audit row; a stale copy of an existing patient
+        // is routine.
         if (!current.has(entry.id)) planted.push(entry.id);
       }
+      // A patient written without an id cannot be checked against anything the
+      // server holds, and CouchDB would name it itself. Replication always
+      // sends one, so such a write carries no portal fields at all.
+      const checked = new Set(live.map(entry => entry.index));
+      (Array.isArray(batch) ? batch : [parsed]).forEach((value, index) => {
+        if (checked.has(index) || !value || typeof value !== 'object' || Array.isArray(value)) return;
+        const result = applyPortalCredentialAuthority(value as Record<string, unknown>, SERVER_HELD_BEFORE, auth.role);
+        if (!result.changed) return;
+        rewritten = true;
+        if (Array.isArray(batch)) batch[index] = result.doc;
+        else parsed = result.doc;
+        planted.push('(no id)');
+      });
       if (planted.length > 0) logBlockedWrite('sync.gateway.portal_credentials_stripped', auth, database, planted);
     }
 
@@ -478,6 +513,28 @@ async function readCouchDocuments(
   if (!response.ok) throw new Error(`Related CouchDB document lookup failed (${response.status})`);
   const body = await response.json() as { rows?: Array<{ id?: string; doc?: Record<string, unknown> | null }> };
   for (const row of body.rows || []) if (row.id && row.doc) out.set(row.id, row.doc);
+  return out;
+}
+
+/** The ids a database has ever held: live documents and tombstones alike. */
+async function readHeldIds(
+  databaseUrl: string,
+  ids: string[],
+  authorization: string,
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (ids.length === 0) return out;
+  const response = await fetch(`${databaseUrl}/_all_docs`, {
+    method: 'POST',
+    headers: { authorization, accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ keys: Array.from(new Set(ids)) }),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (response.status === 404) return out;
+  if (!response.ok) throw new Error(`Related CouchDB document lookup failed (${response.status})`);
+  const body = await response.json() as { rows?: Array<{ id?: string; value?: { rev?: string } }> };
+  for (const row of body.rows || []) if (row.id && row.value?.rev) out.add(row.id);
   return out;
 }
 

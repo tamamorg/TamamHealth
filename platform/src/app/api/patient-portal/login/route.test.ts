@@ -16,7 +16,8 @@ jest.mock('@/lib/patient-portal-demo', () => ({
   logDemoFallback: jest.fn(),
   findDemoPatientByUsername: jest.fn(),
 }));
-jest.mock('@/modules/identity/core/auth', () => ({ verifyPassword: async () => true }));
+const mockVerify = jest.fn(async (..._args: unknown[]) => true);
+jest.mock('@/modules/identity/core/auth', () => ({ verifyPassword: (...args: unknown[]) => mockVerify(...args) }));
 jest.mock('@/lib/patient-portal-otp', () => ({ otpEnabled: () => false, issueOtp: jest.fn() }));
 jest.mock('@/lib/db', () => ({
   patientsDB: () => ({ createIndex: async () => undefined, find: mockFind }),
@@ -68,4 +69,20 @@ test('rejects a blocked IP before consulting the patient database', async () => 
   expect(response.status).toBe(429);
   expect(mockFind).not.toHaveBeenCalled();
   expect(mockResetRateLimit).not.toHaveBeenCalled();
+});
+
+test('a second patient under the same username does not lock the first out', async () => {
+  mockFind.mockResolvedValue({
+    docs: [
+      { _id: 'patient-shadow', firstName: 'Not', surname: 'Asha', portalUsername: 'asha', portalPasswordHash: 'shadow-hash' },
+      { _id: 'patient-1', firstName: 'Asha', surname: 'Deng', portalUsername: 'asha', portalPasswordHash: 'hash' },
+    ],
+  });
+  mockVerify.mockImplementation(async (_password, hash) => hash === 'hash');
+  const { POST } = await import('./route');
+  const response = await POST(request({ username: 'asha', password: 'correct-password' }));
+
+  expect(response.status).toBe(200);
+  expect((await response.json()).patient.id).toBe('patient-1');
+  mockVerify.mockImplementation(async () => true);
 });

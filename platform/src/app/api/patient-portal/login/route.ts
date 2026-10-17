@@ -77,6 +77,11 @@ export async function POST(req: NextRequest) {
       [key: string]: unknown;
     };
     let found: PatientLike | null = null;
+    // A username is unique by convention, not by constraint: devices choose
+    // it offline, and two can choose the same one. Every holder is a
+    // candidate, and the password decides which of them is signing in — so a
+    // second patient under a username cannot lock the first out of theirs.
+    let candidates: PatientLike[] = [];
 
     try {
       // Dynamic import to avoid PouchDB SSR crash (same pattern as /api/patients)
@@ -86,22 +91,28 @@ export async function POST(req: NextRequest) {
       await ensureIndex(db, ['type', 'portalUsername'], 'portalUsername');
       const byUser = await db.find({
         selector: { type: 'patient', portalUsername: username },
-        limit: 1,
+        limit: 5,
       });
-      found = ((byUser.docs || [])[0] as PatientLike) || null;
+      candidates = (byUser.docs || []) as PatientLike[];
     } catch (dbErr) {
       // The real database is unreachable (e.g. no CouchDB configured in this
       // environment). In demo mode, answer from the same literal seed data the
       // client-side demo uses instead of failing the whole portal.
       if (!demoFallbackEnabled()) throw dbErr;
       logDemoFallback('login', dbErr);
-      found = (await findDemoPatientByUsername(username)) as PatientLike | null;
+      const demo = (await findDemoPatientByUsername(username)) as PatientLike | null;
+      candidates = demo ? [demo] : [];
     }
 
     // Verify the password. One generic error for "no such user" and "wrong
     // password" so the response never reveals which was wrong.
-    const passwordOk = !!found?.portalPasswordHash && await verifyPassword(password, found.portalPasswordHash);
-    if (!found || !passwordOk) {
+    for (const candidate of candidates) {
+      if (candidate.portalPasswordHash && await verifyPassword(password, candidate.portalPasswordHash)) {
+        found = candidate;
+        break;
+      }
+    }
+    if (!found) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
     }
     // A suspended account keeps its credential on purpose — suspension is
