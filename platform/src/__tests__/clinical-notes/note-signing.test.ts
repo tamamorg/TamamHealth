@@ -19,6 +19,7 @@ import {
   NoteLockedError,
   NoteSigningAuthorizationError,
 } from '@/lib/clinical-notes/note-service';
+import { requiredSectionsFor } from '@/lib/clinical-notes/note-catalog';
 import { createEncounter, getEncounter } from '@/lib/services/encounter-service';
 
 afterEach(async () => {
@@ -41,6 +42,10 @@ async function draftNote(overrides: Record<string, unknown> = {}) {
   } as never);
   // A signature needs content to attest to.
   await saveNoteSection(note._id, 'subjective', { text: 'Fever for three days.' });
+  // ...and the sections the note type requires before it can be signed.
+  for (const sectionId of requiredSectionsFor(note.noteType)) {
+    await saveNoteSection(note._id, sectionId, { text: 'Documented.' });
+  }
   return note;
 }
 

@@ -53,7 +53,12 @@ async function openNote(props: { onOpenChartTab?: (tabId: string) => void; saved
     assignedToId: DOCTOR._id, assignedToName: DOCTOR.name,
     hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital', orgId: 'org-moh-ss',
   } as never);
-  if (props.saved) await saveNoteSection(note._id, 'subjective', { text: props.saved });
+  if (props.saved) {
+    await saveNoteSection(note._id, 'subjective', { text: props.saved });
+    // A consultation is only signable with its Assessment and Plan written.
+    await saveNoteSection(note._id, 'assessment', { text: 'Malaria.' });
+    await saveNoteSection(note._id, 'plan', { text: 'Artesunate.' });
+  }
   mounted = await mountAndFlush(
     <ClinicalNoteEditor
       noteId={note._id}

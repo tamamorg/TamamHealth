@@ -42,7 +42,7 @@ import FollowUpModal, { type FollowUpModalResult } from './FollowUpModal';
 import PatientEducationModal, { type PatientEducationModalResult } from './PatientEducationModal';
 import { socialHistoryRows } from '@/lib/clinical-notes/social-history-summary';
 import {
-  NOTE_TYPE_ORDER, NOTE_TYPES, getNoteType, getSectionLabel,
+  NOTE_TYPE_ORDER, getNoteType,
   availableOptionalSections, isNoteTypeId, isDerivedSection, isHistorySection, HISTORY_SECTION_IDS,
   type NoteSectionId,
 } from '@/lib/clinical-notes/note-catalog';
@@ -51,11 +51,16 @@ import {
   removeNoteSection, changeNoteType, clearNote, signClinicalNote,
   addNoteAddendum, recordPlanAction, isNoteLocked,
   listClinicalNotes, foldRetiredNoteSections, includeChartHistory, sectionBody,
+  cosignClinicalNote, copyForwardIntoDraft, findLastSignedNote, missingRequiredSections,
 } from '@/lib/clinical-notes/note-service';
+import { isProviderRole } from '@/lib/clinical-roles';
+import { noteTypeLabel, sectionLabel } from '@/lib/clinical-notes/note-labels';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import { getRoleFlag } from '@/lib/settings/role-settings-store';
 import type { PatientDoc, PatientDocumentDoc, UserRole } from '@/lib/db-types';
-import { loadChartSnapshot, snapshotForSection } from '@/lib/clinical-notes/chart-snapshot';
+import {
+  loadChartSnapshot, snapshotForSection, snapshotLoadFailed, type ChartSnapshotInput,
+} from '@/lib/clinical-notes/chart-snapshot';
 import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
 import type {
   ClinicalNoteDoc, NoteSectionContent, NoteDiagnosis,
@@ -65,6 +70,20 @@ import Select from '@/components/Select';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 
 const AUTOSAVE_MS = 900;
+/** A chart read that has not answered by now is reported as failed, not left "loading". */
+const CHART_LOAD_TIMEOUT_MS = 20000;
+
+type ChartStatus = 'loading' | 'error' | 'ready';
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    work.then(
+      v => { clearTimeout(timer); resolve(v); },
+      e => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
 
 /** "01 Jan 1973 (52 yo)" from an ISO date of birth. */
 function dobWithAge(dob?: string): string | null {
@@ -137,6 +156,13 @@ export default function ClinicalNoteEditor({
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [showPatientEducation, setShowPatientEducation] = useState(false);
   const [problems, setProblems] = useState<SummaryProblem[]>([]);
+  // Per derived section: is the chart read still running, failed, or confirmed?
+  const [chartStatus, setChartStatus] = useState<Record<string, ChartStatus>>({});
+  // Supervisor chosen in the sign dialog ('' = no co-sign requested).
+  const [cosignFromId, setCosignFromId] = useState('');
+  const [cosigning, setCosigning] = useState(false);
+  // Most recent signed note of this type, offered by "Copy forward".
+  const [copySource, setCopySource] = useState<{ id: string; serviceDate: string } | null>(null);
 
   // Left-rail chart context: the patient record (photo/sex/phone), the
   // patient's other notes, and their most recent resulted labs.
@@ -294,7 +320,20 @@ export default function ClinicalNoteEditor({
     else router.push(`/patients/${note.patientId}?tab=${tabId}`);
   }, [note, onOpenChartTab, router]);
 
-  const locked = note ? isNoteLocked(note) : false;
+  // Read-only once attested. A note awaiting co-signature is not `isNoteLocked`
+  // (the supervisor can still act on it) but it is signed: the trainee's text
+  // is what the supervisor must co-sign, so it is not editable here either.
+  const locked = note ? note.status !== 'draft' : false;
+  const signedFinal = note ? isNoteLocked(note) : false;
+  const awaitingCosign = note?.status === 'awaiting_cosign';
+  const canCosign = Boolean(
+    awaitingCosign && currentUser && isProviderRole(currentUser.role)
+    && currentUser._id !== note?.signedBy,
+  );
+  const cosignCandidates = useMemo(
+    () => assignableUsers.filter(u => u._id !== currentUser?._id),
+    [assignableUsers, currentUser?._id],
+  );
   const typeDef = note ? getNoteType(note.noteType) : null;
 
   const sectionIds = useMemo(
@@ -326,12 +365,12 @@ export default function ClinicalNoteEditor({
       }
       return updated;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the note.', 'error');
+      showToast(err instanceof Error ? err.message : t('noteEditor.saveFailed'), 'error');
       return null;
     } finally {
       setSaving(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   // ── Section editing (optimistic + debounced write) ──────────────────────
   const handleSectionChange = useCallback((sectionId: NoteSectionId, patch: Partial<NoteSectionContent>) => {
@@ -357,16 +396,52 @@ export default function ClinicalNoteEditor({
     }, AUTOSAVE_MS);
   }, [noteId, persist]);
 
+  const markChart = useCallback((ids: readonly string[], status: ChartStatus) => {
+    if (ids.length === 0) return;
+    setChartStatus(prev => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = status;
+      return next;
+    });
+  }, []);
+
+  /**
+   * One tracked read of the chart for the given derived sections. They show
+   * "Loading chart data…" while it runs, an error with Retry when it fails or
+   * times out, and "none recorded" only once the read has confirmed it. Returns
+   * the snapshot, or null when the whole read failed.
+   */
+  const readChart = useCallback(async (
+    patientId: string,
+    ids: readonly NoteSectionId[],
+  ): Promise<ChartSnapshotInput | null> => {
+    markChart(ids, 'loading');
+    try {
+      const snapshot = await withTimeout(loadChartSnapshot(patientId, scope), CHART_LOAD_TIMEOUT_MS);
+      markChart(ids.filter(id => snapshotLoadFailed(id, snapshot)), 'error');
+      markChart(ids.filter(id => !snapshotLoadFailed(id, snapshot)), 'ready');
+      return snapshot;
+    } catch {
+      markChart(ids, 'error');
+      return null;
+    }
+  }, [markChart, scope]);
+
   const refreshDerived = useCallback(async (sectionId: NoteSectionId) => {
     if (!note) return;
-    const snapshot = await loadChartSnapshot(note.patientId, scope);
+    const snapshot = await readChart(note.patientId, [sectionId]);
+    // A failed read must never overwrite what the note holds with nothing.
+    if (!snapshot || snapshotLoadFailed(sectionId, snapshot)) {
+      showToast(t('noteEditor.refreshFailed', { section: sectionLabel(t, sectionId) }), 'error');
+      return;
+    }
     const text = snapshotForSection(sectionId, snapshot);
     await persist(() => saveNoteSection(noteId, sectionId, {
       snapshot: text,
       snapshotAt: new Date().toISOString(),
     }));
-    showToast(`${getSectionLabel(sectionId)} refreshed from the chart.`, 'success');
-  }, [note, noteId, persist, showToast, scope]);
+    showToast(t('noteEditor.refreshed', { section: sectionLabel(t, sectionId) }), 'success');
+  }, [note, noteId, persist, showToast, readChart, t]);
 
   // The chart's history changed under the note (the History popup closed):
   // re-read it into whichever history sections the note carries. One chart
@@ -378,15 +453,15 @@ export default function ClinicalNoteEditor({
     if (!note || note.status !== 'draft') return;
     const present = note.sections.map(s => s.sectionId).filter(isHistorySection);
     if (present.length === 0) return;
-    const snapshot = await loadChartSnapshot(note.patientId, scope);
-    if (snapshot.historyLoadFailed) return;
+    const snapshot = await readChart(note.patientId, present);
+    if (!snapshot || snapshot.historyLoadFailed) return;
     const at = new Date().toISOString();
     for (const sectionId of present) {
       await persist(() => saveNoteSection(noteId, sectionId, {
         snapshot: snapshotForSection(sectionId, snapshot), snapshotAt: at,
       }));
     }
-  }, [note, noteId, persist, scope]);
+  }, [note, noteId, persist, readChart]);
 
   // Read the chart into whichever derived sections of `current` are still
   // empty. Runs on first open (below) and again whenever sections appear on a
@@ -397,15 +472,17 @@ export default function ClinicalNoteEditor({
     if (!current || current.status !== 'draft') return;
     const empty = current.sections.filter(s => !s.snapshot && isDerivedSection(s.sectionId));
     if (empty.length === 0) return;
-    const snapshot = await loadChartSnapshot(current.patientId, scope);
+    const snapshot = await readChart(current.patientId, empty.map(s => s.sectionId));
+    if (!snapshot) return;
     for (const section of empty) {
+      if (snapshotLoadFailed(section.sectionId, snapshot)) continue;
       const text = snapshotForSection(section.sectionId, snapshot);
       if (!text) continue;
       await persist(() => saveNoteSection(noteId, section.sectionId, {
         snapshot: text, snapshotAt: new Date().toISOString(),
       }));
     }
-  }, [noteId, persist, scope]);
+  }, [noteId, persist, readChart]);
 
   // Fill any empty derived section on first open, so a new note opens with
   // today's observations already in it — and, for a returning patient, with
@@ -426,8 +503,9 @@ export default function ClinicalNoteEditor({
 
     let cancelled = false;
     (async () => {
-      const snapshot = await loadChartSnapshot(note.patientId, scope);
-      if (cancelled) return;
+      const derivedIds = note.sections.filter(s => isDerivedSection(s.sectionId)).map(s => s.sectionId);
+      const snapshot = await readChart(note.patientId, derivedIds);
+      if (cancelled || !snapshot) return;
 
       let current: ClinicalNoteDoc = note;
       // A failed history read is left for the next open rather than recorded
@@ -442,6 +520,7 @@ export default function ClinicalNoteEditor({
 
       const empty = current.sections.filter(s => !s.snapshot && isDerivedSection(s.sectionId));
       for (const section of empty) {
+        if (snapshotLoadFailed(section.sectionId, snapshot)) continue;
         const text = snapshotForSection(section.sectionId, snapshot);
         if (!text) continue;
         await persist(() => saveNoteSection(noteId, section.sectionId, {
@@ -547,7 +626,18 @@ export default function ClinicalNoteEditor({
   }, [note, handleSectionChange]);
 
   // ── Signing ─────────────────────────────────────────────────────────────
+  // Required sections still blank, from the live local note (pending edits
+  // included). The service enforces the same rule; this is what the dialog shows.
+  const missingSections = useMemo(() => (note ? missingRequiredSections(note) : []), [note]);
+
+  const openSignConfirm = useCallback(() => {
+    setCosignFromId('');
+    setShowSignConfirm(true);
+  }, []);
+
   const handleSign = async () => {
+    if (missingSections.length > 0) return;
+    const requested = cosignCandidates.find(u => u._id === cosignFromId);
     setShowSignConfirm(false);
     const updated = await persist(async () => {
       await flushPendingEdits();
@@ -558,15 +648,128 @@ export default function ClinicalNoteEditor({
         // colleague's) draft is refused by the attestation check even though
         // provider roles hold standing signing authority.
         signerRole: currentUser?.role,
+        requestCosignFrom: requested ? { id: requested._id, name: requested.name } : undefined,
       });
     });
     if (!updated) return;
-    showToast('Note signed.', 'success');
+    showToast(
+      requested ? t('noteEditor.signedAwaitingCosign', { name: requested.name }) : t('noteEditor.signed'),
+      'success',
+    );
     // A signed note is finished work: it is locked and the visit has moved on,
     // so the editor closes onto the patient's Visits rather than leaving the
     // clinician looking at a page with nothing left to do on it.
     openChartTab('history');
   };
+
+  const handleCosign = async () => {
+    if (!currentUser || !canCosign) return;
+    setCosigning(true);
+    try {
+      const updated = await cosignClinicalNote(noteId, currentUser._id, userName, currentUser.role);
+      if (updated) {
+        setNote(updated);
+        setSavedAt(updated.updatedAt);
+        showToast(t('noteEditor.cosigned'), 'success');
+        openChartTab('history');
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('noteEditor.cosignFailed'), 'error');
+    } finally {
+      setCosigning(false);
+    }
+  };
+
+  /** Write everything typed so far without leaving the note (Ctrl/Cmd+S). */
+  const handleSaveDraft = useCallback(async () => {
+    if (!note || locked) return;
+    setSaving(true);
+    try {
+      await flushPendingEdits();
+      setSavedAt(new Date().toISOString());
+      showToast(t('noteEditor.draftSaved'), 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t('noteEditor.saveFailed'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [note, locked, flushPendingEdits, showToast, t]);
+
+  // Does the draft already hold narrative a copy-forward would overwrite?
+  const draftHasText = useMemo(
+    () => (note?.sections ?? []).some(s => !isDerivedSection(s.sectionId)
+      && stripTemplateMarkers(s.text || '').trim().length > 0),
+    [note],
+  );
+
+  useEffect(() => {
+    if (!note?.patientId || !isDraft || !scope) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const last = await findLastSignedNote(note.patientId, note.noteType, scope, noteId);
+        if (!cancelled) setCopySource(last ? { id: last._id, serviceDate: last.serviceDate } : null);
+      } catch { if (!cancelled) setCopySource(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [note?.patientId, note?.noteType, isDraft, noteId, scope]);
+
+  const handleCopyForward = async () => {
+    if (!note || !copySource || !scope) return;
+    if (draftHasText) {
+      const ok = await confirm({
+        title: t('noteEditor.copyForwardTitle'),
+        message: t('noteEditor.copyForwardConfirm', { date: copySource.serviceDate }),
+        confirmLabel: t('noteEditor.copyForwardAction'),
+        tone: 'danger',
+      });
+      if (!ok) return;
+    }
+    try {
+      // Anything still waiting on its autosave goes first, so it cannot land
+      // on top of the copied text afterwards.
+      await flushPendingEdits();
+    } catch { /* the copy below overwrites those sections anyway */ }
+    const updated = await persist(() => copyForwardIntoDraft(noteId, scope));
+    if (updated) showToast(t('noteEditor.copyForwardDone', { date: copySource.serviceDate }), 'success');
+    else showToast(t('noteEditor.copyForwardNone'), 'error');
+  };
+
+  // ── Keyboard: Ctrl/Cmd+S saves the draft, Ctrl/Cmd+Enter opens the sign
+  //    confirm. Ignored while any other dialog is up — the shortcut belongs to
+  //    the note, not to whatever popup is in front of it. ──
+  const anyOtherDialogOpen = showAddOptional || showAddendum || showCoordination || showMedications
+    || showProblems || showAllergies || showHistory || showVitals || showPrescribe || showLabOrder
+    || showFollowUp || showPatientEducation;
+  const keyActions = useRef({ save: handleSaveDraft, sign: openSignConfirm, blocked: false, signBlocked: false });
+  useEffect(() => {
+    keyActions.current = {
+      save: handleSaveDraft,
+      sign: openSignConfirm,
+      blocked: anyOtherDialogOpen || locked,
+      signBlocked: showSignConfirm || saving,
+    };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      const k = keyActions.current;
+      if (k.blocked) return;
+      // A dialog that is not the one hosting this editor (a chart popup over a
+      // drawer, say) owns the keyboard while focus is inside it.
+      const dialog = (document.activeElement as HTMLElement | null)?.closest('[role="dialog"],[aria-modal="true"]');
+      if (dialog && !dialog.querySelector('.cn-editor')) return;
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        void k.save();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!k.signBlocked) k.sign();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleAddendum = async () => {
     const body = addendumText.trim();
@@ -575,7 +778,7 @@ export default function ClinicalNoteEditor({
     if (updated) {
       setAddendumText('');
       setShowAddendum(false);
-      showToast('Addendum added.', 'success');
+      showToast(t('noteEditor.addendumAdded'), 'success');
     }
   };
 
@@ -615,7 +818,7 @@ export default function ClinicalNoteEditor({
       targetId: (referral as { _id?: string } | null)?._id,
       createdBy: currentUser?._id,
     }));
-    showToast(`Referral created for ${result.recipient}.`, 'success');
+    showToast(t('noteEditor.referralCreated', { recipient: result.recipient }), 'success');
 
     // Best-effort: a referral out ends the clinic portion of this visit.
     // 'referred_out' is in CLOSES_CLINIC_PORTION (stamps closedAt) — that is
@@ -672,7 +875,7 @@ export default function ClinicalNoteEditor({
       targetId: followUp._id,
       createdBy: currentUser?._id,
     }));
-    showToast('Follow-up scheduled.', 'success');
+    showToast(t('noteEditor.followUpScheduled'), 'success');
   };
 
   // Patient education: PatientEducationModal collects subject/body; this
@@ -706,7 +909,7 @@ export default function ClinicalNoteEditor({
       label: 'Patient education sent',
       createdBy: currentUser?._id,
     }));
-    showToast('Patient education sent.', 'success');
+    showToast(t('noteEditor.educationSent'), 'success');
   };
 
   const handleSaveAndClose = async () => {
@@ -737,7 +940,7 @@ export default function ClinicalNoteEditor({
         } catch { /* the draft is saved regardless; navigation proceeds either way */ }
       }
     }
-    showToast('Note saved.', 'success');
+    showToast(t('noteEditor.noteSaved'), 'success');
     if (onClose) onClose();
     // Back always lands on a patient's own Notes tab; with no note to name a
     // patient, the registry is the only honest destination.
@@ -745,8 +948,8 @@ export default function ClinicalNoteEditor({
   };
 
   // ── Render ──────────────────────────────────────────────────────────────
-  if (loading) return <div className="cn-empty">Loading note…</div>;
-  if (!note || !typeDef) return <div className="cn-empty">This note could not be found.</div>;
+  if (loading) return <div className="cn-empty">{t('noteEditor.loadingNote')}</div>;
+  if (!note || !typeDef) return <div className="cn-empty">{t('noteEditor.noteNotFound')}</div>;
 
 
   return (
@@ -771,7 +974,7 @@ export default function ClinicalNoteEditor({
                   type="button"
                   className="cn-ident-name-link"
                   onClick={() => navigateAway(`/patients/${note.patientId}`)}
-                  title={`Open ${note.patientName}'s chart`}
+                  title={t('noteEditor.openChart', { name: note.patientName })}
                 >
                   {note.patientName}
                 </button>
@@ -785,25 +988,25 @@ export default function ClinicalNoteEditor({
 
           {/* The patient's other notes, newest first */}
           <div className="cn-sidebar-card">
-            <p className="cn-card-head">Patient Notes</p>
+            <p className="cn-card-head">{t('noteEditor.patientNotes')}</p>
             <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
               {siblingNotes.length === 0 && (
-                <p className="cn-card-empty">No other notes for this patient.</p>
+                <p className="cn-card-empty">{t('noteEditor.noOtherNotes')}</p>
               )}
               {siblingNotes.map(n => (
                 <button
                   key={n._id}
                   type="button"
                   className="cn-note-row"
-                  title={`${getNoteType(n.noteType).label} — ${n.serviceDate}`}
+                  title={`${noteTypeLabel(t, n.noteType)} — ${n.serviceDate}`}
                   onClick={() => navigateAway(`/notes/${n._id}`)}
                 >
                   <span className="cn-note-row-top">
-                    <b>{getNoteType(n.noteType).label}</b>
+                    <b>{noteTypeLabel(t, n.noteType)}</b>
                     <small>{new Date(`${n.serviceDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small>
                   </span>
                   <span className="cn-note-row-meta">
-                    {(n.assignedToName || n.authorName || 'Unassigned')}{isNoteLocked(n) ? ' · signed' : ' · draft'}
+                    {(n.assignedToName || n.authorName || t('noteEditor.unassigned'))}{isNoteLocked(n) ? ` · ${t('noteEditor.statusSigned')}` : n.status === 'awaiting_cosign' ? ` · ${t('noteEditor.statusAwaitingCosign')}` : ` · ${t('noteEditor.statusDraft')}`}
                   </span>
                 </button>
               ))}
@@ -813,10 +1016,10 @@ export default function ClinicalNoteEditor({
           {/* Note sections (jump + remove) */}
           <div className="cn-sidebar-card">
             <p className="cn-card-head">
-              Note Sections
+              {t('noteEditor.noteSections')}
               {!locked && optionalAvailable.length > 0 && (
                 <button type="button" className="cn-card-head-action" onClick={() => setShowAddOptional(true)}>
-                  Add Optional
+                  {t('noteEditor.addOptional')}
                 </button>
               )}
             </p>
@@ -839,22 +1042,22 @@ export default function ClinicalNoteEditor({
                           });
                         }}
                       >
-                        <span>{getSectionLabel(id)}</span>
+                        <span>{sectionLabel(t, id)}</span>
                         {filled && <span className="cn-section-nav-badge">•</span>}
                       </button>
                       {removable && (
                         <button
                           type="button"
                           className="cn-section-nav-remove"
-                          aria-label={`Remove ${getSectionLabel(id)}`}
-                          title={`Remove ${getSectionLabel(id)}`}
+                          aria-label={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
+                          title={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
                           onClick={async () => {
                             // The section's narrative goes with it, and the
                             // control is a 20px box beside the section name.
                             const ok = await confirm({
-                              title: `Remove the ${getSectionLabel(id)} section?`,
-                              message: 'Anything written in it will be removed from this note.',
-                              confirmLabel: 'Remove',
+                              title: t('noteEditor.removeSectionTitle', { section: sectionLabel(t, id) }),
+                              message: t('noteEditor.removeSectionMessage'),
+                              confirmLabel: t('noteEditor.remove'),
                               tone: 'danger',
                             });
                             if (ok) await persist(() => removeNoteSection(noteId, id));
@@ -872,10 +1075,10 @@ export default function ClinicalNoteEditor({
 
           {/* Most recent resulted labs */}
           <div className="cn-sidebar-card">
-            <p className="cn-card-head">Labs / Studies</p>
+            <p className="cn-card-head">{t('noteEditor.labsStudies')}</p>
             <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
               {recentLabs !== null && recentLabs.length === 0 && (
-                <p className="cn-card-empty">You have no previous labs for this patient.</p>
+                <p className="cn-card-empty">{t('noteEditor.noPreviousLabs')}</p>
               )}
               {(recentLabs || []).map(lab => (
                 <button
@@ -894,15 +1097,15 @@ export default function ClinicalNoteEditor({
           {/* Uploaded documents, filterable by label */}
           <div className="cn-sidebar-card">
             <p className="cn-card-head">
-              Documents
+              {t('noteEditor.documents')}
               <label className="cn-card-head-filter">
-                Filter by Label:
+                {t('noteEditor.filterByLabel')}
                 <Select
                   value={docLabel}
                   onChange={e => setDocLabel(e.target.value)}
-                  aria-label="Filter documents by label"
+                  aria-label={t('noteEditor.filterDocuments')}
                 >
-                  <option value="all">All</option>
+                  <option value="all">{t('noteEditor.all')}</option>
                   {[...new Set((documents || []).map(d => d.category))].map(cat => (
                     <option key={cat} value={cat}>{docCategoryLabel(cat)}</option>
                   ))}
@@ -911,7 +1114,7 @@ export default function ClinicalNoteEditor({
             </p>
             <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
               {documents !== null && documents.length === 0 && (
-                <p className="cn-card-empty">No documents for this patient.</p>
+                <p className="cn-card-empty">{t('noteEditor.noDocuments')}</p>
               )}
               {(documents || [])
                 .filter(doc => docLabel === 'all' || doc.category === docLabel)
@@ -943,7 +1146,7 @@ export default function ClinicalNoteEditor({
             except when the editor is embedded in a chart, where that sidebar
             is hidden and the name has nowhere else to appear. */}
         <div className="cn-header-id">
-          <h1 className="cn-header-title">Encounter Note</h1>
+          <h1 className="cn-header-title">{t('noteEditor.title')}</h1>
           <p className="cn-header-context">
             {[!showContextSidebar ? note.patientName : null, note.hospitalName].filter(Boolean).join(' · ')}
           </p>
@@ -952,59 +1155,70 @@ export default function ClinicalNoteEditor({
             fields go in the strip beneath so the button never falls onto a
             line of its own when the strip wraps. */}
         <div className="cn-header-tools">
+          {!locked && copySource && (
+            <button
+              type="button"
+              className="cn-btn"
+              onClick={handleCopyForward}
+              disabled={saving}
+              title={t('noteEditor.copyForwardHint', { date: copySource.serviceDate })}
+            >
+              <Copy size={14} /> {t('noteEditor.copyForward')}
+            </button>
+          )}
           <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
-            Clear Note
+            {t('noteEditor.clearNote')}
           </button>
         </div>
         <div className="cn-header-fields">
         <label className="cn-field">
-          <span className="cn-label">Note type</span>
+          <span className="cn-label">{t('noteEditor.noteType')}</span>
           <Select
             className="cn-select"
             value={note.noteType}
             onChange={e => handleTypeChange(e.target.value)}
             disabled={locked}
-            aria-label="Note type"
+            aria-label={t('noteEditor.noteType')}
           >
             {/* A retired type already on this note (e.g. an existing
                 Consultation doc) stays selectable as itself — a controlled
                 select whose value has no option silently displays the wrong
                 type. */}
             {!NOTE_TYPE_ORDER.includes(note.noteType) && (
-              <option value={note.noteType}>{typeDef.label}</option>
+              <option value={note.noteType}>{noteTypeLabel(t, note.noteType)}</option>
             )}
             {NOTE_TYPE_ORDER.map(id => (
-              <option key={id} value={id}>{NOTE_TYPES[id].label}</option>
+              <option key={id} value={id}>{noteTypeLabel(t, id)}</option>
             ))}
           </Select>
         </label>
 
         <label className="cn-field">
-          <span className="cn-label">Date</span>
+          <span className="cn-label">{t('noteEditor.date')}</span>
           <input
             type="date"
             className="cn-input"
             value={note.serviceDate}
             onChange={e => void persist(() => updateClinicalNote(noteId, { serviceDate: e.target.value }))}
             disabled={locked}
-            aria-label="Date of service"
+            aria-label={t('noteEditor.dateOfService')}
           />
         </label>
 
         <label className="cn-field">
-          <span className="cn-label">Time</span>
+          <span className="cn-label">{t('noteEditor.time')}</span>
           <input
             type="time"
             className="cn-input"
             value={note.serviceTime || ''}
             onChange={e => void persist(() => updateClinicalNote(noteId, { serviceTime: e.target.value }))}
             disabled={locked}
-            aria-label="Time of service"
+            aria-label={t('noteEditor.timeOfService')}
           />
         </label>
 
         <div className="cn-field">
-          <span className="cn-label">Assigned to</span>
+          <span className="cn-label">{t('noteEditor.assignedTo')}</span>
           {/* Each provider in the menu is its own assign button — picking one
               writes the assignment immediately, so handing a note to a
               colleague is one click rather than a select plus a save. */}
@@ -1026,12 +1240,27 @@ export default function ClinicalNoteEditor({
 
       {/* Note canvas */}
       <div className="cn-canvas">
-          {locked && (
+          {awaitingCosign && (
             <div className="cn-locked-banner">
               <Check size={15} />
               <span>
-                Signed by {note.signedByName} on {new Date(note.signedAt || '').toLocaleString()}.
-                This note is locked — use an addendum to record a correction.
+                {t('noteEditor.awaitingCosignBanner', {
+                  signer: note.signedByName || '',
+                  date: new Date(note.signedAt || '').toLocaleString(),
+                  requested: note.cosignRequestedName || t('noteEditor.aSupervisor'),
+                })}
+              </span>
+            </div>
+          )}
+          {signedFinal && (
+            <div className="cn-locked-banner">
+              <Check size={15} />
+              <span>
+                {t('noteEditor.signedBanner', {
+                  signer: note.signedByName || '',
+                  date: new Date(note.signedAt || '').toLocaleString(),
+                })}
+                {note.cosignedByName ? ` ${t('noteEditor.cosignedBy', { name: note.cosignedByName })}` : ''}
               </span>
             </div>
           )}
@@ -1048,6 +1277,8 @@ export default function ClinicalNoteEditor({
                 orgId={currentUser?.orgId}
                 role={currentUser?.role}
                 active={activeSection === section.sectionId}
+                chartStatus={isDraft && isDerivedSection(section.sectionId)
+                  ? (chartStatus[section.sectionId] ?? 'loading') : undefined}
                 onFocus={() => setActiveSection(section.sectionId)}
                 onChange={patch => handleSectionChange(section.sectionId, patch)}
                 onRefreshDerived={refreshDerived}
@@ -1070,7 +1301,7 @@ export default function ClinicalNoteEditor({
 
           {(note.addenda || []).length > 0 && (
             <div style={{ marginTop: 18 }}>
-              <h3 className="cn-section-name">Addenda</h3>
+              <h3 className="cn-section-name">{t('noteEditor.addenda')}</h3>
               {note.addenda!.map(a => (
                 <div className="cn-addendum" key={a.id}>
                   <p className="cn-addendum-meta">
@@ -1082,20 +1313,20 @@ export default function ClinicalNoteEditor({
             </div>
           )}
 
-          {locked && (
+          {signedFinal && (
             <button
               type="button"
               className="cn-btn"
               style={{ marginTop: 12 }}
               onClick={() => setShowAddendum(true)}
             >
-              <Plus size={14} /> Add addendum
+              <Plus size={14} /> {t('noteEditor.addAddendum')}
             </button>
           )}
 
           <p className="cn-signature">{note.assignedToName || note.authorName || userName}</p>
           {!locked && (
-            <p className="cn-signature-note">Unsigned — signature is applied when you sign the note.</p>
+            <p className="cn-signature-note">{t('noteEditor.unsignedNote')}</p>
           )}
       </div>
         </div>
@@ -1106,17 +1337,29 @@ export default function ClinicalNoteEditor({
         <button
           type="button"
           className="cn-btn cn-btn-primary"
-          onClick={() => setShowSignConfirm(true)}
+          onClick={openSignConfirm}
           disabled={locked || saving}
+          title={t('noteEditor.signHint')}
         >
-          <Check size={14} /> Sign
+          <Check size={14} /> {t('noteEditor.sign')}
         </button>
+        {canCosign && (
+          <button
+            type="button"
+            className="cn-btn cn-btn-primary"
+            onClick={handleCosign}
+            disabled={cosigning}
+            title={t('noteEditor.cosignHint', { name: note.signedByName || '' })}
+          >
+            <Check size={14} /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
+          </button>
+        )}
         <button
           type="button"
           className="cn-btn"
           onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}
         >
-          <DollarSign size={14} /> Capture Charge
+          <DollarSign size={14} /> {t('noteEditor.captureCharge')}
         </button>
         <button
           type="button"
@@ -1128,17 +1371,17 @@ export default function ClinicalNoteEditor({
                   .map(d => `• ${d.name}${d.icd11Code ? ` (ICD-11 ${d.icd11Code})` : ''}${d.startDate ? ` — since ${d.startDate}` : ''}`)
                   .join('\n');
                 const body = [dxLines, sectionBody(s)].filter(Boolean).join('\n');
-                return `${getSectionLabel(s.sectionId)}\n${body}`;
+                return `${sectionLabel(t, s.sectionId)}\n${body}`;
               })
               .join('\n\n');
             void navigator.clipboard?.writeText(text);
-            showToast('Note copied to the clipboard.', 'success');
+            showToast(t('noteEditor.copiedToClipboard'), 'success');
           }}
         >
-          <Copy size={14} /> Copy
+          <Copy size={14} /> {t('noteEditor.copy')}
         </button>
         <button type="button" className="cn-btn" onClick={() => setShowCoordination(true)}>
-          <Send size={14} /> Care Coordination
+          <Send size={14} /> {t('noteEditor.careCoordination')}
         </button>
         <button
           type="button"
@@ -1147,23 +1390,34 @@ export default function ClinicalNoteEditor({
           // This pointed at `overview`, which is the Patient summary.
           onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}
         >
-          <ClipboardList size={14} /> Care Plan
+          <ClipboardList size={14} /> {t('noteEditor.carePlan')}
         </button>
 
         <div className="cn-footer-spacer" />
 
         <span className="cn-saved">
-          {saving ? 'Saving…' : savedAt ? `Last saved ${new Date(savedAt).toLocaleTimeString()}` : ''}
+          {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
         </span>
+        {!locked && (
+          <button
+            type="button"
+            className="cn-btn"
+            onClick={() => void handleSaveDraft()}
+            disabled={saving}
+            title={t('noteEditor.saveDraftHint')}
+          >
+            <Save size={14} /> {t('noteEditor.saveDraft')}
+          </button>
+        )}
         <button
           type="button"
           className="cn-btn cn-btn-save"
           onClick={handleSaveAndClose}
           title={note.encounterId
-            ? 'Saves the draft and pauses the visit for later resume'
+            ? t('noteEditor.pauseHint')
             : undefined}
         >
-          <Save size={14} /> {note.encounterId ? 'Pause visit & close' : 'Save & Close'}
+          <Save size={14} /> {note.encounterId ? t('noteEditor.pauseClose') : t('noteEditor.saveClose')}
         </button>
       </div>
 
@@ -1172,10 +1426,10 @@ export default function ClinicalNoteEditor({
         <Modal onClose={() => setShowAddOptional(false)} width={420}>
           <div style={{ padding: 18 }}>
             <div className="modal-headband">
-              <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>Add a section</h2>
+              <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addSectionTitle')}</h2>
             </div>
             {optionalAvailable.length === 0 && (
-              <p className="cn-popover-empty">Every optional section is already in this note.</p>
+              <p className="cn-popover-empty">{t('noteEditor.allSectionsAdded')}</p>
             )}
             {optionalAvailable.map(def => (
               <button
@@ -1188,7 +1442,7 @@ export default function ClinicalNoteEditor({
                   await fillEmptyDerived(updated);
                 }}
               >
-                {def.label}
+                {sectionLabel(t, def.id)}
               </button>
             ))}
           </div>
@@ -1197,22 +1451,65 @@ export default function ClinicalNoteEditor({
 
       {/* Sign confirmation */}
       {showSignConfirm && (
-        <Modal onClose={() => setShowSignConfirm(false)} width={460}>
+        <Modal onClose={() => setShowSignConfirm(false)} width={480}>
           <div style={{ padding: 20 }}>
             <div className="modal-headband">
               <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={16} /> Sign this note?
+                <AlertTriangle size={16} /> {t('noteEditor.signTitle')}
               </h2>
               <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: '0 0 16px' }}>
-                Signing attests that this note is a true record of the encounter. It locks the note —
-                afterwards, corrections can only be recorded as an addendum, which stays visible
-                alongside the original.
+                {t('noteEditor.signBody')}
               </p>
             </div>
+            {missingSections.length > 0 && (
+              <div role="alert" style={{ margin: '0 0 14px', fontSize: 13.5 }}>
+                <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--color-danger-text, var(--color-danger))' }}>
+                  {t('noteEditor.missingTitle')}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+                  {missingSections.map(id => (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        className="cn-ident-name-link"
+                        onClick={() => {
+                          setShowSignConfirm(false);
+                          setActiveSection(id);
+                          document.getElementById(`cn-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }}
+                      >
+                        {sectionLabel(t, id)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {missingSections.length === 0 && cosignCandidates.length > 0 && (
+              <label className="cn-field" style={{ margin: '0 0 14px', display: 'block' }}>
+                <span className="cn-label">{t('noteEditor.requestCosign')}</span>
+                <Select
+                  className="cn-select"
+                  value={cosignFromId}
+                  onChange={e => setCosignFromId(e.target.value)}
+                  aria-label={t('noteEditor.requestCosign')}
+                >
+                  <option value="">{t('noteEditor.noCosign')}</option>
+                  {cosignCandidates.map(u => (
+                    <option key={u._id} value={u._id}>{u.name}</option>
+                  ))}
+                </Select>
+              </label>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" className="cn-btn" onClick={() => setShowSignConfirm(false)}>Cancel</button>
-              <button type="button" className="cn-btn cn-btn-primary" onClick={handleSign}>
-                <Check size={14} /> Sign note
+              <button type="button" className="cn-btn" onClick={() => setShowSignConfirm(false)}>{t('noteEditor.cancel')}</button>
+              <button
+                type="button"
+                className="cn-btn cn-btn-primary"
+                onClick={handleSign}
+                disabled={missingSections.length > 0}
+              >
+                <Check size={14} /> {cosignFromId ? t('noteEditor.signRequestCosign') : t('noteEditor.signNote')}
               </button>
             </div>
           </div>
@@ -1224,27 +1521,27 @@ export default function ClinicalNoteEditor({
         <Modal onClose={() => setShowAddendum(false)} width={520}>
           <div style={{ padding: 20 }}>
             <div className="modal-headband">
-              <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>Add an addendum</h2>
+              <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addendumTitle')}</h2>
               <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
-                The original note is not changed. Your correction is appended and attributed to you.
+                {t('noteEditor.addendumHelp')}
               </p>
             </div>
             <textarea
               className="cn-textarea"
               value={addendumText}
               onChange={e => setAddendumText(e.target.value)}
-              placeholder="What needs correcting or clarifying…"
-              aria-label="Addendum text"
+              placeholder={t('noteEditor.addendumPlaceholder')}
+              aria-label={t('noteEditor.addendumText')}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" className="cn-btn" onClick={() => setShowAddendum(false)}>Cancel</button>
+              <button type="button" className="cn-btn" onClick={() => setShowAddendum(false)}>{t('noteEditor.cancel')}</button>
               <button
                 type="button"
                 className="cn-btn cn-btn-primary"
                 onClick={handleAddendum}
                 disabled={!addendumText.trim()}
               >
-                Add addendum
+                {t('noteEditor.addAddendum')}
               </button>
             </div>
           </div>

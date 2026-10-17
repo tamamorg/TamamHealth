@@ -1248,6 +1248,8 @@ svg.lucide:not([style*="color"]) {
   .cn-segmented button[aria-pressed='true'],
   .cn-dx-acuity button[aria-pressed='true'],
   .labord-btn--primary,
+  .tamam-nv-btn--primary,
+  .tamam-nl-chip[aria-pressed="true"],
   .labord-toggle--on,
   .labord-step--current,
   .labord-step--done,

@@ -13,7 +13,8 @@
  * ProceduresSection / ProgramsSection read+add pattern instead.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FOCUSED_ROW_STYLE, rowActivation } from './rowFocus';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
@@ -43,9 +44,11 @@ interface ImmunizationsSectionProps {
   canRecord: boolean;
   /** Facility name for the dose record, resolved by the chart page. */
   facilityName?: string;
+  /** Deep-link focus: the immunization `_id` to scroll to and highlight. */
+  focusId?: string;
 }
 
-export default function ImmunizationsSection({ patient, patientName, canRecord, facilityName }: ImmunizationsSectionProps) {
+export default function ImmunizationsSection({ patient, patientName, canRecord, facilityName, focusId }: ImmunizationsSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -76,6 +79,11 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
     const query = search.trim().toLowerCase();
     return query ? rows.filter(im => `${im.vaccine} ${im.status} ${im.site || ''} ${im.batchNumber || ''} ${im.dateGiven || ''}`.toLowerCase().includes(query)) : rows;
   }, [rows, search]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`immunization-row-${focusId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusId, visibleRows]);
 
   const resetForm = () => {
     setVaccine(VACCINE_NAMES[0]);
@@ -199,7 +207,18 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 {visibleRows.map(im => {
                   const s = STATUS_STYLE[im.status] || STATUS_STYLE.scheduled;
                   return (
-                    <tr key={im._id} style={im.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}>
+                    <tr
+                      key={im._id}
+                      id={`immunization-row-${im._id}`}
+                      // A dose is opened for correction from its row; the same
+                      // gate as the Correct button (recorders, not voided doses).
+                      {...(canRecord && im.recordStatus !== 'entered_in_error' ? rowActivation(() => startEdit(im), `${t('chart.correct')} — ${im.vaccine}`) : {})}
+                      className={canRecord && im.recordStatus !== 'entered_in_error' ? 'tamam-clickable-row' : undefined}
+                      style={{
+                        ...(im.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : {}),
+                        ...(im._id === focusId ? FOCUSED_ROW_STYLE : {}),
+                      }}
+                    >
                       <td style={{ fontWeight: 600 }}>
                         {im.vaccine}
                         {im.adverseReaction && (

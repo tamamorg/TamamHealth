@@ -108,6 +108,9 @@ export interface ClinicalNoteDoc extends BaseDoc {
   signedBy?: string;
   signedByName?: string;
   signedAt?: string;
+  /** Supervisor the signer asked to countersign (set with `awaiting_cosign`). */
+  cosignRequestedId?: string;
+  cosignRequestedName?: string;
   cosignedBy?: string;
   cosignedByName?: string;
   cosignedAt?: string;

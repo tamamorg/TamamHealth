@@ -9,6 +9,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { clickable } from '@/lib/a11y';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import { Pill, FlaskConical } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -23,6 +25,8 @@ type OrderTypeFilter = 'all' | 'drug' | 'lab';
 
 interface UnifiedOrderRow {
   id: string;
+  /** Which collection the order lives in; decides where a row click goes. */
+  source: 'drug' | 'lab';
   orderNumber: string;
   date: string;
   orderType: 'Drug order' | 'Lab order' | 'Imaging order';
@@ -47,6 +51,15 @@ const STATUS_BADGE: Record<string, string> = {
   discontinued: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
+/**
+ * Where an order row leads: a drug order opens its prescription in Medications,
+ * a lab/imaging order opens its result in Results.
+ */
+export function orderRowHref(pathname: string, row: Pick<UnifiedOrderRow, 'id' | 'source'>): string {
+  const tab = row.source === 'drug' ? 'prescriptions' : 'labs';
+  return `${pathname}?${new URLSearchParams({ tab, focus: row.id }).toString()}`;
+}
+
 interface OrdersSectionProps {
   patientId: string;
   canPrescribe: boolean;
@@ -59,6 +72,8 @@ interface OrdersSectionProps {
 }
 
 export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, onAddDrug, onAddLab, focusId }: OrdersSectionProps) {
+  const router = useRouter();
+  const pathname = usePathname() || `/patients/${patientId}`;
   const { prescriptions } = usePrescriptions(patientId);
   const { results } = useLabResults(patientId);
   const [typeFilter, setTypeFilter] = useState<OrderTypeFilter>('all');
@@ -70,6 +85,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
     const drugRows: UnifiedOrderRow[] = (prescriptions || [])
       .map(rx => ({
         id: rx._id,
+        source: 'drug',
         orderNumber: `ORD-${rx._id.slice(-6).toUpperCase()}`,
         date: rx.createdAt,
         orderType: 'Drug order',
@@ -81,6 +97,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
     const labRows: UnifiedOrderRow[] = (results || [])
       .map(l => ({
         id: l._id,
+        source: 'lab',
         orderNumber: `ORD-${l._id.slice(-6).toUpperCase()}`,
         date: l.orderedAt || l.createdAt,
         // orderKind is the authoritative discriminator; isImagingStudy is a
@@ -155,7 +172,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         </div>
       )}
 
-      <table className="tamam-table tamam-table--fixed">
+      <table className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -187,6 +204,8 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
               <tr
                 key={r.id}
                 id={`order-row-${r.id}`}
+                {...clickable(() => router.push(orderRowHref(pathname, r)), { label: `Open ${r.source === 'drug' ? 'prescription' : 'result'} — ${r.description}` })}
+                className="tamam-clickable-row"
                 style={r.id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
               >
                 <td className="font-mono" style={{ fontSize: 11 }}>{r.orderNumber}</td>

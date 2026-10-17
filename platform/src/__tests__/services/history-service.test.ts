@@ -190,6 +190,9 @@ describe('bringing the chart’s history into a note', () => {
   it('does not touch a note awaiting co-signature — it is attested, though not locked', async () => {
     const note = await createClinicalNote({ ...noteIdentity, noteType: 'soap' } as never);
     await saveNoteSection(note._id, 'subjective', { text: 'Cough for three days.' });
+    // A consultation can't be signed without an assessment and a plan.
+    await saveNoteSection(note._id, 'assessment', { text: 'Working diagnosis recorded.' });
+    await saveNoteSection(note._id, 'plan', { text: 'Treat and review.' });
     const attested = await signClinicalNote(note._id, {
       signedBy: 'user-dr-wani', signedByName: 'Dr. Wani', signerRole: 'doctor', awaitingCosign: true,
     });
@@ -204,6 +207,9 @@ describe('bringing the chart’s history into a note', () => {
   it('does not touch a signed note', async () => {
     const note = await createClinicalNote({ ...noteIdentity, noteType: 'soap' } as never);
     await saveNoteSection(note._id, 'subjective', { text: 'Cough for three days.' });
+    // A consultation can't be signed without an assessment and a plan.
+    await saveNoteSection(note._id, 'assessment', { text: 'Working diagnosis recorded.' });
+    await saveNoteSection(note._id, 'plan', { text: 'Treat and review.' });
     await signClinicalNote(note._id, { signedBy: 'user-dr-wani', signedByName: 'Dr. Wani', signerRole: 'doctor' });
 
     await expect(includeChartHistory(note._id, texts)).rejects.toThrow();

@@ -116,6 +116,12 @@ export interface ChartSnapshotInput {
    * than record that the chart's history was offered when it never loaded.
    */
   historyLoadFailed?: boolean;
+  /** True when the medication read threw (as opposed to returning none). */
+  prescriptionsLoadFailed?: boolean;
+  /** True when the vitals read threw on both sources (records and triage). */
+  vitalsLoadFailed?: boolean;
+  /** True when the problem-list read threw (feeds Past Medical History). */
+  problemsLoadFailed?: boolean;
   /** Procedures on the chart — the ones already done read as surgical history. */
   procedures?: ProcedureDoc[];
 }
@@ -163,6 +169,24 @@ export function snapshotForSection(
 }
 
 /**
+ * Whether the read behind this derived section failed, so the editor can show
+ * an error with Retry instead of "none recorded". An empty result and a failed
+ * read both arrive as empty text; this is how they are told apart.
+ */
+export function snapshotLoadFailed(sectionId: NoteSectionId, input: ChartSnapshotInput): boolean {
+  switch (sectionId) {
+    case 'vitals': return Boolean(input.vitalsLoadFailed);
+    case 'medications': return Boolean(input.prescriptionsLoadFailed);
+    case 'allergies': return Boolean(input.allergiesLoadFailed);
+    case 'past_medical_history':
+      return Boolean(input.historyLoadFailed || input.problemsLoadFailed);
+    case 'family_history':
+    case 'social_history': return Boolean(input.historyLoadFailed);
+    default: return false;
+  }
+}
+
+/**
  * Fetch everything the derived sections need, in one pass.
  *
  * Each source is independently guarded: a chart with no problem list must still
@@ -174,7 +198,7 @@ export function snapshotForSection(
  * would hide, especially once that text is frozen into a signed note.
  */
 export async function loadChartSnapshot(patientId: string, scope?: DataScope): Promise<ChartSnapshotInput> {
-  const [prescriptions, allergies, problems, vitalsRecord, historyEntries, procedures] = await Promise.all([
+  const [prescriptions, allergies, problems, vitals, historyEntries, procedures] = await Promise.all([
     safelyTagged(async () => {
       const { getPrescriptionsByPatient } = await import('../services/prescription-service');
       return getPrescriptionsByPatient(patientId, scope);
@@ -215,7 +239,10 @@ export async function loadChartSnapshot(patientId: string, scope?: DataScope): P
     prescriptions: prescriptions.value,
     allergies: allergies.value,
     problems: problems.value,
-    vitalsRecord,
+    vitalsRecord: vitals.value,
+    vitalsLoadFailed: vitals.failed,
+    prescriptionsLoadFailed: prescriptions.failed,
+    problemsLoadFailed: problems.failed,
     allergiesLoadFailed: allergies.failed,
     historyEntries: historyEntries.value,
     historyLoadFailed: historyEntries.failed,
@@ -237,17 +264,29 @@ export async function loadChartSnapshot(patientId: string, scope?: DataScope): P
 async function newestVitals(
   patientId: string,
   scope?: DataScope,
-): Promise<Partial<Pick<MedicalRecordDoc, 'vitalSigns' | 'triageVitals'>> | null> {
-  const [records, triages] = await Promise.all([
-    safely(async () => {
+): Promise<{ value: Partial<Pick<MedicalRecordDoc, 'vitalSigns' | 'triageVitals'>> | null; failed: boolean }> {
+  const [recordsRead, triagesRead] = await Promise.all([
+    safelyTagged(async () => {
       const { getRecordsByPatient } = await import('../services/medical-record-service');
       return getRecordsByPatient(patientId, scope);
     }, [] as MedicalRecordDoc[]),
-    safely(async () => {
+    safelyTagged(async () => {
       const { getTriageByPatient } = await import('../services/triage-service');
       return getTriageByPatient(patientId, scope);
     }, [] as TriageDoc[]),
   ]);
+  const records = recordsRead.value;
+  const triages = triagesRead.value;
+  // Either source failing leaves the picture incomplete, and "no vitals" would
+  // then be a claim nobody established — so it is reported as a failed read.
+  const failed = recordsRead.failed || triagesRead.failed;
+  return { value: pickNewestVitals(records, triages), failed };
+}
+
+function pickNewestVitals(
+  records: MedicalRecordDoc[],
+  triages: TriageDoc[],
+): Partial<Pick<MedicalRecordDoc, 'vitalSigns' | 'triageVitals'>> | null {
 
   // The shared merge picks the newest entry across both sources (record wins
   // a same-instant tie) — resolve it back to the original doc so the return

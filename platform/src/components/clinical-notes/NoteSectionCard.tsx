@@ -23,6 +23,8 @@ import {
 import ShortcutSearchInput from './shortcuts/ShortcutSearchInput';
 import { useShortcutSearch } from './shortcuts/useShortcutSearch';
 import AssessmentSection from './assessment/AssessmentSection';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { sectionLabel } from '@/lib/clinical-notes/note-labels';
 import { getSectionDef, type NoteSectionId } from '@/lib/clinical-notes/note-catalog';
 import { actionsForSection, type NoteSectionActionId } from '@/lib/clinical-notes/section-actions';
 import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
@@ -65,13 +67,23 @@ interface NoteSectionCardProps {
   /** Signed-in role, so an action that navigates is only offered when its
    *  destination is reachable — see `actionsForSection`. */
   role?: string;
+  /**
+   * Where a derived section's chart read stands. Only passed while the note is
+   * a draft. 'loading' and 'error' replace the "none recorded" wording: an
+   * empty box before the read has finished (or after it failed) must never
+   * look like a confirmed empty chart — e.g. a patient with a severe allergy.
+   * 'ready' means the read finished and the empty text is a real finding.
+   */
+  chartStatus?: 'loading' | 'error' | 'ready';
 }
 
 export default function NoteSectionCard({
   sectionId, content, readOnly, userId, orgId, active,
-  onFocus, onChange, onRefreshDerived, onOpenDerived, onAction, onRemove, removable, role,
+  onFocus, onChange, onRefreshDerived, onOpenDerived, onAction, onRemove, removable, role, chartStatus,
 }: NoteSectionCardProps) {
+  const { t } = useTranslation();
   const def = getSectionDef(sectionId);
+  const label = sectionLabel(t, sectionId);
   const text = content?.text ?? '';
 
   // Hooks run before the early return: a section id the catalog no longer
@@ -122,10 +134,31 @@ export default function NoteSectionCard({
     // reading the chart at all, and "no family history recorded" would then be
     // a finding nobody made. And where the clinician's own text is the whole
     // content, the snapshot block steps aside rather than contradict it.
-    const emptyCopy = readOnly && def.narrative
-      ? 'Not documented.'
-      : `No ${def.label.toLowerCase()} recorded for this patient.`;
-    const showSnapshotBlock = Boolean(snapshotRows) || !(def.narrative && (narrative || !readOnly));
+    const loadingChart = chartStatus === 'loading' && !content?.snapshot;
+    const emptyCopy = loadingChart
+      ? t('noteEditor.loadingChart')
+      : readOnly && def.narrative
+        ? t('noteEditor.notDocumented')
+        : t('noteEditor.noneRecorded', { section: label.toLowerCase() });
+    const refreshing = chartStatus === 'loading' && Boolean(content?.snapshot);
+    const chartError = chartStatus === 'error' ? (
+      <div
+        className="cn-derived cn-derived-error"
+        role="alert"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: 'var(--color-danger-text, var(--color-danger))' }}
+      >
+        <span>{t('noteEditor.chartLoadFailed', { section: label.toLowerCase() })}</span>
+        {onRefreshDerived && (
+          <button type="button" className="cn-tool" onClick={() => onRefreshDerived(sectionId)}>
+            <RefreshCw size={13} /> {t('noteEditor.retry')}
+          </button>
+        )}
+      </div>
+    ) : null;
+    // A failed read shows its error instead of an empty-looking box; a stored
+    // snapshot stays visible under the error.
+    const showSnapshotBlock = (Boolean(snapshotRows) || !(def.narrative && (narrative || !readOnly)))
+      && !(chartStatus === 'error' && !snapshotRows);
     const snapshotBlock = !showSnapshotBlock ? null : onOpenDerived ? (
       // The whole snapshot is the door into the working view — clicking a
       // medication line opens the Medications popup, not a text cursor.
@@ -133,7 +166,7 @@ export default function NoteSectionCard({
         className={`cn-derived cn-derived-clickable${content?.snapshot ? '' : ' cn-derived-empty'}`}
         role="button"
         tabIndex={0}
-        title={`Open ${def.label.toLowerCase()}`}
+        title={t('noteEditor.openSection', { section: label.toLowerCase() })}
         onClick={() => onOpenDerived(sectionId)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDerived(sectionId); }
@@ -142,7 +175,7 @@ export default function NoteSectionCard({
         {snapshotRows || emptyCopy}
       </div>
     ) : (
-      <div className={`cn-derived${content?.snapshot ? '' : ' cn-derived-empty'}`}>
+      <div className={`cn-derived${content?.snapshot ? '' : ' cn-derived-empty'}`} aria-busy={loadingChart || undefined}>
         {snapshotRows || emptyCopy}
       </div>
     );
@@ -157,7 +190,7 @@ export default function NoteSectionCard({
         onFocus={onFocus}
       >
         <div className="cn-section-head">
-          <h3 className="cn-section-name">{def.label}</h3>
+          <h3 className="cn-section-name">{label}</h3>
           {!readOnly && (
             <div className="cn-section-tools">
               {actionButtons}
@@ -167,14 +200,16 @@ export default function NoteSectionCard({
                   type="button"
                   className="cn-tool"
                   onClick={() => onRefreshDerived(sectionId)}
-                  title={`Re-read ${def.label.toLowerCase()} from the chart`}
+                  disabled={chartStatus === 'loading'}
+                  title={t('noteEditor.refreshTitle', { section: label.toLowerCase() })}
                 >
-                  <RefreshCw size={13} /> Refresh
+                  <RefreshCw size={13} /> {refreshing ? t('noteEditor.refreshing') : t('noteEditor.refresh')}
                 </button>
               )}
             </div>
           )}
         </div>
+        {chartError}
         {snapshotBlock}
         {def.narrative && (readOnly ? (
           narrative ? <div className="cn-derived cn-derived-narrative">{narrative}</div> : null
@@ -185,9 +220,9 @@ export default function NoteSectionCard({
             // No snapshot can mean the chart is empty or that it has not been
             // read (offline, a failed load) — so this says what to do, not what
             // the patient's history is.
-            placeholder={content?.snapshot ? def.placeholder : 'Nothing from the chart here. Refresh re-reads it; Update History records it. Or write for this visit only…'}
+            placeholder={content?.snapshot ? def.placeholder : t('noteEditor.historyPlaceholder')}
             onChange={e => onChange({ text: e.target.value })}
-            aria-label={`${def.label} — notes for this visit`}
+            aria-label={t('noteEditor.visitNotes', { section: label })}
           />
         ))}
       </section>
@@ -200,7 +235,7 @@ export default function NoteSectionCard({
       id={`cn-section-${sectionId}`}
     >
       <div className="cn-section-head">
-        <h3 className="cn-section-name">{def.label}</h3>
+        <h3 className="cn-section-name">{label}</h3>
 
         {!readOnly && (
           <div className="cn-section-tools">
@@ -213,8 +248,8 @@ export default function NoteSectionCard({
                 type="button"
                 className="cn-tool"
                 onClick={onRemove}
-                title={`Remove the ${def.label} section`}
-                aria-label={`Remove the ${def.label} section`}
+                title={t('noteEditor.removeSection', { section: label })}
+                aria-label={t('noteEditor.removeSection', { section: label })}
               >
                 <X size={13} />
               </button>
@@ -236,7 +271,7 @@ export default function NoteSectionCard({
       {readOnly ? (
         <div className="cn-derived">
           {stripTemplateMarkers(text).trim() || (
-            <span className="cn-derived-empty">Not documented.</span>
+            <span className="cn-derived-empty">{t('noteEditor.notDocumented')}</span>
           )}
         </div>
       ) : (
@@ -246,7 +281,7 @@ export default function NoteSectionCard({
           placeholder={def.placeholder}
           onFocus={onFocus}
           onChange={e => onChange({ text: e.target.value })}
-          aria-label={def.label}
+          aria-label={label}
         />
       )}
     </section>

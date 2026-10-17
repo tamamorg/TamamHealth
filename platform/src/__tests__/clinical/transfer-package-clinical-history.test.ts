@@ -44,6 +44,9 @@ it('includes a signed note, the problem list and active prescriptions', async ()
     hospitalId: HOSP, orgId: ORG,
   } as never);
   await saveNoteSection(note._id, 'subjective', { text: 'Follow-up for hypertension.' });
+  // A consultation can't be signed without an assessment and a plan.
+  await saveNoteSection(note._id, 'assessment', { text: 'Working diagnosis recorded.' });
+  await saveNoteSection(note._id, 'plan', { text: 'Treat and review.' });
   await signClinicalNote(note._id, { signedBy: 'user-dr-wani', signedByName: 'Dr. Wani', signerRole: 'doctor' });
 
   const draft = await createClinicalNote({

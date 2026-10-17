@@ -558,6 +558,32 @@
   cursor: pointer;
 }
 
+/* The link part and the "+N more" toggle are siblings inside the chip. */
+.tamam-allergy-open,
+.tamam-allergy-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tamam-allergy-more {
+  font-weight: 700;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.tamam-allergy-item--severe { font-weight: 800; }
+.tamam-allergy-banner--alert .tamam-allergy-item:not(.tamam-allergy-item--severe) { font-weight: 500; }
+
+.tamam-vitals-value--loading { color: var(--ehr-muted, #5D728B); }
+
 .tamam-allergy-banner--link:hover {
   border-color: var(--tb-blue-900);
 }

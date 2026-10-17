@@ -82,6 +82,9 @@ it('carries one visit from arrival to discharge without forking the encounter', 
     hospitalId: HOSP, orgId: ORG,
   } as never);
   await saveNoteSection(note._id, 'subjective', { text: 'Fever and dysuria for three days.' });
+  // A consultation can't be signed without an assessment and a plan.
+  await saveNoteSection(note._id, 'assessment', { text: 'Working diagnosis recorded.' });
+  await saveNoteSection(note._id, 'plan', { text: 'Treat and review.' });
 
   // ── Prescribe from the note: visit-linked, org-stamped, allergy-checked ─
   const rx = await createPrescription({

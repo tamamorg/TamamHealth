@@ -26,6 +26,8 @@ import { ChevronDown, ClipboardPen } from '@/components/icons/lucide';
 import {
   NOTE_TYPE_ORDER, NOTE_TYPES, type NoteTypeId,
 } from '@/lib/clinical-notes/note-catalog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { noteTypeLabel } from '@/lib/clinical-notes/note-labels';
 import './clinical-notes.css';
 
 interface CreateNoteButtonProps {
@@ -59,9 +61,10 @@ export function noteTypeMenuOrder(selected: NoteTypeId): NoteTypeId[] {
 }
 
 export default function CreateNoteButton({
-  onCreate, defaultType = 'soap', disabled, label = 'Create clinical note',
+  onCreate, defaultType = 'soap', disabled, label,
   tone = 'primary', className = '',
 }: CreateNoteButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -131,7 +134,7 @@ export default function CreateNoteButton({
             onClick={(e) => { e.stopPropagation(); choose(id); }}
           >
             <span className="cn-type-tick" aria-hidden>{selected ? '✓' : ''}</span>
-            {def.label}
+            {noteTypeLabel(t, id)}
           </button>
         );
       })}
@@ -150,10 +153,10 @@ export default function CreateNoteButton({
         className={`cn-btn ${toneClass} cn-split-main`}
         onClick={(e) => { e.stopPropagation(); choose(defaultType); }}
         disabled={disabled}
-        title={`New ${NOTE_TYPES[defaultType].label} note`}
+        title={t('noteEditor.newNoteTitle', { type: noteTypeLabel(t, defaultType) })}
       >
         <ClipboardPen size={15} aria-hidden />
-        {label}
+        {label ?? t('noteEditor.createNote')}
       </button>
 
       <button
@@ -163,8 +166,8 @@ export default function CreateNoteButton({
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Choose note type"
-        title="Choose note type"
+        aria-label={t('noteEditor.chooseType')}
+        title={t('noteEditor.chooseType')}
       >
         <ChevronDown size={13} />
       </button>

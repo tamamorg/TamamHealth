@@ -86,7 +86,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/ehr/EhrClinicalDashboard.tsx': 20,
   'src/app/(dashboard)/births/page.tsx': 18,
   'src/components/patients/TransferHistoryPanel.tsx': 17,
-  'src/components/clinical-notes/ClinicalNoteEditor.tsx': 15,
   'src/components/nurse/TriageWorkflow.tsx': 14,
   'src/components/settings/FacilitySettingsView.tsx': 14,
   'src/components/settings/RoleSettingsView.tsx': 13,

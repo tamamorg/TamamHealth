@@ -460,8 +460,39 @@ const SECTION_RANK: Readonly<Record<NoteSectionId, number>> = {
 export const NOTE_TYPE_ORDER: readonly NoteTypeId[] = [
   'soap', 'hp',
   'procedure', 'discharge_summary', 'nurse_visit', 'ob_evaluation', 'phone',
-  'memo_to_record', 'office_form', 'amendment',
+  'memo_to_record', 'office_form',
 ];
+// 'amendment' is absent on purpose, like 'consultation': nothing ever set
+// `amendsNoteId`, so picking it produced a free-standing note that corrected
+// nothing. Corrections to a signed note are addenda. The definition stays in
+// NOTE_TYPES so documents already filed under it keep rendering.
+
+/**
+ * Sections that must hold something before a note of this type can be signed.
+ *
+ * A signature attests the note is a complete record; one filled box on a
+ * consultation with the Assessment and Plan blank is not. Kept deliberately
+ * minimal per type — the sections without which the note answers nothing.
+ * A required section the note does not carry (an old document, a removed
+ * layout) cannot be filled and is not demanded.
+ */
+export const REQUIRED_SECTIONS: Readonly<Record<NoteTypeId, readonly NoteSectionId[]>> = {
+  soap: ['assessment', 'plan'],
+  hp: ['hpi', 'assessment', 'plan'],
+  consultation: ['assessment', 'plan'],
+  procedure: ['procedure', 'plan'],
+  discharge_summary: ['hospital_course', 'discharge_instructions'],
+  nurse_visit: ['interventions', 'plan'],
+  ob_evaluation: ['assessment', 'plan'],
+  phone: ['call_reason', 'advice_given'],
+  memo_to_record: ['memo'],
+  office_form: ['memo'],
+  amendment: ['memo'],
+};
+
+export function requiredSectionsFor(typeId: NoteTypeId | string): readonly NoteSectionId[] {
+  return REQUIRED_SECTIONS[typeId as NoteTypeId] ?? REQUIRED_SECTIONS.soap;
+}
 
 export function isNoteTypeId(value: unknown): value is NoteTypeId {
   return typeof value === 'string' && value in NOTE_TYPES;

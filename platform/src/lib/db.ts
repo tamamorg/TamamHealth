@@ -451,7 +451,7 @@ export const specialtyCareDB = () => getDB('tamamhealth_specialty_care');
 // the same document ids, so `safePut`'s skip-if-exists puts would never
 // correct them without this bump forcing a fresh seed.
 // Bumped to 77: `labOrders` (lab-001..010) `patientName` literals corrected to match the generated roster (e.g. lab-005/pat-00022 is "Anna Laku Bol", not "Kuol Akot Ajith"), forcing browsers stuck on a stale pre-fix seed to reseed.
-export const SEED_VERSION = 77;
+export const SEED_VERSION = 78;
 
 /**
  * Delete local PouchDB databases whose IndexedDB backing is corrupt.
