@@ -145,7 +145,8 @@ describe('dispensedItems — the loop-closer', () => {
     expect(item.id).toBe('visit-rx-rx-1');
     expect(item.type).toBe('visit');
     expect(item.title).toBe('Nyandeng Deng · Dispensed');
-    expect(item.href).toBe('/patients/patient-1?tab=medications');
+    // Lands on the dispensed prescription itself, not just the list.
+    expect(item.href).toBe('/patients/patient-1?tab=prescriptions&focus=rx-1');
   });
 
   it("skips other prescribers' orders and still-pending ones", () => {

@@ -212,7 +212,7 @@ export function dispensedItems(
       title: `${shortenPersonName(rx.patientName) || 'Patient'} · Dispensed`,
       subtitle: `${rx.medication} · collected from pharmacy`,
       time: at,
-      href: `/patients/${encodeURIComponent(rx.patientId)}?tab=medications`,
+      href: `/patients/${encodeURIComponent(rx.patientId)}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`,
     });
   }
   return items

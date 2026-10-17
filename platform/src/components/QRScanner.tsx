@@ -33,8 +33,8 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       }
     } catch {
       // Not JSON — try treating the raw text as a patient ID
-      if (decodedText.startsWith('patient_')) {
-        onScan({ id: decodedText });
+      if (/^(pat-|patient_)/.test(decodedText.trim())) {
+        onScan({ id: decodedText.trim() });
       } else {
         setError(t('qrScanner.errorUnrecognizedFormat'));
         hasProcessed.current = false;

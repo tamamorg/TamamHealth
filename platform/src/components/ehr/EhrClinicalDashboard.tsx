@@ -187,6 +187,14 @@ export function typeLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/** The chart for a display name, only when exactly one patient carries it —
+ *  a namesake guess would open the wrong person's record. */
+function uniquePatientIdByName(patients: WorklistPatient[], name?: string): string | undefined {
+  if (!name) return undefined;
+  const matches = patients.filter(patient => patient.name === name);
+  return matches.length === 1 ? matches[0]._id : undefined;
+}
+
 function formatAppointmentDate(value: string) {
   const date = parseIsoDate(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -872,7 +880,7 @@ export default function EhrClinicalDashboard({
   };
 
   const openPatientRecord = (appointment: AppointmentDoc) => {
-    const patientId = appointment.patientId || patients.find(patient => patient.name === appointment.patientName)?._id;
+    const patientId = appointment.patientId || uniquePatientIdByName(patients, appointment.patientName);
     if (patientId) {
       router.push(`/patients/${patientId}`);
     } else {
@@ -888,7 +896,7 @@ export default function EhrClinicalDashboard({
     // No href — never let the click dead-end: open the matching appointment,
     // else the patient's chart (resolved by name), else say so out loud.
     if (appointment) { openAppointmentPreview(appointment); return; }
-    const patientId = patients.find(patient => patient.name === entry.title)?._id;
+    const patientId = uniquePatientIdByName(patients, entry.title);
     if (patientId) { router.push(`/patients/${patientId}`); return; }
     showToast(`Couldn't open “${entry.title}”`, 'error');
   };

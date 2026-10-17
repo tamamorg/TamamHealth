@@ -10,6 +10,8 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { CLINICIANS } from '@/lib/sync/write-permissions';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { allowedChartTabIds, chartHrefOpensForViewer } from '@/lib/chart-tabs';
 
 // ── Final-checkout modal: confirm balance settled, mark the visit complete ──
 export default function CheckoutModal({
@@ -33,6 +35,10 @@ export default function CheckoutModal({
   const { currentUser } = useAuth();
   const { t } = useTranslation();
   const canAuthorize = !!currentUser && CLINICIANS.includes(currentUser.role);
+  // A resolve link into a chart section the viewer can't open bounced the
+  // desk to Appointments — offer it only where it lands on the thing to fix.
+  const { canViewClinical, canEnterLabResults, canDispense } = usePermissions();
+  const chartTabs = allowedChartTabIds({ canViewClinical, canEnterLabResults, canDispense, role: currentUser?.role });
   const [balance, setBalance] = useState<number | null>(null);
   const [charges, setCharges] = useState<{ description: string; amount: number }[]>([]);
   const [completing, setCompleting] = useState(false);
@@ -183,7 +189,7 @@ export default function CheckoutModal({
                   <li key={condition.key} className="text-[12px]" style={{ color: 'var(--text-primary)' }}>
                     <span className="font-semibold">{condition.label}</span>
                     {condition.detail && <span style={{ color: 'var(--text-secondary)' }}> — {condition.detail}</span>}
-                    {condition.resolveHref && (
+                    {condition.resolveHref && chartHrefOpensForViewer(condition.resolveHref, chartTabs) && (
                       <Link href={condition.resolveHref} className="ms-1.5 font-semibold underline" style={{ color: 'var(--accent-primary)' }}>
                         Resolve
                       </Link>
