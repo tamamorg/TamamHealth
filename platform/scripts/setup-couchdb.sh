@@ -118,6 +118,7 @@ DATABASES=(
   tamamhealth_refunds
   tamamhealth_saved_payment_methods
   tamamhealth_slot_holds
+  tamamhealth_specialty_care
   tamamhealth_staff_schedules
   tamamhealth_sync_events
   tamamhealth_telehealth
