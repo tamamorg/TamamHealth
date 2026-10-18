@@ -31,7 +31,7 @@ export interface PatientTextDialogProps {
   title: string;
   /** Subject line of the message saved to the patient's record. */
   subject: string;
-  kind: NonNullable<MessageDoc['messageKind']>;
+  kind: Exclude<NonNullable<MessageDoc['messageKind']>, 'issue_report'>;
   /** The composed text. Changing it (an option toggled) resets the editor. */
   text: string;
   /** Prescriptions this text carries, recorded as given once it is sent. */

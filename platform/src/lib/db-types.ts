@@ -1424,7 +1424,13 @@ export interface MessageDoc extends BaseDoc {
    * What a platform-composed text carries, so the patient's message history
    * and audit can tell a prescription from a visit summary from free text.
    */
-  messageKind?: 'prescription' | 'visit_summary';
+  /**
+   * What a message is for, when it is not plain correspondence. `issue_report`
+   * is a staff report of a problem with the platform (issue-report-service):
+   * it carries no patient, no conversation, and is read only through that
+   * service's triage queue.
+   */
+  messageKind?: 'prescription' | 'visit_summary' | 'issue_report';
   /**
    * Prescriptions a texted script carries. When the text is accepted by the
    * gateway — possibly hours after it was written, on a device that was
@@ -1437,6 +1443,23 @@ export interface MessageDoc extends BaseDoc {
    * encrypted nor recallable, and the number is often a shared phone.
    */
   textConsentConfirmed?: boolean;
+  /* ── Staff issue reports (messageKind === 'issue_report') ──
+     The report's summary is `subject` and its details `body`, so both are
+     encrypted at rest like any message text. Triage state lives here rather
+     than in `status` (delivery) or `enquiryStatus` (patient enquiries). */
+  issueStatus?: 'new' | 'in_progress' | 'resolved' | 'closed';
+  issueCategory?: 'bug' | 'wrong_data' | 'access' | 'sync' | 'performance' | 'other';
+  issueSeverity?: 'low' | 'medium' | 'high' | 'critical';
+  /** The app path the reporter was on (ids only — never a query string). */
+  issuePage?: string;
+  /** The reporter's role when they filed it, for routing and context. */
+  issueReporterRole?: string;
+  issueAssignedToId?: string;
+  issueAssignedToName?: string;
+  /** What was done about it — shown back to the reporter. Encrypted at rest. */
+  issueResolutionNote?: string;
+  issueUpdatedAt?: string;
+  issueUpdatedByName?: string;
 }
 
 /**

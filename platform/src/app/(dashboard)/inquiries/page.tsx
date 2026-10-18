@@ -27,6 +27,8 @@ import { formatCompactDateTime } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
 import { formatPhoneShared } from '@/lib/field-formats';
 import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { IssueReportsQueue } from '@/modules/communication/client';
 import type { MessageDoc } from '@/lib/db-types';
 import {
   ENQUIRY_STATUSES,
@@ -106,6 +108,7 @@ export default function InquiriesPage() {
   useSharedScreenMask();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { users } = useUsers();
@@ -272,12 +275,32 @@ export default function InquiriesPage() {
 
   const filterFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
 
+  // Two queues, one place: patient inquiries and the issues staff report
+  // (`/report-issue`). The tab is in the URL so either is deep-linkable.
+  const view = searchParams?.get('view') === 'issues' ? 'issues' : 'inquiries';
+  const switchView = (key: string) => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    if (key === 'issues') params.set('view', 'issues'); else params.delete('view');
+    const qs = params.toString();
+    router.replace(qs ? `/inquiries?${qs}` : '/inquiries');
+  };
+  const viewTabs = [
+    { key: 'inquiries', label: t('issues.tabInquiries'), count: summary.open },
+    { key: 'issues', label: t('issues.tabIssues') },
+  ];
+
+  if (view === 'issues') return <IssueReportsQueue tabs={viewTabs} onTabChange={switchView} />;
+
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="inquiries-list">
         <EhrListHeader
           title="Patient Inquiries"
           count={summary.total}
+          tabs={viewTabs}
+          activeTab="inquiries"
+          onTabChange={switchView}
+          tabsAriaLabel={t('issues.tabsAria')}
           stats={[
             { label: ENQUIRY_STATUS_LABELS.new, value: summary.byStatus.new, color: LIST_STAT_COLORS.amber },
             { label: ENQUIRY_STATUS_LABELS.contacted, value: summary.byStatus.contacted, color: LIST_STAT_COLORS.blue },
