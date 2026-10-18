@@ -6,7 +6,7 @@
  * submitting creates a *request* the desk confirms. Mobile first: a vertical
  * list of days with 44px+ time buttons, so there is no horizontal scroll.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
 import { X, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -59,7 +59,12 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
   const [reason, setReason] = useState<Reason | null>(null);
   const [weekStart, setWeekStart] = useState(today);
   const [slots, setSlots] = useState<PortalSlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  // Loading is derived, not toggled: the week is loading whenever the slots
+  // held were not fetched for the current reason + week (+ reload nonce).
+  // Toggling a flag synchronously inside the fetch effect is the cascading-
+  // render pattern the linter rejects.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [atHorizon, setAtHorizon] = useState(false);
   // Days this week the patient already has an open visit — no new request
@@ -102,34 +107,33 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
   // another reason can leave an older fetch in flight, and its late answer
   // would show reason A's times under reason B.
   const slotRequest = useRef(0);
-  const loadSlots = useCallback(async (reasonId: string, start: string) => {
-    const r = weekRange(start);
-    const mine = ++slotRequest.current;
-    setLoadingSlots(true);
-    setSlotsError(null);
-    try {
-      const res = await portalApi<{ slots: PortalSlot[]; to?: string; ownVisitDates?: string[] }>(
-        `/api/patient-portal/booking/slots?reason=${encodeURIComponent(reasonId)}&from=${r.from}&to=${r.to}`,
-      );
-      if (mine !== slotRequest.current) return;
-      setSlots(res.slots || []);
-      setOwnVisitDates(res.ownVisitDates || []);
-      // The server clamps `to` at the booking horizon: once it comes back
-      // short of this week's end there is nothing further to page to.
-      setAtHorizon(!!res.to && res.to < r.to);
-    } catch {
-      if (mine !== slotRequest.current) return;
-      setSlots([]);
-      setSlotsError(t('patientPortal.bk.slotsError'));
-    } finally {
-      if (mine === slotRequest.current) setLoadingSlots(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const requestKey = reason ? `${reason.id}|${weekStart}|${reloadNonce}` : null;
+  const loadingSlots = step === 'slots' && requestKey !== null && loadedKey !== requestKey;
 
   useEffect(() => {
-    if (step === 'slots' && reason) void loadSlots(reason.id, weekStart);
-  }, [step, reason, weekStart, loadSlots]);
+    if (step !== 'slots' || !reason || !requestKey) return;
+    const r = weekRange(weekStart);
+    const mine = ++slotRequest.current;
+    portalApi<{ slots: PortalSlot[]; to?: string; ownVisitDates?: string[] }>(
+      `/api/patient-portal/booking/slots?reason=${encodeURIComponent(reason.id)}&from=${r.from}&to=${r.to}`,
+    )
+      .then(res => {
+        if (mine !== slotRequest.current) return;
+        setSlotsError(null);
+        setSlots(res.slots || []);
+        setOwnVisitDates(res.ownVisitDates || []);
+        // The server clamps `to` at the booking horizon: once it comes back
+        // short of this week's end there is nothing further to page to.
+        setAtHorizon(!!res.to && res.to < r.to);
+      })
+      .catch(() => {
+        if (mine !== slotRequest.current) return;
+        setSlots([]);
+        setSlotsError(t('patientPortal.bk.slotsError'));
+      })
+      .finally(() => { if (mine === slotRequest.current) setLoadedKey(requestKey); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, reason, weekStart, requestKey]);
 
   const days = useMemo(() => groupSlotsByDay(slots, range), [slots, range]);
   const weekHasSlots = slots.length > 0;
@@ -157,6 +161,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
       if (e instanceof HttpError && e.status === 409) {
         setChosen(null);
         setNotice(t('patientPortal.bk.taken'));
+        setReloadNonce(n => n + 1);
         setStep('slots');
       } else {
         setError(e instanceof Error ? e.message : t('patientPortal.bookingRequestError'));
