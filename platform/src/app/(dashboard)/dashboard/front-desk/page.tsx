@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useSync } from '@/lib/context';
+import Link from 'next/link';
+import { isPathAllowed } from '@/lib/role-routes';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -171,6 +173,20 @@ export default function FrontDeskDashboardPage() {
   // Pre-selects the patient when booking is started from the unbooked list.
   const [bookingPatientId, setBookingPatientId] = useState<string | undefined>(undefined);
   const { syncStatus, syncNow } = useSync();
+  // "Sync now" used to fire with no feedback at all, so a list that did not
+  // change (a conflict row, which no sync can clear) read as a dead button.
+  const [syncNowBusy, setSyncNowBusy] = useState(false);
+  const runSyncNow = useCallback(async () => {
+    setSyncNowBusy(true);
+    try {
+      await syncNow();
+      showToast(t('frontDesk.syncNowDone'), 'success');
+    } catch {
+      showToast(t('frontDesk.syncNowFailed'), 'error');
+    } finally {
+      setSyncNowBusy(false);
+    }
+  }, [syncNow, showToast, t]);
 
   const [queueNowMs, setQueueNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -1955,6 +1971,14 @@ export default function FrontDeskDashboardPage() {
                           {refused ? t('frontDesk.syncRefused', { reason: refused }) : doc.error}
                         </p>
                       )}
+                      {doc.status === 'conflict' && (
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                          {t('frontDesk.syncConflictHint')}
+                          {currentUser && isPathAllowed(currentUser.role, '/admin/conflicts') && (
+                            <> <Link href="/admin/conflicts" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>{t('frontDesk.syncConflictResolve')}</Link></>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -1962,10 +1986,12 @@ export default function FrontDeskDashboardPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() => { void syncNow(); }}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  onClick={() => { void runSyncNow(); }}
+                  disabled={syncNowBusy}
+                  aria-busy={syncNowBusy}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: syncNowBusy ? 'progress' : 'pointer', opacity: syncNowBusy ? 0.7 : 1 }}
                 >
-                  {t('frontDesk.syncNow')}
+                  {syncNowBusy ? t('frontDesk.syncNowRunning') : t('frontDesk.syncNow')}
                 </button>
               </div>
             </div>
