@@ -54,6 +54,11 @@ export const DEMO_USER_PROFILES: readonly SeedUserProfile[] = [
   { username: 'desk.wau', name: 'Tabitha Nyandeng Kuol', role: 'front_desk', hospitalId: 'hosp-002', hospitalName: 'Wau State Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'nurse.stella', name: 'Nurse Stella Keji Lemi', role: 'nurse', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
   { username: 'dr.ochalla', name: 'Dr. Peter Ochalla Diu', role: 'doctor', hospitalId: 'hosp-003', hospitalName: 'Malakal Teaching Hospital', orgId: PUBLIC_ORG_ID },
+  // Bentiu's own clinician. Without one, the generated Bentiu visits borrowed
+  // the Juba lab tech as their "provider" and triager, so every Bentiu
+  // booking sat on the board of someone at another facility, where scoping
+  // hides it.
+  { username: 'co.bentiu', name: 'CO Gatwech Ruot Kuol', role: 'clinical_officer', hospitalId: 'hosp-004', hospitalName: 'Bentiu State Hospital', orgId: PUBLIC_ORG_ID },
   // Stationed at Juba, not Bentiu. Juba Teaching Hospital is where the seeded
   // doctors, nurses, triage, rooming, pharmacy, billing and records all work,
   // and `lab_tech` is the ONLY role that may enter a result
