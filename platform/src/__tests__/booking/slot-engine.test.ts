@@ -480,3 +480,58 @@ describe('slotIsStillOpen', () => {
     )).toBe(false);
   });
 });
+
+// ── The portal channel ──────────────────────────────────────────────────────
+
+describe('the portal channel', () => {
+  const today = { date: '2026-09-01', time: '08:00' };
+  const q = (over: Partial<SlotQuery> = {}) => query({ channel: 'portal', ...over });
+
+  it('sees the same windows as the desk, including ones not opened online', () => {
+    const closed = window_({ bookableOnline: false });
+    expect(windowIsEligible(closed, q())).toBe(true);
+    expect(windowIsEligible(closed, query({ channel: 'public' }))).toBe(false);
+    const portal = computeSlots([closed], [], [], policy(), q(), NOW_ISO);
+    const staff = computeSlots([closed], [], [], policy(), query({ channel: 'staff' }), NOW_ISO);
+    expect(times(portal)).toEqual(times(staff));
+    expect(times(portal)).toEqual(['09:00', '09:30']);
+  });
+
+  it('does not need online booking switched on', () => {
+    const slots = computeSlots([window_()], [], [], policy({ onlineBookingEnabled: false }), q(), NOW_ISO);
+    expect(times(slots)).toEqual(['09:00', '09:30']);
+    expect(computeSlots([window_()], [], [], policy({ onlineBookingEnabled: false }),
+      query({ channel: 'public' }), NOW_ISO)).toEqual([]);
+  });
+
+  it('applies the policy horizon', () => {
+    const weekly = window_({
+      date: '2026-09-01', recurrence: { daysOfWeek: [1, 2, 3, 4, 5], until: '2026-12-31' },
+    } as Partial<AvailabilityDoc>);
+    const slots = computeSlots([weekly], [], [], policy({ maxAdvanceDays: 3 }),
+      q({ from: '2026-09-01', to: '2026-12-31' }), NOW_ISO);
+    expect(slots.length).toBeGreaterThan(0);
+    expect(slots[slots.length - 1].date <= '2026-09-04').toBe(true);
+  });
+
+  it('applies the lead time and never returns past slots', () => {
+    const w = window_({ date: '2026-09-01', startTime: '09:00', endTime: '10:00' });
+    const base = { from: '2026-09-01', to: '2026-09-01', now: today };
+    expect(times(computeSlots([w], [], [], policy({ minLeadTimeMinutes: 61 }), q(base), NOW_ISO)))
+      .toEqual(['09:30']);
+    expect(times(computeSlots([w], [], [], policy(), q({ ...base, now: { date: '2026-09-01', time: '09:15' } }), NOW_ISO)))
+      .toEqual(['09:30']);
+  });
+
+  it('offers reasons by patient class and never an inactive one', () => {
+    const returningOnly = reason({ availableToNewPatients: false });
+    expect(reasonIsBookable(q({ visitReason: returningOnly, patientClass: 'new' }))).toBe(false);
+    expect(reasonIsBookable(q({ visitReason: returningOnly, patientClass: 'returning' }))).toBe(true);
+    expect(reasonIsBookable(q({ visitReason: reason({ isActive: false }) }))).toBe(false);
+  });
+
+  it('removes a slot once it is booked', () => {
+    const slots = computeSlots([window_()], [appointment({ status: 'requested' })], [], policy(), q(), NOW_ISO);
+    expect(times(slots)).toEqual(['09:30']);
+  });
+});

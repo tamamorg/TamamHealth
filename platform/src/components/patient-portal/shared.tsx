@@ -22,14 +22,29 @@ export function shortDate(iso: string): string {
 
 export function Empty({ icon: Icon, text, action, onAction }: { icon: typeof User; text: string; action?: string; onAction?: () => void }) {
   return (
-    <div className="pp-card" style={{ textAlign: 'center', padding: 40 }}>
-      <Icon size={44} style={{ color: '#94A2B3', opacity: 0.5, margin: '0 auto 10px' }} />
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>{text}</p>
+    <div className="pp-card pp-empty">
+      <span className="pp-ic pp-ic--lg" aria-hidden><Icon size={20} strokeWidth={1.6} /></span>
+      <p>{text}</p>
       {action && onAction && (
-        <button type="button" onClick={onAction} className="pp-btn pp-btn-primary" style={{ marginTop: 14 }}>
+        <button type="button" onClick={onAction} className="pp-btn pp-btn-primary">
           <Plus size={14} /> {action}
         </button>
       )}
+    </div>
+  );
+}
+
+export type CardTone = 'blue' | 'green' | 'amber' | 'rose' | 'iris';
+
+/** Card header with a toned icon tile, so every section reads at a glance. */
+export function CardHead({ icon: Icon, title, tone = 'blue', right }: { icon: typeof User; title: string; tone?: CardTone; right?: React.ReactNode }) {
+  return (
+    <div className="pp-card-head">
+      <h2>
+        <span className={`pp-ic pp-ic--${tone}`} aria-hidden><Icon size={14} strokeWidth={1.8} /></span>
+        {title}
+      </h2>
+      {right}
     </div>
   );
 }

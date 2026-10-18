@@ -2730,6 +2730,8 @@ export interface AppointmentDoc extends BaseDoc {
   patientId: string;
   patientName: string;
   patientPhone?: string;
+  /** How the patient asked to be reached to confirm (portal requests). */
+  contactPreference?: 'call' | 'sms' | 'either';
   providerId: string;         // Doctor/clinical officer assigned
   providerName: string;
   facilityId: string;
