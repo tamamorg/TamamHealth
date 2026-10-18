@@ -421,7 +421,7 @@ const workflowShowcasePatients: (Partial<PatientDoc> & Record<string, unknown>)[
   { _id: 'pat-00301', type: 'patient', firstName: 'Chol', middleName: 'Deng', surname: 'Ater', gender: 'Male', dateOfBirth: '1984-09-21', age: 41, phone: '+211915400301', bloodType: 'A+', allergies: ['None known'], chronicConditions: ['HIV'], nokName: 'Ater Bol', nokRelationship: 'Brother', nokPhone: '+211915400311', registrationHospital: 'hosp-002', registrationHospitalName: 'Wau State Hospital', hospitalNumber: 'WSH-003001', state: 'Western Bahr el Ghazal', county: 'Wau', payam: '', boma: '', geocodeId: '', lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-002', assignedDoctor: 'user-co.deng', assignedDoctorName: 'CO Deng Mabior Kuol', assignedAt: daysAgo(0), assignedBy: 'user-nurse.wau', assignedByName: 'Nurse Grace Achai Lual', assignmentNote: 'Cough, weight loss and night sweats. Needs sputum testing, chest imaging and TB referral workflow.', isActive: true, createdAt: daysAgo(55), updatedAt: daysAgo(0) },
   { _id: 'pat-00302', type: 'patient', firstName: 'Yar', middleName: 'Nyibol', surname: 'Koang', gender: 'Female', dateOfBirth: '2019-02-07', age: 7, phone: '', bloodType: 'B+', allergies: ['None known'], chronicConditions: ['None'], nokName: 'Nyibol Koang', nokRelationship: 'Mother', nokPhone: '+211915400312', registrationHospital: 'hosp-003', registrationHospitalName: 'Malakal Teaching Hospital', hospitalNumber: 'MTH-003002', state: 'Upper Nile', county: 'Malakal', payam: '', boma: '', geocodeId: '', lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-003', assignedDoctor: 'user-midwife.nyakong', assignedDoctorName: 'Midwife Nyakong Gatkuoth', assignedAt: daysAgo(0), assignedBy: 'user-nurse.stella', assignedByName: 'Nurse Stella Keji Lemi', assignmentNote: 'Child with fever, cough and poor intake. Demonstrates paediatric triage, malaria lab, CXR and pharmacy.', isActive: true, createdAt: daysAgo(95), updatedAt: daysAgo(0) },
   { _id: 'pat-00303', type: 'patient', firstName: 'Garang', middleName: 'Mayen', surname: 'Deng', gender: 'Male', dateOfBirth: '1970-12-10', age: 55, phone: '+211915400303', bloodType: 'O-', allergies: ['Penicillin'], chronicConditions: ['Diabetes Mellitus', 'Hypertension'], nokName: 'Mayen Deng', nokRelationship: 'Son', nokPhone: '+211915400313', registrationHospital: 'hosp-001', registrationHospitalName: 'Juba Teaching Hospital', hospitalNumber: 'JTH-003003', state: 'Central Equatoria', county: 'Juba', payam: 'Kator', boma: '', geocodeId: '', lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-001', assignedDoctor: 'user-clinician.peter', assignedDoctorName: 'Dr. Peter Garang Deng', assignedAt: daysAgo(0), assignedBy: 'user-rooming.sara', assignedByName: 'Sara Aluel Bol', assignmentNote: 'Diabetic foot ulcer. Needs wound care, glucose/HbA1c, foot X-ray, payment plan and pharmacy.', isActive: true, createdAt: daysAgo(400), updatedAt: daysAgo(0) },
-  { _id: 'pat-00304', type: 'patient', firstName: 'Nyanut', middleName: 'Gatwech', surname: 'Chuol', gender: 'Female', dateOfBirth: '1991-05-06', age: 35, phone: '+211915400304', bloodType: 'AB+', allergies: ['Sulfa drugs'], chronicConditions: ['Sickle cell disease'], nokName: 'Gatwech Chuol', nokRelationship: 'Father', nokPhone: '+211915400314', registrationHospital: 'hosp-004', registrationHospitalName: 'Bentiu State Hospital', hospitalNumber: 'BSH-003004', state: 'Unity', county: 'Rubkona', payam: '', boma: '', geocodeId: '', lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-004', assignedDoctor: 'user-dr.wani', assignedDoctorName: 'Dr. James Wani Igga', assignedAt: daysAgo(0), assignedBy: 'user-lab.gatluak', assignedByName: 'Lab Tech Gatluak Puok', assignmentNote: 'Critical anaemia from Bentiu lab queue. Demonstrates critical result, referral, transfusion billing and pharmacy.', isActive: true, createdAt: daysAgo(160), updatedAt: daysAgo(0) },
+  { _id: 'pat-00304', type: 'patient', firstName: 'Nyanut', middleName: 'Gatwech', surname: 'Chuol', gender: 'Female', dateOfBirth: '1991-05-06', age: 35, phone: '+211915400304', bloodType: 'AB+', allergies: ['Sulfa drugs'], chronicConditions: ['Sickle cell disease'], nokName: 'Gatwech Chuol', nokRelationship: 'Father', nokPhone: '+211915400314', registrationHospital: 'hosp-004', registrationHospitalName: 'Bentiu State Hospital', hospitalNumber: 'BSH-003004', state: 'Unity', county: 'Rubkona', payam: '', boma: '', geocodeId: '', lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-001', assignedDoctor: 'user-dr.wani', assignedDoctorName: 'Dr. James Wani Igga', assignedAt: daysAgo(0), assignedBy: 'user-lab.gatluak', assignedByName: 'Lab Tech Gatluak Puok', assignmentNote: 'Critical anaemia from Bentiu lab queue. Demonstrates critical result, referral, transfusion billing and pharmacy.', isActive: true, createdAt: daysAgo(160), updatedAt: daysAgo(0) },
   { _id: 'pat-00305', type: 'patient', firstName: 'Peter', middleName: 'Lokiri', surname: 'Lado', gender: 'Male', dateOfBirth: '1993-08-14', age: 32, phone: '+211915400305', bloodType: 'A-', allergies: ['Iodine contrast'], chronicConditions: ['None'], nokName: 'Lokiri Lado', nokRelationship: 'Father', nokPhone: '+211915400315', registrationHospital: 'hosp-001', registrationHospitalName: 'Juba Teaching Hospital', hospitalNumber: 'JTH-003005', state: 'Central Equatoria', county: 'Juba', payam: 'Gudele', boma: '', geocodeId: '', lastVisitDate: dateAgo(0), lastVisitHospital: 'hosp-001', assignedDoctor: 'user-dr.wani', assignedDoctorName: 'Dr. James Wani Igga', assignedAt: daysAgo(0), assignedBy: 'user-triage.mary', assignedByName: 'Mary Nyaruai Gai', assignmentNote: 'Road traffic trauma. Demonstrates urgent imaging, theatre referral, payment due and controlled medication review.', isActive: true, createdAt: daysAgo(8), updatedAt: daysAgo(0) },
 ];
 
@@ -826,7 +826,7 @@ export const seedAppointments: Omit<AppointmentDoc, '_rev' | 'createdBy'>[] = [
   { _id: 'appointment-6', type: 'appointment', patientId: 'pat-00030', patientName: 'Achol Mayen Ring', patientPhone: '+211912555030', providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(2), appointmentTime: '09:30', endTime: '10:00', duration: 30, appointmentType: 'follow_up', priority: 'routine', department: 'Surgery', reason: 'Post-op wound check', status: 'completed', completedAt: daysAgo(2), reminderSent: true, reminderChannel: 'app', isRecurring: false, bookedBy: 'user-data.ayen', bookedByName: 'Ayen Dut Malual', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(9), updatedAt: daysAgo(2) },
   { _id: 'appointment-7', type: 'appointment', patientId: 'pat-00035', patientName: 'Ladu Tombe Keji', patientPhone: '+211912555035', providerId: 'user-co.deng', providerName: 'CO Deng Mabior Kuol', facilityId: 'hosp-002', facilityName: 'Wau State Hospital', facilityLevel: 'state', appointmentDate: dateAgo(3), appointmentTime: '14:00', endTime: '14:30', duration: 30, appointmentType: 'lab', priority: 'routine', department: 'Laboratory', reason: 'Routine blood work', status: 'completed', completedAt: daysAgo(3), reminderSent: true, reminderChannel: 'sms', isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Western Bahr el Ghazal', county: 'Wau', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(10), updatedAt: daysAgo(3) },
   { _id: 'appointment-8', type: 'appointment', patientId: 'pat-00040', patientName: 'Majok Chol Wol', patientPhone: '+211912555040', providerId: 'user-dr.achol', providerName: 'Dr. Achol Mayen Deng', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(4), appointmentTime: '15:00', endTime: '15:30', duration: 30, appointmentType: 'general', priority: 'routine', department: 'Outpatient', reason: 'Abdominal pain', status: 'no_show', reminderSent: true, reminderChannel: 'sms', isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(11), updatedAt: daysAgo(4) },
-  { _id: 'appointment-9', type: 'appointment', patientId: 'pat-00057', patientName: 'Achol Mayen Garang', patientPhone: '+211912555057', providerId: 'user-midwife.nyakong', providerName: 'Midwife Nyakong Gatkuoth', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateFromNow(3), appointmentTime: '10:30', endTime: '11:00', duration: 30, appointmentType: 'anc', priority: 'routine', department: 'Maternity', reason: 'ANC visit 6', status: 'confirmed', reminderSent: true, reminderChannel: 'both', isRecurring: true, recurrencePattern: 'biweekly', bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(1) },
+  { _id: 'appointment-9', type: 'appointment', patientId: 'pat-00057', patientName: 'Achol Mayen Garang', patientPhone: '+211912555057', providerId: 'user-dr.abuk', providerName: 'Dr. Abuk Ayen Malual', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateFromNow(3), appointmentTime: '10:30', endTime: '11:00', duration: 30, appointmentType: 'anc', priority: 'routine', department: 'Maternity', reason: 'ANC visit 6', status: 'confirmed', reminderSent: true, reminderChannel: 'both', isRecurring: true, recurrencePattern: 'biweekly', bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(1) },
   { _id: 'appointment-10', type: 'appointment', patientId: 'pat-00012', patientName: 'Gatluak Ruot Nyuon', patientPhone: '+211912555012', providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(6), appointmentTime: '11:30', endTime: '12:00', duration: 30, appointmentType: 'follow_up', priority: 'routine', department: 'Internal Medicine', reason: 'Missed previous slot', status: 'cancelled', cancelledReason: 'Patient travelling', cancelledBy: 'user-desk.amira', reminderSent: true, reminderChannel: 'sms', isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(13), updatedAt: daysAgo(7) },
   { _id: 'appointment-11', type: 'appointment', patientId: 'pat-00018', patientName: 'Rose Tombura Gbudue', patientPhone: '+211912555018', providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateFromNow(14), appointmentTime: '08:00', endTime: '08:30', duration: 30, appointmentType: 'specialist', priority: 'routine', department: 'Endocrinology', reason: 'Diabetes specialist review', status: 'scheduled', reminderSent: false, isRecurring: false, bookedBy: 'user-data.ayen', bookedByName: 'Ayen Dut Malual', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
   { _id: 'appointment-12', type: 'appointment', patientId: 'pat-00001', patientName: 'Deng Mabior Garang', patientPhone: '+211912345678', providerId: 'user-dr.mercy', providerName: 'Dr. Grace Lado', facilityId: 'hosp-mercy-001', facilityName: 'Mercy General Hospital', facilityLevel: 'state', appointmentDate: dateFromNow(5), appointmentTime: '13:00', endTime: '13:30', duration: 30, appointmentType: 'general', priority: 'routine', department: 'Cardiology', reason: 'Hypertension review', status: 'scheduled', reminderSent: false, isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PRIVATE_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(2) },
@@ -835,7 +835,7 @@ export const seedAppointments: Omit<AppointmentDoc, '_rev' | 'createdBy'>[] = [
   // a same-day checked-in outpatient visit would re-queue him at reception
   // while he occupies bed W1-B01. Name/phone normalized at write time.
   { _id: 'appointment-13', type: 'appointment', patientId: 'pat-00009', patientName: 'Registry patient 9', patientPhone: '', providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(0), appointmentTime: '08:00', endTime: '08:30', duration: 30, appointmentType: 'follow_up', priority: 'routine', department: 'Internal Medicine', reason: 'Hypertension follow-up', status: 'checked_in', checkedInAt: daysAgo(0), reminderSent: true, reminderChannel: 'sms', isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(2), updatedAt: daysAgo(0) },
-  { _id: 'appointment-14', type: 'appointment', patientId: 'pat-00057', patientName: 'Achol Mayen Garang', patientPhone: '+211912555057', providerId: 'user-midwife.nyakong', providerName: 'Midwife Nyakong Gatkuoth', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(0), appointmentTime: '09:15', endTime: '09:45', duration: 30, appointmentType: 'anc', priority: 'routine', department: 'Maternity', reason: 'ANC visit', status: 'confirmed', reminderSent: true, reminderChannel: 'both', isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(0) },
+  { _id: 'appointment-14', type: 'appointment', patientId: 'pat-00057', patientName: 'Achol Mayen Garang', patientPhone: '+211912555057', providerId: 'user-dr.abuk', providerName: 'Dr. Abuk Ayen Malual', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(0), appointmentTime: '09:15', endTime: '09:45', duration: 30, appointmentType: 'anc', priority: 'routine', department: 'Maternity', reason: 'ANC visit', status: 'confirmed', reminderSent: true, reminderChannel: 'both', isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(0) },
   { _id: 'appointment-15', type: 'appointment', patientId: 'pat-00035', patientName: 'Ladu Tombe Keji', patientPhone: '+211912555035', providerId: 'user-dr.achol', providerName: 'Dr. Achol Mayen Deng', facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital', facilityLevel: 'national', appointmentDate: dateAgo(0), appointmentTime: '10:45', endTime: '11:15', duration: 30, appointmentType: 'general', priority: 'urgent', department: 'Outpatient', reason: 'Persistent fever', status: 'scheduled', reminderSent: false, isRecurring: false, bookedBy: 'user-desk.amira', bookedByName: 'Amira Juma Hassan', state: 'Central Equatoria', county: 'Juba', orgId: PUBLIC_ORG_ID, createdAt: daysAgo(1), updatedAt: daysAgo(1) },
   // Same patient as appointment-2 — today's visit is likewise a follow-up,
   // not an antenatal check, for the 60-year-old the registry generates.
@@ -1301,7 +1301,9 @@ const overflowRoster = [
 const overflowProviders = [
   { id: 'user-dr.wani', name: 'Dr. James Wani Igga', department: 'Internal Medicine' },
   { id: 'user-dr.achol', name: 'Dr. Achol Mayen Deng', department: 'Outpatient' },
-  { id: 'user-dr.mercy', name: 'Dr. Grace Lado', department: 'Cardiology' },
+  // A Juba doctor: these are Juba bookings. Mercy's cardiologist belongs to
+  // another organization, so her slots here were invisible to everyone.
+  { id: 'user-dr.alier', name: 'Dr. Alier Chol Wol', department: 'Cardiology' },
 ];
 
 // Reason + provider chosen together so the pairing is always clinically
@@ -2838,14 +2840,14 @@ async function seedDatabaseExclusive(): Promise<void> {
         { id: 'user-midwife.nyakong', name: 'Midwife Nyakong Gatkuoth' },
       ],
       'hosp-004': [
-        { id: 'user-lab.gatluak', name: 'Lab Tech Gatluak Puok' },
+        { id: 'user-co.bentiu', name: 'CO Gatwech Ruot Kuol' },
       ],
     };
     const GEN_FACILITY_TRIAGER: Record<string, GenProvider> = {
       'hosp-001': { id: 'user-triage.mary', name: 'Mary Nyaruai Gai' },
       'hosp-002': { id: 'user-nurse.wau', name: 'Nurse Grace Achai Lual' },
       'hosp-003': { id: 'user-nurse.stella', name: 'Nurse Stella Keji Lemi' },
-      'hosp-004': { id: 'user-lab.gatluak', name: 'Lab Tech Gatluak Puok' },
+      'hosp-004': { id: 'user-co.bentiu', name: 'CO Gatwech Ruot Kuol' },
     };
     const labStatuses = ['completed', 'in_progress', 'pending', 'completed', 'completed'];
     const apptStatuses = ['scheduled', 'confirmed', 'checked_in', 'completed', 'no_show'];
@@ -2964,9 +2966,9 @@ async function seedDatabaseExclusive(): Promise<void> {
       {
         fid: 'hosp-004', fname: 'Bentiu State Hospital', level: 'state', org: PUBLIC_ORG_ID,
         providers: [
-          { id: 'user-lab.gatluak', name: 'Lab Tech Gatluak Puok' },
+          { id: 'user-co.bentiu', name: 'CO Gatwech Ruot Kuol' },
         ],
-        triager: { id: 'user-lab.gatluak', name: 'Lab Tech Gatluak Puok' }, desk: DESK_JUBA,
+        triager: { id: 'user-co.bentiu', name: 'CO Gatwech Ruot Kuol' }, desk: DESK_JUBA,
       },
       // Private org (Mercy) — its own facility with its own patient roster
       // (mercyPatients) so Dr. Mercy / org-admin dashboards populate from
@@ -3898,6 +3900,12 @@ async function seedDatabaseExclusive(): Promise<void> {
       {
         id: 'pat-00304', name: 'Nyanut Gatwech Chuol', hospitalNumber: 'BSH-003004',
         facilityId: 'hosp-004', facilityName: 'Bentiu State Hospital', state: 'Unity', county: 'Rubkona',
+        // Bentiu's lab found the critical anaemia and referred her as an
+        // emergency to Juba Haematology; today's visit is at Juba, with the
+        // Juba doctor she is assigned to. Booking it at Bentiu put a Juba
+        // doctor on a Bentiu visit, which facility scoping (correctly) hid
+        // from his board.
+        visitFacilityId: 'hosp-001', visitFacilityName: 'Juba Teaching Hospital',
         providerId: 'user-dr.wani', providerName: 'Dr. James Wani Igga',
         appointmentTime: '10:20', complaint: 'Sickle cell crisis with severe pallor',
         triage: { priority: 'RED', temp: '37.4', pulse: '122', rr: '26', sys: '92', dia: '58', spo2: '93' },
@@ -3932,6 +3940,12 @@ async function seedDatabaseExclusive(): Promise<void> {
     for (let i = 0; i < wfCases.length; i++) {
       const c = wfCases[i];
       const enc = `enc-wf-${c.id}`;
+      // Where today's visit happens. Usually the patient's own facility; a
+      // referred-in case visits the receiving one. Labs and the referral keep
+      // the referring facility (c.facilityId) — that is where they happened.
+      const visit = c as { visitFacilityId?: string; visitFacilityName?: string };
+      const vFacilityId = visit.visitFacilityId ?? c.facilityId;
+      const vFacilityName = visit.visitFacilityName ?? c.facilityName;
       const today = dateAgo(0);
       const created = daysAgo(i % 3);
       const endTime = addMinutes(c.appointmentTime, 30);
@@ -3940,15 +3954,15 @@ async function seedDatabaseExclusive(): Promise<void> {
         _id: `appointment-wf-${c.id}`, type: 'appointment',
         patientId: c.id, patientName: c.name, patientPhone: workflowShowcasePatients.find(p => p._id === c.id)?.phone || '',
         providerId: c.providerId, providerName: c.providerName,
-        facilityId: c.facilityId, facilityName: c.facilityName, facilityLevel: c.facilityId === 'hosp-001' ? 'national' : 'state',
+        facilityId: vFacilityId, facilityName: vFacilityName, facilityLevel: vFacilityId === 'hosp-001' ? 'national' : 'state',
         appointmentDate: today, appointmentTime: c.appointmentTime, endTime, duration: 30,
         appointmentType: c.triage.priority === 'RED' ? 'emergency' : 'general',
         priority: c.triage.priority === 'RED' ? 'emergency' : c.triage.priority === 'YELLOW' ? 'urgent' : 'routine',
         department: c.referral.department, reason: c.complaint, status: i % 2 === 0 ? 'checked_in' : 'scheduled',
         ...(i % 2 === 0 ? { checkedInAt: daysAgo(0) } : {}),
         reminderSent: true, reminderChannel: 'sms', isRecurring: false,
-        bookedBy: c.facilityId === 'hosp-002' ? 'user-desk.wau' : 'user-desk.amira',
-        bookedByName: c.facilityId === 'hosp-002' ? 'Tabitha Nyandeng Kuol' : 'Amira Juma Hassan',
+        bookedBy: vFacilityId === 'hosp-002' ? 'user-desk.wau' : 'user-desk.amira',
+        bookedByName: vFacilityId === 'hosp-002' ? 'Tabitha Nyandeng Kuol' : 'Amira Juma Hassan',
         state: c.state, county: c.county, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0),
       });
 
@@ -3960,9 +3974,9 @@ async function seedDatabaseExclusive(): Promise<void> {
         priority: c.triage.priority, temperature: c.triage.temp, pulse: c.triage.pulse,
         respiratoryRate: c.triage.rr, systolic: c.triage.sys, diastolic: c.triage.dia,
         oxygenSaturation: c.triage.spo2, chiefComplaint: c.complaint,
-        triagedBy: c.facilityId === 'hosp-002' ? 'user-nurse.wau' : 'user-triage.mary',
-        triagedByName: c.facilityId === 'hosp-002' ? 'Nurse Grace Achai Lual' : 'Mary Nyaruai Gai',
-        triagedAt: daysAgo(0), facilityId: c.facilityId, facilityName: c.facilityName,
+        triagedBy: vFacilityId === 'hosp-002' ? 'user-nurse.wau' : 'user-triage.mary',
+        triagedByName: vFacilityId === 'hosp-002' ? 'Nurse Grace Achai Lual' : 'Mary Nyaruai Gai',
+        triagedAt: daysAgo(0), facilityId: vFacilityId, facilityName: vFacilityName,
         status: c.triage.priority === 'RED' ? 'pending' : 'seen',
         orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0),
       });
@@ -3996,7 +4010,7 @@ async function seedDatabaseExclusive(): Promise<void> {
           frequency: med.frequency, duration: med.duration,
           prescribedBy: c.providerName, status: med.status,
           ...(med.status === 'dispensed' ? { dispensedAt: daysAgo(0) } : {}),
-          hospitalId: c.facilityId, hospitalName: c.facilityName,
+          hospitalId: vFacilityId, hospitalName: vFacilityName,
           createdAt, updatedAt: daysAgo(0), orgId: PUBLIC_ORG_ID,
         });
       }
@@ -4024,18 +4038,18 @@ async function seedDatabaseExclusive(): Promise<void> {
         `chg-wf-${c.id}-diagnostics`,
         `chg-wf-${c.id}-pharmacy`,
       ];
-      await safePut(chgDB, { _id: chargeIds[0], type: 'charge', encounterId: enc, patientId: c.id, description: 'Clinical consultation', category: 'consultation', units: 1, billedAmount: consult, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
-      await safePut(chgDB, { _id: chargeIds[1], type: 'charge', encounterId: enc, patientId: c.id, description: 'Diagnostics: lab and imaging orders', category: c.labs.some(lab => lab.specimen === 'Imaging') ? 'radiology' : 'laboratory', units: 1, billedAmount: diagnostics, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
-      await safePut(chgDB, { _id: chargeIds[2], type: 'charge', encounterId: enc, patientId: c.id, description: 'Medication dispensing', category: 'pharmacy', units: 1, billedAmount: pharmacy, status: 'approved', serviceDate: today, providerId: 'user-pharma.rose', providerName: 'Pharmacist Rose Gbudue', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
-      await safePut(ledDB, { _id: `led-wf-${c.id}-charge`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'charge', amount: total, runningBalance: total, description: 'Workflow visit charges', referenceId: chargeIds[0], referenceType: 'charge', currency: 'SSP', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(chgDB, { _id: chargeIds[0], type: 'charge', encounterId: enc, patientId: c.id, description: 'Clinical consultation', category: 'consultation', units: 1, billedAmount: consult, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: vFacilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(chgDB, { _id: chargeIds[1], type: 'charge', encounterId: enc, patientId: c.id, description: 'Diagnostics: lab and imaging orders', category: c.labs.some(lab => lab.specimen === 'Imaging') ? 'radiology' : 'laboratory', units: 1, billedAmount: diagnostics, status: 'approved', serviceDate: today, providerId: c.providerId, providerName: c.providerName, facilityId: vFacilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(chgDB, { _id: chargeIds[2], type: 'charge', encounterId: enc, patientId: c.id, description: 'Medication dispensing', category: 'pharmacy', units: 1, billedAmount: pharmacy, status: 'approved', serviceDate: today, providerId: 'user-pharma.rose', providerName: 'Pharmacist Rose Gbudue', facilityId: vFacilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
+      await safePut(ledDB, { _id: `led-wf-${c.id}-charge`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'charge', amount: total, runningBalance: total, description: 'Workflow visit charges', referenceId: chargeIds[0], referenceType: 'charge', currency: 'SSP', facilityId: vFacilityId, orgId: PUBLIC_ORG_ID, createdAt: created, updatedAt: daysAgo(0) });
       if (c.bill.paid > 0) {
-        await safePut(payDB, { _id: `pay-wf-${c.id}`, type: 'payment', patientId: c.id, patientName: c.name, encounterId: enc, method: i % 2 === 0 ? 'cash' : 'm_gurush', amount: c.bill.paid, currency: 'SSP', reference: `RCT-WF-${String(i + 1).padStart(4, '0')}`, status: 'posted', processedAt: daysAgo(0), processedBy: 'user-cashier.deng', processedByName: 'Deng Akec Ring', allocations: [{ encounterId: enc, amount: c.bill.paid, chargeId: chargeIds[0] }], facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) });
-        await safePut(ledDB, { _id: `led-wf-${c.id}-payment`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'payment', amount: -c.bill.paid, runningBalance: balance, description: 'Payment received at cashier', referenceId: `pay-wf-${c.id}`, referenceType: 'payment', method: i % 2 === 0 ? 'cash' : 'm_gurush', currency: 'SSP', facilityId: c.facilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) });
+        await safePut(payDB, { _id: `pay-wf-${c.id}`, type: 'payment', patientId: c.id, patientName: c.name, encounterId: enc, method: i % 2 === 0 ? 'cash' : 'm_gurush', amount: c.bill.paid, currency: 'SSP', reference: `RCT-WF-${String(i + 1).padStart(4, '0')}`, status: 'posted', processedAt: daysAgo(0), processedBy: 'user-cashier.deng', processedByName: 'Deng Akec Ring', allocations: [{ encounterId: enc, amount: c.bill.paid, chargeId: chargeIds[0] }], facilityId: vFacilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) });
+        await safePut(ledDB, { _id: `led-wf-${c.id}-payment`, type: 'ledger_entry', patientId: c.id, encounterId: enc, entryType: 'payment', amount: -c.bill.paid, runningBalance: balance, description: 'Payment received at cashier', referenceId: `pay-wf-${c.id}`, referenceType: 'payment', method: i % 2 === 0 ? 'cash' : 'm_gurush', currency: 'SSP', facilityId: vFacilityId, orgId: PUBLIC_ORG_ID, createdAt: daysAgo(0), updatedAt: daysAgo(0) });
       }
       await safePut(blDB, {
         _id: `bill-wf-${c.id}`, type: 'billing',
         patientId: c.id, patientName: c.name, hospitalNumber: c.hospitalNumber,
-        facilityId: c.facilityId, facilityName: c.facilityName, facilityLevel: c.facilityId === 'hosp-001' ? 'national' : 'state',
+        facilityId: vFacilityId, facilityName: vFacilityName, facilityLevel: vFacilityId === 'hosp-001' ? 'national' : 'state',
         encounterDate: today, encounterId: enc,
         items: [
           { id: `li-wf-${c.id}-1`, category: 'consultation', description: 'Clinical consultation', quantity: 1, unitPrice: consult, totalPrice: consult },
