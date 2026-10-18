@@ -15,7 +15,7 @@ export const MODULE_IDENTITIES: readonly { paths: readonly string[]; tone: Modul
   { paths: ['/referrals', '/transfers'], tone: 'care', icon: 'arrowRightLeft' },
   { paths: ['/wards'], tone: 'care', icon: 'bedDouble' },
   { paths: ['/consultation', '/triage', '/rooming', '/notes'], tone: 'care', icon: 'stethoscope' },
-  { paths: ['/messages', '/notifications', '/inquiries'], tone: 'care', icon: 'message' },
+  { paths: ['/messages', '/notifications', '/inquiries', '/report-issue'], tone: 'care', icon: 'message' },
   { paths: ['/reports', '/analytics', '/government', '/surveillance', '/mch-analytics', '/vital-statistics', '/public-stats', '/epidemic-intelligence'], tone: 'operations', icon: 'chart' },
   { paths: ['/alerts', '/emergency-preparedness'], tone: 'operations', icon: 'shield' },
   { paths: ['/data-quality', '/dhis2-export'], tone: 'operations', icon: 'server' },

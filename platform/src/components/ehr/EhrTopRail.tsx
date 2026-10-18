@@ -7,6 +7,7 @@ import {
   HelpCircle,
   Hospital,
   LayoutDashboard,
+  Flag,
   LogOut,
   Menu,
   MessageSquare,
@@ -368,6 +369,15 @@ export default function EhrTopRail() {
     router.push('/settings');
   };
 
+  // Every role can report a problem; the page they were on travels with it
+  // (path only — the report form drops any query string).
+  const openReportIssue = () => {
+    setUserOpen(false);
+    setModuleOpen(false);
+    const from = pathname && pathname !== '/report-issue' ? `?from=${encodeURIComponent(pathname)}` : '';
+    router.push(`/report-issue${from}`);
+  };
+
   const userInitials = currentUser?.name ? initials(currentUser.name) : 'TH';
 
   const isRouteActive = (href: string) => pathname === href || (href !== '/' && pathname?.startsWith(href + '/'));
@@ -459,6 +469,9 @@ export default function EhrTopRail() {
                 </div>
                 <button type="button" onClick={() => { setModuleOpen(false); openSettingsPage(); }}>
                   <Settings className="w-4 h-4" /><span>Settings</span>
+                </button>
+                <button type="button" onClick={openReportIssue}>
+                  <Flag className="w-4 h-4" /><span>{t('issues.menuLink')}</span>
                 </button>
                 {tourAvailable && (
                   <button type="button" onClick={() => { setModuleOpen(false); startTour(); }}>
@@ -709,6 +722,10 @@ export default function EhrTopRail() {
               <button type="button" role="menuitem" onClick={openSettingsPage}>
                 <Settings className="w-4 h-4" />
                 <span>{t('topbar.settings')}</span>
+              </button>
+              <button type="button" role="menuitem" onClick={openReportIssue}>
+                <Flag className="w-4 h-4" />
+                <span>{t('issues.menuLink')}</span>
               </button>
               {tourAvailable && (
                 <button type="button" role="menuitem" onClick={() => { setUserOpen(false); startTour(); }}>

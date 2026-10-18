@@ -61,10 +61,25 @@ export function enquiryAssignee(message: Pick<MessageDoc, 'enquiryAssignedToName
   return message.enquiryAssignedToName?.trim() || null;
 }
 
+/**
+ * Whether an inbound patient message is a facility enquiry, rather than the
+ * patient's side of a conversation with their clinician.
+ *
+ * A portal reply to a clinician who wrote from the chart carries
+ * `recipientStaffId` (patient-thread-service `resolveReplyRecipient`). That is
+ * clinical correspondence: it belongs in that clinician's chart thread and
+ * bell, not in the triage queue that org admins and managers read. Only a
+ * message addressed to nobody in particular — a new portal enquiry, or one the
+ * front desk logged from a walk-in or call — is an enquiry.
+ */
+export function isFacilityEnquiry(message: Pick<MessageDoc, 'recipientStaffId'>): boolean {
+  return !message.recipientStaffId;
+}
+
 /** Inbound patient enquiries, newest first. Scope is applied upstream. */
 export async function getPatientEnquiries(scope: DataScope): Promise<MessageDoc[]> {
   const { getInboundPatientMessages } = await import('@/modules/communication/services/message-service');
-  return getInboundPatientMessages(scope);
+  return (await getInboundPatientMessages(scope)).filter(isFacilityEnquiry);
 }
 
 export interface EnquirySummary {
