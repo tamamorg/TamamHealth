@@ -32,13 +32,28 @@
  *   DRY_RUN=false node scripts/cleanup-offline-metadata-conflicts.mjs   # apply
  *
  * Env: COUCHDB_URL (default http://localhost:5984),
- *      COUCHDB_ADMIN_USER / COUCHDB_ADMIN_PASSWORD (required).
+ *      COUCHDB_ADMIN_USER / COUCHDB_ADMIN_PASSWORD (required),
+ *      DATABASES=a,b            only these databases (default: every tamamhealth_*),
+ *      ANY_TIMESTAMP_IS_CLOCK=true  demo stacks only — see below.
+ *
+ * Production safety: by default only BOOKKEEPING clock fields (updatedAt,
+ * lastModified, …) may differ for a sibling to count as disposable. A real
+ * record's dateOfBirth, appointmentDate or triagedAt is also timestamp-shaped,
+ * and a sibling that changed one of those is a real edit — deleting it would
+ * silently lose it. Demo stacks, where seed-clock drift touches every date
+ * field, can opt into the looser rule with ANY_TIMESTAMP_IS_CLOCK=true.
+ * The dry run lists each kept sibling with the NAMES of the fields that
+ * differ (never values: they are patient data).
  */
 
 const COUCH = process.env.COUCHDB_URL || 'http://localhost:5984';
 const USER = process.env.COUCHDB_ADMIN_USER;
 const PASS = process.env.COUCHDB_ADMIN_PASSWORD;
 const DRY_RUN = process.env.DRY_RUN !== 'false';
+const ANY_TIMESTAMP_IS_CLOCK = process.env.ANY_TIMESTAMP_IS_CLOCK === 'true';
+const ONLY_DATABASES = (process.env.DATABASES || '').split(',').map(s => s.trim()).filter(Boolean);
+/** Fields that record when a revision was written, not anything about the patient. */
+const CLOCK_FIELDS = new Set(['updatedAt', 'lastModified', 'lastUpdated', 'syncedAt', 'lastSyncedAt']);
 
 if (!USER || !PASS) {
   console.error('COUCHDB_ADMIN_USER and COUCHDB_ADMIN_PASSWORD are required.');
@@ -76,16 +91,22 @@ const stable = v => Array.isArray(v)
  *  volatile strip, every field it disagrees with the winner on is a
  *  timestamp-shaped string on BOTH sides (seed-clock drift). Any other
  *  difference — a value, a missing field, a changed structure — keeps it. */
-function isDisposableSibling(winner, loser) {
+function differingFields(winner, loser) {
   const w = stripVolatile(winner);
   const l = stripVolatile(loser);
+  const out = [];
   for (const key of new Set([...Object.keys(w), ...Object.keys(l)])) {
     if (stable(w[key]) === stable(l[key])) continue;
-    if (typeof w[key] === 'string' && typeof l[key] === 'string'
-      && TIMESTAMP_RE.test(w[key]) && TIMESTAMP_RE.test(l[key])) continue;
-    return false;
+    const clockLike = (ANY_TIMESTAMP_IS_CLOCK || CLOCK_FIELDS.has(key))
+      && typeof w[key] === 'string' && typeof l[key] === 'string'
+      && TIMESTAMP_RE.test(w[key]) && TIMESTAMP_RE.test(l[key]);
+    if (!clockLike) out.push(key);
   }
-  return true;
+  return out;
+}
+
+function isDisposableSibling(winner, loser) {
+  return differingFields(winner, loser).length === 0;
 }
 
 async function cleanDb(db) {
@@ -106,8 +127,12 @@ async function cleanDb(db) {
       const deletions = [];
       for (const rev of conflicts) {
         const losing = await couch(`/${enc}/${encodeURIComponent(doc._id)}?rev=${rev}`);
-        if (isDisposableSibling(doc, losing)) deletions.push({ _id: doc._id, _rev: rev, _deleted: true });
-        else stats.siblingsKept++;
+        const differs = differingFields(doc, losing);
+        if (differs.length === 0) deletions.push({ _id: doc._id, _rev: rev, _deleted: true });
+        else {
+          stats.siblingsKept++;
+          console.log(`  keep ${db}/${doc._id} @${rev} — differs in: ${differs.slice(0, 8).join(', ')}${differs.length > 8 ? ', …' : ''}`);
+        }
       }
       if (deletions.length && !DRY_RUN) {
         const results = await couch(`/${enc}/_bulk_docs`, { method: 'POST', body: JSON.stringify({ docs: deletions }) });
@@ -139,8 +164,9 @@ async function cleanDb(db) {
 }
 
 const all = await couch('/_all_dbs');
-const targets = all.filter(name => name.startsWith('tamamhealth_'));
-console.log(`${DRY_RUN ? '[DRY RUN] ' : ''}Scanning ${targets.length} databases on ${COUCH}…`);
+const targets = all.filter(name => name.startsWith('tamamhealth_')
+  && (ONLY_DATABASES.length === 0 || ONLY_DATABASES.includes(name)));
+console.log(`${DRY_RUN ? '[DRY RUN] ' : ''}Scanning ${targets.length} databases on ${COUCH}… (${ANY_TIMESTAMP_IS_CLOCK ? 'ANY timestamp field treated as clock drift — demo stacks only' : 'only bookkeeping clock fields may differ'})`);
 
 const totals = { docsWithConflicts: 0, siblingsDeleted: 0, siblingsKept: 0, winnersHealed: 0 };
 for (const db of targets) {
