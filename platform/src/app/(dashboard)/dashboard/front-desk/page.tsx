@@ -66,6 +66,8 @@ import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/fron
 import { encounterVisitState, resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import CheckoutModal from '@/components/front-desk/CheckoutModal';
 import CheckInModal from '@/components/front-desk/CheckInModal';
+import AppointmentRequestsPanel from '@/components/front-desk/AppointmentRequestsPanel';
+import { pendingRequests } from '@/lib/appointment-requests';
 import {
   createPatientRegistrationDraftId,
   savePatientRegistrationDraft,
@@ -170,6 +172,8 @@ export default function FrontDeskDashboardPage() {
   // holds with no booking today — both opened from Reception rail tiles.
   const [pendingSyncOpen, setPendingSyncOpen] = useState(false);
   const [unbookedOpen, setUnbookedOpen] = useState(false);
+  // Portal / online-booking requests waiting for reception to confirm.
+  const [requestsOpen, setRequestsOpen] = useState(false);
   // Pre-selects the patient when booking is started from the unbooked list.
   const [bookingPatientId, setBookingPatientId] = useState<string | undefined>(undefined);
   const { syncStatus, syncNow } = useSync();
@@ -1228,8 +1232,14 @@ export default function FrontDeskDashboardPage() {
         // their own dialogs (see handleAppointmentStatusChange) rather than
         // being written straight from a dropdown.
         statusValue: appointment.status,
+        // `requested` is not a rung reception can pick, so a request row carries
+        // it as its current (read-only) option and the pill still reads
+        // "Requested"; answering it is the Appointment requests list's job.
         statusOptions: canSetAppointmentStatus
-          ? APPOINTMENT_STATUS_OPTIONS.map(option => ({ value: option, label: appointmentStatusLabel(option) }))
+          ? [
+              ...(appointment.status === 'requested' ? [{ value: 'requested', label: appointmentStatusLabel('requested') }] : []),
+              ...APPOINTMENT_STATUS_OPTIONS.map(option => ({ value: option, label: appointmentStatusLabel(option) })),
+            ]
           : undefined,
         onStatusChange: canSetAppointmentStatus
           ? value => handleAppointmentStatusChange(appointment, value as AppointmentStatus)
@@ -1700,6 +1710,11 @@ export default function FrontDeskDashboardPage() {
       .sort((a, b) => (b.assignedAt ?? '').localeCompare(a.assignedAt ?? ''));
   }, [encounters, patients, today, todaysAppointments, triages, viewingToday]);
 
+  const openRequests = useMemo(
+    () => pendingRequests(appointments, today, currentUser?.hospitalId),
+    [appointments, today, currentUser?.hospitalId],
+  );
+
   const metrics = useMemo<EhrCareDashboardMetric[]>(() => {
     const counts = new Map<TriagePriority, number>();
     for (const item of boardQueue) {
@@ -1723,6 +1738,12 @@ export default function FrontDeskDashboardPage() {
     });
     // Only shown when there is something to say — a synced device adds no
     // tile here, same rule the acuity rows follow for a quiet lane.
+    if (openRequests.length > 0) {
+      acuityMetrics.push({
+        label: t('frontDesk.requestsTitle'), value: openRequests.length, tone: 'warning',
+        onClick: () => setRequestsOpen(true),
+      });
+    }
     if (pendingSyncCount > 0) {
       acuityMetrics.push({
         label: t('sync.docPendingLabel'), value: pendingSyncCount, tone: 'neutral',
@@ -1744,7 +1765,7 @@ export default function FrontDeskDashboardPage() {
       });
     }
     return acuityMetrics;
-  }, [assignedUnbooked.length, boardQueue, pendingSyncCount, staleVisits, t]);
+  }, [assignedUnbooked.length, boardQueue, openRequests.length, pendingSyncCount, staleVisits, t]);
 
   // No subtitle line under the board title: the lane tabs and the Reception
   // status panel already carry the counts, so the "24 patients scheduled"
@@ -1904,6 +1925,17 @@ export default function FrontDeskDashboardPage() {
               ))}
             </div>
           </Modal>
+        )}
+
+        {requestsOpen && (
+          <AppointmentRequestsPanel
+            appointments={appointments}
+            today={today}
+            facilityId={currentUser?.hospitalId}
+            onClose={() => setRequestsOpen(false)}
+            onEdit={appt => { setRequestsOpen(false); setEditAppointment(appt); }}
+            updateStatus={updateAppointmentStatus}
+          />
         )}
 
         {unbookedOpen && (

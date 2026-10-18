@@ -53,8 +53,14 @@ export interface Slot {
  * (`bookableOnline === true`) and every policy rule applies. `staff` is the
  * permissive one — the desk can book into any open window, because a person is
  * making the judgement.
+ *
+ * `portal` is the signed-in patient portal. It sees what the desk sees (every
+ * open window, no `bookableOnline` requirement, no `onlineBookingEnabled`
+ * requirement) because a portal submission is only a request that a person
+ * confirms. It still obeys the policy horizon and lead time like `public`, and
+ * offers reasons by patient class.
  */
-export type SlotChannel = 'public' | 'staff';
+export type SlotChannel = 'public' | 'staff' | 'portal';
 
 export interface SlotQuery {
   /** Inclusive date range, facility-local. */
@@ -371,7 +377,8 @@ export function computeSlots(
 
   // Never look further ahead than the policy allows, whatever the caller asked.
   const horizonEnd = addDays(query.now.date, policy.maxAdvanceDays);
-  const to = query.channel === 'public' && query.to > horizonEnd ? horizonEnd : query.to;
+  const limited = query.channel === 'public' || query.channel === 'portal';
+  const to = limited && query.to > horizonEnd ? horizonEnd : query.to;
   if (to < query.from) return [];
 
   const eligible = windows.filter(w => windowIsEligible(w, query));
@@ -389,7 +396,7 @@ export function computeSlots(
     return cached;
   };
 
-  const leadCut = query.channel === 'public' ? policy.minLeadTimeMinutes : 0;
+  const leadCut = limited ? policy.minLeadTimeMinutes : 0;
   const slots: Slot[] = [];
 
   for (const { window, date } of expanded) {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import Modal from '@/components/Modal';
 import {
   User, Calendar, FileText, FlaskConical, Syringe,
   Pill, Scan,
@@ -11,6 +10,7 @@ import {
   Wallet,
   CheckCircle2,
   UserCircle,
+  MapPin, Clock, Heart,
 } from '@/components/icons/lucide';
 import type { PatientDoc, AppointmentDoc, MedicalRecordDoc, PrescriptionDoc, ImmunizationDoc } from '@/lib/db-types';
 import type { PortalLabResult } from '@/lib/patient-portal-labs';
@@ -21,7 +21,9 @@ import { readPatientPortalSession, clearPatientPortalSession, patientPortalFetch
 import { PatientLogin } from '@/components/patient-portal/PatientLogin';
 import { ProfileTab } from '@/components/patient-portal/ProfileTab';
 import { BillingTab } from '@/components/patient-portal/BillingTab';
-import { Empty, dateParts, shortDate, type ChipTone } from '@/components/patient-portal/shared';
+import BookingDialog from '@/components/patient-portal/BookingDialog';
+import { Empty, CardHead, dateParts, shortDate, type ChipTone } from '@/components/patient-portal/shared';
+import { buildVitalTiles, ageInYears } from '@/components/patient-portal/vitals-tiles';
 import { todayIso } from '@/lib/date-utils';
 import { dismissBackdrop } from '@/lib/a11y';
 
@@ -126,64 +128,24 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
     return appointments.filter(a => a.appointmentDate >= today && a.status !== 'cancelled' && a.status !== 'no_show');
   }, [appointments]);
 
-  // `registrationHospitalName` isn't on the `PatientDoc` type but the seed/
-  // registration data carries it alongside the hospital id — fall back to the
-  // id itself only if the name was never recorded.
-  const patientFacilityName = (patient as { registrationHospitalName?: string }).registrationHospitalName
-    || patient.registrationHospital
-    || '';
-
-  const [bookingDate, setBookingDate] = useState(() => todayIso());
-  const [bookingTime, setBookingTime] = useState<'morning' | 'afternoon' | 'any'>('any');
-  const [bookingDepartment, setBookingDepartment] = useState('General / OPD');
-  const [bookingReason, setBookingReason] = useState('');
-  const [bookingSubmitting, setBookingSubmitting] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-
-  const resetBookingForm = () => {
-    setBookingDate(todayIso());
-    setBookingTime('any');
-    setBookingDepartment('General / OPD');
-    setBookingReason('');
-    setBookingError(null);
-  };
-
-  const handleSubmitBooking = async () => {
-    if (bookingSubmitting) return;
-    setBookingSubmitting(true);
-    setBookingError(null);
-    try {
-      const session = readPatientPortalSession();
-      if (!session) throw new Error('Missing patient session');
-      const timeOfDay: Record<typeof bookingTime, string> = { morning: '09:00', afternoon: '14:00', any: '' };
-      const { appointment } = await patientPortalFetch<{ appointment: AppointmentDoc }>(
-        '/api/patient-portal/appointments',
-        session.token,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            patientPhone: patient.phone || '',
-            facilityId: patient.registrationHospital || '',
-            facilityName: patientFacilityName,
-            appointmentDate: bookingDate,
-            appointmentTime: timeOfDay[bookingTime],
-            department: bookingDepartment,
-            reason: bookingReason,
-            appointmentType: 'general',
-            state: patient.state || '',
-          }),
-        }
-      );
-      setAppointments(prev => [...prev, appointment]);
-      setShowBooking(false);
-      resetBookingForm();
-      setToast('Appointment request sent — the facility will confirm it');
-    } catch (err) {
-      setBookingError(err instanceof Error ? err.message : t('patientPortal.bookingRequestError'));
-    } finally {
-      setBookingSubmitting(false);
-    }
-  };
+  // The patient record carries the facility NAME beside its id on some
+  // registrations only. Never show a bare id ("hosp-8f0c45cc"): when the name
+  // is missing, ask the portal's booking API, then fall back to a neutral label.
+  const recordedFacility = (patient as { registrationHospitalName?: string }).registrationHospitalName || '';
+  const [apiFacility, setApiFacility] = useState('');
+  useEffect(() => {
+    if (recordedFacility && recordedFacility !== patient.registrationHospital) return;
+    const session = readPatientPortalSession();
+    if (!session) return;
+    let live = true;
+    patientPortalFetch<{ facility?: { name?: string } }>('/api/patient-portal/booking/reasons', session.token)
+      .then(r => { if (live && r.facility?.name) setApiFacility(r.facility.name); })
+      .catch(() => { /* neutral label stays */ });
+    return () => { live = false; };
+  }, [recordedFacility, patient.registrationHospital]);
+  const facilityIsId = (n: string) => !n || n === patient.registrationHospital || /^hosp-[\w-]+$/i.test(n);
+  const resolvedFacility = !facilityIsId(recordedFacility) ? recordedFacility : (!facilityIsId(apiFacility) ? apiFacility : '');
+  const patientFacilityName = resolvedFacility || t('patientPortal.yourFacility');
 
   const [chatDepartment, setChatDepartment] = useState('General / OPD');
 
@@ -313,9 +275,9 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             patientPhone: patient.phone || '',
             recipientDepartment: chatDepartment,
             recipientHospitalId: patient.registrationHospital || '',
-            recipientHospitalName: patientFacilityName,
+            recipientHospitalName: resolvedFacility,
             fromHospitalId: patient.registrationHospital || '',
-            fromHospitalName: patientFacilityName,
+            fromHospitalName: resolvedFacility,
             subject: `Patient message — ${chatDepartment}`,
             body: trimmed,
             sentAt: now.toISOString(),
@@ -386,6 +348,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
     if (status === 'cancelled') return { tone: 'neutral', label: 'Cancelled' };
     if (status === 'no_show') return { tone: 'neutral', label: 'No show' };
     if (status === 'confirmed') return { tone: 'green', label: 'Confirmed' };
+    if (status === 'requested') return { tone: 'yellow', label: t('patientPortal.bk.statusRequested') };
     return { tone: 'blue', label: String(status).replace('_', ' ') };
   };
 
@@ -487,7 +450,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             </div>
           ))}
           <div className="pp-side-foot">
-            <p>Emergencies: call 911 or come straight to the facility.</p>
+            <p>{t('patientPortal.emergencyNote')}</p>
           </div>
         </aside>
 
@@ -552,32 +515,58 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           { key: 'weight', label: t('patientPortal.weight'), unit: 'kg' },
           { key: 'respiratoryRate', label: t('patientPortal.respRate'), unit: '/min' },
           { key: 'oxygenSaturation', label: 'SpO₂', unit: '%' },
-        ].filter(v => vitals[v.key]);
+        ];
+        const prevVitals = ((sortedRecs[1] as unknown as Record<string, unknown> | undefined)?.vitalSigns || {}) as Record<string, string | number>;
+        const vitalTiles = buildVitalTiles(vitals, prevVitals, vitalDefs, ageInYears(patient.dateOfBirth));
+        const nextApt = [...upcomingApts].sort((a, b) => (a.appointmentDate + (a.appointmentTime || '')).localeCompare(b.appointmentDate + (b.appointmentTime || '')))[0];
 
         return (
         <div>
-          <div className="pp-head">
-            <div>
+          {/* Hero — greeting, facility, next visit and the four things patients come here to do. */}
+          <section className="pp-hero">
+            <div className="pp-hero-main">
+              <p className="pp-hero-date">{todayLine}</p>
               <h1>{greeting}, {patient.firstName}</h1>
-              <p className="pp-head-note">{patientFacilityName} · {todayLine}</p>
+              <p className="pp-hero-fac"><MapPin size={14} strokeWidth={1.8} /> {patientFacilityName}</p>
+              <div className="pp-hero-actions">
+                <button type="button" className="pp-hero-btn pp-hero-btn--solid" onClick={() => setShowBooking(true)}>
+                  <Calendar size={15} strokeWidth={1.8} /> {t('patientPortal.bookAppointment')}
+                </button>
+                <button type="button" className="pp-hero-btn" onClick={() => goTab('chat')}>
+                  <MessageSquare size={15} strokeWidth={1.8} /> Message care team
+                </button>
+                <button type="button" className="pp-hero-btn" onClick={() => goTab('lab')}>
+                  <FlaskConical size={15} strokeWidth={1.8} /> View results{pendingLabCount > 0 ? ` (${pendingLabCount})` : ''}
+                </button>
+                <button type="button" className="pp-hero-btn" onClick={() => goTab('billing')}>
+                  <Wallet size={15} strokeWidth={1.8} /> Pay a bill
+                </button>
+              </div>
             </div>
-            <div className="pp-head-actions">
-              <button type="button" className="pp-btn pp-btn-primary" onClick={() => setShowBooking(true)}>
-                <Calendar size={15} strokeWidth={1.8} /> {t('patientPortal.bookAppointment')}
-              </button>
-              <button type="button" className="pp-btn pp-btn-secondary" onClick={() => goTab('chat')}>
-                <MessageSquare size={15} strokeWidth={1.8} /> Message care team
-              </button>
+            <div className="pp-hero-next">
+              <p className="pp-hero-next-label"><Clock size={13} strokeWidth={1.8} /> Next visit</p>
+              {nextApt ? (
+                <button type="button" className="pp-hero-next-body" onClick={() => goTab('appointments')}>
+                  <span className="pp-date-plate"><b>{dateParts(nextApt.appointmentDate).day}</b><small>{dateParts(nextApt.appointmentDate).mon}</small></span>
+                  <span className="pp-hero-next-text">
+                    <b>{nextApt.reason || nextApt.appointmentType}</b>
+                    <small>{nextApt.appointmentTime ? `${formatClockTime(nextApt.appointmentTime)} · ` : ''}{nextApt.department}</small>
+                    <span className={`pp-chip pp-chip--${aptChip(nextApt.status).tone}`}>{aptChip(nextApt.status).label}</span>
+                  </span>
+                </button>
+              ) : (
+                <div className="pp-hero-next-empty">
+                  <p>No visit booked yet.</p>
+                  <button type="button" className="pp-hero-btn pp-hero-btn--solid" onClick={() => setShowBooking(true)}>Book your next visit</button>
+                </div>
+              )}
             </div>
-          </div>
+          </section>
 
           {/* Things to do */}
           {todos.length > 0 && (
-            <div className="pp-card" style={{ marginBottom: 14 }}>
-              <div className="pp-card-head">
-                <h2>Things to do</h2>
-                <small>{todos.length} open</small>
-              </div>
+            <div className="pp-card pp-card--section">
+              <CardHead icon={CheckCircle2} title="Things to do" tone="amber" right={<small>{todos.length} open</small>} />
               <div className="pp-todos">
                 {todos.map(td => (
                   <button key={td.key} type="button" className="pp-todo" onClick={td.go}>
@@ -588,6 +577,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                       <b>{td.label}</b>
                       <small>{td.sub}</small>
                     </span>
+                    <ChevronRight size={14} className="pp-todo-go" />
                   </button>
                 ))}
               </div>
@@ -595,25 +585,29 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           )}
 
           {/* Latest vitals */}
-          {vitalDefs.length > 0 && (
-            <div className="pp-tiles">
-              {vitalDefs.map(v => (
-                <div key={v.key} className="pp-tile">
-                  <p className="pp-tile-label">{v.label}</p>
-                  <p className="pp-tile-value">{String(vitals[v.key])} <small>{v.unit}</small></p>
-                  {latestDate && <p className="pp-tile-sub">{shortDate(latestDate)} · {latestVisitType}</p>}
-                </div>
-              ))}
-            </div>
+          {vitalTiles.length > 0 && (
+            <>
+              <h2 className="pp-section-title"><Heart size={14} strokeWidth={1.8} /> Latest vitals <small>{latestDate ? `${shortDate(latestDate)} · ${latestVisitType}` : ''}</small></h2>
+              <div className="pp-tiles">
+                {vitalTiles.map(v => (
+                  <div key={v.key} className={`pp-tile pp-tile--${v.tone}`} title={v.note}>
+                    <p className="pp-tile-label">{v.label}</p>
+                    <p className="pp-tile-value">{v.value} <small>{v.unit}</small></p>
+                    <p className="pp-tile-sub">
+                      {v.tone === 'neutral' ? null : v.tone !== 'ok' ? <b className="pp-tile-flag">{v.tone === 'bad' ? 'Needs attention' : 'Outside normal range'}</b> : <b className="pp-tile-flag pp-tile-flag--ok">In normal range</b>}
+                      {v.delta && <span>{v.delta.dir === 'same' ? 'No change since last visit' : `${v.delta.dir === 'up' ? 'Up' : 'Down'} ${v.delta.amount} since last visit`}</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           <div className="pp-grid2">
             {/* Upcoming appointments */}
             <div className="pp-card">
-              <div className="pp-card-head">
-                <h2>{t('patientPortal.upcomingAppointments')}</h2>
-                <button type="button" className="pp-card-link" onClick={() => goTab('appointments')}>All ›</button>
-              </div>
+              <CardHead icon={Calendar} title={t('patientPortal.upcomingAppointments')} tone="blue"
+                right={<button type="button" className="pp-card-link" onClick={() => goTab('appointments')}>All ›</button>} />
               {upcomingApts.length > 0 ? upcomingApts.slice(0, 3).map(apt => {
                 const { day, mon } = dateParts(apt.appointmentDate);
                 const chip = aptChip(apt.status);
@@ -631,15 +625,16 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   </div>
                 );
               }) : (
-                <div style={{ padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>
-                  {t('patientPortal.noUpcomingAppointments')}
+                <div className="pp-empty-line">
+                  <p>{t('patientPortal.noUpcomingAppointments')}</p>
+                  <button type="button" className="pp-row-action" onClick={() => setShowBooking(true)}>{t('patientPortal.bookAppointment')}</button>
                 </div>
               )}
             </div>
 
             {/* Current medications */}
             <div className="pp-card">
-              <div className="pp-card-head"><h2>{t('patient.medications')}</h2></div>
+              <CardHead icon={Pill} title={t('patient.medications')} tone="iris" />
               {activeRx.length > 0 ? activeRx.map(rx => (
                 <div key={rx._id} className="pp-row" style={{ padding: '10px 14px' }}>
                   <div className="pp-row-main">
@@ -649,16 +644,16 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   <span style={{ flex: 'none', fontSize: 11, color: 'var(--ehr-muted)', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{rx.status}</span>
                 </div>
               )) : (
-                <div style={{ padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>{t('patientPortal.noMedications')}</div>
+                <div className="pp-empty-line"><p>{t('patientPortal.noMedications')}</p></div>
               )}
               <button type="button" className="pp-card-foot" onClick={() => goTab('prescriptions')}>All prescriptions ›</button>
             </div>
 
             {/* Health alerts */}
             <div className="pp-card">
-              <div className="pp-card-head"><h2>{t('patientPortal.healthAlerts')}</h2></div>
+              <CardHead icon={AlertTriangle} title={t('patientPortal.healthAlerts')} tone="rose" />
               {realAllergies.length === 0 && realConditions.length === 0 && pendingLabCount === 0 && !hasCritical ? (
-                <div style={{ padding: '14px', fontSize: 12, color: 'var(--color-success-text)' }}>{t('patientPortal.noHealthAlerts')}</div>
+                <div className="pp-empty-line pp-empty-line--ok"><CheckCircle2 size={16} strokeWidth={1.8} /><p>{t('patientPortal.noHealthAlerts')}</p></div>
               ) : (
                 <>
                   {realAllergies.length > 0 && (
@@ -703,14 +698,14 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
 
             {/* Recent activity */}
             <div className="pp-card">
-              <div className="pp-card-head"><h2>{t('patientPortal.recentActivity')}</h2></div>
+              <CardHead icon={Activity} title={t('patientPortal.recentActivity')} tone="green" />
               {activity.length > 0 ? activity.slice(0, 4).map(ac => (
                 <div key={ac.key} className="pp-activity-row">
                   <span>{ac.what}</span>
                   <small>{shortDate(ac.when)}</small>
                 </div>
               )) : (
-                <div style={{ padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>{t('patientPortal.noRecentActivity')}</div>
+                <div className="pp-empty-line"><p>{t('patientPortal.noRecentActivity')}</p></div>
               )}
             </div>
           </div>
@@ -731,14 +726,16 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {appointments.length === 0 ? (
             <Empty icon={Calendar} text={t('patientPortal.noAppointmentsYet')} action={t('patientPortal.bookAppointment')} onAction={() => setShowBooking(true)} />
           ) : (
-            <div className="pp-card">
+            <div className="pp-cards">
               {appointments.slice().sort((a, b) => b.appointmentDate.localeCompare(a.appointmentDate)).map(apt => {
                 const chip = aptChip(apt.status);
                 return (
                   <div key={apt._id} className="pp-row">
+                    <span className="pp-date-plate"><b>{dateParts(apt.appointmentDate).day}</b><small>{dateParts(apt.appointmentDate).mon}</small></span>
                     <div className="pp-row-main">
                       <b>{apt.reason || apt.appointmentType}{apt.providerName ? ` — ${/^dr\.?\s/i.test(apt.providerName) ? apt.providerName : `${t('patientPortal.drPrefix')} ${apt.providerName}`}` : ''}</b>
                       <span>{shortDate(apt.appointmentDate)}{apt.appointmentTime ? ` · ${formatClockTime(apt.appointmentTime)}` : ''} · {apt.department}</span>
+                      {apt.status === 'requested' && <span>{t('patientPortal.bk.requestedNote')}</span>}
                     </div>
                     <span className={`pp-chip pp-chip--${chip.tone}`}>{chip.label}</span>
                   </div>
@@ -761,15 +758,16 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {records.length === 0 ? (
             <Empty icon={FileText} text={t('patientPortal.noMedicalRecords')} />
           ) : (
-            <div className="pp-card">
+            <div className="pp-cards">
               {records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(rec => {
                 const r = rec as unknown as Record<string, unknown>;
                 const vitalSigns = r.vitalSigns as Record<string, unknown> | undefined;
                 const recRx = (r.prescriptions as Array<{ medication: string; dosage: string }> | undefined) || [];
                 const open = expandedId === rec._id;
                 return (
-                  <div key={rec._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <div key={rec._id} className="pp-item">
                     <button type="button" className="pp-row-toggle" onClick={() => setExpandedId(open ? null : rec._id)}>
+                      <span className="pp-ic pp-ic--blue pp-ic--lg" aria-hidden><FileText size={17} strokeWidth={1.7} /></span>
                       <div className="pp-row-main">
                         <b>{(r.visitType as string) || t('patientPortal.consultation')}</b>
                         <span>{shortDate(rec.createdAt?.slice(0, 10) || '')} · {((r.diagnoses as Array<{ name: string }>) || []).map(d => d.name).join(', ') || t('patientPortal.noDiagnosisRecorded')}</span>
@@ -823,7 +821,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {labResults.length === 0 ? (
             <Empty icon={FlaskConical} text={t('patientPortal.noLabResults')} />
           ) : (
-            <div className="pp-card">
+            <div className="pp-cards">
               {labResults.slice().sort((a, b) => (b.orderedAt || b.createdAt).localeCompare(a.orderedAt || a.createdAt)).map(lab => {
                 const open = expandedId === lab._id;
                 const chip = lab.status === 'pending'
@@ -832,8 +830,9 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                     ? (lab.abnormal ? { tone: 'red' as ChipTone, label: t('patientPortal.abnormal') } : { tone: 'green' as ChipTone, label: t('patientPortal.normal') })
                     : { tone: 'neutral' as ChipTone, label: lab.status };
                 return (
-                  <div key={lab._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <div key={lab._id} className="pp-item">
                     <button type="button" className="pp-row-toggle" onClick={() => setExpandedId(open ? null : lab._id)}>
+                      <span className={`pp-ic pp-ic--${chip.tone === 'red' ? 'rose' : chip.tone === 'yellow' ? 'amber' : 'green'} pp-ic--lg`} aria-hidden><FlaskConical size={17} strokeWidth={1.7} /></span>
                       <div className="pp-row-main">
                         <b>{lab.testName}</b>
                         <span>{shortDate((lab.orderedAt || lab.createdAt).slice(0, 10))}{lab.specimen ? ` · ${lab.specimen}` : ''}{lab.orderedBy ? ` · ${lab.orderedBy}` : ''}</span>
@@ -887,9 +886,10 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {prescriptions.length === 0 ? (
             <Empty icon={Pill} text={t('patientPortal.noPrescriptions')} />
           ) : (
-            <div className="pp-card">
+            <div className="pp-cards">
               {prescriptions.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(rx => (
                 <div key={rx._id} className="pp-row">
+                  <span className="pp-ic pp-ic--iris pp-ic--lg" aria-hidden><Pill size={17} strokeWidth={1.7} /></span>
                   <div className="pp-row-main">
                     <b>{rx.medication}</b>
                     <span>{formatRxSig(rx)}{rx.prescribedBy ? ` · ${t('patientPortal.prescribedBy', { name: rx.prescribedBy })}` : ''}</span>
@@ -919,9 +919,10 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               /x-ray|xray|mri|ct scan|ultrasound|radiology|imaging|echo|mammogram/i.test(l.testName || '')
             );
             return imagingTests.length > 0 ? (
-              <div className="pp-card">
+              <div className="pp-cards">
                 {imagingTests.map(img => (
                   <div key={img._id} className="pp-row">
+                    <span className="pp-ic pp-ic--blue pp-ic--lg" aria-hidden><Scan size={17} strokeWidth={1.7} /></span>
                     <div className="pp-row-main">
                       <b>{img.testName}</b>
                       <span>{shortDate((img.orderedAt || img.createdAt).slice(0, 10))}{img.orderedBy ? ` · ${img.orderedBy}` : ''}</span>
@@ -966,12 +967,13 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {immunizations.length === 0 ? (
             <Empty icon={Syringe} text={t('patientPortal.noImmunizations')} />
           ) : (
-            <div className="pp-card">
+            <div className="pp-cards">
               {immunizations.slice().sort((a, b) => b.dateGiven.localeCompare(a.dateGiven)).map(imm => {
                 const today = todayIso();
                 const due = imm.nextDueDate && imm.nextDueDate >= today;
                 return (
                   <div key={imm._id} className="pp-row">
+                    <span className="pp-ic pp-ic--green pp-ic--lg" aria-hidden><Syringe size={17} strokeWidth={1.7} /></span>
                     <div className="pp-row-main">
                       <b>{imm.vaccine} — {t('patientPortal.doseNumber', { number: imm.doseNumber })}</b>
                       <span>{t('patientPortal.siteBatch', { site: imm.site, batch: imm.batchNumber })} · {t('patientPortal.administeredBy', { name: imm.administeredBy, facility: imm.facilityName })}</span>
@@ -999,7 +1001,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           <div className="pp-head">
             <div>
               <h1>{t('patientPortal.tabMessages')}</h1>
-              <p className="pp-head-note">Your care team replies within one working day. For emergencies call 911 or come to the facility.</p>
+              <p className="pp-head-note">{t('patientPortal.chatNote')}</p>
             </div>
           </div>
           <div className="pp-card pp-chat">
@@ -1051,47 +1053,20 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
 
       {/* ═══ My Profile ═══ */}
       {activeTab === 'profile' && (
-        <ProfileTab patient={patient} />
+        <ProfileTab patient={patient} facilityName={patientFacilityName} />
       )}
 
-      {/* Booking Modal */}
+      {/* Booking: reason -> real availability -> confirm */}
       {showBooking && (
-        <Modal onClose={() => { setShowBooking(false); resetBookingForm(); }}>
-          <div className="modal-panel modal-panel--md">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{t('patientPortal.requestAppointment')}</h3>
-              <button onClick={() => { setShowBooking(false); resetBookingForm(); }} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><X size={14} /></button>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>{t('patientPortal.bookingNotice')}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--accent-light)', border: '1px solid var(--accent-border)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Calendar size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{t('patientPortal.bookingAt', { facility: patientFacilityName })}</span>
-              </div>
-              <div><label>{t('patientPortal.preferredDate')}</label><input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} min={todayIso()} /></div>
-              <div><label>{t('patientPortal.preferredTime')}</label>
-                <Select value={bookingTime} onChange={e => setBookingTime(e.target.value as typeof bookingTime)}>
-                  <option value="morning">{t('patientPortal.timeMorning')}</option>
-                  <option value="afternoon">{t('patientPortal.timeAfternoon')}</option>
-                  <option value="any">{t('patientPortal.timeAnyTime')}</option>
-                </Select>
-              </div>
-              <div><label>{t('patientPortal.department')}</label>
-                <Select value={bookingDepartment} onChange={e => setBookingDepartment(e.target.value)}>
-                  <option>General / OPD</option><option>Obstetrics</option><option>Internal Medicine</option><option>Pediatrics</option><option>Surgery</option><option>Laboratory</option><option>Dental</option>
-                </Select>
-              </div>
-              <div><label>{t('patientPortal.reason')}</label><textarea rows={3} placeholder={t('patientPortal.reasonPlaceholder')} value={bookingReason} onChange={e => setBookingReason(e.target.value)} /></div>
-              {bookingError && <p style={{ fontSize: 12, color: 'var(--color-danger-text)' }}>{bookingError}</p>}
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                <button onClick={() => { setShowBooking(false); resetBookingForm(); }} className="btn btn-secondary" style={{ flex: 1 }} disabled={bookingSubmitting}>{t('action.cancel')}</button>
-                <button onClick={handleSubmitBooking} className="btn btn-primary" style={{ flex: 1 }} disabled={bookingSubmitting || !bookingDate || !bookingDepartment}>
-                  {bookingSubmitting ? t('status.loading') : t('patientPortal.submitRequest')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Modal>
+        <BookingDialog
+          patient={patient}
+          facilityName={patientFacilityName}
+          onClose={() => setShowBooking(false)}
+          onBooked={appointment => {
+            setAppointments(prev => [...prev, appointment]);
+            setToast(t('patientPortal.bk.toastSent'));
+          }}
+        />
       )}
 
           </div>

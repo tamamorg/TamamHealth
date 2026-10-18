@@ -837,7 +837,10 @@
   --color-success-text: var(--color-success-400);
   --color-success-bg: color-mix(in srgb, var(--color-success-500) 22%, var(--tm-ink));
   --color-warning: var(--gold-500);
-  --color-warning-text: var(--gold-400);
+  /* Not --gold-400: in this theme the gold 50–400 steps are redefined as
+     dark BACKGROUND tints (above), so pointing text at one put dark gold on
+     navy (~1.8:1) — every warning label in dark mode was near-invisible. */
+  --color-warning-text: var(--tm-gold);
   --color-warning-bg: color-mix(in srgb, var(--gold-500) 16%, var(--tm-ink));
   --color-danger: var(--color-danger-400);
   --color-danger-text: var(--color-danger-400);
@@ -1291,6 +1294,8 @@ svg.lucide:not([style*="color"]) {
   .pp-top,
   .pp-row-pay,
   .pp-toast,
+  .pp-hero,
+  .pp-side-badge,
   .sadb-pill.is-active,
   .sadb-tenant-action.is-danger,
   .popup-resource-header,
@@ -29957,19 +29962,20 @@ table.patient-data-table.patient-data-table {
   align-items: center;
   gap: 9px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--text-primary);
   font-family: var(--font-platform);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   text-align: start;
   cursor: pointer;
 }
 .pp-side-item:hover { background: var(--color-slate-50); }
-.pp-side-item.active { background: var(--color-info-bg); color: var(--text-primary); font-weight: 700; }
+.pp-side-item.active { background: var(--color-info-bg); color: var(--accent-text); box-shadow: inset 3px 0 0 var(--accent-primary); }
+.pp-side-item.active svg { color: var(--accent-text); }
 .pp-side-item svg { flex: none; }
 .pp-side-item > span {
   flex: 1;
@@ -29980,25 +29986,26 @@ table.patient-data-table.patient-data-table {
 }
 .pp-side-badge {
   flex: none;
-  min-width: 19px;
-  height: 17px;
-  padding: 0 5px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--color-slate-100);
-  color: var(--accent-text);
+  background: var(--accent-primary);
+  color: #ffffff;
   font-family: var(--font-condensed);
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 .pp-side-badge.orange { background: #CC6600; color: #ffffff; }
 .pp-side-foot { margin-top: auto; padding: 10px 10px 2px; border-top: 1px solid var(--border-light); }
 .pp-side-foot p { margin: 0; font-size: 11px; font-weight: 700; color: var(--ehr-muted); line-height: 1.5; }
 
-.pp-main { min-height: 0; overflow-y: auto; padding: 18px 22px 30px; }
-.pp-page { max-width: 980px; }
+.pp-main { min-height: 0; overflow-y: auto; padding: 22px clamp(16px, 2.6vw, 44px) 44px; }
+/* Full width beside the sidebar on every view; cards reflow into more columns instead of stretching. */
+.pp-page { width: 100%; max-width: none; }
 
 /* ── Page header ── */
 .pp-head {
@@ -30087,7 +30094,7 @@ table.patient-data-table.patient-data-table {
 .pp-card {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
@@ -30197,7 +30204,7 @@ table.patient-data-table.patient-data-table {
   text-transform: uppercase;
 }
 .pp-chip--green { background: rgba(10, 110, 74, 0.10); border: 1px solid rgba(10, 110, 74, 0.4); color: var(--color-success-text); }
-.pp-chip--yellow { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: var(--color-warning-text); }
+.pp-chip--yellow { background: var(--orange-50); border: 1px solid var(--color-warning-border); color: var(--color-warning-text); }
 .pp-chip--red { background: rgba(158, 27, 20, 0.08); border: 1px solid rgba(158, 27, 20, 0.42); color: var(--color-danger-text); }
 .pp-chip--blue { background: var(--color-info-bg); border: 1px solid var(--border-accent); color: var(--text-primary); }
 .pp-chip--neutral { background: var(--color-slate-50); border: 1px solid var(--border-light); color: var(--text-muted); }
@@ -30205,16 +30212,16 @@ table.patient-data-table.patient-data-table {
 /* ── Stat tiles (vitals, billing) ── */
 .pp-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
 }
 .pp-tile {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
-  padding: 11px 13px;
+  padding: 14px 16px;
 }
 .pp-tile-label {
   margin: 0;
@@ -30237,7 +30244,7 @@ table.patient-data-table.patient-data-table {
 .pp-tile-sub { margin: 2px 0 0; font-size: 10.5px; font-weight: 700; color: var(--ehr-muted); }
 
 /* ── Overview: things-to-do grid ── */
-.pp-todos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.pp-todos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .pp-todo {
   display: flex;
   align-items: flex-start;
@@ -30245,7 +30252,7 @@ table.patient-data-table.patient-data-table {
   padding: 12px 14px;
   background: transparent;
   border: 0;
-  border-inline-end: 1px solid #F1F3F5;
+  border-inline-end: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
   text-align: start;
   cursor: pointer;
@@ -30270,8 +30277,9 @@ table.patient-data-table.patient-data-table {
 /* ── Overview: card grid + widgets ── */
 .pp-grid2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  align-items: start;
 }
 .pp-date-plate {
   flex: none;
@@ -30437,6 +30445,171 @@ table.patient-data-table.patient-data-table {
 }
 .pp-back-link:hover { text-decoration: underline; }
 
+/* ── Overview hero ── */
+.pp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 18px;
+  padding: clamp(18px, 2.2vw, 28px);
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-radius: 14px;
+}
+.pp-hero-date { margin: 0; font-family: var(--font-condensed); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); }
+.pp-hero h1 { margin: 4px 0 0; font-family: var(--font-condensed); font-size: clamp(26px, 3vw, 36px); font-weight: 800; letter-spacing: -0.015em; line-height: 1.1; color: #ffffff; }
+.pp-hero-fac { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
+.pp-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.pp-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  color: #ffffff;
+  font-family: var(--font-condensed);
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pp-hero-btn:hover { background: rgba(255, 255, 255, 0.24); }
+/* Icons on the blue band must be white (icon-on-fill rule); the one white primary button flips to navy. */
+.pp-hero svg.lucide, .pp-hero svg.lucide * { color: #ffffff; stroke: #ffffff; }
+.pp-hero-next-body .pp-date-plate { color: var(--tm-navy); }
+/* The one primary action: white fill, navy ink and icon. */
+/* The hero band is accent blue in BOTH themes, so its light elements use
+   theme-stable primitives (white plate, navy ink) — a theme token such as
+   --bg-card turns dark in dark mode and left navy ink on navy. */
+.pp-hero-btn--solid { background: var(--color-white); border-color: var(--color-white); color: var(--tm-navy); }
+.pp-hero-btn--solid:hover { background: color-mix(in srgb, var(--color-white) 90%, var(--accent-primary)); }
+.pp-hero .pp-hero-btn--solid svg.lucide, .pp-hero .pp-hero-btn--solid svg.lucide * { color: var(--tm-navy); stroke: var(--tm-navy); }
+.pp-hero-next { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 12px; }
+.pp-hero-next-label { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--font-condensed); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.8); }
+.pp-hero-next-body { display: flex; align-items: center; gap: 14px; padding: 0; background: none; border: 0; text-align: start; cursor: pointer; color: #ffffff; font-family: var(--font-platform); }
+.pp-hero-next-body .pp-date-plate { width: 56px; padding: 8px 0; background: var(--color-white); }
+.pp-hero-next-body .pp-date-plate b { font-size: 20px; color: var(--tm-navy); }
+.pp-hero-next-body .pp-date-plate small { font-size: 10.5px; color: var(--tm-navy); }
+.pp-hero-next-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.pp-hero-next-text b { font-size: 16px; font-weight: 700; color: #ffffff; overflow-wrap: anywhere; }
+.pp-hero-next-text small { font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.85); }
+.pp-hero-next-text .pp-chip { margin-top: 4px; background: var(--color-white); border-color: var(--color-white); color: var(--color-success-800); }
+.pp-hero-next-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.pp-hero-next-empty p { margin: 0; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
+
+/* ── Section titles, toned icon tiles, tinted vitals ── */
+.pp-card--section { margin-bottom: 20px; }
+.pp-section-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; font-family: var(--font-condensed); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-primary); }
+.pp-section-title svg { align-self: center; color: var(--accent-text); }
+.pp-section-title small { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.pp-card-head h2 { display: flex; align-items: center; gap: 9px; }
+.pp-ic svg.lucide, .pp-todo-ic svg.lucide, .pp-section-title svg.lucide, .pp-empty-line--ok svg.lucide, .pp-todo-go { color: inherit; stroke: currentColor; }
+.pp-side-item svg.lucide { color: var(--accent-text); stroke: currentColor; }
+.pp-todos .pp-todo:last-child { border-inline-end: 0; }
+/* Icon chips: the platform strips tinted squares behind lone SVGs, so the tone lives on a ring and the glyph. */
+.pp-ic { flex: none; width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--color-info-border); color: var(--accent-text); }
+.pp-ic--lg { width: 40px; height: 40px; }
+.pp-ic--green { border-color: var(--color-success-border); color: var(--color-success-text); }
+.pp-ic--amber { border-color: var(--color-warning-border); color: var(--color-warning-text); }
+.pp-ic--rose { border-color: var(--color-danger-border); color: var(--color-danger-text); }
+.pp-ic--iris { border-color: color-mix(in srgb, var(--accent-purple) 45%, transparent); color: var(--accent-purple); }
+.pp-tile { border-top: 3px solid var(--accent-primary); }
+.pp-tile--ok { background: var(--bg-card-solid); border-top-color: var(--color-success); }
+/* Not assessed (weight, height): no range claim, so no success colour either. */
+.pp-tile--neutral { background: var(--bg-card-solid); border-top-color: var(--border-medium); }
+.pp-tile--warn { background: var(--color-warning-bg); border-color: var(--color-warning-border); border-top-color: var(--color-warning); }
+.pp-tile--bad { background: var(--color-danger-bg); border-color: var(--color-danger-border); border-top-color: var(--color-danger); }
+.pp-tile-value { font-size: 28px; }
+.pp-tile-sub { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; font-size: 11.5px; }
+.pp-tile-flag { font-weight: 700; color: var(--color-warning-text); }
+.pp-tile--bad .pp-tile-flag { color: var(--color-danger-text); }
+.pp-tile-flag--ok { color: var(--color-success-text); }
+.pp-todo { align-items: center; }
+.pp-todo-ic { border: 1.5px solid var(--color-info-border); border-radius: 50%; }
+.pp-todo-ic.amber { border-color: var(--color-warning-border); }
+.pp-todo-body { flex: 1; }
+.pp-todo-go { flex: none; color: var(--text-muted); }
+.pp-empty-line { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 16px; }
+.pp-empty-line p { margin: 0; font-size: 13px; color: var(--text-muted); }
+.pp-empty-line--ok { justify-content: flex-start; color: var(--color-success-text); }
+.pp-empty-line--ok p { color: var(--color-success-text); font-weight: 700; }
+
+/* ── List views: one card per item, filling the width in as many columns as fit ── */
+.pp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 12px; align-items: start; }
+.pp-cards > .pp-row, .pp-cards > .pp-item {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
+  overflow: hidden;
+}
+.pp-cards > .pp-row { padding: 14px 16px; border-bottom: 1px solid var(--border-light); }
+.pp-cards > .pp-row:hover, .pp-cards > .pp-item:hover { border-color: var(--border-accent); }
+.pp-cards .pp-row-toggle:hover { background: transparent; }
+.pp-cards .pp-date-plate { width: 48px; padding: 7px 0; }
+.pp-head h1 { font-size: clamp(22px, 2.2vw, 28px); }
+.pp-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 20px; text-align: center; }
+.pp-empty p { margin: 0; max-width: 420px; font-size: 14px; color: var(--text-muted); }
+.pp-head { padding-bottom: 12px; border-bottom: 1px solid var(--border-light); margin-bottom: 18px; }
+
+/* ── Booking dialog (reason -> slots -> confirm) ── */
+.pp-bk { max-width: 560px; width: 100%; max-height: 92dvh; overflow-y: auto; padding: 16px; }
+.pp-bk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.pp-bk-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pp-bk-title h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.pp-bk-icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; cursor: pointer; color: var(--text-muted); }
+.pp-bk-back { margin-inline-start: -10px; }
+.pp-bk-close { margin-inline-end: -10px; }
+.pp-bk-facility { margin: 0 0 10px; font-size: 12.5px; color: var(--text-secondary); }
+.pp-bk-steps { display: flex; gap: 6px; margin-bottom: 16px; }
+.pp-bk-steps i { flex: 1; height: 4px; border-radius: 2px; background: var(--border-light); }
+.pp-bk-steps i.on { background: var(--accent-primary); }
+.pp-bk-q { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.pp-bk-label { display: block; margin: 0 0 6px; padding: 0; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); text-transform: none; letter-spacing: normal; }
+.pp-bk-field { width: 100%; min-height: 44px; font-size: 16px; margin-bottom: 10px; }
+.pp-bk-area { margin-bottom: 0; }
+.pp-bk-help { margin: 0 0 10px; font-size: 13px; color: var(--text-secondary); }
+.pp-bk-hint { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
+.pp-bk-loading { display: flex; align-items: center; gap: 6px; }
+.pp-bk-error { margin: 0 0 10px; font-size: 13px; color: var(--color-danger-text); }
+.pp-bk-error--strong { font-weight: 700; }
+.pp-bk-wide { width: 100%; min-height: 48px; }
+.pp-bk-callme { margin-top: 14px; padding: 14px; border: 1px solid var(--border-light); border-radius: 10px; }
+.pp-bk-reasons { display: flex; flex-direction: column; gap: 8px; }
+.pp-bk-reason { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 10px; text-align: start; cursor: pointer; color: var(--text-primary); font-family: var(--font-platform); }
+.pp-bk-reason:hover { border-color: var(--border-accent); background: var(--color-info-bg); }
+.pp-bk-reason-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pp-bk-reason-text b { font-size: 14.5px; }
+.pp-bk-reason-text small { font-size: 12px; color: var(--text-secondary); }
+.pp-bk-reason-min { flex: none; font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.pp-bk-week { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 12px; }
+.pp-bk-week b { font-size: 13.5px; text-align: center; }
+.pp-bk-nav { min-height: 44px; min-width: 44px; padding: 0; }
+.pp-bk-day { margin-bottom: 14px; }
+.pp-bk-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.pp-bk-slot { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 54px; padding: 6px 12px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 10px; cursor: pointer; color: var(--text-primary); font-family: var(--font-platform); text-align: start; }
+.pp-bk-slot:hover { border-color: var(--accent-primary); background: var(--color-info-bg); }
+.pp-bk-slot b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.pp-bk-slot small { font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.pp-bk-link { min-height: 44px; margin-top: 6px; }
+.pp-bk-form { display: flex; flex-direction: column; gap: 14px; }
+.pp-bk-summary { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--color-info-bg); border: 1px solid var(--color-info-border); border-radius: 10px; }
+.pp-bk-summary b { font-size: 15px; }
+.pp-bk-summary span { font-size: 13.5px; font-weight: 700; }
+.pp-bk-summary small { font-size: 12.5px; color: var(--text-secondary); }
+.pp-bk-fieldset { border: 0; padding: 0; margin: 0; }
+.pp-bk-prefs { display: flex; gap: 8px; }
+.pp-bk-pref { flex: 1; min-height: 44px; padding: 0 8px; }
+.pp-bk-done { text-align: center; padding: 20px 4px; }
+.pp-bk-done > svg { margin: 0 auto 10px; color: var(--color-success-text); }
+.pp-bk-done h4 { margin: 0 0 6px; font-size: 17px; }
+.pp-bk-done-when { margin: 0 0 6px; font-size: 13.5px; font-weight: 700; }
+.pp-bk-done .pp-bk-help { margin-bottom: 16px; }
+
 /* ── Small screens: the sidebar becomes a horizontal strip ── */
 @media (max-width: 860px) {
   .pp-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
@@ -30454,7 +30627,22 @@ table.patient-data-table.patient-data-table {
   .pp-side-title, .pp-side-foot { display: none; }
   .pp-side-item { width: auto; flex: none; }
   .pp-top-facility { display: none; }
-  .pp-main { padding: 14px 14px 26px; }
+  .pp-main { padding: 14px 16px 26px; }
+  .pp-hero { grid-template-columns: minmax(0, 1fr); padding: 18px 16px; }
+  .pp-hero-actions .pp-hero-btn { flex: 1 1 calc(50% - 5px); }
+  .pp-hero-actions .pp-hero-btn--solid { flex-basis: 100%; }
+  .pp-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Phone top bar: logo + facility + a 150px-minimum search + the role label
+   is wider than a 390px screen, so the bar pushed the page sideways. The
+   facility name is already in the Overview hero; the role label adds nothing
+   on a phone. */
+@media (max-width: 560px) {
+  .pp-top { gap: 8px; padding: 0 12px; }
+  .pp-top-brand img { width: 92px; }
+  .pp-top-rule, .pp-top-facility, .pp-user-role { display: none; }
+  .pp-search-wrap { flex: 1 1 auto; min-width: 0; }
 }
 
 /* ============ Admin console kit (sadb-*) ============
