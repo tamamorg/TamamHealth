@@ -276,8 +276,26 @@ export interface CreateNoteInput {
 }
 
 /**
+ * The chief complaint triage recorded for this visit, or '' when there is none.
+ *
+ * Keyed by the note's own encounter, never the patient's latest triage, so a
+ * past visit's complaint cannot land on today's note. Best effort: a failed
+ * read costs the prefill, never the note.
+ */
+async function triageChiefComplaint(encounterId: string): Promise<string> {
+  try {
+    const { getTriageByEncounter } = await import('../services/triage-service');
+    return ((await getTriageByEncounter(encounterId))?.chiefComplaint || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Start a note. Sections are seeded empty from the type's catalog so the editor
- * has a stable shape to render and autosave into from the first keystroke.
+ * has a stable shape to render and autosave into from the first keystroke —
+ * except CC, which starts from the visit's triage complaint when there is one,
+ * so the clinician edits what the nurse heard rather than asking again.
  */
 export async function createClinicalNote(input: CreateNoteInput): Promise<ClinicalNoteDoc> {
   const db = clinicalNotesDB();
@@ -286,7 +304,14 @@ export async function createClinicalNote(input: CreateNoteInput): Promise<Clinic
   const ts = nowIso();
 
   const provided = new Map((input.sections || []).map(s => [s.sectionId, s]));
-  const sections: NoteSectionContent[] = resolveSections(type).map(
+  const sectionIds = resolveSections(type);
+  // An amendment carries the original's wording; a caller-supplied CC wins.
+  if (input.encounterId && !input.amendsNoteId && sectionIds.includes('cc')
+      && !(provided.get('cc')?.text || '').trim()) {
+    const complaint = await triageChiefComplaint(input.encounterId);
+    if (complaint) provided.set('cc', { ...provided.get('cc'), sectionId: 'cc', text: complaint });
+  }
+  const sections: NoteSectionContent[] = sectionIds.map(
     id => provided.get(id) ?? { sectionId: id, text: '' },
   );
 

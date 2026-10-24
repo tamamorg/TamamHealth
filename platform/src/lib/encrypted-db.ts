@@ -221,6 +221,7 @@ export async function encryptDocument<T extends Record<string, unknown>>(
   );
 
   const storedLeaves = new Map<string, string>();
+  let byPlaintext: Promise<Map<string, string>> | null = null;
   if (stored) {
     const all: Leaf[] = [];
     deepStrings(stored, [], all);
@@ -256,9 +257,37 @@ export async function encryptDocument<T extends Record<string, unknown>>(
     if (previous && isOrgEncrypted(previous) && sameSet(envelopeOrgIds(previous), keyIds)) {
       if ((await readOrgField(previous)) === value) { setAt(out, path, previous); return; }
     }
+    // Rule 4: text that already sits in this record keeps its stored form even
+    // at a new path. An edited message moves its old wording into
+    // `editHistory`, and the message-integrity rule requires that earlier
+    // wording to survive byte-for-byte — a fresh envelope of the same words
+    // would read as the author rewriting history, and the edit is refused.
+    const reused = (await storedByPlaintext()).get(value);
+    if (reused !== undefined) { setAt(out, path, reused); return; }
     setAt(out, path, await encryptForOrgs(value, keyIds));
   }));
   return out as T;
+
+  /** Stored text in this record, keyed by its plaintext (built once, on first need). */
+  function storedByPlaintext(): Promise<Map<string, string>> {
+    byPlaintext ??= (async () => {
+      const map = new Map<string, string>();
+      for (const stored of storedLeaves.values()) {
+        if (isOrgEncrypted(stored)) {
+          if (!sameSet(envelopeOrgIds(stored), keyIds)) continue;
+          const plain = await readOrgField(stored);
+          if (!isPlaceholder(plain) && !map.has(plain)) map.set(plain, stored);
+        } else if (stored && !map.has(stored)) {
+          // Already plaintext in this same record: repeating it elsewhere in
+          // the record exposes nothing new, and sealing the copy would break
+          // the byte-for-byte rule above.
+          map.set(stored, stored);
+        }
+      }
+      return map;
+    })();
+    return byPlaintext;
+  }
 }
 
 /* ─────────────────────────── query guard ─────────────────────────── */

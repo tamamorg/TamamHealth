@@ -469,10 +469,11 @@ export async function updateAppointmentStatus(
     if (status === 'completed' && extra?.actorRole && !APPOINTMENT_COMPLETE_ROLES.includes(extra.actorRole)) {
       throw new Error('Only reception or the clinical care team can complete an appointment');
     }
-    // Approving a portal request turns it into a live booking — and the portal
-    // write path deliberately skips the conflict guard (a patient can ask for
-    // any slot). The check therefore runs HERE, at the moment reception makes
-    // it real, so a request over an occupied slot cannot be waved through.
+    // Approving a request turns it into a live booking. The portal write path
+    // runs the conflict guard when the request is filed, but time passes
+    // between a request and its confirmation (and the legacy portal body names
+    // no slot at all), so the check runs HERE again, at the moment reception
+    // makes it real, so a request over an occupied slot cannot be waved through.
     if (existing.status === 'requested' && (status === 'scheduled' || status === 'confirmed')) {
       await assertNoBookingConflicts(existing, id);
     }

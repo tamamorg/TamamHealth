@@ -443,7 +443,9 @@ const DEFAULT_DASHBOARD_FALLBACK = '/dashboard';
  * feed only ever contains items derived from data the user can already see, so
  * gating it per role would just break the bell for some roles.
  */
-const UNIVERSAL_ROUTES: readonly string[] = ['/notifications'];
+// `/report-issue` is the same kind of personal surface: anyone who uses the
+// system must be able to say it is broken, whatever their module list.
+const UNIVERSAL_ROUTES: readonly string[] = ['/notifications', '/report-issue'];
 
 /**
  * Sub-routes that must be granted explicitly and never inherited from a

@@ -38,7 +38,7 @@ export interface SendPatientTextInput {
   subject: string;
   /** Also show the message in the patient portal inbox. */
   channel?: 'sms' | 'both';
-  kind?: MessageDoc['messageKind'];
+  kind?: Exclude<MessageDoc['messageKind'], 'issue_report'>;
   sender: { _id: string; name: string; hospitalId?: string; hospitalName?: string; orgId?: string };
   consentConfirmed?: boolean;
   patientEducation?: boolean;
@@ -57,7 +57,8 @@ function isOffline(): boolean {
 }
 
 function purposeOf(message: MessageDoc): PatientSmsRequest['purpose'] {
-  return message.messageKind || 'message';
+  // Only patient texts reach here; a staff issue report is never texted.
+  return message.messageKind && message.messageKind !== 'issue_report' ? message.messageKind : 'message';
 }
 
 type DispatchVerdict =

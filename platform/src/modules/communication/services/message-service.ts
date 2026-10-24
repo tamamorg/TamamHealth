@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import { emitSyncEvent } from '@/lib/services/sync-event-service';
 import { EncryptionKeyError, UNREADABLE_FIELD_TEXT, readReplicatedField } from '@/lib/field-encryption';
-import { UNREADABLE_ORG_FIELD_TEXT, encryptForOrg, isOrgEncrypted, readOrgField } from '@/lib/org-data-cipher';
+import { UNREADABLE_ORG_FIELD_TEXT, isOrgEncrypted, readOrgField } from '@/lib/org-data-cipher';
 
 /** Shown in place of text this device cannot decrypt. */
 export const UNREADABLE_MESSAGE_TEXT = UNREADABLE_FIELD_TEXT;
@@ -18,20 +18,25 @@ export function isUnreadableMessageText(value: string): boolean {
 }
 
 /**
- * Message text is encrypted under its organisation's data key on the device
- * that writes it (lib/org-data-cipher.ts), so CouchDB, its backups and the
- * analytics copy only ever hold ciphertext. Covered: subject, body, every
- * retained earlier wording, and each attachment's name and bytes.
+ * Message text is encrypted at rest under its organisation's data key — by the
+ * database layer (lib/encrypted-db.ts, `message` in phi-field-catalog.json),
+ * not here. That layer is the one place that seals, because it alone compares
+ * against the stored revision: an untouched subject, body or earlier wording
+ * keeps its exact envelope, which the message-integrity rule requires. Sealing
+ * here first gave every update fresh envelopes, so a front-desk status change
+ * read as rewriting the message and an edit as rewriting its history, and the
+ * sync gateway refused both.
  *
- * Refuses the unreadable placeholder: a form loaded on a device that could not
- * decrypt a field holds the placeholder, and saving it back would overwrite
- * the ciphertext — the only copy of what the message said.
+ * This only refuses the unreadable placeholder as NEW text: a form loaded on a
+ * device that could not decrypt a field holds the placeholder, and sending it
+ * as a message would store the placeholder as if someone had written it.
  */
-export async function encryptMessageText(plaintext: string, orgId: string | undefined): Promise<string> {
+export async function encryptMessageText(plaintext: string, _orgId?: string): Promise<string> {
+  void _orgId;
   if (isUnreadableMessageText(plaintext)) {
     throw new EncryptionKeyError('This message cannot be read on this device, so it cannot be saved from it.');
   }
-  return encryptForOrg(plaintext, orgId);
+  return plaintext;
 }
 
 /** Either layer: this device's organisation key, or the legacy server key. */
@@ -64,18 +69,10 @@ export async function decryptMessage(doc: MessageDoc): Promise<MessageDoc> {
  * exactly, so history is only ever appended to, never re-encoded.
  */
 async function encryptMessageFields<T extends Partial<MessageDoc>>(data: T): Promise<T> {
-  const out = { ...data };
-  const orgId = out.orgId;
-  if (typeof out.subject === 'string' && out.subject.length > 0) out.subject = await encryptMessageText(out.subject, orgId);
-  if (typeof out.body === 'string' && out.body.length > 0) out.body = await encryptMessageText(out.body, orgId);
-  if (out.attachments?.length) {
-    out.attachments = await Promise.all(out.attachments.map(async a => ({
-      ...a,
-      name: a.name ? await encryptMessageText(a.name, orgId) : a.name,
-      base64Data: a.base64Data ? await encryptMessageText(a.base64Data, orgId) : a.base64Data,
-    })));
-  }
-  return out;
+  // Sealing happens in the database layer (see `encryptMessageText`). A
+  // placeholder in an UPDATE is left for that layer, which restores the stored
+  // envelope in its place; only brand-new text is refused here.
+  return data;
 }
 
 async function getAllMessagesUnscoped(): Promise<MessageDoc[]> {
@@ -94,7 +91,10 @@ async function getAllMessagesUnscoped(): Promise<MessageDoc[]> {
  * any staff account.
  */
 export async function getAllMessages(scope: DataScope): Promise<MessageDoc[]> {
-  return filterByScope(await getAllMessagesUnscoped(), scope).filter(m => !m.conversationId);
+  // Staff issue reports ride in this database too, but they are a support
+  // queue with their own reader (issue-report-service), not correspondence.
+  return filterByScope(await getAllMessagesUnscoped(), scope)
+    .filter(m => !m.conversationId && m.messageKind !== 'issue_report');
 }
 
 export async function getMessagesByPatient(patientId: string, scope: DataScope): Promise<MessageDoc[]> {

@@ -6,11 +6,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 /* ═════════════════════════════════════════
    PROFILE TAB
    ═════════════════════════════════════════ */
-export function ProfileTab({ patient }: { patient: PatientDoc }) {
+export function ProfileTab({ patient, facilityName }: { patient: PatientDoc; facilityName: string }) {
   const { t } = useTranslation();
-  const facilityName = (patient as { registrationHospitalName?: string }).registrationHospitalName
-    || patient.registrationHospital
-    || '—';
 
   const fields = [
     { label: t('patientPortal.firstName'), value: patient.firstName },

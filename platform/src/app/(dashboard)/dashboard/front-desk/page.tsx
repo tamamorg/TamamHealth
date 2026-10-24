@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useSync } from '@/lib/context';
+import Link from 'next/link';
+import { isPathAllowed } from '@/lib/role-routes';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -64,6 +66,8 @@ import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/fron
 import { encounterVisitState, resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import CheckoutModal from '@/components/front-desk/CheckoutModal';
 import CheckInModal from '@/components/front-desk/CheckInModal';
+import AppointmentRequestsPanel from '@/components/front-desk/AppointmentRequestsPanel';
+import { pendingRequests } from '@/lib/appointment-requests';
 import {
   createPatientRegistrationDraftId,
   savePatientRegistrationDraft,
@@ -168,9 +172,25 @@ export default function FrontDeskDashboardPage() {
   // holds with no booking today — both opened from Reception rail tiles.
   const [pendingSyncOpen, setPendingSyncOpen] = useState(false);
   const [unbookedOpen, setUnbookedOpen] = useState(false);
+  // Portal / online-booking requests waiting for reception to confirm.
+  const [requestsOpen, setRequestsOpen] = useState(false);
   // Pre-selects the patient when booking is started from the unbooked list.
   const [bookingPatientId, setBookingPatientId] = useState<string | undefined>(undefined);
   const { syncStatus, syncNow } = useSync();
+  // "Sync now" used to fire with no feedback at all, so a list that did not
+  // change (a conflict row, which no sync can clear) read as a dead button.
+  const [syncNowBusy, setSyncNowBusy] = useState(false);
+  const runSyncNow = useCallback(async () => {
+    setSyncNowBusy(true);
+    try {
+      await syncNow();
+      showToast(t('frontDesk.syncNowDone'), 'success');
+    } catch {
+      showToast(t('frontDesk.syncNowFailed'), 'error');
+    } finally {
+      setSyncNowBusy(false);
+    }
+  }, [syncNow, showToast, t]);
 
   const [queueNowMs, setQueueNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -1212,8 +1232,14 @@ export default function FrontDeskDashboardPage() {
         // their own dialogs (see handleAppointmentStatusChange) rather than
         // being written straight from a dropdown.
         statusValue: appointment.status,
+        // `requested` is not a rung reception can pick, so a request row carries
+        // it as its current (read-only) option and the pill still reads
+        // "Requested"; answering it is the Appointment requests list's job.
         statusOptions: canSetAppointmentStatus
-          ? APPOINTMENT_STATUS_OPTIONS.map(option => ({ value: option, label: appointmentStatusLabel(option) }))
+          ? [
+              ...(appointment.status === 'requested' ? [{ value: 'requested', label: appointmentStatusLabel('requested') }] : []),
+              ...APPOINTMENT_STATUS_OPTIONS.map(option => ({ value: option, label: appointmentStatusLabel(option) })),
+            ]
           : undefined,
         onStatusChange: canSetAppointmentStatus
           ? value => handleAppointmentStatusChange(appointment, value as AppointmentStatus)
@@ -1684,6 +1710,11 @@ export default function FrontDeskDashboardPage() {
       .sort((a, b) => (b.assignedAt ?? '').localeCompare(a.assignedAt ?? ''));
   }, [encounters, patients, today, todaysAppointments, triages, viewingToday]);
 
+  const openRequests = useMemo(
+    () => pendingRequests(appointments, today, currentUser?.hospitalId),
+    [appointments, today, currentUser?.hospitalId],
+  );
+
   const metrics = useMemo<EhrCareDashboardMetric[]>(() => {
     const counts = new Map<TriagePriority, number>();
     for (const item of boardQueue) {
@@ -1707,6 +1738,12 @@ export default function FrontDeskDashboardPage() {
     });
     // Only shown when there is something to say — a synced device adds no
     // tile here, same rule the acuity rows follow for a quiet lane.
+    if (openRequests.length > 0) {
+      acuityMetrics.push({
+        label: t('frontDesk.requestsTitle'), value: openRequests.length, tone: 'warning',
+        onClick: () => setRequestsOpen(true),
+      });
+    }
     if (pendingSyncCount > 0) {
       acuityMetrics.push({
         label: t('sync.docPendingLabel'), value: pendingSyncCount, tone: 'neutral',
@@ -1728,7 +1765,7 @@ export default function FrontDeskDashboardPage() {
       });
     }
     return acuityMetrics;
-  }, [assignedUnbooked.length, boardQueue, pendingSyncCount, staleVisits, t]);
+  }, [assignedUnbooked.length, boardQueue, openRequests.length, pendingSyncCount, staleVisits, t]);
 
   // No subtitle line under the board title: the lane tabs and the Reception
   // status panel already carry the counts, so the "24 patients scheduled"
@@ -1890,6 +1927,17 @@ export default function FrontDeskDashboardPage() {
           </Modal>
         )}
 
+        {requestsOpen && (
+          <AppointmentRequestsPanel
+            appointments={appointments}
+            today={today}
+            facilityId={currentUser?.hospitalId}
+            onClose={() => setRequestsOpen(false)}
+            onEdit={appt => { setRequestsOpen(false); setEditAppointment(appt); }}
+            updateStatus={updateAppointmentStatus}
+          />
+        )}
+
         {unbookedOpen && (
           <Modal onClose={() => setUnbookedOpen(false)} width={560} labelledBy="fd-unbooked-title">
             <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1955,6 +2003,14 @@ export default function FrontDeskDashboardPage() {
                           {refused ? t('frontDesk.syncRefused', { reason: refused }) : doc.error}
                         </p>
                       )}
+                      {doc.status === 'conflict' && (
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                          {t('frontDesk.syncConflictHint')}
+                          {currentUser && isPathAllowed(currentUser.role, '/admin/conflicts') && (
+                            <> <Link href="/admin/conflicts" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>{t('frontDesk.syncConflictResolve')}</Link></>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -1962,10 +2018,12 @@ export default function FrontDeskDashboardPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() => { void syncNow(); }}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  onClick={() => { void runSyncNow(); }}
+                  disabled={syncNowBusy}
+                  aria-busy={syncNowBusy}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: syncNowBusy ? 'progress' : 'pointer', opacity: syncNowBusy ? 0.7 : 1 }}
                 >
-                  {t('frontDesk.syncNow')}
+                  {syncNowBusy ? t('frontDesk.syncNowRunning') : t('frontDesk.syncNow')}
                 </button>
               </div>
             </div>

@@ -38,7 +38,7 @@ const STATIC_PUBLIC = new Set([
   '/api/booking/hold', '/api/booking/practice/[slug]', '/api/booking/provider/[slug]',
   '/api/booking/reference/[ref]', '/api/booking/request', '/api/booking/slots',
   '/api/patient-portal/activate', '/api/patient-portal/appointments',
-  '/api/patient-portal/billing', '/api/patient-portal/immunizations',
+  '/api/patient-portal/billing', '/api/patient-portal/booking/reasons', '/api/patient-portal/booking/slots', '/api/patient-portal/immunizations',
   '/api/patient-portal/labs', '/api/patient-portal/login', '/api/patient-portal/messages',
   '/api/patient-portal/payments', '/api/patient-portal/prescriptions',
   '/api/patient-portal/profile', '/api/patient-portal/records', '/api/patient-portal/refresh',

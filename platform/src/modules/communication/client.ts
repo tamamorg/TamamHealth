@@ -52,3 +52,14 @@ export { default as MessagingDock } from './components/MessagingDock';
 export { default as PatientTextOutbox } from './components/PatientTextOutbox';
 export { default as PatientTextDialog, type PatientTextDialogProps } from './components/PatientTextDialog';
 export { default as AnnouncementsPanel } from './components/AnnouncementsPanel';
+
+// ── Staff issue reports ─────────────────────────────────────────────────────
+// The screens and the pure rules; the service stays a named entrypoint
+// (`@/modules/communication/services/issue-report-service`).
+export { default as ReportIssueScreen } from './components/ReportIssueScreen';
+export { default as IssueReportsQueue } from './components/IssueReportsQueue';
+export {
+  ISSUE_STATUSES, ISSUE_CATEGORIES, ISSUE_SEVERITIES, canTriageIssues, isIssueReport,
+  deriveIssueStatus, isOpenIssue, summariseIssues,
+  type IssueStatus, type IssueCategory, type IssueSeverity,
+} from './issue-rules';
