@@ -15,7 +15,7 @@
     "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
-    "next": "^16.3.8",
+    "next": "^16.4.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp": "^0.35.5"
@@ -25,7 +25,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.9",
+    "eslint-config-next": "^16.4.3",
     "tsx": "^4.23.12",
     "typescript": "^5"
   }
