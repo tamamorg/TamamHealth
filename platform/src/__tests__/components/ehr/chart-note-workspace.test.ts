@@ -15,4 +15,10 @@ describe('patient chart note workspace', () => {
     expect(chartCss).toMatch(/\.tamam-drawer\.is-note-editor\s*{[\s\S]*?width:\s*min\(960px, 92vw\)/);
     expect(chartCss).toMatch(/\.tamam-drawer\.is-maximized\s*{[\s\S]*?width:\s*100vw/);
   });
+
+  it("note editor's expand opens the full consultation page, with its context rail", () => {
+    expect(chartShell).toMatch(
+      /activePanel\.id === CLINICAL_NOTE_PANEL\.id && drawerNoteId \? \([\s\S]*?router\.push\(`\/notes\/\$\{encodeURIComponent\(drawerNoteId\)\}`\)/,
+    );
+  });
 });

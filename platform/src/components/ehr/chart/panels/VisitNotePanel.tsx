@@ -6,7 +6,8 @@
  * CodedSearchField + COMMON_ICD11_CODES pairing as ProblemList's "Add
  * problem" flow.
  *
- * Persists as a clinical-notes-module draft (`ClinicalNoteDoc`), not the old
+ * Persists into the visit's clinical-notes draft (`ClinicalNoteDoc`), adding to
+ * the one already open for this visit rather than forking a second, not the old
  * `PatientNoteDoc`: the diagnoses land structured on the SOAP Assessment
  * section and the paragraph becomes its narrative, so a note captured here
  * shows up in the chart's Notes tab, can be opened in the full editor, and
@@ -25,6 +26,7 @@ import { Image as ImageIcon, Stethoscope, X, Save } from '@/components/icons/luc
 import CodedSearchField from '@/components/CodedSearchField';
 import { useToast } from '@/components/Toast';
 import { toIsoDate } from '@/lib/date-utils';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelRouter, ChartPanelUser } from './types';
@@ -42,6 +44,7 @@ interface VisitNotePanelProps {
 
 export default function VisitNotePanel({ patient, currentUser, router, canConsult, onClose, onSaved }: VisitNotePanelProps) {
   const { showToast } = useToast();
+  const scope = useDataScope();
   const icdOptions = useMemo(() => COMMON_ICD11_CODES.map(c => ({ code: c.code, name: c.title, meta: c.chapter, keywords: c.keywords })), []);
 
   const [primarySearch, setPrimarySearch] = useState('');
@@ -109,25 +112,52 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
       const lines: string[] = [];
       if (note.trim()) lines.push(note.trim());
       if (images.length > 0) lines.push(`Attached images: ${images.map(f => f.name).join(', ')}`);
-      const { createClinicalNote } = await import('@/lib/clinical-notes/note-service');
+      const { createClinicalNote, listClinicalNotes, saveNoteSection, updateClinicalNote } =
+        await import('@/lib/clinical-notes/note-service');
+      const { findReusableDraft } = await import('@/lib/clinical-notes/useCreateNote');
       const { patientFullName } = await import('@/lib/patient-utils');
-      await createClinicalNote({
-        patientId: patient._id,
-        patientName: patientFullName(patient),
-        mrn: patient.hospitalNumber,
-        patientDob: patient.dateOfBirth,
-        noteType: 'soap',
-        serviceDate: toIsoDate(now),
-        serviceTime: now.toTimeString().slice(0, 5),
-        sections: [{ sectionId: 'assessment', text: lines.join('\n\n'), diagnoses }],
-        assignedToId: currentUser?._id,
-        assignedToName: currentUser?.name,
-        authorId: currentUser?._id || currentUser?.username,
-        authorName: currentUser?.name || 'Care team',
-        hospitalId: currentUser?.hospitalId,
-        hospitalName: currentUser?.hospitalName,
-        orgId: currentUser?.orgId,
-      });
+      const text = lines.join('\n\n');
+      const serviceDate = toIsoDate(now);
+      const authorId = currentUser?._id || currentUser?.username;
+
+      // Tie the note to the open visit, and add to that visit's draft rather
+      // than starting a second "Consultation" beside it.
+      let encounterId: string | undefined;
+      try {
+        const { findOpenEncounterForPatient } = await import('@/lib/services/encounter-service');
+        encounterId = (await findOpenEncounterForPatient(patient._id, currentUser?.hospitalId || ''))?._id;
+      } catch { /* unlinked note — still worth saving */ }
+      // No scope yet means no reuse: never read notes unscoped.
+      const existing = scope ? await listClinicalNotes({ patientId: patient._id }, scope) : [];
+      const draft = findReusableDraft(existing, { encounterId, noteType: 'soap', serviceDate, authorId });
+
+      if (draft) {
+        const prior = draft.sections.find(s => s.sectionId === 'assessment');
+        await saveNoteSection(draft._id, 'assessment', {
+          text: [prior?.text?.trim(), text].filter(Boolean).join('\n\n'),
+          diagnoses: [...(prior?.diagnoses || []), ...diagnoses],
+        });
+        if (!draft.encounterId && encounterId) await updateClinicalNote(draft._id, { encounterId });
+      } else {
+        await createClinicalNote({
+          patientId: patient._id,
+          patientName: patientFullName(patient),
+          mrn: patient.hospitalNumber,
+          patientDob: patient.dateOfBirth,
+          noteType: 'soap',
+          serviceDate,
+          serviceTime: now.toTimeString().slice(0, 5),
+          encounterId,
+          sections: [{ sectionId: 'assessment', text, diagnoses }],
+          assignedToId: currentUser?._id,
+          assignedToName: currentUser?.name,
+          authorId,
+          authorName: currentUser?.name || 'Care team',
+          hospitalId: currentUser?.hospitalId,
+          hospitalName: currentUser?.hospitalName,
+          orgId: currentUser?.orgId,
+        });
+      }
       // Persist picked images to the synced patient_documents store (the same
       // place radiology films land) so they outlive this session.
       let imageFailures = 0;

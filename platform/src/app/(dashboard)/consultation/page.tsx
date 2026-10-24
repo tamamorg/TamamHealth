@@ -15,7 +15,7 @@
  * means every one of those keeps working and lands on the note, instead of each
  * call site having to be found and rewritten (and one being missed).
  *
- * With a `patientId` it resumes today's draft for that patient or starts one;
+ * With a `patientId` it resumes the open draft for that visit or starts one;
  * without, it opens the patient registry — the cross-patient notes queue is
  * gone, because documentation belongs to the patient it documents and the
  * chart's Notes tab is the same list already scoped to them.
@@ -27,7 +27,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context';
-import { listClinicalNotes, createClinicalNote } from '@/lib/clinical-notes/note-service';
+import { listClinicalNotes, createClinicalNote, updateClinicalNote } from '@/lib/clinical-notes/note-service';
+import { findReusableDraft } from '@/lib/clinical-notes/useCreateNote';
 import { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import '@/components/clinical-notes/clinical-notes.css';
 import { todayIso } from '@/lib/date-utils';
@@ -93,13 +94,6 @@ export default function ConsultationRedirectPage() {
       try {
         const today = todayIso();
         const existing = await listClinicalNotes({ patientId: resolvedPatientId }, scope);
-
-        // Resume rather than duplicate: pressing "Start consultation" twice in
-        // one clinic session must not split the encounter across two records.
-        const draft = existing.find(n => n.status === 'draft' && n.serviceDate === today)
-          ?? existing.find(n => n.status === 'draft');
-        if (draft) { router.replace(`/notes/${draft._id}`); return; }
-
         const { getPatientById } = await import('@/lib/services/patient-service');
         // `resolvedPatientId` can come straight from an unauthenticated-looking
         // `?patientId=` query param (no encounter to have already scope-checked
@@ -127,6 +121,23 @@ export default function ConsultationRedirectPage() {
             const open = await findOpenEncounterForPatient(resolvedPatientId, currentUser.hospitalId || '');
             encounterId = open?._id;
           } catch { /* unlinked note — see above */ }
+        }
+
+        // Resume rather than duplicate: pressing "Start consultation" twice for
+        // one visit must not split the encounter across two records. Any note
+        // type counts here — this is "continue documenting this visit" — but a
+        // draft from an earlier visit is that visit's note, not this one's.
+        const draft = findReusableDraft(existing, {
+          encounterId,
+          serviceDate: today,
+          authorId: currentUser._id,
+        });
+        if (draft) {
+          if (!draft.encounterId && encounterId) {
+            await updateClinicalNote(draft._id, { encounterId }).catch(() => null);
+          }
+          router.replace(`/notes/${draft._id}`);
+          return;
         }
 
         const note = await createClinicalNote({

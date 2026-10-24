@@ -211,10 +211,10 @@ export default function ClinicalNoteViewer({
     }
   }
 
-  if (state === 'loading') return <div className="tamam-note-viewer"><p className="tamam-nv-muted">{t('noteViewer.loading')}</p></div>;
+  if (state === 'loading') return <div className="tamam-note-viewer modal-no-headband"><p className="tamam-nv-muted">{t('noteViewer.loading')}</p></div>;
   if (state === 'missing' || !vm) {
     return (
-      <div className="tamam-note-viewer">
+      <div className="tamam-note-viewer modal-no-headband">
         <p className="tamam-nv-muted">{t('noteViewer.notFound')}</p>
         <button type="button" className="tamam-nv-btn" onClick={onClose}>{t('noteViewer.close')}</button>
       </div>
@@ -226,8 +226,8 @@ export default function ClinicalNoteViewer({
   const canEdit = vm.kind === 'clinical' && vm.status === 'draft' && Boolean(onEdit);
 
   return (
-    <div className="tamam-note-viewer">
-      <div id={printId} className="tamam-nv-doc">
+    <div className="tamam-note-viewer modal-no-headband">
+      <div id={printId} className="tamam-nv-doc modal-no-headband">
         <header className="tamam-nv-head">
           <div>
             <h3 className="tamam-nv-title">{vm.typeLabel}</h3>

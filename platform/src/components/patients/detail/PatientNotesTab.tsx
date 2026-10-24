@@ -29,10 +29,15 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
                 patientDob={patient.dateOfBirth}
                 currentUser={currentUser}
                 showCreate={canConsult}
-                // Reading a note no longer leaves the chart: it opens over it,
-                // read-only, with addendum and print. Drafts continue in the
-                // note drawer from the viewer's Edit.
-                onOpenNote={(id, kind) => setNoteViewer({ id, kind })}
+                // Reading a note no longer leaves the chart: a signed note
+                // opens over it, read-only, with addendum and print. An
+                // unsigned draft is still being written, so tapping it goes
+                // straight to the note drawer instead of a viewer whose only
+                // useful button is Edit.
+                onOpenNote={(id, kind, status) => {
+                  if (kind === 'clinical' && status === 'draft' && canConsult) setChartPanelRequest(`clinical-note:${id}`);
+                  else setNoteViewer({ id, kind });
+                }}
                 refreshToken={notesRefreshToken}
               />
               {/* Telephone contacts stay separate: they are care-team messages

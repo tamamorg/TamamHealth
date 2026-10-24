@@ -13,6 +13,7 @@ import type { MedicalRecordDoc, PatientNoteDoc } from '@/lib/db-types';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import { notePreview } from '@/lib/clinical-notes/note-service';
+import { toIsoDate } from '@/lib/date-utils';
 
 export type NoteRowKind = 'clinical' | 'record' | 'legacy';
 
@@ -36,12 +37,24 @@ export interface NoteRow {
   /** YYYY-MM-DD. */
   date: string;
   time?: string;
+  /** True when date/time are the draft's last edit rather than its date of
+   *  service. */
+  edited?: boolean;
   status: NoteStatus;
   /** Full ISO-ish string used only for ordering. */
   sortKey: string;
 }
 
+/**
+ * An unsigned draft is dated by its last edit: it is one note being worked on,
+ * and the service stamp (fixed when it was started) made every reopen look like
+ * a new note. Once signed, the date of service is the clinical fact.
+ */
 export function clinicalNoteToRow(n: ClinicalNoteDoc): NoteRow {
+  const edit = n.status === 'draft' && n.updatedAt ? new Date(n.updatedAt) : null;
+  const edited = Boolean(edit && !Number.isNaN(edit.getTime()));
+  const date = edited ? toIsoDate(edit!) : n.serviceDate;
+  const time = edited ? edit!.toTimeString().slice(0, 5) : n.serviceTime;
   return {
     key: `c:${n._id}`,
     id: n._id,
@@ -51,10 +64,11 @@ export function clinicalNoteToRow(n: ClinicalNoteDoc): NoteRow {
     preview: notePreview(n),
     author: n.signedByName || n.assignedToName || n.authorName || '',
     patientName: n.patientName,
-    date: n.serviceDate,
-    time: n.serviceTime,
+    date,
+    time,
+    edited,
     status: n.status,
-    sortKey: `${n.serviceDate || ''}T${n.serviceTime || '00:00'}`,
+    sortKey: `${date || ''}T${time || '00:00'}`,
   };
 }
 

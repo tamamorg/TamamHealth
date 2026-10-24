@@ -9,8 +9,8 @@
  * clinician would otherwise re-enter, and re-entry is where mismatched notes
  * come from.
  *
- * If a draft already exists for the same appointment, this reopens it instead
- * of starting a second one — clicking twice should not fork the record.
+ * If a draft already exists for the same visit, this reopens it instead of
+ * starting a second one — clicking twice should not fork the record.
  */
 
 import { useCallback, useState } from 'react';
@@ -45,20 +45,49 @@ export interface CurrentUserLike {
   orgId?: string;
 }
 
+export interface ReuseKeys {
+  /** The visit the new note would document. */
+  encounterId?: string;
+  appointmentId?: string;
+  /** When set, only a draft of this type is reused: a procedure note started
+   *  mid-consultation is a second document, not the consultation reopened. */
+  noteType?: NoteTypeId;
+  /** Fallback for a draft not yet tied to any visit: reused only when it is
+   *  the same author's, from the same day. */
+  serviceDate?: string;
+  authorId?: string;
+}
+
 /**
- * Reopen candidate: the existing draft against the same appointment, if any.
+ * Reopen candidate: the open draft documenting the same visit, if any.
  *
- * Extracted from the hook body so the reopen-vs-fork decision is testable
- * without mounting React — the same reasoning as `noteTypeMenuOrder` in
- * `CreateNoteButton`. Pure: no I/O, just "given these notes, which (if any)
- * do we reopen."
+ * Same visit means the same encounter, or the same appointment when either
+ * side has not been linked to an encounter yet. Matching on the appointment
+ * alone forked a second draft whenever a note was started from somewhere that
+ * knows the visit but not the booking (the chart's Notes tab), so one visit
+ * ended up with two "Consultation" rows a few minutes apart.
+ *
+ * Pure and exported so the reopen-vs-fork decision is testable without
+ * mounting React. The newest draft wins when an older duplicate already exists.
  */
 export function findReusableDraft(
   existingNotes: readonly ClinicalNoteDoc[],
-  appointmentId?: string,
+  keys: ReuseKeys,
 ): ClinicalNoteDoc | undefined {
-  if (!appointmentId) return undefined;
-  return existingNotes.find(n => n.appointmentId === appointmentId && n.status === 'draft');
+  const { encounterId, appointmentId, noteType, serviceDate, authorId } = keys;
+  const sameVisit = (n: ClinicalNoteDoc): boolean => {
+    if (encounterId && n.encounterId) return n.encounterId === encounterId;
+    if (appointmentId && n.appointmentId === appointmentId) return true;
+    if (n.encounterId || n.appointmentId) return false;
+    // The draft was never tied to a visit (started before the visit existed,
+    // or from a screen that did not know it): the same clinician's draft from
+    // the same day is this visit's, and the caller links it on reopen.
+    return Boolean(serviceDate && authorId)
+      && n.serviceDate === serviceDate && n.authorId === authorId;
+  };
+  return existingNotes
+    .filter(n => n.status === 'draft' && (!noteType || n.noteType === noteType) && sameVisit(n))
+    .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
 }
 
 /**
@@ -105,7 +134,7 @@ export function buildCreateNoteInput(
 /**
  * The one way to start a note from a screen, including a list's "Create note"
  * button. Resolves the visit's encounter, reopens an existing draft for the
- * same appointment instead of forking a second, then creates and (by default)
+ * same visit instead of forking a second, then creates and (by default)
  * navigates to `/notes/<id>`.
  *
  *   const { createNote, creating } = useCreateNote(currentUser);
@@ -133,20 +162,28 @@ export function useCreateNote(currentUser: CurrentUserLike | null) {
         const { resolveNoteEncounter } = await import('@/modules/post-consult/services/note-encounter-service');
         encounterId = await resolveNoteEncounter(input.patientId, scope, input.appointmentId);
       }
-      // Reopen rather than fork: a second draft against one appointment splits
-      // the encounter across two records.
-      if (input.appointmentId) {
-        const existing = await listClinicalNotes({ patientId: input.patientId }, scope);
-        const draft = findReusableDraft(existing, input.appointmentId);
-        if (draft) {
-          const linkedDraft = !draft.encounterId && encounterId
-            ? await updateClinicalNote(draft._id, { encounterId }) : draft;
-          if (navigate) router.push(`/notes/${draft._id}`);
-          return linkedDraft;
-        }
+      // Reopen rather than fork: a second draft for one visit splits the
+      // encounter across two records.
+      const createInput = buildCreateNoteInput({ ...input, encounterId }, currentUser, new Date());
+      const existing = await listClinicalNotes({ patientId: input.patientId }, scope);
+      const draft = findReusableDraft(existing, {
+        encounterId,
+        appointmentId: input.appointmentId,
+        noteType: createInput.noteType,
+        serviceDate: createInput.serviceDate,
+        authorId: createInput.authorId,
+      });
+      if (draft) {
+        const link: Pick<ClinicalNoteDoc, 'encounterId' | 'appointmentId'> = {};
+        if (!draft.encounterId && encounterId) link.encounterId = encounterId;
+        if (!draft.appointmentId && input.appointmentId) link.appointmentId = input.appointmentId;
+        const linkedDraft = Object.keys(link).length > 0
+          ? (await updateClinicalNote(draft._id, link)) ?? draft : draft;
+        if (navigate) router.push(`/notes/${draft._id}`);
+        return linkedDraft;
       }
 
-      const note = await createClinicalNote(buildCreateNoteInput({ ...input, encounterId }, currentUser, new Date()));
+      const note = await createClinicalNote(createInput);
 
       if (navigate) router.push(`/notes/${note._id}`);
       return note;
