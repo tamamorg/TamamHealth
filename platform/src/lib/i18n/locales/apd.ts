@@ -4215,6 +4215,7 @@ const apd: TranslationMap = {
   'notesList.colAuthor': 'الكاتب',
   'notesList.colPatient': 'العيان',
   'notesList.colDateOfService': 'تاريخ الخدمة',
+  'notesList.editedAt': 'اتعدّل {{date}}',
   'notesList.colStatus': 'الحالة',
   'nurse.clearAllFilters': 'امسح كل الترشيحات',
   'nurse.additionalObservations': 'ملاحظات زيادة...',

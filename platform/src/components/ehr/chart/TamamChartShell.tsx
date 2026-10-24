@@ -138,8 +138,8 @@ export default function TamamChartShell({
       if (panelRequest.startsWith('clinical-note:')) {
         setDrawerNoteId(panelRequest.slice('clinical-note:'.length));
         setOpenPanel('clinical-note');
-        // The editor opens in its wide workspace. The clinician can still use
-        // the header control to expand it to the full viewport.
+        // The editor opens in its wide workspace; the header's expand control
+        // leaves for the full consultation page (/notes/[id]).
         setDrawerMaximized(false);
       } else {
         setOpenPanel(panelRequest);
@@ -401,15 +401,31 @@ export default function TamamChartShell({
             <div className="tamam-drawer-header">
               <span className="tamam-drawer-title">{activePanel.title}</span>
               <div className="tamam-drawer-controls">
-                <button
-                  type="button"
-                  title={drawerMaximized ? 'Restore panel size' : 'Maximize'}
-                  aria-label={drawerMaximized ? 'Restore panel size' : 'Maximize panel'}
-                  aria-pressed={drawerMaximized}
-                  onClick={() => setDrawerMaximized(v => !v)}
-                >
-                  <Maximize2 />
-                </button>
+                {/* The note editor's expand leaves the drawer for the full
+                    consultation page (/notes/[id]), which carries the patient
+                    context rail the drawer hides. Widening the drawer only gave
+                    a bigger copy of the same railless editor. The editor flushes
+                    pending edits on unmount, so nothing typed is lost. */}
+                {activePanel.id === CLINICAL_NOTE_PANEL.id && drawerNoteId ? (
+                  <button
+                    type="button"
+                    title="Open full consultation"
+                    aria-label="Open full consultation"
+                    onClick={() => router.push(`/notes/${encodeURIComponent(drawerNoteId)}`)}
+                  >
+                    <Maximize2 />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    title={drawerMaximized ? 'Restore panel size' : 'Maximize'}
+                    aria-label={drawerMaximized ? 'Restore panel size' : 'Maximize panel'}
+                    aria-pressed={drawerMaximized}
+                    onClick={() => setDrawerMaximized(v => !v)}
+                  >
+                    <Maximize2 />
+                  </button>
+                )}
                 <button type="button" title="Close" aria-label="Close panel" onClick={closeDrawer}>
                   <X />
                 </button>

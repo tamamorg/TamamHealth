@@ -44,7 +44,7 @@ interface NotesListProps {
   showCreate?: boolean;
   /** Open a note in place (the chart's drawer) instead of the /notes route.
    *  `kind` is 'record' for a read-only consultation record. */
-  onOpenNote?: (noteId: string, kind: 'clinical' | 'record') => void;
+  onOpenNote?: (noteId: string, kind: 'clinical' | 'record', status: NoteStatus) => void;
   /** Bump to reload, since the autosaving editor may have changed the rows. */
   refreshToken?: number;
 }
@@ -98,7 +98,7 @@ export default function NotesList({
         { patientId, patientName, mrn, patientDob, noteType },
         { navigate: !onOpenNote },
       );
-      if (note && onOpenNote) { onOpenNote(note._id, 'clinical'); void load(); }
+      if (note && onOpenNote) { onOpenNote(note._id, 'clinical', note.status); void load(); }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not start the note.', 'error');
     }
@@ -127,7 +127,7 @@ export default function NotesList({
 
   const openRow = (row: NoteRow) => {
     if (row.kind === 'legacy') return;
-    if (onOpenNote) onOpenNote(row.id, row.kind);
+    if (onOpenNote) onOpenNote(row.id, row.kind, row.status);
     else if (row.kind === 'clinical') router.push(`/notes/${row.id}`);
   };
 
@@ -222,8 +222,9 @@ export default function NotesList({
                   <td>{row.author || '—'}</td>
                   {!patientId && <td>{row.patientName}</td>}
                   <td>
-                    {row.date}
-                    {row.time ? ` ${row.time}` : ''}
+                    {row.edited
+                      ? t('notesList.editedAt', { date: `${row.date}${row.time ? ` ${row.time}` : ''}` })
+                      : `${row.date}${row.time ? ` ${row.time}` : ''}`}
                   </td>
                   <td><span className={`cn-badge ${status.cls}`}>{t(status.key)}</span></td>
                 </tr>
