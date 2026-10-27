@@ -67,7 +67,7 @@ export interface CreateSupplyInput {
 
 export async function createSupplyItem(input: CreateSupplyInput): Promise<NutritionSupplyDoc> {
   const name = (input.name || '').trim();
-  if (!name) throw new Error('A supply item name is required');
+  if (!name) throw new Error('Enter the supply item name.');
   const unit = (input.unit || '').trim() || 'units';
   const currentLevel = Number.isFinite(input.currentLevel) ? Math.max(0, input.currentLevel) : 0;
   const reorderLevel = Number.isFinite(input.reorderLevel) ? Math.max(0, input.reorderLevel) : 0;

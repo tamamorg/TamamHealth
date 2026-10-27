@@ -11,6 +11,7 @@ import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSectio
 import { formatDateTime } from '@/lib/format-utils';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 const SEVERITY_COLOR: Record<string, string> = {
   minimal: 'var(--color-success)',
@@ -61,7 +62,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
       setAdding(false);
       setAnswers({});
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

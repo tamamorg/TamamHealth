@@ -23,7 +23,7 @@ test.each(['refund_due', 'refunded', 'waived', 'forfeited'])('reconciliation pre
   expect((await ensureAdmissionDepositBill('admission', scope)).admissionDepositStatus).toBe(status);
 });
 test('rejects a payment not recorded on the linked invoice', async () => {
-  await expect(refundAdmissionDeposit({ ...input, paymentId: 'unrelated' })).rejects.toThrow('payment recorded');
+  await expect(refundAdmissionDeposit({ ...input, paymentId: 'unrelated' })).rejects.toThrow('payment from this admission deposit');
   expect((await getDB('tamamhealth_refunds').allDocs()).rows).toHaveLength(0);
 });
 test('retry after admission commit failure creates one refund and one ledger entry', async () => {

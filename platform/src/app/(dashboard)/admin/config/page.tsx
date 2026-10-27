@@ -11,6 +11,7 @@ import {
 } from '@/components/admin/sadb-ui';
 import { Building2, Server, ShieldAlert, Shield, MessageSquare } from '@/components/icons/lucide';
 import type { PlatformConfigDoc } from '@/lib/db-types';
+import { describeError } from '@/lib/user-facing-error';
 
 /** One flat draft covering every editable field across the identity,
  *  tenant-defaults, and maintenance sections — so the whole page shares a
@@ -115,7 +116,7 @@ export default function AdminConfigPage() {
       }, currentUser?._id, currentUser?.username);
       showToast('Platform configuration saved.', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save configuration.', 'error');
+      showToast(describeError(err, 'Platform configuration not saved. Try again.'), 'error');
     } finally {
       setSaving(false);
     }

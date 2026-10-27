@@ -32,11 +32,11 @@ export function buildSendPatientMessage({ patient, currentUser, messageBody, set
       return;
     }
     if ((messageChannel === 'sms' || messageChannel === 'both') && !patient.phone) {
-      setMessageError('This patient does not have a phone number for SMS.');
+      setMessageError('No SMS sent. This patient has no phone number on file.');
       return;
     }
     if ((messageChannel === 'sms' || messageChannel === 'both') && !messageTextConsent) {
-      setMessageError('Confirm the patient agreed to receive texts on this number.');
+      setMessageError('Confirm that the patient agreed to receive text messages on this number.');
       return;
     }
     setMessageSending(true);
@@ -108,7 +108,7 @@ export function buildSendPatientMessage({ patient, currentUser, messageBody, set
       setMessageIsEducation(false);
     } catch (err) {
       console.error(err);
-      setMessageError('Could not send this message. Please try again.');
+      setMessageError('Message not sent. Try again.');
     } finally {
       setMessageSending(false);
     }

@@ -87,7 +87,7 @@ export async function decideLeave(
     // offline write path has no server chokepoint — but self-approval is a
     // data-level invariant we can hold here.)
     if (existing.userId === decision.decidedBy) {
-      throw new Error('A leave request cannot be decided by its requester');
+      throw new Error('You cannot approve or reject your own leave request. Another manager must decide it.');
     }
     const now = new Date().toISOString();
     existing.status = decision.status;

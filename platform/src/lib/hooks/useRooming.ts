@@ -28,7 +28,7 @@ export function useRooming() {
       setEntries(await svc.getRoomingWorklist(scope));
     } catch (err) {
       console.error(err);
-      setError('Failed to load the rooming worklist');
+      setError('Rooming worklist not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

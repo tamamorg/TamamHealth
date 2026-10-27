@@ -25,7 +25,7 @@ export function useHospitals() {
       setHospitals(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load hospitals');
+      setError('Facilities not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

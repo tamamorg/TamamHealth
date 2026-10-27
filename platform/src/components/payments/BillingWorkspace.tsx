@@ -245,7 +245,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   const myName = currentUser?.name;
   const resolvePending = useCallback(async (p: PaymentDoc, approve: boolean) => {
     if (!p.reference) {
-      showToast('This payment has no reference and cannot be transitioned — contact support', 'error');
+      showToast('This payment has no reference number, so its status cannot be changed. Contact your system administrator.', 'error');
       return;
     }
     setPendingBusy(p._id);
@@ -256,12 +256,12 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         approve ? 'posted' : 'failed',
         approve ? undefined : { reason: `Rejected in verification by ${myName || 'finance'}` },
       );
-      if (!updated) throw new Error('Payment not found by reference');
-      showToast(approve ? `Payment ${p.reference} approved and posted` : `Payment ${p.reference} rejected`, 'success');
+      if (!updated) throw new Error('Payment not found. Reload the page and try again.');
+      showToast(approve ? `Payment ${p.reference} approved and posted.` : `Payment ${p.reference} rejected.`, 'success');
       await loadData();
     } catch (err) {
       console.error('Pending payment resolution failed:', err);
-      showToast('Could not update the payment — try again', 'error');
+      showToast('Payment status not changed. Try again.', 'error');
     } finally {
       setPendingBusy(null);
     }
@@ -488,7 +488,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         ]),
       );
     }
-    showToast('Export downloaded', 'success');
+    showToast('Export downloaded.', 'success');
   }, [tab, filteredClaims, filteredAccounts, t, showToast]);
 
   /** The accounts queue's columns, in order. Widths are equal by layout
@@ -604,7 +604,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       const p = reverseFor.payment;
       if (mode === 'void') {
         const result = await reversePayment(p._id, reason, currentUser?._id || 'system', myName || 'System');
-        if (!result) throw new Error('Payment not found');
+        if (!result) throw new Error('Payment not found. Reload the page and try again.');
       } else {
         await issueRefund({
           idempotencyKey: refundKeyRef.current,

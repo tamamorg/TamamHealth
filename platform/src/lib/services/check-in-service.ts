@@ -88,7 +88,7 @@ export async function checkInAppointment(input: {
       actorName: input.actorName,
       actorRole: input.actorRole as never,
     });
-    if (!appointment) throw new Error('The appointment could not be marked checked in.');
+    if (!appointment) throw new Error('Patient not checked in. Try again.');
     await upsertWorkflowRepair(repairId, { ...repairBase, status: 'open', currentStep: 'encounter' });
     const existing = await findOpenEncounterForPatient(input.patientId, input.facilityId || '');
     if (!existing) {
@@ -200,7 +200,7 @@ export interface CheckInResult {
  */
 export async function checkInPatient(input: CheckInInput): Promise<CheckInResult> {
   if (!input.patientId || !input.patientName) {
-    throw new Error('A patient is required to check in.');
+    throw new Error('Select a patient to check in.');
   }
   const acuity = input.acuity ?? 'routine';
   const v = input.vitals ?? {};
@@ -262,7 +262,7 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
     // labs/checkout). A duplicate check-in here would attach a fresh pending
     // triage to a mid-flight encounter and re-queue a patient who is already
     // being seen — reject it with a message the front-desk toast can show.
-    throw new Error('This patient already has a visit in progress — no new check-in was recorded.');
+    throw new Error('This patient already has a visit in progress. No new check-in was recorded.');
   }
 
   // A walk-in gets a booking of its own, created at the moment they are

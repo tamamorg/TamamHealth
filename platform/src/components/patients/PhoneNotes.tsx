@@ -12,6 +12,7 @@ import { patientFullName } from '@/lib/patient-utils';
 import { isClinicalAuthorRole } from '@/lib/clinical-roles';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import '@/components/clinical-notes/note-viewer.css';
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
@@ -53,7 +54,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
       setResponseText('');
       setForm({ callerName: '', callerPhone: '', subject: '', message: '', routedToId: '' });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

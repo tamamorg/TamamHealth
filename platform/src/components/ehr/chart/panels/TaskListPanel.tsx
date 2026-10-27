@@ -57,13 +57,13 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
         hospitalId: currentUser?.hospitalId,
         orgId: currentUser?.orgId,
       });
-      showToast('Task added', 'success');
+      showToast('Task added.', 'success');
       setMessage('');
       setSendDate(tomorrowISO());
       setAdding(false);
     } catch (err) {
       console.error(err);
-      showToast('Could not add this task. Please try again.', 'error');
+      showToast('Task not added. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }

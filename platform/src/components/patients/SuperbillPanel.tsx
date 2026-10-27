@@ -9,6 +9,7 @@ import type { SuperbillSelection } from '@/lib/services/superbill-service';
 import { Plus, X } from '@/components/icons/lucide';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 interface Line {
   fee: FeeScheduleDoc;
@@ -96,7 +97,7 @@ export function useSuperbill({
     setBusy(true);
     setError(null);
     try {
-      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+      if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
       const { postSuperbill } = await import('@/lib/services/superbill-service');
       const selections: SuperbillSelection[] = lines.map((l) => ({
         category: l.fee.category,
@@ -125,7 +126,7 @@ export function useSuperbill({
       setLines([]);
       onPosted?.(message);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to post charges');
+      setError(describeError(e, 'Charges not posted. Try again.'));
     } finally {
       setBusy(false);
     }

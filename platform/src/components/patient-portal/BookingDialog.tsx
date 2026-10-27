@@ -19,6 +19,7 @@ import {
   weekRange, prevWeekStart, nextWeekStart, groupSlotsByDay, slotKey, buildSlotBody, buildLegacyBody,
   type PortalSlot, type ContactPreference,
 } from './booking-logic';
+import { describeError } from '@/lib/user-facing-error';
 
 interface Reason { id: string; name: string; durationMinutes: number; description?: string }
 type Step = 'reason' | 'slots' | 'confirm' | 'done';
@@ -31,7 +32,7 @@ class HttpError extends Error {
 
 async function portalApi<T>(path: string, init?: RequestInit): Promise<T> {
   const session = readPatientPortalSession();
-  if (!session) throw new HttpError(401, 'Missing patient session');
+  if (!session) throw new HttpError(401, 'Your session has ended. Sign in again to continue.');
   const res = await fetch(path, {
     ...init,
     headers: { Authorization: `Bearer ${session.token}`, ...(init?.body ? { 'Content-Type': 'application/json' } : {}) },
@@ -164,7 +165,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
         setReloadNonce(n => n + 1);
         setStep('slots');
       } else {
-        setError(e instanceof Error ? e.message : t('patientPortal.bookingRequestError'));
+        setError(describeError(e, t('patientPortal.bookingRequestError')));
       }
     } finally {
       setSubmitting(false);
@@ -191,7 +192,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
       setAsked(true);
       setStep('done');
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('patientPortal.bookingRequestError'));
+      setError(describeError(e, t('patientPortal.bookingRequestError')));
     } finally {
       setSubmitting(false);
     }

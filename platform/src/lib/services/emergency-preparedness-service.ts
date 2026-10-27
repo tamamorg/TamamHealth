@@ -129,7 +129,7 @@ export async function deletePlan(id: string, scope?: DataScope): Promise<boolean
     const existing = await db.get(id);
     if (scope && filterByScope([existing as EmergencyPlanDoc], scope).length === 0) return false;
     /* istanbul ignore next -- PouchDB always returns _rev on successful get() */
-    if (!existing._rev) throw new Error('Missing revision');
+    if (!existing._rev) throw new Error('This record was changed on another device. Reload the page and try again.');
     await db.remove(existing._id, existing._rev);
     await logAuditSafe('DELETE_EMERGENCY_PLAN', undefined, undefined, `Emergency plan ${id} deleted`);
     emitSyncEvent({

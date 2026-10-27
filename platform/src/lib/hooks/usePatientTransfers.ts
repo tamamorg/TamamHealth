@@ -29,6 +29,7 @@ import {
 } from '../services/patient-transfer-permissions';
 import { filterByScope } from '../services/data-scope';
 import { useNow } from '@/lib/hooks/useNow';
+import { describeError } from '@/lib/user-facing-error';
 
 type CurrentUser = NonNullable<ReturnType<typeof useAuth>['currentUser']>;
 
@@ -124,18 +125,18 @@ export function usePatientTransfers(patientId?: string) {
       await load();
       return result;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Transfer action failed');
+      setError(describeError(e, 'Transfer not updated. Try again.'));
       throw e;
     }
   }, [load]);
 
   const request = useCallback(async (patient: PatientDoc, input: TransferDraftInput) => {
     return run(async () => {
-      if (!currentUser) throw new Error('Not signed in.');
+      if (!currentUser) throw new Error('Your session has ended. Sign in again to continue.');
       const auth = transferAuth(currentUser);
       const crossOrg = Boolean(input.to.orgId && auth.orgId && input.to.orgId !== auth.orgId);
       if (!crossOrg && input.to.facilityId && auth.hospitalId && input.to.facilityId !== auth.hospitalId) {
-        throw new Error('Internal transfers must stay within the current facility.');
+        throw new Error('An internal transfer must stay within this facility. Use an inter-facility transfer instead.');
       }
       const permission = canRequestTransfer(auth, patient, { crossOrg });
       if (!permission.allowed) throw permissionError(permission.reason);
@@ -172,11 +173,11 @@ export function usePatientTransfers(patientId?: string) {
   }, [run, currentUser]);
 
   const loadActionTarget = useCallback(async (id: string) => {
-    if (!currentUser || !scope) throw new Error('Not signed in.');
+    if (!currentUser || !scope) throw new Error('Your session has ended. Sign in again to continue.');
     const svc = await import('../services/patient-transfer-service');
     const transfer = await svc.getTransferById(id);
     if (!transfer || filterByScope([transfer], scope).length === 0) {
-      throw new Error('Transfer not found.');
+      throw new Error('Transfer not found. Reload the page.');
     }
     return { svc, transfer, auth: transferAuth(currentUser) };
   }, [currentUser, scope]);

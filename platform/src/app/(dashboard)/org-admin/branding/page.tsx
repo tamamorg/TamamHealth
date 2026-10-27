@@ -29,6 +29,7 @@ import type { OrganizationDoc } from '@/lib/db-types';
 import {
   SadbPage, SadbPanelHeader, SadbSettingGroup, SadbSettingRow, SadbSaveBar, SadbCard,
 } from '@/components/admin/sadb-ui';
+import { describeError } from '@/lib/user-facing-error';
 
 interface BrandingDraft {
   orgName: string;
@@ -186,7 +187,7 @@ export default function OrgBrandingPage() {
       showToast(t('branding.savedSuccess'), 'success');
     } catch (err: unknown) {
       const e = err as Error;
-      showToast(e.message || t('branding.errorSave'), 'error');
+      showToast(describeError(e, t('branding.errorSave')), 'error');
     } finally {
       setSaving(false);
     }

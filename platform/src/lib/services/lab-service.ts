@@ -106,7 +106,7 @@ export async function setLabBenchStatus(
   const existing = decryptLabResult(await labResultsDB().get(id) as LabResultDoc);
   let stage = effectiveOrderStatus(existing);
   if (coarseFromOrderStatus(stage) === 'completed') {
-    throw new Error('A resulted test cannot be moved back onto the bench.');
+    throw new Error('This test already has a result, so it cannot go back to the bench.');
   }
   if (target === 'pending') {
     if (stage !== 'in_process') return existing;

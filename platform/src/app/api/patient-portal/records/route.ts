@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ records: await getDemoRecordsByPatient(auth.sub) });
     }
     logApiError('[patient-portal/records]', err);
-    return NextResponse.json({ error: 'Failed to fetch records' }, { status: 500 });
+    return NextResponse.json({ error: 'Your records could not be loaded. Try again.' }, { status: 500 });
   }
 }

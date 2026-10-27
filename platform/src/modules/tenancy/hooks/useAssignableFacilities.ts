@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { HospitalDoc } from '@/lib/db-types';
+import { describeError } from '@/lib/user-facing-error';
 
 /**
  * Facilities that the central identity service can assign immediately.
@@ -28,11 +29,11 @@ export function useAssignableFacilities(orgId?: string, enabled = true) {
       const { apiFetch } = await import('@/lib/api-fetch');
       const response = await apiFetch(`/api/hospitals/assignment-options?orgId=${encodeURIComponent(orgId)}`);
       const body = await response.json().catch(() => ({})) as { facilities?: HospitalDoc[]; error?: string };
-      if (!response.ok) throw new Error(body.error || `Facility options failed (${response.status})`);
+      if (!response.ok) throw new Error(body.error || `Facility list not loaded (server code ${response.status}). Reload the page to try again.`);
       setFacilities(Array.isArray(body.facilities) ? body.facilities : []);
     } catch (cause) {
       setFacilities([]);
-      setError(cause instanceof Error ? cause.message : 'Facility options are unavailable');
+      setError(describeError(cause, 'Facility list not loaded. Reload the page to try again.'));
     } finally {
       setLoading(false);
     }

@@ -50,6 +50,7 @@ import type {
   AppointmentType, AppointmentPriority, AppointmentStatus, FacilityLevel,
 } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 const FALLBACK_DEPARTMENTS = [
   'Internal Medicine', 'Pediatrics', 'Obstetrics & Gynecology', 'Surgery',
@@ -332,7 +333,7 @@ export default function BookAppointmentModal({
       return;
     }
     if (!canBookAppointments) {
-      showToast('Your role cannot book appointments', 'error');
+      showToast('Your role does not allow booking appointments. Ask a clinician or the front desk to book.', 'error');
       return;
     }
     if (stepped && (!visitReason || (!noAvailability && !slotChosen))) {
@@ -463,7 +464,7 @@ export default function BookAppointmentModal({
       onClose();
     } catch (err) {
       // A clash is about the slot, so send the booker back to where slots are.
-      showToast(err instanceof Error ? err.message : t('appointments.toastFailedBook'), 'error');
+      showToast(describeError(err, t('appointments.toastFailedBook')), 'error');
       if (err instanceof Error && err.name === 'BookingConflictError') {
         setTime('');
         await reloadSlots();

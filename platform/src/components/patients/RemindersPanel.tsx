@@ -15,6 +15,7 @@ import { Check, X } from '@/components/icons/lucide';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { describeError } from '@/lib/user-facing-error';
 
 const CHANNELS: { v: ReminderChannel; label: string }[] = [
   { v: 'sms', label: 'SMS' },
@@ -57,7 +58,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
       setForm({ message: '', sendDate: todayISO(), channel: 'sms' });
       setAdding(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not queue reminder');
+      setError(describeError(e, 'Reminder not scheduled. Try again.'));
     } finally {
       setBusy(false);
     }

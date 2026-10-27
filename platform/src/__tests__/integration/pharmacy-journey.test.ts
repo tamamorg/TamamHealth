@@ -248,7 +248,7 @@ it('refuses to dispense more than the prescribed course', async () => {
     dispenserName: PHARMACIST.name,
     facilityId: HOSP,
     orgId: ORG,
-  })).rejects.toThrow(/exceeds the prescribed course/i);
+  })).rejects.toThrow(/more than the prescribed course/i);
 
   const batch = await pharmacyInventoryDB().get('inv-insulin') as { stockLevel: number };
   expect(batch.stockLevel).toBe(40);
@@ -295,8 +295,8 @@ it('refuses an illegal procedure move and demands a reason to abort', async () =
   } as never);
 
   // ordered → released skips consent and the procedure itself.
-  await expect(advanceProcedure(proc._id, 'released')).rejects.toThrow(/cannot move from "ordered"/);
-  await expect(advanceProcedure(proc._id, 'aborted')).rejects.toThrow(/requires a reason/);
+  await expect(advanceProcedure(proc._id, 'released')).rejects.toThrow(/is ordered and cannot move to/);
+  await expect(advanceProcedure(proc._id, 'aborted')).rejects.toThrow(/reason for stopping this procedure/);
 
   const aborted = await advanceProcedure(proc._id, 'aborted', { reason: 'Patient withdrew consent' });
   expect(aborted!.status).toBe('aborted');

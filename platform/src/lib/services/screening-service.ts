@@ -58,7 +58,7 @@ export interface AddScreeningInput {
 /** Add a screening reminder. Returns the full updated list, or null if no patient. */
 export async function addScreening(patientId: string, scope: DataScope, input: AddScreeningInput): Promise<ScreeningEntry[] | null> {
   if (!input.type || input.type.trim().length === 0) {
-    throw new Error('Screening type is required');
+    throw new Error('Select the screening type.');
   }
   const entry: ScreeningEntry = {
     id: uuidv4(),

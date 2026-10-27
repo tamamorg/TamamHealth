@@ -21,6 +21,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ results: (await getDemoLabResultsByPatient(auth.sub)).map(toPortalLabResult) });
     }
     logApiError('[patient-portal/labs]', err);
-    return NextResponse.json({ error: 'Failed to fetch lab results' }, { status: 500 });
+    return NextResponse.json({ error: 'Your lab results could not be loaded. Try again.' }, { status: 500 });
   }
 }

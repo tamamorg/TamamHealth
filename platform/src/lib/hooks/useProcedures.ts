@@ -22,7 +22,7 @@ export function useProcedures(patientId?: string) {
       setAllProcedures(all);
     } catch (err) {
       console.error(err);
-      setError('Failed to load procedures');
+      setError('Procedures not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

@@ -48,6 +48,15 @@ export function usePermissions() {
   // match DOC_WRITE_ROLES.history_entry, or a nurse's entry saves on the
   // device and is refused at replication.
   const canRecordHistory = canEditClinical || role === 'nurse' || isMidwife || isTriageNurse || isRoomingNurse;
+  // Intake work nurses do at triage and on the ward, on the same role set the
+  // sync layer already grants (NURSING_AND_CLINICIANS / the `patient` row):
+  // what the patient already takes (a `medication` history entry, never an
+  // order: prescribing stays `canPrescribe`), their allergies (the patient
+  // record), and programme enrolment (`program_enrollment`). Each was hidden
+  // behind a clinician-only flag although every write it makes replicates.
+  const canRecordMedicationHistory = canRecordHistory;
+  const canRecordAllergies = canRecordHistory;
+  const canEnrollPrograms = canRecordHistory;
   const canConsult = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   const canPrescribe = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
   const canOrderLabs = role === 'doctor' || role === 'clinical_officer' || isClinician || isMedSupt;
@@ -142,6 +151,9 @@ export function usePermissions() {
     canManageUsers,
     canEditClinical,
     canRecordHistory,
+    canRecordMedicationHistory,
+    canRecordAllergies,
+    canEnrollPrograms,
     canViewClinical,
     canConsult,
     canPrescribe,

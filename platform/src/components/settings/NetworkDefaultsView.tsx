@@ -152,13 +152,13 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
         sessionHospitalId,
       );
       if (failed > 0) {
-        showToast(`Saved to ${saved} of ${saved + failed} facilities — ${failed} failed`, 'error');
+        showToast(`Saved to ${saved} of ${saved + failed} facilities. ${failed} not saved. Try again for those facilities.`, 'error');
       } else {
-        showToast(saved === 1 ? 'Settings saved' : `Saved to all ${saved} facilities`, 'success');
+        showToast(saved === 1 ? 'Settings saved.' : `Saved to all ${saved} facilities.`, 'success');
       }
       await load();
     } catch {
-      showToast('Could not save network defaults', 'error');
+      showToast('Network defaults not saved. Try again.', 'error');
     } finally {
       setSaving(false);
     }

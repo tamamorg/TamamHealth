@@ -117,7 +117,7 @@ export default function AdminFacilityDetailPage() {
       const updated = await setFacilityActive(
         hospital._id, next, currentUser?._id, currentUser?.username, scope,
       );
-      if (!updated) throw new Error('Facility status change returned nothing');
+      if (!updated) throw new Error('Facility status not changed. Try again.');
       setHospital(updated);
       setConfirmRetire(false);
       showToast(

@@ -25,7 +25,7 @@ export function useMessages() {
       setMessages(data);
     } catch (err) {
       console.error('Failed to load messages', err);
-      setError('Failed to load messages');
+      setError('Messages not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

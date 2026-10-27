@@ -25,8 +25,16 @@ export const HISTORY_DOMAINS: readonly HistoryDomainDef[] = [
   { id: 'social' },
 ];
 
+/**
+ * Medicines the patient reports already taking. A history domain so it rides
+ * the same nurse-writable, never-deleted store, but not one of the History
+ * tab's sections: it is read on the Medications tab beside the orders.
+ */
+export const MEDICATION_HISTORY_DOMAIN = 'medication' satisfies HistoryDomain;
+
 export function isHistoryDomain(value: unknown): value is HistoryDomain {
-  return typeof value === 'string' && HISTORY_DOMAINS.some(d => d.id === value);
+  return typeof value === 'string'
+    && (value === MEDICATION_HISTORY_DOMAIN || HISTORY_DOMAINS.some(d => d.id === value));
 }
 
 export interface SocialFactorDef {
@@ -118,6 +126,11 @@ export function formatHistoryEntry(entry: Pick<HistoryEntryDoc,
 
   if (entry.domain === 'social') {
     return detail ? `${title}: ${detail}` : title;
+  }
+
+  if (entry.domain === MEDICATION_HISTORY_DOMAIN) {
+    const line = detail ? `${title} — ${detail}` : title;
+    return when ? `${line} (taking since ${when})` : line;
   }
 
   const head = when ? `${title} (${when})` : title;

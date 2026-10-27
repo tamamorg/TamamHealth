@@ -152,7 +152,7 @@ export interface AssessmentSigner {
 /** Provider reviews with the patient and signs the held assessment, locking it. */
 export async function signAssessment(id: string, signer: AssessmentSigner): Promise<AssessmentDoc | null> {
   if (!isClinicalAuthorRole(signer.userRole)) {
-    throw new AssessmentAuthorizationError(`Role "${signer.userRole ?? 'unknown'}" may not sign assessments.`);
+    throw new AssessmentAuthorizationError('Your role cannot sign assessments. Ask a clinician to sign it.');
   }
   const db = assessmentsDB();
   let existing: AssessmentDoc;

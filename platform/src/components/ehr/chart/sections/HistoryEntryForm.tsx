@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * The form behind one history entry — add or edit, any of the four domains.
+ * The form behind one history entry — add or edit, any of the four History
+ * tab domains or a patient-reported medication (the Medications tab).
  *
  * It writes through `history-service` itself rather than taking a save
  * callback, so the rule about social history — one answer per factor — lives
@@ -122,7 +123,7 @@ export default function HistoryEntryForm({
             orgId: currentUser?.orgId,
           });
       if (!saved) throw new Error('history entry not found');
-      showToast(t(target ? 'history.updated' : 'history.saved'), 'success');
+      showToast(t(domain === 'medication' && !target ? 'meds.reported.saved' : target ? 'history.updated' : 'history.saved'), 'success');
       onSaved(saved);
     } catch (err) {
       console.error(err);
@@ -237,14 +238,14 @@ export default function HistoryEntryForm({
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="history-when" className={LABEL_CLASS} style={LABEL_STYLE}>
-              {t(domain === 'family' ? 'history.form.familyWhen' : 'history.form.when')}
+              {t(domain === 'family' ? 'history.form.familyWhen' : domain === 'medication' ? 'history.form.medicationWhen' : 'history.form.when')}
             </label>
             <input
               id="history-when"
               type="text"
               value={when}
               onChange={e => setWhen(e.target.value)}
-              placeholder={t(domain === 'family' ? 'history.form.familyWhenPlaceholder' : 'history.form.whenPlaceholder')}
+              placeholder={t(domain === 'family' ? 'history.form.familyWhenPlaceholder' : domain === 'medication' ? 'history.form.medicationWhenPlaceholder' : 'history.form.whenPlaceholder')}
               className={FIELD_CLASS}
               style={FIELD_STYLE}
             />
@@ -264,13 +265,13 @@ export default function HistoryEntryForm({
             </div>
           )}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="history-detail" className={LABEL_CLASS} style={LABEL_STYLE}>{t('history.form.details')}</label>
+            <label htmlFor="history-detail" className={LABEL_CLASS} style={LABEL_STYLE}>{t(domain === 'medication' ? 'history.form.medicationDetails' : 'history.form.details')}</label>
             <textarea
               id="history-detail"
               rows={2}
               value={detail}
               onChange={e => setDetail(e.target.value)}
-              placeholder={t('history.form.detailsPlaceholder')}
+              placeholder={t(domain === 'medication' ? 'history.form.medicationDetailsPlaceholder' : 'history.form.detailsPlaceholder')}
               className={FIELD_CLASS}
               style={FIELD_STYLE}
             />

@@ -38,6 +38,7 @@ import RestockModal from '@/components/pharmacy/RestockModal';
 import DispenseConfirmModal from '@/components/pharmacy/DispenseConfirmModal';
 import { RX_STAGE_PILL_CLASS, prescriptionSig, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
+import { describeError } from '@/lib/user-facing-error';
 
 export default function PharmacyPage() {
   const searchParams = useSearchParams();
@@ -165,7 +166,7 @@ export default function PharmacyPage() {
       await advance(rx._id, to);
       showToast(successMessage, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update prescription workflow.', 'error');
+      showToast(describeError(err, 'Prescription status not changed. Try again.'), 'error');
     }
   };
 
@@ -211,9 +212,9 @@ export default function PharmacyPage() {
       if (!clearance.cleared) {
         showToast(
           clearance.reason === 'outstanding'
-            ? `Payment still due for ${rx.patientName}: ${formatMoney(clearance.balance)}. Send the patient to cashier before dispensing.`
-            : `Could not confirm ${rx.patientName}'s balance — balance unavailable. Dispense cancelled.`,
-          'error',
+            ? `Payment due: ${rx.patientName} owes ${formatMoney(clearance.balance)}. Send the patient to the cashier before dispensing.`
+            : `Not dispensed. ${rx.patientName}'s balance could not be checked. Try again.`,
+          'warning',
         );
         return false;
       }
@@ -234,13 +235,13 @@ export default function PharmacyPage() {
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
         result.outcome === 'partial'
-          ? `Partial fill: ${result.quantityDispensed} ${inv?.unit || 'unit(s)'} of ${rx.medication} from batch ${batches}. Order stays open for the balance.`
+          ? `Partial fill: ${result.quantityDispensed} ${inv?.unit || 'unit(s)'} of ${rx.medication} dispensed from batch ${batches}. The order stays open for the remainder.`
           : `${rx.medication} dispensed from batch ${batches}.`,
         result.outcome === 'partial' ? 'error' : 'success',
       );
       return true;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Dispense failed.', 'error');
+      showToast(describeError(err, 'Medication not dispensed. Try again.'), 'error');
       return false;
     }
   };
@@ -267,12 +268,12 @@ export default function PharmacyPage() {
       });
       showToast(
         reason === 'stock_out'
-          ? `${rx.medication} recorded as out of stock — order stays open.`
-          : `${rx.medication} held pending prescriber clarification.`,
+          ? `${rx.medication} recorded as out of stock. The order stays open.`
+          : `${rx.medication} on hold until the prescriber clarifies the order.`,
         'success',
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not record the outcome.', 'error');
+      showToast(describeError(err, 'Outcome not recorded. Try again.'), 'error');
     }
   };
 
@@ -283,7 +284,7 @@ export default function PharmacyPage() {
     // (still loading, or the ledger fetch errored) is not "money owed" — it's
     // "we don't know" — and must not fall through to the stock check below.
     if (!isKnownFor(rx.patientId)) {
-      showToast(`Could not confirm ${rx.patientName}'s balance — balance unavailable. Try again before dispensing.`, 'error');
+      showToast(`${rx.patientName}'s balance could not be checked. Try again before dispensing.`, 'warning');
       return;
     }
     if (!isClearedFor(rx.patientId)) {
@@ -309,13 +310,13 @@ export default function PharmacyPage() {
   const confirmControlledDispense = async () => {
     if (!dispenseTarget) return;
     if (!counsellingConfirmed) {
-      showToast('Confirm counselling before handing over the medication.', 'error');
+      showToast('Confirm that the patient was counselled before handing over the medication.', 'error');
       return;
     }
     const requiresWitness = Boolean(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness);
     const witness = requiresWitness ? users.find(u => u._id === witnessId) : undefined;
     if (requiresWitness && !witness) {
-      showToast('Select a witnessing staff member.', 'error');
+      showToast('Select a witness.', 'error');
       return;
     }
     const ok = await doDispense(

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
     if (currentPassword !== currentPassword.trim() || newPassword !== newPassword.trim()) {
       return NextResponse.json(
-        { error: 'Passwords cannot start or end with spaces' },
+        { error: 'Remove the spaces at the start or end of the password.' },
         { status: 400 }
       );
     }
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
     if (newPassword === currentPassword) {
       return NextResponse.json(
-        { error: 'New password must be different from your current password' },
+        { error: 'Choose a new password that is different from your current one.' },
         { status: 400 }
       );
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         // why this uses a direct logAuditSafe call rather than
         // `withAuditLog`: this body carries currentPassword/newPassword.
         void logAuditSafe('password_change_failed', auth.sub, auth.username, 'Current password is incorrect', false);
-        return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
+        return NextResponse.json({ error: 'Your current password is incorrect. Try again.' }, { status: 400 });
       }
       const { PasswordPolicyError } = await import('@/modules/identity/policy/password-policy');
       if (err instanceof PasswordPolicyError) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       // No user document (e.g. a seed-only demo account) — can't self-change.
       if (err instanceof Error && /missing|not_found|404/i.test(err.message)) {
         return NextResponse.json(
-          { error: 'Password change is not available for this account' },
+          { error: 'This account\'s password cannot be changed here. Contact your administrator.' },
           { status: 400 }
         );
       }

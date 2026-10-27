@@ -24,7 +24,7 @@ export function usePayments() {
       setPayments(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load payments');
+      setError('Payments not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -75,7 +75,7 @@ export function usePatientPayments(patientId?: string) {
       setSummary(summaryData);
       setError(null);
     } catch (err) {
-      setError('Failed to load patient payments');
+      setError('Patient payments not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export function useInsurancePolicies(patientId?: string) {
       setPolicies(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load insurance policies');
+      setError('Insurance policies not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -160,7 +160,7 @@ export function useClaims() {
       setClaims(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load claims');
+      setError('Claims not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -191,7 +191,7 @@ export function usePaymentPlans() {
       setPaymentPlans(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load payment plans');
+      setError('Payment plans not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -222,7 +222,7 @@ export function useLedger(patientId?: string) {
       setLedger(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load ledger');
+      setError('Ledger not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);

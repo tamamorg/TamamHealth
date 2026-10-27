@@ -50,13 +50,13 @@ export interface CompleteAssignmentInput {
  */
 export async function completePatientAssignment(input: CompleteAssignmentInput): Promise<void> {
   const actor = input.actor;
-  if (!actor?.id) throw new Error('An identified user is required to end an assignment');
+  if (!actor?.id) throw new Error('Your session has ended. Sign in again to continue.');
   const { getPatientById, updatePatient } = await import('./patient-service');
   // Scope the read to the actor's own record, not the caller's say-so, so an
   // assignment can only be ended inside the actor's organisation.
   const { getUserById } = await import('@/modules/identity/services/user-service');
   const actorUser = await getUserById(actor.id);
-  if (!actorUser || actorUser.isActive === false) throw new Error('An identified user is required to end an assignment');
+  if (!actorUser || actorUser.isActive === false) throw new Error('Your session has ended. Sign in again to continue.');
   const { buildScopeFromAuth } = await import('./data-scope');
   const actorScope = buildScopeFromAuth({ ...actorUser, sub: actorUser._id });
   const patient = await getPatientById(input.patientId, actorScope);
@@ -64,14 +64,14 @@ export async function completePatientAssignment(input: CompleteAssignmentInput):
   const isReception = canAssignCareTeamRole(actor.role) || actor.role === 'super_admin';
   const isOwnAssignment = patient.assignedDoctor === actor.id || patient.assignedNurse === actor.id;
   if (!isReception && !isOwnAssignment) {
-    throw new Error('Only the assigned clinician, the assigned nurse, or the front desk can end this assignment');
+    throw new Error('Only the assigned clinician, the assigned nurse or the front desk can end this assignment.');
   }
   const updated = await updatePatient(patient._id, {
     assignmentStatus: 'completed',
     assignedDoctor: undefined,
     assignedNurse: undefined,
   }, actorScope);
-  if (!updated) throw new Error('The patient could not be updated');
+  if (!updated) throw new Error('Patient record not updated. Try again.');
   const { logAuditSafe } = await import('./audit-service');
   await logAuditSafe('PATIENT_ASSIGNMENT_COMPLETED', actor.id, actor.name,
     `Assignment for patient ${input.patientId} ended` +
@@ -121,7 +121,7 @@ export async function assignProviderToPatient(input: AssignProviderInput): Promi
     assignmentAcceptedBy: undefined,
     assignmentAcceptedByName: undefined,
   }, orgOnlyScope(input.orgId));
-  if (!updatedPatient) throw new Error('The patient could not be updated');
+  if (!updatedPatient) throw new Error('Patient record not updated. Try again.');
 
   const appointmentId = appointment?._id;
   if (appointment) {
@@ -239,7 +239,7 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
     assignedNurseBy: input.nurse ? input.actor?.id : undefined,
     assignedNurseByName: input.nurse ? input.actor?.name : undefined,
   }, orgOnlyScope(input.orgId));
-  if (!updatedPatient) throw new Error('The patient could not be updated');
+  if (!updatedPatient) throw new Error('Patient record not updated. Try again.');
 
   const appointmentId = appointment?._id;
   if (appointment) {
@@ -367,7 +367,7 @@ async function assertCanAssign(
   // reception actor at the service boundary; hiding a picker is not an
   // authorization control, and an actor-less call must not become a bypass.
   if (!actor?.id || !canAssignCareTeamRole(actor.role)) {
-    throw new Error('Only front desk staff can assign doctors or nurses');
+    throw new Error('Only the front desk can assign doctors or nurses.');
   }
   const { getUserById } = await import('@/modules/identity/services/user-service');
   const actualActor = await getUserById(actor.id);
@@ -377,7 +377,7 @@ async function assertCanAssign(
     !orgId || actualActor.orgId !== orgId ||
     !canAssignStaffAtFacility(hospitalId, actualActor.hospitalId)
   ) {
-    throw new Error('The assignment actor is not authorized at this facility');
+    throw new Error('You are not assigned to this facility, so you cannot make assignments here.');
   }
 }
 
@@ -394,7 +394,7 @@ async function assertAssignableStaff(
     !orgId || staff.orgId !== orgId ||
     !canAssignStaffAtFacility(hospitalId, staff.hospitalId)
   ) {
-    throw new Error('The selected staff member is not assignable at this facility');
+    throw new Error('The selected staff member does not work at this facility. Choose someone else.');
   }
 }
 
@@ -406,7 +406,7 @@ export async function resolveAndValidateTargets(input: {
   encounterId?: string;
   triageId?: string;
 }) {
-  if (!input.orgId || !input.hospitalId) throw new Error('Organization and facility are required for assignment');
+  if (!input.orgId || !input.hospitalId) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
   const { getPatientById } = await import('./patient-service');
   const { orgOnlyScope } = await import('./data-scope');
   const patient = await getPatientById(input.patientId, orgOnlyScope(input.orgId));
@@ -415,7 +415,7 @@ export async function resolveAndValidateTargets(input: {
     error.name = 'PatientRecordUnavailableError';
     throw error;
   }
-  if (patient.orgId !== input.orgId) throw new Error('The patient is outside the assignment organization');
+  if (patient.orgId !== input.orgId) throw new Error('You do not have access to this record. It belongs to another facility or organization.');
 
   const { getEncounter, findOpenEncounterForPatient } = await import('./encounter-service');
   const encounter = input.encounterId
@@ -428,20 +428,20 @@ export async function resolveAndValidateTargets(input: {
     encounter.orgId !== input.orgId ||
     encounter.hospitalId !== input.hospitalId
   )) {
-    throw new Error('The encounter is outside this patient visit');
+    throw new Error('This visit does not belong to the selected patient. Reload the page.');
   }
 
   const appointmentId = input.appointmentId || encounter?.appointmentId;
   const { getAppointmentById } = await import('./appointment-service');
   const appointment = appointmentId ? await getAppointmentById(appointmentId) : null;
-  if (appointmentId && !appointment) throw new Error('The appointment does not exist');
+  if (appointmentId && !appointment) throw new Error('Appointment not found. Reload the page.');
   if (appointment && (
     appointment.patientId !== input.patientId ||
     appointment.orgId !== input.orgId ||
     appointment.facilityId !== input.hospitalId ||
     (encounter?.appointmentId && encounter.appointmentId !== appointment._id)
   )) {
-    throw new Error('The appointment is outside this patient visit');
+    throw new Error('This appointment does not belong to the selected patient. Reload the page.');
   }
 
   const { getTriageByEncounter, getTriageById } = await import('./triage-service');
@@ -450,7 +450,7 @@ export async function resolveAndValidateTargets(input: {
     : encounter
       ? await getTriageByEncounter(encounter._id)
       : null;
-  if (input.triageId && !triage) throw new Error('The triage record does not exist');
+  if (input.triageId && !triage) throw new Error('Triage record not found. Reload the page.');
   if (triage && (
     triage.patientId !== input.patientId ||
     triage.orgId !== input.orgId ||
@@ -460,7 +460,7 @@ export async function resolveAndValidateTargets(input: {
     (triage.facilityId && triage.facilityId !== input.hospitalId) ||
     (triage.encounterId && encounter && triage.encounterId !== encounter._id)
   )) {
-    throw new Error('The triage record is outside this patient visit');
+    throw new Error('This triage record does not belong to the selected patient. Reload the page.');
   }
 
   return { patient, encounter, appointment, triage };

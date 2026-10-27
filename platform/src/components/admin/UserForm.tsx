@@ -33,6 +33,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { UserDoc, UserRole } from '@/lib/db-types';
 import { useDepartments } from '@/lib/hooks/useDepartments';
 import { CLINICAL_SPECIALTIES, specialtyLabel, type ClinicalSpecialty } from '@/modules/departments/client';
+import { describeError } from '@/lib/user-facing-error';
 
 /** Credentials the host shows exactly once — see the note above. */
 export interface UserCredentialHandoff {
@@ -180,7 +181,7 @@ export function UserForm({
       });
       onSaved({ user, handoff: { username: user.username, password: form.password, invitation } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('adminUsers.errorCreateFailed'));
+      setError(describeError(err, t('adminUsers.errorCreateFailed')));
     } finally {
       setSaving(false);
     }

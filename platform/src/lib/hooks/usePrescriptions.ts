@@ -30,7 +30,7 @@ export function usePrescriptions(patientId?: string) {
       setPrescriptions(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load prescriptions');
+      setError('Prescriptions not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export function usePrescriptions(patientId?: string) {
 
   const create = useCallback(async (data: PrescriptionCreateInput) => {
     const { createPrescription } = await import('../services/prescription-service');
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     const result = await createPrescription(data, scope);
     await loadPrescriptions();
     return result;
@@ -90,12 +90,12 @@ export function usePrescriptions(patientId?: string) {
         });
       } catch {
         throw new Error(
-          'The dispense result could not be confirmed. Do not retry until you refresh the order and stock position.',
+          'The dispense could not be confirmed. Do not dispense again. Refresh the order and check the stock first.',
         );
       }
       const body = await response.json().catch(() => ({})) as Record<string, unknown>;
       if (!response.ok) {
-        throw new Error((body.error as string) || `Dispense failed (${response.status})`);
+        throw new Error((body.error as string) || `Medication not dispensed (server code ${response.status}). Refresh the order before trying again.`);
       }
       await loadPrescriptions();
       return body as unknown as import('../services/dispensing-service').DispenseResult;

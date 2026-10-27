@@ -29,6 +29,7 @@ import {
   ArrowRightLeft, Check, X, Clock, AlertTriangle, ChevronDown, ChevronUp, Plus,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 const STATUS_STYLE: Record<PatientTransferStatus, { label: string; bg: string; fg: string }> = {
   draft: { label: 'Draft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
@@ -113,7 +114,7 @@ function TransferCard({
       setRejecting(false);
       setRejectNote('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

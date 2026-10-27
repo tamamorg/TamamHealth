@@ -12,6 +12,7 @@ import {
   SadbPage, SadbCard, SadbSettingGroup, SadbSettingRow, SadbToggle, SadbChip,
 } from '@/components/admin/sadb-ui';
 import type { ChipTone } from '@/components/admin/sadb-ui';
+import { describeError } from '@/lib/user-facing-error';
 
 // Roles this console page is routed to (lib/role-routes.ts) — medical_superintendent
 // and hospital_manager both carry '/my-facility' in their allowed list, and
@@ -110,7 +111,7 @@ export default function MyFacilityPage() {
     } catch (err) {
       // Surface the real failure (validation, 4xx/5xx, etc.) instead of a
       // generic message — silently swallowing the cause hid actual problems.
-      setError(err instanceof Error ? err.message : t('myFacility.saveFailed'));
+      setError(describeError(err, t('myFacility.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -129,7 +130,7 @@ export default function MyFacilityPage() {
         },
       });
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Could not submit to the Ministry of Health.');
+      setSubmitError(describeError(err, 'Report not submitted to the Ministry of Health. Check the connection and try again.'));
     } finally {
       setSubmitting(false);
     }

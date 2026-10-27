@@ -69,7 +69,7 @@ describe('createHospital in the browser', () => {
     apiFetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(createHospital(
       { name: 'Remote Clinic', state: 'CE', lga: 'Juba', orgId: 'org-a' } as never,
-    )).rejects.toThrow(/require(s)? a connection/i);
+    )).rejects.toThrow(/only be changed while online/i);
   });
 });
 

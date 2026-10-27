@@ -23,7 +23,7 @@ export function useANC() {
       setStats(s);
     } catch (err) {
       console.error('Failed to load ANC visits', err);
-      setError('Failed to load ANC visits');
+      setError('ANC visits not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,7 @@ export function useANC() {
 
   const register = useCallback(async (data: Omit<ANCVisitDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createANCVisit } = await import('../services/anc-service');
-    if (!scope) throw new Error('Your data scope is still loading - try again in a moment.');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const doc = await createANCVisit(data, scope);
     await load();
     return doc;

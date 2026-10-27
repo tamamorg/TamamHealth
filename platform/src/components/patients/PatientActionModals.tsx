@@ -33,10 +33,10 @@ import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import {
   assessPrescriptionSafety,
-  AllergyHardStopError,
   type PrescriptionSafetyAssessment,
 } from '@/lib/services/prescription-service';
 import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
+import { describeError } from '@/lib/user-facing-error';
 
 // Minimal shape of the logged-in user needed by these modals. The patient
 // detail page passes `currentUser` from useApp(); we only read these fields.
@@ -164,7 +164,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
           });
           return;
         }
-        if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+        if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
         const assessment = await assessPrescriptionSafety(patient._id, medication.trim(), scope);
         const review = { ...assessment, medication: medication.trim() };
         setSafetyReview(review);
@@ -218,7 +218,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
       onClose();
     } catch (err) {
       console.error('Prescribe failed', err);
-      showToast(err instanceof AllergyHardStopError || err instanceof Error ? err.message : t('error.title'), 'error');
+      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
     } finally {
       setSubmitting(false);
     }

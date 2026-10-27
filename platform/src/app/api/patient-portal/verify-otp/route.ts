@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // attacker could burn five attempts, trigger a fresh challenge, and repeat.
   const ipVerdict = await rateLimit({ key: `portal-otp:ip:${ip}`, limit: 20, windowMs: 15 * 60 * 1000 });
   if (!ipVerdict.allowed) {
-    return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many attempts. Wait 15 minutes, then try again.' }, { status: 429 });
   }
 
   let body: { challengeId?: string; code?: string };
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const challengeId = (body.challengeId || '').trim();
   const code = (body.code || '').trim();
   if (!challengeId || !code) {
-    return NextResponse.json({ error: 'Verification code is required.' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter the verification code.' }, { status: 400 });
   }
 
   const verdict = await verifyOtp(challengeId, code);
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     // whether a given patient id has a login in flight.
     const status = verdict.reason === 'too-many-attempts' ? 429 : 401;
     return NextResponse.json(
-      { error: 'That code is not valid or has expired. Please sign in again.' },
+      { error: 'That code is incorrect or has expired. Sign in again to get a new code.' },
       { status },
     );
   }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     // Answers like a bad code so it cannot reveal whose access was withdrawn.
     if (patient.portalDisabledAt) {
       return NextResponse.json(
-        { error: 'That code is not valid or has expired. Please sign in again.' },
+        { error: 'That code is incorrect or has expired. Sign in again to get a new code.' },
         { status: 401 },
       );
     }
@@ -95,6 +95,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     logApiError('[patient-portal/verify-otp]', err);
-    return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Verification did not complete. Try again.' }, { status: 500 });
   }
 }

@@ -37,6 +37,7 @@ import Select from '@/components/Select';
 import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
 import Modal from '@/components/Modal';
 import { printElementById } from '@/lib/safe-html';
+import { describeError } from '@/lib/user-facing-error';
 
 function todayISO(): string {
   return todayIso();
@@ -221,7 +222,7 @@ export default function MARPage() {
       closeModal();
     } catch (err) {
       console.error(err);
-      showToast(err instanceof Error ? err.message : t('mar.administrationFailed'), 'error');
+      showToast(describeError(err, t('mar.administrationFailed')), 'error');
     } finally {
       setSubmitting(false);
     }

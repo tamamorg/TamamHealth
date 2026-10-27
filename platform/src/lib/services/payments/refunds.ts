@@ -67,7 +67,7 @@ async function voidIfOverRefunded(doc: RefundDoc, paymentAmount: number): Promis
           if ((err as { status?: number }).status !== 409 || attempt === 2) throw err;
         }
       }
-      throw new PaymentOperationError('REFUND_EXCEEDS_REMAINING', 'Refund exceeds the amount remaining on this payment');
+      throw new PaymentOperationError('REFUND_EXCEEDS_REMAINING', 'The refund is more than the amount remaining on this payment.');
     }
     running += cents(r.amount);
   }
@@ -125,7 +125,7 @@ export async function issueRefund(input: {
     const bills = input.patientId ? await getBillsByPatient(input.patientId, orgOnlyScope(input.orgId)) : [];
     const bill = bills.find(b => (b.payments || []).some(r => r.id === input.paymentId && !r.reversed));
     const rec = bill?.payments.find(r => r.id === input.paymentId);
-    if (!bill || !rec) throw fail('PAYMENT_NOT_FOUND', 'Payment not found');
+    if (!bill || !rec) throw fail('PAYMENT_NOT_FOUND', 'Payment not found. Reload the page and try again.');
     pmt = {
       _id: rec.id, patientId: bill.patientId, patientName: bill.patientName, amount: rec.amount,
       currency: bill.currency, orgId: bill.orgId, facilityId: bill.facilityId, status: 'posted',
@@ -155,7 +155,7 @@ export async function issueRefund(input: {
     const existing = await processedRefundsFor(pmt._id, pmt.patientId);
     const alreadyRefunded = existing.reduce((sum, r) => sum + cents(r.amount), 0);
     if (cents(amount) > cents(pmt.amount) - alreadyRefunded) {
-      throw fail('REFUND_EXCEEDS_REMAINING', 'Refund exceeds the amount remaining on this payment');
+      throw fail('REFUND_EXCEEDS_REMAINING', 'The refund is more than the amount remaining on this payment.');
     }
 
     doc = {

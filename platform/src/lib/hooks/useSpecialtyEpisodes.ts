@@ -18,7 +18,7 @@ export function useSpecialtyEpisodes(pathway?: SpecialtyPathwayCode, departmentI
       setEpisodes(await getSpecialtyEpisodes(scope, { pathway, departmentId }));
     } catch (cause) {
       console.error(cause);
-      setError('Specialty episodes could not be loaded from this device.');
+      setError('Specialty episodes not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

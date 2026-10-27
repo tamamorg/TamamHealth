@@ -400,7 +400,7 @@ async function nextHospitalSequence(prefix: string): Promise<number> {
       throw err;
     }
   }
-  throw new Error('Could not allocate a hospital number after 5 attempts');
+  throw new Error('Patient not registered. A hospital number could not be assigned. Try again.');
 }
 
 /**

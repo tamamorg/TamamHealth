@@ -6,6 +6,7 @@ import type { MedicalRecordDoc } from '@/lib/db-types';
 import { Lock, Edit3, Plus, CheckCircle2, Clock, X } from '@/components/icons/lucide';
 import { formatDateTime } from '@/lib/format-utils';
 import { PROVIDER_ROLES, TRAINEE_AUTHOR_ROLES } from '@/lib/clinical-roles';
+import { describeError } from '@/lib/user-facing-error';
 
 function statusOf(rec: MedicalRecordDoc): 'draft' | 'awaiting_cosign' | 'signed' | 'amended' {
   return rec.documentStatus ?? 'draft';
@@ -46,7 +47,7 @@ export default function RecordSignatureBar({ record }: { record: MedicalRecordDo
       setAddendumOpen(false);
       setAddendumText('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

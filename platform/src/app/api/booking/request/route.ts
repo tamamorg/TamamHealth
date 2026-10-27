@@ -88,13 +88,13 @@ export async function POST(request: NextRequest) {
   const email = trimmed(body.email);
   const dateOfBirth = trimmed(body.dateOfBirth);
   if (!firstName || !lastName) {
-    return NextResponse.json({ error: 'First and last name are required' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter your first and last name.' }, { status: 400 });
   }
   if (!phone && !email) {
-    return NextResponse.json({ error: 'A phone number or email is required' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter a phone number or email address.' }, { status: 400 });
   }
   if (!body.consentPrivacy) {
-    return NextResponse.json({ error: 'The privacy agreement must be accepted' }, { status: 400 });
+    return NextResponse.json({ error: 'Accept the privacy agreement to continue.' }, { status: 400 });
   }
 
   // A second bucket keyed on the phone, so one number cannot open a dozen
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   const hold = await getLiveHold(trimmed(body.holdToken));
   if (!hold) {
     return NextResponse.json(
-      { error: 'That time is no longer held. Please pick a time again.', code: 'HOLD_EXPIRED' },
+      { error: 'Your hold on that time has expired. Choose a time again.', code: 'HOLD_EXPIRED' },
       { status: 409 },
     );
   }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Visit reason not found' }, { status: 404 });
   }
   if (visitReason.requiresInsurance && !trimmed(body.insurance?.provider)) {
-    return NextResponse.json({ error: 'Insurance details are required for this visit' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter your insurance details for this visit.' }, { status: 400 });
   }
 
   const patientClass: PatientClass = body.patientClass === 'returning' ? 'returning' : 'new';
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
   });
   if (!stillOpen) {
     return NextResponse.json(
-      { error: 'That time has just been taken. Please pick another.', code: 'SLOT_TAKEN' },
+      { error: 'That time has just been booked. Choose another time.', code: 'SLOT_TAKEN' },
       { status: 409 },
     );
   }

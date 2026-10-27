@@ -257,7 +257,7 @@ export async function assertNoBookingConflicts(
       .filter(a => a.orgId === data.orgId);
     const conflict = existing.find(overlaps);
     if (conflict) {
-      throw new BookingConflictError(`Scheduling conflict: ${data.providerName || 'this provider'} already has ${conflict.patientName} at ${conflict.appointmentTime} on ${conflict.appointmentDate}`);
+      throw new BookingConflictError(`Not booked. ${data.providerName || 'This provider'} already has ${conflict.patientName} at ${conflict.appointmentTime} on ${conflict.appointmentDate}. Choose another time.`);
     }
   }
 
@@ -274,7 +274,7 @@ export async function assertNoBookingConflicts(
         && (!data.facilityId || !a.facilityId || a.facilityId === data.facilityId));
     const duplicate = existing.find(overlaps);
     if (duplicate) {
-      throw new BookingConflictError(`Duplicate booking: ${data.patientName || 'this patient'} already has an appointment at ${duplicate.appointmentTime} on ${duplicate.appointmentDate}${duplicate.providerName ? ` with ${duplicate.providerName}` : ''}`);
+      throw new BookingConflictError(`Not booked. ${data.patientName || 'This patient'} already has an appointment at ${duplicate.appointmentTime} on ${duplicate.appointmentDate}${duplicate.providerName ? ` with ${duplicate.providerName}` : ''}.`);
     }
 
     // One open visit per patient per day.
@@ -453,7 +453,7 @@ export async function updateAppointmentStatus(
     const actorId = extra?.actorId;
     const actorName = extra?.actorName || extra?.cancelledByName || extra?.cancelledBy;
     if (status === 'confirmed' && extra?.actorRole && !APPOINTMENT_CONFIRM_ROLES.includes(extra.actorRole)) {
-      throw new Error('Only reception, scheduling, or administrator roles can confirm appointments');
+      throw new Error('Only the front desk, scheduling staff or an administrator can confirm appointments.');
     }
     // A UI picker gate is not enough on its own — a client that skips it (or a
     // surface that forgot to apply it) could still write these. Cancel/no-show
@@ -464,10 +464,10 @@ export async function updateAppointmentStatus(
     // below) rather than surfacing the reason, matching the 'confirmed' assert
     // above — callers already treat a null result as "the write didn't happen".
     if ((status === 'cancelled' || status === 'no_show') && extra?.actorRole && !APPOINTMENT_EXIT_ROLES.includes(extra.actorRole)) {
-      throw new Error('Only reception, scheduling, or administrator roles can cancel or mark an appointment no-show');
+      throw new Error('Only the front desk, scheduling staff or an administrator can cancel an appointment or mark a no-show.');
     }
     if (status === 'completed' && extra?.actorRole && !APPOINTMENT_COMPLETE_ROLES.includes(extra.actorRole)) {
-      throw new Error('Only reception or the clinical care team can complete an appointment');
+      throw new Error('Only the front desk or the patient\'s care team can complete an appointment.');
     }
     // Approving a request turns it into a live booking. The portal write path
     // runs the conflict guard when the request is filed, but time passes

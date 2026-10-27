@@ -21,6 +21,7 @@ import Modal from '@/components/Modal';
 import { Check, Loader2, Upload } from '@/components/icons/lucide';
 import { IMPORT_TEMPLATE_CSV, type ImportRow } from '@/modules/identity/provisioning/bulk-user-import';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeApiError } from '@/lib/user-facing-error';
 
 interface ImportOutcome {
   line: number;
@@ -68,7 +69,7 @@ export default function BulkUserImportModal({
         body: JSON.stringify({ csv, dryRun, orgId }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(body.error || t('bui.errRead')); return null; }
+      if (!res.ok) { setError(describeApiError(body, t('bui.errRead'))); return null; }
       return body;
     } catch {
       setError(t('bui.errNetwork'));

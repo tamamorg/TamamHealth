@@ -99,11 +99,11 @@ async function postHandler(request: NextRequest) {
     }
     const capillaryRefill = parseStrictVitalNumber(body.capillaryRefillSeconds as string | undefined);
     if (body.capillaryRefillSeconds && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
-      return NextResponse.json({ error: 'Capillary refill must be between 0 and 10 seconds.' }, { status: 400 });
+      return NextResponse.json({ error: 'Enter a capillary refill time between 0 and 10 seconds.' }, { status: 400 });
     }
     const gestationalAge = parseStrictVitalNumber(body.gestationalAgeWeeks as string | undefined);
     if (body.gestationalAgeWeeks && (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)) {
-      return NextResponse.json({ error: 'Gestational age must be a whole number from 0 to 45 weeks.' }, { status: 400 });
+      return NextResponse.json({ error: 'Enter gestational age as a whole number of weeks, from 0 to 45.' }, { status: 400 });
     }
     const requestedPriority = ['RED', 'YELLOW', 'GREEN'].includes(String(body.priority))
       ? body.priority as TriagePriority

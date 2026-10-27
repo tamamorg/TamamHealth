@@ -23,7 +23,7 @@ export function useProblems(patientId?: string) {
       setProblems(rows);
     } catch (err) {
       console.error(err);
-      setError('Failed to load problems');
+      setError('Problem list not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

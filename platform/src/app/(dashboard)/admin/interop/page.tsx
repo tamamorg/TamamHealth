@@ -25,6 +25,7 @@ import { syncEventsDB } from '@/lib/db';
 import { findByType } from '@/lib/services/db-query';
 import type { SyncEventDoc } from '@/lib/db-types';
 import { RefreshCw } from '@/components/icons/lucide';
+import { describeError } from '@/lib/user-facing-error';
 
 interface QueueHealth {
   total: number;
@@ -79,15 +80,15 @@ export default function AdminInteropPage() {
     try {
       const result = await pushPendingToCountryNode(50);
       if (result.skipped) {
-        showToast('Country-node sync is not configured on this facility (SYNC_PUSH_URL unset) — no retry attempted.', 'error');
+        showToast('Retry not sent. National sync is not set up for this facility. Contact your system administrator.', 'error');
       } else if (result.error) {
-        showToast(`Retry push failed: ${result.error}`, 'error');
+        showToast(`Retry not sent. ${result.error}`, 'error');
       } else {
-        showToast(`Retry batch: pushed ${result.pushed}, acknowledged ${result.acknowledged}.`, 'success');
+        showToast(`Retry complete. ${result.pushed} sent, ${result.acknowledged} confirmed by the national server.`, 'success');
       }
       await loadAll();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Retry failed.', 'error');
+      showToast(describeError(err, 'Retry not sent. Check the connection and try again.'), 'error');
     } finally {
       setRetrying(false);
     }

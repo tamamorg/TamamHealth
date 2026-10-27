@@ -35,7 +35,7 @@ export function useTriage(patientId?: string) {
       }
     } catch (err) {
       console.error(err);
-      setError('Failed to load triage records');
+      setError('Triage records not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,7 @@ export function useTriage(patientId?: string) {
     options?: Omit<CreateTriageOptions, 'scope'>,
   ) => {
     // The hook owns the tenant scope; callers never pass (or forget) it.
-    if (!scope) throw new Error('Cannot save triage before the session scope is ready.');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { createTriage } = await import('../services/triage-service');
     const doc = await withTimeout(
       createTriage(data, { ...options, scope }),
@@ -67,7 +67,7 @@ export function useTriage(patientId?: string) {
   }, [load, scope]);
 
   const update = useCallback(async (id: string, updates: Partial<TriageDoc>, actor?: TriageActor) => {
-    if (!scope) throw new Error('Cannot update triage before the session scope is ready.');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { updateTriage } = await import('../services/triage-service');
     const doc = await withTimeout(
       updateTriage(id, updates, scope, actor),

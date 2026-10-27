@@ -293,7 +293,7 @@ export async function voidAdministration(
   voidedByName: string,
   reason: string,
 ): Promise<MedicationAdministrationDoc> {
-  if (!reason.trim()) throw new MedicationAdministrationError('A correction reason is required.', 'REASON_REQUIRED');
+  if (!reason.trim()) throw new MedicationAdministrationError('Enter the reason for the correction.', 'REASON_REQUIRED');
   const db = medicationAdministrationsDB();
   const [rx, storedTarget, events] = await Promise.all([
     prescriptionsDB().get(prescriptionId).catch(() => null) as Promise<PrescriptionDoc | null>,

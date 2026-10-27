@@ -92,7 +92,7 @@ export async function reserveUnit(id: string, patientId: string, scope: DataScop
     const existing = await db.get(id) as BloodBankDoc;
     if (filterByScope([existing], scope).length === 0) return null;
     if (existing.status !== 'available') {
-      throw new Error(`Unit ${id} is not available for reservation`);
+      throw new Error(`Blood unit ${id} is not available. It may have been reserved or issued on another device.`);
     }
     const updated = {
       ...existing,

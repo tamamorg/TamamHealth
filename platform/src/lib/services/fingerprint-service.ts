@@ -88,7 +88,7 @@ export async function captureFingerprint(options: { finger?: FingerPosition; sim
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Fingerprint capture failed (HTTP ${res.status})`);
+    throw new Error(body.error || 'Fingerprint not captured. Check the scanner connection and try again.');
   }
   return await res.json() as CaptureResult;
 }
@@ -228,7 +228,7 @@ export async function identifyPatient(probeTemplate: string, scope?: DataScope):
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Fingerprint matching failed (HTTP ${res.status})`);
+    throw new Error(body.error || 'Fingerprint not matched. Check the scanner connection and try again.');
   }
   const { matches } = await res.json() as { matches: { id: string; score: number }[] };
 

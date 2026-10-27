@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const ctx = await resolvePortalBookingContext(auth.sub);
     if (!ctx) {
       return NextResponse.json(
-        { error: 'Your account is not linked to a facility yet. Please contact your facility.' },
+        { error: 'Your account is not linked to a facility yet. Contact your facility.' },
         { status: 409 },
       );
     }
@@ -48,6 +48,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     logApiError('[patient-portal/booking/reasons]', err);
-    return NextResponse.json({ error: 'Could not load visit reasons' }, { status: 500 });
+    return NextResponse.json({ error: 'Visit reasons not loaded. Reload the page to try again.' }, { status: 500 });
   }
 }

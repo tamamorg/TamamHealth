@@ -38,7 +38,7 @@ function event(action: SpecialtyEpisodeEvent['action'], actor: SpecialtyCareActo
 
 function ensureWritableScope(scope: DataScope, orgId: string, hospitalId: string): void {
   const visible = filterByScope([{ type: 'specialty_care_episode', orgId, hospitalId }], scope);
-  if (!scope.orgId || visible.length !== 1) throw new Error('The specialty episode is outside your authorized scope');
+  if (!scope.orgId || visible.length !== 1) throw new Error('You do not have access to this record. It belongs to another facility or organization.');
 }
 
 export function specialtyPathwayConfigId(hospitalId: string, pathway: SpecialtyPathwayCode): string {
@@ -72,10 +72,10 @@ export async function configureSpecialtyPathway(input: {
   scope: DataScope;
   actor: Required<SpecialtyCareActor>;
 }): Promise<SpecialtyPathwayConfigDoc> {
-  if (!CONFIG_ROLES.has(input.scope.role)) throw new Error('Your role cannot configure specialty pathways');
+  if (!CONFIG_ROLES.has(input.scope.role)) throw new Error('Your role cannot change specialty pathways. Ask a facility administrator.');
   ensureWritableScope(input.scope, input.orgId, input.hospitalId);
   if ((input.status === 'pilot' || input.status === 'active') && (!input.clinicalOwnerName?.trim() || !input.sopReference?.trim())) {
-    throw new Error('Pilot or active pathways require a clinical owner and approved SOP reference');
+    throw new Error('Enter a clinical owner and an approved SOP reference to pilot or activate this pathway.');
   }
   const db = hospitalsDB();
   const id = specialtyPathwayConfigId(input.hospitalId, input.pathway);
@@ -103,7 +103,7 @@ export async function configureSpecialtyPathway(input: {
 async function assertPathwayEnabled(pathway: SpecialtyPathwayCode, hospitalId: string, scope: DataScope): Promise<void> {
   const config = await getSpecialtyPathwayConfig(pathway, hospitalId, scope);
   if (!config || (config.status !== 'pilot' && config.status !== 'active')) {
-    throw new Error('This specialty pathway is not activated for the facility');
+    throw new Error('This specialty pathway is not active at this facility. Ask a facility administrator to activate it.');
   }
 }
 
@@ -156,7 +156,7 @@ export async function createSpecialtyEpisode(input: {
   ensureWritableScope(input.scope, input.orgId, input.hospitalId);
   await assertPathwayEnabled(input.pathway, input.hospitalId, input.scope);
   const patient = await getPatientById(input.patientId.trim(), input.scope);
-  if (!patient) throw new Error('Select a registered patient in your authorized scope');
+  if (!patient) throw new Error('Select a patient registered at your facility.');
   let encounterId = input.encounterId;
   if (!encounterId && input.appointmentId) {
     const visits = await findByType<{ _id: string; type: string; patientId: string; orgId: string; hospitalId?: string; facilityId?: string }>(encountersDB(), 'clinical_encounter', { appointmentId: input.appointmentId });
@@ -164,12 +164,12 @@ export async function createSpecialtyEpisode(input: {
   }
   if (input.departmentId) {
     const department = await hospitalsDB().get(input.departmentId) as { type?: string; orgId?: string; facilityId?: string };
-    if (department.type !== 'department' || department.orgId !== input.orgId || department.facilityId !== input.hospitalId) throw new Error('Department does not belong to this facility');
+    if (department.type !== 'department' || department.orgId !== input.orgId || department.facilityId !== input.hospitalId) throw new Error('Select a department at this facility.');
   }
   for (const [id, db] of [[input.appointmentId, appointmentsDB], [input.encounterId, encountersDB]] as const) {
     if (!id) continue;
     const linked = await db().get(id) as { patientId?: string; orgId?: string; hospitalId?: string; facilityId?: string };
-    if (linked.patientId !== patient._id || linked.orgId !== input.orgId || !filterByScope([linked], input.scope).length) throw new Error('Linked visit does not belong to this patient in your authorized scope');
+    if (linked.patientId !== patient._id || linked.orgId !== input.orgId || !filterByScope([linked], input.scope).length) throw new Error('The linked visit belongs to a different patient. Choose another visit.');
   }
   const now = new Date().toISOString();
   const doc: SpecialtyCareEpisodeDoc = {
@@ -216,14 +216,14 @@ export async function updateSpecialtyEpisode(input: {
   cancellationReason?: string;
 }): Promise<SpecialtyCareEpisodeDoc> {
   const existing = await getSpecialtyEpisode(input.id, input.scope);
-  if (!existing) throw new Error('Specialty episode not found in your authorized scope');
-  if (existing.status === 'completed' || existing.status === 'cancelled') throw new Error('Finalized specialty episodes cannot be edited');
+  if (!existing) throw new Error('Specialty episode not found. Reload the page.');
+  if (existing.status === 'completed' || existing.status === 'cancelled') throw new Error('This episode is finalized and can no longer be changed.');
 
   const nextStatus = input.status ?? existing.status;
   if (nextStatus !== existing.status && !TRANSITIONS[existing.status].includes(nextStatus)) {
-    throw new Error(`A specialty episode cannot move from ${existing.status} to ${nextStatus}`);
+    throw new Error(`This episode is ${existing.status} and cannot move to ${nextStatus}.`);
   }
-  if (nextStatus === 'cancelled' && !input.cancellationReason?.trim()) throw new Error('Cancelling an episode requires a reason');
+  if (nextStatus === 'cancelled' && !input.cancellationReason?.trim()) throw new Error('Enter the reason for cancelling this episode.');
   const now = new Date().toISOString();
   const updated: SpecialtyCareEpisodeDoc = {
     ...existing,

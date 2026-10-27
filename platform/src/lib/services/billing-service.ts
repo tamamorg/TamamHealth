@@ -362,11 +362,11 @@ export async function recordPayment(
   notes?: string,
 ): Promise<BillingDoc | null> {
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
-    throw new BillingError('INVALID_AMOUNT', 'Payment amount must be a number greater than zero');
+    throw new BillingError('INVALID_AMOUNT', 'Enter a payment amount greater than zero.');
   }
   const cents = Math.round(amount * 100) / 100;
-  if (cents <= 0) throw new BillingError('INVALID_AMOUNT', 'Payment amount must be at least 0.01');
-  if (!isPaymentMethod(method)) throw new BillingError('INVALID_METHOD', 'Unknown payment method');
+  if (cents <= 0) throw new BillingError('INVALID_AMOUNT', 'Enter a payment amount of at least 0.01.');
+  if (!isPaymentMethod(method)) throw new BillingError('INVALID_METHOD', 'Choose a payment method from the list.');
 
   const db = billingDB();
   // Retry on a write conflict by re-reading and re-validating against the
@@ -379,15 +379,15 @@ export async function recordPayment(
       if (isNotFound(err)) return null;
       throw err;
     }
-    if (bill.chargeReversedAt) throw new BillingError('CHARGE_REVERSED', 'The charge on this bill was reversed; it cannot take payments');
+    if (bill.chargeReversedAt) throw new BillingError('CHARGE_REVERSED', 'The charge on this bill was reversed, so it cannot take payments.');
     if (!PAYABLE_STATUSES.includes(bill.status)) {
       throw new BillingError(
         bill.status === 'paid' ? 'BILL_PAID' : bill.status === 'cancelled' ? 'BILL_CANCELLED' : bill.status === 'waived' ? 'BILL_WAIVED' : 'BILL_NOT_PAYABLE',
-        `A bill that is ${bill.status} cannot take payments`,
+        `This bill is ${bill.status} and cannot take payments.`,
       );
     }
     if (cents > Math.round(bill.balanceDue * 100) / 100) {
-      throw new BillingError('AMOUNT_EXCEEDS_BALANCE', 'Payment exceeds the balance due on this bill');
+      throw new BillingError('AMOUNT_EXCEEDS_BALANCE', 'The payment is more than the balance due. Enter an amount up to the balance.');
     }
 
     const now = new Date().toISOString();
@@ -440,7 +440,7 @@ export async function recordPayment(
 
     return bill;
   }
-  throw new Error('Bill was modified concurrently; retry the payment');
+  throw new Error('This bill was changed on another device. Reload it and record the payment again.');
 }
 
 export interface SettleOpenBillsInput {
@@ -953,7 +953,7 @@ export async function waiveBill(
   waivedByName: string,
   reason: string,
 ): Promise<BillingDoc | null> {
-  if (typeof reason !== 'string' || !reason.trim()) throw new BillingError('INVALID_REASON', 'A waiver reason is required');
+  if (typeof reason !== 'string' || !reason.trim()) throw new BillingError('INVALID_REASON', 'Enter the reason for the waiver.');
   const db = billingDB();
   let bill: BillingDoc;
   try {
@@ -962,12 +962,12 @@ export async function waiveBill(
     if (isNotFound(err)) return null;
     throw err;
   }
-  if (bill.status === 'paid') throw new BillingError('BILL_PAID', 'A paid bill cannot be waived');
-  if (bill.status === 'cancelled') throw new BillingError('BILL_CANCELLED', 'A cancelled bill cannot be waived');
-  if (bill.status === 'waived') throw new BillingError('BILL_WAIVED', 'This bill is already waived');
-  if (bill.chargeReversedAt) throw new BillingError('CHARGE_REVERSED', 'The charge on this bill was reversed');
+  if (bill.status === 'paid') throw new BillingError('BILL_PAID', 'This bill is already paid, so it cannot be waived.');
+  if (bill.status === 'cancelled') throw new BillingError('BILL_CANCELLED', 'This bill was cancelled, so it cannot be waived.');
+  if (bill.status === 'waived') throw new BillingError('BILL_WAIVED', 'This bill has already been waived.');
+  if (bill.chargeReversedAt) throw new BillingError('CHARGE_REVERSED', 'The charge on this bill was reversed, so it cannot be waived.');
   if ((bill.payments || []).some(p => !p.reversed)) {
-    throw new BillingError('BILL_HAS_PAYMENTS', 'A bill with payments applied cannot be waived');
+    throw new BillingError('BILL_HAS_PAYMENTS', 'This bill has payments applied. Reverse the payments before waiving it.');
   }
 
   const waivedAmount = Math.round((bill.balanceDue || 0) * 100) / 100;

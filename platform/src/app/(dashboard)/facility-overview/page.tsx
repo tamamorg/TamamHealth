@@ -38,6 +38,7 @@ import {
 import { tooltipStyle as chartTooltipStyle, axisTick } from '@/components/ChartCard';
 import { SadbPage, SadbCard, SadbKpiTile, SadbKvRow, SadbChip, type ChipTone } from '@/components/admin/sadb-ui';
 import type { UserRole } from '@/lib/db-types';
+import { describeError } from '@/lib/user-facing-error';
 
 /* The exact role set `lib/role-routes.ts` grants `/facility-overview`
  * (org_admin, medical_superintendent, hospital_manager), plus super_admin's
@@ -89,7 +90,7 @@ function FacilityOverview() {
         },
       });
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Could not submit to the Ministry of Health.');
+      setSubmitError(describeError(err, 'Report not submitted to the Ministry of Health. Check the connection and try again.'));
     } finally {
       setSubmitting(false);
     }

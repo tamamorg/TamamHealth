@@ -96,19 +96,19 @@ async function assertTriageVitalSafety(doc: Partial<TriageDoc>, scope: DataScope
 
   const capillaryRefill = parseStrictVitalNumber(doc.capillaryRefillSeconds);
   if (doc.capillaryRefillSeconds && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
-    throw new Error('Capillary refill must be between 0 and 10 seconds.');
+    throw new Error('Enter a capillary refill time between 0 and 10 seconds.');
   }
   const gestationalAge = parseStrictVitalNumber(doc.gestationalAgeWeeks);
   if (
     doc.gestationalAgeWeeks &&
     (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)
   ) {
-    throw new Error('Gestational age must be a whole number from 0 to 45 weeks.');
+    throw new Error('Enter gestational age as a whole number of weeks, from 0 to 45.');
   }
 
   const overrideReason = doc.vitalUrgencyOverrideReason?.trim();
   if (doc.vitalUrgencyOverridden && !overrideReason) {
-    throw new Error('A reason is required to override the recommended triage urgency.');
+    throw new Error('Enter a clinical reason to override the recommended urgency.');
   }
 
   // Recomputed, not trusted: a caller that supplies (or omits)
@@ -117,7 +117,7 @@ async function assertTriageVitalSafety(doc: Partial<TriageDoc>, scope: DataScope
   // the patient's real age.
   const recommendation = await computeVitalUrgencyRecommendation(doc, capillaryRefill, scope);
   if (doc.priority && isLowerTriagePriority(doc.priority, recommendation) && (!doc.vitalUrgencyOverridden || !overrideReason)) {
-    throw new Error('Saving below the recommended triage urgency requires a recorded override reason.');
+    throw new Error('Enter a clinical reason to save below the recommended urgency.');
   }
 }
 

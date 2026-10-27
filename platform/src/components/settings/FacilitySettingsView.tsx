@@ -259,9 +259,9 @@ export function FacilitySettingsView({
       const saved = await saveFacilitySettings(effectiveHospitalId, patch, orgId, hospitalId);
       if (!hospitalId) setSelectedSettings(saved);
       setDraft(saved);
-      showToast('Facility settings saved', 'success');
+      showToast('Facility settings saved.', 'success');
     } catch {
-      showToast('Could not save settings', 'error');
+      showToast('Settings not saved. Try again.', 'error');
     } finally {
       setSaving(null);
     }

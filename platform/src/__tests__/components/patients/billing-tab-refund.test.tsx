@@ -86,7 +86,7 @@ describe('BillingTab refund dialog', () => {
     expect(confirmButton().disabled).toBe(true);
 
     await act(async () => { release(); await flush(); });
-    expect(showToast).toHaveBeenCalledWith('Refund issued', 'success');
+    expect(showToast).toHaveBeenCalledWith('Refund issued.', 'success');
   });
 
   it('keeps the dialog open, shows the reason, and retries under the same key after a refusal', async () => {
@@ -95,7 +95,7 @@ describe('BillingTab refund dialog', () => {
 
     await act(async () => { click(confirmButton()); await flush(); });
     expect(showToast).toHaveBeenCalledWith(expect.stringContaining('Refund exceeds the amount remaining'), 'error');
-    expect(showToast).not.toHaveBeenCalledWith('Refund issued', 'success');
+    expect(showToast).not.toHaveBeenCalledWith('Refund issued.', 'success');
     expect(mounted!.container.querySelector('#bl-refund-reason')).not.toBeNull();
 
     await act(async () => { click(confirmButton()); await flush(); });

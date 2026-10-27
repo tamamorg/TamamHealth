@@ -63,7 +63,7 @@ export async function createIssueReport(input: CreateIssueReportInput, reporter:
   if (details.length > DETAILS_MAX) throw new IssueReportValidationError(`Keep the description under ${DETAILS_MAX} characters.`);
   if (!(ISSUE_CATEGORIES as readonly string[]).includes(input.category)) throw new IssueReportValidationError('Choose what kind of problem it is.');
   if (!(ISSUE_SEVERITIES as readonly string[]).includes(input.severity)) throw new IssueReportValidationError('Choose how much it is affecting your work.');
-  if (!reporter.id) throw new IssueReportValidationError('Sign in again before reporting a problem.');
+  if (!reporter.id) throw new IssueReportValidationError('Your session has ended. Sign in again to report a problem.');
 
   const { createMessage } = await import('@/modules/communication/services/message-service');
   const now = new Date().toISOString();

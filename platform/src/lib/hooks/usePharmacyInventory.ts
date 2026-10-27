@@ -21,7 +21,7 @@ export function usePharmacyInventory() {
       setItems(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load pharmacy inventory');
+      setError('Pharmacy inventory not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

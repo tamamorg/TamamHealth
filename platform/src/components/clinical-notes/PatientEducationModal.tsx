@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { Send, X } from '@/components/icons/lucide';
+import { describeError } from '@/lib/user-facing-error';
 import './clinical-notes.css';
 
 export interface PatientEducationModalResult {
@@ -47,7 +48,7 @@ export default function PatientEducationModal({
       await onSend({ subject: subject.trim() || 'Patient education', body: body.trim() });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send patient education.');
+      setError(describeError(err, 'Patient education not sent. Try again.'));
     } finally {
       setSending(false);
     }

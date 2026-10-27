@@ -51,6 +51,7 @@ import {
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { useNow } from '@/lib/hooks/useNow';
+import { describeError } from '@/lib/user-facing-error';
 
 const ACCENT = 'var(--accent-primary)';
 type WorkflowStepKey = 'received' | 'review' | 'checked' | 'payment' | 'dispensed' | 'counseled' | 'cleared';
@@ -610,7 +611,7 @@ export default function PharmacyDashboardPage() {
       await advance(rx._id, to);
       showToast(successMessage, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update prescription workflow.', 'error');
+      showToast(describeError(err, 'Prescription status not changed. Try again.'), 'error');
     }
   };
 
@@ -657,14 +658,14 @@ export default function PharmacyDashboardPage() {
   const handleDispense = (rx: PrescriptionDoc) => {
     const stage = pharmacyStage(rx);
     if (stage !== 'cleared_for_dispensing') {
-      showToast('Check and clear the medication order before dispensing.', 'error');
+      showToast('Verify the medication order before dispensing.', 'error');
       return;
     }
     // Fail closed: an unresolved balance (still loading, or the ledger fetch
     // errored) is never treated as cleared — surfaced as its own visible
     // state rather than silently falling through to the stock check below.
     if (!isBalanceKnownFor(rx)) {
-      showToast(`Could not confirm ${rx.patientName}'s balance — balance unavailable. Try again before dispensing.`, 'error');
+      showToast(`${rx.patientName}'s balance could not be checked. Try again before dispensing.`, 'warning');
       return;
     }
     // A patient must never be turned away from a life-sustaining medication
@@ -678,7 +679,7 @@ export default function PharmacyDashboardPage() {
     const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
-      showToast(`Insufficient stock: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed for the full course.`, 'error');
+      showToast(`Not enough stock for the full course: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed. Dispense a partial fill or record a stockout.`, 'warning');
       return;
     }
     setWitnessId('');
@@ -698,7 +699,7 @@ export default function PharmacyDashboardPage() {
     if (requiresWitness) {
       const w = users.find(u => u._id === witnessId);
       if (!w) {
-        showToast('Select a witnessing staff member.', 'error');
+        showToast('Select a witness.', 'error');
         return;
       }
       witness = { id: w._id, name: w.name };
@@ -716,17 +717,17 @@ export default function PharmacyDashboardPage() {
         let liveBalance: number;
         try {
           const { getPatientBalance } = await import('@/lib/services/ledger-service');
-          if (!scope) throw new Error('Patient data scope unavailable');
+          if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
           liveBalance = await getPatientBalance(patientId, scope);
         } catch {
           setBalanceByPatient(prev => new Map(prev).set(patientId, { balance: prev.get(patientId)?.balance ?? 0, status: 'error' }));
-          showToast(`Could not confirm ${rx.patientName}'s balance — balance unavailable. Dispense cancelled.`, 'error');
+          showToast(`Not dispensed. ${rx.patientName}'s balance could not be checked. Try again.`, 'warning');
           setDispenseTarget(null);
           return;
         }
         setBalanceByPatient(prev => new Map(prev).set(patientId, { balance: liveBalance, status: 'ready' }));
         if (!isFinanciallyCleared(liveBalance) && !isTier1(rx)) {
-          showToast(`Payment still due for ${rx.patientName}: ${formatMoney(liveBalance)}. Send the patient to cashier before dispensing.`, 'error');
+          showToast(`Payment due: ${rx.patientName} owes ${formatMoney(liveBalance)}. Send the patient to the cashier before dispensing.`, 'warning');
           setDispenseTarget(null);
           return;
         }
@@ -734,7 +735,7 @@ export default function PharmacyDashboardPage() {
           // Dispensed anyway, but said out loud — the balance is real and the
           // desk needs to know it is following the patient to checkout.
           showToast(
-            `${rx.medication} is life-sustaining — dispensing despite ${formatMoney(liveBalance)} outstanding. The balance stays on the account.`,
+            `${rx.medication} dispensed as life-sustaining medication. The ${formatMoney(liveBalance)} balance stays on the patient's account.`,
             'success',
           );
         }
@@ -754,13 +755,13 @@ export default function PharmacyDashboardPage() {
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
         result.outcome === 'partial'
-          ? `Partial fill: ${result.quantityDispensed} ${inv.unit} of ${rx.medication} from batch ${batches}. Order stays open.`
+          ? `Partial fill: ${result.quantityDispensed} ${inv.unit} of ${rx.medication} dispensed from batch ${batches}. The order stays open for the remainder.`
           : t('pharmacy.dispensedToast', { medication: rx.medication, patient: rx.patientName }),
         result.outcome === 'partial' ? 'error' : 'success',
       );
       setDispenseTarget(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('pharmacy.dispenseMarkFailed'), 'error');
+      showToast(describeError(err, t('pharmacy.dispenseMarkFailed')), 'error');
     } finally {
       setDispensing(false);
     }

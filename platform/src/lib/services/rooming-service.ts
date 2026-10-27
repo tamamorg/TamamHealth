@@ -148,7 +148,7 @@ export async function assignRoom(
   opts: { actorId?: string; actorName?: string } = {},
 ): Promise<EncounterDoc> {
   const room = roomNumber.trim();
-  if (!room) throw new Error('A room must be named to assign it');
+  if (!room) throw new Error('Select or enter a room.');
 
   const enc = await transitionEncounter(encounterId, 'in_rooming', { actorId: opts.actorId });
   const updated = await updateEncounter(encounterId, { roomNumber: room });
@@ -184,7 +184,7 @@ export async function recordRoomingVitals(
   if (!input.encounterId) {
     // Without the link the observation is orphaned from the visit it was taken
     // during, which is the whole reason for taking it at this station.
-    throw new Error('Rooming vitals must be linked to an encounter');
+    throw new Error('Vitals not saved. Check the patient in before recording rooming vitals.');
   }
   return recordNursingVitals(input);
 }
@@ -203,7 +203,7 @@ export async function setDestinationClinic(
   opts: { actorId?: string; actorName?: string } = {},
 ): Promise<EncounterDoc> {
   const destination = clinic.trim();
-  if (!destination) throw new Error('A destination clinic must be named');
+  if (!destination) throw new Error('Select the destination clinic.');
 
   await transitionEncounter(encounterId, 'transferred_to_other_clinic', { actorId: opts.actorId });
   // Back into the rooming queue at the receiving clinic — the patient still
@@ -238,7 +238,7 @@ export async function markReadyForClinician(
 ): Promise<EncounterDoc> {
   const current = (await getAllEncounters()).find(e => e._id === encounterId);
   if (current && !current.roomNumber) {
-    throw new Error('Assign a room before marking the patient ready for the clinician');
+    throw new Error('Assign a room before marking the patient ready for the clinician.');
   }
 
   const enc = await transitionEncounter(encounterId, 'ready_for_clinician', { actorId: opts.actorId });

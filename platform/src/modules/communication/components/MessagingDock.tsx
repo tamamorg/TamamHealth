@@ -260,7 +260,7 @@ export default function MessagingDock() {
         orgId: currentUser.orgId,
       };
       const permission = perms.canDecideTransfer(auth, transfer);
-      if (!permission.allowed) throw new Error(permission.reason || 'Transfer decision not permitted');
+      if (!permission.allowed) throw new Error(permission.reason || 'You cannot accept or reject this transfer.');
       const actor = { id: auth.sub, name: auth.name, role: auth.role };
       if (decision === 'accept') await svc.acceptTransfer(id, actor);
       else await svc.rejectTransfer(id, actor, notes);

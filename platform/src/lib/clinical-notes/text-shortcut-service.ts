@@ -117,8 +117,8 @@ export async function saveTextShortcut(input: SaveShortcutInput): Promise<TextSh
   const db = textShortcutsDB();
   const name = input.name.trim();
   const body = input.body.trim();
-  if (!name) throw new Error('A shortcut needs a name.');
-  if (!body) throw new Error('A shortcut needs body text.');
+  if (!name) throw new Error('Enter a name for the shortcut.');
+  if (!body) throw new Error('Enter the shortcut text.');
 
   const ts = nowIso();
 

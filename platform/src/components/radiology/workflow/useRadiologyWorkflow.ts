@@ -25,6 +25,7 @@ import {
   stepForStage,
   type RadiologyWorkflowStepKey,
 } from './radiology-workflow-types';
+import { describeError } from '@/lib/user-facing-error';
 
 export interface ScheduleDraft {
   accessionNumber: string;
@@ -121,7 +122,7 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
       return true;
     } catch (err) {
       console.error('[radiology-workflow]', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err, 'Change not saved. Try again.'));
       return false;
     } finally {
       setBusy(false);

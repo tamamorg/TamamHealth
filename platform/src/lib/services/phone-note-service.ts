@@ -67,10 +67,10 @@ export interface CreatePhoneNoteInput {
 
 export async function createPhoneNote(input: CreatePhoneNoteInput): Promise<PhoneNoteDoc> {
   if (!input.subject || input.subject.trim().length === 0) {
-    throw new Error('Phone note subject is required');
+    throw new Error('Enter the subject of the phone note.');
   }
   if (!input.message || input.message.trim().length === 0) {
-    throw new Error('Phone note message is required');
+    throw new Error('Enter the phone note message.');
   }
   const db = phoneNotesDB();
   const now = new Date().toISOString();
@@ -107,10 +107,10 @@ export interface PhoneNoteResponder {
 /** Provider responds to a phone note; it becomes a permanent answered record. */
 export async function respondToPhoneNote(id: string, response: string, responder: PhoneNoteResponder): Promise<PhoneNoteDoc | null> {
   if (!response || response.trim().length === 0) {
-    throw new Error('A response is required');
+    throw new Error('Enter a response.');
   }
   if (!isClinicalAuthorRole(responder.userRole)) {
-    throw new Error(`Role "${responder.userRole ?? 'unknown'}" may not respond to phone notes.`);
+    throw new Error('Your role cannot respond to phone notes. Ask a clinician to respond.');
   }
   const db = phoneNotesDB();
   let existing: PhoneNoteDoc;

@@ -101,6 +101,7 @@ import {
   RefreshCw, Server, Settings, Shield, Stethoscope, Trash2, User, Users, Zap, type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { describeApiError, describeError } from '@/lib/user-facing-error';
 const SECTION_ICONS: Record<string, LucideIcon> = {
   user: User, bell: Bell, shield: Shield, steth: Stethoscope, pill: Pill,
   flask: FlaskConical, card: CreditCard, bed: BedDouble, clock: Clock,
@@ -571,9 +572,9 @@ export default function RoleSettingsView() {
       const { currentUserPreferences, persistUserPreferences } = await import('@/lib/settings/user-settings-sync');
       await persistUserPreferences(currentUser._id, currentUserPreferences(draft, locale));
       setBaseline(draft);
-      showToast('Settings saved', 'success');
+      showToast('Settings saved.', 'success');
     } catch {
-      showToast('Failed to save settings', 'error');
+      showToast('Settings not saved. Try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -592,13 +593,13 @@ export default function RoleSettingsView() {
       persistUserPreferences(currentUser._id, currentUserPreferences(defaults, locale)));
     setDraft(defaults);
     setBaseline(defaults);
-    showToast('Settings reset', 'success');
+    showToast('Settings reset to defaults.', 'success');
   };
 
   const handleChangePassword = async () => {
-    if (!pwForm.current) { showToast('Enter your current password', 'error'); return; }
+    if (!pwForm.current) { showToast('Enter your current password.', 'error'); return; }
     if (pwForm.next.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
-    if (pwForm.next !== pwForm.confirm) { showToast('Passwords do not match', 'error'); return; }
+    if (pwForm.next !== pwForm.confirm) { showToast('The passwords do not match. Enter the same password in both fields.', 'error'); return; }
     setPwSaving(true);
     try {
       const { apiFetch } = await import('@/lib/api-fetch');
@@ -608,33 +609,33 @@ export default function RoleSettingsView() {
         body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) { showToast(body.error || 'Failed to change password', 'error'); return; }
+      if (!res.ok) { showToast(describeApiError(body, 'Password not changed. Try again.'), 'error'); return; }
       setPwForm({ current: '', next: '', confirm: '' });
       setPwOpen(false);
-      showToast('Password changed', 'success');
+      showToast('Password changed.', 'success');
     } catch {
-      showToast('Failed to change password — check your connection', 'error');
+      showToast('Password not changed. Cannot reach the server. Check your internet connection and try again.', 'error');
     } finally {
       setPwSaving(false);
     }
   };
 
   const handleSetPin = async () => {
-    if (!/^\d{4,6}$/.test(pinForm.next)) { showToast('PIN must be 4–6 digits', 'error'); return; }
-    if (pinForm.next !== pinForm.confirm) { showToast('PINs do not match', 'error'); return; }
+    if (!/^\d{4,6}$/.test(pinForm.next)) { showToast('Enter a PIN of 4 to 6 digits.', 'error'); return; }
+    if (pinForm.next !== pinForm.confirm) { showToast('The PINs do not match. Enter the same PIN in both fields.', 'error'); return; }
     setPinSaving(true);
     try {
       await setLockPin(pinForm.next, currentUser._id);
       setPinIsSet(true);
       setPinForm({ next: '', confirm: '' });
       setPinOpen(false);
-      showToast('Screen-lock PIN set', 'success');
+      showToast('Screen-lock PIN set.', 'success');
     } catch (err) {
       // Thrown on a non-secure context (no crypto.subtle) — this device
       // cannot hash a PIN safely, and setLockPin refuses rather than falling
       // back to a weaker scheme. Surface that instead of an uncaught
       // rejection with the dialog stuck open and no explanation.
-      showToast(err instanceof Error ? err.message : 'Could not set a screen-lock PIN on this device', 'error');
+      showToast(describeError(err, 'Screen-lock PIN not set on this device. Try again.'), 'error');
     } finally {
       setPinSaving(false);
     }
@@ -896,13 +897,13 @@ export default function RoleSettingsView() {
           label: 'Merge duplicate patient records',
           hint: 'Review suspected duplicates in the patient registry. Merges are audited and cannot be undone.',
           action: 'Not available here',
-          onClick: () => showToast('Patient merge review opens from the patient registry, not from Settings.', 'error'),
+          onClick: () => showToast('Review patient merges from the patient registry.', 'error'),
         },
         {
           label: 'Export the full patient database',
           hint: 'Requires facility admin plus a Ministry authorisation code.',
           action: 'Request export',
-          onClick: () => showToast('Full export requires a Ministry authorisation code.', 'error'),
+          onClick: () => showToast('Enter the Ministry of Health authorisation code for a full export.', 'error'),
         },
         {
           label: 'Reset settings on this device',
@@ -1328,7 +1329,7 @@ export default function RoleSettingsView() {
                   <button
                     type="button"
                     className="ehr-handoff-btn sm"
-                    onClick={() => { clearLockPin(currentUser._id); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast('Screen-lock PIN removed', 'success'); }}
+                    onClick={() => { clearLockPin(currentUser._id); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast('Screen-lock PIN removed.', 'success'); }}
                   >
                     <Trash2 /> Remove
                   </button>

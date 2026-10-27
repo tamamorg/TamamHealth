@@ -71,6 +71,7 @@ import { stopsClickPropagation } from '@/lib/a11y';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { formatPhoneShared } from '@/lib/field-formats';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { describeError } from '@/lib/user-facing-error';
 
 /**
  * How many greeting-row actions are written out before the rest go behind
@@ -901,7 +902,7 @@ export default function EhrClinicalDashboard({
     } else {
       // Both the direct id and the name-match fallback failed — say so
       // instead of silently doing nothing.
-      showToast(`No patient record found for ${appointment.patientName}`, 'error');
+      showToast(`No patient record found for ${appointment.patientName}. Search the patient registry or ask the front desk to link the record.`, 'error');
     }
   };
 
@@ -913,7 +914,7 @@ export default function EhrClinicalDashboard({
     if (appointment) { openAppointmentPreview(appointment); return; }
     const patientId = uniquePatientIdByName(patients, entry.title);
     if (patientId) { router.push(`/patients/${patientId}`); return; }
-    showToast(`Couldn't open “${entry.title}”`, 'error');
+    showToast(`“${entry.title}” not opened. Try again.`, 'error');
   };
 
   const handleOutstandingAction = (entry: OutstandingEntry) => {
@@ -941,11 +942,11 @@ export default function EhrClinicalDashboard({
         completedDate: toIsoDate(new Date()),
         notes: followUpNotes.trim() || undefined,
       });
-      if (!updated) throw new Error('Could not update follow-up');
-      showToast('Follow-up completed', 'success');
+      if (!updated) throw new Error('Follow-up not updated. Try again.');
+      showToast('Follow-up completed.', 'success');
       setFollowUpToComplete(null);
     } catch {
-      showToast('Could not complete follow-up', 'error');
+      showToast('Follow-up not completed. Try again.', 'error');
     } finally {
       setFollowUpSaving(false);
     }
@@ -1336,7 +1337,7 @@ export default function EhrClinicalDashboard({
       setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not escalate this visit.', 'error');
+      showToast(describeError(err, 'Visit not escalated. Try again.'), 'error');
     } finally {
       setMoveSaving(false);
     }
@@ -1362,7 +1363,7 @@ export default function EhrClinicalDashboard({
       setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not record the departure.', 'error');
+      showToast(describeError(err, 'Departure not recorded. Try again.'), 'error');
     } finally {
       setMoveSaving(false);
     }
@@ -1375,7 +1376,7 @@ export default function EhrClinicalDashboard({
     setMoveSaving(true);
     try {
       const { returnVisitToFrontDesk } = await import('@/lib/services/triage-handoff-service');
-      if (!dataScope) throw new Error('Your data scope is unavailable.');
+      if (!dataScope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
       await returnVisitToFrontDesk({
         scope: dataScope,
         triageId: triage._id,
@@ -1390,7 +1391,7 @@ export default function EhrClinicalDashboard({
       setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not return the visit.', 'error');
+      showToast(describeError(err, 'Patient not returned to the front desk. Try again.'), 'error');
     } finally {
       setMoveSaving(false);
     }
@@ -1421,10 +1422,10 @@ export default function EhrClinicalDashboard({
         handoffToName: currentUser.name,
         status: 'seen',
       });
-      if (!updated) throw new Error('The triage handoff could not be updated.');
+      if (!updated) throw new Error('Triage handoff not updated. Try again.');
       showToast(`${triage.patientName} handoff acknowledged.`, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not acknowledge this handoff.', 'error');
+      showToast(describeError(err, 'Handoff not acknowledged. Try again.'), 'error');
     }
   };
 
@@ -1436,7 +1437,7 @@ export default function EhrClinicalDashboard({
       || row.patient?.assignedDoctor === currentUser._id
       || latestTriageByPatient.get(row.patientId)?.assignedProviderId === currentUser._id;
     if (!assignedToViewer) {
-      showToast('Front desk must assign this patient before consultation can begin.', 'error');
+      showToast('Consultation not started. The front desk must assign this patient to a clinician first.', 'error');
       return;
     }
     const activeEncounter = encounterForRow(row);
@@ -1533,7 +1534,7 @@ export default function EhrClinicalDashboard({
       }
       const updated = await updateTriageDoc(moveEntry.triageId, updates);
       if (!updated) {
-        showToast('Move failed — the triage record could not be updated.', 'error');
+        showToast('Patient not moved. The triage record could not be updated. Try again.', 'error');
         return;
       }
       showToast(`${moveEntry.patientName} updated in the queue.`, 'success');
@@ -2224,7 +2225,7 @@ export default function EhrClinicalDashboard({
                                   try {
                                     await updateAppointmentStatus(row.appointment!._id, next);
                                   } catch (error) {
-                                    showToast(error instanceof Error ? error.message : 'Could not update visit status.', 'error');
+                                    showToast(describeError(error, 'Visit status not changed. Try again.'), 'error');
                                   }
                                 }}
                               />

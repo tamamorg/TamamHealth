@@ -97,7 +97,7 @@ describe('patient assignment target integrity', () => {
     await seedAppointment('appointment-2', 'patient-2');
 
     await expect(assignProviderToPatient(input('patient-1', 'appointment-2')))
-      .rejects.toThrow('appointment is outside this patient visit');
+      .rejects.toThrow('appointment does not belong to the selected patient');
     expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBeUndefined();
     expect((await getAppointmentById('appointment-2'))?.providerId).toBe('');
   });

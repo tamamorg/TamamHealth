@@ -27,7 +27,7 @@ export function useImmunizations(patientId?: string) {
       setCoverage(c);
     } catch (err) {
       console.error('Failed to load immunizations', err);
-      setError('Failed to load immunizations');
+      setError('Immunizations not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -40,7 +40,7 @@ export function useImmunizations(patientId?: string) {
 
   const register = useCallback(async (data: Omit<ImmunizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>) => {
     const { createImmunization } = await import('../services/immunization-service');
-    if (!scope) throw new Error('Your data scope is still loading - try again in a moment.');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const doc = await createImmunization(data, scope);
     await load();
     return doc;

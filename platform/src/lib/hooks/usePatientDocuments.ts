@@ -42,7 +42,7 @@ export function usePatientDocuments(patientId?: string) {
   }, [load]);
 
   const addAnnotation = useCallback(async (documentId: string, input: AddImageAnnotationInput, actor?: ImageAnnotationActor) => {
-    if (!scope) throw new Error('Your clinical data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { addImageAnnotation } = await import('../services/patient-document-service');
     const doc = await addImageAnnotation(documentId, input, scope, actor);
     await load();
@@ -50,7 +50,7 @@ export function usePatientDocuments(patientId?: string) {
   }, [load, scope]);
 
   const updateAnnotation = useCallback(async (documentId: string, annotationId: string, label: string, actor?: ImageAnnotationActor) => {
-    if (!scope) throw new Error('Your clinical data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { updateImageAnnotation } = await import('../services/patient-document-service');
     const doc = await updateImageAnnotation(documentId, annotationId, label, scope, actor);
     await load();
@@ -58,7 +58,7 @@ export function usePatientDocuments(patientId?: string) {
   }, [load, scope]);
 
   const deleteAnnotation = useCallback(async (documentId: string, annotationId: string, actor?: ImageAnnotationActor) => {
-    if (!scope) throw new Error('Your clinical data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { deleteImageAnnotation } = await import('../services/patient-document-service');
     const doc = await deleteImageAnnotation(documentId, annotationId, scope, actor);
     await load();

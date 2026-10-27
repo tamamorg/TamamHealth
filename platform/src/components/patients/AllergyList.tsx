@@ -10,6 +10,7 @@ import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import Modal from '@/components/Modal';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 const CRIT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
   severe:   { bg: 'var(--color-danger-bg, rgba(224, 49, 39,0.12))', fg: 'var(--color-danger-text)',  label: 'Severe'   },
@@ -27,7 +28,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const [busy, setBusy] = useState(false);
@@ -55,7 +56,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       await fn();
       onDone?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

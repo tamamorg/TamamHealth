@@ -20,6 +20,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { createEnquiry } from '@/lib/services/enquiry-service';
 import type { MessageDoc } from '@/lib/db-types';
 import { expandHref } from '@/lib/navigation/expand-to-page';
+import { describeError } from '@/lib/user-facing-error';
 
 const EMPTY = { patientName: '', patientPhone: '', subject: '', body: '', assigneeId: '' };
 
@@ -55,7 +56,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
 
   const submit = async () => {
     if (!form.patientName.trim() || !form.subject.trim() || !form.body.trim()) {
-      setError('Patient name, subject, and message are required.');
+      setError('Enter the patient name, subject and message.');
       return;
     }
     setSaving(true);
@@ -75,7 +76,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
       onCreated(created);
     } catch (err) {
       console.error('[inquiries] create failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to log the inquiry.');
+      setError(describeError(err, 'Inquiry not logged. Try again.'));
     } finally {
       setSaving(false);
     }

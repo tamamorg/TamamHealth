@@ -77,7 +77,7 @@ export function roleNeedsOrganization(role: UserRole | string | undefined): bool
  * validates first shows the SAME sentence the server would have — no dialog
  * that says one thing while the API says another.
  */
-export const ORG_REQUIRED_MESSAGE = 'Organization administrators must be assigned to an organization';
+export const ORG_REQUIRED_MESSAGE = 'Select an organization for this organization administrator.';
 export const FACILITY_REQUIRED_MESSAGE = 'Clinical users must be assigned to a hospital';
 
 /**

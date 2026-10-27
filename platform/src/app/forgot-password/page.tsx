@@ -22,6 +22,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Corners } from '@/components/login/login-chrome';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeApiError, describeError } from '@/lib/user-facing-error';
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -43,13 +44,13 @@ export default function ForgotPasswordPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok && res.status !== 202) {
-        setError(body.error || 'Could not send the request. Try again.');
+        setError(describeApiError(body, 'Request not sent. Try again.'));
         return;
       }
-      setMessage(body.message || '');
+      setMessage(describeError(body, ''));
       setSent(true);
     } catch {
-      setError('Could not reach the server. Check your connection and try again.');
+      setError('Cannot reach the server. Check your internet connection and try again.');
     } finally {
       setSending(false);
     }

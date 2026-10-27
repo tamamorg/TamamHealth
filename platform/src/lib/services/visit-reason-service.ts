@@ -205,9 +205,9 @@ export async function createVisitReason(
   actorId?: string,
   actorName?: string,
 ): Promise<VisitReasonDoc> {
-  if (!input.name?.trim()) throw new Error('A visit reason needs a name');
-  if (!input.orgId) throw new Error('A visit reason needs an organization');
-  if (!(input.durationMinutes > 0)) throw new Error('A visit reason needs a duration in minutes');
+  if (!input.name?.trim()) throw new Error('Enter a name for the visit type.');
+  if (!input.orgId) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
+  if (!(input.durationMinutes > 0)) throw new Error('Enter the visit length in minutes.');
   // A reason offered to neither new nor returning patients is legitimate — it
   // is a staff-booking-only service — so it is allowed, not rejected. The
   // settings screen labels it rather than the service refusing it.
@@ -218,7 +218,7 @@ export async function createVisitReason(
 
   const existing = await getAllVisitReasons();
   if (existing.some(r => r.slug === slug && r.orgId === input.orgId)) {
-    throw new Error(`"${input.name}" already exists in this organization`);
+    throw new Error(`A visit type named "${input.name}" already exists. Choose a different name.`);
   }
 
   const doc: VisitReasonDoc = {
@@ -257,7 +257,7 @@ export async function updateVisitReason(
   const db = visitReasonsDB();
   const existing = await db.get(id) as VisitReasonDoc;
   if (updates.durationMinutes !== undefined && !(updates.durationMinutes > 0)) {
-    throw new Error('A visit reason needs a duration in minutes');
+    throw new Error('Enter the visit length in minutes.');
   }
   const doc: VisitReasonDoc = {
     ...existing,

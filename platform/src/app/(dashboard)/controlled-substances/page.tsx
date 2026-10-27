@@ -80,7 +80,7 @@ export default function ControlledSubstancesPage() {
       setMovements(rows);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load controlled-substance log.', 'error');
+      showToast('Controlled-substance register not loaded. Reload the page to try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -98,26 +98,26 @@ export default function ControlledSubstancesPage() {
 
   const handleSubmit = async () => {
     if (!currentUser) {
-      showToast('You must be signed in to record a movement.', 'error');
+      showToast('Your session has ended. Sign in again to record this movement.', 'error');
       return;
     }
     const operatorId = currentUser._id || '';
     const witnessId = slugify(form.witnessName);
     if (!form.medicationName.trim()) {
-      showToast('Medication name is required.', 'error');
+      showToast('Enter the medication name.', 'error');
       return;
     }
     if (!form.witnessName.trim()) {
-      showToast('A witness is required for controlled-substance movements.', 'error');
+      showToast('Select a witness. Controlled-substance movements need a second staff member.', 'error');
       return;
     }
     if (operatorId && witnessId && operatorId === witnessId) {
-      showToast('Operator and witness must be two different staff members.', 'error');
+      showToast('Select a different witness. The witness cannot be the person recording the movement.', 'error');
       return;
     }
     const quantity = Number(form.quantity);
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      showToast('Movement quantity must be greater than zero.', 'error');
+      showToast('Enter a quantity greater than zero.', 'error');
       return;
     }
 

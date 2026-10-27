@@ -33,7 +33,7 @@ export async function upsertWorkflowRepair(
       throw error;
     }
   }
-  throw new Error('Workflow repair state could not be saved after concurrent updates.');
+  throw new Error('This record was changed on another device. Reload the page and try again.');
 }
 
 export async function resolveWorkflowRepair(id: string, currentStep = 'complete'): Promise<void> {

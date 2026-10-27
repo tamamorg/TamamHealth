@@ -28,7 +28,7 @@ export function useAppointments() {
       setAppointments(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load appointments');
+      setError('Appointments not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export function useAppointments() {
       actorName: extra?.actorName || currentUser?.name,
       actorRole: extra?.actorRole || currentUser?.role,
     });
-    if (!updated) throw new Error('Failed to update appointment status');
+    if (!updated) throw new Error('Appointment status not changed. Try again.');
     await load();
   }, [currentUser?._id, currentUser?.name, currentUser?.role, load]);
 
@@ -90,7 +90,7 @@ export function usePatientAppointments(patientId?: string) {
       setAppointments(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load patient appointments');
+      setError('Patient appointments not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

@@ -18,6 +18,7 @@ import { Corners } from '@/components/login/login-chrome';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 import { PORTAL_MIN_PASSWORD_LENGTH as MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
+import { describeApiError } from '@/lib/user-facing-error';
 function ActivateForm() {
   const { t } = useTranslation();
   const params = useSearchParams();
@@ -66,7 +67,7 @@ function ActivateForm() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(body.error || t('pactivate.errFailed'));
+        setError(describeApiError(body, t('pactivate.errFailed')));
         return;
       }
       setUsername(body.username || '');

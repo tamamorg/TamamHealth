@@ -46,6 +46,7 @@ import {
   deleteClientUser, getClientUserById, resendClientUserInvite,
   resetClientUserPassword, setClientUserActive, updateClientUser,
 } from '@/modules/identity/services/user-client';
+import { describeError } from '@/lib/user-facing-error';
 
 const ROLE_OPTIONS: UserRole[] = [
   'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist',
@@ -159,7 +160,7 @@ export default function AdminUserDetailPage() {
       await fn();
       showToast(done, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('adminUsers.actionFailed'), 'error');
+      showToast(describeError(err, t('adminUsers.actionFailed')), 'error');
     } finally {
       setBusy(false);
     }

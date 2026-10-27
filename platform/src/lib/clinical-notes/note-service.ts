@@ -765,7 +765,7 @@ export async function signClinicalNote(
       );
     }
     if (!hasContent(current)) {
-      throw new Error('Cannot sign an empty note — document the encounter first.');
+      throw new Error('Note not signed. Document the encounter before signing.');
     }
     const missing = missingRequiredSections(current);
     if (missing.length > 0) throw new NoteIncompleteError(missing);
@@ -892,11 +892,11 @@ export async function cosignClinicalNote(
   if (existing.status !== 'awaiting_cosign') return existing;
   if (!isProviderRole(cosignerRole)) {
     throw new NoteSigningAuthorizationError(
-      `${cosignedByName || 'This user'} may not co-sign note ${id} — co-signature requires a supervising provider role.`,
+      `${cosignedByName || 'This user'} cannot co-sign this note. Co-signing requires a supervising provider.`,
     );
   }
   if (cosignedBy && existing.signedBy && cosignedBy === existing.signedBy) {
-    throw new NoteSigningAuthorizationError('A note must be co-signed by a different provider than the one who signed it.');
+    throw new NoteSigningAuthorizationError('Choose a different co-signer. The co-signer cannot be the person who signed the note.');
   }
 
   const ts = nowIso();
@@ -938,10 +938,10 @@ export async function addNoteAddendum(
     return null;
   }
   if (!isNoteLocked(existing)) {
-    throw new Error('Addenda apply to signed notes; edit the draft instead.');
+    throw new Error('Addenda can only be added to signed notes. Edit the draft instead.');
   }
   const body = (text || '').trim();
-  if (!body) throw new Error('An addendum needs text.');
+  if (!body) throw new Error('Enter the addendum text.');
 
   const ts = nowIso();
   const addendum: NoteAddendum = {

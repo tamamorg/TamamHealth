@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ notes });
   } catch (error) {
     logApiError('[restricted-mh-notes:get]', error);
-    const message = error instanceof Error ? error.message : 'Restricted notes could not be loaded';
+    const message = error instanceof Error ? error.message : 'Restricted notes not loaded. Reload the page to try again.';
     return NextResponse.json({ error: message }, { status: message.includes('PHI_ENCRYPTION_KEY') ? 503 : 500 });
   }
 }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ note }, { status: 201 });
   } catch (error) {
     logApiError('[restricted-mh-notes:post]', error);
-    const message = error instanceof Error ? error.message : 'Restricted note could not be created';
+    const message = error instanceof Error ? error.message : 'Restricted note not saved. Try again.';
     return NextResponse.json({ error: message }, { status: message.includes('PHI_ENCRYPTION_KEY') ? 503 : 500 });
   }
 }

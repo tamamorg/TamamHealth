@@ -39,7 +39,7 @@ export function useNutritionScreenings() {
     patch: Partial<Pick<NutritionScreeningDoc, 'notes' | 'followUpAction' | 'followUpAt'>>,
   ) => {
     const { updateNutritionScreening } = await import('../services/nutrition-screening-service');
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     const doc = await updateNutritionScreening(id, scope, patch);
     await load();
     return doc;

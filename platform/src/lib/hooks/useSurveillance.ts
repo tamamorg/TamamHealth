@@ -25,7 +25,7 @@ export function useSurveillance() {
       setAlerts(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load surveillance alerts');
+      setError('Surveillance alerts not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

@@ -37,7 +37,7 @@ export interface AddDirectiveInput {
 /** Record a new directive. Returns the full updated list, or null if no patient. */
 export async function addDirective(patientId: string, scope: DataScope, input: AddDirectiveInput): Promise<DirectiveEntry[] | null> {
   if (!input.description || input.description.trim().length === 0) {
-    throw new Error('Directive description is required');
+    throw new Error('Enter a description of the directive.');
   }
   const entry: DirectiveEntry = {
     id: uuidv4(),
@@ -106,9 +106,9 @@ export async function signDirective(
   input: SignDirectiveInput,
 ): Promise<DirectiveEntry[] | null> {
   const name = input.name?.trim();
-  if (!name) throw new Error('A signature name is required');
+  if (!name) throw new Error('Enter the name of the person signing.');
   if (input.signedBy !== 'patient' && !input.relationship?.trim()) {
-    throw new Error('A relationship to the patient is required when someone signs on their behalf');
+    throw new Error('Enter the signer\'s relationship to the patient.');
   }
   const signature: DirectiveSignature = {
     name,
@@ -127,7 +127,7 @@ export async function signDirective(
       if (!target) return null;
       // Signing twice would silently overwrite the first attestation and its
       // timestamp, so the second attempt is refused rather than applied.
-      if (target.signature) throw new Error('This directive has already been signed');
+      if (target.signature) throw new Error('This directive has already been signed.');
       const next = existing.map((d) => (d.id === directiveId ? { ...d, signature } : d));
       return { patch: { directives: next } as Partial<PatientDoc>, entries: next };
     },
@@ -152,7 +152,7 @@ export async function removeDirective(
   status: 'inactive' | 'expired' | 'revoked' = 'revoked',
 ): Promise<DirectiveEntry[] | null> {
   if (!removalReason || removalReason.trim().length === 0) {
-    throw new Error('A removal reason is required');
+    throw new Error('Enter the reason for removing this entry.');
   }
   return mutatePatientListField<DirectiveEntry>(
     patientId,

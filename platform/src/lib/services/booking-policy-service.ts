@@ -146,8 +146,8 @@ export async function saveBookingPolicy(
   actorId?: string,
   actorName?: string,
 ): Promise<BookingPolicyDoc> {
-  if (!input.facilityId) throw new Error('A booking policy needs a facility');
-  if (!input.orgId) throw new Error('A booking policy needs an organization');
+  if (!input.facilityId) throw new Error('Select a facility for this booking policy.');
+  if (!input.orgId) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
 
   const db = bookingPoliciesDB();
   const now = new Date().toISOString();
@@ -158,7 +158,7 @@ export async function saveBookingPolicy(
   if (input.publicSlug) {
     const clash = (await findByType<BookingPolicyDoc>(db, 'booking_policy'))
       .find(p => p.publicSlug === input.publicSlug && p.facilityId !== input.facilityId);
-    if (clash) throw new Error(`The link "${input.publicSlug}" is already taken by another practice`);
+    if (clash) throw new Error(`The booking link "${input.publicSlug}" is already used by another practice. Choose a different link.`);
   }
 
   const doc: BookingPolicyDoc = {

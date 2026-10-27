@@ -248,7 +248,7 @@ export default function AppointmentEditModal({
         isRecurring: Boolean(detail.recurrence),
         recurrencePattern: detail.recurrence || undefined,
       }, currentUser?.role as UserRole);
-      if (!updated) throw new Error('The appointment could not be updated');
+      if (!updated) throw new Error('Appointment not updated. Try again.');
 
       // Provider/staff are visit assignments, not merely calendar decoration.
       // Mirror changes into the encounter and patient compatibility fields so
@@ -313,7 +313,7 @@ export default function AppointmentEditModal({
           });
         }
       }
-      showToast(`${appointment.patientName}'s appointment updated`, 'success');
+      showToast(`${appointment.patientName}: appointment updated.`, 'success');
       onSaved?.();
       onClose();
     } catch (err) {

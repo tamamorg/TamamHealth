@@ -12,6 +12,7 @@ import { Calendar, Clock, X, Loader2, Check, AlertCircle } from '@/components/ic
 import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
+import { describeError } from '@/lib/user-facing-error';
 
 const SLOT_OPTIONS = [15, 20, 30, 45, 60];
 
@@ -63,7 +64,7 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
       onCreated?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add availability.');
+      setError(describeError(err, 'Availability not added. Try again.'));
       setSaving(false);
     }
   };

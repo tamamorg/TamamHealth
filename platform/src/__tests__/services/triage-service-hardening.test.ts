@@ -71,7 +71,7 @@ describe('service-side recompute, not trust (item 6)', () => {
       priority: 'GREEN',
       vitalUrgencyRecommendation: 'GREEN',
       vitalUrgencyWarnings: [],
-    }), { scope: TEST_SCOPE })).rejects.toThrow('Saving below the recommended triage urgency');
+    }), { scope: TEST_SCOPE })).rejects.toThrow('save below the recommended urgency');
   });
 
   test('the same dangerous vitals, saved with a recorded override reason, are accepted', async () => {
@@ -87,7 +87,7 @@ describe('service-side recompute, not trust (item 6)', () => {
 
   test('omitting vitalUrgencyRecommendation entirely does not bypass the gate either', async () => {
     await expect(createTriage(triageInput({ oxygenSaturation: '70', priority: 'GREEN' }), { scope: TEST_SCOPE }))
-      .rejects.toThrow('Saving below the recommended triage urgency');
+      .rejects.toThrow('save below the recommended urgency');
   });
 });
 
@@ -276,7 +276,7 @@ describe('updateTriage vitals-safety gate only recomputes on a relevant change (
 
     await expect(
       updateTriage(created._id, { oxygenSaturation: '70' }, TEST_SCOPE, { userId: 'nurse-42', username: 'nurse.grace' }),
-    ).rejects.toThrow('Saving below the recommended triage urgency');
+    ).rejects.toThrow('save below the recommended urgency');
   });
 
   test('an administrative field change (assignedRoom) does not re-run the gate either', async () => {
@@ -322,6 +322,6 @@ describe('age lookup resilience', () => {
     // be refused without a recorded override — proof the patient's real age
     // (adult, from dateOfBirth) reached the recompute, not just a bare id.
     await expect(createTriage(triageInput({ patientId: 'patient-with-dob', pulse: '160' }), { scope: TEST_SCOPE }))
-      .rejects.toThrow('Saving below the recommended triage urgency');
+      .rejects.toThrow('save below the recommended urgency');
   });
 });

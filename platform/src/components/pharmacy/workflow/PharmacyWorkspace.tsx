@@ -22,6 +22,7 @@ export default function PharmacyWorkspace({
   patientId,
   patientName,
   canPrescribe,
+  canRecordMedications = false,
   canWork,
   onAdd,
   focusId,
@@ -33,6 +34,8 @@ export default function PharmacyWorkspace({
   patientId: string;
   patientName: string;
   canPrescribe: boolean;
+  /** Record a medicine the patient already takes (no order is placed). */
+  canRecordMedications?: boolean;
   /** Dispensing permission — without it the walkthrough is read-only. */
   canWork: boolean;
   onAdd: () => void;
@@ -70,6 +73,7 @@ export default function PharmacyWorkspace({
         patientId={patientId}
         patientName={patientName}
         canPrescribe={canPrescribe}
+        canRecordMedications={canRecordMedications}
         onAdd={onAdd}
         focusId={focusId}
         noKnownMedications={noKnownMedications}

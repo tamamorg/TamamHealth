@@ -14,6 +14,7 @@ export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface Toast {
   id: number;
+  ttl: number | null;
   message: string;
   type: ToastType;
   title?: string;
@@ -26,6 +27,8 @@ export interface ToastOptions {
   durationMs?: number;
   /** A bold first line; the message becomes the detail under it. */
   title?: string;
+  /** Stay until dismissed — for a failed clinical save the user must not miss. */
+  sticky?: boolean;
 }
 
 interface ToastContextType {
@@ -54,9 +57,12 @@ const ICONS: Record<ToastType, typeof CheckCircle2> = {
  * Four tones. `success` and `info` are polite (`role="status"`); `error`
  * and `warning` interrupt (`role="alert"`). A toast carrying an action
  * (Undo) stays up twice as long — it is the recovery window, not just a
- * receipt. Each toast leaves with a short fade rather than vanishing, so a
- * user who glanced up at the right moment sees it go instead of wondering
- * whether it was ever there.
+ * receipt. Errors stay longer than receipts, a `sticky` toast stays until
+ * dismissed, and the timer pauses while the pointer or keyboard focus is on
+ * a toast so nobody loses a message mid-read. Repeating the same message
+ * restarts the existing toast instead of stacking a copy. Each toast leaves
+ * with a short fade rather than vanishing, so a user who glanced up at the
+ * right moment sees it go instead of wondering whether it was ever there.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -70,12 +76,33 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts(prev => prev.filter(toast => toast.id !== id)), LEAVE_MS);
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info', opts?: ToastOptions) => {
-    const id = ++toastId;
-    setToasts(prev => [...prev, { id, message, type, title: opts?.title, action: opts?.action }]);
-    const ttl = opts?.durationMs ?? (opts?.action ? 8000 : type === 'error' ? 6000 : 4000);
-    timers.current.set(id, window.setTimeout(() => remove(id), ttl));
+  const arm = useCallback((id: number, ttl: number | null) => {
+    const held = timers.current.get(id);
+    if (held !== undefined) window.clearTimeout(held);
+    timers.current.delete(id);
+    if (ttl !== null) timers.current.set(id, window.setTimeout(() => remove(id), ttl));
   }, [remove]);
+
+  const hold = useCallback((id: number) => {
+    const held = timers.current.get(id);
+    if (held !== undefined) { window.clearTimeout(held); timers.current.delete(id); }
+  }, []);
+
+  // Mirror of the rendered toasts so showToast can find a duplicate without
+  // waiting on a state updater.
+  const live = useRef<Toast[]>([]);
+  useEffect(() => { live.current = toasts; }, [toasts]);
+
+  const showToast = useCallback((message: string, type: ToastType = 'info', opts?: ToastOptions) => {
+    const ttl = opts?.sticky ? null
+      : opts?.durationMs ?? (opts?.action ? 10000 : type === 'error' ? 10000 : type === 'warning' ? 8000 : 5000);
+    const same = live.current.find(toast => !toast.leaving && toast.message === message && toast.type === type && toast.title === opts?.title);
+    const id = same ? same.id : ++toastId;
+    setToasts(prev => (prev.some(toast => toast.id === id)
+      ? prev.map(toast => (toast.id === id ? { ...toast, action: opts?.action, ttl } : toast))
+      : [...prev, { id, ttl, message, type, title: opts?.title, action: opts?.action }]));
+    arm(id, ttl);
+  }, [arm]);
 
   useEffect(() => {
     const held = timers.current;
@@ -105,9 +132,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           const Icon = ICONS[toast.type];
           const urgent = toast.type === 'error' || toast.type === 'warning';
           return (
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- hover and focus only pause the dismiss timer; the toast's own buttons carry every action.
             <div
               key={toast.id}
               role={urgent ? 'alert' : 'status'}
+              onMouseEnter={() => hold(toast.id)}
+              onMouseLeave={() => arm(toast.id, toast.ttl)}
+              onFocus={() => hold(toast.id)}
+              onBlur={() => arm(toast.id, toast.ttl)}
               className={`ehr-toast ehr-toast--${toast.type} tm-elevated tm-motion tm-motion--toast${toast.leaving ? ' is-leaving' : ''}`}
             >
               <Icon className="ehr-toast-icon" aria-hidden="true" />

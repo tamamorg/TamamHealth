@@ -109,7 +109,7 @@ describe('history entries', () => {
 
   it('refuses an entry that belongs to no organisation, instead of saving one nobody can see', async () => {
     await expect(createHistoryEntry({ patientId: 'pat-nowhere', domain: 'medical', title: 'Typhoid' }))
-      .rejects.toThrow(/organisation/);
+      .rejects.toThrow(/not linked to an organization/);
   });
 
   it('withdraws a mistake without deleting it', async () => {

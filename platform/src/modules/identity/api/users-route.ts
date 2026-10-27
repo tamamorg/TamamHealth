@@ -847,14 +847,15 @@ async function postHandler(request: NextRequest) {
     }
     if (err instanceof Error) {
       const msg = err.message;
-      if (/already exists/i.test(msg)) {
+      if (/already (exists|taken)/i.test(msg)) {
         return NextResponse.json({ error: msg }, { status: 409 });
       }
       if (
         /must be assigned to a hospital/i.test(msg) ||
         /must be assigned to an organization/i.test(msg) ||
+        /^Select an organization/i.test(msg) ||
         /^Invalid role/i.test(msg) ||
-        /^Invalid username/i.test(msg) ||
+        /^(Invalid|Enter a valid) username/i.test(msg) ||
         /^Password/i.test(msg)
       ) {
         return NextResponse.json({ error: msg }, { status: 400 });

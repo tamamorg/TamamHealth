@@ -28,6 +28,7 @@ import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import { NOTE_TYPES, type NoteTypeId } from '@/lib/clinical-notes/note-catalog';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import { mergeNoteRows, filterNoteRows, type NoteRow } from './notes-list-model';
+import { describeError } from '@/lib/user-facing-error';
 import './clinical-notes.css';
 import './note-viewer.css';
 
@@ -100,7 +101,7 @@ export default function NotesList({
       );
       if (note && onOpenNote) { onOpenNote(note._id, 'clinical', note.status); void load(); }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not start the note.', 'error');
+      showToast(describeError(err, 'Note not started. Try again.'), 'error');
     }
   };
 

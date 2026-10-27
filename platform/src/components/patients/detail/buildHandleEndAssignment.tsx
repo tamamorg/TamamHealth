@@ -4,6 +4,7 @@ import type { ConfirmPromptOptions } from '@/components/ConfirmDialog';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AppUser } from '@/lib/context/types';
+import { describeError } from '@/lib/user-facing-error';
 export function buildHandleEndAssignment({ patient, currentUser, confirmPrompt, showToast, reloadPatients }: {
   patient: PatientDoc | null | undefined;
   currentUser: AppUser | null;
@@ -36,7 +37,7 @@ export function buildHandleEndAssignment({ patient, currentUser, confirmPrompt, 
       // The header's care-team line and the ⋯ menu both read the patient doc.
       await reloadPatients();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not end the assignment.', 'error');
+      showToast(describeError(err, 'Assignment not ended. Try again.'), 'error');
     }
   };
   return handleEndAssignment;

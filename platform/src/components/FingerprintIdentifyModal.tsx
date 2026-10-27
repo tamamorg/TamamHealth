@@ -22,6 +22,7 @@ import {
 } from '@/lib/services/fingerprint-service';
 import type { DataScope } from '@/lib/services/data-scope';
 import Modal from '@/components/Modal';
+import { describeError } from '@/lib/user-facing-error';
 
 interface FingerprintIdentifyModalProps {
   onSelect: (patientId: string) => void;
@@ -58,7 +59,7 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
       setMatches(found);
       setPhase('results');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('fingerprint.captureFailed'));
+      setError(describeError(err, t('fingerprint.captureFailed')));
       setPhase('idle');
     }
   };

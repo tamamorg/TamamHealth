@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ prescriptions: await getDemoPrescriptionsByPatient(auth.sub) });
     }
     logApiError('[patient-portal/prescriptions]', err);
-    return NextResponse.json({ error: 'Failed to fetch prescriptions' }, { status: 500 });
+    return NextResponse.json({ error: 'Your prescriptions could not be loaded. Try again.' }, { status: 500 });
   }
 }

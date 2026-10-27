@@ -37,6 +37,7 @@ import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
+import { describeError } from '@/lib/user-facing-error';
 import './../clinical-notes.css';
 
 /** The destination that hands the script to the patient instead of a queue. */
@@ -246,14 +247,14 @@ export default function PrescribeModal({
       setFavorite(now);
       showToast(now ? `${drug.name} added to your favorites.` : `${drug.name} removed from your favorites.`, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update favorites.', 'error');
+      showToast(describeError(err, 'Favorites not updated. Try again.'), 'error');
     }
   }, [draft.drug, draft.instructions, draft.daysSupply, currentUser, showToast]);
 
   const write = useCallback(async (send: boolean): Promise<PrescriptionDoc | null> => {
     const drug = draft.drug;
-    if (!drug) { showToast('Pick the drug first.', 'error'); return null; }
-    if (!draft.instructions.trim()) { showToast('Patient instructions are required.', 'error'); return null; }
+    if (!drug) { showToast('Select the drug.', 'error'); return null; }
+    if (!draft.instructions.trim()) { showToast('Enter the patient instructions.', 'error'); return null; }
     let medicationSafetyAcknowledgement: { reviewedBy: string; reason: string } | undefined;
     if (severeAllergyWarnings.length) {
       const reason = await confirmPrompt({
@@ -276,7 +277,7 @@ export default function PrescribeModal({
     setBusy(true);
     try {
       const { createPrescription } = await import('@/lib/services/prescription-service');
-      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+      if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
       const result = await createPrescription({
         patientId,
         patientName,
@@ -318,14 +319,14 @@ export default function PrescribeModal({
       }
       if (result.interactionWarnings?.hasInteractions) {
         showToast(
-          `Written with an interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}`,
-          'error',
+          `Saved. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`,
+          'warning',
         );
       }
       if (result.duplicateWarnings?.length) {
         showToast(
-          `Possible duplicate: ${result.duplicateWarnings.join(', ')} is already active for this patient.`,
-          'error',
+          `Possible duplicate. ${result.duplicateWarnings.join(', ')} is already active for this patient.`,
+          'warning',
         );
       }
       // A host may leave the screen on this signal (the full-page route goes
@@ -334,7 +335,7 @@ export default function PrescribeModal({
       if (!external && toHandOver.length === 0) onPrescribed?.();
       return result.prescription;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not write the prescription.', 'error');
+      showToast(describeError(err, 'Prescription not saved. Try again.'), 'error');
       return null;
     } finally {
       setBusy(false);
@@ -398,8 +399,8 @@ export default function PrescribeModal({
 
 
   const handlePrintDraft = () => {
-    if (!draft.drug) { showToast('Pick the drug before printing the prescription draft.', 'error'); return; }
-    if (!draft.instructions.trim()) { showToast('Add patient instructions before printing the prescription draft.', 'error'); return; }
+    if (!draft.drug) { showToast('Select the drug before printing the draft prescription.', 'error'); return; }
+    if (!draft.instructions.trim()) { showToast('Enter the patient instructions before printing the draft prescription.', 'error'); return; }
     const e = escapeHtml;
     const allergyNames = (patient?.structuredAllergies || [])
       .filter(allergy => allergy.status === 'active')

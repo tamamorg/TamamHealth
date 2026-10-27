@@ -6,9 +6,10 @@ import { PharmacyWorkspace } from './lazy-panels';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppUser } from '@/lib/context/types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-export default function PatientMedicationsTab({ patient, canPrescribe, canDispense, setShowPrescribeModal, currentUser, focusId }: {
+export default function PatientMedicationsTab({ patient, canPrescribe, canRecordMedications, canDispense, setShowPrescribeModal, currentUser, focusId }: {
   patient: PatientDoc;
   canPrescribe: boolean;
+  canRecordMedications: boolean;
   canDispense: boolean;
   setShowPrescribeModal: Dispatch<SetStateAction<boolean>>;
   currentUser: AppUser | null;
@@ -38,6 +39,7 @@ export default function PatientMedicationsTab({ patient, canPrescribe, canDispen
                 patientId={patient._id}
                 patientName={patientFullName(patient)}
                 canPrescribe={canPrescribe}
+                canRecordMedications={canRecordMedications}
                 canWork={canDispense}
                 onAdd={() => setShowPrescribeModal(true)}
                 noKnownMedications={patient.noKnownMedications}

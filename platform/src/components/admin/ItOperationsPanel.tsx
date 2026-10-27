@@ -22,6 +22,7 @@ import {
   Activity, AlertTriangle, CheckCircle2, Database, HardDrive, RefreshCw,
   Server, ShieldCheck, Smartphone, Upload,
 } from '@/components/icons/lucide';
+import { describeApiError, describeError } from '@/lib/user-facing-error';
 
 interface DbStat {
   key: string;
@@ -127,7 +128,7 @@ export default function ItOperationsPanel({ embedded = false }: {
       await syncNow();
       setMessage('Local sync started.');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Could not start sync.');
+      setMessage(describeError(err, 'Sync not started. Try again.'));
     } finally {
       setSyncing(false);
     }
@@ -140,12 +141,12 @@ export default function ItOperationsPanel({ embedded = false }: {
       const res = await apiFetch(kind === 'sync' ? '/api/admin/sync-push' : '/api/admin/dhis2-push', { method: 'POST' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage(body?.error || `Push failed with status ${res.status}.`);
+        setMessage(describeApiError(body, `Sync not sent. The server refused the request (code ${res.status}). Try again or contact your system administrator.`));
         return;
       }
-      setMessage(kind === 'sync' ? `Sync push complete: ${body.pushed ?? 0} pushed.` : `DHIS2 push complete: ${body.dataValues ?? 0} values.`);
+      setMessage(kind === 'sync' ? `Sync complete. ${body.pushed ?? 0} records sent.` : `DHIS2 report sent: ${body.dataValues ?? 0} data values.`);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Push failed.');
+      setMessage(describeError(err, 'Not sent. Check the connection and try again.'));
     } finally {
       setPushing(null);
     }

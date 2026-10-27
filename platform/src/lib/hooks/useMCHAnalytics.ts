@@ -19,7 +19,7 @@ export function useMCHAnalytics() {
       setData(result);
     } catch (err) {
       console.error('Failed to load MCH analytics', err);
-      setError('Failed to load MCH analytics');
+      setError('Maternal and child health analytics not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

@@ -55,15 +55,15 @@ export async function createAnnouncement(
   data: Omit<AnnouncementDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt' | 'dismissedBy'>,
 ): Promise<AnnouncementDoc> {
   if (!data.title?.trim() || !data.body?.trim()) {
-    throw new Error('Title and message are required');
+    throw new Error('Enter a title and a message.');
   }
   // A targeted audience must actually name its target, or visibility filters
   // have nothing to match and the post either leaks org-wide or vanishes.
   if (data.audience === 'facility' && !data.facilityId) {
-    throw new Error('Choose which facility this announcement is for');
+    throw new Error('Select the facility for this announcement.');
   }
   if (data.audience === 'role' && !(data.targetRoles || []).length) {
-    throw new Error('Choose at least one role to announce to');
+    throw new Error('Select at least one role to receive this announcement.');
   }
   const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'announcement');
   const db = announcementsDB();

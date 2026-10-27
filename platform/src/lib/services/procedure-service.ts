@@ -78,13 +78,13 @@ export async function advanceProcedure(
   if (from === to) return existing;
   if (!procedureLifecycle.can(from, to)) {
     throw new Error(
-      `A procedure cannot move from "${from}" to "${to}". Allowed: ${procedureLifecycle.next(from).join(', ') || 'nothing — this state is final'}.`,
+      `This procedure is ${from} and cannot move to ${to}.`,
     );
   }
   // "aborted (with reason)" is how the document words it, so the reason is part
   // of the move rather than something to fill in afterwards.
   if (to === 'aborted' && !opts.reason?.trim()) {
-    throw new Error('Aborting a procedure requires a reason.');
+    throw new Error('Enter the reason for stopping this procedure.');
   }
 
   const now = new Date().toISOString();
@@ -193,7 +193,7 @@ export async function amendProcedure(
   actor?: { id?: string; name?: string },
 ): Promise<ProcedureDoc> {
   const cleanReason = reason.trim();
-  if (cleanReason.length < 3) throw new Error('A reason is required to correct a procedure.');
+  if (cleanReason.length < 3) throw new Error('Enter the reason for correcting this procedure.');
   const updated = await updateProcedure(id, {
     ...data,
     amended: true,
@@ -213,7 +213,7 @@ export async function deleteProcedure(
   actor?: { id?: string; name?: string },
 ): Promise<boolean> {
   const cleanReason = reason.trim();
-  if (cleanReason.length < 3) throw new Error('A reason is required to mark a procedure as entered in error.');
+  if (cleanReason.length < 3) throw new Error('Enter the reason for marking this procedure as entered in error.');
   const updated = await updateProcedure(id, {
     recordStatus: 'entered_in_error',
     statusReason: cleanReason,

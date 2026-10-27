@@ -352,16 +352,16 @@ export async function reversePayment(
     throw err;
   }
   if (pmt.status === 'refunded' || (pmt.refundedAmount ?? 0) > 0) {
-    throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided');
+    throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided.');
   }
   // A refund document is the record of money returned. issueRefund writes it
   // before it updates the payment, so a crash in between leaves a `posted`
   // payment with refundedAmount 0 - the refund documents decide, not the flag.
   if (pmt.status === 'posted' && (await processedRefundsFor(pmt._id, pmt.patientId)).length > 0) {
-    throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided');
+    throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided.');
   }
   if (pmt.status !== 'posted' && pmt.status !== 'reversed') {
-    throw new PaymentOperationError('PAYMENT_NOT_REVERSIBLE', `A ${pmt.status} payment cannot be voided`);
+    throw new PaymentOperationError('PAYMENT_NOT_REVERSIBLE', `This payment is ${pmt.status} and cannot be voided.`);
   }
 
   const firstPass = pmt.status !== 'reversed';

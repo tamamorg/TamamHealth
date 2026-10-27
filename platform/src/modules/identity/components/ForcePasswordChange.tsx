@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api-fetch';
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck } from '@/components/icons/lucide';
+import { describeApiError } from '@/lib/user-facing-error';
 
 const MIN_LENGTH = 8;
 
@@ -54,7 +55,7 @@ export default function ForcePasswordChange({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Could not change password. Please try again.');
+        setError(describeApiError(data, 'Password not changed. Try again.'));
         setSubmitting(false);
         return;
       }
@@ -62,7 +63,7 @@ export default function ForcePasswordChange({
       // A full reload re-hydrates currentUser from /api/auth/me and lifts the gate.
       window.location.assign('/');
     } catch {
-      setError('Network error. Please try again.');
+      setError('Cannot reach the server. Check your internet connection and try again.');
       setSubmitting(false);
     }
   };

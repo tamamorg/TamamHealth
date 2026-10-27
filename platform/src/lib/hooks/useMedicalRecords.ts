@@ -26,7 +26,7 @@ export function useMedicalRecords(patientId?: string) {
       setRecords(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load medical records');
+      setError('Medical records not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

@@ -34,6 +34,7 @@ import {
   SadbToggle, SadbValueButton, SadbEditorModal, SadbCard, SadbKvRow, SadbHeadLink,
   SadbQueueRow, SadbSaveBar, SEVERITY_CHIP, TONE_CHIP, type Tone,
 } from '@/components/admin/sadb-ui';
+import { describeError } from '@/lib/user-facing-error';
 
 type Policy = NonNullable<PlatformConfigDoc['superAdminPolicies']>;
 
@@ -250,9 +251,9 @@ export default function SecurityCompliancePage() {
     try {
       await update({ superAdminPolicies: draft }, currentUser._id, currentUser.username);
       setDirty(false);
-      showToast('Security & compliance policy saved.', 'success');
+      showToast('Security and compliance policy saved.', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save policy.', 'error');
+      showToast(describeError(err, 'Security and compliance policy not saved. Try again.'), 'error');
     } finally {
       setSaving(false);
     }

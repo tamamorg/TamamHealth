@@ -24,6 +24,7 @@ import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { todayIso } from '@/lib/date-utils';
+import { describeError } from '@/lib/user-facing-error';
 
 const COMMON_SCREENINGS = ['Blood pressure', 'HIV test', 'Cervical cancer (VIA)', 'Diabetes (blood glucose)', 'TB symptom screen', 'Well-child check', 'Nutrition (MUAC)'];
 const screeningOptions = COMMON_SCREENINGS.map(s => ({ code: '', name: s }));
@@ -45,7 +46,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const [busy, setBusy] = useState(false);
@@ -80,7 +81,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
       showToast(done, 'success');
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('screenings.errFailed'));
+      setError(describeError(e, t('screenings.errFailed')));
       return false;
     } finally {
       setBusy(false);

@@ -51,6 +51,7 @@ import Select from '@/components/Select';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { isPendingApproval } from '@/lib/appointment-workflow';
 import { appointmentCalendarClinicalAction } from '@/lib/appointment-calendar-role';
+import { describeError } from '@/lib/user-facing-error';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -520,7 +521,7 @@ export default function AppointmentsPage() {
         walkInFromRegistrationRef.current = false;
         router.push(getDefaultDashboard(currentUser?.role || ''));
       }
-    } catch (err) { showToast(err instanceof Error ? err.message : t('appointments.toastFailed'), 'error'); }
+    } catch (err) { showToast(describeError(err, t('appointments.toastFailed')), 'error'); }
     finally { setSubmitting(false); }
   };
 

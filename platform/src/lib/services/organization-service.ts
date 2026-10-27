@@ -33,11 +33,11 @@ async function postOrganizationsApi(payload: Record<string, unknown>): Promise<R
   } catch {
     // Do NOT fall back to a local write: it cannot replicate, so it would
     // report success and leave the organization invisible to the server.
-    throw new Error('Organizations are managed centrally and require a connection. Check your internet and try again.');
+    throw new Error('Organizations can only be changed while online. Check your internet connection and try again.');
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error((body.error as string) || `Organization request failed (${res.status})`);
+    throw new Error((body.error as string) || `Organization not saved (server code ${res.status}). Try again.`);
   }
   return body;
 }
@@ -120,7 +120,7 @@ export async function createOrganization(
   const slug = data.slug.toLowerCase().replace(/[^a-z0-9-]/g, '');
   const existing = await getOrganizationBySlug(slug);
   if (existing) {
-    throw new Error(`Organization with slug "${slug}" already exists`);
+    throw new Error(`The short name "${slug}" is already used by another organization. Choose a different one.`);
   }
 
   // The slug check alone let the same tenant in twice. "Ministry of Health -
@@ -132,7 +132,7 @@ export async function createOrganization(
   const sameName = (await getAllOrganizations()).find(o => isSameEntityName(o.name, data.name));
   if (sameName) {
     throw new Error(
-      `"${sameName.name}" already exists (${sameName._id}). Rename this one or open the existing organization.`,
+      `An organization named "${sameName.name}" already exists. Rename this one or open the existing organization.`,
     );
   }
 

@@ -30,6 +30,7 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { VisitFinancialReview } from '@/modules/financial-clearance/client';
+import { describeApiError } from '@/lib/user-facing-error';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
@@ -230,10 +231,10 @@ export default function BillingTab({
 
   const handleIssueRefund = async () => {
     if (refundInFlight.current) return;
-    if (!selectedRefundPayment) { showToast(t('billing.selectPayment') || 'Select a payment to refund', 'error'); return; }
-    if (!refundReason.trim()) { showToast(t('billing.reasonRequired') || 'A reason is required', 'error'); return; }
+    if (!selectedRefundPayment) { showToast(t('billing.selectPayment') || 'Select the payment to refund.', 'error'); return; }
+    if (!refundReason.trim()) { showToast(t('billing.reasonRequired') || 'Enter a reason.', 'error'); return; }
     if (refundAmount <= 0 || refundAmount > refundableAmount(selectedRefundPayment)) {
-      showToast(t('billing.invalidRefundAmount') || 'Refund amount must be between 0 and the payment amount', 'error');
+      showToast(t('billing.invalidRefundAmount') || 'Enter a refund amount greater than zero and no more than the payment.', 'error');
       return;
     }
     refundInFlight.current = true;
@@ -254,7 +255,7 @@ export default function BillingTab({
         facilityId,
         orgId,
       });
-      showToast(t('billing.refundIssued') || 'Refund issued', 'success');
+      showToast(t('billing.refundIssued') || 'Refund issued.', 'success');
       setShowRefund(false);
       reloadPayments();
       loadAll();
@@ -278,8 +279,8 @@ export default function BillingTab({
   const [processingAdj, setProcessingAdj] = useState(false);
 
   const handleCreateAdjustment = async () => {
-    if (!adjForm.reason.trim()) { showToast(t('billing.reasonRequired') || 'A reason is required', 'error'); return; }
-    if (adjForm.amount <= 0) { showToast(t('billing.invalidAmount') || 'Enter a valid amount', 'error'); return; }
+    if (!adjForm.reason.trim()) { showToast(t('billing.reasonRequired') || 'Enter a reason.', 'error'); return; }
+    if (adjForm.amount <= 0) { showToast(t('billing.invalidAmount') || 'Enter an amount greater than zero.', 'error'); return; }
     setProcessingAdj(true);
     try {
       const svc = await import('@/lib/services/payment-service');
@@ -294,14 +295,14 @@ export default function BillingTab({
         facilityId,
         orgId,
       });
-      showToast(t('billing.adjustmentCreated') || 'Adjustment recorded', 'success');
+      showToast(t('billing.adjustmentCreated') || 'Adjustment recorded.', 'success');
       setShowAdjustment(false);
       setAdjForm({ adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '' });
       reloadPayments();
       loadAll();
     } catch (err) {
       console.error('Failed to create adjustment:', err);
-      showToast(t('billing.adjustmentFailed') || 'Failed to record adjustment', 'error');
+      showToast(t('billing.adjustmentFailed') || 'Adjustment not recorded. Try again.', 'error');
     }
     setProcessingAdj(false);
   };
@@ -337,11 +338,11 @@ export default function BillingTab({
 
   const handleCreatePaymentLink = async () => {
     if (!linkAmount || linkAmount <= 0) {
-      setLinkError(t('billing.invalidAmount') || 'Enter a valid amount');
+      setLinkError(t('billing.invalidAmount') || 'Enter an amount greater than zero.');
       return;
     }
     if (!linkDescription.trim()) {
-      setLinkError(t('billing.reasonRequired') || 'A description is required');
+      setLinkError(t('billing.reasonRequired') || 'Enter a description.');
       return;
     }
     setCreatingLink(true);
@@ -354,14 +355,14 @@ export default function BillingTab({
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setLinkError(payload.error || t('billing.paymentLinkFailed') || 'Failed to create payment link');
+        setLinkError(describeApiError(payload, t('billing.paymentLinkFailed') || 'Payment link not created. Try again.'));
         setCreatingLink(false);
         return;
       }
       setCreatedLink(payload as CreatedPaymentLink);
     } catch (err) {
       console.error('Failed to create payment link:', err);
-      setLinkError(t('billing.paymentLinkFailed') || 'Could not reach the server. Please try again.');
+      setLinkError(t('billing.paymentLinkFailed') || 'Cannot reach the server. Check your internet connection and try again.');
     }
     setCreatingLink(false);
   };
@@ -373,7 +374,7 @@ export default function BillingTab({
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      showToast(t('billing.copyFailed') || 'Could not copy link', 'error');
+      showToast(t('billing.copyFailed') || 'Link not copied. This browser blocked clipboard access.', 'error');
     }
   };
 

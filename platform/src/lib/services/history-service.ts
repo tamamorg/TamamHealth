@@ -79,8 +79,8 @@ export type CreateHistoryEntryInput =
 export async function createHistoryEntry(input: CreateHistoryEntryInput): Promise<HistoryEntryDoc> {
   const data = tidy(input);
   if (!isHistoryDomain(data.domain)) throw new Error('Choose which part of the history this belongs to.');
-  if (!data.title) throw new Error('Say what the history entry is before saving it.');
-  if (!data.patientId) throw new Error('A history entry needs a patient.');
+  if (!data.title) throw new Error('Enter the history entry before saving.');
+  if (!data.patientId) throw new Error('Select a patient for this history entry.');
 
   // Every entry belongs to a facility and an organisation. A writer with no
   // home facility (an org-level account) would otherwise create an entry with
@@ -92,7 +92,7 @@ export async function createHistoryEntry(input: CreateHistoryEntryInput): Promis
   const patient = (!data.hospitalId || !data.orgId) ? await readPatient(data.patientId) : null;
   const hospitalId = data.hospitalId || patient?.registrationHospital || undefined;
   const orgId = data.orgId || await inferOrgIdFromHospital(hospitalId) || patient?.orgId;
-  if (!orgId) throw new Error('This entry could not be saved: your account is not linked to an organisation.');
+  if (!orgId) throw new Error('Entry not saved. Your account is not linked to an organization. Contact your administrator.');
 
   const db = historyEntriesDB();
   const now = new Date().toISOString();
@@ -152,7 +152,7 @@ export async function updateHistoryEntry(
   // exactly like one that does not exist.
   if (filterByScope([existing], scope).length === 0) return null;
   const data = tidy(patch);
-  if ('title' in data && !data.title) throw new Error('Say what the history entry is before saving it.');
+  if ('title' in data && !data.title) throw new Error('Enter the history entry before saving.');
 
   const updated: HistoryEntryDoc = {
     ...existing,

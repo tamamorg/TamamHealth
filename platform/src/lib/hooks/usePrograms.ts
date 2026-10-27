@@ -21,7 +21,7 @@ export function usePrograms(patientId?: string) {
       setEnrollments(all);
     } catch (err) {
       console.error(err);
-      setError('Failed to load program enrollments');
+      setError('Program enrollments not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

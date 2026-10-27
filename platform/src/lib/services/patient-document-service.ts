@@ -52,8 +52,8 @@ export interface AddPatientDocumentInput {
 }
 
 export async function addPatientDocument(input: AddPatientDocumentInput): Promise<PatientDocumentDoc> {
-  if (!input.base64Data) throw new Error('Document file data is required');
-  if (!input.title || input.title.trim().length === 0) throw new Error('A document title is required');
+  if (!input.base64Data) throw new Error('Choose a file to upload.');
+  if (!input.title || input.title.trim().length === 0) throw new Error('Enter a document title.');
   // Size and type were checked nowhere on this path. The payload is stored
   // inline on the document and this database replicates in full to every
   // clinician's browser in the organisation, so an unbounded upload is an
@@ -119,16 +119,16 @@ export interface AddImageAnnotationInput {
 }
 
 function assertImageDocument(doc: PatientDocumentDoc, scope: DataScope): void {
-  if (filterByScope([doc], scope).length !== 1) throw new Error('Document is outside your assigned scope');
-  if (!doc.mimeType.startsWith('image/')) throw new Error('Annotations can only be added to images');
+  if (filterByScope([doc], scope).length !== 1) throw new Error('You do not have access to this record. It belongs to another facility or organization.');
+  if (!doc.mimeType.startsWith('image/')) throw new Error('Annotations can only be added to images.');
 }
 
 function cleanAnnotationInput(input: AddImageAnnotationInput): AddImageAnnotationInput {
   const label = input.label.trim();
-  if (!label) throw new Error('An annotation label is required');
-  if (label.length > 160) throw new Error('Annotation labels cannot exceed 160 characters');
+  if (!label) throw new Error('Enter a label for the annotation.');
+  if (label.length > 160) throw new Error('Keep the annotation label to 160 characters or fewer.');
   if (!Number.isFinite(input.x) || !Number.isFinite(input.y) || input.x < 0 || input.x > 1 || input.y < 0 || input.y > 1) {
-    throw new Error('Annotation position is outside the image');
+    throw new Error('Place the annotation inside the image.');
   }
   return { label, x: input.x, y: input.y };
 }
@@ -169,7 +169,7 @@ async function mutateImageAnnotations(
       throw error;
     }
   }
-  throw new Error('Could not update image annotations');
+  throw new Error('Annotations not saved. Try again.');
 }
 
 export async function addImageAnnotation(
@@ -207,7 +207,7 @@ export async function updateImageAnnotation(
       found = true;
       return { ...annotation, label: cleanLabel, updatedAt: now, updatedById: actor.id, updatedByName: actor.name };
     });
-    if (!found) throw new Error('Image annotation was not found');
+    if (!found) throw new Error('Annotation not found. Reload the image.');
     return next;
   });
 }
@@ -225,7 +225,7 @@ export async function deleteImageAnnotation(
       found = true;
       return { ...annotation, status: 'deleted' as const, deletedAt: now, deletedById: actor.id, deletedByName: actor.name };
     });
-    if (!found) throw new Error('Image annotation was not found');
+    if (!found) throw new Error('Annotation not found. Reload the image.');
     return next;
   });
 }

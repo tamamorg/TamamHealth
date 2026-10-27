@@ -35,6 +35,7 @@ import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
 import { clickable } from '@/lib/a11y';
+import { describeError } from '@/lib/user-facing-error';
 
 const SEVERITY_LABEL: Record<string, string> = {
   severe: 'Severe', moderate: 'Moderate', mild: 'Mild', unknown: 'Unknown',
@@ -95,15 +96,15 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const { showToast } = useToast();
-  // Recording an allergy is a clinical write like Conditions/Problems — gate
-  // it the same way rather than leaving the Add button open to every viewer
-  // who can reach this tab (e.g. a lab technician on the labs+overview set
-  // never sees this tab at all, but a front-desk role deep-linked here would).
-  const { canEditClinical } = usePermissions();
+  // Recording an allergy is clinical intake: clinicians and the nursing roles
+  // who take it at triage and on the ward (the same set the `patient` sync row
+  // accepts). Still gated rather than open to every viewer who can reach this
+  // tab — a front-desk role deep-linked here does not get the Add button.
+  const { canRecordAllergies } = usePermissions();
   const [adding, setAdding] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [editing, setEditing] = useState<AllergyEntry | null>(null);
@@ -175,10 +176,10 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.updateAllergy(patient._id, needScope(), editing.id, { ...editForm, substance: editForm.substance.trim(), ...author });
-      showToast('Allergy updated', 'success');
+      showToast('Allergy updated.', 'success');
       setEditing(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update this allergy.', 'error');
+      showToast(describeError(err, 'Allergy not updated. Try again.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -190,12 +191,12 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.removeAllergy(patient._id, needScope(), retiring.id, retireReason.trim(), retireStatus);
-      showToast(`${retiring.substance} marked ${retireStatus.replace(/_/g, ' ')}`, 'success');
+      showToast(`${retiring.substance} allergy marked ${retireStatus.replace(/_/g, ' ')}.`, 'success');
       setRetiring(null);
       setRetireReason('');
       setRetireStatus('inactive');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not retire this allergy.', 'error');
+      showToast(describeError(err, 'Allergy status not changed. Try again.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -206,9 +207,9 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.updateAllergy(patient._id, needScope(), a.id, { status: 'active', removalReason: undefined, ...author });
-      showToast(`${a.substance} reinstated`, 'success');
+      showToast(`${a.substance} allergy reinstated.`, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not reinstate this allergy.', 'error');
+      showToast(describeError(err, 'Allergy not reinstated. Try again.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -230,7 +231,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       <ChartSection
         title="Allergies"
         addLabel="Add"
-        onAdd={canEditClinical ? () => setAdding(true) : undefined}
+        onAdd={canRecordAllergies ? () => setAdding(true) : undefined}
         filterSlot={filterSlot}
         searchValue={tableSearch}
         onSearchChange={setTableSearch}
@@ -264,8 +265,8 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     <OmrsEmptyState
                       itemLabel="allergies"
                       actionLabel="Record allergies"
-                      onAction={canEditClinical ? () => setAdding(true) : undefined}
-                      disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
+                      onAction={canRecordAllergies ? () => setAdding(true) : undefined}
+                      disabledReason={canRecordAllergies ? undefined : 'Requires clinical-editing permission'}
                     />
                   </td>
                 </tr>
@@ -326,7 +327,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               <div><span>Status</span><strong>{STATUS_LABEL[selectedAllergy.status] || selectedAllergy.status}</strong></div>
               <div><span>Onset</span><strong>{selectedAllergy.onsetDate ? formatDate(selectedAllergy.onsetDate) : 'Not documented'}</strong></div>
             </div>
-            {canEditClinical && rowsAreEditable && (
+            {canRecordAllergies && rowsAreEditable && (
               <div className="clinical-row-dialog__actions">
                 {selectedAllergy.status === 'active' ? (
                   <>

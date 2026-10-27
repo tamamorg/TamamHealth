@@ -37,8 +37,8 @@ export async function createRestrictedMentalHealthNote(input: {
   actorName: string;
 }): Promise<RestrictedMentalHealthNote> {
   const narrative = input.narrative.trim();
-  if (!narrative) throw new Error('Restricted note narrative is required');
-  if (narrative.length > 20_000) throw new Error('Restricted note narrative cannot exceed 20,000 characters');
+  if (!narrative) throw new Error('Enter the restricted note.');
+  if (narrative.length > 20_000) throw new Error('Keep the restricted note to 20,000 characters or fewer.');
   const now = new Date().toISOString();
   const id = `restricted-mh-${randomUUID()}`;
   const doc: EncryptedRestrictedNoteDoc = {

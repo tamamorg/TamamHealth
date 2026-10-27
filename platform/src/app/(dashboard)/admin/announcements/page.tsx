@@ -24,6 +24,7 @@ import { formatWhen } from '@/components/admin/sa-ui';
 import { Send } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { canPostAnnouncements, createAnnouncement, getVisibleAnnouncements } from '@/modules/communication/services/announcement-service';
+import { describeError } from '@/lib/user-facing-error';
 
 function priorityChipTone(p: AnnouncementPriority): ChipTone {
   return p === 'urgent' ? 'red' : p === 'important' ? 'yellow' : 'neutral';
@@ -80,7 +81,7 @@ export default function AdminAnnouncementsPage() {
       loadAnnouncements();
       showToast('Announcement posted.', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to post announcement.', 'error');
+      showToast(describeError(err, 'Announcement not posted. Try again.'), 'error');
     } finally {
       setAnnPosting(false);
     }

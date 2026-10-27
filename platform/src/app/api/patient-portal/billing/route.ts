@@ -36,6 +36,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(await getDemoBillingByPatient(auth.sub));
     }
     logApiError('[patient-portal/billing]', err);
-    return NextResponse.json({ error: 'Failed to fetch billing data' }, { status: 500 });
+    return NextResponse.json({ error: 'Your bills could not be loaded. Try again.' }, { status: 500 });
   }
 }

@@ -104,10 +104,10 @@ export default function ConditionsSection({
     setSavingStatus(id);
     try {
       await setStatus(id, status);
-      showToast(`Condition marked ${humanizeStatus(status).toLowerCase()}`, 'success');
+      showToast(`Condition marked ${humanizeStatus(status).toLowerCase()}.`, 'success');
     } catch (err) {
       console.error(err);
-      showToast('Could not update this condition. Please try again.', 'error');
+      showToast('Condition not updated. Try again.', 'error');
     } finally {
       setSavingStatus(null);
     }
@@ -116,7 +116,7 @@ export default function ConditionsSection({
   const resetForm = () => { setSearch(''); setPickedCode(null); setOnsetDate(''); setAdding(false); };
 
   const handleSubmit = async () => {
-    if (!pickedCode) { showToast('Pick a diagnosis first', 'error'); return; }
+    if (!pickedCode) { showToast('Select a diagnosis.', 'error'); return; }
     try {
       setSubmitting(true);
       await create({
@@ -132,11 +132,11 @@ export default function ConditionsSection({
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast('Condition added', 'success');
+      showToast('Condition added to the problem list.', 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Could not add this condition. Please try again.', 'error');
+      showToast('Condition not added. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }

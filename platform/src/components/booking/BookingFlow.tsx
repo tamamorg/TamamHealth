@@ -27,6 +27,7 @@ import {
   BookingCard, PatientClassToggle, DayNavigator, SlotChips, Field,
   BookingSelect, StepDots, ProviderAvatar,
 } from './primitives';
+import { describeError } from '@/lib/user-facing-error';
 
 export type BookingStep = 'slot' | 'details' | 'insurance' | 'done';
 
@@ -146,7 +147,7 @@ export default function BookingFlow({
       setStep('details');
     } catch (err) {
       setTime('');
-      setError(err instanceof Error ? err.message : 'Could not hold that time.');
+      setError(describeError(err, 'That time is no longer available. Choose another time.'));
     }
   }, [practiceSlug, reasonId, provider.id, date]);
 
@@ -186,7 +187,7 @@ export default function BookingFlow({
       onBooked?.(result);
     } catch (err) {
       const e = err as Error & { code?: string };
-      setError(e.message);
+      setError(describeError(e, 'Appointment not booked. Try again.'));
       // A gone slot is not a form error — send them back to the times.
       if (e.code === 'SLOT_TAKEN' || e.code === 'HOLD_EXPIRED') {
         setStep('slot');

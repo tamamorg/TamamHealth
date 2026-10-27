@@ -23,7 +23,7 @@ export function useFacilityAssessments() {
       setSummary(s);
     } catch (err) {
       console.error('Failed to load assessments', err);
-      setError('Failed to load facility assessments');
+      setError('Facility assessments not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

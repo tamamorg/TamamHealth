@@ -6,7 +6,10 @@
  * PrescribeModal already write to (switched from the legacy per-visit
  * `record.prescriptions` embed so newly-added orders actually show up here).
  * "Add" reuses the existing PrescribeModal via the page's
- * `setShowPrescribeModal` — no new add flow.
+ * `setShowPrescribeModal` for prescribers. Nursing roles cannot place an order
+ * (`canPrescribe`; the `prescription` sync row refuses them too) but can record
+ * what the patient already takes — `ReportedMedications`, a history entry that
+ * reaches no pharmacy queue. A role holding both gets a small menu.
  *
  * Row actions (Renew / Discontinue) call the prescription service directly,
  * the same way MedicationsModal's row actions do — `usePrescriptions`'s live
@@ -22,7 +25,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
-import { RefreshCw, Ban, Printer } from '@/components/icons/lucide';
+import { RefreshCw, Ban, Printer, FileText, Pill } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import { clickable } from '@/lib/a11y';
 import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
@@ -30,6 +33,10 @@ import { isScriptable } from '@/lib/prescription-script';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
+import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
+import { MEDICATION_HISTORY_DOMAIN, historyForDomain } from '@/lib/clinical/patient-history';
+import ReportedMedications from './ReportedMedications';
+import { describeError } from '@/lib/user-facing-error';
 
 const PAGE_SIZE = 8;
 
@@ -72,6 +79,8 @@ interface MedicationsSectionProps {
   /** Needed to write a renewal's `patientName` the same way PrescribeModal does. */
   patientName: string;
   canPrescribe: boolean;
+  /** Record a medicine the patient already takes (nursing roles and clinicians). */
+  canRecordMedications?: boolean;
   onAdd: () => void;
   /** "No known medications", attested at a medication review. */
   noKnownMedications?: boolean;
@@ -93,7 +102,7 @@ interface MedicationsSectionProps {
 }
 
 export default function MedicationsSection({
-  patientId, patientName, canPrescribe, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId, onSelect,
+  patientId, patientName, canPrescribe, canRecordMedications = false, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId, onSelect,
 }: MedicationsSectionProps) {
   const { prescriptions } = usePrescriptions(patientId);
   const scope = useDataScope();
@@ -108,6 +117,21 @@ export default function MedicationsSection({
   const [stopReason, setStopReason] = useState('');
   /** The order whose copy is being handed to the patient (print or text). */
   const [copyFor, setCopyFor] = useState<PrescriptionDoc | null>(null);
+  const { entries: historyEntries, error: historyFailed, markInError } = useHistoryEntries(patientId);
+  const reportedMeds = useMemo(
+    () => historyForDomain(historyEntries, MEDICATION_HISTORY_DOMAIN),
+    [historyEntries],
+  );
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [recordingMed, setRecordingMed] = useState(false);
+
+  // One Add control: straight to the only action a role has, or a menu when it
+  // has both. Undefined (no button) when it has neither.
+  const handleAdd = canPrescribe && canRecordMedications
+    ? () => setAddMenuOpen(v => !v)
+    : canPrescribe ? onAdd
+    : canRecordMedications ? () => setRecordingMed(true)
+    : undefined;
 
   const patientRx = useMemo(
     () => (prescriptions || [])
@@ -156,7 +180,7 @@ export default function MedicationsSection({
       setShowStopReason(false);
       setStopReason('');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not discontinue this medication.', 'error');
+      showToast(describeError(err, 'Medication not discontinued. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }
@@ -166,7 +190,7 @@ export default function MedicationsSection({
     setBusyId(rx._id);
     try {
       const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
-      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+      if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
       const safety = await assessPrescriptionSafety(patientId, rx.medication, scope);
       if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
       const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
@@ -215,13 +239,13 @@ export default function MedicationsSection({
           'error',
         );
       } else if (result.interactionWarnings?.hasInteractions) {
-        showToast(`Renewed with interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}`, 'error');
+        showToast(`Renewed. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`, 'warning');
       } else {
         showToast(`${rx.medication} renewed.`, 'success');
       }
       setSelectedRx(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not renew this medication.', 'error');
+      showToast(describeError(err, 'Medication not renewed. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }
@@ -232,11 +256,28 @@ export default function MedicationsSection({
     <ChartSection
       title="Medications"
       addLabel="Add"
-      onAdd={canPrescribe ? onAdd : undefined}
+      onAdd={handleAdd}
       searchValue={tableSearch}
       onSearchChange={value => { setTableSearch(value); setPage(1); }}
       pagination={{ page, pageSize: PAGE_SIZE, total: filteredRx.length, onPageChange: setPage }}
     >
+      {addMenuOpen && (
+        <div style={{ position: 'relative' }}>
+          <div
+            style={{ position: 'absolute', right: 0, top: -6, zIndex: 20 }}
+            className="tamam-actions-menu"
+            role="menu"
+          >
+            <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); onAdd(); }}>
+              <FileText /> {t('meds.add.prescribe')}
+            </button>
+            <button type="button" role="menuitem" onClick={() => { setAddMenuOpen(false); setRecordingMed(true); }}>
+              <Pill /> {t('meds.add.reported')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* What the medication review concluded, when it concluded something.
           Without this the chart cannot tell "nobody has asked" from "asked,
           and the patient takes nothing". */}
@@ -249,8 +290,8 @@ export default function MedicationsSection({
         </p>
       )}
 
-      {patientRx.length === 0 && !noKnownMedications ? (
-        <OmrsEmptyState itemLabel="medications" actionLabel="Record medications" onAction={canPrescribe ? onAdd : undefined} disabledReason={canPrescribe ? undefined : 'Requires prescribing permission'} />
+      {patientRx.length === 0 && reportedMeds.length === 0 && !noKnownMedications ? (
+        <OmrsEmptyState itemLabel="medications" actionLabel="Record medications" onAction={handleAdd} disabledReason={handleAdd ? undefined : 'Requires clinical permission'} />
       ) : patientRx.length === 0 ? null : (
         <table className="tamam-table tamam-table--interactive tamam-table--medications">
           <colgroup>
@@ -288,6 +329,18 @@ export default function MedicationsSection({
           </tbody>
         </table>
       )}
+      <ReportedMedications
+        patientId={patientId}
+        patientName={patientName}
+        medications={reportedMeds}
+        entries={historyEntries}
+        loadFailed={historyFailed}
+        canRecord={canRecordMedications}
+        currentUser={currentUser}
+        adding={recordingMed}
+        onCloseAdd={() => setRecordingMed(false)}
+        markInError={markInError}
+      />
     </ChartSection>
     {selectedRx && (
       <Modal className="tamam-dialog" onClose={() => busyId !== selectedRx._id && setSelectedRx(null)} width={620} labelledBy="medication-row-title">

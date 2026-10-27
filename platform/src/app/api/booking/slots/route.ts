@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   const reasonKey = q.get('reason') || '';
   if (!reasonKey) {
-    return NextResponse.json({ error: 'A visit reason is required' }, { status: 400 });
+    return NextResponse.json({ error: 'Choose a reason for the visit.' }, { status: 400 });
   }
   // Accept either the document id or the slug — the practice page links by
   // slug, the embed round-trips the id.

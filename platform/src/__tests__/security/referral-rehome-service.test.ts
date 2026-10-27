@@ -61,7 +61,7 @@ describe('acceptReferral', () => {
   test('a referral stamped by an org that never owned the patient does not move it', async () => {
     store.referrals['ref-1'] = { ...store.referrals['ref-1'], orgId: 'org-evil', toOrgId: undefined, toHospitalId: 'hosp-b' };
     store.hospitals['hosp-b'] = { _id: 'hosp-b', orgId: 'org-evil' };
-    await expect(acceptReferral('ref-1')).rejects.toThrow(/does not belong to the referring organization/);
+    await expect(acceptReferral('ref-1')).rejects.toThrow(/registered with a different organization/);
     expect(store.patients['pat-1'].orgId).toBe('org-a');
     expect(store.patients['pat-1'].registrationHospital).toBe('hosp-a');
     expect(store.referrals['ref-1'].status).toBe('sent');
