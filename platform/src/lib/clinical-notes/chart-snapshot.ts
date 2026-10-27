@@ -17,7 +17,9 @@ import type { PrescriptionDoc, ProblemDoc, MedicalRecordDoc, TriageDoc, HistoryE
 import type { NoteSectionId } from './note-catalog';
 import type { DataScope } from '../services/data-scope';
 import { mergeVitalsTimeline } from '../clinical/vitals';
-import { formatHistoryDomain, formatPastHistory } from '../clinical/patient-history';
+import {
+  MEDICATION_HISTORY_DOMAIN, formatHistoryDomain, formatHistoryEntry, formatPastHistory, historyForDomain,
+} from '../clinical/patient-history';
 
 /** "38.1 °C · 150/90 · HR 92" — the line a clinician scans, not a table. */
 export function formatVitals(record: Partial<Pick<MedicalRecordDoc, 'vitalSigns' | 'triageVitals'>> | null): string {
@@ -54,16 +56,22 @@ function isNum(v: unknown): v is number {
 
 /** Active medications, one bullet per line, dose and frequency included —
  *  the same list shape as allergies and problems, so a note reads uniformly. */
-export function formatMedications(prescriptions: PrescriptionDoc[]): string {
+export function formatMedications(
+  prescriptions: PrescriptionDoc[],
+  historyEntries: readonly HistoryEntryDoc[] = [],
+): string {
   const active = prescriptions.filter(p => p.status !== 'discontinued');
-  if (active.length === 0) return '';
-  return active
-    .map((p) => {
-      const bits = [p.medication, p.dose, p.route, p.frequency].filter(Boolean);
-      const line = bits.join(' · ');
-      return `• ${p.duration ? `${line} — ${p.duration}` : line}`;
-    })
-    .join('\n');
+  const ordered = active.map((p) => {
+    const bits = [p.medication, p.dose, p.route, p.frequency].filter(Boolean);
+    const line = bits.join(' · ');
+    return `• ${p.duration ? `${line} — ${p.duration}` : line}`;
+  });
+  // What the patient already takes, as recorded at intake (often by the
+  // nurse): the prescriber needs it in front of them, and it is labelled so
+  // it is never read as an order placed here.
+  const reported = historyForDomain(historyEntries, MEDICATION_HISTORY_DOMAIN)
+    .map(e => `• ${formatHistoryEntry(e)} (patient-reported)`);
+  return [...ordered, ...reported].join('\n');
 }
 
 /**
@@ -139,7 +147,7 @@ export function snapshotForSection(
     case 'vitals':
       return formatVitals(input.vitalsRecord ?? null);
     case 'medications':
-      return formatMedications(input.prescriptions ?? []);
+      return formatMedications(input.prescriptions ?? [], input.historyEntries ?? []);
     case 'allergies': {
       const text = formatAllergies(input.allergies ?? []);
       if (text) return text;
@@ -176,7 +184,9 @@ export function snapshotForSection(
 export function snapshotLoadFailed(sectionId: NoteSectionId, input: ChartSnapshotInput): boolean {
   switch (sectionId) {
     case 'vitals': return Boolean(input.vitalsLoadFailed);
-    case 'medications': return Boolean(input.prescriptionsLoadFailed);
+    // Reported medicines come from the history store: a failed read there
+    // would silently drop them from an otherwise complete-looking list.
+    case 'medications': return Boolean(input.prescriptionsLoadFailed || input.historyLoadFailed);
     case 'allergies': return Boolean(input.allergiesLoadFailed);
     case 'past_medical_history':
       return Boolean(input.historyLoadFailed || input.problemsLoadFailed);

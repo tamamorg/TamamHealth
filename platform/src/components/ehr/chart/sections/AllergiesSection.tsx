@@ -99,11 +99,11 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     return scope;
   };
   const { showToast } = useToast();
-  // Recording an allergy is a clinical write like Conditions/Problems — gate
-  // it the same way rather than leaving the Add button open to every viewer
-  // who can reach this tab (e.g. a lab technician on the labs+overview set
-  // never sees this tab at all, but a front-desk role deep-linked here would).
-  const { canEditClinical } = usePermissions();
+  // Recording an allergy is clinical intake: clinicians and the nursing roles
+  // who take it at triage and on the ward (the same set the `patient` sync row
+  // accepts). Still gated rather than open to every viewer who can reach this
+  // tab — a front-desk role deep-linked here does not get the Add button.
+  const { canRecordAllergies } = usePermissions();
   const [adding, setAdding] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [editing, setEditing] = useState<AllergyEntry | null>(null);
@@ -230,7 +230,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       <ChartSection
         title="Allergies"
         addLabel="Add"
-        onAdd={canEditClinical ? () => setAdding(true) : undefined}
+        onAdd={canRecordAllergies ? () => setAdding(true) : undefined}
         filterSlot={filterSlot}
         searchValue={tableSearch}
         onSearchChange={setTableSearch}
@@ -264,8 +264,8 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     <OmrsEmptyState
                       itemLabel="allergies"
                       actionLabel="Record allergies"
-                      onAction={canEditClinical ? () => setAdding(true) : undefined}
-                      disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
+                      onAction={canRecordAllergies ? () => setAdding(true) : undefined}
+                      disabledReason={canRecordAllergies ? undefined : 'Requires clinical-editing permission'}
                     />
                   </td>
                 </tr>
@@ -326,7 +326,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               <div><span>Status</span><strong>{STATUS_LABEL[selectedAllergy.status] || selectedAllergy.status}</strong></div>
               <div><span>Onset</span><strong>{selectedAllergy.onsetDate ? formatDate(selectedAllergy.onsetDate) : 'Not documented'}</strong></div>
             </div>
-            {canEditClinical && rowsAreEditable && (
+            {canRecordAllergies && rowsAreEditable && (
               <div className="clinical-row-dialog__actions">
                 {selectedAllergy.status === 'active' ? (
                   <>

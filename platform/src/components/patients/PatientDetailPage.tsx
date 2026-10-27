@@ -339,7 +339,7 @@ export default function PatientDetailPage() {
     () => [...patientTriages].sort((a, b) => (b.triagedAt || b.createdAt || '').localeCompare(a.triagedAt || a.createdAt || ''))[0],
     [patientTriages],
   );
-  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients } = usePermissions();
+  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients, canEnrollPrograms, canRecordMedicationHistory } = usePermissions();
   const canAssignPatients = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
 
   // Which tabs this viewer may open at all: clinicians get the chart, lab
@@ -522,7 +522,11 @@ export default function PatientDetailPage() {
     setSectionAddRequest(section);
   };
   const facesheetActions: FacesheetActions = {
-    ...(canPrescribe ? { medications: { label: 'Prescribe', onClick: () => setShowPrescribeModal(true) } } : {}),
+    // Nursing roles cannot order, but record what the patient already takes on
+    // the Medications tab, whose Add opens that form for them.
+    ...(canPrescribe
+      ? { medications: { label: 'Prescribe', onClick: () => setShowPrescribeModal(true) } }
+      : canRecordMedicationHistory ? { medications: { label: 'Record', onClick: () => selectTab('prescriptions') } } : {}),
     ...(canConsult ? { problems: { label: 'Add', onClick: () => openSectionAdd('problems') } } : {}),
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
     // alike — a full /consultation redirect was the wrong weight for "record
@@ -892,7 +896,7 @@ export default function PatientDetailPage() {
           )}
 
           {/* Prescriptions Tab */}
-          {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canDispense={canDispense} setShowPrescribeModal={setShowPrescribeModal} currentUser={currentUser} focusId={focusId} />}
+          {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} setShowPrescribeModal={setShowPrescribeModal} currentUser={currentUser} focusId={focusId} />}
 
           {/* Vitals Tab */}
           {activeTab === 'vitals' && <PatientVitalsTab vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={setShowNurseVitals} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} />}
@@ -955,7 +959,7 @@ export default function PatientDetailPage() {
           {/* Programs — care-program enrollments (ART/TB/PMTCT/ANC/Nutrition/
               EPI/NCD) with enroll + status-transition flows. */}
           {activeTab === 'programs' && (
-            <ProgramsSection patientId={patient._id} patientName={patientFullName(patient)} canConsult={canConsult} />
+            <ProgramsSection patientId={patient._id} patientName={patientFullName(patient)} canEnroll={canEnrollPrograms} />
           )}
           </section>
           </TamamChartShell>

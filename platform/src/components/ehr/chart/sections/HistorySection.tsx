@@ -43,6 +43,8 @@ const COLUMNS: Record<HistoryDomain, readonly string[]> = {
   surgical: ['operation', 'when', 'where', 'recorded', 'actions'],
   family: ['relative', 'condition', 'details', 'recorded', 'actions'],
   social: ['factor', 'finding', 'recorded', 'actions'],
+  // Not rendered here (it lives on the Medications tab); listed for the type.
+  medication: [],
 };
 
 interface HistorySectionProps {

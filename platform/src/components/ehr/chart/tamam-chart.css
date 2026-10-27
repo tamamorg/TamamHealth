@@ -2224,6 +2224,19 @@
   color: var(--ehr-text-body, #3C5574);
 }
 
+/* Medicines the patient reports already taking (ReportedMedications): a
+   second list under the orders, set apart by its heading so it is never read
+   as something prescribed here. */
+.tamam-reported-meds { margin-top: 18px; }
+.tamam-reported-meds:first-child { margin-top: 0; }
+.tamam-reported-meds-title {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ehr-text-strong, var(--text-primary));
+}
+.tamam-reported-meds > p { margin: 0 0 8px; }
+
 /* ══════════════════════════════════════════════════════════════════════════
    SBAR handoff (components/patients/PatientSBAR.tsx)
 

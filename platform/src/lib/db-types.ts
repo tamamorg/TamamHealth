@@ -998,7 +998,13 @@ export interface ProblemDoc extends BaseDoc {
  * (`ProcedureDoc`). The History tab reads those alongside these entries; it does
  * not copy them.
  */
-export type HistoryDomain = 'medical' | 'surgical' | 'family' | 'social';
+export type HistoryDomain = 'medical' | 'surgical' | 'family' | 'social' | 'medication';
+// 'medication' is a medicine the patient already takes, as they report it
+// (home medicine, a script from elsewhere): `title` the medicine, `detail` how
+// it is taken, `when` since when. It is history, not an order: nothing reaches
+// the pharmacy, which is why nursing roles may record it while prescribing
+// (`PrescriptionDoc`) stays with clinicians. Shown on the Medications tab, not
+// among the History tab's four sections.
 
 export interface HistoryEntryDoc extends BaseDoc {
   type: 'history_entry';

@@ -52,10 +52,11 @@ const STATUS_BADGE: Record<ProgramEnrollmentStatus, string> = {
 interface ProgramsSectionProps {
   patientId: string;
   patientName: string;
-  canConsult: boolean;
+  /** Clinicians and nursing roles (`canEnrollPrograms`). */
+  canEnroll: boolean;
 }
 
-export default function ProgramsSection({ patientId, patientName, canConsult }: ProgramsSectionProps) {
+export default function ProgramsSection({ patientId, patientName, canEnroll }: ProgramsSectionProps) {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { enrollments, create, setStatus } = usePrograms(patientId);
@@ -123,7 +124,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
 
   return (
     <>
-      <ChartSection title="Programs" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
+      <ChartSection title="Programs" addLabel="Add" onAdd={canEnroll ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         <table className="tamam-table tamam-table--fixed">
             <colgroup><col /><col /><col /><col /></colgroup>
             <thead>
@@ -141,8 +142,8 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                     <OmrsEmptyState
                       itemLabel="program enrollments"
                       actionLabel="Record program enrollment"
-                      onAction={canConsult ? () => setAdding(true) : undefined}
-                      disabledReason={canConsult ? undefined : 'Requires consultation permission'}
+                      onAction={canEnroll ? () => setAdding(true) : undefined}
+                      disabledReason={canEnroll ? undefined : 'Requires clinical permission'}
                     />
                   </td>
                 </tr>
@@ -158,7 +159,7 @@ export default function ProgramsSection({ patientId, patientName, canConsult }: 
                     {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
                   </td>
                   <td>
-                    {canConsult ? (
+                    {canEnroll ? (
                       <Select
                         className="tamam-section-filter"
                         disabled={statusBusy === e._id}

@@ -90,6 +90,32 @@ const WORKFLOWS: WorkflowCapability[] = [
     docTypes: ['prescription'],
     roles: ['doctor', 'clinical_officer', 'clinician', 'medical_superintendent'],
   },
+  // Nursing intake on the chart. Never `prescription`: what a nurse records
+  // about the patient's own medicines is a history entry, not an order.
+  {
+    flag: 'canRecordMedicationHistory',
+    docTypes: ['history_entry'],
+    roles: [
+      'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
+      'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+    ],
+  },
+  {
+    flag: 'canRecordAllergies',
+    docTypes: ['patient'],
+    roles: [
+      'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
+      'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+    ],
+  },
+  {
+    flag: 'canEnrollPrograms',
+    docTypes: ['program_enrollment'],
+    roles: [
+      'doctor', 'clinical_officer', 'clinician', 'medical_superintendent',
+      'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+    ],
+  },
   {
     flag: 'canEnterLabResults',
     docTypes: ['lab_result'],
@@ -239,6 +265,11 @@ describe('capability-roles-mirror', () => {
     if (!line) throw new Error(`usePermissions.ts no longer declares ${flag}`);
     const expression = line.slice(line.indexOf('=') + 1);
     const found = new Set<UserRole>();
+    // A flag built from another flag (`canRecordHistory = canEditClinical || …`)
+    // grants that flag's roles too.
+    for (const [, ref] of expression.matchAll(/\b(can[A-Z][A-Za-z]+)\b/g)) {
+      if (ref !== flag && source.includes(`const ${ref} =`)) rolesFor(ref).forEach(r => found.add(r));
+    }
     for (const [, quoted] of expression.matchAll(/role === '([a-z_]+)'/g)) {
       found.add(quoted as UserRole);
     }
