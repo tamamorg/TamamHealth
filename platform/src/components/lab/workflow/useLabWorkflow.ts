@@ -33,6 +33,7 @@ import {
   summarizeLabObservations,
   valuesFromObservations,
 } from './lab-result-catalog';
+import { describeError } from '@/lib/user-facing-error';
 
 export interface CollectDraft {
   container: string;
@@ -201,7 +202,7 @@ export function useLabWorkflow(
       return true;
     } catch (err) {
       console.error('[lab-workflow]', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err, 'Change not saved. Try again.'));
       return false;
     } finally {
       setBusy(false);

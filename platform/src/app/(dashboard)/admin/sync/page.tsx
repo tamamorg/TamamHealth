@@ -23,6 +23,7 @@ import {
   pushPendingToCountryNode,
 } from '@/lib/services/sync-event-service';
 import type { SyncEventDoc } from '@/lib/db-types';
+import { describeApiError, describeError } from '@/lib/user-facing-error';
 
 interface SyncStats {
   total: number;
@@ -95,15 +96,15 @@ export default function AdminSyncPage() {
     try {
       const result = await pushPendingToCountryNode(50);
       if (result.skipped) {
-        showToast('Country-node sync is not configured on this facility (SYNC_PUSH_URL unset) — no events pushed.', 'error');
+        showToast('Nothing sent. National sync is not set up for this facility. Contact your system administrator.', 'error');
       } else if (result.error) {
-        showToast(`Push failed after ${result.pushed} queued: ${result.error}`, 'error');
+        showToast(`Sync stopped after ${result.pushed} records. ${result.error}`, 'error');
       } else {
-        showToast(`Pushed ${result.pushed}, acknowledged ${result.acknowledged}.`, 'success');
+        showToast(`Sync complete. ${result.pushed} sent, ${result.acknowledged} confirmed by the national server.`, 'success');
       }
       await loadQueue();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Push to country node failed.', 'error');
+      showToast(describeError(err, 'Not sent to the national server. Check the connection and try again.'), 'error');
     } finally {
       setPushingCountryNode(false);
     }
@@ -115,15 +116,15 @@ export default function AdminSyncPage() {
       const res = await apiFetch('/api/admin/sync-push', { method: 'POST' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(body?.error || `Sync push failed (HTTP ${res.status}).`, 'error');
+        showToast(describeApiError(body, `Sync not sent. The server refused the request (code ${res.status}). Try again or contact your system administrator.`), 'error');
       } else {
         const pushed = typeof body.pushed === 'number' ? body.pushed : 0;
         const acked = typeof body.acknowledged === 'number' ? body.acknowledged : 0;
-        showToast(`Server sync push: pushed ${pushed}, acknowledged ${acked}.`, 'success');
+        showToast(`Sync complete. ${pushed} sent, ${acked} confirmed by the server.`, 'success');
       }
       await loadQueue();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Sync push failed.', 'error');
+      showToast(describeError(err, 'Sync not sent. Check the connection and try again.'), 'error');
     } finally {
       setSyncPushing(false);
     }
@@ -145,12 +146,12 @@ export default function AdminSyncPage() {
         const ok = body.result?.ok !== false;
         const values = typeof body.dataValues === 'number' ? body.dataValues : 0;
         showToast(
-          ok ? `DHIS2 export pushed — ${values} data values for period ${body.period}.` : (body.result?.message || 'DHIS2 push failed.'),
+          ok ? `DHIS2 report sent: ${values} data values for period ${body.period}.` : (body.result?.message || 'DHIS2 report not sent. Check the connection and try again.'),
           ok ? 'success' : 'error',
         );
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'DHIS2 push failed.', 'error');
+      showToast(describeError(err, 'DHIS2 report not sent. Check the connection and try again.'), 'error');
     } finally {
       setDhis2Pushing(false);
     }

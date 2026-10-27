@@ -34,6 +34,7 @@ import {
   generateTempPassword, validateOrgAdminForm,
 } from '@/modules/identity/client';
 import type { InvitationOutcome, OrgAdminFormData } from '@/modules/identity/client';
+import { describeError } from '@/lib/user-facing-error';
 
 type FeatureFlagKey =
   | 'epidemicIntelligence' | 'mchAnalytics' | 'dhis2Export'
@@ -393,7 +394,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
 
       await provisionOrgAdmin(newOrg._id, 'created');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save organization.', 'error');
+      showToast(describeError(err, 'Organization not saved. Try again.'), 'error');
     } finally {
       setFormLoading(false);
     }

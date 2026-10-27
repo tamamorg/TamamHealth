@@ -132,9 +132,9 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
         orgId,
         hospitalId,
       );
-      showToast('Facility policy saved — it applies to everyone here', 'success');
+      showToast('Facility policy saved. It now applies to all staff at this facility.', 'success');
     } catch {
-      showToast('Could not save facility policy', 'error');
+      showToast('Facility policy not saved. Try again.', 'error');
     } finally {
       setSaving(false);
     }

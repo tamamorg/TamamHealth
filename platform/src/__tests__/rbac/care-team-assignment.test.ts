@@ -32,20 +32,20 @@ describe('care-team assignment authorization', () => {
       patientName: 'Test Patient',
       provider: { id: 'doctor-2', name: 'Dr Two', role: 'doctor' },
       actor: { id: 'doctor-1', name: 'Dr One', role: 'doctor' },
-    })).rejects.toThrow('Only front desk staff');
+    })).rejects.toThrow('Only the front desk can assign');
 
     await expect(assignNurseToPatient({
       patientId: 'patient-1',
       nurse: { id: 'nurse-2', name: 'Nurse Two' },
       actor: { id: 'nurse-1', name: 'Nurse One', role: 'nurse' },
-    })).rejects.toThrow('Only front desk staff');
+    })).rejects.toThrow('Only the front desk can assign');
   });
 
   test('an actor-less call cannot bypass the assignment gate', async () => {
     await expect(assignNurseToPatient({
       patientId: 'patient-1',
       nurse: { id: 'nurse-2', name: 'Nurse Two' },
-    })).rejects.toThrow('Only front desk staff');
+    })).rejects.toThrow('Only the front desk can assign');
   });
 
   test('staff assignment is restricted to the front desk facility and fails closed without one', () => {
@@ -77,7 +77,7 @@ describe('care-team assignment authorization', () => {
       actor: { id: 'desk-1', name: 'Desk One', role: 'front_desk' },
       hospitalId: 'facility-a',
       orgId: 'org-a',
-    })).rejects.toThrow('not assignable at this facility');
+    })).rejects.toThrow('does not work at this facility');
   });
 
   test('the service verifies the actor record instead of trusting a claimed front-desk role', async () => {
@@ -94,7 +94,7 @@ describe('care-team assignment authorization', () => {
       actor: { id: 'doctor-1', name: 'Dr One', role: 'front_desk' },
       hospitalId: 'facility-a',
       orgId: 'org-a',
-    })).rejects.toThrow('actor is not authorized');
+    })).rejects.toThrow('not assigned to this facility, so you cannot make assignments');
   });
 
   test('the service rejects staff from another organization even at a matching facility', async () => {
@@ -118,6 +118,6 @@ describe('care-team assignment authorization', () => {
       actor: { id: 'desk-1', name: 'Desk One', role: 'front_desk' },
       hospitalId: 'facility-a',
       orgId: 'org-a',
-    })).rejects.toThrow('not assignable at this facility');
+    })).rejects.toThrow('does not work at this facility');
   });
 });

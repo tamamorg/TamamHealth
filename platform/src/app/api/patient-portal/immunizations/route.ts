@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ immunizations: await getDemoImmunizationsByPatient(auth.sub) });
     }
     logApiError('[patient-portal/immunizations]', err);
-    return NextResponse.json({ error: 'Failed to fetch immunizations' }, { status: 500 });
+    return NextResponse.json({ error: 'Your immunizations could not be loaded. Try again.' }, { status: 500 });
   }
 }

@@ -27,6 +27,7 @@ import { formatDate, humanizeStatus } from '@/lib/format-utils';
 import { toIsoDate } from '@/lib/date-utils';
 import type { ImmunizationDoc, PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 
 const SITES: ImmunizationDoc['site'][] = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
 
@@ -113,11 +114,11 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
   const handleSubmit = async () => {
     const dose = parseInt(doseNumber, 10);
-    if (!Number.isFinite(dose) || dose < 1) { showToast('Enter a dose number', 'error'); return; }
-    if (!dateGiven) { showToast('Pick the date the dose was given', 'error'); return; }
+    if (!Number.isFinite(dose) || dose < 1) { showToast('Enter the dose number.', 'error'); return; }
+    if (!dateGiven) { showToast('Select the date the dose was given.', 'error'); return; }
     // The record carries a batch number for recall: an adverse-event
     // investigation traces the lot, and a dose with no lot can't be traced.
-    if (!batchNumber.trim()) { showToast('Record the vaccine batch number', 'error'); return; }
+    if (!batchNumber.trim()) { showToast('Enter the vaccine batch number.', 'error'); return; }
     try {
       setSubmitting(true);
       const doseData = {
@@ -132,7 +133,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       };
       if (editing) {
         const saved = await update(editing._id, doseData);
-        if (!saved) throw new Error('Update failed');
+        if (!saved) throw new Error('Change not saved. Try again.');
       } else await register({
         patientId: patient._id,
         patientName,
@@ -146,11 +147,11 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
         status: 'completed',
         orgId: currentUser?.orgId,
       });
-      showToast(editing ? t('chart.immunizationCorrected') : 'Immunization recorded', 'success');
+      showToast(editing ? t('chart.immunizationCorrected') : 'Immunization recorded.', 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Could not record this immunization. Please try again.', 'error');
+      showToast('Immunization not recorded. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +169,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       setErrorTarget(null);
       setErrorReason('');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('chart.immunizationUpdateFailed'), 'error');
+      showToast(describeError(err, t('chart.immunizationUpdateFailed')), 'error');
     } finally {
       setSubmitting(false);
     }

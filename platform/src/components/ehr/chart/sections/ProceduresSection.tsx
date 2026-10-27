@@ -21,6 +21,7 @@ import { procedure as procedureLifecycle, type ProcedureStatus } from '@/lib/cli
 import { todayIso } from '@/lib/date-utils';
 import type { ProcedureDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 
 /** Stage 7 states, worded the way a clinician would say them. */
 const PROCEDURE_STATUS_LABELS: Record<ProcedureStatus, string> = {
@@ -86,7 +87,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
       await advance(id, to, { actorId: currentUser?._id, actorName: currentUser?.name, reason });
       showToast(`Procedure moved to ${PROCEDURE_STATUS_LABELS[to]}.`, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update the procedure.', 'error');
+      showToast(describeError(err, 'Procedure not updated. Try again.'), 'error');
     } finally {
       setAdvancing(null);
     }
@@ -112,8 +113,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   };
 
   const handleSubmit = async () => {
-    if (!name.trim()) { showToast('Name the procedure first', 'error'); return; }
-    if (!date) { showToast('Pick the procedure date', 'error'); return; }
+    if (!name.trim()) { showToast('Enter the procedure name.', 'error'); return; }
+    if (!date) { showToast('Select the procedure date.', 'error'); return; }
     if (editing && correctionReason.trim().length < 3) { showToast(t('chart.correctionReasonRequired'), 'error'); return; }
     try {
       setSubmitting(true);
@@ -137,11 +138,11 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast(editing ? t('chart.procedureCorrected') : 'Procedure recorded', 'success');
+      showToast(editing ? t('chart.procedureCorrected') : 'Procedure recorded.', 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Could not record this procedure. Please try again.', 'error');
+      showToast('Procedure not recorded. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -156,7 +157,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
       showToast(t('chart.procedureMarkedError'), 'success');
       resetForm();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('chart.procedureUpdateFailed'), 'error');
+      showToast(describeError(err, t('chart.procedureUpdateFailed')), 'error');
     } finally {
       setSubmitting(false);
     }

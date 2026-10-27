@@ -25,6 +25,7 @@ import { sectionBody } from '@/lib/clinical-notes/note-service';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { describeError } from '@/lib/user-facing-error';
 
 export interface SummaryProblem {
   effectiveDate: string;
@@ -170,7 +171,7 @@ export default function CareCoordinationModal({
       });
       onClose();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not send the referral.', 'error');
+      showToast(describeError(err, 'Referral not sent. Try again.'), 'error');
     } finally {
       setSending(false);
     }

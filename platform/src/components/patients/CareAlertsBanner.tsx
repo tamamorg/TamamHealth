@@ -8,6 +8,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import type { CareAlertCategory } from '@/data/mock';
 import { AlertTriangle, Plus, X } from '@/components/icons/lucide';
 import CareAlertFields, { CARE_ALERT_CATEGORY_LABELS } from '@/components/patients/CareAlertFields';
+import { describeError } from '@/lib/user-facing-error';
 
 /**
  * Chart-permanent care alerts (P1.2). Active alerts render as a prominent
@@ -21,7 +22,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const [busy, setBusy] = useState(false);
@@ -47,7 +48,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
       setReason('');
       setForm({ category: 'clinical_risk', message: '', priority: 'high' });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

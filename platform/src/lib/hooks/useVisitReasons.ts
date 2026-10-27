@@ -32,7 +32,7 @@ export function useVisitReasons(facilityIdOverride?: string) {
       setReasons(await getVisitReasonsForFacility(facilityId, orgId));
     } catch (err) {
       console.error('[useVisitReasons]', err);
-      setError('Could not load visit reasons');
+      setError('Visit reasons not loaded. Reload the page to try again.');
       setReasons([]);
     } finally {
       setLoading(false);

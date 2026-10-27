@@ -42,6 +42,7 @@ import {
   type LucideIcon,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 type StepKey = 'received' | 'review' | 'checked' | 'payment' | 'dispensed' | 'counseled' | 'cleared';
 
@@ -154,7 +155,7 @@ export default function PatientDispenseModal({
       await advance(rx._id, to);
       showToast(message, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update prescription workflow.', 'error');
+      showToast(describeError(err, 'Prescription status not changed. Try again.'), 'error');
     }
   };
 
@@ -182,12 +183,12 @@ export default function PatientDispenseModal({
   // No navigation from here — that is the point of the dialog. The outstanding
   // amount is what the person at this screen needs in order to act.
   const flagPayment = (rx: PrescriptionDoc) => {
-    showToast(`Payment due for ${rx.patientName}: ${formatMoney(balanceFor(patientId))}. Send the patient to the cashier before dispensing.`, 'error');
+    showToast(`Payment due: ${rx.patientName} owes ${formatMoney(balanceFor(patientId))}. Send the patient to the cashier before dispensing.`, 'warning');
   };
 
   const startDispense = (rx: PrescriptionDoc) => {
     if (pharmacyStage(rx) !== 'cleared_for_dispensing') {
-      showToast('Check and clear the medication order before dispensing.', 'error');
+      showToast('Verify the medication order before dispensing.', 'error');
       return;
     }
     // Checked before the cleared/outstanding branch: an unknown balance is
@@ -195,7 +196,7 @@ export default function PatientDispenseModal({
     // different, and treating it as owed would misreport a ledger outage as
     // the patient's debt.
     if (!isKnownFor(patientId)) {
-      showToast('Balance unavailable — verify before dispensing.', 'error');
+      showToast('The patient\'s balance could not be checked. Confirm payment with the cashier before dispensing.', 'warning');
       return;
     }
     if (!isClearedFor(patientId)) {
@@ -205,7 +206,7 @@ export default function PatientDispenseModal({
     const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
-      showToast(`Insufficient stock: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed for the full course.`, 'error');
+      showToast(`Not enough stock for the full course: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed. Dispense a partial fill or record a stockout.`, 'warning');
       return;
     }
     setWitnessId('');
@@ -220,7 +221,7 @@ export default function PatientDispenseModal({
     if (requiresWitness) {
       const w = users.find(u => u._id === witnessId);
       if (!w) {
-        showToast('Select a witnessing staff member.', 'error');
+        showToast('Select a witness.', 'error');
         return;
       }
       witness = { id: w._id, name: w.name };
@@ -236,9 +237,9 @@ export default function PatientDispenseModal({
       if (!clearance.cleared) {
         showToast(
           clearance.reason === 'outstanding'
-            ? `Payment due for ${rx.patientName}: ${formatMoney(clearance.balance)}. Send the patient to the cashier before dispensing.`
-            : 'Balance unavailable — could not verify payment before dispensing.',
-          'error',
+            ? `Payment due: ${rx.patientName} owes ${formatMoney(clearance.balance)}. Send the patient to the cashier before dispensing.`
+            : 'Not dispensed. The patient\'s balance could not be checked. Confirm payment with the cashier.',
+          'warning',
         );
         return;
       }
@@ -256,13 +257,13 @@ export default function PatientDispenseModal({
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
         result.outcome === 'partial'
-          ? `Partial fill: ${result.quantityDispensed} ${inv.unit} of ${rx.medication} from batch ${batches}. Order stays open.`
+          ? `Partial fill: ${result.quantityDispensed} ${inv.unit} of ${rx.medication} dispensed from batch ${batches}. The order stays open for the remainder.`
           : t('pharmacy.dispensedToast', { medication: rx.medication, patient: rx.patientName }),
         result.outcome === 'partial' ? 'error' : 'success',
       );
       setConfirmTarget(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('pharmacy.dispenseMarkFailed'), 'error');
+      showToast(describeError(err, t('pharmacy.dispenseMarkFailed')), 'error');
     } finally {
       setDispensing(false);
     }

@@ -151,7 +151,7 @@ export function hasLockPin(userId?: string): boolean {
  * anything weaker. */
 export async function setLockPin(pin: string, userId?: string): Promise<void> {
   if (!pinHashingSupported()) {
-    throw new Error('PIN unlock needs a secure connection (HTTPS or localhost) and is unavailable here.');
+    throw new Error('PIN unlock needs a secure connection, which this device does not have. Sign in with your password instead.');
   }
   const salt = crypto.getRandomValues(new Uint8Array(PIN_SALT_BYTES));
   const hash = await derivePinHash(pin, salt, PBKDF2_ITERATIONS);

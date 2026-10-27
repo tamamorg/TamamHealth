@@ -137,8 +137,8 @@ describe('setLabBenchStatus', () => {
       completedAt: new Date().toISOString(),
     }));
 
-    await expect(setLabBenchStatus(order._id, 'pending')).rejects.toThrow(/resulted/);
-    await expect(setLabBenchStatus(order._id, 'in_progress')).rejects.toThrow(/resulted/);
+    await expect(setLabBenchStatus(order._id, 'pending')).rejects.toThrow(/already has a result/);
+    await expect(setLabBenchStatus(order._id, 'in_progress')).rejects.toThrow(/already has a result/);
     const stored = await getLabResultById(order._id);
     expect(stored?.status).toBe('completed');
     expect(stored?.orderStatus).toBe('resulted');

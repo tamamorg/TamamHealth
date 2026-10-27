@@ -219,11 +219,11 @@ export default function PatientPortalPage() {
     if (!selectedBill || !paymentMethod || completing) return;
     const numericAmount = Number(paymentAmount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setCompleteError('Enter a valid amount before continuing.');
+      setCompleteError('Enter an amount greater than zero.');
       return;
     }
     if (!selectedBill.patientId) {
-      setCompleteError('Unable to identify the patient for this bill — please reopen it from the bill list.');
+      setCompleteError('The patient for this bill could not be identified. Open the bill again from the bill list.');
       return;
     }
 
@@ -288,7 +288,7 @@ export default function PatientPortalPage() {
       setPaymentStep('success');
     } catch (err) {
       console.error('[PatientPortal] Failed to record payment', err);
-      setCompleteError('Could not record the payment. Please try again.');
+      setCompleteError('Payment not recorded. Try again.');
     } finally {
       setCompleting(false);
     }

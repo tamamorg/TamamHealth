@@ -63,7 +63,7 @@ export async function isFavorite(userId: string, kind: FavoriteKind, code: strin
 
 /** Add (or refresh) a favorite. Idempotent — re-adding updates the label/meta. */
 export async function addFavorite(input: AddFavoriteInput): Promise<ClinicalFavoriteDoc> {
-  if (!input.code || !input.label) throw new Error('Favorite code and label are required');
+  if (!input.code || !input.label) throw new Error('Select a code and enter a label for this favorite.');
   const db = clinicalFavoritesDB();
   const _id = favoriteId(input.userId, input.kind, input.code);
   const now = new Date().toISOString();

@@ -88,7 +88,7 @@ describe('signClinicalNote — attestation authority', () => {
     } as never);
     await expect(signClinicalNote(note._id, {
       signedBy: 'user-dr-wani', signedByName: 'Dr. Wani', signerRole: 'doctor',
-    })).rejects.toThrow(/empty note/);
+    })).rejects.toThrow(/Document the encounter before signing/);
   });
 });
 
@@ -171,7 +171,7 @@ describe('cosignClinicalNote', () => {
     await expect(cosignClinicalNote(note._id, 'user-nurse-2', 'Nurse B', 'nurse'))
       .rejects.toThrow(NoteSigningAuthorizationError);
     await expect(cosignClinicalNote(note._id, 'user-nurse-1', 'Nurse A', 'doctor'))
-      .rejects.toThrow(/different provider/);
+      .rejects.toThrow(/different co-signer/);
 
     const cosigned = await cosignClinicalNote(note._id, 'user-dr-wani', 'Dr. Wani', 'doctor');
     expect(cosigned?.status).toBe('signed');

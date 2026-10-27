@@ -49,25 +49,25 @@ export class ControlledSubstanceError extends Error {
 export async function recordMovement(input: RecordMovementInput): Promise<ControlledSubstanceLogDoc> {
   if (!input.operatorId || !input.witnessId) {
     throw new ControlledSubstanceError(
-      'Both operator and witness signatures are required for controlled-substance movements.',
+      'Controlled-substance movements need both the operator and a witness to sign.',
       'MISSING_WITNESS',
     );
   }
   if (input.operatorId === input.witnessId) {
     throw new ControlledSubstanceError(
-      'Operator and witness must be two different staff members.',
+      'Select a different witness. The witness cannot be the person recording the movement.',
       'SAME_SIGNATORY',
     );
   }
   if (input.quantity <= 0) {
-    throw new ControlledSubstanceError('Movement quantity must be greater than zero.', 'BAD_INPUT');
+    throw new ControlledSubstanceError('Enter a quantity greater than zero.', 'BAD_INPUT');
   }
 
   const direction = input.movement === 'intake' ? 1 : -1;
   const afterBalance = input.beforeBalance + direction * input.quantity;
   if (afterBalance < 0) {
     throw new ControlledSubstanceError(
-      `After-balance would be negative (${afterBalance}). Investigate before recording.`,
+      `Not recorded. This would leave a negative balance (${afterBalance}). Check the register count before recording.`,
       'NEGATIVE_BALANCE',
     );
   }

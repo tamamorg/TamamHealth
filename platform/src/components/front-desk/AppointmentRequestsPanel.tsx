@@ -10,6 +10,7 @@ import type { AppointmentStatusUpdateExtra } from '@/lib/services/appointment-se
 import {
   contactPreferenceOf, pendingRequests, requestPhone, requestSourceKey, smsHref, telHref,
 } from '@/lib/appointment-requests';
+import { describeError } from '@/lib/user-facing-error';
 
 interface Props {
   appointments: AppointmentDoc[];
@@ -66,7 +67,7 @@ export default function AppointmentRequestsPanel({
       showToast(t('frontDesk.requestConfirmed', { name: appt.patientName }), 'success');
     } catch (err) {
       // BookingConflictError carries a message written for the clerk.
-      setError(appt._id, err instanceof Error && err.message ? err.message : t('frontDesk.requestConfirmFailed'));
+      setError(appt._id, describeError(err, t('frontDesk.requestConfirmFailed')));
     } finally {
       setBusyId(null);
     }
@@ -83,7 +84,7 @@ export default function AppointmentRequestsPanel({
       setDeclining(null);
       setReason('');
     } catch (err) {
-      setError(appt._id, err instanceof Error && err.message ? err.message : t('frontDesk.requestDeclineFailed'));
+      setError(appt._id, describeError(err, t('frontDesk.requestDeclineFailed')));
     } finally {
       setBusyId(null);
     }

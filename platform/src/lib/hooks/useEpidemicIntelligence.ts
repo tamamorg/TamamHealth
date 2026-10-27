@@ -19,7 +19,7 @@ export function useEpidemicIntelligence() {
       setData(result);
     } catch (err) {
       console.error('Failed to load epidemic intelligence', err);
-      setError('Failed to load epidemic intelligence');
+      setError('Epidemic intelligence not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

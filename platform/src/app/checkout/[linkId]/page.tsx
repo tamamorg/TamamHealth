@@ -6,6 +6,7 @@ import {
   Phone, Banknote, CreditCard, CheckCircle2, Clock,
   AlertTriangle, XCircle, Wallet,
 } from '@/components/icons/lucide';
+import { describeApiError } from '@/lib/user-facing-error';
 
 /* ─────────────────────────────────────────────────────────────
    Pay-by-link checkout — PUBLIC page (no staff auth).
@@ -79,13 +80,13 @@ export default function CheckoutPage() {
           return;
         }
         if (!res.ok) {
-          setLoadError('We could not load this payment link. Please try again.');
+          setLoadError('This payment link could not be opened. Reload the page to try again.');
           return;
         }
         const data = (await res.json()) as CheckoutLink;
         if (!cancelled) setLink(data);
       } catch {
-        if (!cancelled) setLoadError('We could not reach the server. Please check your connection and try again.');
+        if (!cancelled) setLoadError('Cannot reach the server. Check your internet connection and try again.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -110,12 +111,12 @@ export default function CheckoutPage() {
         return;
       }
       if (!res.ok || !data.reference) {
-        setSubmitError(data.error || 'We could not record your payment. Please try again.');
+        setSubmitError(describeApiError(data, 'Your payment was not recorded. Try again. If money has already left your account, contact the facility before paying again.'));
         return;
       }
       setReference(data.reference as string);
     } catch {
-      setSubmitError('We could not reach the server. Please try again.');
+      setSubmitError('Cannot reach the server. Check your internet connection and try again.');
     } finally {
       setSubmitting(false);
     }

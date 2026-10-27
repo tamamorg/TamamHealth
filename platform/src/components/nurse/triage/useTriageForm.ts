@@ -704,16 +704,16 @@ export function useTriageForm({
     }
     const capillaryRefill = parseStrictVitalNumber(capillaryRefillSeconds);
     if (capillaryRefillSeconds.trim() && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
-      showToast('Capillary refill must be between 0 and 10 seconds.', 'error');
+      showToast('Enter a capillary refill time between 0 and 10 seconds.', 'error');
       return;
     }
     const gestationalAge = parseStrictVitalNumber(gestationalAgeWeeks);
     if (gestationalAgeWeeks.trim() && (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)) {
-      showToast('Gestational age must be a whole number from 0 to 45 weeks.', 'error');
+      showToast('Enter gestational age as a whole number of weeks, from 0 to 45.', 'error');
       return;
     }
     if (recommendationRaisesPriority && overrideVitalUrgency && !vitalUrgencyOverrideReason.trim()) {
-      showToast('Record a clinical reason before overriding the recommended urgency.', 'error');
+      showToast('Enter a clinical reason to override the recommended urgency.', 'error');
       document.getElementById('triage-vital-override-reason')?.focus();
       return;
     }
@@ -887,7 +887,7 @@ export function useTriageForm({
         !APPOINTMENT_CLOSED_STATUSES.includes(appointment.status)
       );
       const { completeTriageHandoff } = await import('@/lib/services/triage-handoff-service');
-      if (!dataScope) throw new Error('Your data scope is unavailable.');
+      if (!dataScope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
       await completeTriageHandoff({
         scope: dataScope,
         triageId,

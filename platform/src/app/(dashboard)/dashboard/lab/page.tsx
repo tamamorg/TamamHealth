@@ -25,6 +25,7 @@ import {
   getLabReferenceRange as getRefRange,
   criticalBoundsInEntryUnit,
 } from '@/lib/services/lab-critical-flag';
+import { describeError } from '@/lib/user-facing-error';
 
 const ACCENT = 'var(--accent-primary)';
 
@@ -192,7 +193,7 @@ export default function LabDashboardPage() {
         'success',
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update the test status.', 'error');
+      showToast(describeError(err, 'Test status not changed. Try again.'), 'error');
     }
   }, [benchHref, currentUser, router, showToast]);
 

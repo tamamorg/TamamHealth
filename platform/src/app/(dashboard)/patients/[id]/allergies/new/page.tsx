@@ -23,7 +23,7 @@ export default function NewAllergyPage() {
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const patientId = params?.id ?? '';

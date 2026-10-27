@@ -496,10 +496,10 @@ function validateInput(input: CreateTransferInput): void {
   // `applyAssignment` — silently moving ownership outright when the caller
   // asked for something else.
   if (input.transferType && !TRANSFER_TYPES.has(input.transferType)) {
-    throw new TransferValidationError(`Unknown transfer type: ${input.transferType}`);
+    throw new TransferValidationError('Choose a transfer type from the list.');
   }
   if (input.urgency && !URGENCIES.has(input.urgency)) {
-    throw new TransferValidationError(`Unknown urgency: ${input.urgency}`);
+    throw new TransferValidationError('Choose an urgency from the list.');
   }
   for (const [label, value] of [
     ['effectiveAt', input.effectiveAt], ['expiresAt', input.expiresAt],
@@ -509,12 +509,12 @@ function validateInput(input: CreateTransferInput): void {
     }
   }
   if (!input.reason || !input.reason.trim()) {
-    throw new TransferValidationError('A reason for the transfer is required');
+    throw new TransferValidationError('Enter the reason for the transfer.');
   }
   const to = input.to || {};
   if (!to.providerId && !to.department && !to.facilityId) {
     throw new TransferValidationError(
-      'A destination provider, department or facility is required',
+      'Select where the patient is being transferred to.',
     );
   }
   // A transfer that changes nothing is almost always a mis-click, and letting
@@ -522,20 +522,20 @@ function validateInput(input: CreateTransferInput): void {
   if (input.from?.providerId && to.providerId === input.from.providerId
       && (to.department ?? input.from.department) === input.from.department
       && (to.facilityId ?? input.from.facilityId) === input.from.facilityId) {
-    throw new TransferValidationError('The destination is the same as the current assignment');
+    throw new TransferValidationError('Choose a different destination. The patient is already assigned there.');
   }
   const type = input.transferType ?? 'permanent';
   if (type !== 'permanent' && !input.expiresAt) {
     throw new TransferValidationError(
-      `A ${type === 'temporary' ? 'temporary transfer' : 'shared-care grant'} needs an end date`,
+      `Enter an end date for this ${type === 'temporary' ? 'temporary transfer' : 'shared-care grant'}.`,
     );
   }
   if (input.expiresAt && input.effectiveAt
       && new Date(input.expiresAt) <= new Date(input.effectiveAt)) {
-    throw new TransferValidationError('The end date must be after the effective date');
+    throw new TransferValidationError('Enter an end date after the start date.');
   }
   if (input.expiresAt && new Date(input.expiresAt).getTime() <= Date.now()) {
-    throw new TransferValidationError('The end date is already in the past');
+    throw new TransferValidationError('Enter an end date in the future.');
   }
 }
 
@@ -557,7 +557,7 @@ export async function createTransferRequest(
     const outstanding = outstandingChecklistItems(checklist);
     if (outstanding.length > 0) {
       throw new TransferValidationError(
-        `Complete the hand-off checklist before sending: ${outstanding.map(i => i.label).join(', ')}`,
+        `Complete the handoff checklist before sending: ${outstanding.map(i => i.label).join(', ')}.`,
       );
     }
   }
@@ -670,12 +670,12 @@ export async function sendDraftTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'draft') {
-    throw new TransferValidationError(`Only a draft can be sent (this one is ${doc.status})`);
+    throw new TransferValidationError(`This transfer is ${doc.status}. Only a draft transfer can be sent.`);
   }
   const outstanding = outstandingChecklistItems(doc.checklist);
   if (outstanding.length > 0) {
     throw new TransferValidationError(
-      `Complete the hand-off checklist before sending: ${outstanding.map(i => i.label).join(', ')}`,
+      `Complete the handoff checklist before sending: ${outstanding.map(i => i.label).join(', ')}.`,
     );
   }
   const now = new Date().toISOString();
@@ -709,7 +709,7 @@ export async function acceptTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'requested') {
-    throw new TransferValidationError(`This transfer is ${doc.status} and cannot be accepted`);
+    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be accepted.`);
   }
 
   const now = new Date().toISOString();
@@ -749,12 +749,12 @@ export async function rejectTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'requested') {
-    throw new TransferValidationError(`This transfer is ${doc.status} and cannot be rejected`);
+    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be rejected.`);
   }
   // A rejection with no explanation leaves the sending clinician with a patient
   // back on their list and no idea what to fix before trying again.
   if (!notes || !notes.trim()) {
-    throw new TransferValidationError('A reason is required when rejecting a transfer');
+    throw new TransferValidationError('Enter the reason for rejecting this transfer.');
   }
   doc.status = 'rejected';
   doc.decidedById = actor?.id;
@@ -783,7 +783,7 @@ export async function cancelTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (!OPEN_TRANSFER_STATUSES.has(doc.status)) {
-    throw new TransferValidationError(`This transfer is ${doc.status} and cannot be cancelled`);
+    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be cancelled.`);
   }
   doc.status = 'cancelled';
   doc.cancelledById = actor?.id;
@@ -809,7 +809,7 @@ export async function addTransferNote(
 ): Promise<PatientTransferDoc | null> {
   const doc = await getTransferById(id);
   if (!doc) return null;
-  if (!note.trim()) throw new TransferValidationError('Note cannot be empty');
+  if (!note.trim()) throw new TransferValidationError('Enter the note.');
   doc.events.push(makeEvent('TRANSFER_NOTE_ADDED', note.trim(), actor, { notes: note.trim() }));
   return persist(doc, 'TRANSFER_NOTE_ADDED', `Note added to transfer ${doc._id}`, actor);
 }
@@ -829,13 +829,13 @@ export async function updateTransferLogistics(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (['rejected', 'cancelled', 'expired'].includes(doc.status)) {
-    throw new TransferValidationError(`This transfer is ${doc.status} and cannot be updated`);
+    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be changed.`);
   }
   if (patch.destination?.bedId) {
     const wardDb = getDB('tamamhealth_wards');
     const bed = await wardDb.get(patch.destination.bedId) as BedDoc;
     if (bed.status !== 'available' && bed.currentPatientId !== doc.patientId) {
-      throw new TransferValidationError('The selected bed is no longer available');
+      throw new TransferValidationError('The selected bed is no longer available. Choose another bed.');
     }
     const reserved = withPendingOfflineSync({
       ...bed,
@@ -875,7 +875,7 @@ export async function markTransferArrived(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'completed' && doc.status !== 'accepted') {
-    throw new TransferValidationError('Only an accepted or completed transfer can arrive');
+    throw new TransferValidationError('Arrival can only be recorded for an accepted or completed transfer.');
   }
   const now = new Date().toISOString();
   doc.physicalStatus = 'arrived';
@@ -905,14 +905,14 @@ export async function closeTransfer(
 ): Promise<PatientTransferDoc | null> {
   const doc = await getTransferById(id);
   if (!doc) return null;
-  if (doc.status !== 'completed') throw new TransferValidationError('The transfer must be completed before it can be closed');
+  if (doc.status !== 'completed') throw new TransferValidationError('Complete the transfer before closing it.');
   if (doc.physicalStatus && !['arrived', 'receiving_assessment', 'closed'].includes(doc.physicalStatus)) {
-    throw new TransferValidationError('Confirm patient arrival before closing the transfer');
+    throw new TransferValidationError('Confirm that the patient arrived before closing the transfer.');
   }
   const destinationFacilityId = doc.destination?.facilityId || doc.to.facilityId || doc.toHospitalId;
   if (destinationFacilityId && doc.hospitalId && destinationFacilityId !== doc.hospitalId) {
     if (doc.clinicalReadiness?.medicationsReconciled !== true) {
-      throw new TransferValidationError('Reconcile medications before closing an inter-facility inpatient transfer');
+      throw new TransferValidationError('Reconcile the medications before closing this inter-facility transfer.');
     }
     const { closeAdmissionForTransfer, getActiveAdmissions } = await import('./ward-service');
     const admission = (await getActiveAdmissions()).find(row =>
@@ -948,7 +948,7 @@ export async function updateTransferChecklist(
   if (!doc) return null;
   if (DECIDED_STATUSES.has(doc.status)) {
     throw new TransferValidationError(
-      `This transfer is ${doc.status}; its checklist is now part of the record and cannot change`,
+      `This transfer is ${doc.status}. Its checklist is part of the record and can no longer be changed.`,
     );
   }
   const now = new Date().toISOString();
@@ -1117,7 +1117,7 @@ export async function completeTransfer(
   if (!doc) return null;
   if (doc.status !== 'accepted') {
     throw new TransferValidationError(
-      `Only an accepted transfer can be completed (this one is ${doc.status})`,
+      `This transfer is ${doc.status}. Only an accepted transfer can be completed.`,
     );
   }
 

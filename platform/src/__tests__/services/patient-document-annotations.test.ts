@@ -97,6 +97,6 @@ test('re-reads and preserves a concurrently-synced annotation after a 409', asyn
 test('fails closed for a document outside the clinician facility', async () => {
   mockGet.mockResolvedValue(imageDocument({ hospitalId: 'hospital-2' }));
   await expect(addImageAnnotation('pdoc-1', { label: 'No access', x: 0.5, y: 0.5 }, scope, actor))
-    .rejects.toThrow('outside your assigned scope');
+    .rejects.toThrow('You do not have access to this record');
   expect(mockPut).not.toHaveBeenCalled();
 });

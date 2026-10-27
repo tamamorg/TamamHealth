@@ -158,7 +158,7 @@ async function claimPrescriptionForDispense(id: string, dispenserId: string): Pr
       throw err;
     }
   }
-  throw new DispenseError('Could not claim the order after repeated conflicts.', 'WRITE_FAILED');
+  throw new DispenseError('This order is busy on another workstation. Wait a moment, refresh, and try again.', 'WRITE_FAILED');
 }
 
 /** Release only the claim owned by this dispense; never clear another tab's. */
@@ -392,7 +392,7 @@ async function applyBatchDecrement(
     const before = batch.stockLevel || 0;
     if (before < quantity) {
       throw new DispenseError(
-        `Batch ${batch.batchNumber} now holds only ${before} ${batch.unit}; another dispense took the stock.`,
+        `Batch ${batch.batchNumber} now holds only ${before} ${batch.unit} because stock was dispensed on another workstation. Refresh and choose the quantity again.`,
         'INSUFFICIENT_STOCK',
         before,
       );
@@ -432,7 +432,7 @@ async function applyBatchDecrement(
       throw err;
     }
   }
-  throw new DispenseError('Could not reserve stock after repeated conflicts.', 'WRITE_FAILED');
+  throw new DispenseError('Stock is busy on another workstation. Wait a moment, refresh, and try again.', 'WRITE_FAILED');
 }
 
 /** Put stock back on a batch — the compensating write for a failed dispense. */
@@ -563,7 +563,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   if (dispenserDoc) {
     if (dispenserDoc.isActive === false) {
       throw new DispenseError(
-        'The dispensing staff member account is inactive.',
+        'Your account is inactive, so you cannot dispense. Contact your administrator.',
         'NOT_AUTHORISED',
       );
     }
@@ -584,12 +584,12 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     ].filter((id): id is string => Boolean(id)));
     if (!entitledFacilities.has(input.facilityId)) {
       throw new DispenseError(
-        'The pharmacist is not assigned to the dispensing facility.',
+        'You are not assigned to this facility, so you cannot dispense here.',
         'NOT_AUTHORISED',
       );
     }
     if (input.orgId && dispenserDoc.orgId && dispenserDoc.orgId !== input.orgId) {
-      throw new DispenseError('The pharmacist must belong to the same organisation.', 'NOT_AUTHORISED');
+      throw new DispenseError('You are not part of this organization, so you cannot dispense here.', 'NOT_AUTHORISED');
     }
   }
 
@@ -617,7 +617,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     );
   }
   if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new DispenseError('Dispense quantity must be greater than zero.', 'BAD_QUANTITY');
+    throw new DispenseError('Enter a quantity greater than zero.', 'BAD_QUANTITY');
   }
 
   // Completeness is cumulative, not per-visit: a patient who collected 10 of 21
@@ -628,7 +628,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   if (totalDispensed > requested) {
     const remaining = Math.max(0, requested - (rx.quantityDispensed || 0));
     throw new DispenseError(
-      `Dispense quantity exceeds the prescribed course; ${remaining} ${rx.medication} remain.`,
+      `The quantity is more than the prescribed course. ${remaining} ${rx.medication} remain to be dispensed.`,
       'BAD_QUANTITY',
     );
   }
@@ -659,7 +659,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   const plan = planFefoAllocation(batches, quantity);
   if (plan.shortfall > 0) {
     throw new DispenseError(
-      `Insufficient stock: ${plan.available} available, ${quantity} requested.`,
+      `Not enough stock: ${plan.available} available, ${quantity} requested. Dispense a partial fill or record a stockout.`,
       'INSUFFICIENT_STOCK',
       plan.available,
     );
@@ -677,13 +677,13 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   if (controlledBatch) {
     if (!input.witnessId || !input.witnessName) {
       throw new DispenseError(
-        `${rx.medication} is a controlled substance — a witnessing staff member is required.`,
+        `${rx.medication} is a controlled substance. Select a witness.`,
         'WITNESS_REQUIRED',
       );
     }
     if (input.witnessId === input.dispenserId) {
       throw new DispenseError(
-        'Operator and witness must be two different staff members.',
+        'Select a different witness. The witness cannot be the person recording the movement.',
         'WITNESS_REQUIRED',
       );
     }
@@ -697,7 +697,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     const witnessDoc = await getUserById(input.witnessId);
     if (!witnessDoc || witnessDoc.isActive === false) {
       throw new DispenseError(
-        'The witnessing staff member could not be verified. Select an active member of staff.',
+        'The witness could not be verified. Select an active staff member.',
         'WITNESS_INVALID',
       );
     }
@@ -713,7 +713,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     }
     if (input.orgId && witnessDoc.orgId && witnessDoc.orgId !== input.orgId) {
       throw new DispenseError(
-        'The witness must belong to the same organisation.',
+        'The witness must belong to this organization.',
         'WITNESS_INVALID',
       );
     }
@@ -753,7 +753,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     await releaseDispenseClaim(rx._id, claim.id);
     const remaining = Math.max(0, claimedRequested - (rx.quantityDispensed || 0));
     throw new DispenseError(
-      `Dispense quantity exceeds the prescribed course; ${remaining} ${rx.medication} remain.`,
+      `The quantity is more than the prescribed course. ${remaining} ${rx.medication} remain to be dispensed.`,
       'BAD_QUANTITY',
     );
   }
@@ -831,7 +831,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
       });
       await rollback();
       throw new DispenseError(
-        err instanceof Error ? err.message : 'Controlled-substance register entry failed.',
+        err instanceof Error ? err.message : 'Not dispensed. The controlled-substance register entry was not saved. Try again.',
         'REGISTER_FAILED',
       );
     }
@@ -882,7 +882,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     }
     await rollback();
     throw new DispenseError(
-      'Could not record the dispense; stock has been returned. Please retry.',
+      'Dispense not recorded. The stock has been returned. Try again.',
       'WRITE_FAILED',
     );
   }

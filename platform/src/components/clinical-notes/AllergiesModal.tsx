@@ -24,6 +24,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import './clinical-notes.css';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 type AllergyTab = 'active' | 'inactive';
 
@@ -47,7 +48,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   const confirmPrompt = useConfirmPrompt();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
@@ -92,12 +93,12 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (err) {
-      showToast(err instanceof Error ? err.message : 'The change could not be saved.', 'error');
+      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
     } finally { setBusy(false); }
   };
 
   const handleAdd = () => withBusy(async () => {
-    if (!draft.substance.trim()) { showToast('Pick or enter the allergen first.', 'error'); return; }
+    if (!draft.substance.trim()) { showToast('Select or enter the allergen.', 'error'); return; }
     const { addAllergy } = await import('@/lib/services/allergy-service');
     const next = await addAllergy(patientId, needScope(), {
       substance: draft.substance,
@@ -130,7 +131,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
       if (answer === null) return;
       reason = answer;
     }
-    if (!reason) { showToast('A reason is required.', 'error'); return; }
+    if (!reason) { showToast('Enter a reason.', 'error'); return; }
     const { removeAllergy } = await import('@/lib/services/allergy-service');
     const next = await removeAllergy(patientId, needScope(), selected.id, reason, status);
     if (next) setEntries(next);
@@ -147,7 +148,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   });
 
   const savePatient = (patch: Partial<PatientDoc>) => withBusy(async () => {
-    if (!scope) throw new Error('Your patient data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { updatePatient } = await import('@/lib/services/patient-service');
     const updated = await updatePatient(patientId, patch, scope);
     if (updated) setPatient(updated);

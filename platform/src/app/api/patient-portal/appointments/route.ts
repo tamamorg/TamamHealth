@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ appointments: await getDemoAppointmentsByPatient(auth.sub) });
     }
     logApiError('[patient-portal/appointments]', err);
-    return NextResponse.json({ error: 'Failed to fetch appointments' }, { status: 500 });
+    return NextResponse.json({ error: 'Your appointments could not be loaded. Try again.' }, { status: 500 });
   }
 }
 
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   }
   if (missingOwnership(ownership) && !demoFallbackEnabled()) {
     logApiError('[patient-portal/appointments POST]', new Error(`No organisation resolved for patient ${auth.sub}`));
-    return NextResponse.json({ error: 'Your request could not be sent. Please contact your facility.' }, { status: 503 });
+    return NextResponse.json({ error: 'Your request was not sent. Contact your facility.' }, { status: 503 });
   }
 
   const capped = await pendingRequestCap(auth.sub);
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, id: doc._id, appointment: doc }, { status: 201 });
     }
     logApiError('[patient-portal/appointments POST]', err);
-    return NextResponse.json({ error: 'Failed to create appointment request' }, { status: 500 });
+    return NextResponse.json({ error: 'Your appointment request was not sent. Try again.' }, { status: 500 });
   }
 }
 
@@ -212,7 +212,7 @@ async function pendingRequestCap(patientId: string): Promise<NextResponse | null
     return null; // a failed count must not block care; the desk still triages
   }
   return NextResponse.json({
-    error: `You already have ${MAX_PENDING_REQUESTS} requests waiting for the facility to answer. Please wait for them to contact you, or cancel one first.`,
+    error: `You already have ${MAX_PENDING_REQUESTS} requests waiting for the facility. Wait for the facility to contact you, or cancel a request first.`,
     code: 'too_many_requests',
   }, { status: 429 });
 }
@@ -247,7 +247,7 @@ async function createSlotRequest(auth: PatientTokenPayload, body: Record<string,
     const ctx = await resolvePortalBookingContext(auth.sub);
     if (!ctx) {
       logApiError('[patient-portal/appointments POST]', new Error(`No organisation or facility resolved for patient ${auth.sub}`));
-      return NextResponse.json({ error: 'Your request could not be sent. Please contact your facility.' }, { status: 503 });
+      return NextResponse.json({ error: 'Your request was not sent. Contact your facility.' }, { status: 503 });
     }
     const capped = await pendingRequestCap(auth.sub);
     if (capped) return capped;
@@ -363,6 +363,6 @@ async function createSlotRequest(auth: PatientTokenPayload, body: Record<string,
     return NextResponse.json({ ok: true, id: doc._id, appointment: doc }, { status: 201 });
   } catch (err) {
     logApiError('[patient-portal/appointments POST]', err);
-    return NextResponse.json({ error: 'Failed to create appointment request' }, { status: 500 });
+    return NextResponse.json({ error: 'Your appointment request was not sent. Try again.' }, { status: 500 });
   }
 }

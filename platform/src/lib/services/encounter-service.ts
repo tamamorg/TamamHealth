@@ -327,7 +327,7 @@ export async function transitionEncounter(
           actorRole: opts?.actorRole,
           note: `Projected from encounter stage ${updated.status}`,
         });
-        if (!projected) throw new Error('Appointment projection write failed');
+        if (!projected) throw new Error('The visit was saved, but the appointment status was not updated. Reload the page.');
       }
       const { resolveWorkflowRepair } = await import('./workflow-repair-service');
       await resolveWorkflowRepair(repairId).catch(() => undefined);

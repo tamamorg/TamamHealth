@@ -46,7 +46,7 @@ function normalizePhone(value: string): string | null {
 function rateLimited(resetAt: number) {
   const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
   return NextResponse.json(
-    { error: 'Too many checkout attempts. Please try again shortly.' },
+    { error: 'Too many payment attempts. Wait a few minutes, then try again.' },
     { status: 429, headers: { 'Retry-After': String(retryAfter) } },
   );
 }
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 
     if (!link) {
       return NextResponse.json(
-        { error: 'Payment link not found' },
+        { error: 'This payment link was not found. Ask the facility for a new link.' },
         { status: 404 }
       );
     }
@@ -149,15 +149,15 @@ async function postHandler(req: NextRequest) {
     const link = await getPaymentLink(linkId);
 
     if (!link) {
-      return NextResponse.json({ error: 'Payment link not found' }, { status: 404 });
+      return NextResponse.json({ error: 'This payment link was not found. Ask the facility for a new link.' }, { status: 404 });
     }
 
     // Refuse to record intent against a link that can't take a payment.
     if (link.status === 'used') {
-      return NextResponse.json({ error: 'This payment link has already been paid', status: 'used' }, { status: 409 });
+      return NextResponse.json({ error: 'This payment link has already been paid.', status: 'used' }, { status: 409 });
     }
     if (link.status === 'expired' || isExpired(link.expiresAt)) {
-      return NextResponse.json({ error: 'This payment link has expired', status: 'expired' }, { status: 409 });
+      return NextResponse.json({ error: 'This payment link has expired. Ask the facility for a new link.', status: 'expired' }, { status: 409 });
     }
 
     const result = await startPaymentLinkAttempt({
@@ -172,10 +172,10 @@ async function postHandler(req: NextRequest) {
     );
   } catch (error) {
     const code = error instanceof Error ? error.message : '';
-    if (code === 'PAYMENT_LINK_NOT_FOUND') return NextResponse.json({ error: 'Payment link not found' }, { status: 404 });
-    if (code === 'PAYMENT_LINK_USED') return NextResponse.json({ error: 'This payment link has already been paid', status: 'used' }, { status: 409 });
-    if (code === 'PAYMENT_LINK_EXPIRED') return NextResponse.json({ error: 'This payment link has expired', status: 'expired' }, { status: 409 });
-    if (code === 'PAYMENT_LINK_CONFLICT') return NextResponse.json({ error: 'Checkout is busy. Please retry.' }, { status: 409 });
+    if (code === 'PAYMENT_LINK_NOT_FOUND') return NextResponse.json({ error: 'This payment link was not found. Ask the facility for a new link.' }, { status: 404 });
+    if (code === 'PAYMENT_LINK_USED') return NextResponse.json({ error: 'This payment link has already been paid.', status: 'used' }, { status: 409 });
+    if (code === 'PAYMENT_LINK_EXPIRED') return NextResponse.json({ error: 'This payment link has expired. Ask the facility for a new link.', status: 'expired' }, { status: 409 });
+    if (code === 'PAYMENT_LINK_CONFLICT') return NextResponse.json({ error: 'Another payment on this link is in progress. Wait a moment, then try again.' }, { status: 409 });
     logApiError('[API /checkout POST]', error);
     return serverError();
   }

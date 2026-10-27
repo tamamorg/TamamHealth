@@ -20,6 +20,7 @@ import {
   type TamamFeatureId,
 } from '@/modules/feature-catalog/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 
 type FlagKey = keyof OrganizationDoc['featureFlags'];
 
@@ -94,7 +95,7 @@ export default function AdminFlagsPage() {
       }, currentUser?._id, currentUser?.username);
       showToast('Platform flag updated.', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update flag.', 'error');
+      showToast(describeError(err, 'Platform flag not updated. Try again.'), 'error');
     } finally {
       setSavingKey(null);
     }
@@ -116,7 +117,7 @@ export default function AdminFlagsPage() {
       clearOverride(cellKey);
     } catch (err) {
       clearOverride(cellKey); // roll back — the write failed, the optimistic value must not stand
-      showToast(err instanceof Error ? err.message : 'Failed to update flag.', 'error');
+      showToast(describeError(err, 'Platform flag not updated. Try again.'), 'error');
     } finally {
       setSavingKey(null);
     }
@@ -134,7 +135,7 @@ export default function AdminFlagsPage() {
       }, currentUser?._id, currentUser?.username);
       showToast(t('featureCatalog.toast.updated'), 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('featureCatalog.toast.failed'), 'error');
+      showToast(describeError(err, t('featureCatalog.toast.failed')), 'error');
     } finally {
       setSavingKey(null);
     }

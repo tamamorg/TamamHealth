@@ -24,6 +24,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
 import { Corners } from '@/components/login/login-chrome';
+import { describeApiError } from '@/lib/user-facing-error';
 
 function AcceptInviteForm() {
   const router = useRouter();
@@ -98,7 +99,7 @@ function AcceptInviteForm() {
       return;
     }
     if (password !== confirm) {
-      setError('The two passwords do not match.');
+      setError('The passwords do not match. Enter the same password in both fields.');
       return;
     }
 
@@ -111,12 +112,12 @@ function AcceptInviteForm() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(payload.error || 'Could not set your password. Try again.');
+        setError(describeApiError(payload, 'Password not set. Try again.'));
         return;
       }
       setDone(true);
     } catch {
-      setError('Could not reach the server. Check your connection and try again.');
+      setError('Cannot reach the server. Check your internet connection and try again.');
     } finally {
       setBusy(false);
     }

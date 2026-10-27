@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import type { PaymentRecord } from '@/lib/db-types-billing';
 import type { PaymentMethodType } from '@/lib/db-types-payments';
+import { describeError } from '@/lib/user-facing-error';
 
 export default function AdmissionDepositControls({ admissionId }: { admissionId: string }) {
   const { currentUser } = useAuth();
@@ -31,7 +32,7 @@ export default function AdmissionDepositControls({ admissionId }: { admissionId:
     const bill = row.admissionDepositBillId ? await getBillById(row.admissionDepositBillId, scope) : null;
     setPayments(bill?.payments ?? []);
   }, [admissionId, scope]);
-  useEffect(() => { void load().catch(cause => setError(String(cause))); }, [load]);
+  useEffect(() => { void load().catch(cause => setError(describeError(cause, 'Deposit details not loaded. Reload the page to try again.'))); }, [load]);
   const run = async (action: 'refund' | 'forfeit' | 'waive' | 'issue' | 'refresh') => {
     if (!scope || !currentUser || !admission) return;
     setBusy(true); setError('');
@@ -43,8 +44,8 @@ export default function AdmissionDepositControls({ admissionId }: { admissionId:
         const pending = admission.admissionDepositPendingRefund;
         await service.refundAdmissionDeposit({ admissionId, scope, actor, paymentId: pending?.paymentId || paymentId, amount: pending?.amount ?? Number(amount), method: pending?.method ?? method, reason: pending?.reason || reason });
       } else await service.assessAdmissionDeposit({ admissionId, scope, actor, decision: action, reason, refundAmount: amount ? Number(amount) : undefined });
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-    finally { await load().catch(cause => setError(String(cause))); setBusy(false); }
+    } catch (cause) { setError(describeError(cause, 'Deposit change not saved. Try again.')); }
+    finally { await load().catch(cause => setError(describeError(cause, 'Deposit details not loaded. Reload the page to try again.'))); setBusy(false); }
   };
   if (!allowed || !admission) return null;
   return <section className="ehr-card p-4 space-y-3">

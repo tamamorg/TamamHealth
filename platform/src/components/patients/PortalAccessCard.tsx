@@ -20,6 +20,7 @@ import { Check, Copy, Loader2, Printer, Smartphone, UserX } from '@/components/i
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePortalSlipLabels } from '@/components/patients/PortalSlipDialog';
 import { buildPortalSlipText, printPortalSlip, type PortalSlip } from '@/lib/patient-portal-slip';
+import { describeApiError } from '@/lib/user-facing-error';
 
 interface PortalAccess {
   enrolled: boolean;
@@ -83,7 +84,7 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
         body: JSON.stringify({ patientId, ...payload }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(body.error || t('pac.errFailed')); return null; }
+      if (!res.ok) { setError(describeApiError(body, t('pac.errFailed'))); return null; }
       return body;
     } catch {
       setError(t('pac.errNetwork'));

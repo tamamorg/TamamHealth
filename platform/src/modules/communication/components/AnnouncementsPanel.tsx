@@ -12,6 +12,7 @@ import type { DataScope } from '@/lib/services/data-scope';
 import { ROLE_PERMISSIONS } from '@/lib/permissions';
 import { Megaphone, X, Loader2, Send, Plus, Check } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 /** Roles an announcement can target. National oversight roles are excluded —
  *  they are not an org's staff, so an org announcement can't reach them. */
@@ -91,7 +92,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
   const handlePost = async () => {
     setError('');
     if (!currentUser) return;
-    if (!title.trim() || !bodyText.trim()) { setError('Title and message are required.'); return; }
+    if (!title.trim() || !bodyText.trim()) { setError('Enter a title and a message.'); return; }
     setSaving(true);
     try {
       const { createAnnouncement } = await import('@/modules/communication/services/announcement-service');
@@ -116,7 +117,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
       setComposing(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not post announcement.');
+      setError(describeError(err, 'Announcement not posted. Try again.'));
     } finally {
       setSaving(false);
     }

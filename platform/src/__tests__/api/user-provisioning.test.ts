@@ -79,7 +79,7 @@ it('rejects an org administrator that could not delegate within any organization
   expect(response.status).toBe(400);
   expect(mockCreateUser).not.toHaveBeenCalled();
   expect(await response.json()).toEqual(expect.objectContaining({
-    error: expect.stringMatching(/assigned to an organization/i),
+    error: expect.stringMatching(/organization for this organization administrator/i),
   }));
 });
 

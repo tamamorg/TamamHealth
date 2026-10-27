@@ -265,7 +265,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
 
     try {
       const session = readPatientPortalSession();
-      if (!session) throw new Error('Missing patient session');
+      if (!session) throw new Error('Your session has ended. Sign in again to continue.');
       const { message: saved } = await patientPortalFetch<{ message: { _id: string; body: string } }>(
         '/api/patient-portal/messages',
         session.token,

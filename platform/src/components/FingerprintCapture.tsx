@@ -23,6 +23,7 @@ import {
 } from '@/lib/services/fingerprint-service';
 import type { FingerPosition, BiometricTemplateFormat } from '@/lib/db-types-biometrics';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 export interface CapturedFingerprint {
   finger: FingerPosition;
@@ -88,7 +89,7 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
       // Re-capturing a finger replaces the earlier capture for that finger.
       onChange([...value.filter(c => c.finger !== finger), capture]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('fingerprint.captureFailed'));
+      setError(describeError(err, t('fingerprint.captureFailed')));
     } finally {
       setCapturing(false);
     }

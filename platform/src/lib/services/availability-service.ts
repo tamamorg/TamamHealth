@@ -73,10 +73,10 @@ export async function createAvailability(
   actorName?: string,
 ): Promise<AvailabilityDoc> {
   if (!data.providerId || !data.date || !data.startTime || !data.endTime) {
-    throw new Error('Provider, date, start time and end time are required');
+    throw new Error('Enter the provider, date, start time and end time.');
   }
   if (toMinutes(data.endTime) <= toMinutes(data.startTime)) {
-    throw new Error('End time must be after start time');
+    throw new Error('Enter an end time after the start time.');
   }
 
   const orgId = await resolveDocOrgId({ orgId: data.orgId, facilityId: data.facilityId }, 'availability window');
@@ -91,7 +91,7 @@ export async function createAvailability(
     toMinutes(a.startTime) < toMinutes(data.endTime)
   );
   if (clash) {
-    throw new Error(`Overlaps an existing availability window (${clash.startTime}–${clash.endTime}) on ${clash.date}`);
+    throw new Error(`This overlaps existing availability on ${clash.date} (${clash.startTime}–${clash.endTime}). Choose a different time.`);
   }
 
   const doc: AvailabilityDoc = {

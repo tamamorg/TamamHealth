@@ -28,6 +28,7 @@ import {
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { describeError } from '@/lib/user-facing-error';
 
 const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
 const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'oral'> = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
@@ -209,7 +210,7 @@ export default function ImmunizationsPage() {
   const handleSendRecall = async (d: ImmunizationDefaulter, key: string) => {
     const phone = phoneForDefaulter(d.patientId);
     if (!phone) {
-      showToast(`No phone on file for ${d.patientName}.`, 'error');
+      showToast(`No SMS sent. ${d.patientName} has no phone number on file.`, 'error');
       return;
     }
     setSendingRecall(s => ({ ...s, [key]: true }));
@@ -217,12 +218,12 @@ export default function ImmunizationsPage() {
       const { sendSms } = await import('@/lib/sms');
       const result = await sendSms({ to: phone, body: recallMessage(d) });
       if (result.ok) {
-        showToast(`Recall SMS sent for ${d.patientName}.`, 'success');
+        showToast(`Recall SMS sent to ${d.patientName}.`, 'success');
       } else {
-        showToast(`Could not send recall SMS for ${d.patientName}.`, 'error');
+        showToast(`Recall SMS to ${d.patientName} not sent. Try again.`, 'error');
       }
     } catch {
-      showToast(`Could not send recall SMS for ${d.patientName}.`, 'error');
+      showToast(`Recall SMS to ${d.patientName} not sent. Try again.`, 'error');
     } finally {
       setSendingRecall(s => ({ ...s, [key]: false }));
     }
@@ -248,7 +249,7 @@ export default function ImmunizationsPage() {
         }
       }
       showToast(
-        `Reminders sent: ${sent}. Failed: ${failed}. No phone on file: ${skipped}.`,
+        `${sent} reminders sent. ${failed} not sent. ${skipped} skipped (no phone number on file).`,
         sent > 0 ? 'success' : 'error',
       );
     } finally {
@@ -332,7 +333,7 @@ export default function ImmunizationsPage() {
     setShowModal(false);
     setForm({ patientId: '', patientName: '', gender: 'Male', dateOfBirth: '', vaccine: 'BCG', doseNumber: 1, dateGiven: todayIso(), nextDueDate: '', batchNumber: '', site: 'left arm', adverseReaction: false, adverseReactionDetails: '' });
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err), 'error');
+      showToast(describeError(err, 'Immunization not recorded. Try again.'), 'error');
     }
   };
 

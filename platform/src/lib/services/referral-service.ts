@@ -503,7 +503,7 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
           currentOrgId = undefined;
         }
         if (currentOrgId !== referral.orgId && !(toOrgId && currentOrgId === toOrgId)) {
-          throw new ReferralTenantError('Referral refused: the patient does not belong to the referring organization.');
+          throw new ReferralTenantError('Referral not sent. This patient is registered with a different organization.');
         }
       }
       try {

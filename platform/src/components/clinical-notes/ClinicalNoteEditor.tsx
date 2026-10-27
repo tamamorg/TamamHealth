@@ -68,6 +68,7 @@ import type {
 import './clinical-notes.css';
 import Select from '@/components/Select';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
+import { describeError } from '@/lib/user-facing-error';
 
 const AUTOSAVE_MS = 900;
 /** A chart read that has not answered by now is reported as failed, not left "loading". */
@@ -366,7 +367,7 @@ export default function ClinicalNoteEditor({
       }
       return updated;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('noteEditor.saveFailed'), 'error');
+      showToast(describeError(err, t('noteEditor.saveFailed')), 'error');
       return null;
     } finally {
       setSaving(false);
@@ -676,7 +677,7 @@ export default function ClinicalNoteEditor({
         openChartTab('history');
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('noteEditor.cosignFailed'), 'error');
+      showToast(describeError(err, t('noteEditor.cosignFailed')), 'error');
     } finally {
       setCosigning(false);
     }
@@ -691,7 +692,7 @@ export default function ClinicalNoteEditor({
       setSavedAt(new Date().toISOString());
       showToast(t('noteEditor.draftSaved'), 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('noteEditor.saveFailed'), 'error');
+      showToast(describeError(err, t('noteEditor.saveFailed')), 'error');
     } finally {
       setSaving(false);
     }

@@ -25,7 +25,7 @@ export function useLabResults(patientId?: string) {
       setResults(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load lab results');
+      setError('Lab results not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

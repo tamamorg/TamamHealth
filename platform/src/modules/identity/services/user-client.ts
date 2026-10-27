@@ -33,7 +33,7 @@ async function usersRequest(
   });
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(typeof body.error === 'string' ? body.error : 'User action failed');
+    throw new Error(typeof body.error === 'string' ? body.error : 'Action not completed. Try again.');
   }
   return body;
 }
@@ -41,7 +41,7 @@ async function usersRequest(
 export async function getClientUsers(scope: DataScope): Promise<UserDoc[]> {
   const response = await apiFetch('/api/users', { cache: 'no-store' });
   const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
-  if (!response.ok) throw new Error(body.error || 'Unable to load users');
+  if (!response.ok) throw new Error(body.error || 'User accounts not loaded. Reload the page to try again.');
   // The API is authoritative; the second filter prevents an accidentally broad
   // response from being displayed by a stale or compromised client session.
   return filterByScope(body.users ?? [], scope);
@@ -50,7 +50,7 @@ export async function getClientUsers(scope: DataScope): Promise<UserDoc[]> {
 export async function getClientUserById(id: string): Promise<UserDoc | null> {
   const response = await apiFetch('/api/users', { cache: 'no-store' });
   const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
-  if (!response.ok) throw new Error(body.error || 'Unable to load user');
+  if (!response.ok) throw new Error(body.error || 'User account not loaded. Reload the page to try again.');
   return body.users?.find(user => user._id === id) ?? null;
 }
 

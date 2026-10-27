@@ -68,7 +68,7 @@ export default function BillingHomePage() {
       setBills(await getAllBills(scope) || []);
     } catch (err) {
       console.error('Error loading bills:', err);
-      setError('Could not load bills. Please try again.');
+      setError('Bills not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

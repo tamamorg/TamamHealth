@@ -22,6 +22,7 @@ import Select from '@/components/Select';
 import { Plus, Trash2, ClipboardCheck } from '@/components/icons/lucide';
 import type { VisitReasonDoc } from '@/lib/db-types-booking';
 import type { AppointmentType } from '@/lib/db-types';
+import { describeError } from '@/lib/user-facing-error';
 
 const DURATIONS = [10, 15, 20, 30, 40, 45, 60, 90];
 
@@ -62,7 +63,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       setUsingDefaults(list.length > 0 && list.every(isDefaultVisitReason));
     } catch (err) {
       console.error('[VisitTypesSection]', err);
-      showToast('Could not load visit types', 'error');
+      showToast('Visit types not loaded. Reload the page to try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -89,12 +90,12 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       const list = await materialiseIfNeeded();
       // After materialising, the row carries a real _rev under the same id.
       const target = list.find(r => r._id === id);
-      if (!target) throw new Error('That visit type is no longer in the list');
+      if (!target) throw new Error('That visit type has been removed. Reload the page.');
       const { updateVisitReason } = await import('@/lib/services/visit-reason-service');
       await updateVisitReason(target._id, updates, currentUser?._id, currentUser?.name);
       await load();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save that change', 'error');
+      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }
@@ -108,9 +109,9 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       const { retireVisitReason } = await import('@/lib/services/visit-reason-service');
       await retireVisitReason(reason._id, currentUser?._id, currentUser?.name);
       await load();
-      showToast(`"${reason.name}" removed from the booking menu`, 'success');
+      showToast(`"${reason.name}" removed from the booking menu.`, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not remove that visit type', 'error');
+      showToast(describeError(err, 'Visit type not removed. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }
@@ -138,9 +139,9 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       setNewDuration(30);
       setAdding(false);
       await load();
-      showToast('Visit type added', 'success');
+      showToast('Visit type added.', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not add that visit type', 'error');
+      showToast(describeError(err, 'Visit type not added. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }

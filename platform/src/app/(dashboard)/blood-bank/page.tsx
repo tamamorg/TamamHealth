@@ -99,7 +99,7 @@ export default function BloodBankPage() {
       setUnits(all);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load blood units', 'error');
+      showToast('Blood units not loaded. Reload the page to try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -155,15 +155,15 @@ export default function BloodBankPage() {
 
   const handleAdd = async () => {
     if (!form.unitId.trim()) {
-      showToast('Unit ID is required', 'error');
+      showToast('Enter the unit ID.', 'error');
       return;
     }
     if (!form.collectionDate || !form.expiryDate) {
-      showToast('Collection and expiry dates are required', 'error');
+      showToast('Enter the collection date and the expiry date.', 'error');
       return;
     }
     if (!facilityId) {
-      showToast('No facility assigned to your account', 'error');
+      showToast('Your account is not assigned to a facility. Ask your administrator to assign one.', 'error');
       return;
     }
     try {
@@ -180,12 +180,12 @@ export default function BloodBankPage() {
         facilityName,
         notes: form.notes.trim() || undefined,
       });
-      showToast(`Blood unit ${form.unitId.trim()} stocked`, 'success');
+      showToast(`Blood unit ${form.unitId.trim()} added to inventory.`, 'success');
       setOpen(false);
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Failed to stock blood unit', 'error');
+      showToast('Blood unit not added. Check that the unit ID is not already in inventory, then try again.', 'error');
     }
   };
 
@@ -241,7 +241,7 @@ export default function BloodBankPage() {
 
   const handleReserve = async () => {
     if (!reserveUnitId || !reservePatient) {
-      showToast('Select a patient to reserve this unit', 'error');
+      showToast('Select the patient this unit is reserved for.', 'error');
       return;
     }
     if (!scope) return;
@@ -249,12 +249,12 @@ export default function BloodBankPage() {
     try {
       const result = await reserveUnit(reserveUnitId, reservePatient._id, scope);
       if (!result) throw new Error('reserve-failed');
-      showToast(`Unit reserved for ${patientFullName(reservePatient)}`, 'success');
+      showToast(`Blood unit reserved for ${patientFullName(reservePatient)}.`, 'success');
       closeReserve();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Failed to reserve unit — it may no longer be available', 'error');
+      showToast('Blood unit not reserved. It may have been issued or reserved on another device. Refresh and check availability.', 'error');
     } finally {
       setReserving(false);
     }
@@ -262,7 +262,7 @@ export default function BloodBankPage() {
 
   const handleDiscard = async () => {
     if (!discardUnitId || !discardReason.trim()) {
-      showToast('A reason is required to discard a unit', 'error');
+      showToast('Enter the reason for discarding this unit.', 'error');
       return;
     }
     if (!scope) return;
@@ -270,12 +270,12 @@ export default function BloodBankPage() {
     try {
       const result = await discardUnit(discardUnitId, discardReason.trim(), scope);
       if (!result) throw new Error('discard-failed');
-      showToast('Unit discarded', 'success');
+      showToast('Blood unit discarded.', 'success');
       closeDiscard();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Failed to discard unit', 'error');
+      showToast('Blood unit not discarded. Try again.', 'error');
     } finally {
       setDiscarding(false);
     }
@@ -289,15 +289,15 @@ export default function BloodBankPage() {
       if (!result) throw new Error('crossmatch-failed');
       showToast(
         crossmatchChoice === 'compatible'
-          ? 'Crossmatch recorded — compatible'
-          : 'Crossmatch recorded as incompatible — unit returned to available inventory',
+          ? 'Crossmatch recorded as compatible.'
+          : 'Crossmatch recorded as incompatible. The unit is back in available inventory.',
         'success',
       );
       closeCrossmatch();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Failed to record crossmatch result', 'error');
+      showToast('Crossmatch result not recorded. Try again.', 'error');
     } finally {
       setCrossmatching(false);
     }
@@ -307,7 +307,7 @@ export default function BloodBankPage() {
     if (!transfuseUnitId) return;
     const unit = units.find(u => u._id === transfuseUnitId);
     if (!unit?.reservedForPatient) {
-      showToast('No patient reservation found for this unit', 'error');
+      showToast('This unit is not reserved for a patient. Reserve it before recording a transfusion.', 'error');
       return;
     }
     if (!scope) return;
@@ -316,12 +316,12 @@ export default function BloodBankPage() {
       const transfusedBy = currentUser?.name || currentUser?.username || currentUser?._id || 'Staff';
       const result = await recordTransfusion(transfuseUnitId, unit.reservedForPatient, transfusedBy, scope);
       if (!result) throw new Error('transfuse-failed');
-      showToast('Transfusion recorded', 'success');
+      showToast('Transfusion recorded.', 'success');
       closeTransfuse();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Failed to record transfusion', 'error');
+      showToast('Transfusion not recorded. Try again.', 'error');
     } finally {
       setTransfusing(false);
     }

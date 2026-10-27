@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
     if (missingOwnership(ownership)) {
       logApiError('[patient-portal/payments POST]', new Error(`No organisation resolved for patient ${auth.sub}`));
-      return NextResponse.json({ error: 'Your payment could not be submitted. Please contact your facility.' }, { status: 503 });
+      return NextResponse.json({ error: 'Your payment was not submitted. Contact your facility.' }, { status: 503 });
     }
 
     const doc: PaymentDoc = {
@@ -104,6 +104,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id: doc._id }, { status: 201 });
   } catch (err) {
     logApiError('[patient-portal/payments POST]', err);
-    return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
+    return NextResponse.json({ error: 'Your payment was not recorded. Try again.' }, { status: 500 });
   }
 }

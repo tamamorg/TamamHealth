@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   const verdict = await rateLimit({ key: `portal-refresh:${ip}`, limit: 60, windowMs: 60 * 60 * 1000 });
   if (!verdict.allowed) {
-    return NextResponse.json({ error: 'Too many refresh attempts.' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many attempts. Wait a few minutes, then try again.' }, { status: 429 });
   }
 
   const auth = await verifyPatientToken(req);
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     // "your session has ended, please sign in again" rather than implying
     // something went wrong.
     return NextResponse.json(
-      { error: 'Session expired. Please sign in again.', reason: 'session-max-age' },
+      { error: 'Your session has ended. Sign in again to continue.', reason: 'session-max-age' },
       { status: 401 },
     );
   }
@@ -67,6 +67,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ token });
   } catch (err) {
     logApiError('[patient-portal/refresh]', err);
-    return NextResponse.json({ error: 'Could not refresh the session' }, { status: 500 });
+    return NextResponse.json({ error: 'Your session could not be renewed. Sign in again.' }, { status: 500 });
   }
 }

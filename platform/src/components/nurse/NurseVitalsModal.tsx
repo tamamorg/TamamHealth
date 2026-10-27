@@ -11,6 +11,7 @@ import { recordNursingVitals } from '@/lib/services/medical-record-service';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { MedicalRecordDoc } from '@/lib/db-types';
+import { describeError } from '@/lib/user-facing-error';
 
 type NurseVitals = VitalsInput & { height?: string };
 
@@ -100,7 +101,7 @@ export default function NurseVitalsModal({
     for (const field of FIELDS) {
       const value = vitals[field.key]?.trim();
       if (value && field.rangeKey && !isVitalInRange(field.rangeKey, value)) {
-        toast.showToast(`${field.label} is outside the valid range. Check the value.`, 'error');
+        toast.showToast(`${field.label} is outside the accepted range. Check the reading and enter it again.`, 'error');
         return;
       }
     }
@@ -122,7 +123,7 @@ export default function NurseVitalsModal({
       onSaved?.();
       onClose();
     } catch (error) {
-      toast.showToast(error instanceof Error ? error.message : 'Failed to save vitals', 'error');
+      toast.showToast(describeError(error, 'Vitals not saved. Try again.'), 'error');
     } finally {
       setSaving(false);
     }

@@ -38,6 +38,7 @@ import Select from '@/components/Select';
 import { FORMULARY } from '@/lib/data/formulary';
 import { stopsClickPropagation } from '@/lib/a11y';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
+import { describeError } from '@/lib/user-facing-error';
 
 /** Ordered but never given: held, stockout-referred, or recalled. */
 const NOT_ADMINISTERED_STAGES = new Set<PrescriptionStatus>([
@@ -144,7 +145,7 @@ export default function MedicationsModal({
   const selected = rows.find(rx => rx._id === selectedId) || null;
 
   const savePatient = useCallback(async (patch: Partial<PatientDoc>) => {
-    if (!scope) throw new Error('Your patient data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { updatePatient } = await import('@/lib/services/patient-service');
     const updated = await updatePatient(patientId, patch, scope);
     if (updated) setPatient(updated);
@@ -155,7 +156,7 @@ export default function MedicationsModal({
   const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (err) {
-      showToast(err instanceof Error ? err.message : 'The change could not be saved.', 'error');
+      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
     } finally { setBusy(false); }
   };
 
@@ -172,7 +173,7 @@ export default function MedicationsModal({
     medication: string,
   ): Promise<PrescriptionCreateInput['medicationSafetyAcknowledgement'] | null> => {
     const { assessPrescriptionSafety } = await import('@/lib/services/prescription-service');
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     const safety = await assessPrescriptionSafety(patientId, medication, scope);
     if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
     const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
@@ -199,7 +200,7 @@ export default function MedicationsModal({
     const medicationSafetyAcknowledgement = await reviewSevereAllergy(selected.medication);
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     const result = await createPrescription({
       patientId,
       patientName,
@@ -225,7 +226,7 @@ export default function MedicationsModal({
         'error',
       );
     } else if (result.interactionWarnings?.hasInteractions) {
-      showToast(`Renewed with interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}`, 'error');
+      showToast(`Renewed. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`, 'warning');
     } else {
       showToast(`${selected.medication} renewed.`, 'success');
     }
@@ -274,7 +275,7 @@ export default function MedicationsModal({
     const medicationSafetyAcknowledgement = await reviewSevereAllergy(medication);
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     await createPrescription({
       patientId,
       patientName,
@@ -292,7 +293,7 @@ export default function MedicationsModal({
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
     } as PrescriptionCreateInput, scope);
-    showToast(`${medication} added to the med list.`, 'success');
+    showToast(`${medication} added to the medication list.`, 'success');
     setAddMed({ medication: '', dose: '', frequency: '' });
     setShowAddMed(false);
     await load();

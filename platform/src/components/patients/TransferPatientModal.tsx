@@ -29,6 +29,7 @@ import {
   Timer, Users, Clock, Siren,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 type IconCmp = typeof ArrowRight;
 
@@ -159,7 +160,7 @@ export default function TransferPatientModal({
   // Mirror the authoritative rule rather than approximating it: both the
   // local offline path and integration API use this capability function.
   const permission = useMemo(() => {
-    if (!currentUser) return { allowed: false, reason: 'Not signed in.' };
+    if (!currentUser) return { allowed: false, reason: 'Your session has ended. Sign in again to continue.' };
     return canRequestTransfer(
       {
         sub: currentUser._id,
@@ -272,7 +273,7 @@ export default function TransferPatientModal({
       onTransferred?.();
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not raise the transfer');
+      setError(describeError(e, 'Transfer request not created. Try again.'));
     } finally {
       setBusy(false);
     }

@@ -58,9 +58,9 @@ export interface AddNutritionScreeningInput {
 
 export async function addNutritionScreening(input: AddNutritionScreeningInput): Promise<NutritionScreeningDoc> {
   const name = (input.patientName || '').trim();
-  if (!name) throw new Error('A patient name is required');
+  if (!name) throw new Error('Enter the patient name.');
   if (!Number.isFinite(input.muac) || input.muac <= 0 || input.muac > 40) {
-    throw new Error('A valid MUAC in cm is required');
+    throw new Error('Enter MUAC in centimetres, for example 12.4.');
   }
   const db = nutritionScreeningsDB();
   const now = new Date().toISOString();

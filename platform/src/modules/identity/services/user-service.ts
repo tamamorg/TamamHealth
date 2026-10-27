@@ -86,7 +86,7 @@ async function postUsersApi(payload: Record<string, unknown>): Promise<Record<st
     // Network failure. Do NOT fall back to a local write — a locally-created
     // account looks successful but can never authenticate on the server or
     // any other device, which is worse than an honest error.
-    throw new Error('User accounts are managed centrally and require a connection. Check your internet and try again.');
+    throw new Error('User accounts can only be changed while online. Check your internet connection and try again.');
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
@@ -106,7 +106,7 @@ async function loadVisibleUsers(): Promise<UserDoc[]> {
     const { apiFetch } = await import('@/lib/api-fetch');
     const response = await apiFetch('/api/users');
     const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
-    if (!response.ok) throw new Error(body.error || `Failed to load staff directory (${response.status})`);
+    if (!response.ok) throw new Error(body.error || `Staff directory not loaded (server code ${response.status}). Reload the page to try again.`);
     return body.users ?? [];
   }
   const db = usersDB();
@@ -273,12 +273,12 @@ export async function createUser(
 
   // Validate
   if (!data.username || !data.password || !data.name || !data.role) {
-    throw new Error('Missing required fields: username, password, name, role');
+    throw new Error('Enter a username, password, name and role.');
   }
 
   const username = data.username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   /* istanbul ignore next -- defensive: username is always validated before reaching here */
-  if (!username) throw new Error('Invalid username');
+  if (!username) throw new Error('Enter a valid username: letters, numbers, dots, dashes or underscores.');
 
   // Screened AFTER the username is normalised, because one of the rules is
   // "not built out of the account's own identifiers" and it needs the value
@@ -302,12 +302,12 @@ export async function createUser(
   // Check uniqueness
   try {
     await db.get(`user-${username}`);
-    throw new Error(`Username "${username}" already exists`);
+    throw new Error(`The username "${username}" is already taken. Choose a different one.`);
   } catch (err: unknown) {
     const e = err as { status?: number; message?: string };
     if (e.status !== 404) {
-      /* istanbul ignore next -- re-throw: error is always the 'already exists' one */
-      if (e.message?.includes('already exists')) throw err;
+      /* istanbul ignore next -- re-throw: error is always the 'already taken' one */
+      if (e.message?.includes('already taken')) throw err;
       throw err;
     }
   }
@@ -412,7 +412,7 @@ export async function updateUser(
   };
 
   if (updated.role === 'org_admin' && !updated.orgId) {
-    throw new Error('Organization administrators must be assigned to an organization');
+    throw new Error('Select an organization for this organization administrator.');
   }
 
   const resp = await db.put(updated);
@@ -577,7 +577,7 @@ export async function changeOwnPassword(
 
   const { verifyPassword, hashPassword } = await import('@/modules/identity/core/auth');
   const ok = await verifyPassword(currentPassword, existing.passwordHash);
-  if (!ok) throw new Error('Current password is incorrect');
+  if (!ok) throw new Error('Your current password is incorrect. Try again.');
 
   // Screened here rather than only in the route, so the rule holds for every
   // caller of this function rather than for one HTTP path.

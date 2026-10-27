@@ -29,6 +29,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import type { DirectiveEntry, DirectiveType } from '@/data/mock';
 import type { DirectiveSignatory } from '@/lib/types/patient-clinical';
 import { clickable } from '@/lib/a11y';
+import { describeError } from '@/lib/user-facing-error';
 
 const TYPE_LABELS: Record<DirectiveType, string> = {
   informed_consent: 'Informed consent',
@@ -61,7 +62,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const { showToast } = useToast();
@@ -98,7 +99,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       showToast(ok, 'success');
       done();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Action failed', 'error');
+      showToast(describeError(e, 'Change not saved. Try again.'), 'error');
     } finally {
       setBusy(false);
     }

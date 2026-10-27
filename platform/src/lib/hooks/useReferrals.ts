@@ -26,7 +26,7 @@ export function useReferrals() {
       setReferrals(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load referrals');
+      setError('Referrals not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ export function usePatientReferrals(patientId?: string) {
       setReferrals(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load patient referrals');
+      setError('Patient referrals not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

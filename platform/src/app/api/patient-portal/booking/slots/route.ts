@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams;
   const reasonId = q.get('reason') || '';
   if (!reasonId) {
-    return NextResponse.json({ error: 'A visit reason is required' }, { status: 400 });
+    return NextResponse.json({ error: 'Choose a reason for the visit.' }, { status: 400 });
   }
   const rawFrom = q.get('from');
   const rawTo = q.get('to');
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     const ctx = await resolvePortalBookingContext(auth.sub);
     if (!ctx) {
       return NextResponse.json(
-        { error: 'Your account is not linked to a facility yet. Please contact your facility.' },
+        { error: 'Your account is not linked to a facility yet. Contact your facility.' },
         { status: 409 },
       );
     }
@@ -107,6 +107,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     logApiError('[patient-portal/booking/slots]', err);
-    return NextResponse.json({ error: 'Could not load available times' }, { status: 500 });
+    return NextResponse.json({ error: 'Available times not loaded. Reload the page to try again.' }, { status: 500 });
   }
 }

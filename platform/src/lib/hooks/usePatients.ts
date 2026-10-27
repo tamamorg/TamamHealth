@@ -27,7 +27,7 @@ export function usePatients(enabled = true) {
       setPatients(data);
       setError(null);
     } catch (err) {
-      setError('Failed to load patients');
+      setError('Patient list not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -56,7 +56,7 @@ export function usePatients(enabled = true) {
     data: Omit<PatientDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>,
     options?: CreatePatientOptions,
   ) => {
-    if (!scope) throw new Error('Your patient data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { createPatient } = await import('../services/patient-service');
     // Scope so duplicate-detection and geocode assignment don't read/disclose
     // across tenant boundaries (see createPatient's own docs). Bounded so a
@@ -73,7 +73,7 @@ export function usePatients(enabled = true) {
   }, [loadPatients, scope]);
 
   const update = useCallback(async (id: string, data: Partial<PatientDoc>) => {
-    if (!scope) throw new Error('Your patient data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { updatePatient } = await import('../services/patient-service');
     const patient = await updatePatient(id, data, scope);
     await loadPatients();

@@ -36,7 +36,7 @@ export interface AddCareAlertInput {
 /** Add a care alert. Returns the full updated list, or null if no patient. */
 export async function addCareAlert(patientId: string, scope: DataScope, input: AddCareAlertInput): Promise<CareAlertEntry[] | null> {
   if (!input.message || input.message.trim().length === 0) {
-    throw new Error('Care alert message is required');
+    throw new Error('Enter the care alert message.');
   }
   const entry: CareAlertEntry = {
     id: uuidv4(),
@@ -70,7 +70,7 @@ export async function resolveCareAlert(
   resolutionReason: string,
 ): Promise<CareAlertEntry[] | null> {
   if (!resolutionReason || resolutionReason.trim().length === 0) {
-    throw new Error('A resolution reason is required');
+    throw new Error('Enter the reason for resolving this alert.');
   }
   return mutatePatientListField<CareAlertEntry>(
     patientId,

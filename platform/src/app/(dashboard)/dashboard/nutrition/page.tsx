@@ -27,6 +27,7 @@ import '@/components/lab/order/lab-order.css';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import { formatClockTime } from '@/lib/format-utils';
+import { describeError } from '@/lib/user-facing-error';
 
 // Use the platform accent token so this dashboard matches the reference
 // Clinical Officer design instead of a one-off hardcoded hex.
@@ -233,7 +234,7 @@ export default function NutritionDashboard() {
       setSupplyFormError('');
       setShowSupplyForm(false);
     } catch (err) {
-      setSupplyFormError(err instanceof Error ? err.message : String(err));
+      setSupplyFormError(describeError(err, 'Supply item not saved. Try again.'));
     }
   };
 
@@ -265,7 +266,7 @@ export default function NutritionDashboard() {
       setFormError('');
       setShowForm(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(describeError(err, 'Screening not saved. Try again.'));
     }
   };
 

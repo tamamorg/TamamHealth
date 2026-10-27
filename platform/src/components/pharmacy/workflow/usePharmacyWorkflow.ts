@@ -33,6 +33,7 @@ import {
   type CounsellingPointKey,
   type PharmacyWorkflowStepKey,
 } from './pharmacy-workflow-types';
+import { describeError } from '@/lib/user-facing-error';
 
 export interface ReviewDraft {
   /** Pharmacist confirmed they read the safety panel. */
@@ -190,7 +191,7 @@ export function usePharmacyWorkflow(
       return true;
     } catch (err) {
       console.error('[pharmacy-workflow]', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err, 'Change not saved. Try again.'));
       return false;
     } finally {
       setBusy(false);

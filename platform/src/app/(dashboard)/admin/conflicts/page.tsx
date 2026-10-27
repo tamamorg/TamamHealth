@@ -142,7 +142,7 @@ export default function ConflictsPage() {
         body: JSON.stringify({ action: 'resolve', chosenRev: resolveTarget.rev, note: resolveNote || undefined }),
       });
       if (res.ok) {
-        showToast('Conflict resolved', 'success');
+        showToast('Conflict resolved.', 'success');
         setResolveTarget(null);
         await Promise.all([loadConflicts(), loadCounts()]);
       } else {
@@ -170,7 +170,7 @@ export default function ConflictsPage() {
         body: JSON.stringify({ action: 'dismiss', note: dismissNote.trim() || undefined }),
       });
       if (res.ok) {
-        showToast('Conflict dismissed', 'success');
+        showToast('Conflict dismissed.', 'success');
         setDismissTarget(null);
         setDismissNote('');
         await Promise.all([loadConflicts(), loadCounts()]);

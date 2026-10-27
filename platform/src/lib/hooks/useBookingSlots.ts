@@ -81,7 +81,7 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
     } catch (err) {
       if (seq !== requestSeq.current) return;
       console.error('[useBookingSlots]', err);
-      setError('Could not load available times');
+      setError('Available times not loaded. Reload the page to try again.');
       setSlots([]);
     } finally {
       if (seq === requestSeq.current) setLoading(false);

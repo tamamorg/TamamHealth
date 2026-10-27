@@ -81,8 +81,8 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
 
   const handleSubmit = async () => {
     const programName = programKey === 'other' ? otherName.trim() : PROGRAM_LABELS[programKey];
-    if (!programName) { showToast('Name the program first', 'error'); return; }
-    if (!enrollmentDate) { showToast('Pick an enrollment date', 'error'); return; }
+    if (!programName) { showToast('Enter the program name.', 'error'); return; }
+    if (!enrollmentDate) { showToast('Select the enrollment date.', 'error'); return; }
     try {
       setSubmitting(true);
       await create({
@@ -99,11 +99,11 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast('Program enrollment recorded', 'success');
+      showToast('Program enrollment recorded.', 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Could not record this enrollment. Please try again.', 'error');
+      showToast('Enrollment not recorded. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -113,10 +113,10 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
     setStatusBusy(id);
     try {
       await setStatus(id, next);
-      showToast(`Enrollment marked ${STATUS_LABELS[next].toLowerCase()}`, 'success');
+      showToast(`Enrollment marked ${STATUS_LABELS[next].toLowerCase()}.`, 'success');
     } catch (err) {
       console.error(err);
-      showToast('Could not update the enrollment status', 'error');
+      showToast('Enrollment status not changed. Try again.', 'error');
     } finally {
       setStatusBusy(null);
     }

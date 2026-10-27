@@ -206,13 +206,13 @@ export default function RiskCenterPage() {
       setResolving(null);
       setNote('');
       if (failed > 0) {
-        showToast(`Resolved ${resolved.length}; ${failed} could not be saved.`, 'error');
+        showToast(`${resolved.length} resolved. ${failed} not saved. Try those again.`, 'error');
       } else {
         showToast(`Resolved ${resolved.length} risk signal${resolved.length === 1 ? '' : 's'}.`, 'success');
       }
     } catch (err) {
       console.error('Failed to resolve risks:', err);
-      showToast('Could not save the resolution.', 'error');
+      showToast('Resolution not saved. Try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -225,10 +225,10 @@ export default function RiskCenterPage() {
       await reopenRisk(reopening.riskId, actor);
       await reloadResolutions();
       setReopening(null);
-      showToast('Risk reopened.', 'success');
+      showToast('Risk signal reopened.', 'success');
     } catch (err) {
       console.error('Failed to reopen risk:', err);
-      showToast('Could not reopen this risk.', 'error');
+      showToast('Risk signal not reopened. Try again.', 'error');
     } finally {
       setReopenBusy(false);
     }

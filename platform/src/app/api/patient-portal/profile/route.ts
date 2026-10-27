@@ -52,6 +52,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     logApiError('[patient-portal/profile]', err);
-    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+    return NextResponse.json({ error: 'Your profile could not be loaded. Try again.' }, { status: 500 });
   }
 }

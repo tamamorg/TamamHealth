@@ -54,7 +54,7 @@ export interface CreateTaskInput {
 
 export async function createTask(input: CreateTaskInput): Promise<ClinicianTaskDoc> {
   const title = (input.title || '').trim();
-  if (!title) throw new Error('A task title is required');
+  if (!title) throw new Error('Enter a task title.');
   const db = clinicianTasksDB();
   const now = new Date().toISOString();
   const doc: ClinicianTaskDoc = {

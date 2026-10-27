@@ -157,15 +157,15 @@ export default function BillDetailPage() {
       const { cancelBill } = await import('@/lib/services/billing-service');
       const result = await cancelBill(bill._id, actorId, actorName);
       if (result === null) {
-        showToast('This bill has payments and can no longer be deleted', 'error');
+        showToast('Bill not deleted. It has payments applied. Reverse the payments first.', 'error');
       } else {
-        showToast(`${bill.invoiceNumber} deleted`, 'success');
+        showToast(`Bill ${bill.invoiceNumber} deleted.`, 'success');
         router.push('/billing');
         return;
       }
     } catch (err) {
       console.error('Could not delete bill', err);
-      showToast('Could not delete this bill', 'error');
+      showToast('Bill not deleted. Try again.', 'error');
     } finally {
       setBusy(false);
       setConfirmDelete(false);
@@ -213,7 +213,7 @@ export default function BillDetailPage() {
     if (!bill) return;
     setOpenMenuId(null);
     if (bill.items.length <= 1) {
-      showToast('A bill needs at least one line item — delete the bill instead', 'error');
+      showToast('A bill needs at least one line item. To remove every item, delete the bill.', 'error');
       return;
     }
     await saveItems(bill.items.filter(i => i.id !== item.id), `${item.description} removed from bill`);
@@ -273,11 +273,11 @@ export default function BillDetailPage() {
     if (!bill) return;
     const amount = parseFloat(payAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      showToast('Enter a valid payment amount', 'error');
+      showToast('Enter a payment amount greater than zero.', 'error');
       return;
     }
     if (amount > bill.balanceDue) {
-      showToast(`Amount exceeds the ${money(bill.balanceDue)} due`, 'error');
+      showToast(`Enter an amount up to the ${money(bill.balanceDue)} balance due.`, 'error');
       return;
     }
     setSavingPayment(true);
@@ -285,16 +285,16 @@ export default function BillDetailPage() {
       const { recordPayment } = await import('@/lib/services/billing-service');
       const result = await recordPayment(bill._id, amount, payMethod, actorId, actorName, payReference.trim() || undefined);
       if (result === null) {
-        showToast('Could not record payment', 'error');
+        showToast('Payment not recorded. Try again.', 'error');
       } else {
-        showToast(`Payment of ${money(amount)} recorded`, 'success');
+        showToast(`Payment of ${money(amount)} recorded.`, 'success');
         setPayAmount('');
         setPayReference('');
         await loadBill();
       }
     } catch (err) {
       console.error('Could not record payment', err);
-      showToast('Could not record payment', 'error');
+      showToast('Payment not recorded. Try again.', 'error');
     } finally {
       setSavingPayment(false);
     }

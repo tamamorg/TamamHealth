@@ -14,9 +14,9 @@ const input = { pathway: 'dental' as const, patientId: 'patient', patientName: '
 beforeEach(async () => { await hospitalsDB().put({ _id: 'specialty-pathway:facility:dental', type: 'specialty_pathway_config', hospitalId: 'facility', orgId: 'org', status: 'pilot' }); });
 afterEach(teardownTestDBs);
 test('rejects unknown patients and patients outside the authorized scope', async () => {
-  await expect(createSpecialtyEpisode(input)).rejects.toThrow('registered patient');
+  await expect(createSpecialtyEpisode(input)).rejects.toThrow('patient registered at your facility');
   await patientsDB().put({ _id: 'patient', type: 'patient', firstName: 'Other', surname: 'Patient', orgId: 'another-org', registrationHospital: 'facility' });
-  await expect(createSpecialtyEpisode(input)).rejects.toThrow('registered patient');
+  await expect(createSpecialtyEpisode(input)).rejects.toThrow('patient registered at your facility');
 });
 test('uses the registered identity rather than caller-supplied patient name', async () => {
   await patientsDB().put({ _id: 'patient', type: 'patient', firstName: 'Correct', surname: 'Patient', orgId: 'org', registrationHospital: 'facility' });

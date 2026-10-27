@@ -114,7 +114,7 @@ export async function deleteSchedule(id: string, scope?: DataScope): Promise<boo
     if (scope && filterByScope([existing], scope).length === 0) return false;
     /* istanbul ignore next -- PouchDB always returns _rev on successful get() */
     if (!existing._rev) {
-      throw new Error('Cannot delete document without revision');
+      throw new Error('This record was changed on another device. Reload the page and try again.');
     }
     await db.remove(existing._id, existing._rev);
     await logAuditSafe('DELETE_SCHEDULE', undefined, undefined, `Schedule ${id} deleted`);

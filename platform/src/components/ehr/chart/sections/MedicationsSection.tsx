@@ -36,6 +36,7 @@ import type { PrescriptionCreateInput } from '@/lib/services/prescription-servic
 import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
 import { MEDICATION_HISTORY_DOMAIN, historyForDomain } from '@/lib/clinical/patient-history';
 import ReportedMedications from './ReportedMedications';
+import { describeError } from '@/lib/user-facing-error';
 
 const PAGE_SIZE = 8;
 
@@ -179,7 +180,7 @@ export default function MedicationsSection({
       setShowStopReason(false);
       setStopReason('');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not discontinue this medication.', 'error');
+      showToast(describeError(err, 'Medication not discontinued. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }
@@ -189,7 +190,7 @@ export default function MedicationsSection({
     setBusyId(rx._id);
     try {
       const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
-      if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+      if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
       const safety = await assessPrescriptionSafety(patientId, rx.medication, scope);
       if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
       const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
@@ -238,13 +239,13 @@ export default function MedicationsSection({
           'error',
         );
       } else if (result.interactionWarnings?.hasInteractions) {
-        showToast(`Renewed with interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}`, 'error');
+        showToast(`Renewed. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`, 'warning');
       } else {
         showToast(`${rx.medication} renewed.`, 'success');
       }
       setSelectedRx(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not renew this medication.', 'error');
+      showToast(describeError(err, 'Medication not renewed. Try again.'), 'error');
     } finally {
       setBusyId(null);
     }

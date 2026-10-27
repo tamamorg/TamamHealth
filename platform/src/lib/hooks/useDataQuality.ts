@@ -19,7 +19,7 @@ export function useDataQuality() {
       setData(result);
     } catch (err) {
       console.error('Failed to load data quality', err);
-      setError('Failed to load data quality');
+      setError('Data quality report not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

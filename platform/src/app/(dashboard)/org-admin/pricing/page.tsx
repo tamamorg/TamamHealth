@@ -112,7 +112,7 @@ export default function ServicePricingPage() {
       }
       setFees(Array.from(byId.values()).sort((a, b) => (a.category + a.serviceName).localeCompare(b.category + b.serviceName)));
     } catch {
-      showToast('Failed to load price catalog', 'error');
+      showToast('Price catalog not loaded. Reload the page to try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -142,7 +142,7 @@ export default function ServicePricingPage() {
 
   const save = async () => {
     if (!form.serviceName.trim() || form.unitPrice < 0) {
-      showToast('Enter a service name and a valid price', 'error');
+      showToast('Enter a service name and a price of zero or more.', 'error');
       return;
     }
     setSaving(true);
@@ -153,11 +153,11 @@ export default function ServicePricingPage() {
         ? await callFeeApi({ action: 'update', id: editingId, fee: { ...rest, isActive } })
         : await callFeeApi({ action: 'create', fee: { ...rest, isActive } });
       if (!result?.fee) {
-        showToast('Could not save the price', 'error');
+        showToast('Price not saved. Try again.', 'error');
         return;
       }
       confirmed.current.set(result.fee._id, result.fee);
-      showToast(editingId ? 'Price updated' : 'Service added to catalog', 'success');
+      showToast(editingId ? 'Price updated.' : 'Service added to the price catalog.', 'success');
       setShowForm(false);
       void getSyncManager()?.syncNow().catch(() => undefined);
       await load();
@@ -170,11 +170,11 @@ export default function ServicePricingPage() {
     if (!removingFee) return;
     const result = await callFeeApi({ action: 'delete', id: removingFee._id });
     if (!result) {
-      showToast('Could not remove the service', 'error');
+      showToast('Service not removed. Try again.', 'error');
       return;
     }
     confirmed.current.set(removingFee._id, null);
-    showToast('Service removed', 'success');
+    showToast('Service removed from the price catalog.', 'success');
     setRemovingFee(null);
     setShowForm(false);
     void getSyncManager()?.syncNow().catch(() => undefined);

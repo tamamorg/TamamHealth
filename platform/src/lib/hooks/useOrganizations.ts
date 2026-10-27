@@ -37,7 +37,7 @@ export function useOrganizations(enabled = true) {
       setOrganizations(visible);
     } catch (err) {
       console.error(err);
-      setError('Failed to load organizations');
+      setError('Organizations not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

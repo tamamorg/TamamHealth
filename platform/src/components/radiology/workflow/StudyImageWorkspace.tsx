@@ -9,6 +9,7 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Eye, Image as ImageIcon, Upload } from '@/components/icons/lucide';
 import { dismissBackdrop, stopsClickPropagation } from '@/lib/a11y';
+import { describeError } from '@/lib/user-facing-error';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -93,7 +94,7 @@ export default function StudyImageWorkspace({ study, canUpload }: { study: LabRe
       await updateStudy(study._id, { studyDocumentIds: linkedIds, imageCount: linkedIds.length });
       setViewerImageId(ids[0] || null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('imageViewer.uploadFailed'));
+      setError(describeError(caught, t('imageViewer.uploadFailed')));
     } finally {
       setUploading(false);
     }

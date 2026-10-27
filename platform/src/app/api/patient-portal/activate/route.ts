@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
     // Password complaints ARE specific — the person is choosing one and has to
     // be told what is wrong. This leaks nothing about the code.
     if (password !== password.trim()) {
-      return NextResponse.json({ error: 'Password cannot start or end with spaces' }, { status: 400 });
+      return NextResponse.json({ error: 'Remove the spaces at the start or end of the password.' }, { status: 400 });
     }
     if (password.length < PORTAL_MIN_PASSWORD_LENGTH) {
       return NextResponse.json(
-        { error: `Password must be at least ${PORTAL_MIN_PASSWORD_LENGTH} characters` },
+        { error: `Enter a password of at least ${PORTAL_MIN_PASSWORD_LENGTH} characters.` },
         { status: 400 },
       );
     }

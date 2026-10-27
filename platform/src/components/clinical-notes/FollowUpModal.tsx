@@ -19,6 +19,7 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import Modal from '@/components/Modal';
 import { CalendarClock, X } from '@/components/icons/lucide';
 import { toIsoDate } from '@/lib/date-utils';
+import { describeError } from '@/lib/user-facing-error';
 import './clinical-notes.css';
 
 export interface FollowUpModalResult {
@@ -63,9 +64,9 @@ export default function FollowUpModal({
 
   const handleSave = async () => {
     if (!condition.trim()) { setError('Enter the condition being followed up.'); return; }
-    if (!scheduledDate) { setError('Pick a follow-up date.'); return; }
+    if (!scheduledDate) { setError('Select a follow-up date.'); return; }
     const worker = workers.find(u => u._id === assignedWorkerId && u.isActive);
-    if (!worker) { setError('Select an active responsible staff member.'); return; }
+    if (!worker) { setError('Select the staff member responsible for the follow-up.'); return; }
     setError('');
     setSaving(true);
     try {
@@ -78,7 +79,7 @@ export default function FollowUpModal({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not schedule the follow-up.');
+      setError(describeError(err, 'Follow-up not scheduled. Try again.'));
     } finally {
       setSaving(false);
     }

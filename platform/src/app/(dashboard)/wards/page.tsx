@@ -20,6 +20,7 @@ import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from 
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
 import { useSettings } from '@/lib/settings/SettingsProvider';
+import { describeError } from '@/lib/user-facing-error';
 
 /* The admissions list is the shared appointment/worklist card row — the same
    surface, grid, type scale and status pill the patient registry uses, so a
@@ -227,7 +228,7 @@ export default function WardsPage() {
       setAdmitForm({ patientId: '', admittingDiagnosis: '', severity: 'moderate', wardId: '', bedId: '', isolationRequired: false, encounterId: '' });
     } catch (err) {
       console.error(err);
-      showToast(err instanceof Error ? err.message : t('ward.admitFailedToast'), 'error');
+      showToast(describeError(err, t('ward.admitFailedToast')), 'error');
     }
   };
 
@@ -261,7 +262,7 @@ export default function WardsPage() {
       }
     } catch (err) {
       console.error(err);
-      showToast(err instanceof Error ? err.message : t('ward.dischargeFailedToast'), 'error');
+      showToast(describeError(err, t('ward.dischargeFailedToast')), 'error');
     }
   };
 
@@ -281,7 +282,7 @@ export default function WardsPage() {
       setPlacementBedId('');
       showToast(t('ward.patientMovedToast', { name: updated.patientName, ward: updated.wardName, bed: updated.bedNumber || '' }), 'success');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('ward.moveFailedToast'), 'error');
+      showToast(describeError(error, t('ward.moveFailedToast')), 'error');
     }
   };
 
@@ -357,7 +358,7 @@ export default function WardsPage() {
                         await markBedReady(bed._id, { id: currentUser?._id, name: currentUser?.name });
                         showToast(t('ward.bedReadyToast', { ward: bed.wardName, bed: bed.bedNumber }), 'success');
                       } catch (error) {
-                        showToast(error instanceof Error ? error.message : t('ward.bedReadyFailed'), 'error');
+                        showToast(describeError(error, t('ward.bedReadyFailed')), 'error');
                       }
                     }}
                   >{bed.wardName} · {bed.bedNumber} — {t('ward.markReady')}</button>

@@ -17,6 +17,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { IS_DEMO, writePatientPortalSession } from '@/lib/patient-portal-session';
 import { Corners } from '@/components/login/login-chrome';
+import { describeApiError } from '@/lib/user-facing-error';
 
 /* ═════════════════════════════════════════
    PATIENT LOGIN SCREEN
@@ -54,7 +55,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
         maskedPhone?: string;
       };
       if (!response.ok) {
-        setError(data.error || t('patientPortal.unableToConnect'));
+        setError(describeApiError(data, t('patientPortal.unableToConnect')));
         return;
       }
       // Password was right but the server wants the SMS code before it will
@@ -66,7 +67,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
       const patientDoc = data.patient
         ? { ...data.patient, _id: data.patient._id || data.patient.id } as PatientDoc
         : null;
-      if (!data.token || !patientDoc?._id) throw new Error('Invalid patient session');
+      if (!data.token || !patientDoc?._id) throw new Error('Your session has ended. Sign in again to continue.');
       writePatientPortalSession({ token: data.token, patient: patientDoc });
       onLogin(patientDoc);
     } catch (err) {
@@ -87,7 +88,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
       });
       const data = await response.json() as { token?: string; patient?: PatientDoc & { id?: string }; error?: string };
       if (!response.ok) {
-        setError(data.error || t('patientPortal.unableToConnect'));
+        setError(describeApiError(data, t('patientPortal.unableToConnect')));
         // Send them back to the start on a burnt challenge so they aren't
         // stuck typing into a code box the server has already discarded.
         if (response.status === 429) { setOtpChallenge(null); setOtpCode(''); }
@@ -96,7 +97,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
       const patientDoc = data.patient
         ? { ...data.patient, _id: data.patient._id || data.patient.id } as PatientDoc
         : null;
-      if (!data.token || !patientDoc?._id) throw new Error('Invalid patient session');
+      if (!data.token || !patientDoc?._id) throw new Error('Your session has ended. Sign in again to continue.');
       writePatientPortalSession({ token: data.token, patient: patientDoc });
       onLogin(patientDoc);
     } catch (err) {

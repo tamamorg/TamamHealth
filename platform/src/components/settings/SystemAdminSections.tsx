@@ -191,7 +191,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
   );
 
   const toggleApp = async (app: SystemAppDefinition, next: boolean) => {
-    if (!orgId || !currentUser) { showToast('This account has no configuration scope.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast('Your account is not linked to an organization, so this setting cannot be saved. Contact your system administrator.', 'error'); return; }
     setBusyId(app.id);
     setConfig(prev => prev ? { ...prev, appOverrides: { ...prev.appOverrides, [app.id]: next } } : prev);
     try {
@@ -202,14 +202,14 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
     } catch (err) {
       console.error(err);
       setConfig(prev => prev ? { ...prev, appOverrides: { ...prev.appOverrides, [app.id]: !next } } : prev);
-      showToast(`Failed to update ${app.label}.`, 'error');
+      showToast(`${app.label} not updated. Try again.`, 'error');
     } finally {
       setBusyId(null);
     }
   };
 
   const toggleExtension = async (ext: SystemExtensionDefinition, next: boolean) => {
-    if (!orgId || !currentUser) { showToast('This account has no configuration scope.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast('Your account is not linked to an organization, so this setting cannot be saved. Contact your system administrator.', 'error'); return; }
     setBusyId(ext.id);
     setConfig(prev => prev ? { ...prev, extensionOverrides: { ...prev.extensionOverrides, [ext.id]: next } } : prev);
     try {
@@ -219,7 +219,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
     } catch (err) {
       console.error(err);
       setConfig(prev => prev ? { ...prev, extensionOverrides: { ...prev.extensionOverrides, [ext.id]: !next } } : prev);
-      showToast(`Failed to update ${ext.label}.`, 'error');
+      showToast(`${ext.label} not updated. Try again.`, 'error');
     } finally {
       setBusyId(null);
     }
@@ -234,7 +234,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
 
   const saveEditor = async () => {
     if (!editing) return;
-    if (!orgId || !currentUser) { showToast('This account has no configuration scope.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast('Your account is not linked to an organization, so this setting cannot be saved. Contact your system administrator.', 'error'); return; }
     setSaving(true);
     try {
       const { setPropertyValue } = await import('@/lib/services/system-config-service');
@@ -244,7 +244,7 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
       setEditing(null);
     } catch (err) {
       console.error(err);
-      showToast(`Failed to save ${editing.label}.`, 'error');
+      showToast(`${editing.label} not saved. Try again.`, 'error');
     } finally {
       setSaving(false);
     }

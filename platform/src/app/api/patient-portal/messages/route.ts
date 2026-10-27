@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ messages: await getDemoMessagesByPatient(auth.sub) });
     }
     logApiError('[patient-portal/messages]', err);
-    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+    return NextResponse.json({ error: 'Your messages could not be loaded. Try again.' }, { status: 500 });
   }
 }
 
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
   // demo build has no patient records to route by and keeps its fallback.)
   if (!routing.orgId && !demoFallbackEnabled()) {
     logApiError('[patient-portal/messages POST]', new Error(`No organisation resolved for patient ${auth.sub}`));
-    return NextResponse.json({ error: 'Your message could not be delivered. Please contact your facility.' }, { status: 503 });
+    return NextResponse.json({ error: 'Your message was not delivered. Contact your facility.' }, { status: 503 });
   }
 
   const name = (value: unknown) => (typeof value === 'string' ? value.trim().slice(0, 200) : '');
@@ -168,6 +168,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, id: doc._id, message: doc }, { status: 201 });
     }
     logApiError('[patient-portal/messages POST]', err);
-    return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
+    return NextResponse.json({ error: 'Your message was not sent. Try again.' }, { status: 500 });
   }
 }

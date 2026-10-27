@@ -560,7 +560,7 @@ async function ensureAdmissionDepositBillForAdmission(admission: AdmissionDoc): 
 
 export async function ensureAdmissionDepositBill(admissionId: string, scope: DataScope): Promise<AdmissionDoc> {
   const admission = await getAdmissionById(admissionId, scope);
-  if (!admission) throw new Error('Admission not found in your authorized scope');
+  if (!admission) throw new Error('Admission not found. Reload the ward board.');
   return ensureAdmissionDepositBillForAdmission(admission);
 }
 
@@ -573,16 +573,16 @@ export async function assessAdmissionDeposit(input: {
   reason: string;
   actor: { id: string; name: string };
 }): Promise<AdmissionDoc> {
-  if (!['super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent', 'cashier', 'medical_biller'].includes(input.scope.role)) throw new Error('Your role cannot assess deposits');
+  if (!['super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent', 'cashier', 'medical_biller'].includes(input.scope.role)) throw new Error('Your role cannot approve deposit decisions. Ask a billing supervisor.');
   const admission = await ensureAdmissionDepositBill(input.admissionId, input.scope);
-  if (admission.admissionDepositPendingRefund) throw new Error('Complete the pending refund before changing its decision');
+  if (admission.admissionDepositPendingRefund) throw new Error('Complete the pending refund before changing the decision.');
   const reason = input.reason.trim();
-  if (!reason) throw new Error('A deposit decision requires a reason');
+  if (!reason) throw new Error('Enter the reason for this deposit decision.');
   const paid = admission.admissionDepositPaid ?? 0;
   const alreadyRefunded = admission.admissionDepositRefunded ?? 0;
   const available = Math.max(0, paid - alreadyRefunded);
   const refundDue = input.decision === 'refund' ? input.refundAmount ?? available : 0;
-  if (!Number.isFinite(refundDue) || refundDue < 0 || refundDue > available) throw new Error('Refund amount exceeds the collected, unrefunded deposit');
+  if (!Number.isFinite(refundDue) || refundDue < 0 || refundDue > available) throw new Error('The refund is more than the deposit still held. Enter a smaller amount.');
 
   const updated: AdmissionDoc = {
     ...admission,
@@ -610,22 +610,22 @@ export async function refundAdmissionDeposit(input: {
   actor: { id: string; name: string };
 }): Promise<AdmissionDoc> {
   let admission = await getAdmissionById(input.admissionId, input.scope);
-  if (!admission) throw new Error('Admission not found in your authorized scope');
-  if (!['super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent', 'cashier', 'medical_biller'].includes(input.scope.role)) throw new Error('Your role cannot refund deposits');
-  if (admission.admissionDepositStatus !== 'refund_due') throw new Error('The admission deposit has not been approved for refund');
+  if (!admission) throw new Error('Admission not found. Reload the ward board.');
+  if (!['super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent', 'cashier', 'medical_biller'].includes(input.scope.role)) throw new Error('Your role cannot issue deposit refunds. Ask a billing supervisor.');
+  if (admission.admissionDepositStatus !== 'refund_due') throw new Error('This deposit has not been approved for a refund yet.');
   const due = admission.admissionDepositRefundDue ?? 0;
-  if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > due) throw new Error('Refund amount must be positive and no greater than the approved refund due');
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > due) throw new Error('Enter a refund amount greater than zero and no more than the approved refund.');
   const { issueRefund, getRefundsByPatient } = await import('./payment-service');
   const { getBillById } = await import('./billing-service');
-  if (!input.reason.trim()) throw new Error('A refund requires a reason');
+  if (!input.reason.trim()) throw new Error('Enter the reason for the refund.');
   const bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId, input.scope) : null;
   const payment = bill?.payments.find(item => item.id === input.paymentId);
-  if (!bill || !payment || bill.patientId !== admission.patientId || bill.orgId !== admission.orgId || bill.facilityId !== admission.facilityId || bill.currency !== (admission.tariffCurrency || 'SSP')) throw new Error('Select a payment recorded on this admission deposit invoice');
+  if (!bill || !payment || bill.patientId !== admission.patientId || bill.orgId !== admission.orgId || bill.facilityId !== admission.facilityId || bill.currency !== (admission.tariffCurrency || 'SSP')) throw new Error('Select a payment from this admission deposit.');
   let pending = admission.admissionDepositPendingRefund;
-  if (pending && (pending.paymentId !== input.paymentId || pending.amount !== input.amount || pending.method !== input.method || pending.reason !== input.reason.trim())) throw new Error('Retry the pending refund with its original details');
+  if (pending && (pending.paymentId !== input.paymentId || pending.amount !== input.amount || pending.method !== input.method || pending.reason !== input.reason.trim())) throw new Error('A refund is already pending. Retry it with the original details.');
   const refunds = await getRefundsByPatient(admission.patientId, input.scope);
   const refunded = refunds.filter(item => item.paymentId === payment.id && item._id !== (pending ? `ref-${encodeURIComponent(pending.id)}` : '')).reduce((sum, item) => sum + item.amount, 0);
-  if (input.amount > payment.amount - refunded) throw new Error('Refund exceeds the remaining amount of the selected payment');
+  if (input.amount > payment.amount - refunded) throw new Error('The refund is more than the amount remaining on the selected payment.');
   if (!pending) {
     pending = { id: uuidv4(), paymentId: input.paymentId, amount: input.amount, method: input.method, reason: input.reason.trim() };
     const reserved = { ...admission, admissionDepositPendingRefund: pending };

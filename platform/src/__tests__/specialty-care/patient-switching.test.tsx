@@ -60,7 +60,7 @@ test('saving a restricted note sends the CSRF header', async () => {
   fireEvent.change(screen.getByPlaceholderText('specialtyCare.restrictedPlaceholder'), { target: { value: 'Private note' } });
   fireEvent.click(screen.getByRole('button', { name: 'specialtyCare.saveRestricted' }));
   await act(async () => { await Promise.resolve(); });
-  expect(container.textContent).toContain('Encrypted restricted note saved.');
+  expect(container.textContent).toContain('Restricted note saved.');
   const call = (global.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
   expect(new Headers(call[1].headers).get('x-csrf-token')).toBe('test-token');
 });

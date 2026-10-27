@@ -38,7 +38,7 @@ async function postHospitalsApi(payload: Record<string, unknown>): Promise<Recor
     // Do NOT fall back to a local write: on the sessions that most use this
     // form it cannot replicate, so it would report success and leave the
     // facility invisible to the server — the exact failure this path removes.
-    throw new Error('Facilities are managed centrally and require a connection. Check your internet and try again.');
+    throw new Error('Facilities can only be changed while online. Check your internet connection and try again.');
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {

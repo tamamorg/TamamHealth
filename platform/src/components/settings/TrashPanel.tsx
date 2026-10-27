@@ -35,6 +35,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatDate } from '@/lib/format-utils';
 import type { OrganizationDoc } from '@/lib/db-types';
 import { SadbConfirmModal } from '@/components/admin/sadb-ui';
+import { describeError } from '@/lib/user-facing-error';
 
 /** What a tenant still holds, so the operator sees it before deleting. */
 interface Holdings { hospitalCount: number; userCount: number; patientCount: number }
@@ -97,7 +98,7 @@ export default function TrashPanel() {
       await restore(org._id, currentUser?._id, currentUser?.username);
       showToast(t('trash.restored', { name: org.name }), 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('trash.restoreFailed'), 'error');
+      showToast(describeError(err, t('trash.restoreFailed')), 'error');
     } finally {
       setBusyId(null);
     }
@@ -130,7 +131,7 @@ export default function TrashPanel() {
     } catch (err) {
       // The server refuses a tenant that still holds patients and says how
       // many; surface that verbatim rather than a generic failure.
-      showToast(err instanceof Error ? err.message : t('trash.deleteFailed'), 'error');
+      showToast(describeError(err, t('trash.deleteFailed')), 'error');
     } finally {
       setBusyId(null);
     }

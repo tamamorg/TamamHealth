@@ -7,6 +7,7 @@ import {
   RotateCcw, Sliders, Trash2, X,
 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import './clinical-image-viewer.css';
 
 export interface ClinicalImageItem {
@@ -127,7 +128,7 @@ export default function ClinicalImageViewer({
       setEditingId(null);
       setLabelMode(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('imageViewer.saveFailed'));
+      setError(describeError(caught, t('imageViewer.saveFailed')));
     } finally {
       setBusy(false);
     }

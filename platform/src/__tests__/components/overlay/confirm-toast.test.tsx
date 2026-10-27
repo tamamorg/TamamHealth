@@ -84,10 +84,39 @@ describe('Toast tones', () => {
     expect(toasts[1].getAttribute('role')).toBe('alert');
     expect(toasts[1].querySelector('.ehr-toast-title')?.textContent).toBe('Heads up');
 
-    act(() => { jest.advanceTimersByTime(4000); });
+    act(() => { jest.advanceTimersByTime(5000); });
     expect(toasts[0].className).toContain('is-leaving');   // leaves, then goes
     act(() => { jest.advanceTimersByTime(200); });
     expect(container.querySelectorAll('.ehr-toast')).toHaveLength(1);
+    unmount();
+  });
+
+  it('keeps a sticky error until dismissed and folds a repeat into one toast', () => {
+    function Failer() {
+      const { showToast } = useToast();
+      return <button type="button" onClick={() => showToast('Vitals not saved. Try again.', 'error', { sticky: true })}>f</button>;
+    }
+    const { container, unmount } = mount(<ToastProvider><Failer /></ToastProvider>);
+    act(() => container.querySelector('button')!.click());
+    act(() => container.querySelector('button')!.click());
+    expect(container.querySelectorAll('.ehr-toast')).toHaveLength(1);
+    act(() => { jest.advanceTimersByTime(60000); });
+    expect(container.querySelector('.ehr-toast')!.className).not.toContain('is-leaving');
+    act(() => container.querySelector<HTMLButtonElement>('.ehr-toast-close')!.click());
+    expect(container.querySelector('.ehr-toast')!.className).toContain('is-leaving');
+    unmount();
+  });
+
+  it('pauses the timer while the pointer is on a toast', () => {
+    const { container, unmount } = mount(<ToastProvider><Toaster /></ToastProvider>);
+    act(() => container.querySelector<HTMLButtonElement>('[data-k="info"]')!.click());
+    const toast = container.querySelector<HTMLElement>('.ehr-toast')!;
+    act(() => { toast.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); });
+    act(() => { jest.advanceTimersByTime(20000); });
+    expect(toast.className).not.toContain('is-leaving');
+    act(() => { toast.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); });
+    act(() => { jest.advanceTimersByTime(5000); });
+    expect(toast.className).toContain('is-leaving');
     unmount();
   });
 });

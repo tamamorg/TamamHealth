@@ -12,6 +12,7 @@ import { BedDouble, Clock, CheckCircle2, ArrowRightLeft, LogIn, Activity, Save, 
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
 import { getVitalFlags, isVitalInRange, type VitalsInput } from '@/lib/clinical/vitals';
 import Modal from '@/components/Modal';
+import { describeError } from '@/lib/user-facing-error';
 
 /**
  * The rooming station (KAN-99 / KAN-108).
@@ -91,7 +92,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
     } catch (err) {
       // Surface the machine's own message — "Assign a room before marking the
       // patient ready" is more use than a generic failure.
-      toast.showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+      toast.showToast(describeError(err, 'Change not saved. Try again.'), 'error');
     } finally {
       setBusy(null);
     }
@@ -127,7 +128,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
     for (const field of VITAL_FIELDS) {
       const value = vitalsDraft[field.key]?.trim();
       if (value && field.rangeKey && !isVitalInRange(field.rangeKey, value)) {
-        toast.showToast(`${field.label} is outside the valid range. Check the value.`, 'error');
+        toast.showToast(`${field.label} is outside the accepted range. Check the reading and enter it again.`, 'error');
         return;
       }
     }
@@ -145,10 +146,10 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
         vitals: vitalsDraft,
       });
       setVitalsRecorded(previous => ({ ...previous, [vitalsEntry.encounter._id]: new Date().toISOString() }));
-      toast.showToast(`Vitals saved for ${vitalsEntry.encounter.patientName}`, 'success');
+      toast.showToast(`Vitals saved for ${vitalsEntry.encounter.patientName}.`, 'success');
       setVitalsEntry(null);
     } catch (err) {
-      toast.showToast(err instanceof Error ? err.message : 'Failed to save vitals', 'error');
+      toast.showToast(describeError(err, 'Vitals not saved. Try again.'), 'error');
     } finally {
       setVitalsSaving(false);
     }

@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const ipRateKey = `portal-login:ip:${ip}`;
   const ipVerdict = await rateLimit({ key: ipRateKey, limit: RATE_MAX, windowMs: RATE_WINDOW_MS });
   if (!ipVerdict.allowed) {
-    return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many attempts. Wait 15 minutes, then try again.' }, { status: 429 });
   }
 
   let body: { username?: string; password?: string };
@@ -56,13 +56,13 @@ export async function POST(req: NextRequest) {
   const password = body.password || '';
 
   if (!username || !password) {
-    return NextResponse.json({ error: 'Username and password are required.' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter your username and password.' }, { status: 400 });
   }
 
   const accountRateKey = `portal-login:account:${username}`;
   const accountVerdict = await rateLimit({ key: accountRateKey, limit: RATE_MAX, windowMs: RATE_WINDOW_MS });
   if (!accountVerdict.allowed) {
-    return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many attempts. Wait 15 minutes, then try again.' }, { status: 429 });
   }
 
   try {
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     }
     if (!compared) await verifyPassword(password, DUMMY_PASSWORD_HASH);
     if (!found) {
-      return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
+      return NextResponse.json({ error: 'The username or password is incorrect.' }, { status: 401 });
     }
     // A suspended account keeps its credential on purpose — suspension is
     // usually reversible and re-enrolling from scratch is a poor answer to a
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
     // to discover whose access was withdrawn.
     const { portalSignInBlocked } = await import('@/modules/identity/services/patient-portal-enrolment');
     if (portalSignInBlocked(found as { portalDisabledAt?: string })) {
-      return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 });
+      return NextResponse.json({ error: 'The username or password is incorrect.' }, { status: 401 });
     }
 
     // A successful password proof clears THIS ACCOUNT's failed-attempt streak
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
 
       if (issued.error !== 'no-phone') {
         return NextResponse.json(
-          { error: 'Could not send your verification code. Please try again.' },
+          { error: 'Your verification code was not sent. Try again.' },
           { status: 503 },
         );
       }
@@ -215,6 +215,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     logApiError('[patient-portal/login]', err);
-    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Sign-in did not complete. Try again.' }, { status: 500 });
   }
 }

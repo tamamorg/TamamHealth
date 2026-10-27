@@ -32,6 +32,7 @@ import type { NoteDiagnosis } from '@/lib/clinical-notes/types';
 import '../clinical-notes.css';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { describeError } from '@/lib/user-facing-error';
 
 type ProblemTab = 'active' | 'inactive';
 
@@ -115,7 +116,7 @@ export default function IncludeProblemsModal({
   const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (err) {
-      showToast(err instanceof Error ? err.message : 'The change could not be saved.', 'error');
+      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
     } finally { setBusy(false); }
   };
 
@@ -132,7 +133,7 @@ export default function IncludeProblemsModal({
 
   const saveProblem = (andAnother: boolean) => withBusy(async () => {
     const name = picked?.title || query.trim();
-    if (!name) { showToast('Search for the problem first.', 'error'); return; }
+    if (!name) { showToast('Search for and select the problem.', 'error'); return; }
     const { createProblem } = await import('@/lib/services/problem-service');
     await createProblem({
       patientId,
@@ -197,7 +198,7 @@ export default function IncludeProblemsModal({
   };
 
   const handleReconcile = (performed: boolean) => withBusy(async () => {
-    if (!scope) throw new Error('Your patient data scope is unavailable');
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { updatePatient } = await import('@/lib/services/patient-service');
     const updated = await updatePatient(patientId, {
       problemReconciledAt: performed ? new Date().toISOString() : undefined,

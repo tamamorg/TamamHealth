@@ -106,7 +106,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
     (async () => {
       try {
         const session = readPatientPortalSession();
-        if (!session) throw new Error('Missing patient session');
+        if (!session) throw new Error('Your session has ended. Sign in again to continue.');
         const { bills: docs } = await patientPortalFetch<{ bills: Array<{
           _id: string;
           invoiceNumber?: string;
@@ -191,7 +191,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
     try {
       const canonicalMethod = toCanonicalMethod(payMethod);
       const referenceBase = `TBN-${Date.now().toString(36).toUpperCase()}`;
-      if (!sessionToken) throw new Error('Missing patient session');
+      if (!sessionToken) throw new Error('Your session has ended. Sign in again to continue.');
 
       const updates: Array<{ id: string; amount: number; ok: boolean }> = [];
       for (const billId of selectedBills) {

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const keepSignedIn = body.keepSignedIn !== false;
 
     if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Enter your username and password.' }, { status: 400 });
     }
 
     // Validate username format - reject invalid characters instead of silently stripping
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       // with the rejected value quoted so the pattern is visible, and the
       // value itself is inert — it never reaches a query.
       auditLogin('login_failed', trimmedUsername.slice(0, 64), 'Malformed username rejected', request);
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'The username or password is incorrect.' }, { status: 401 });
     }
     const sanitizedUsername = trimmedUsername;
 
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         ipVerdict.allowed ? 0 : ipVerdict.resetAt,
       );
       const response = NextResponse.json(
-        { error: 'Too many failed attempts. Try again later.' },
+        { error: 'Too many failed attempts. Wait 15 minutes, then try again.' },
         { status: 429 },
       );
       response.headers.set('Retry-After', String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))));
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
         logApiError('POST /api/auth/login', err);
         auditLogin('login_failed', sanitizedUsername, 'Users database unreachable', request);
         return NextResponse.json(
-          { error: 'Sign-in is temporarily unavailable. The user database could not be reached.' },
+          { error: 'Sign-in is temporarily unavailable. Try again in a few minutes, or contact IT.' },
           { status: 503 },
         );
       }
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       auditLogin('login_failed', sanitizedUsername, 'Unknown user or wrong password', request);
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'The username or password is incorrect.' }, { status: 401 });
     }
 
     // Check hospital assignment — super_admin, org_admin, government bypass
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       // The password was correct; the facility was not. Worth distinguishing
       // in the log even though the caller is told the same thing.
       auditLogin('login_failed', sanitizedUsername, 'Facility mismatch', request, user._id);
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'The username or password is incorrect.' }, { status: 401 });
     }
 
     // The password was right, so clear this account's failed-attempt streak.

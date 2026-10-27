@@ -28,6 +28,7 @@ import {
   missingAncRequiredFields,
   type AncRiskLevel,
 } from '@/lib/forms/anc-form-policy';
+import { describeError } from '@/lib/user-facing-error';
 
 const RISK_FACTOR_OPTIONS = [
   'hypertension', 'anemia', 'previous_csection', 'multiple_pregnancy',
@@ -223,7 +224,7 @@ export default function ANCPage() {
     resetRegistrationForm();
     } catch (err) {
       // Keep the form open: a refused save (e.g. no facility/organisation) must not look saved.
-      showToast(err instanceof Error ? err.message : String(err), 'error');
+      showToast(describeError(err, 'ANC visit not saved. Try again.'), 'error');
     }
   };
 

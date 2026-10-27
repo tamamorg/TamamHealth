@@ -47,14 +47,14 @@ export async function provisionTamamDepartments(input: {
   actorId?: string;
   actorName?: string;
 }): Promise<DepartmentDoc[]> {
-  if (!input.scope.orgId) throw new Error('An organization scope is required');
+  if (!input.scope.orgId) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
   if (!DEPARTMENT_CONFIG_ROLES.has(input.scope.role)) {
-    throw new Error('Your role cannot configure facility departments');
+    throw new Error('Your role cannot change facility departments. Ask a facility administrator.');
   }
   const entitled = filterByScope([{
     type: 'department', orgId: input.scope.orgId, facilityId: input.facilityId,
   }], input.scope);
-  if (!entitled.length) throw new Error('The selected facility is outside your authorized scope');
+  if (!entitled.length) throw new Error('You do not have access to the selected facility.');
 
   const db = hospitalsDB();
   const now = new Date().toISOString();
@@ -94,9 +94,9 @@ export async function updateDepartmentConfiguration(input: {
   actorId?: string;
   actorName?: string;
 }): Promise<DepartmentDoc> {
-  if (!DEPARTMENT_CONFIG_ROLES.has(input.scope.role)) throw new Error('Your role cannot configure facility departments');
+  if (!DEPARTMENT_CONFIG_ROLES.has(input.scope.role)) throw new Error('Your role cannot change facility departments. Ask a facility administrator.');
   const existing = await getDepartment(input.id, input.scope);
-  if (!existing) throw new Error('Department not found in your authorized scope');
+  if (!existing) throw new Error('Department not found. Reload the page.');
   const updated: DepartmentDoc = {
     ...existing,
     queueEnabled: input.queueEnabled ?? existing.queueEnabled ?? true,

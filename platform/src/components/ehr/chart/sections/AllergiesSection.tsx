@@ -35,6 +35,7 @@ import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
 import { clickable } from '@/lib/a11y';
+import { describeError } from '@/lib/user-facing-error';
 
 const SEVERITY_LABEL: Record<string, string> = {
   severe: 'Severe', moderate: 'Moderate', mild: 'Mild', unknown: 'Unknown',
@@ -95,7 +96,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
-    if (!scope) throw new Error('Your session has no tenant scope; sign in again.');
+    if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     return scope;
   };
   const { showToast } = useToast();
@@ -175,10 +176,10 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.updateAllergy(patient._id, needScope(), editing.id, { ...editForm, substance: editForm.substance.trim(), ...author });
-      showToast('Allergy updated', 'success');
+      showToast('Allergy updated.', 'success');
       setEditing(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not update this allergy.', 'error');
+      showToast(describeError(err, 'Allergy not updated. Try again.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -190,12 +191,12 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.removeAllergy(patient._id, needScope(), retiring.id, retireReason.trim(), retireStatus);
-      showToast(`${retiring.substance} marked ${retireStatus.replace(/_/g, ' ')}`, 'success');
+      showToast(`${retiring.substance} allergy marked ${retireStatus.replace(/_/g, ' ')}.`, 'success');
       setRetiring(null);
       setRetireReason('');
       setRetireStatus('inactive');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not retire this allergy.', 'error');
+      showToast(describeError(err, 'Allergy status not changed. Try again.'), 'error');
     } finally {
       setBusy(false);
     }
@@ -206,9 +207,9 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.updateAllergy(patient._id, needScope(), a.id, { status: 'active', removalReason: undefined, ...author });
-      showToast(`${a.substance} reinstated`, 'success');
+      showToast(`${a.substance} allergy reinstated.`, 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not reinstate this allergy.', 'error');
+      showToast(describeError(err, 'Allergy not reinstated. Try again.'), 'error');
     } finally {
       setBusy(false);
     }

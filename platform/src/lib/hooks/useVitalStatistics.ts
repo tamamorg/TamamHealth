@@ -28,7 +28,7 @@ export function useVitalStatistics() {
       setData({ birthStats, deathStats });
     } catch (err) {
       console.error('Failed to load vital statistics', err);
-      setError('Failed to load vital statistics');
+      setError('Vital statistics not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

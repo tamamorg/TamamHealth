@@ -66,8 +66,8 @@ export interface QueueReminderInput {
 
 export async function queueReminder(input: QueueReminderInput): Promise<PatientReminderDoc> {
   const message = (input.message || '').trim();
-  if (!message) throw new Error('A reminder message is required');
-  if (!input.sendDate) throw new Error('A send date is required');
+  if (!message) throw new Error('Enter the reminder message.');
+  if (!input.sendDate) throw new Error('Select the send date.');
   const db = patientRemindersDB();
   const now = new Date().toISOString();
   const doc: PatientReminderDoc = {

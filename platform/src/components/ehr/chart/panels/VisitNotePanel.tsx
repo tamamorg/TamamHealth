@@ -76,7 +76,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
     e.target.value = ''; // allow re-selecting the same file
     const oversized = files.filter(f => f.size > MAX_IMAGE_BYTES);
     if (oversized.length > 0) {
-      showToast(`Skipped ${oversized.length} file(s) over 5MB`, 'error');
+      showToast(`${oversized.length} file(s) not attached. Files must be 5 MB or smaller.`, 'error');
     }
     setImages(prev => [...prev, ...files.filter(f => f.size <= MAX_IMAGE_BYTES)]);
   };
@@ -194,12 +194,12 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
     try {
       setSubmitting(true);
       const imageFailures = await persistNote();
-      showToast(imageFailures > 0 ? `Visit note saved — ${imageFailures} image(s) failed to attach` : 'Visit note saved', imageFailures > 0 ? 'error' : 'success');
+      showToast(imageFailures > 0 ? `Visit note saved. ${imageFailures} image(s) not attached. Attach them again.` : 'Visit note saved.', imageFailures > 0 ? 'error' : 'success');
       onSaved?.();
       onClose();
     } catch (err) {
       console.error(err);
-      showToast('Could not save this note. Please try again.', 'error');
+      showToast('Note not saved. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -218,8 +218,8 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
         const imageFailures = await persistNote();
         showToast(
           imageFailures > 0
-            ? `Note saved (${imageFailures} image(s) failed) — opening consultation`
-            : 'Note saved — opening consultation',
+            ? `Note saved. ${imageFailures} image(s) not attached. Opening the consultation.`
+            : 'Note saved. Opening the consultation.',
           imageFailures > 0 ? 'error' : 'success',
         );
         onSaved?.();
@@ -228,7 +228,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
       router.push(`/consultation?patientId=${encodeURIComponent(patient._id)}`);
     } catch (err) {
       console.error(err);
-      showToast('Could not save this note, so the consultation was not opened.', 'error');
+      showToast('Note not saved, so the consultation was not opened. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }

@@ -49,7 +49,7 @@ export function useFollowUpsDue() {
       );
     } catch (err) {
       console.error('Failed to load follow-ups due', err);
-      setError('Failed to load follow-ups due');
+      setError('Follow-ups due not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

@@ -165,7 +165,7 @@ export async function GET(req: NextRequest) {
 
     if (!link) {
       return NextResponse.json(
-        { error: 'Payment link not found' },
+        { error: 'This payment link was not found. Ask the facility for a new link.' },
         { status: 404 }
       );
     }
@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
     const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
     if (filterByScope([link as unknown as Record<string, unknown>], buildScopeFromAuth(auth)).length === 0) {
       return NextResponse.json(
-        { error: 'Payment link not found' },
+        { error: 'This payment link was not found. Ask the facility for a new link.' },
         { status: 404 }
       );
     }

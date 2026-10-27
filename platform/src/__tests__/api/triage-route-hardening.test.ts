@@ -87,7 +87,7 @@ describe('server-side vitals recompute (never trusting the client)', () => {
     })));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/Saving below the recommended triage urgency/);
+    expect(body.error).toMatch(/save below the recommended urgency/);
   });
 
   test('the same dangerous vitals, posted with a recorded override reason, are accepted and audited', async () => {

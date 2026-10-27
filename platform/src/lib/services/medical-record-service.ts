@@ -306,7 +306,7 @@ export async function signMedicalRecord(
   opts: { awaitingCosign?: boolean } = {}
 ): Promise<MedicalRecordDoc | null> {
   if (!isClinicalAuthorRole(signer.userRole)) {
-    throw new SigningAuthorizationError(`Role "${signer.userRole ?? 'unknown'}" may not sign clinical notes.`);
+    throw new SigningAuthorizationError('Your role cannot sign clinical notes. Save the note as a draft and route it to a clinician for signature.');
   }
   const db = medicalRecordsDB();
   let existing: MedicalRecordDoc;
@@ -420,7 +420,7 @@ export async function cosignMedicalRecord(
   cosigner: SignerIdentity,
 ): Promise<MedicalRecordDoc | null> {
   if (!isProviderRole(cosigner.userRole)) {
-    throw new SigningAuthorizationError(`Role "${cosigner.userRole ?? 'unknown'}" may not co-sign clinical notes.`);
+    throw new SigningAuthorizationError('Your role cannot co-sign clinical notes. Co-signing requires a supervising provider.');
   }
   const db = medicalRecordsDB();
   let existing: MedicalRecordDoc;
@@ -435,7 +435,7 @@ export async function cosignMedicalRecord(
   // A clinician cannot co-sign their own attestation — co-signature must come
   // from a different (supervising) provider.
   if (cosigner.userId && existing.signedBy && cosigner.userId === existing.signedBy) {
-    throw new SigningAuthorizationError('A note must be co-signed by a different provider than the author.');
+    throw new SigningAuthorizationError('Choose a different co-signer. The co-signer cannot be the note\'s author.');
   }
   const now = new Date().toISOString();
   const cosigned: MedicalRecordDoc = withPendingOfflineSync({
@@ -590,18 +590,18 @@ function bmiFrom(weightKg?: number, heightCm?: number): number {
 
 export async function recordNursingVitals(input: NursingVitalsInput): Promise<MedicalRecordDoc> {
   if (input.correctsRecordId && !input.correctionReason?.trim()) {
-    throw new Error('Correcting vitals requires a reason.');
+    throw new Error('Enter the reason for correcting these vitals.');
   }
   if (input.correctsRecordId) {
     const original = await getMedicalRecordById(input.correctsRecordId);
     if (!original || original.recordKind !== 'nursing_vitals') {
-      throw new Error('Only a nursing vitals observation can be corrected here.');
+      throw new Error('Only nursing vitals can be corrected here.');
     }
     if (original.patientId !== input.patientId) {
-      throw new Error('The correction does not belong to this patient.');
+      throw new Error('This correction belongs to a different patient. Reload the chart.');
     }
     if (original.hospitalId !== input.hospitalId) {
-      throw new Error('Vitals can only be corrected from the facility that recorded them.');
+      throw new Error('These vitals were recorded at another facility and can only be corrected there.');
     }
   }
   const now = new Date().toISOString();

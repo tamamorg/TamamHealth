@@ -119,7 +119,7 @@ export async function enterImmunizationInError(
   actor?: { id?: string; name?: string },
 ): Promise<ImmunizationDoc> {
   const cleanReason = reason.trim();
-  if (cleanReason.length < 3) throw new Error('A reason is required to mark an immunization as entered in error.');
+  if (cleanReason.length < 3) throw new Error('Enter the reason for marking this immunization as entered in error.');
   const updated = await updateImmunization(id, {
     recordStatus: 'entered_in_error',
     statusReason: cleanReason,

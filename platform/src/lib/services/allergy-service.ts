@@ -94,7 +94,7 @@ export interface AddAllergyInput {
 /** Record a new allergy. Returns the full updated list, or null if no patient. */
 export async function addAllergy(patientId: string, scope: DataScope, input: AddAllergyInput): Promise<AllergyEntry[] | null> {
   if (!input.substance || input.substance.trim().length === 0) {
-    throw new Error('Allergy substance is required');
+    throw new Error('Enter the allergen.');
   }
   const substance = input.substance.trim();
   const now = new Date().toISOString();
@@ -166,7 +166,7 @@ export async function removeAllergy(
   status: 'inactive' | 'resolved' | 'entered_in_error' = 'inactive',
 ): Promise<AllergyEntry[] | null> {
   if (!removalReason || removalReason.trim().length === 0) {
-    throw new Error('A removal reason is required');
+    throw new Error('Enter the reason for removing this entry.');
   }
   return mutatePatientListField<AllergyEntry>(
     patientId,

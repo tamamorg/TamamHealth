@@ -23,7 +23,7 @@ export function useAssets() {
       setSummary(s);
     } catch (err) {
       console.error('Failed to load assets', err);
-      setError('Failed to load assets');
+      setError('Assets not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

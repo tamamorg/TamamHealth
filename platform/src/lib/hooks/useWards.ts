@@ -29,7 +29,7 @@ export function useWards() {
       setBeds(bedDocs);
     } catch (err) {
       console.error('Failed to load wards', err);
-      setError('Failed to load wards');
+      setError('Wards not loaded. Reload the page to try again.');
     } finally {
       setLoading(false);
     }

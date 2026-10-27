@@ -16,7 +16,7 @@ export const CRITICAL_TRANSLATIONS: Record<Locale, TranslationMap> = {
     'login.errorRoleNotPermitted': 'You can only sign in as your assigned role.',
     'login.errorOfflineNoCredential': 'You are offline and this device has no saved sign-in for that account. Connect to the network once to sign in.',
     'login.errorOfflineBadPassword': 'That password does not match the one saved on this device. If you changed it recently, connect to the network to sign in with the new one.',
-    'login.errorLoginFailed': 'Login failed. Please try again.',
+    'login.errorLoginFailed': 'Sign-in did not complete. Try again.',
     'login.errorTooManyAttempts': 'Too many failed attempts. Wait a few minutes, then try again.',
     'login.errorTooManyAttemptsIn': 'Too many failed attempts. Try again in {{minutes}} minutes.',
     'login.errorServiceUnavailable': 'Sign-in is unavailable right now — the server could not reach the user database. Your password is fine; try again shortly or contact IT.',

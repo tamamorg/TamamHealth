@@ -33,6 +33,7 @@ import { formatMoney } from '@/lib/format-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { PAYER_LABEL_KEYS } from './claims-filter';
 import { ClaimEvidence } from '@/modules/insurance/client';
+import { describeError } from '@/lib/user-facing-error';
 
 // Claim status → bl-chip variant. Claim statuses are their own union (not
 // BillingStatus), so this maps onto the closest billing-module chip meaning:
@@ -150,18 +151,18 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
   const handleAppeal = async () => {
     if (!scope) return;
-    if (!appealFor || !appealNote.trim()) { showToast('An appeal needs a note for the payer', 'error'); return; }
+    if (!appealFor || !appealNote.trim()) { showToast('Enter a note for the payer explaining the appeal.', 'error'); return; }
     setLifecycleBusy(true);
     try {
       const { appealClaim } = await import('@/lib/services/payment-service');
       await appealClaim(appealFor._id, appealNote.trim(), currentUser?._id || 'unknown', currentUser?.name || 'Unknown', scope);
-      showToast(`Claim ${appealFor.claimNumber} appealed`, 'success');
+      showToast(`Appeal submitted for claim ${appealFor.claimNumber}.`, 'success');
       setAppealFor(null);
       setAppealNote('');
       await onChanged();
     } catch (err) {
       console.error(err);
-      showToast((err as Error).message || 'Could not appeal this claim', 'error');
+      showToast(describeError(err, 'Appeal not submitted. Try again.'), 'error');
     } finally {
       setLifecycleBusy(false);
     }
@@ -177,7 +178,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       await onChanged();
     } catch (err) {
       console.error(err);
-      showToast((err as Error).message || 'Could not resubmit this claim', 'error');
+      showToast(describeError(err, 'Claim not resubmitted. Try again.'), 'error');
     } finally {
       setLifecycleBusy(false);
     }
@@ -196,9 +197,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
     const patient = patients.find(p => p._id === newClaim.patientId);
     const bill = patientBills.find(b => b._id === newClaim.billingId);
     const amount = bill ? (bill.balanceDue ?? bill.totalAmount ?? 0) : parseFloat(newClaim.amount);
-    if (!patient) { showToast('Pick a patient first', 'error'); return; }
-    if (!policy) { showToast('Pick the insurance policy to claim against', 'error'); return; }
-    if (!Number.isFinite(amount) || amount <= 0) { showToast('Enter a claim amount greater than zero', 'error'); return; }
+    if (!patient) { showToast('Select a patient.', 'error'); return; }
+    if (!policy) { showToast('Select the insurance policy for this claim.', 'error'); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { showToast('Enter a claim amount greater than zero.', 'error'); return; }
     setSubmittingClaim(true);
     try {
       const { submitClaim } = await import('@/lib/services/payment-service');
@@ -224,7 +225,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       await onChanged();
     } catch (err) {
       console.error(err);
-      showToast((err as Error).message || 'Could not submit the claim', 'error');
+      showToast(describeError(err, 'Claim not submitted. Try again.'), 'error');
     } finally {
       setSubmittingClaim(false);
     }
@@ -278,7 +279,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       setAdjForm(null);
     } catch (error) {
       console.error('Failed to save adjudication:', error);
-      showToast('Could not save the adjudication', 'error');
+      showToast('Adjudication not saved. Try again.', 'error');
     }
   };
 

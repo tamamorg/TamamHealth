@@ -86,7 +86,7 @@ export default function AssignDoctorModal({
   const handleAssign = async () => {
     const doctor = doctors.find(d => d._id === selectedId);
     if (!doctor) {
-      showToast(`Select a ${providerLabel} to assign`, 'error');
+      showToast(`Select a ${providerLabel} to assign.`, 'error');
       return;
     }
     setSaving(true);
@@ -108,11 +108,11 @@ export default function AssignDoctorModal({
         note,
       });
 
-      showToast(`${target.patientName} assigned to ${doctor.name}`, 'success');
+      showToast(`${target.patientName} assigned to ${doctor.name}.`, 'success');
       onAssigned?.({ id: doctor._id, name: doctor.name });
       onClose();
     } catch {
-      showToast('Failed to assign patient', 'error');
+      showToast('Patient not assigned. Try again.', 'error');
     } finally {
       setSaving(false);
     }

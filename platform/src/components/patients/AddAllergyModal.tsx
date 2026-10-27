@@ -16,6 +16,7 @@ import CodedSearchField from '@/components/CodedSearchField';
 import { COMMON_ALLERGENS, type AllergenClassification } from '@/data/allergens';
 import type { AllergyEntry } from '@/data/mock';
 import Select from '@/components/Select';
+import { describeError } from '@/lib/user-facing-error';
 
 const CLASSIFICATIONS: AllergenClassification[] = ['drug', 'food', 'environmental', 'biologic', 'other'];
 const CRITICALITIES: NonNullable<AllergyEntry['criticality']>[] = ['mild', 'moderate', 'severe', 'unknown'];
@@ -64,7 +65,7 @@ export default function AddAllergyModal({
       await onSave({ substance: substance.trim(), classification, criticality, reaction, onsetDate });
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed');
+      setError(describeError(e, 'Change not saved. Try again.'));
     } finally {
       setBusy(false);
     }

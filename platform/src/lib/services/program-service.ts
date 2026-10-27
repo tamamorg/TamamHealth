@@ -104,7 +104,7 @@ export async function updateProgramEnrollment(id: string, data: Partial<ProgramE
 /** Discontinue an enrollment with a reason instead of erasing its history. */
 export async function deleteProgramEnrollment(id: string, reason: string): Promise<boolean> {
   const cleanReason = reason.trim();
-  if (cleanReason.length < 3) throw new Error('A reason is required to discontinue a program enrollment.');
+  if (cleanReason.length < 3) throw new Error('Enter the reason for ending this program enrollment.');
   const updated = await updateProgramEnrollment(id, {
     status: 'discontinued',
     outcomeDate: todayIso(),

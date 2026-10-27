@@ -51,7 +51,7 @@ export function useUsers(enabled = true) {
       setError(null);
       lastLoadedAtRef.current = Date.now();
     } catch (err) {
-      setError('Failed to load users');
+      setError('User accounts not loaded. Reload the page to try again.');
       console.error(err);
     } finally {
       inFlightRef.current = false;

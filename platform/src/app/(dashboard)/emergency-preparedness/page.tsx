@@ -110,7 +110,7 @@ export default function EmergencyPreparednessPage() {
       setPlans(result);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load emergency plans', 'error');
+      showToast('Emergency plans not loaded. Reload the page to try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -127,11 +127,11 @@ export default function EmergencyPreparednessPage() {
 
   const handleSubmit = async () => {
     if (!form.planName.trim()) {
-      showToast('Plan name is required', 'error');
+      showToast('Enter the plan name.', 'error');
       return;
     }
     if (!form.incidentCommander.trim()) {
-      showToast('Incident commander is required', 'error');
+      showToast('Enter the incident commander.', 'error');
       return;
     }
     try {
@@ -164,13 +164,13 @@ export default function EmergencyPreparednessPage() {
         totalReferralsOut: 0,
         orgId: currentUser?.orgId,
       });
-      showToast('Emergency plan created', 'success');
+      showToast('Emergency plan created.', 'success');
       setShowForm(false);
       setForm(EMPTY_FORM);
       await load();
     } catch (err) {
       console.error(err);
-      showToast('Failed to create emergency plan', 'error');
+      showToast('Emergency plan not created. Try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -181,15 +181,15 @@ export default function EmergencyPreparednessPage() {
     try {
       if (plan.phase === 'response') {
         await deactivatePlan(plan._id, actor, scope);
-        showToast(`${plan.planName} moved to recovery`, 'success');
+        showToast(`${plan.planName} moved to recovery.`, 'success');
       } else {
         await activatePlan(plan._id, actor, undefined, scope);
-        showToast(`${plan.planName} activated`, 'success');
+        showToast(`${plan.planName} activated.`, 'success');
       }
       await load();
     } catch (err) {
       console.error(err);
-      showToast('Failed to update plan status', 'error');
+      showToast('Plan status not changed. Try again.', 'error');
     }
   };
 

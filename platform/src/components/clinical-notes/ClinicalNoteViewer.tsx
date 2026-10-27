@@ -24,6 +24,7 @@ import { noteTypeLabel, sectionLabel } from '@/lib/clinical-notes/note-labels';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import type { MedicalRecordDoc } from '@/lib/db-types';
 import { formatDateTime } from '@/lib/format-utils';
+import { describeError } from '@/lib/user-facing-error';
 import './clinical-notes.css';
 import './note-viewer.css';
 
@@ -205,7 +206,7 @@ export default function ClinicalNoteViewer({
       setAdding(false);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('noteViewer.addendumFailed'));
+      setError(describeError(e, t('noteViewer.addendumFailed')));
     } finally {
       setBusy(false);
     }

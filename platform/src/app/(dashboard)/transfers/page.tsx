@@ -29,6 +29,7 @@ import { canDecideTransfer } from '@/lib/services/patient-transfer-permissions';
 import type { PatientTransferDoc } from '@/lib/db-types';
 import { ArrowRightLeft, ArrowRight, Check, Clock } from '@/components/icons/lucide';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { describeError } from '@/lib/user-facing-error';
 
 type Tab = 'incoming' | 'outgoing';
 
@@ -80,7 +81,7 @@ export default function TransfersPage() {
       await acceptLocal(t._id);
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not accept the transfer');
+      setError(describeError(e, 'Transfer not accepted. Try again.'));
     } finally {
       setBusyId(null);
     }

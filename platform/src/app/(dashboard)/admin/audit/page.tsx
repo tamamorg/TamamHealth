@@ -381,20 +381,20 @@ export default function AuditLogsPage() {
                 note,
               }, actor);
               setResolutions(await getRiskResolutions());
-              showToast('Marked resolved — it has left the Risk Center queue.', 'success');
+              showToast('Entry resolved and removed from the Risk Center queue.', 'success');
             } catch (err) {
               console.error('Failed to resolve audit risk:', err);
-              showToast('Could not save the resolution.', 'error');
+              showToast('Resolution not saved. Try again.', 'error');
             }
           }}
           onReopen={async () => {
             try {
               await reopenRisk(`audit-${selected.log._id}`, actor);
               setResolutions(await getRiskResolutions());
-              showToast('Reopened — it is back in the Risk Center queue.', 'success');
+              showToast('Entry reopened and returned to the Risk Center queue.', 'success');
             } catch (err) {
               console.error('Failed to reopen audit risk:', err);
-              showToast('Could not reopen this entry.', 'error');
+              showToast('Entry not reopened. Try again.', 'error');
             }
           }}
           onCopyJson={async () => {
@@ -402,7 +402,7 @@ export default function AuditLogsPage() {
               await navigator.clipboard.writeText(JSON.stringify(selected.log, null, 2));
               showToast('Audit entry copied as JSON.', 'success');
             } catch {
-              showToast('Could not copy — clipboard unavailable.', 'error');
+              showToast('Not copied. This browser blocked clipboard access.', 'error');
             }
           }}
         />

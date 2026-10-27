@@ -46,7 +46,7 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
       setItems(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load nutrition supply inventory');
+      setError('Nutrition supply inventory not loaded. Reload the page to try again.');
       setItems([]);
     } finally {
       setLoading(false);

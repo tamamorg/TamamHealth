@@ -32,6 +32,7 @@ import {
   buildPrescriptionScriptHtml, buildPrescriptionText, canRerouteToOutsidePharmacy, scriptDate, scriptReference,
   scriptableOnly, type ScriptContext,
 } from '@/lib/prescription-script';
+import { describeError } from '@/lib/user-facing-error';
 import './patient-handover.css';
 
 export interface PrescriptionCopyDialogProps {
@@ -177,7 +178,7 @@ export default function PrescriptionCopyDialog({
       showToast(t('patientCopy.printed'), 'success');
       await refresh();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('patientCopy.printFailed'), 'error');
+      showToast(describeError(err, t('patientCopy.printFailed')), 'error');
     } finally {
       setBusy(false);
     }
