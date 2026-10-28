@@ -1266,6 +1266,7 @@ svg.lucide:not([style*="color"]) {
   .cn-dx-acuity button[aria-pressed='true'],
   .labord-btn--primary,
   .tamam-nv-btn--primary,
+  .nv-btn--primary,
   .labord-toggle--on,
   .labord-step--current,
   .labord-step--done,

@@ -1,34 +1,59 @@
 'use client';
 
-import { useState } from 'react';
-import { Save } from '@/components/icons/lucide';
+/**
+ * Record vitals and biometrics — a panel that slides in from the right, over
+ * the chart, the way OpenMRS O3's vitals workspace does: the patient's record
+ * stays visible beside the form, and every value sits in a large tile with its
+ * unit underneath so it can be read at a glance across the room.
+ *
+ * Two sections, in the order a nurse takes them: vitals (temperature, blood
+ * pressure as one systolic/diastolic tile, heart rate, respiration, SpO2,
+ * notes), then biometrics (weight, height, BMI calculated as they type,
+ * MUAC). Pain, glucose and GCS follow under "More measurements" so nothing
+ * the old grid captured is lost.
+ *
+ * `presentation='page'` renders the same form alone, for the full-page
+ * `/patients/[id]/vitals/new` that the panel's Expand button opens.
+ */
+
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import { Maximize2, Save, X } from '@/components/icons/lucide';
 import { expandHref } from '@/lib/navigation/expand-to-page';
-import { getVitalFlags, isVitalInRange, type VitalsInput } from '@/lib/clinical/vitals';
+import { calculateBmi, getVitalFlags, isVitalInRange, type VitalsInput, type VITAL_RANGES } from '@/lib/clinical/vitals';
 import { recordNursingVitals } from '@/lib/services/medical-record-service';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { MedicalRecordDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
+import './nurse-vitals-panel.css';
 
 type NurseVitals = VitalsInput & { height?: string };
+type FieldKey = Exclude<keyof NurseVitals, 'notes'>;
 
-const FIELDS: Array<{ key: keyof NurseVitals; label: string; unit: string; placeholder: string; rangeKey?: keyof typeof import('@/lib/clinical/vitals').VITAL_RANGES }> = [
-  { key: 'temperature', label: 'Temperature', unit: '°C', placeholder: '36.8', rangeKey: 'temperature' },
-  { key: 'systolic', label: 'Systolic BP', unit: 'mmHg', placeholder: '120', rangeKey: 'systolic' },
-  { key: 'diastolic', label: 'Diastolic BP', unit: 'mmHg', placeholder: '80', rangeKey: 'diastolic' },
-  { key: 'pulse', label: 'Pulse', unit: 'bpm', placeholder: '72', rangeKey: 'pulse' },
-  { key: 'respiratoryRate', label: 'Respiratory rate', unit: '/min', placeholder: '16', rangeKey: 'respiratoryRate' },
-  { key: 'spo2', label: 'Oxygen saturation', unit: '%', placeholder: '98', rangeKey: 'spo2' },
-  { key: 'weight', label: 'Weight', unit: 'kg', placeholder: '65', rangeKey: 'weight' },
-  { key: 'height', label: 'Height', unit: 'cm', placeholder: '170' },
-  { key: 'painScore', label: 'Pain score', unit: '/10', placeholder: '0', rangeKey: 'painScore' },
-  { key: 'bloodGlucose', label: 'Blood glucose', unit: 'mmol/L', placeholder: '5.5', rangeKey: 'bloodGlucose' },
-  { key: 'gcs', label: 'GCS', unit: '/15', placeholder: '15', rangeKey: 'gcs' },
-  { key: 'muac', label: 'MUAC', unit: 'cm', placeholder: '22', rangeKey: 'muac' },
-];
+interface FieldDef {
+  key: FieldKey;
+  labelKey: string;
+  unit: string;
+  placeholder: string;
+  rangeKey?: keyof typeof VITAL_RANGES;
+}
+
+const FIELDS: Record<FieldKey, FieldDef> = {
+  temperature: { key: 'temperature', labelKey: 'vitalsPanel.temperature', unit: '°C', placeholder: '--.-', rangeKey: 'temperature' },
+  systolic: { key: 'systolic', labelKey: 'vitalsPanel.systolic', unit: 'mmHg', placeholder: '---', rangeKey: 'systolic' },
+  diastolic: { key: 'diastolic', labelKey: 'vitalsPanel.diastolic', unit: 'mmHg', placeholder: '---', rangeKey: 'diastolic' },
+  pulse: { key: 'pulse', labelKey: 'vitalsPanel.heartRate', unit: 'beats/min', placeholder: '---', rangeKey: 'pulse' },
+  respiratoryRate: { key: 'respiratoryRate', labelKey: 'vitalsPanel.respirationRate', unit: 'breaths/min', placeholder: '--', rangeKey: 'respiratoryRate' },
+  spo2: { key: 'spo2', labelKey: 'vitalsPanel.spo2', unit: '%', placeholder: '--', rangeKey: 'spo2' },
+  weight: { key: 'weight', labelKey: 'vitalsPanel.weight', unit: 'kg', placeholder: '--.-', rangeKey: 'weight' },
+  height: { key: 'height', labelKey: 'vitalsPanel.height', unit: 'cm', placeholder: '---' },
+  muac: { key: 'muac', labelKey: 'vitalsPanel.muac', unit: 'cm', placeholder: '--', rangeKey: 'muac' },
+  painScore: { key: 'painScore', labelKey: 'vitalsPanel.painScore', unit: '/10', placeholder: '-', rangeKey: 'painScore' },
+  bloodGlucose: { key: 'bloodGlucose', labelKey: 'vitalsPanel.bloodGlucose', unit: 'mmol/L', placeholder: '--.-', rangeKey: 'bloodGlucose' },
+  gcs: { key: 'gcs', labelKey: 'vitalsPanel.gcs', unit: '/15', placeholder: '--', rangeKey: 'gcs' },
+};
 
 const blankVitals = (): NurseVitals => ({
   temperature: '', systolic: '', diastolic: '', pulse: '', respiratoryRate: '', spo2: '',
@@ -76,8 +101,8 @@ export default function NurseVitalsModal({
   onClose: () => void;
   onSaved?: () => void;
   /**
-   * 'page' renders the fields alone, for `/patients/[id]/vitals/new` to host
-   * inside `CreateRecordPage`.
+   * 'modal' (the default) slides the form in from the right; 'page' renders
+   * the form alone, for `/patients/[id]/vitals/new` inside `CreateRecordPage`.
    */
   presentation?: 'modal' | 'page';
 }) {
@@ -87,6 +112,11 @@ export default function NurseVitalsModal({
   const [vitals, setVitals] = useState<NurseVitals>(() => vitalsFromRecord(correctingRecord));
   const [correctionReason, setCorrectionReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const flags = getVitalFlags(vitals);
+  const bmi = calculateBmi(vitals.weight, vitals.height);
+
+  const close = () => { if (!saving) onClose(); };
 
   const save = async () => {
     const entered = Object.entries(vitals).some(([key, value]) => key !== 'notes' && Boolean(value?.trim()));
@@ -98,10 +128,10 @@ export default function NurseVitalsModal({
       toast.showToast(t('chart.vitalsCorrectionReasonRequired'), 'error');
       return;
     }
-    for (const field of FIELDS) {
+    for (const field of Object.values(FIELDS)) {
       const value = vitals[field.key]?.trim();
       if (value && field.rangeKey && !isVitalInRange(field.rangeKey, value)) {
-        toast.showToast(t('msg.isOutsideTheAcceptedRange', { label: field.label }), 'error');
+        toast.showToast(t('msg.isOutsideTheAcceptedRange', { label: t(field.labelKey) }), 'error');
         return;
       }
     }
@@ -129,78 +159,181 @@ export default function NurseVitalsModal({
     }
   };
 
-  const body = (
-    <>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {FIELDS.map(field => {
-          const flagged = Boolean(getVitalFlags(vitals)[field.key]);
-          return (
-            <label key={field.key} className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              <span className="flex justify-between gap-2 mb-1"><span>{field.label}</span><span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{field.unit}</span></span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="any"
-                value={vitals[field.key] || ''}
-                onChange={event => setVitals(current => ({ ...current, [field.key]: event.target.value }))}
-                placeholder={field.placeholder}
-                className="w-full rounded border px-2.5 py-2 text-sm"
-                style={{ borderColor: flagged ? 'var(--color-danger)' : 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }}
-              />
-              {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger-text)' }}>Check this value</span>}
-            </label>
-          );
-        })}
+  // Panel behaviour: focus the first field, keep Tab inside, Escape closes,
+  // and give focus back to whatever opened it.
+  useEffect(() => {
+    if (presentation !== 'modal') return;
+    const opener = document.activeElement as HTMLElement | null;
+    panelRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+      if (event.key !== 'Tab' || !panelRef.current) return;
+      const items = panelRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input, textarea');
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); opener?.focus?.(); };
+    // close() only reads `saving`; re-binding on every keystroke is not needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presentation]);
+
+  const setField = (key: FieldKey) => (event: ChangeEvent<HTMLInputElement>) =>
+    setVitals(current => ({ ...current, [key]: event.target.value }));
+
+  const numberInput = (key: FieldKey, ariaLabel?: string) => (
+    <input
+      type="number"
+      inputMode="decimal"
+      min="0"
+      step="any"
+      value={vitals[key] || ''}
+      onChange={setField(key)}
+      placeholder={FIELDS[key].placeholder}
+      aria-label={ariaLabel || t(FIELDS[key].labelKey)}
+      aria-invalid={flags[key] ? true : undefined}
+      className="nv-input"
+    />
+  );
+
+  const tile = (key: FieldKey) => (
+    <div className="nv-field" key={key}>
+      <span className="nv-label" id={`nv-${key}`}>{t(FIELDS[key].labelKey)}</span>
+      <div className={`nv-tile${flags[key] ? ' is-flagged' : ''}`}>
+        {numberInput(key)}
+        <span className="nv-unit">{FIELDS[key].unit}</span>
       </div>
-      <label className="block mt-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-        Notes
-        <textarea value={vitals.notes || ''} onChange={event => setVitals(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-none" placeholder="Position, oxygen, symptoms, or other observation" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
-      </label>
+      {flags[key] && <span className="nv-flag">{t('vitalsPanel.checkValue')}</span>}
+    </div>
+  );
+
+  const bpFlagged = flags.systolic || flags.diastolic;
+
+  const form = (
+    <div className="nv-form">
+      <section className="nv-section" aria-labelledby="nv-vitals-heading">
+        <h3 id="nv-vitals-heading" className="nv-section-title">{t('vitalsPanel.sectionVitals')}</h3>
+        <div className="nv-grid">
+          {tile('temperature')}
+          <div className="nv-field">
+            <span className="nv-label">{t('vitalsPanel.bloodPressure')}</span>
+            <div className={`nv-tile nv-tile--bp${bpFlagged ? ' is-flagged' : ''}`}>
+              <div className="nv-bp">
+                {numberInput('systolic', t('vitalsPanel.systolic'))}
+                <span className="nv-bp-sep" aria-hidden>/</span>
+                {numberInput('diastolic', t('vitalsPanel.diastolic'))}
+              </div>
+              <span className="nv-unit">mmHg</span>
+            </div>
+            {bpFlagged && <span className="nv-flag">{t('vitalsPanel.checkValue')}</span>}
+          </div>
+          {tile('pulse')}
+          {tile('respiratoryRate')}
+          {tile('spo2')}
+        </div>
+        <label className="nv-notes">
+          <span className="nv-label">{t('vitalsPanel.notes')}</span>
+          <textarea
+            value={vitals.notes || ''}
+            onChange={event => setVitals(current => ({ ...current, notes: event.target.value }))}
+            rows={3}
+            placeholder={t('vitalsPanel.notesPlaceholder')}
+          />
+        </label>
+      </section>
+
+      <section className="nv-section" aria-labelledby="nv-bio-heading">
+        <h3 id="nv-bio-heading" className="nv-section-title">{t('vitalsPanel.sectionBiometrics')}</h3>
+        <div className="nv-grid">
+          {tile('weight')}
+          {tile('height')}
+          <div className="nv-field">
+            <span className="nv-label">{t('vitalsPanel.bmi')}</span>
+            <div className="nv-tile nv-tile--readonly" aria-live="polite">
+              <span className="nv-input nv-input--readonly">{bmi ?? ''}</span>
+              <span className="nv-unit">kg / m²</span>
+            </div>
+          </div>
+          {tile('muac')}
+        </div>
+      </section>
+
+      <section className="nv-section" aria-labelledby="nv-more-heading">
+        <h3 id="nv-more-heading" className="nv-section-title">{t('vitalsPanel.sectionMore')}</h3>
+        <div className="nv-grid">
+          {tile('painScore')}
+          {tile('bloodGlucose')}
+          {tile('gcs')}
+        </div>
+      </section>
+
       {correctingRecord && (
-        <label className="block mt-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-          {t('chart.correctionReason')}
+        <label className="nv-notes">
+          <span className="nv-label">{t('chart.correctionReason')}</span>
           <textarea
             value={correctionReason}
             onChange={event => setCorrectionReason(event.target.value)}
             rows={2}
             required
-            className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-none"
             placeholder={t('chart.vitalsCorrectionReasonPlaceholder')}
-            style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }}
           />
         </label>
       )}
-      <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
-        <button type="button" onClick={onClose} disabled={saving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Cancel</button>
-        <button type="button" onClick={() => void save()} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent-primary)' }}>
-          <Save className="w-3.5 h-3.5" /> {saving ? 'Saving…' : correctingRecord ? t('chart.saveCorrection') : 'Save vitals'}
-        </button>
-      </div>
-    </>
+    </div>
   );
 
-  if (presentation === 'page') return body;
-
-  return (
-    <Modal onClose={() => { if (!saving) onClose(); }} width={620} labelledBy="nurse-vitals-title">
-      <div className="sadb-modal">
-        <PopupHeader
-          titleId="nurse-vitals-title"
-          title={correctingRecord ? t('chart.correctVitals') : 'Record vitals'}
-          subtitle={`${patientName} · ${hospitalNumber || 'No ID'}`}
-          /* A correction is anchored to the record it corrects, and the
-             page has no way to be handed that — so it expands only when
-             this is a new reading. */
-          onExpand={correctingRecord ? undefined : () => {
-            onClose();
-            const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
-            router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/vitals/new${query}`));
-          }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+  const actions = (
+    <div className="nv-footer">
+      <button type="button" className="nv-btn nv-btn--ghost" onClick={close} disabled={saving}>{t('vitalsPanel.cancel')}</button>
+      <button type="button" className="nv-btn nv-btn--primary" onClick={() => void save()} disabled={saving}>
+        <Save aria-hidden /> {saving ? t('vitalsPanel.saving') : correctingRecord ? t('chart.saveCorrection') : t('vitalsPanel.save')}
+      </button>
+    </div>
   );
+
+  if (presentation === 'page') return <div className="nv-root nv-root--page">{form}{actions}</div>;
+
+  const title = correctingRecord ? t('chart.correctVitals') : t('vitalsPanel.title');
+  const panel = (
+    <div className="nv-root">
+      <div className="nv-backdrop" onClick={close} aria-hidden />
+      <div ref={panelRef} className="nv-panel" role="dialog" aria-modal="true" aria-labelledby="nv-title">
+        <header className="nv-header">
+          <div className="nv-header-text">
+            <h2 id="nv-title" className="nv-title">{title}</h2>
+            <p className="nv-subtitle">{patientName} · {hospitalNumber || t('vitalsPanel.noId')}</p>
+          </div>
+          {/* A correction is anchored to the record it corrects, which the
+              full page has no way to be handed — so only a new reading
+              expands. */}
+          {!correctingRecord && (
+            <button
+              type="button"
+              className="nv-icon-btn"
+              aria-label={t('vitalsPanel.expand')}
+              title={t('vitalsPanel.expand')}
+              onClick={() => {
+                onClose();
+                const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
+                router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/vitals/new${query}`));
+              }}
+            >
+              <Maximize2 aria-hidden />
+            </button>
+          )}
+          <button type="button" className="nv-icon-btn nv-icon-btn--close" aria-label={t('vitalsPanel.close')} onClick={close}>
+            <X aria-hidden />
+          </button>
+        </header>
+        <div className="nv-body">{form}</div>
+        {actions}
+      </div>
+    </div>
+  );
+
+  // Portalled so no ancestor's overflow or transform can clip a fixed panel.
+  return typeof document === 'undefined' ? null : createPortal(panel, document.body);
 }
