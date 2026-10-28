@@ -88,7 +88,7 @@ describe('escalating a patient who has not been triaged yet', () => {
   it('still refuses a bare escalation straight from the queue', async () => {
     const enc = await encounterAt('awaiting_triage');
     await expect(escalateEncounterToEmergency(enc._id, { actorId: 'user-dr-wani' }))
-      .rejects.toThrow(/Illegal encounter transition/);
+      .rejects.toThrow(/This visit cannot move from/);
   });
 });
 

@@ -60,6 +60,18 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 /** Roles that count as "physician" for filtering. */
+/**
+ * The name a role goes by on screen ("Medical Receptionist", not
+ * "front_desk"). A role newer than this build falls back to readable words.
+ */
+export function roleLabel(role?: string | null): string {
+  if (!role) return '';
+  const known = ROLE_LABEL[role as UserRole];
+  if (known) return known;
+  const words = role.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export const PHYSICIAN_ROLES: UserRole[] = [
   'doctor',
   'clinical_officer',

@@ -3,7 +3,7 @@ import { AlertTriangle, Pill, Activity, ClipboardList, Plus, Pencil, Sliders, Ch
 import Badge from '@/components/Badge';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { todayIso as isoToday } from '@/lib/date-utils';
-import { formatDateTime, formatDate, formatClockTime, formatRxSig } from '@/lib/format-utils';
+import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import { isScreeningOverdue } from '@/lib/services/screening-service';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
 import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
@@ -12,6 +12,7 @@ import { formatPhoneDisplay } from '@/lib/field-formats';
 import { clickable } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
 import { FACESHEET_PANEL_OPTIONS, type FacesheetPanelId, type ChartVitalsLike, type FacesheetActions } from './chart-constants';
+import { appointmentStatusLabel } from '@/lib/appointment-status';
 
 /**
  * Facesheet card header — icon + title on the left, the card's primary write
@@ -172,7 +173,7 @@ export function PatientFacesheetView({
                 <strong>{problem.name}</strong>
                 <span className="tebra-list-row-meta">
                   {problem.icd10Code && <span>{problem.icd10Code}</span>}
-                  <Badge tone={problem.status === 'chronic' ? 'warning' : 'success'}>{problem.status}</Badge>
+                  <Badge tone={problem.status === 'chronic' ? 'warning' : 'success'}>{humanizeStatus(problem.status)}</Badge>
                 </span>
               </div>
             ))}
@@ -417,7 +418,7 @@ export function PatientDemographicsView({
                       <span>{appt.department || 'Appointment'}</span>
                     </div>
                   </td>
-                  <td>{appt.status}</td>
+                  <td>{appointmentStatusLabel(appt.status)}</td>
                 </tr>
               )) : (
                 <tr><td colSpan={5}>No appointments documented.</td></tr>

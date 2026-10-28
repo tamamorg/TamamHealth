@@ -20,6 +20,7 @@ import { SHIFT_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { StaffScheduleDoc } from '@/lib/db-types';
 import { todayIso } from '@/lib/date-utils';
 import { expandHref } from '@/lib/navigation/expand-to-page';
+import { roleLabel } from '@/lib/role-display';
 
 export interface CreateShiftDialogProps {
   onClose: () => void;
@@ -98,7 +99,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {facilityUsers.map(u => (
-              <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
+              <option key={u._id} value={u._id}>{u.name} ({roleLabel(u.role)})</option>
             ))}
           </Select>
         </div>

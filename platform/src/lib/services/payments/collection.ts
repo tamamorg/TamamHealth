@@ -361,7 +361,7 @@ export async function reversePayment(
     throw new PaymentOperationError('PAYMENT_REFUNDED', 'This payment has been refunded and cannot be voided.');
   }
   if (pmt.status !== 'posted' && pmt.status !== 'reversed') {
-    throw new PaymentOperationError('PAYMENT_NOT_REVERSIBLE', `This payment is ${pmt.status} and cannot be voided.`);
+    throw new PaymentOperationError('PAYMENT_NOT_REVERSIBLE', 'This payment cannot be voided in its current status.');
   }
 
   const firstPass = pmt.status !== 'reversed';

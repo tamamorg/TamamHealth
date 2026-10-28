@@ -58,6 +58,7 @@ import { useNotifications } from '@/modules/communication/client';
 import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/lib/settings/disabled-apps';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { applyFeatureCatalogToNavigation } from '@/modules/feature-catalog/client';
+import { roleLabel as roleDisplayName } from '@/lib/role-display';
 
 export default function EhrTopRail() {
   const router = useRouter();
@@ -207,7 +208,7 @@ export default function EhrTopRail() {
   // decisions below: two header shortcuts instead of four, and whether the
   // roster / "Add a record" entries appear at all.
   const isFacilityConsole = homeHref === '/facility-management';
-  const roleLabel = roleConfig?.label || currentUser?.role.replace(/_/g, ' ') || 'Workspace';
+  const roleLabel = roleConfig?.label || roleDisplayName(currentUser?.role) || 'Workspace';
   // A support session: the platform super-admin signed in AS this role via
   // the login role picker. See `impersonationChipInfo`'s own doc comment for
   // why this was invisible before and why the rule lives there, pure.

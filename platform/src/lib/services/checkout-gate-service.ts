@@ -30,6 +30,8 @@
  * the override path (reason + authorised role + audit) remains available.
  */
 
+import { humanizeStatus } from '../format-utils';
+import { encounterVisitState } from '../clinical-flow/visit-state';
 import type { EncounterDoc } from '../db-types';
 import { postConsultReady } from '@/modules/post-consult';
 import type { DataScope } from './data-scope';
@@ -156,18 +158,20 @@ export async function evaluateCheckoutGate(
     } catch { handoffReady = false; }
   }
   push('post_consult_handoff', handoffReady,
-    !handoffReady ? 'Post-consult nursing review is outstanding or care records have changed.' : undefined,
+    !handoffReady ? 'Nursing review after the consultation is not finished, or the care record changed since.' : undefined,
     encounter ? `/patients/${encodeURIComponent(patientId)}?tab=careChecklist#post-consult` : undefined);
 
   // ── All clinic visits closed ──────────────────────────────────────────
   // Derived from the encounter's own stage rather than a tick box: a visit
   // still with a clinician is by definition not closed.
   if (!encounter) {
-    push('all_clinic_visits_closed', false, 'No encounter found for this visit — cannot confirm the clinic visit is closed.');
+    push('all_clinic_visits_closed', false, 'No visit record found, so the visit cannot be confirmed closed.');
   } else {
     const open = await isEncounterOpenForCheckout(encounter.status);
     push('all_clinic_visits_closed', !open,
-      open ? `Visit is still at "${encounter.status}".` : undefined,
+      // The stage in the ladder's own words ("Awaiting lab results"), not the
+      // stored code — this line is read by reception at the desk.
+      open ? `Visit is still at "${encounterVisitState(encounter.status).label || encounter.status}".` : undefined,
       open ? `/consultation?encounterId=${encounter._id}` : undefined);
   }
 
@@ -211,20 +215,20 @@ export async function evaluateCheckoutGate(
     push('prescriptions_dispensed', outstanding.length === 0,
       outstanding.length
         ? (awaitingDispense
-          ? `${awaitingDispense} prescription(s) not yet dispensed: ${outstanding.filter((r) => r.fulfilment !== 'external').map((r) => r.medication).slice(0, 3).join(', ')}.`
+          ? `${plural(awaitingDispense, 'prescription')} not dispensed: ${outstanding.filter((r) => r.fulfilment !== 'external').map((r) => r.medication).slice(0, 3).join(', ')}.`
           : '')
           + (awaitingHandover.length
-            ? `${awaitingDispense ? ' ' : ''}${awaitingHandover.length} outside-pharmacy script(s) not yet given to the patient — print or text: ${awaitingHandover.map((r) => r.medication).slice(0, 3).join(', ')}.`
+            ? `${awaitingDispense ? ' ' : ''}${plural(awaitingHandover.length, 'outside-pharmacy script')} not given to the patient yet. Print or text: ${awaitingHandover.map((r) => r.medication).slice(0, 3).join(', ')}.`
             : '')
           + (tier1Outstanding.length
-            ? ` ${tier1Outstanding.length} of these ${tier1Outstanding.length === 1 ? 'is' : 'are'} life-sustaining (Tier 1) — admin intervention required regardless of payment.`
+            ? ` ${tier1Outstanding.length} ${tier1Outstanding.length === 1 ? 'is' : 'are'} life-sustaining (Tier 1). An administrator must step in, whatever the payment status.`
             : '')
         : undefined,
       outstanding.length
         ? (awaitingDispense ? '/pharmacy' : `/patients/${patientId}?tab=prescriptions`)
         : undefined);
   } catch (err) {
-    push('prescriptions_dispensed', false, `Could not read prescriptions — blocking. (${errText(err)})`);
+    push('prescriptions_dispensed', false, readFailure('Prescriptions', err));
   }
 
   // ── Critical labs reviewed ────────────────────────────────────────────
@@ -238,11 +242,11 @@ export async function evaluateCheckoutGate(
     );
     push('critical_labs_reviewed', unreviewed.length === 0,
       unreviewed.length
-        ? `${unreviewed.length} critical result(s) awaiting clinician review: ${unreviewed.map((l) => l.testName).slice(0, 3).join(', ')}.`
+        ? `${plural(unreviewed.length, 'critical result')} awaiting clinician review: ${unreviewed.map((l) => l.testName).slice(0, 3).join(', ')}.`
         : undefined,
       unreviewed.length ? `/patients/${patientId}?tab=labs` : undefined);
   } catch (err) {
-    push('critical_labs_reviewed', false, `Could not read lab results — blocking. (${errText(err)})`);
+    push('critical_labs_reviewed', false, readFailure('Lab results', err));
   }
 
   // ── In-clinic procedures complete ─────────────────────────────────────
@@ -269,11 +273,11 @@ export async function evaluateCheckoutGate(
     push('in_clinic_procedures_complete', open.length === 0,
       open.length
         ? `${open.length} procedure${open.length === 1 ? '' : 's'} still in progress: ` +
-          open.map(p => `${p.name} (${p.status})`).join(', ')
+          open.map(p => `${p.name} (${humanizeStatus(p.status).toLowerCase()})`).join(', ')
         : undefined,
       open.length ? `/patients/${patientId}?tab=procedures` : undefined);
   } catch (err) {
-    push('in_clinic_procedures_complete', false, `Could not read procedures — blocking. (${errText(err)})`);
+    push('in_clinic_procedures_complete', false, readFailure('Procedures', err));
   }
 
   // ── Required documentation generated ──────────────────────────────────
@@ -303,7 +307,7 @@ export async function evaluateCheckoutGate(
       ok ? undefined : 'No signed clinical record for this visit.',
       ok ? undefined : `/patients/${patientId}`);
   } catch (err) {
-    push('required_documentation_generated', false, `Could not read clinical records — blocking. (${errText(err)})`);
+    push('required_documentation_generated', false, readFailure('Clinical records', err));
   }
 
   // ── Payment status determined (non-critical) ──────────────────────────
@@ -318,7 +322,7 @@ export async function evaluateCheckoutGate(
       balance > 0 ? `Outstanding balance of ${balance}.` : undefined,
       balance > 0 ? `/payments?patientId=${patientId}` : undefined);
   } catch (err) {
-    push('payment_status_determined', false, `Could not read the account balance. (${errText(err)})`);
+    push('payment_status_determined', false, readFailure('The account balance', err));
   }
 
   // ── Pending items flagged (non-critical) ──────────────────────────────
@@ -384,6 +388,13 @@ export async function attemptFacilityCheckout<E extends FlowEncounter>(
   return { result, evaluation };
 }
 
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+/** A check that could not run blocks checkout; the screen says so plainly
+ *  and the technical cause goes to the console for support. */
+function readFailure(what: string, err: unknown): string {
+  console.warn(`[checkout-gate] ${what} could not be read:`, err);
+  return `${what} could not be loaded, so checkout stays blocked. Reload and try again.`;
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }

@@ -7,6 +7,7 @@ import { PrintSectionId } from './chart-constants';
 import type { HospitalDoc } from '@/lib/db-types';
 import type { AppUser } from '@/lib/context/types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { roleLabel } from '@/lib/role-display';
 export default function PatientPrintDocument({ patient, patientProblems, allPrescriptions, allLabResults, allImmunizations, patientAppointments, regHospital, printSections, latestRecord, latestVitals, printSignature, currentUser }: {
   patient: PatientDoc;
   patientProblems: ProblemDoc[];
@@ -270,7 +271,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                       <div className="rx-sig-label">{t('ptDetail.printClinicianSignature')}</div>
                       <div className="rx-sig-line" />
                       <div className="rx-sig-name">{printSignature}</div>
-                      <div className="rx-sig-role">{currentUser?.role ? currentUser.role.replace(/_/g, ' ') : ''}</div>
+                      <div className="rx-sig-role">{currentUser?.role ? roleLabel(currentUser.role) : ''}</div>
                       <div className="rx-sig-role">Signed: {printedAt}</div>
                     </div>
                     <div>

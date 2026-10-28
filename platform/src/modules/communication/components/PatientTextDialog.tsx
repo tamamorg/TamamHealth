@@ -23,7 +23,7 @@ import { formatPhoneDisplay } from '@/lib/field-formats';
 import { MAX_PATIENT_TEXT_LENGTH, smsSegments, toSmsSafe } from '@/lib/sms/text';
 import type { MessageDoc } from '@/lib/db-types';
 import type { PatientTextOutcome, PatientTextResult } from '../services/patient-text-service';
-import { describeError } from '@/lib/user-facing-error';
+import { describeError, isUserFacingText } from '@/lib/user-facing-error';
 import './patient-text.css';
 
 export interface PatientTextDialogProps {
@@ -106,7 +106,10 @@ export default function PatientTextDialog({
     sent: t('patientText.outcomeSent', { phone: shownPhone }),
     queued: t('patientText.outcomeQueued'),
     not_connected: t('patientText.outcomeNotConnected'),
-    failed: t('patientText.outcomeFailed', { reason: result.error || t('patientText.reasonUnknown') }),
+    // A gateway's own error ("http_401: …") is for support, not the screen.
+    failed: t('patientText.outcomeFailed', {
+      reason: result.error && isUserFacingText(result.error) ? result.error : t('patientText.reasonGateway'),
+    }),
   }[result.outcome] : '';
 
   return (

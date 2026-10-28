@@ -48,7 +48,7 @@ import { billingDB, claimsDB, paymentPlansDB, paymentsDB } from '@/lib/db';
 import VisitStatusPicker from '@/components/appointments/VisitStatusPicker';
 import { APPOINTMENT_SLOT_RELEASED_STATUSES } from '@/lib/appointment-status';
 import type { EncounterStatus } from '@/lib/clinical-flow/encounter-journey';
-import { formatMoney } from '@/lib/format-utils';
+import { formatMoney, humanizeStatus } from '@/lib/format-utils';
 import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 import { useNow } from '@/lib/hooks/useNow';
@@ -1314,7 +1314,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                       <div className="min-w-0">
                         <div className="bl-fee-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {cfg.label}
-                          {reversed && <span className="bl-chip bl-chip--cancelled">{p.status}</span>}
+                          {reversed && <span className="bl-chip bl-chip--cancelled">{humanizeStatus(p.status)}</span>}
                         </div>
                         <div className="bl-fee-cat">
                           {p.reference && <span style={{ fontFamily: 'monospace' }}>{p.reference} · </span>}

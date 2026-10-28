@@ -40,7 +40,7 @@ import {
   SadbPage, SadbCard, SadbShell, useSadbTab, SadbSearch, SadbKpiTile, SadbKvRow,
   SadbQueueRow, SadbHeadLink,
 } from '@/components/admin/sadb-ui';
-import { titleCase } from '@/lib/format-utils';
+import { titleCase, humanizeStatus } from '@/lib/format-utils';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { usersHrefForRole } from '@/lib/people-nav';
 import {
@@ -52,6 +52,7 @@ import {
 } from '@/lib/facility-work-queue';
 import type { MessageDoc, StaffScheduleDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
+import { roleLabel } from '@/lib/role-display';
 
 type QueueKey = 'inquiries' | 'leave' | 'staff';
 
@@ -500,7 +501,7 @@ export default function FacilityWorkQueuePage() {
           <div className="sadb-modal">
             <div className="sadb-modal-copy">
               <h2 id="fmq-inquiry-title" className="sadb-modal-title">{detailInquiry.name}</h2>
-              <p className="sadb-modal-sub">{detailInquiry.type} · {detailInquiry.channel}</p>
+              <p className="sadb-modal-sub">{humanizeStatus(detailInquiry.type)} · {humanizeStatus(detailInquiry.channel)}</p>
             </div>
             <div className="rounded-lg overflow-hidden mb-3" style={{ border: '1px solid var(--border-light)' }}>
               <SadbKvRow label={t('facilityQueue.detailStatus')} chip={detailInquiry.statusLabel} chipTone={enquiryChipTone(detailInquiry.status)} />
@@ -571,7 +572,7 @@ export default function FacilityWorkQueuePage() {
           <div className="sadb-modal">
             <div className="sadb-modal-copy">
               <h2 id="fmq-staff-title" className="sadb-modal-title">{detailStaff.name}</h2>
-              <p className="sadb-modal-sub">{detailStaff.role} · {detailStaff.department}</p>
+              <p className="sadb-modal-sub">{roleLabel(detailStaff.role)} · {detailStaff.department}</p>
             </div>
             <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
               <SadbKvRow label={t('facilityQueue.detailAvailability')} value={detailStaff.shift || t('facilityQueue.availableNoShift')} />

@@ -1073,7 +1073,7 @@ export default function FrontDeskDashboardPage() {
       setRescheduleTarget(null);
     } catch (err) {
       // A booking conflict names the clash — show it rather than a shrug.
-      showToast(appointmentAmendRefusalMessage(err, t) ?? (err instanceof Error ? err.message : t('msg.appointmentNotRescheduledTryAgain')), 'error');
+      showToast(appointmentAmendRefusalMessage(err, t) ?? describeError(err, t('msg.appointmentNotRescheduledTryAgain')), 'error');
     } finally {
       setReschedSaving(false);
     }

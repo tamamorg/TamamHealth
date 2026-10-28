@@ -16,6 +16,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
 import { toIsoDate } from '@/lib/date-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { humanizeStatus } from '@/lib/format-utils';
 
 interface TaskListPanelProps {
   patient: PatientDoc;
@@ -124,7 +125,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
                 <Calendar className="w-3 h-3" /> Due {r.sendDate}
               </div>
             </div>
-            <span className={badgeClass(r.status)}>{r.status}</span>
+            <span className={badgeClass(r.status)}>{humanizeStatus(r.status)}</span>
           </div>
         ))}
       </div>

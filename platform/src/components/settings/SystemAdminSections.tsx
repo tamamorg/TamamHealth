@@ -45,6 +45,7 @@ import {
   Search, Settings, X, type LucideIcon,
 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { roleLabel } from '@/lib/role-display';
 
 export type SystemAdminSectionId =
   | 'apps' | 'extensions' | 'privileges' | 'patientActions' | 'metadata' | 'properties';
@@ -504,7 +505,7 @@ function renderPrivileges(list: typeof SYSTEM_PRIVILEGE_DEFINITIONS) {
             <strong>{privilege.label}</strong>
             <small>{privilege.description}</small>
           </span>
-          <span className="sysadm-table-roles">{privilege.roles.map(role => role.replace(/_/g, ' ')).join(', ')}</span>
+          <span className="sysadm-table-roles">{privilege.roles.map(role => roleLabel(role)).join(', ')}</span>
           <b className={`risk-${privilege.risk}`}>{privilege.risk.toUpperCase()}</b>
         </div>
       ))}

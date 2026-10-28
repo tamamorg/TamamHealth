@@ -285,7 +285,7 @@ export async function appealClaim(
   try {
     const claim = await scopedInsuranceDoc<ClaimDoc>('tamamhealth_claims', claimId, scope);
     if (claim.status !== 'denied') {
-      throw new Error(`This claim is ${claim.status}. Only a denied claim can be appealed.`);
+      throw new Error('Only a denied claim can be appealed.');
     }
 
     const now = new Date().toISOString();
@@ -336,7 +336,7 @@ export async function resubmitClaim(
     const claim = await scopedInsuranceDoc<ClaimDoc>('tamamhealth_claims', claimId, scope);
     if (claim.settlement || (claim.totalWriteOff || 0) > 0) throw new Error('INSURANCE_ADJUSTMENT_REVIEW_REQUIRED');
     if (claim.status !== 'denied' && claim.status !== 'appealed') {
-      throw new Error(`This claim is ${claim.status}. Only a denied or appealed claim can be resubmitted.`);
+      throw new Error('Only a denied or appealed claim can be resubmitted.');
     }
 
     const now = new Date().toISOString();

@@ -14,6 +14,7 @@
  * than markup — kept here, and unit-testable, instead of inline in two files.
  */
 
+import { roleLabel } from './role-display';
 import { isTimeOverlap } from './appointment-time';
 import { APPOINTMENT_SLOT_RELEASED_STATUSES } from './appointment-status';
 import type { AppointmentDoc } from './db-types';
@@ -41,11 +42,9 @@ export interface StaffSlotContext {
   showFacility?: boolean;
 }
 
-/** "clinical_officer" → "Clinical officer". */
+/** "clinical_officer" → "Clinical Officer", in the role's on-screen name. */
 export function humanizeRole(role?: string): string {
-  if (!role) return '';
-  const words = role.replace(/_/g, ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return roleLabel(role);
 }
 
 export function staffDisplayName(person: StaffPickerPerson): string {

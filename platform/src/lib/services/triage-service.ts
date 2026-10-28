@@ -458,7 +458,7 @@ export async function updateTriage(
       /* istanbul ignore next -- defensive: all known statuses are in VALID_TRANSITIONS */
       const allowed = VALID_TRANSITIONS[existing.status] || [];
       if (!allowed.includes(updates.status)) {
-        throw new Error(`Invalid triage status transition: ${existing.status} → ${updates.status}`);
+        throw new Error(`This triage cannot move from ${String(existing.status).replace(/_/g, ' ')} to ${String(updates.status).replace(/_/g, ' ')}.`);
       }
     }
 

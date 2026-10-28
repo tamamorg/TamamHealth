@@ -27,6 +27,7 @@ import type { SyncEventDoc } from '@/lib/db-types';
 import { RefreshCw } from '@/components/icons/lucide';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { humanizeStatus } from '@/lib/format-utils';
 
 interface QueueHealth {
   total: number;
@@ -169,7 +170,7 @@ export default function AdminInteropPage() {
               <td>{formatWhen(e.time)}</td>
               <td>DHIS2 export</td>
               <td>{i === 0 && dhisLog?.lastDataset ? dhisLog.lastDataset.period : '—'}</td>
-              <td><SaPill tone={RESULT_TONE[e.status] || 'muted'}>{e.status}</SaPill></td>
+              <td><SaPill tone={RESULT_TONE[e.status] || 'muted'}>{humanizeStatus(e.status)}</SaPill></td>
               <td>{e.message}</td>
             </tr>
           ))}

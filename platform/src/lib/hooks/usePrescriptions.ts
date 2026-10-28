@@ -97,7 +97,7 @@ export function usePrescriptions(patientId?: string) {
       }
       const body = await response.json().catch(() => ({})) as Record<string, unknown>;
       if (!response.ok) {
-        throw new Error((body.error as string) || `Medication not dispensed (server code ${response.status}). Refresh the order before trying again.`);
+        throw new Error((body.error as string) || 'Medication not dispensed. Refresh the order and try again.');
       }
       await loadPrescriptions();
       return body as unknown as import('../services/dispensing-service').DispenseResult;

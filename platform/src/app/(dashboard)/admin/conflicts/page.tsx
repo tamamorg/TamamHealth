@@ -19,6 +19,7 @@ import {
   SadbCard, SadbChip, SadbKvRow, SadbActionButton, SadbPanelHeader,
   SadbEditorModal, SadbConfirmModal, useSadbTab, type ChipTone,
 } from '@/components/admin/sadb-ui';
+import { describeApiError } from '@/lib/user-facing-error';
 
 const STATUSES = ['pending', 'resolved', 'dismissed'] as const;
 type Status = (typeof STATUSES)[number];
@@ -98,7 +99,7 @@ export default function ConflictsPage() {
         setConflicts(data.conflicts || []);
       } else {
         const body = await res.json().catch(() => ({}));
-        const msg = body?.error || `Failed to load conflicts (HTTP ${res.status})`;
+        const msg = describeApiError(body, 'Conflicts not loaded. Reload the page.');
         setConflicts([]);
         setErrorMsg(msg);
         showToast(msg, 'error');

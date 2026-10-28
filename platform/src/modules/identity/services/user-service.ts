@@ -90,7 +90,7 @@ async function postUsersApi(payload: Record<string, unknown>): Promise<Record<st
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    const error = new Error((body.error as string) || `User request failed (${res.status})`) as Error & {
+    const error = new Error((body.error as string) || 'Staff account not saved. Try again.') as Error & {
       code?: string; reason?: string; facilityId?: string;
     };
     error.code = typeof body.code === 'string' ? body.code : undefined;
@@ -106,7 +106,7 @@ async function loadVisibleUsers(): Promise<UserDoc[]> {
     const { apiFetch } = await import('@/lib/api-fetch');
     const response = await apiFetch('/api/users');
     const body = await response.json().catch(() => ({})) as { users?: UserDoc[]; error?: string };
-    if (!response.ok) throw new Error(body.error || `Staff directory not loaded (server code ${response.status}). Reload the page to try again.`);
+    if (!response.ok) throw new Error(body.error || 'Staff directory not loaded. Reload the page.');
     return body.users ?? [];
   }
   const db = usersDB();

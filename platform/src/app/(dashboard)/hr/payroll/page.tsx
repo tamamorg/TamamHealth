@@ -20,6 +20,7 @@ import {
   HrPageShell, PAYROLL_STATUS_TOKENS, StaffIdentity, formatHrDate,
   statusPillStyle, useHrContext, useUrlParams,
 } from '../hr-shared';
+import { roleLabel } from '@/lib/role-display';
 
 // Columns: Staff · Earnings · Deductions · Net pay · Status — five, matching
 // the patient registry exactly, so the template comes from
@@ -147,7 +148,7 @@ export default function HrPayrollPage() {
               const tok = PAYROLL_STATUS_TOKENS[e.status];
               return (
                 <div key={e._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
-                  <StaffIdentity name={e.userName} sub={e.role.replace(/_/g, ' ')} capitalizeSub />
+                  <StaffIdentity name={e.userName} sub={roleLabel(e.role)} capitalizeSub />
 
                   {/* Earnings — base salary, with the allowances that top it
                       up on the subline, so both survive the five-column

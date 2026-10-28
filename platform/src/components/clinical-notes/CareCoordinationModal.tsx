@@ -27,6 +27,7 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { humanizeStatus } from '@/lib/format-utils';
 
 export interface SummaryProblem {
   effectiveDate: string;
@@ -93,7 +94,7 @@ export default function CareCoordinationModal({
     if (includeProblems && pickedProblems.size > 0) {
       lines.push('PROBLEMS');
       problems.forEach((p, i) => {
-        if (pickedProblems.has(i)) lines.push(`  ${p.effectiveDate}  ${p.problem}  (${p.status})`);
+        if (pickedProblems.has(i)) lines.push(`  ${p.effectiveDate}  ${p.problem}  (${humanizeStatus(p.status)})`);
       });
       lines.push('');
     }
@@ -260,7 +261,7 @@ export default function CareCoordinationModal({
                       </td>
                       <td>{p.effectiveDate}</td>
                       <td>{p.problem}</td>
-                      <td>{p.status}</td>
+                      <td>{humanizeStatus(p.status)}</td>
                     </tr>
                   ))}
                 </tbody>

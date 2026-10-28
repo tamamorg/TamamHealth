@@ -24,7 +24,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import type { DataScope } from './data-scope';
 import { filterByScope, orgOnlyScope } from './data-scope';
-import { appointmentStatusForEncounter, nonRegressingAppointmentStatus } from '../clinical-flow/visit-state';
+import { appointmentStatusForEncounter, encounterVisitState, nonRegressingAppointmentStatus } from '../clinical-flow/visit-state';
 
 /** Statuses where the clinician has handed off and is waiting on a parallel order. */
 export const RESUMABLE_STATUSES: EncounterStatus[] = [
@@ -246,7 +246,9 @@ export async function transitionEncounter(
   const db = encountersDB();
   const existing = await db.get(id) as EncounterDoc;
   if (existing.status !== to && !canTransition(existing.status, to)) {
-    throw new Error(`Illegal encounter transition: ${existing.status} → ${to}`);
+    // Stage names in the ladder's own words: this reaches the screen.
+    const stage = (status: EncounterStatus) => encounterVisitState(status).label || 'its current stage';
+    throw new Error(`This visit cannot move from ${stage(existing.status)} to ${stage(to)}.`);
   }
   if (DISCHARGE_STATUSES.includes(to) && existing.status !== to) await assertDischargeAllowed(id, to, opts);
   // Capability check — WARN-ONLY for now (step 1 of the engine migration):

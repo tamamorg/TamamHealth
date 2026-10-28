@@ -474,7 +474,7 @@ export async function updateAppointmentStatus(
       throw new Error('Only the front desk or the patient\'s care team can complete an appointment.');
     }
     if (!canRoleMoveAppointment(extra?.actorRole, existing.status, status)) {
-      throw new Error('This role cannot move the visit from its current status. Ask the front desk.');
+      throw new Error('Your role cannot move this visit from its current status. Ask the front desk.');
     }
     // Approving a request turns it into a live booking. The portal write path
     // runs the conflict guard when the request is filed, but time passes

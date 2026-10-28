@@ -106,7 +106,7 @@ export interface BookingConfirmation {
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => null) as ({ error?: string; code?: string } & T) | null;
   if (!res.ok) {
-    const err = new Error(body?.error || `Request failed (${res.status})`) as Error & { code?: string };
+    const err = new Error(body?.error || 'Request not completed. Try again.') as Error & { code?: string };
     err.code = body?.code;
     throw err;
   }

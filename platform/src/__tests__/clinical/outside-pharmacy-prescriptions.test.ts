@@ -242,7 +242,7 @@ describe('checkout gate — prescriptions', () => {
     await seedRx();
     const gate = await rxGate();
     expect(gate.satisfied).toBe(false);
-    expect(gate.detail).toMatch(/1 prescription\(s\) not yet dispensed/);
+    expect(gate.detail).toMatch(/1 prescription not dispensed/);
     expect(gate.resolveHref).toBe('/pharmacy');
   });
 
@@ -250,7 +250,7 @@ describe('checkout gate — prescriptions', () => {
     await seedRx({ fulfilment: 'external' });
     const gate = await rxGate();
     expect(gate.satisfied).toBe(false);
-    expect(gate.detail).toMatch(/1 outside-pharmacy script\(s\) not yet given to the patient/);
+    expect(gate.detail).toMatch(/1 outside-pharmacy script not given to the patient yet/);
     // Nothing for the pharmacy to do — the fix is on the chart.
     expect(gate.resolveHref).toBe('/patients/pat-1?tab=prescriptions');
   });
@@ -266,8 +266,8 @@ describe('checkout gate — prescriptions', () => {
     await seedRx({ medication: 'Paracetamol', fulfilment: 'external' });
     const gate = await rxGate();
     expect(gate.satisfied).toBe(false);
-    expect(gate.detail).toMatch(/1 prescription\(s\) not yet dispensed: Amoxicillin\./);
-    expect(gate.detail).toMatch(/1 outside-pharmacy script\(s\) not yet given to the patient — print or text: Paracetamol\./);
+    expect(gate.detail).toMatch(/1 prescription not dispensed: Amoxicillin\./);
+    expect(gate.detail).toMatch(/1 outside-pharmacy script not given to the patient yet\. Print or text: Paracetamol\./);
     expect(gate.resolveHref).toBe('/pharmacy');
   });
 });

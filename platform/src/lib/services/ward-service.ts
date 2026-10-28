@@ -721,7 +721,7 @@ export async function dischargePatient(
     throw new WardWorkflowError('Admission not found. Refresh the ward board before trying again.', 'ADMISSION_NOT_FOUND');
   }
   if (admission.status !== 'admitted') {
-    throw new WardWorkflowError(`This admission is already ${admission.status}.`, 'ADMISSION_NOT_ACTIVE');
+    throw new WardWorkflowError('This admission is no longer active. Refresh the ward board.', 'ADMISSION_NOT_ACTIVE');
   }
   if (dischargeData.dischargeType === 'transfer') {
     throw new WardWorkflowError(
