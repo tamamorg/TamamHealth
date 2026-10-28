@@ -40,6 +40,8 @@ import { TRANSFER_WRITE_ROLES } from '../services/patient-transfer-permissions';
 import { MULTI_FACILITY_ROLES } from './facility-entitlements';
 import { DATABASE_DOCUMENT_TYPES } from './sync-config';
 import { CARE_TEAM_ASSIGNMENT_ROLES } from '../care-team-permissions';
+import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_SCHEDULING_ROLES, canRoleMoveAppointment } from '../appointment-status';
+import type { AppointmentStatus } from '../db-types';
 
 /**
  * The canonical role groups.
@@ -369,6 +371,12 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
     'medical_superintendent', 'nurse', 'midwife', 'triage_nurse',
     'rooming_nurse', 'data_entry_clerk', 'records_hmis_officer', 'hrio',
     'hospital_manager',
+    // The service stations move a visit along from their own dashboards
+    // (In Progress / Completed — see APPOINTMENT_STATION_ROLES). Status and
+    // its stamps are all on the field allowlist below; scheduling and
+    // care-team fields stay out of their reach.
+    'lab_tech', 'radiologist', 'pharmacist', 'nutritionist', 'cashier',
+    'medical_biller',
   ],
 };
 
@@ -441,6 +449,36 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
     'updatedAt', 'offlineSync',
   ],
 };
+
+/**
+ * Which status moves each non-scheduling role may make on an appointment,
+ * as `{ role: { fromStatus: [toStatus, …] } }` — generated from
+ * `canRoleMoveAppointment`, the rule the dropdowns and
+ * `updateAppointmentStatus` already apply, so the validator can never drift
+ * from the app. The field allowlist alone lets an amend-only role write ANY
+ * status value; this is what stops a client that skips the app (a raw
+ * PouchDB write) from reopening a cancelled visit or checking a patient in
+ * from the lab bench.
+ *
+ * Only roles that can write an appointment without full rights are listed;
+ * reception and admins own the book and are not constrained here.
+ */
+export const APPOINTMENT_STATUS_TRANSITIONS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = (() => {
+  const statuses = Object.keys(APPOINTMENT_STATUS_LABELS) as AppointmentStatus[];
+  const writers = new Set<UserRole>([
+    ...(DOC_UPDATE_ONLY_ROLES.appointment ?? []),
+    ...(DOC_CREATE_ONLY_ROLES.appointment ?? []),
+  ]);
+  const table: Record<string, Record<string, string[]>> = {};
+  for (const role of writers) {
+    if (APPOINTMENT_SCHEDULING_ROLES.includes(role)) continue;
+    table[role] = {};
+    for (const from of statuses) {
+      table[role][from] = statuses.filter(to => to === from || canRoleMoveAppointment(role, from, to));
+    }
+  }
+  return table;
+})();
 
 /**
  * The fields an edit changes that `role` is not allowed to amend on `type`,
@@ -745,6 +783,17 @@ export function buildValidateDocUpdateFn(
   if (!actingRole) {
     throw({ forbidden: 'no role claim on the CouchDB user; cannot write ' + docType });
   }
+  // ── Appointment status moves ───────────────────────────────────────────
+  // Who may move a visit from which status to which (APPOINTMENT_STATUS_TRANSITIONS,
+  // generated from canRoleMoveAppointment). A role without a row owns the book.
+  if (!isDelete && oldDoc && docType === 'appointment' && newDoc.status !== oldDoc.status) {
+    var APPT_MOVES = ${JSON.stringify(APPOINTMENT_STATUS_TRANSITIONS)};
+    var roleMoves = APPT_MOVES[actingRole];
+    if (roleMoves && !contains(roleMoves[oldDoc.status] || [], newDoc.status)) {
+      throw({ forbidden: 'role ' + actingRole + ' may not move an appointment from ' + oldDoc.status + ' to ' + newDoc.status });
+    }
+  }
+
   // Post-consult outcomes are clinical attestations, not front-desk metadata.
   if (!isDelete && docType === 'clinical_encounter') {
     var actorId = null;

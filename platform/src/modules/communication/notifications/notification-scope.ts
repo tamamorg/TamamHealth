@@ -86,8 +86,13 @@ const KIND_RELEVANT_ROLES: Record<NotificationKind, readonly UserRole[] | 'all'>
   // pharmacy, dispensed. Personal by construction: the source only emits for
   // visits whose encounter names the viewer (see visit-updates.ts), so this
   // list is just the coarse cut of who can BE on a care team.
+  // The desk and the service stations are in it too: a status changed from a
+  // dashboard dropdown reaches reception, and the station the patient is
+  // headed to next (visitStatusChangeItems narrows each item to them).
   visit: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
-    'triage_nurse', 'rooming_nurse', 'medical_superintendent'],
+    'triage_nurse', 'rooming_nurse', 'medical_superintendent',
+    'front_desk', 'central_registration_clerk', 'clinic_clerk',
+    'lab_tech', 'radiologist', 'pharmacist', 'cashier', 'medical_biller'],
   // Care-progress pool items (blocked / unassigned urgent / waiting for
   // provider). Tasks assigned to a specific user bypass this list — see
   // useNotifications — so a task given to a cashier still reaches them.

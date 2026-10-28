@@ -111,6 +111,9 @@ export interface UseNotificationsOptions {
   perSourceLimit?: number;
 }
 
+/** How long the first load waits on its slowest source before showing the rest. */
+const SLOW_SOURCE_MS = 10_000;
+
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const perSourceLimit = options.perSourceLimit ?? DEFAULT_PER_SOURCE_LIMIT;
   const { currentUser } = useAuth();
@@ -132,6 +135,9 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Known notification ids — lets us chime only for genuinely new arrivals
   // (never on the first load of a session).
   const seenIds = useRef<Set<string> | null>(null);
+  /** Something has been put on screen — a finished pass, or the partial list
+   *  released by the slow-source timer below. Only before that is "Loading…" shown. */
+  const shownOnce = useRef(false);
   const loadVersion = useRef(0);
   // Includes the user id + department: the transfer feed is per-user, so a
   // scope-only key would keep serving one user's inbox after a re-login in the
@@ -148,7 +154,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // usable list. `seenIds` is null until the first pass finishes, so it is
     // exactly the "have we ever loaded" flag: once we have data, later refreshes
     // update it in place instead of blanking the panel.
-    if (seenIds.current === null) setLoading(true);
+    if (!shownOnce.current) setLoading(true);
     if (!currentUser) {
       setAllItems([]);
       setLoading(false);
@@ -156,6 +162,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     }
     const scope = { orgId: currentUser.orgId, hospitalId: currentUser.hospitalId, role: currentUser.role };
     const out: NotificationItem[] = [];
+    // One source that never settles (a wedged index build, a lazy chunk that
+    // never arrives) used to hold the whole page on "Loading…" for good. After
+    // SLOW_SOURCE_MS, show what the finished sources produced; the pass still
+    // completes in the background and replaces it.
+    const slowSourceTimer = window.setTimeout(() => {
+      if (version !== loadVersion.current || shownOnce.current) return;
+      shownOnce.current = true;
+      setAllItems([...out].sort((a, b) => (b.time || '').localeCompare(a.time || '')));
+      setLoading(false);
+    }, SLOW_SOURCE_MS);
     // Whole sources that are not this role's job are skipped before their
     // database read — see KIND_RELEVANT_ROLES in lib/notification-scope.ts.
     const relevant = (kind: NotificationKind) => isKindRelevantToRole(kind, currentUser?.role);
@@ -477,9 +493,13 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // assignment fields, so unclaimed patients stay with the triage pool above.
     if (relevant('visit')) try {
       const { getAllEncounters } = await import('@/lib/services/encounter-service');
-      const { visitUpdateItems, dispensedItems, returnedToDeskItems } = await import('@/modules/communication/notifications/visit-updates');
+      const { visitUpdateItems, dispensedItems, returnedToDeskItems, visitStatusChangeItems } = await import('@/modules/communication/notifications/visit-updates');
       const encounters = await getAllEncounters(scope);
       out.push(...visitUpdateItems(encounters, currentUser, nowMsLocal, perSourceLimit));
+      // A status picked from any dashboard's dropdown, addressed to the care
+      // team, the desk and the station the patient is headed to next.
+      const { getAllAppointments } = await import('@/lib/services/appointment-service');
+      out.push(...visitStatusChangeItems(await getAllAppointments(scope), encounters, currentUser, nowMsLocal, perSourceLimit));
       // Reception's half of "return to front desk": visits a clinician sent
       // back, addressed to desk ROLES rather than the care team.
       out.push(...returnedToDeskItems(encounters, currentUser, nowMsLocal, perSourceLimit));
@@ -499,8 +519,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
     } catch { /* offline */ }
 
+    window.clearTimeout(slowSourceTimer);
     // A slower, older refresh must not overwrite a newly received message.
     if (version !== loadVersion.current) return;
+    shownOnce.current = true;
     out.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
     if (seenIds.current === null) {
       seenIds.current = new Set(out.map(n => n.id));
@@ -519,6 +541,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
   useEffect(() => {
     seenIds.current = null;
+    shownOnce.current = false;
     void load();
     // Recover after a dropped local changes feed or a sleeping browser tab.
     const timer = window.setInterval(() => { if (!document.hidden) void load(); }, 30000);
@@ -554,7 +577,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const role = currentUser?.role;
   const notificationDatabases = useCallback(() => [
     isKindRelevantToRole('referral', role) ? referralsDB() : null,
-    isKindRelevantToRole('appointment', role) ? appointmentsDB() : null,
+    // A visit status change re-mints a visit item too (visitStatusChangeItems).
+    isKindRelevantToRole('appointment', role) || isKindRelevantToRole('visit', role) ? appointmentsDB() : null,
     isKindRelevantToRole('lab', role) ? labResultsDB() : null,
     // The visit kind's dispensed loop-closer also reads prescriptions, so a
     // doctor's bell must wake on a dispense even though they skip the

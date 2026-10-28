@@ -93,10 +93,16 @@ describe('visit-status updates go to the roles that can be on a care team', () =
     }
   });
 
-  it('skip the desk, the bench and the back office', () => {
-    // Ownership already narrows this kind to visits that NAME the viewer; the
-    // role cut here removes whole audiences an encounter never names.
-    for (const role of ['front_desk', 'pharmacist', 'lab_tech', 'cashier', 'hrio', 'org_admin', 'super_admin']) {
+  it('reach the desk and the stations a status change hands the patient to', () => {
+    // visitStatusChangeItems narrows each item to the desk, the care team and
+    // the next station; the role cut only has to let those audiences in.
+    for (const role of ['front_desk', 'clinic_clerk', 'pharmacist', 'lab_tech', 'radiologist', 'cashier', 'medical_biller']) {
+      expect(isKindRelevantToRole('visit', role)).toBe(true);
+    }
+  });
+
+  it('skip the back office', () => {
+    for (const role of ['hrio', 'org_admin', 'super_admin', 'data_entry_clerk']) {
       expect(isKindRelevantToRole('visit', role)).toBe(false);
     }
   });

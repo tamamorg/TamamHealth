@@ -7,8 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { authorizeJson } from '@/lib/api-json-guard';
 import { withAuditLog } from '@/lib/audit/with-audit';
-import type { UserRole } from '@/lib/db-types';
+import type { AppointmentStatus, UserRole } from '@/lib/db-types';
 import { CARE_TEAM_ASSIGNMENT_ROLES } from '@/lib/care-team-permissions';
+import { APPOINTMENT_STATION_ROLES, appointmentStatusOptionsForRole } from '@/lib/appointment-status';
 // medical_biller holds the /appointments route in role-routes.ts (billing
 // context needs the appointment a charge/claim is tied to) — read-only,
 // since a biller does not schedule visits.
@@ -113,9 +114,14 @@ export async function GET(request: NextRequest) {
 }
 async function postHandler(request: NextRequest) {
   try {
-    const guarded = await authorizeJson(request, CREATE_ROLES);
+    // The service stations may move a visit's status (In Progress /
+    // Completed, as from their dashboards) but never book one, so they pass
+    // this gate only for the status action.
+    const guarded = await authorizeJson(request, [...CREATE_ROLES, ...APPOINTMENT_STATION_ROLES]);
     if (guarded.response) return guarded.response;
     const { auth, body } = guarded;
+    const isStation = APPOINTMENT_STATION_ROLES.includes(auth.role as UserRole);
+    if (isStation && body.action !== 'update_status') return forbidden();
     // Status update action
     if (body.action === 'update_status') {
       if (!body.appointmentId || !body.status) {
@@ -133,9 +139,16 @@ async function postHandler(request: NextRequest) {
       if (!existingForStatus || filterByScope([existingForStatus], buildScopeFromAuth(auth)).length === 0) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       }
-      const { canViewAppointment } = await import('@/lib/appointment-visibility');
-      if (!canViewAppointment(existingForStatus, { _id: auth.sub, role: auth.role as UserRole })) {
-        return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+      if (isStation) {
+        // A station serves whoever is checked in at its facility (the scope
+        // check above), not only visits booked with it — but only along its
+        // own rungs.
+        if (!appointmentStatusOptionsForRole(auth.role as UserRole).includes(body.status as AppointmentStatus)) return forbidden();
+      } else {
+        const { canViewAppointment } = await import('@/lib/appointment-visibility');
+        if (!canViewAppointment(existingForStatus, { _id: auth.sub, role: auth.role as UserRole })) {
+          return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+        }
       }
       const requestedExtra = body.extra && typeof body.extra === 'object'
         ? body.extra as Record<string, unknown>
