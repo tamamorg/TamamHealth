@@ -91,6 +91,16 @@ export async function getAppointmentsByProvider(providerId: string): Promise<App
   return all.filter(a => a.providerId === providerId);
 }
 
+/**
+ * Every booking a staff member is ON — as the visit's provider or as its
+ * second staff member. A nurse's diary is the visits naming them as staff; a
+ * doctor can be either. This is the calendar a clash is checked against.
+ */
+export async function getAppointmentsForStaffMember(userId: string): Promise<AppointmentDoc[]> {
+  const all = await getAllAppointments();
+  return all.filter(a => a.providerId === userId || a.staffId === userId);
+}
+
 export async function getAppointmentsByFacility(facilityId: string): Promise<AppointmentDoc[]> {
   const all = await getAllAppointments();
   return all.filter(a => a.facilityId === facilityId);
@@ -116,6 +126,9 @@ export async function getTodaysAppointments(scope?: DataScope): Promise<Appointm
 interface BookingSlot {
   providerId?: string;
   providerName?: string;
+  /** The second person on the visit (rooming nurse, midwife, interpreter). */
+  staffId?: string;
+  staffName?: string;
   patientId?: string;
   patientName?: string;
   orgId?: string;
@@ -197,11 +210,13 @@ async function assertMayAmendAppointment(
  * a human-readable message the booking surfaces show as-is.
  *
  * What genuinely cannot happen at once:
- *  - PROVIDER: the doctor cannot be in two visits. An empty providerId
- *    (walk-ins booked with no clinician chosen yet) is not a real provider to
- *    collide on. Scoped to the booking's own org so one tenant's schedule can
- *    never block another's — getAppointmentsByProvider() is unscoped and would
- *    match every org.
+ *  - STAFF: nobody named on the visit can be in two visits — the provider
+ *    and the second staff member (the nurse) alike, whichever of those two
+ *    places their other booking names them in. A nurse rooming the 10:00 with
+ *    Dr A is not free for a 10:00 with Dr B. An empty id (walk-ins booked with
+ *    no clinician chosen yet) is not a real person to collide on. Scoped to
+ *    the booking's own org so one tenant's schedule can never block another's
+ *    — the staff query is unscoped and would match every org.
  *  - ROOM: two visits cannot share an exam room, whoever is running them.
  *  - PATIENT: the same patient cannot hold two overlapping live bookings, and
  *    cannot hold two open visits on one day. Non-overlapping same-day bookings
@@ -256,12 +271,17 @@ export async function assertNoBookingConflicts(
     }
   }
 
-  if (data.providerId) {
-    const existing = (await getAppointmentsByProvider(data.providerId))
+  const people = [
+    { id: data.providerId, name: data.providerName || 'This provider' },
+    { id: data.staffId, name: data.staffName || 'The nurse' },
+  ].filter((p, i, list): p is { id: string; name: string } =>
+    !!p.id && list.findIndex(q => q.id === p.id) === i);
+  for (const person of people) {
+    const existing = (await getAppointmentsForStaffMember(person.id))
       .filter(a => a.orgId === data.orgId);
     const conflict = existing.find(overlaps);
     if (conflict) {
-      throw new BookingConflictError(`Not booked. ${data.providerName || 'This provider'} already has ${conflict.patientName} at ${conflict.appointmentTime} on ${conflict.appointmentDate}. Choose another time.`);
+      throw new BookingConflictError(`Not booked. ${person.name} already has ${conflict.patientName} at ${conflict.appointmentTime} on ${conflict.appointmentDate}. Choose another time.`);
     }
   }
 

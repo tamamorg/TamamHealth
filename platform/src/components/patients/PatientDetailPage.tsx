@@ -83,6 +83,9 @@ import PatientPrintModal from './detail/PatientPrintModal';
 import PatientVitalsTab from './detail/PatientVitalsTab';
 import StartVisitPanel from '@/components/ehr/chart/panels/StartVisitPanel';
 import NotePrescribeForm from '@/components/clinical-notes/prescribe/PrescribeModal';
+import BookAppointmentPanel from '@/components/ehr/chart/panels/BookAppointmentPanel';
+import { apptBucket, appointmentsInView, type ApptView } from './detail/appointment-buckets';
+import { jubaDate } from '@/lib/time-juba';
 
 
 export default function PatientDetailPage() {
@@ -200,12 +203,14 @@ export default function PatientDetailPage() {
   // be open at once. The one opened last shows; closing it reveals the next
   // one still open, and so on — the chart's workspace stack does the same for
   // the rail panels. Reopening one brings it back to the top.
-  type PageWorkspace = 'vitals' | 'startVisit' | 'prescribe';
+  type PageWorkspace = 'vitals' | 'startVisit' | 'prescribe' | 'appointment';
+  const [showBookAppointment, setShowBookAppointment] = useState(false);
   const [pageWorkspaceOrder, setPageWorkspaceOrder] = useState<PageWorkspace[]>([]);
   const bringPageWorkspace = useCallback((ws: PageWorkspace) => {
     setPageWorkspaceOrder(prev => [...prev.filter(x => x !== ws), ws]);
   }, []);
   const openPrescribe = useCallback(() => { setShowPrescribeModal(true); bringPageWorkspace('prescribe'); }, [bringPageWorkspace]);
+  const openBookAppointment = useCallback(() => { setShowBookAppointment(true); bringPageWorkspace('appointment'); }, [bringPageWorkspace]);
   const [correctingVitalsRecord, setCorrectingVitalsRecord] = useState<MedicalRecordDoc | undefined>(undefined);
   const [assignTarget, setAssignTarget] = useState<AssignDoctorTarget | null>(null);
   // One-shot request for the chart shell to open a workspace drawer panel
@@ -321,15 +326,19 @@ export default function PatientDetailPage() {
   const { immunizations: allImmunizations } = useImmunizations(patient?._id);
   const { visits: allANCVisits } = useANC();
   const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
-  // Deep-linked appointment: page to its slice of the newest-first list, then
-  // scroll it into view (same pattern as the other focus-capable sections).
+  // Upcoming / Today / Past on the Appointments tab.
+  const [apptView, setApptView] = useState<ApptView>('upcoming');
+  // Deep-linked appointment: open the view it falls in, page to its slice of
+  // that view, then scroll it into view (same pattern as the other
+  // focus-capable sections).
   useEffect(() => {
     if (activeTab !== 'appointments' || !focusId) return;
-    const ts = (a: { appointmentDate: string; appointmentTime?: string }) =>
-      new Date(`${a.appointmentDate}T${a.appointmentTime || '00:00'}:00`).getTime();
-    const sorted = [...(patientAppointments || [])].sort((a, b) => ts(b) - ts(a));
-    const idx = sorted.findIndex(a => a._id === focusId);
-    if (idx < 0) return;
+    const target = (patientAppointments || []).find(a => a._id === focusId);
+    if (!target) return;
+    const today = jubaDate();
+    const view = apptBucket(target, today);
+    const idx = appointmentsInView(patientAppointments || [], view, today).findIndex(a => a._id === focusId);
+    setApptView(view);
     setApptSearch('');
     setApptPage(Math.floor(idx / APPT_PAGE_SIZE) + 1);
     const frame = requestAnimationFrame(() => {
@@ -631,6 +640,8 @@ export default function PatientDetailPage() {
     weight: latestVitalsEntry.weight,
     height: latestVitalsEntry.height,
     bmi: latestVitalsEntry.bmi,
+    muac: latestVitalsEntry.muac,
+    bloodGlucose: latestVitalsEntry.bloodGlucose,
     recordedAt: latestVitalsEntry.at,
   } : undefined;
   // VitalsTrends only reads MedicalRecordDoc[] — a triage stop has no
@@ -796,9 +807,9 @@ export default function PatientDetailPage() {
             // record (OpenMRS O3), so the chart narrows instead of being covered.
             workspace={(() => {
               if (!patient || !currentUser) return null;
-              const isOpen: Record<PageWorkspace, boolean> = { vitals: showNurseVitals, startVisit: showStartVisit, prescribe: showPrescribeModal };
+              const isOpen: Record<PageWorkspace, boolean> = { vitals: showNurseVitals, startVisit: showStartVisit, prescribe: showPrescribeModal, appointment: showBookAppointment };
               const top = [...pageWorkspaceOrder].reverse().find(ws => isOpen[ws])
-                ?? (showNurseVitals ? 'vitals' : showStartVisit ? 'startVisit' : showPrescribeModal ? 'prescribe' : null);
+                ?? (showNurseVitals ? 'vitals' : showStartVisit ? 'startVisit' : showPrescribeModal ? 'prescribe' : showBookAppointment ? 'appointment' : null);
               if (top === 'startVisit') return {
               title: t('startVisit.title'),
               onClose: () => setShowStartVisit(false),
@@ -837,6 +848,17 @@ export default function PatientDetailPage() {
                 />
               ),
             };
+              if (top === 'appointment') return {
+                title: t('bookPanel.title'),
+                onClose: () => setShowBookAppointment(false),
+                content: (
+                  <BookAppointmentPanel
+                    patient={patient}
+                    patientName={patientFullName(patient)}
+                    onClose={() => setShowBookAppointment(false)}
+                  />
+                ),
+              };
               if (top === 'prescribe') return {
                 title: t('createPage.prescribeTitle'),
                 wide: true,
@@ -941,7 +963,7 @@ export default function PatientDetailPage() {
 
           {activeTab === 'overview' && <PatientOverviewTab patient={patient} latestVitals={latestVitals} vitalsReady={vitalsReady} latestPatientTriage={latestPatientTriage} patientProblems={patientProblems} allPrescriptions={allPrescriptions} allLabResults={allLabResults} allImmunizations={allImmunizations} canViewClinical={canViewClinical} selectTab={selectTab} facesheetActions={facesheetActions} facesheetPanels={facesheetPanels} showCustomizeView={showCustomizeView} setShowCustomizeView={setShowCustomizeView} toggleFacesheetPanel={toggleFacesheetPanel} setFacesheetPanels={setFacesheetPanels} />}
 
-          {activeTab === 'appointments' && patient && <PatientAppointmentsTab patientAppointments={patientAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} router={router} patient={patient} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
+          {activeTab === 'appointments' && patient && <PatientAppointmentsTab patientAppointments={patientAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} onBook={openBookAppointment} apptView={apptView} setApptView={setApptView} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
 
           {/* No wrapper card: PatientSBAR is built from ChartSection now, and
               nesting those inside a card produced a card-in-a-card. */}
@@ -984,7 +1006,7 @@ export default function PatientDetailPage() {
           {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} setShowPrescribeModal={setShowPrescribeModal} currentUser={currentUser} focusId={focusId} />}
 
           {/* Vitals Tab */}
-          {activeTab === 'vitals' && <PatientVitalsTab vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) bringPageWorkspace('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} />}
+          {activeTab === 'vitals' && <PatientVitalsTab patientAgeYears={patientAgeYearsExact(patient) ?? undefined} isPregnant={isPregnant} vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) bringPageWorkspace('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} onVitalsChanged={() => reloadRecords()} />}
 
           {/* Immunizations — dose history recorded in the chart, through the
               same service the /immunizations module writes with. */}

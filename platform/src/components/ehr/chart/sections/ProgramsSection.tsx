@@ -86,6 +86,11 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
     const programName = programKey === 'other' ? otherName.trim() : PROGRAM_LABELS[programKey];
     if (!programName) { showToast(t('msg.enterTheProgramName'), 'error'); return; }
     if (!enrollmentDate) { showToast(t('msg.selectTheEnrollmentDate'), 'error'); return; }
+    // One active enrolment per programme: a second would split the follow-up.
+    if (enrollments.some(e => e.status === 'active' && e.programName.trim().toLowerCase() === programName.toLowerCase())) {
+      showToast(t('msg.alreadyEnrolledInProgram', { name: programName }), 'warning');
+      return;
+    }
     try {
       setSubmitting(true);
       await create({
@@ -115,7 +120,7 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
   const handleStatusChange = async (id: string, next: ProgramEnrollmentStatus) => {
     setStatusBusy(id);
     try {
-      await setStatus(id, next);
+      if (!(await setStatus(id, next))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.enrollmentMarked', { status: statusWord(t, next) }), 'success');
     } catch (err) {
       console.error(err);

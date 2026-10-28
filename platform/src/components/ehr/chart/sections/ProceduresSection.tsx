@@ -85,7 +85,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
     }
     setAdvancing(id);
     try {
-      await advance(id, to, { actorId: currentUser?._id, actorName: currentUser?.name, reason });
+      if (!(await advance(id, to, { actorId: currentUser?._id, actorName: currentUser?.name, reason }))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.procedureMovedTo', { value: statusWord(t, to) }), 'success');
     } catch (err) {
       showToast(describeError(err, t('chart.procedureUpdateFailed')), 'error');
@@ -143,7 +143,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast(t('msg.procedureNotRecordedTryAgain'), 'error');
+      // The amend path explains itself (reason too short, record changed).
+      showToast(describeError(err, t('msg.procedureNotRecordedTryAgain')), 'error');
     } finally {
       setSubmitting(false);
     }

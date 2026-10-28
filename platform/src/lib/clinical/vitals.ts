@@ -646,7 +646,8 @@ export function mergeVitalsTimeline(records: MedicalRecordDoc[], triages: Triage
         oxygenSaturation: numOrUndef(v.oxygenSaturation),
         weight: numOrUndef(v.weight),
         height: numOrUndef(v.height),
-        bmi: numOrUndef(v.bmi),
+        // Older nursing readings stored 0 for "no BMI"; 0 is never a real BMI.
+        bmi: v.bmi ? numOrUndef(v.bmi) : undefined,
         muac: numOrUndef(v.muac),
         bloodGlucose: numOrUndef(v.bloodGlucose),
         facility: r.hospitalName,

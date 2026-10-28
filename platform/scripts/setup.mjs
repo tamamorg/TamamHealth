@@ -61,8 +61,8 @@ async function main() {
 
   const nodeVersion = process.versions.node;
   const [major] = nodeVersion.split('.').map(Number);
-  if (major < 18) {
-    log(`  Node.js ${nodeVersion} detected — requires >= 18.0.0`);
+  if (major < 20 || major >= 25) {
+    log(`  Node.js ${nodeVersion} detected — requires >= 20.0.0 and < 25.0.0`);
     log('  Please upgrade Node.js: https://nodejs.org');
     close();
     process.exit(1);
@@ -82,11 +82,23 @@ async function main() {
   } else {
     let envContent = readFileSync(envExamplePath, 'utf-8');
 
-    // Generate a random JWT secret
+    // Generate every secret a standalone local install needs. The template
+    // deliberately contains placeholders/blank values so copied examples can
+    // never become shared credentials across installations.
     const jwtSecret = randomBytes(48).toString('base64');
+    const phiEncryptionKey = randomBytes(32).toString('base64');
+    const orgDataKeySecret = randomBytes(48).toString('base64');
     envContent = envContent.replace(
-      'NEXT_PUBLIC_JWT_SECRET=change-me-to-a-random-secret',
-      `NEXT_PUBLIC_JWT_SECRET=${jwtSecret}`
+      'JWT_SECRET=change-me-to-a-random-secret',
+      `JWT_SECRET=${jwtSecret}`
+    );
+    envContent = envContent.replace(
+      'PHI_ENCRYPTION_KEY=',
+      `PHI_ENCRYPTION_KEY=${phiEncryptionKey}`
+    );
+    envContent = envContent.replace(
+      'ORG_DATA_KEY_SECRET=',
+      `ORG_DATA_KEY_SECRET=${orgDataKeySecret}`
     );
 
     log('');
@@ -143,13 +155,17 @@ async function main() {
     if (wantDb.toLowerCase().startsWith('y')) {
       const dbUrl = await ask('DATABASE_URL', 'postgresql://tamamhealth:password@localhost:5432/safeguard_junub');
       envContent = envContent.replace(
-        'DATABASE_URL=postgresql://tamamhealth:password@localhost:5432/safeguard_junub',
+        '# DATABASE_URL=postgresql://tamamhealth:password@localhost:5432/safeguard_junub',
         `DATABASE_URL=${dbUrl}`
+      );
+      envContent = envContent.replace(
+        '# DATABASE_DIRECT_URL=postgresql://tamamhealth:password@localhost:5432/safeguard_junub',
+        `DATABASE_DIRECT_URL=${dbUrl}`
       );
     }
 
     writeFileSync(envPath, envContent, 'utf-8');
-    success('Created .env.local with secure JWT secret');
+    success('Created .env.local with unique JWT and data-encryption secrets');
   }
 
   // ---- Step 3: Install dependencies ----
@@ -172,7 +188,7 @@ async function main() {
   heading('4. Database setup (optional)');
 
   const envFile = existsSync(envPath) ? readFileSync(envPath, 'utf-8') : '';
-  const hasDb = envFile.includes('DATABASE_URL=') && !envFile.includes('DATABASE_URL=postgresql://tamamhealth:password@localhost:5432/safeguard_junub');
+  const hasDb = /^DATABASE_URL=.+$/m.test(envFile);
 
   log(`  ${DIM}The app works fully offline with browser-based PouchDB.${RESET}`);
   log(`  ${DIM}PostgreSQL is only needed for national analytics & government dashboards.${RESET}`);

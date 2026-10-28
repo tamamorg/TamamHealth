@@ -56,11 +56,22 @@
   inset-inline-start: 0;
   inset-inline-end: 56px;
   width: auto;
-  height: auto !important;
+  height: calc(100dvh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px))) !important;
+  max-height: none;
   flex-basis: auto;
   z-index: 40;
 }
 
 @media (max-width: 900px) {
   .tamam-drawer.tamam-drawer.is-maximized { inset-inline-end: 44px; }
+}
+
+/* Below 900px the workspace is a fixed overlay pinned top to bottom; the
+ * inline height the shell measures for the docked drawer would stop it short
+ * of the window's bottom edge. */
+@media (max-width: 900px) {
+  .tamam-drawer.tamam-drawer {
+    height: calc(100dvh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px))) !important;
+    max-height: none;
+  }
 }

@@ -218,16 +218,11 @@ other.
   the Sentry path. The structured request log (layer 2 above) deliberately
   stays close to raw — that's what lets operators reproduce a bug. The
   defence there is `sanitizeError` in
-  [`src/lib/api-auth.ts`](../../src/lib/api-auth.ts), not `stripPHI`.
+  [`modules/identity/core/api-auth.ts`](../../src/modules/identity/core/api-auth.ts), not `stripPHI`.
 
 ## Tests
 
-`src/__tests__/observability/` is currently an empty directory —
-`strip-phi.test.ts` (which pinned the redaction policy for every key
-family + cookie header + cyclic-reference safety + breadcrumb scrubbing)
-was deleted as apparent collateral damage in a large, unrelated
-sync-refactor commit and never restored. The deleted file's own header
-comment said its purpose was so the policy documented in this section
-"can't silently drift" — that safety net is currently gone. This is a real
-regression worth restoring, not just a doc-freshness note: PHI-stripping
-for Sentry events has no automated coverage today.
+`src/__tests__/observability/strip-phi.test.ts` pins the redaction policy for
+PHI key families, cookie headers, cyclic references, and breadcrumb
+scrubbing. Keep it in the security regression set whenever observability or
+error serialization changes.

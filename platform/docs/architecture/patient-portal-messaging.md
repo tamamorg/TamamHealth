@@ -87,7 +87,7 @@ patient sees a new staff reply only after reloading or reopening the page.
 (`{ localName: 'tamamhealth_messages', direction: 'both', orgScoped: true }`),
 wired up by `src/lib/sync/sync-manager.ts`. The `/messages` page and the
 patient-chart reply flow live-subscribe via
-[`useMessages`](../../src/lib/hooks/useMessages.ts), which calls
+[`useMessages`](../../src/modules/communication/hooks/useMessages.ts), which calls
 `messagesDB().changes({ since: 'now', live: true })` — so an inbound
 patient message lights up the staff inbox without a manual refresh.
 
@@ -106,7 +106,7 @@ delivery, it needs its own polling or push mechanism — it can't piggyback
 on PouchDB replication the way the staff side does, because it was never
 given a local database to replicate into.
 
-## Helpers (in [`message-service.ts`](../../src/lib/services/message-service.ts))
+## Helpers (in [`message-service.ts`](../../src/modules/communication/services/message-service.ts))
 
 - `getMessagesByPatient(patientId)` — full conversation for one patient,
   newest-first, excluding `staff_to_staff` messages that happen to carry

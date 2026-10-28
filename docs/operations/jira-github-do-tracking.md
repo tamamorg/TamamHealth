@@ -102,7 +102,7 @@ flowchart LR
 9. To promote: **Actions → deploy-production → Run workflow** (`target: vps`, optional SHA).
 10. Approver confirms in GitHub **production** environment → prod droplet pulls `:production`.
 
-See [Smart commits & PR conventions](../CONTRIBUTING.md#jira-integration-smart-commits).
+See [Smart commits & PR conventions](../../CONTRIBUTING.md#jira-integration-smart-commits).
 
 ---
 

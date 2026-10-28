@@ -7,7 +7,7 @@ its `exp` claim and where that check is enforced.
 
 JWTs in this platform are HMAC-signed by `JWT_SECRET` and, by default,
 live for 30 days (`SESSION_TTL_SEC` in
-[`lib/session.ts`](../../src/lib/session.ts), overridable via
+[`modules/identity/core/session.ts`](../../src/modules/identity/core/session.ts), overridable via
 `SESSION_TTL_HOURS` — this was a flat 8 hours until a 2026-08-13 change
 made it configurable). Either way, the session window is too long for
 clinical contexts on shared devices: when a clinician logs out at the end
@@ -60,7 +60,7 @@ chokepoints:
 | Chokepoint | What it protects | File |
 |---|---|---|
 | `/api/auth/me` | The session bootstrap that `context.tsx` calls on every app load. A revoked token → `401 { user: null }` → client logs out the user. | [route.ts](../../src/app/api/auth/me/route.ts) |
-| `getAuthPayload(request)` | Used by every authenticated `/api/*` route handler. A revoked token never returns a payload, so no PHI read or mutation can land. | [api-auth.ts](../../src/lib/api-auth.ts) |
+| `getAuthPayload(request)` | Used by every authenticated `/api/*` route handler. A revoked token never returns a payload, so no PHI read or mutation can land. | [api-auth.ts](../../src/modules/identity/core/api-auth.ts) |
 
 The page-level Edge proxy **does not** call `isTokenRevoked` —
 Next.js proxy runs on the Edge runtime which has no `node:fs`. A

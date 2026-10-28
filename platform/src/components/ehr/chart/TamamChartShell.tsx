@@ -23,6 +23,9 @@ import {
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
 import DrawerResizeHandle from './DrawerResizeHandle';
+import RailResizeHandle from './RailResizeHandle';
+// One dropdown look for every workspace form (O3 select).
+import './workspace-fields.css';
 import ClinicalNoteEditor from '@/components/clinical-notes/ClinicalNoteEditor';
 import { useUsers } from '@/lib/hooks/useUsers';
 import OrderBasketPanel from './panels/OrderBasketPanel';
@@ -343,6 +346,13 @@ export default function TamamChartShell({
               layout="workspace"
               // Back = close this form; Clinical forms is beneath it.
               onBack={closeDrawer}
+              // Changing the note type renames the note; the drawer title
+              // follows it rather than keeping the name it opened with.
+              onNoteTypeChange={label => setStack(prev => prev.map(entry => (
+                entry.kind === 'rail' && entry.id === CLINICAL_NOTE_PANEL.id && entry.noteId === drawerNoteId
+                  ? { ...entry, noteTitle: label }
+                  : entry
+              )))}
               // Without this the drawer's "Assigned to" picker has nobody to
               // offer — the standalone /notes route passes the same list.
               assignableUsers={assignableUsers}
@@ -408,6 +418,8 @@ export default function TamamChartShell({
           divider run the length of the chart, while the nav inside it stays
           sticky and only as tall as its own list. */}
       <div className="tamam-rail-col no-print">
+      {/* Drag the list's edge to resize it; squeezed far enough it becomes icons only. */}
+      <RailResizeHandle />
       <nav className="tamam-left-rail" aria-label="Patient chart sections">
         {/* One flat list of sections. The rail used to split into "Clinical"
             and "Record" cards, but the headings named where a tab came from

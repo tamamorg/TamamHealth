@@ -1,0 +1,64 @@
+/* Every list in the patient chart, one rhythm (O3, Tamam colours).
+ *
+ * Head and cells share the same 16px side padding, first and last column
+ * included, so each label sits exactly over its data. Rows are 48px with the
+ * text centred on the row line. The actions column is a fixed slim column
+ * with its ⋮ centred, so the data columns share the width instead of an
+ * empty column taking a full share. Numbers use tabular figures, so they
+ * line up by digit down a column.
+ *
+ * `!important` on the head type and the cell padding: globals.css paints
+ * every `.ehr-chart-content table` head and cell at that priority. */
+
+body .tamam-root .tamam-table thead th,
+body .tamam-root .ehr-chart-content table thead th {
+  height: 40px;
+  padding: 10px 16px !important;
+  background: var(--color-slate-100) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: var(--text-primary) !important;
+  text-align: start;
+  vertical-align: middle;
+}
+
+body .tamam-root .tamam-table tbody td,
+body .tamam-root .ehr-chart-content table tbody td {
+  height: 48px;
+  padding: 12px 16px !important;
+  vertical-align: middle;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* The old rule zeroed the outer columns' side padding: the head band now
+   gives them an edge to keep off. */
+body .tamam-root .tamam-table :is(thead th, tbody td):is(:first-child, :last-child) {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+body .tamam-root .tamam-table td.tamam-num,
+body .tamam-root .tamam-table td .tamam-num { font-variant-numeric: tabular-nums; }
+
+/* Actions column: fixed, slim, ⋮ centred — wherever the last cell holds a
+   row menu. */
+body .tamam-root table:has(tbody td:last-child .tm-row-actions-trigger) thead th:last-child {
+  width: 72px;
+  text-align: center;
+}
+
+body .tamam-root table tbody td:last-child:has(.tm-row-actions-trigger) {
+  width: 72px;
+  text-align: center;
+}
+
+/* Row hover: the 5% action-blue wash on every cell, so the ⋮ that appears
+   with it reads as belonging to that row. */
+body .tamam-root .tamam-table tbody tr:hover > td {
+  background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-card-solid));
+}

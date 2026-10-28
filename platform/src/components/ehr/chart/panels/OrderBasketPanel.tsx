@@ -10,10 +10,11 @@
 
 import { useState } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
-import { Plus, ChevronDown, Pill, FlaskConical, Check, AlertTriangle } from '@/components/icons/lucide';
+import { Plus, ChevronDown, Pill, FlaskConical, AlertTriangle } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { PatientDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface OrderBasketPanelProps {
   patient: PatientDoc;
@@ -27,6 +28,7 @@ interface OrderBasketPanelProps {
 export default function OrderBasketPanel({
   patient, canPrescribe, canOrderLabs, onAddDrugOrder, onAddLabOrder, onClose,
 }: OrderBasketPanelProps) {
+  const { t } = useTranslation();
   // Scoped to this patient at the query, not filtered down from the whole
   // facility's orders: the un-scoped call pulled every prescription and lab
   // result in the hospital into the drawer to show at most a handful.
@@ -45,7 +47,7 @@ export default function OrderBasketPanel({
         <h3 className="obk-title">{title}</h3>
         {canAdd && (
           <button type="button" className="obk-add" onClick={onAdd}>
-            Add <Plus aria-hidden />
+            <span className="obk-add-label">Add</span> <Plus aria-hidden />
           </button>
         )}
         <button type="button" className="obk-toggle" aria-expanded={open} aria-label={open ? `Collapse ${title}` : `Expand ${title}`} onClick={toggle}>
@@ -88,11 +90,12 @@ export default function OrderBasketPanel({
           )),
         )}
       </div>
-      {/* Orders are saved the moment they are placed (Prescribe / Order lab),
-          so there is no "Sign and close" step to offer — Done just closes. */}
+      {/* Every order here was saved and attributed to its prescriber the
+          moment it was placed (Prescribe / Order lab), so there is nothing
+          left to sign: a "Sign and close" button would promise a step that
+          does not exist. The footer is one honest Close. */}
       <div className="obk-footer">
-        <button type="button" className="obk-footer-btn obk-footer-btn--secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={onClose}><Check aria-hidden /> Done</button>
+        <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={onClose}>{t('action.close')}</button>
       </div>
     </div>
   );

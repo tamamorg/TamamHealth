@@ -1332,7 +1332,11 @@ export async function POST(request: NextRequest) {
           }
         } else if (change.doc) {
           // Skip design documents
-          if (change.id.startsWith('_design/')) continue;
+          if (change.id.startsWith('_design/')) {
+            processed++;
+            lastSeq = change.seq;
+            continue;
+          }
 
           const resolved = resolveTable(db, change.doc);
           // A type with no national projection is not an error — skip it and
@@ -1346,10 +1350,7 @@ export async function POST(request: NextRequest) {
           const table = resolved || baseTable;
           const mapper = FIELD_MAPPERS[table];
           if (!mapper) {
-            console.error(`[Sync] No field mapper for table: ${table} (db ${db}, doc ${change.id})`);
-            errors++;
-            lastSeq = change.seq;
-            continue;
+            throw new Error(`No field mapper for table: ${table} (db ${db}, doc ${change.id})`);
           }
 
           // Patient data arrives sealed (lib/encrypted-db.ts). The projection
@@ -1371,6 +1372,12 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error(`[Sync] Error processing ${change.id}:`, err);
         errors++;
+        // Checkpoints are contiguous. Continuing after a failed document could
+        // persist a later sequence into sync_metadata; if the worker then lost
+        // its local state, recovery would resume after the failed document and
+        // silently omit it from national analytics. Successful earlier writes
+        // are idempotent, so stop here and let the worker replay this batch.
+        break;
       }
     }
 

@@ -97,7 +97,8 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
   const run = async (fn: () => Promise<unknown>, done: () => void, ok: string) => {
     setBusy(true);
     try {
-      await fn();
+      // The services return null when the entry is no longer on the record.
+      if ((await fn()) === null) throw new Error('Change not saved. Try again.');
       showToast(ok, 'success');
       done();
     } catch (e) {
@@ -270,7 +271,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !editForm.description.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.updateDirective(patient._id, needScope(), editing.id, {
+                  return svc.updateDirective(patient._id, needScope(), editing.id, {
                     type: editForm.type,
                     description: editForm.description.trim(),
                     startDate: editForm.startDate || undefined,
@@ -322,7 +323,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !signForm.name.trim() || (signForm.signedBy !== 'patient' && !signForm.relationship.trim())}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.signDirective(patient._id, needScope(), signing.id, {
+                  return svc.signDirective(patient._id, needScope(), signing.id, {
                     name: signForm.name,
                     signedBy: signForm.signedBy,
                     relationship: signForm.relationship,
@@ -361,7 +362,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 disabled={busy || !revokeReason.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
-                  await svc.removeDirective(patient._id, needScope(), revoking.id, revokeReason.trim());
+                  return svc.removeDirective(patient._id, needScope(), revoking.id, revokeReason.trim());
                 }, () => setRevoking(null), 'Directive revoked')}
               >
                 {busy ? 'Saving…' : 'Revoke'}

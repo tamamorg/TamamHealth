@@ -84,9 +84,10 @@ npm run setup
 ```
 
 `npm run setup` checks your Node version, then copies `.env.example` to
-`.env.local`, generates a random JWT secret, and prompts for organization name,
-demo mode, and (in production mode) the initial admin details. It does not
-install dependencies — run `npm install` yourself.
+`.env.local`, generates unique JWT, PHI-encryption, and organization-data-key
+secrets, and prompts for organization name, demo mode, and (in production
+mode) the initial admin details. It does not install dependencies — run
+`npm install` yourself.
 
 Then start the server:
 
@@ -99,6 +100,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 In demo mode the app seeds demo data automatically on first load — sample
 patients, hospitals, users, and health records are created in your browser's
 local database.
+
+The example configuration starts in standalone mode
+(`NEXT_PUBLIC_SYNC_ENABLED=false`, with CouchDB and Postgres unset), so this
+quick start does not require Docker. Enable sync only after completing the
+CouchDB steps below; a sync-enabled demo is seeded once on the server rather
+than independently in every browser.
 
 ### Demo Credentials
 
@@ -153,7 +160,7 @@ Seeded usernames include:
 | `org.admin` / `dr.mercy` / `nurse.mercy` | Private-org accounts (Mercy General Hospital) |
 
 The full roster lives in `DEMO_USER_PROFILES` in
-[`src/modules/identity/core/seed-credentials.ts`](src/lib/seed-credentials.ts).
+[`src/modules/identity/core/seed-credentials.ts`](src/modules/identity/core/seed-credentials.ts).
 
 ### Docker Installation
 

@@ -34,6 +34,7 @@ import type { PatientShiftHandoff } from '@/lib/hooks/usePatientHandoff';
 import { printElementById } from '@/lib/safe-html';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
 import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
+import './sbar-form.css';
 
 const IITT_RED_LABELS = new Map<string, string>(IITT_RED_CRITERIA);
 const IITT_YELLOW_LABELS = new Map<string, string>(IITT_YELLOW_CRITERIA);
@@ -293,7 +294,7 @@ export default function PatientSBAR({
         {/* Print sits with the record now that the rail is gone. `no-print`
             keeps the control itself out of the printed sheet. */}
         <div className="sbar-form-actions no-print">
-          <button type="button" onClick={handlePrint} className="btn btn-secondary btn-sm">
+          <button type="button" onClick={handlePrint} className="tm-ghost-btn">
             <Printer /> {t('action.print')}
           </button>
         </div>
@@ -378,7 +379,10 @@ export default function PatientSBAR({
             <div className="sbar-block">
               <SubHead>{t('sbar.activeProblems')}</SubHead>
               <ul className="sbar-chips">
-                {(activeProblems.length ? activeProblems.map(p => p.name) : chronic).map(name => (
+                {/* One chip per condition: the problem list can hold the same
+                    diagnosis twice (two visits coded it), and a handoff that
+                    repeats it reads as two problems. */}
+                {[...new Set(activeProblems.length ? activeProblems.map(p => p.name) : chronic)].map(name => (
                   <li key={name}>{name}</li>
                 ))}
               </ul>

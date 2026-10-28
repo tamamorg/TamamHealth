@@ -51,6 +51,7 @@ import type {
 } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { mirrorBookingCareTeam } from '@/lib/booking/mirror-booking-care-team';
 
 const FALLBACK_DEPARTMENTS = [
   'Internal Medicine', 'Pediatrics', 'Obstetrics & Gynecology', 'Surgery',
@@ -408,50 +409,14 @@ export default function BookAppointmentModal({
       // authorized care-team service so the assignees' patient worklists update
       // immediately. Clinical self-booking deliberately stays appointment-only
       // because only front-desk roles may change a patient's care team.
-      const assignmentFailures: unknown[] = [];
-      if (canAssignCareTeam && currentUser && (providerId || staffId)) {
-        const { assignProviderToPatient, assignNurseToPatient } = await import('@/lib/services/patient-assignment-service');
-        const actor = { id: currentUser._id, name: currentUser.name, role: currentUser.role };
-        const hospitalId = appointment.facilityId || myHospitalId;
-        const orgId = appointment.orgId || currentUser.orgId;
-
-        if (providerId) {
-          const selectedProvider = users.find(user => user._id === providerId);
-          try {
-            await assignProviderToPatient({
-              patientId: patient._id,
-              patientName: appointment.patientName,
-              provider: { id: providerId, name: provider, role: selectedProvider?.role },
-              actor,
-              hospitalId,
-              hospitalName: appointment.facilityName || currentUser.hospitalName,
-              orgId,
-              appointmentId: appointment._id,
-            });
-          } catch (error) {
-            assignmentFailures.push(error);
-          }
-        }
-
-        // Keep this attempt independent of the provider assignment. If its
-        // tracker/encounter follow-up fails after writing the patient fields,
-        // the nurse must still be mirrored rather than disappearing from the
-        // dashboard because the earlier operation threw.
-        if (staffId) {
-          try {
-            await assignNurseToPatient({
-              patientId: patient._id,
-              nurse: { id: staffId, name: staffName || users.find(user => user._id === staffId)?.name || 'Nurse' },
-              actor,
-              hospitalId,
-              orgId,
-              appointmentId: appointment._id,
-            });
-          } catch (error) {
-            assignmentFailures.push(error);
-          }
-        }
-      }
+      const assignmentFailures = currentUser
+        ? await mirrorBookingCareTeam({
+          appointment,
+          canAssignCareTeam,
+          actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role, hospitalId: myHospitalId, hospitalName: currentUser.hospitalName, orgId: currentUser.orgId },
+          providerRole: users.find(user => user._id === providerId)?.role,
+        })
+        : [];
 
       showToast(
         assignmentFailures.length > 0

@@ -34,7 +34,7 @@ proxy that strips cookie attributes.
 
 ### 3. HMAC-bound double-submit token (proxy layer 2)
 
-Implemented in [`lib/csrf.ts`](../../src/lib/csrf.ts).
+Implemented in [`modules/identity/core/csrf.ts`](../../src/modules/identity/core/csrf.ts).
 
 On successful login the server mints a token of the form
 
@@ -129,7 +129,7 @@ nothing. Implemented as `MACHINE_CALLER_ROUTES` /
 - A fresh token is minted on every login (so a leaked old token from a
   previous session doesn't survive a re-auth).
 - The cookie's `maxAge` matches the session JWT's life —
-  `SESSION_TTL_SEC` in [`lib/session.ts`](../../src/lib/session.ts),
+  `SESSION_TTL_SEC` in [`modules/identity/core/session.ts`](../../src/modules/identity/core/session.ts),
   which defaults to 30 days and is overridable via `SESSION_TTL_HOURS`.
   (This was a flat 8 hours until a 2026-08-13 change made it configurable;
   update anything that still assumes "8 hours".)
@@ -153,15 +153,9 @@ nothing. Implemented as `MACHINE_CALLER_ROUTES` /
 
 ## Tests
 
-There is currently no dedicated CSRF test file — `csrf.test.ts` (mint/
-verify unit tests: HMAC binding, nonce randomness, malformed-input
-handling) was deleted along with a large batch of other test files in an
-unrelated sync-refactor commit and never restored. The only adjacent
-coverage today is `src/__tests__/services/session-lifetime.test.ts`, which
-touches `CSRF_COOKIE_NAME` as a constant but does not exercise mint/verify
-logic. This is a real coverage gap, not just a doc-freshness issue — the
-mint/verify functions in `lib/csrf.ts` are currently unverified by any
-automated test.
+`src/__tests__/security/csrf.test.ts` directly covers token mint/verify,
+session binding, nonce behavior, malformed input, and expiry. Session-lifetime
+tests separately pin cookie/session policy.
 
 ## See also
 

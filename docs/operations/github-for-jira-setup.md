@@ -54,7 +54,7 @@ Fixes KAN-92
 
 Jira moves issues to **Done** when merged if your workflow allows smart-commit transitions.
 
-Full conventions: [CONTRIBUTING.md](../CONTRIBUTING.md#jira-integration-smart-commits).
+Full conventions: [CONTRIBUTING.md](../../CONTRIBUTING.md#jira-integration-smart-commits).
 
 ---
 

@@ -19,6 +19,8 @@ import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
 import { orderBannerAllergies, type BannerAllergy } from './allergy-order';
+import './chart-frame.css';
+import './chart-tables.css';
 
 
 interface ChartHeaderProps {

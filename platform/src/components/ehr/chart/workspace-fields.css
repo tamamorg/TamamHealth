@@ -1,0 +1,74 @@
+/* Dropdowns in every chart workspace form — the clinical note forms, Record
+ * vitals, Start a visit, Create new appointment, Prescribe — drawn the one
+ * OpenMRS O3 way: the full width of their column, a filled field with a 1px
+ * bottom rule, square corners, 48px tall, the value at the start and a chevron
+ * at the end. White on a grey section body, grey on a white one, so the field
+ * always reads as a field. Native selects (the shared Select renders one) and
+ * the note's Assigned-to picker both take it. */
+
+.tamam-drawer :is(select, .cn-assign-trigger) {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 48px;
+  height: 48px;
+  padding: 0 48px 0 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-slate-400, #8d8d8d) !important;
+  border-radius: 0 !important;
+  background-color: var(--bg-app) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 16px center !important;
+  background-size: 16px 16px !important;
+  box-shadow: none !important;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 48px;
+  text-align: start;
+  cursor: pointer;
+}
+
+[dir="rtl"] .tamam-drawer :is(select, .cn-assign-trigger) {
+  padding: 0 16px 0 48px !important;
+  background-position: left 16px center !important;
+}
+
+/* On a grey section body the field turns white, as in O3. */
+.tamam-drawer :is(.omf-group-body, .omf-fields, .nv-section) :is(select, .cn-assign-trigger) {
+  background-color: var(--bg-card-solid) !important;
+}
+
+.tamam-drawer :is(select, .cn-assign-trigger):hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-slate-400, #8d8d8d) 14%, var(--bg-card-solid)) !important;
+}
+
+.tamam-drawer :is(select, .cn-assign-trigger):focus-visible {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px;
+}
+
+.tamam-drawer :is(select, .cn-assign-trigger):disabled {
+  color: var(--text-muted);
+  border-bottom-color: transparent !important;
+  cursor: default;
+}
+
+/* The picker draws its own chevron glyph; the field's chevron replaces it. */
+.tamam-drawer .cn-assign { width: 100%; }
+.tamam-drawer .cn-assign-trigger > svg { display: none; }
+.tamam-drawer .cn-assign-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tamam-drawer :is(select, .cn-assign-trigger) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c6c6c6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  }
+}
+:root[data-theme="dark"] .tamam-drawer :is(select, .cn-assign-trigger) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c6c6c6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+}

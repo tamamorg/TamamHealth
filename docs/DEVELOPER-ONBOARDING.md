@@ -10,7 +10,8 @@
 
 The platform runs fully offline against browser-local PouchDB databases with
 seeded demo data. You do **not** need CouchDB, Postgres, or Docker for
-feature work.
+feature work. The checked-in `.env.example` intentionally defaults to this
+profile: sync is disabled and the CouchDB/Postgres URLs are commented out.
 
 ```bash
 git clone <repo-url> && cd TamamHealth/platform
@@ -45,6 +46,10 @@ Gotchas:
   Postgres isn't reachable.
 - Changing `NEXT_PUBLIC_*` env values requires a dev-server restart (they're
   inlined at build time).
+- Do not set `NEXT_PUBLIC_SYNC_ENABLED=true` until CouchDB is running and has
+  its validators installed. In a sync-enabled demo, run
+  `npm run db:seed:demo-corpus`; browsers intentionally do not seed their own
+  competing copies.
 - To force a full re-seed of demo data, bump `SEED_VERSION` in
   `src/lib/db.ts` (destroys all local data) — or call
   `resetAllDatabases()` from the console.

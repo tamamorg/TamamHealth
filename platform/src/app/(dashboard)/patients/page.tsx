@@ -354,19 +354,9 @@ export default function PatientsPage() {
                   <Link
                     href="/patients/new"
                     data-tour="patients-register"
-                    /* `text-white` is the globals.css escape hatch for icons on
-                       a coloured fill: the icon shim writes a literal brand-blue
-                       `stroke`, so without it the UserPlus sat blue on the blue
-                       pill — present but invisible (same fix as the admit button). */
-                    className="text-white"
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      height: 38, padding: '0 16px',
-                      borderRadius: 999, background: 'var(--accent-primary)', color: 'var(--color-white)',
-                      border: '1px solid var(--accent-primary)',
-                      fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
-                      textDecoration: 'none', cursor: 'pointer', flexShrink: 0,
-                    }}
+                    // The app-wide ghost action (globals.css, GHOST ACTIONS):
+                    // blue label, trailing icon, no fill — the O3 "Add +" shape.
+                    className="tm-ghost-btn"
                   >
                     <UserPlus className="w-4 h-4" />
                     {t('patients.registerShort')}

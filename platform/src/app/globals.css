@@ -409,7 +409,9 @@
   --bg-secondary:  color-mix(in srgb, var(--accent-primary) 6%, transparent);
   --bg-card:       var(--color-white);
   --bg-card-solid: var(--color-white);
-  --bg-card-hover: var(--color-cream-75);
+  /* A faint wash of the accent, not the palette's cream: lifted rows and
+     hovered surfaces read as yellow blocks on white. */
+  --bg-card-hover: color-mix(in srgb, var(--accent-primary) 5%, var(--color-white));
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
   --overlay-subtle: color-mix(in srgb, var(--accent-primary) 7%, transparent);
@@ -1866,6 +1868,27 @@ input:focus, select:focus, textarea:focus {
 .sadb-search:hover:not(:focus-within),
 .tsel-search:hover:not(:focus-within) {
   border-color: var(--border-medium);
+}
+
+/* Every other field shell, by shape rather than by name: an element holding an
+   icon and a search input side by side is the box, and the input is bare text
+   inside it. The named list above kept missing new ones (the module menu's
+   "Find a module", the chart sections' search), and each one drew the focus
+   glow from `input:focus` — and inside the chart, the !important outline from
+   `.ehr-chart-content input:focus` — as a second rectangle inside the first.
+   `.search-icon-input` is the other pattern (the input IS the box, with an
+   icon laid over it) and keeps its own border. */
+:has(> svg):has(> input[type="search"]:not(.search-icon-input)) > input[type="search"]:not(.search-icon-input),
+:has(> svg):has(> input[type="search"]:not(.search-icon-input)) > input[type="search"]:not(.search-icon-input):focus {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+:has(> svg):has(> input[type="search"]:not(.search-icon-input)):focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
 }
 
 input::placeholder, textarea::placeholder {
@@ -35444,7 +35467,6 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
     .obk-footer-btn, .sv-footer-btn,
     .nv-root--workspace .nv-footer .nv-btn) {
   display: flex;
-  flex-direction: row-reverse;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
@@ -35466,6 +35488,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   width: var(--ws-glyph);
   height: var(--ws-glyph);
   flex: none;
+  /* The glyph trails the label whichever side it is written on. A row-reverse
+     bar did this too, but pushed a label with no glyph (Cancel) to the far end. */
+  order: 1;
 }
 
 :is(.tm-action-bar__btn--secondary,
@@ -35506,4 +35531,85 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   outline: 2px solid #fff;
   outline-offset: -4px;
   box-shadow: inset 0 0 0 4px var(--accent-primary);
+}
+
+/* ══════════════════ ROW ACTIONS — hover ⋮ (O3) ══════════════════
+   A record's ⋮ appears when its row is hovered or holds focus, so a table
+   reads as data until the pointer asks what can be done to a row. Kept while
+   its menu is open, and always shown where there is no hover (touch). */
+@media (hover: hover) {
+  tr .tm-row-actions-trigger,
+  [role="row"] .tm-row-actions-trigger {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  tr:is(:hover, :focus-within) .tm-row-actions-trigger,
+  [role="row"]:is(:hover, :focus-within) .tm-row-actions-trigger,
+  .tm-row-actions-trigger[aria-expanded="true"] {
+    opacity: 1;
+  }
+}
+.tm-row-actions-trigger[aria-expanded="true"] { background: var(--color-slate-150); }
+
+
+/* ══════════════════ GHOST ACTIONS — app-wide (O3) ══════════════════
+   The verbs that OPEN something — a list page's "New referral", "Register",
+   any primary button led by a plus — are OpenMRS O3 ghost buttons: blue
+   label, no fill and no border, the glyph after the label. What COMMITS
+   something (a form's Save, a dialog's confirm, the workspace action bars)
+   stays solid — so inside a dialog or modal a plus-led primary is the
+   dialog's commit ("Create group") and keeps its fill. The chart has its own
+   copy for its classes (tamam-chart.css).
+   `.tm-ghost-btn` opts any other opener in. */
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *) {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-slate-400) 12%, transparent);
+  color: var(--accent-hover, var(--accent-text));
+  text-decoration: none;
+}
+
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *):focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *) svg.lucide {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-text) !important;
+  stroke: currentColor !important;
 }

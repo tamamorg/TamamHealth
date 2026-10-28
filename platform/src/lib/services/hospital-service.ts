@@ -5,6 +5,7 @@ import { filterByScope } from './data-scope';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { ValidationError } from '../validation';
+import { isStandaloneDemoDeployment } from '../sync/sync-config';
 
 const IS_BROWSER = typeof window !== 'undefined';
 
@@ -23,7 +24,10 @@ const IS_BROWSER = typeof window !== 'undefined';
  * carry it into the tenant database, and pull replication delivers it to every
  * device — including, eventually, the one that created it.
  */
-const isBrowserRuntime = () => typeof window !== 'undefined' && !process.env.JEST_WORKER_ID;
+const shouldUseServerHospitalApi = () =>
+  typeof window !== 'undefined'
+  && !process.env.JEST_WORKER_ID
+  && !isStandaloneDemoDeployment();
 
 async function postHospitalsApi(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { apiFetch } = await import('../api-fetch');
@@ -87,7 +91,7 @@ export async function getAllHospitals(scope?: DataScope): Promise<HospitalDoc[]>
   // one when pull replication delivers it — and the sessions that manage
   // facilities most (super_admin, government) deliberately sync no org-scoped
   // database at all, so their replica would never learn of it.
-  if (isBrowserRuntime()) {
+  if (shouldUseServerHospitalApi()) {
     try {
       const { apiFetch } = await import('../api-fetch');
       const res = await apiFetch('/api/hospitals');
@@ -121,7 +125,7 @@ export async function getAllHospitals(scope?: DataScope): Promise<HospitalDoc[]>
 }
 
 export async function getHospitalById(id: string, scope?: DataScope): Promise<HospitalDoc | null> {
-  if (isBrowserRuntime()) {
+  if (shouldUseServerHospitalApi()) {
     try {
       const { apiFetch } = await import('../api-fetch');
       const res = await apiFetch(`/api/hospitals?id=${encodeURIComponent(id)}`);
@@ -276,7 +280,7 @@ export async function createHospital(
   actorId?: string,
   actorUsername?: string
 ): Promise<HospitalDoc> {
-  if (isBrowserRuntime()) {
+  if (shouldUseServerHospitalApi()) {
     const body = await postHospitalsApi({ ...data });
     return body.hospital as HospitalDoc;
   }
@@ -375,7 +379,7 @@ export async function updateHospitalStatus(
   data: Partial<HospitalDoc>,
   scope?: DataScope,
 ): Promise<HospitalDoc | null> {
-  if (isBrowserRuntime()) {
+  if (shouldUseServerHospitalApi()) {
     try {
       const body = await postHospitalsApi({ action: 'update', id, ...data });
       return (body.hospital as HospitalDoc) ?? null;

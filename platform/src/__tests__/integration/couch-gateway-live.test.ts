@@ -240,14 +240,12 @@ live('sync gateway against a real CouchDB', () => {
   describe('a real PouchDB device replicating through the gateway', () => {
     // The device's own replication client, pointed at the route handler: this
     // is the protocol conversation the browser actually has.
-    /* eslint-disable @typescript-eslint/no-require-imports */
     // `pouchdb-browser` is the build the app ships: its replicator and http
     // adapter are the ones under test. Only storage is swapped for memory.
     (globalThis as { self?: unknown }).self ??= globalThis; // the browser build expects a worker/window global
     const browserBuild = require('pouchdb-browser');
     const memoryAdapter = require('pouchdb-adapter-memory');
     const PouchDB = (browserBuild.default || browserBuild).plugin(memoryAdapter.default || memoryAdapter);
-    /* eslint-enable @typescript-eslint/no-require-imports */
     const remote = (db: string) => new PouchDB(`http://localhost/api/couch/${db}`, {
       skip_setup: true,
       fetch: async (url: string, init?: RequestInit) => {

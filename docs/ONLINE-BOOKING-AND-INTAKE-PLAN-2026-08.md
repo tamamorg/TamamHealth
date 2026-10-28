@@ -2,7 +2,11 @@
 
 **Date:** 2026-08-07
 **Goal:** Replace the current "book from inside the app only" intake with a patient-facing booking system whose slots are derived from real provider availability, modelled on the Tebra Care Connect reference screenshots.
-**Status:** Phase 0 built and verified. Phases 1–6 planned.
+**Status:** Historical implementation plan. The provider-availability booking
+foundation remains, but the patient intake-form feature (staff queue, public
+token form, API, service, and active database) was removed at seed version 73.
+Do not use the intake phases below as current product documentation; they are
+retained only as design history.
 
 ## Built so far (2026-08-07)
 
@@ -96,8 +100,8 @@ Different practice (Artemis Health) — proves the widget is white-labelled per 
 | Booking + conflict guard | `assertNoBookingConflicts` — [appointment-service.ts:150](../platform/src/lib/services/appointment-service.ts#L150) |
 | Patient-facing auth | `/patient-portal` — OTP + patient-scoped JWT, server APIs at `src/app/api/patient-portal/*` |
 | Patient-initiated request | `POST /api/patient-portal/appointments` already writes `status: 'requested'` |
-| Intake form lifecycle | `PatientIntakeFormDoc` + [intake-form-service.ts](../platform/src/lib/services/intake-form-service.ts) — request → submit → review → merge/reject |
-| Intake review queue | [/patient-intake](../platform/src/app/(dashboard)/patient-intake/page.tsx) |
+| Intake form lifecycle | **Removed at seed version 73.** The former `PatientIntakeFormDoc` service/API/queue no longer exists; the retired database name remains only in the local reset list so old browser stores can be purged. |
+| Intake review queue | **Removed with the intake-form feature at seed version 73.** |
 | Duplicate-patient matching | `matchPatient` — [mpi-service.ts:98](../platform/src/lib/services/mpi-service.ts#L98) |
 | Service catalogue + price | `FeeScheduleDoc` — [db-types-billing.ts:106](../platform/src/lib/db-types-billing.ts#L106), managed at `/org-admin/pricing` |
 | Insurance verification | `POST /api/eligibility` |
@@ -531,7 +535,9 @@ Client code uses local `toIsoDate()`; services use `jubaDate()`; `app/api` slice
 ### 9.6 Other
 
 - **`AppointmentType` vs visit reason** — keep both. `VisitReasonDoc.appointmentType` maps the patient-facing label onto the clinical union so every existing report keeps working.
-- **`status: 'requested'` is already counted** in [front-desk](../platform/src/app/(dashboard)/dashboard/front-desk/page.tsx#L985), [appointments](../platform/src/app/(dashboard)/appointments/page.tsx#L649) and [useNotifications](../platform/src/lib/hooks/useNotifications.ts#L342). Online requests will start appearing in those counts — intended, but check each reads sensibly at volume.
+- **Historical note:** `status: 'requested'` was counted in the front-desk,
+  appointments, and notification flows. The current notification hook lives at
+  [`modules/communication/hooks/useNotifications.ts`](../platform/src/modules/communication/hooks/useNotifications.ts).
 - **Seed** — bump `SEED_VERSION` and seed: 2 booking policies, ~8 visit reasons, provider profiles + photos for the demo doctors, and **recurring weekday availability** (today's seed is one 00:00–23:59 window for today only, which would render an absurd slot grid).
 - **`AvailabilityModal` overlap rejection** ([availability-service.ts:44](../platform/src/lib/services/availability-service.ts#L44)) is per provider+day and will need to understand recurrence.
 

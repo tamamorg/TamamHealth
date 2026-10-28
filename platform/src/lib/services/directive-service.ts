@@ -72,7 +72,12 @@ export async function updateDirective(
     scope,
     (patient) => {
       const existing = patient.directives ?? [];
-      if (!existing.some((d) => d.id === directiveId)) return null;
+      const target = existing.find((d) => d.id === directiveId);
+      if (!target) return null;
+      // The signature attests to THIS wording. Editing it afterwards would
+      // have the record claim someone agreed to text they never saw; a signed
+      // directive is revoked and taken again instead (see signDirective).
+      if (target.signature) throw new Error('This directive is signed and cannot be changed. Revoke it and record a new one.');
       const next = existing.map((d) => (d.id === directiveId ? { ...d, ...patch, id: d.id } : d));
       return { patch: { directives: next } as Partial<PatientDoc>, entries: next };
     },

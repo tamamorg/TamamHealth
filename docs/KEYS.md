@@ -22,13 +22,13 @@ cp .env.example .env.local
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
 | `NEXT_PUBLIC_SYNC_ENABLED` | Enable PouchDB ↔ CouchDB replication | `false` | No |
-| `NEXT_PUBLIC_COUCHDB_URL` | CouchDB server URL (with credentials for auth) | `http://localhost:5984` | Only if sync enabled |
+| `NEXT_PUBLIC_COUCHDB_URL` | Browser-visible CouchDB/gateway URL (never embed admin credentials) | Unset | Only if sync enabled |
 
 ### Server-Side (Private — never sent to browser)
 
 | Variable | Purpose | Default | Required |
 |----------|---------|---------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://tamamhealth:password@localhost:5432/safeguard_junub` | For national analytics |
+| `DATABASE_URL` | PostgreSQL connection string | Unset | For national analytics |
 | `JWT_SECRET` | Secret key for signing session JWTs | Hardcoded fallback (INSECURE) | **Yes for production** |
 | `COUCHDB_ADMIN_USER` | CouchDB admin username | `admin` | For setup script |
 | `COUCHDB_ADMIN_PASSWORD` | CouchDB admin password | (empty) | For setup script & sync webhook |
@@ -36,7 +36,7 @@ cp .env.example .env.local
 | `COUCHDB_GATEWAY_SECRET` | Signs the same-origin `/api/couch` replication gateway used by the App Platform / database-per-org deployment | — | Yes if `NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=true` |
 | `PHI_ENCRYPTION_KEY` | Application-level AES key that encrypts the most sensitive patient fields before they hit CouchDB/PouchDB | — | **Yes for production** (on by default; see `lib/config-validation.ts`) |
 | `TAMAMHEALTH_LICENSE_SECRET` | HMAC secret that signs this deployment's license key (SaaS control plane), per `platform/.env.production.example`'s comment | — | Template says required, but nothing in `platform/src` currently reads this variable or a `license` npm script — treat as not-yet-enforced until verified against a current build |
-| `SUPERADMIN_INITIAL_PASSWORD` | Login password for the seeded `superadmin` bootstrap account | `Superadmin!` (demo only) | **Yes whenever `NEXT_PUBLIC_SYNC_ENABLED=true`** — `config-validation.ts` refuses to boot without a real, 16+ char value. Not listed in either `.example` template today; add it yourself. Distinct from the older, optional `ADMIN_INITIAL_PASSWORD` (legacy `admin` account). |
+| `SUPERADMIN_INITIAL_PASSWORD` | Login password for the seeded `superadmin` bootstrap account | `Superadmin!` (demo only) | **Yes whenever `NEXT_PUBLIC_SYNC_ENABLED=true`** — `config-validation.ts` refuses to boot without a real, 16+ char value. It is documented in both platform environment templates. Distinct from the older, optional `ADMIN_INITIAL_PASSWORD` (legacy `admin` account). |
 
 This table is not exhaustive — `platform/.env.production.example` is the
 authoritative, current list of every variable the platform reads, including
@@ -146,9 +146,9 @@ and [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md).
 
 - **Cookie:** `tamamhealth-token` (JWT)
 - **Protected:** All routes except `/`, `/api/auth/*`, static assets
-- **RBAC:** Role-based access enforced per route in `src/proxy.ts` — Next.js
-  16's renamed `middleware.ts` entry point (`src/proxy.ts` no longer
-  exists)
+- **RBAC:** Role-based access enforced per route in `src/proxy.ts`. Next.js 16
+  renamed the former `middleware.ts` convention to `proxy.ts`; the current
+  file exists and is part of the request path.
 
 ### Content Security Policy
 

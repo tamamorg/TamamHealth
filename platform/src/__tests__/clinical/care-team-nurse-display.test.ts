@@ -87,13 +87,19 @@ describe('the nurse on a worklist row', () => {
   });
 
   test('initial front-desk booking mirrors both care-team assignments onto the patient', () => {
-    const booking = source('components/appointments/BookAppointmentModal.tsx');
-    expect(booking).toContain('const { canBookAppointments, canAssignCareTeam } = usePermissions()');
-    expect(booking).toContain('const appointment = await create({');
-    expect(booking).toContain('if (canAssignCareTeam && currentUser && (providerId || staffId))');
-    expect(booking).toContain('await assignProviderToPatient({');
-    expect(booking).toContain('await assignNurseToPatient({');
-    expect(booking.match(/appointmentId: appointment\._id/g)).toHaveLength(2);
+    // The mirror lives in one helper shared by the booking dialog and the
+    // chart's Create new appointment workspace, so both write the same thing.
+    const mirror = source('lib/booking/mirror-booking-care-team.ts');
+    expect(mirror).toContain("if (!canAssignCareTeam || (!appointment.providerId && !appointment.staffId)) return failures;");
+    expect(mirror).toContain('await assignProviderToPatient({');
+    expect(mirror).toContain('await assignNurseToPatient({');
+    expect(mirror.match(/appointmentId: appointment\._id/g)).toHaveLength(2);
+    for (const file of ['components/appointments/BookAppointmentModal.tsx', 'components/ehr/chart/panels/BookAppointmentPanel.tsx']) {
+      const booking = source(file);
+      expect(booking).toContain('const { canBookAppointments, canAssignCareTeam } = usePermissions()');
+      expect(booking).toContain('await mirrorBookingCareTeam({');
+      expect(booking.indexOf('await create({')).toBeLessThan(booking.indexOf('await mirrorBookingCareTeam({'));
+    }
   });
 
   test('a post-create assignment failure closes the booked appointment instead of inviting a duplicate', () => {
