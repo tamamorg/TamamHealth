@@ -16,7 +16,7 @@
  * patient/current-user/permission/router context they need down to them.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, Maximize2,
@@ -77,6 +77,12 @@ export function visibleDrawerPanels(canViewClinical: boolean): DrawerPanelDef[] 
  * request (`clinical-note:<noteId>`) — the header's "+ Note", a Notes-tab row.
  * A bare rail button would have no note to open.
  */
+/** One open workspace in the stack: a rail panel (with the note it holds, if
+ *  it is the note editor) or the page's own workspace. */
+type WorkspaceEntry =
+  | { kind: 'rail'; id: string; noteId?: string | null; noteTitle?: string | null }
+  | { kind: 'page' };
+
 /** Drawer slot id for a page-owned workspace (see the `workspace` prop). */
 const PAGE_WORKSPACE_ID = 'page-workspace';
 
@@ -126,9 +132,17 @@ export default function TamamChartShell({
   panelRequest, onPanelRequestHandled, workspace,
 }: TamamChartShellProps) {
 
-  const [openPanel, setOpenPanel] = useState<string | null>(null);
-  // Note being edited by the clinical-note panel, set by an id-carrying request.
-  const [drawerNoteId, setDrawerNoteId] = useState<string | null>(null);
+  // Workspaces stack. Opening one while another is open keeps the earlier one
+  // underneath; closing the top one (✕, Cancel, Back, Escape) shows the one
+  // below it, and so on down. The top entry is what the drawer shows. A rail
+  // panel already in the stack moves to the top instead of appearing twice.
+  const [stack, setStack] = useState<WorkspaceEntry[]>([]);
+  const top = stack[stack.length - 1];
+  const openPanel = top?.kind === 'rail' ? top.id : null;
+  // Note being edited by the clinical-note panel, and the form name it was
+  // opened as from Clinical forms ("Consultation"), shown as the title.
+  const drawerNoteId = top?.kind === 'rail' && top.id === CLINICAL_NOTE_PANEL.id ? top.noteId ?? null : null;
+  const drawerNoteTitle = top?.kind === 'rail' && top.id === CLINICAL_NOTE_PANEL.id ? top.noteTitle ?? null : null;
   // Providers the note editor's "Assigned to" picker offers. Scoped by
   // useUsers, so a clinician can only hand a note to their own facility.
   const { users } = useUsers();
@@ -138,36 +152,45 @@ export default function TamamChartShell({
   );
   // Drawer expand toggle — widens the workspace drawer to near-full-width.
   const [drawerMaximized, setDrawerMaximized] = useState(false);
+  const pushRail = useCallback((entry: { id: string; noteId?: string | null; noteTitle?: string | null }) => {
+    setStack(prev => [...prev.filter(e => !(e.kind === 'rail' && e.id === entry.id)), { kind: 'rail', ...entry }]);
+    setDrawerMaximized(false);
+  }, []);
 
   useEffect(() => {
     if (panelRequest) {
       if (panelRequest.startsWith('clinical-note:')) {
-        setDrawerNoteId(panelRequest.slice('clinical-note:'.length));
-        setOpenPanel('clinical-note');
-        // The editor opens in its wide workspace; the header's expand control
-        // leaves for the full consultation page (/notes/[id]).
-        setDrawerMaximized(false);
+        pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId: panelRequest.slice('clinical-note:'.length) });
       } else {
-        setOpenPanel(panelRequest);
-        setDrawerMaximized(false);
+        pushRail({ id: panelRequest });
       }
       onPanelRequestHandled?.();
     }
-  }, [panelRequest, onPanelRequestHandled]);
+  }, [panelRequest, onPanelRequestHandled, pushRail]);
   // Resolve from the permitted set, not the full list: a panel this role may
   // not open must not render even if something asked for it by id.
   const railPanels = useMemo(() => visibleDrawerPanels(canViewClinical), [canViewClinical]);
   const railPanel = railPanels.find(p => p.id === openPanel)
     || (openPanel === CLINICAL_NOTE_PANEL.id && canViewClinical ? CLINICAL_NOTE_PANEL : null);
-  // A page workspace takes the slot over; the rail panel it displaced is
-  // closed rather than hidden, so closing the workspace leaves the chart full.
+  // A page workspace (Record vitals, Start a visit) joins the stack when the
+  // page opens one and leaves it when the page closes it; whatever was open
+  // before it is still underneath.
   const hasWorkspace = !!workspace;
+  // Keyed on the workspace's title so a newly opened one (Start a visit over
+  // Record vitals) comes to the top even while a rail panel was showing.
+  const workspaceKey = workspace?.title ?? null;
   useEffect(() => {
-    if (hasWorkspace) { setOpenPanel(null); setDrawerMaximized(false); }
-  }, [hasWorkspace]);
-  const activePanel: { id: string; title: string } | null = workspace
+    setStack(prev => {
+      const rest = prev.filter(e => e.kind !== 'page');
+      return workspaceKey ? [...rest, { kind: 'page' }] : rest;
+    });
+    setDrawerMaximized(false);
+  }, [workspaceKey]);
+  const activePanel: { id: string; title: string } | null = top?.kind === 'page' && workspace
     ? { id: PAGE_WORKSPACE_ID, title: workspace.title }
-    : railPanel;
+    : railPanel && railPanel.id === CLINICAL_NOTE_PANEL.id && drawerNoteTitle
+      ? { id: railPanel.id, title: drawerNoteTitle }
+      : railPanel;
 
   // One list, not two. `moreItems` used to hide behind a collapsed "More
   // sections" toggle, which meant half the chart's sections were one click away
@@ -183,15 +206,20 @@ export default function TamamChartShell({
     if (openPanel === CLINICAL_NOTE_PANEL.id && next !== CLINICAL_NOTE_PANEL.id) onNoteSaved?.();
   };
 
+  // A rail button opens its panel on top of the stack; pressing the button of
+  // the panel already showing closes it (back to the one beneath).
   const togglePanel = (id: string) => {
-    workspace?.onClose();
-    notifyIfNoteClosing(openPanel === id ? null : id);
-    setOpenPanel(prev => (prev === id ? null : id));
-    setDrawerMaximized(false);
+    if (openPanel === id) { closeDrawer(); return; }
+    notifyIfNoteClosing(id);
+    pushRail({ id });
   };
+  // Close the top workspace only. A page workspace is closed by the page
+  // (the effect above then drops it); a rail panel is popped here.
   const closeDrawer = () => {
-    if (workspace) { workspace.onClose(); setDrawerMaximized(false); return; }
-    notifyIfNoteClosing(null); setOpenPanel(null); setDrawerMaximized(false);
+    setDrawerMaximized(false);
+    if (top?.kind === 'page') { workspace?.onClose(); return; }
+    notifyIfNoteClosing(null);
+    setStack(prev => prev.slice(0, -1));
   };
 
   // A `?tab=` link inside the note editor (e.g. "go to Vitals") switches
@@ -285,6 +313,11 @@ export default function TamamChartShell({
             <ClinicalNoteEditor
               noteId={drawerNoteId}
               showContextSidebar={false}
+              // Notes in the chart are O3 forms: a section list with Save /
+              // Sign / Cancel, collapsible groups, and a way back to the list.
+              layout="workspace"
+              // Back = close this form; Clinical forms is beneath it.
+              onBack={closeDrawer}
               // Without this the drawer's "Assigned to" picker has nobody to
               // offer — the standalone /notes route passes the same list.
               assignableUsers={assignableUsers}
@@ -322,6 +355,7 @@ export default function TamamChartShell({
             canConsult={canConsult}
             currentUser={currentUser}
             onClose={closeDrawer}
+            onOpenNote={(noteId, title) => pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId, noteTitle: title })}
           />
         );
       case 'patient-lists':
@@ -411,16 +445,8 @@ export default function TamamChartShell({
                     context rail the drawer hides. Widening the drawer only gave
                     a bigger copy of the same railless editor. The editor flushes
                     pending edits on unmount, so nothing typed is lost. */}
-                {activePanel.id === CLINICAL_NOTE_PANEL.id && drawerNoteId ? (
-                  <button
-                    type="button"
-                    title="Open full consultation"
-                    aria-label="Open full consultation"
-                    onClick={() => router.push(`/notes/${encodeURIComponent(drawerNoteId)}`)}
-                  >
-                    <Maximize2 />
-                  </button>
-                ) : (
+                {/* Notes have no page of their own any more: expand widens the
+                    workspace over the chart instead of leaving it. */}
                   <button
                     type="button"
                     title={drawerMaximized ? 'Restore panel size' : 'Maximize'}
@@ -430,7 +456,6 @@ export default function TamamChartShell({
                   >
                     <Maximize2 />
                   </button>
-                )}
                 <button type="button" title="Close" aria-label="Close panel" onClick={closeDrawer}>
                   <X />
                 </button>

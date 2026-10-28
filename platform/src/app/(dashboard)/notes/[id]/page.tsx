@@ -1,36 +1,42 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import ClinicalNoteEditor from '@/components/clinical-notes/ClinicalNoteEditor';
-import { useAuth } from '@/lib/context';
-import { useUsers } from '@/lib/hooks/useUsers';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
- * Full-screen note editor. The note owns the viewport height so the section
- * canvas scrolls under a fixed toolbar and footer — a clinician documenting a
- * long encounter should never lose sight of Sign or of when it last saved.
+ * A note has no page of its own: it is documented in the patient's chart, in
+ * the docked workspace beside the record (the OpenMRS O3 form layout). This
+ * route stays so every existing link — worklists, notifications, the
+ * unsigned-notes queue — keeps working: it finds the note's patient and opens
+ * their chart with the note in the workspace (`?note=`).
  */
-export default function ClinicalNotePage() {
+export default function ClinicalNoteRedirect() {
   const params = useParams<{ id: string }>();
-  const { currentUser } = useAuth();
-  const { users } = useUsers();
-
-  const assignable = useMemo(
-    () => (users || []).map(u => ({ _id: u._id, name: u.name || u.username })),
-    [users],
-  );
-
+  const router = useRouter();
+  const scope = useDataScope();
+  const { t } = useTranslation();
+  const [missing, setMissing] = useState(false);
   const noteId = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  if (!noteId) return null;
+
+  useEffect(() => {
+    if (!noteId || !scope) return;
+    let cancelled = false;
+    void import('@/lib/clinical-notes/note-service')
+      .then(m => m.getClinicalNoteById(noteId, scope))
+      .then(note => {
+        if (cancelled) return;
+        if (!note) { setMissing(true); return; }
+        router.replace(`/patients/${encodeURIComponent(note.patientId)}?note=${encodeURIComponent(note._id)}`);
+      })
+      .catch(() => { if (!cancelled) setMissing(true); });
+    return () => { cancelled = true; };
+  }, [noteId, scope, router]);
 
   return (
-    <div style={{ height: '100%', minHeight: 0 }}>
-      <ClinicalNoteEditor
-        noteId={noteId}
-        currentUser={currentUser}
-        assignableUsers={assignable}
-      />
+    <div className="cn-empty" role="status">
+      {missing ? t('noteEditor.noteNotFound') : t('noteEditor.loadingNote')}
     </div>
   );
 }

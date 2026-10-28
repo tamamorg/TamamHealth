@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Save, Check, Copy, Send, ClipboardList, DollarSign,
-  Plus, AlertTriangle, Minus,
+  Plus, AlertTriangle, Minus, ArrowLeft, ChevronDown,
 } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -66,6 +66,7 @@ import type {
   ClinicalNoteDoc, NoteSectionContent, NoteDiagnosis,
 } from '@/lib/clinical-notes/types';
 import './clinical-notes.css';
+import './note-workspace.css';
 import Select from '@/components/Select';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 import { describeError } from '@/lib/user-facing-error';
@@ -126,10 +127,20 @@ interface ClinicalNoteEditorProps {
    * (the standalone notes route) the editor navigates to the chart itself.
    */
   onOpenChartTab?: (tabId: string) => void;
+  /**
+   * 'workspace' lays the note out as an OpenMRS O3 form for the patient
+   * chart's docked workspace: a section list on the left with Save / Sign /
+   * Cancel beneath it, and collapsible sections on the right. Same fields,
+   * cards, dialogs and save path as the standard layout.
+   */
+  layout?: 'standard' | 'workspace';
+  /** Workspace only: "Back to clinical forms". */
+  onBack?: () => void;
 }
 
 export default function ClinicalNoteEditor({
   noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose, onOpenChartTab,
+  layout = 'standard', onBack,
 }: ClinicalNoteEditorProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -138,6 +149,11 @@ export default function ClinicalNoteEditor({
   const scope = useDataScope();
 
   const [note, setNote] = useState<ClinicalNoteDoc | null>(null);
+  // Workspace layout: which group the section list marks as current, and
+  // which groups the clinician has folded away.
+  const [workspaceGroup, setWorkspaceGroup] = useState<string>('visit-details');
+  const [foldedGroups, setFoldedGroups] = useState<Set<string>>(() => new Set());
+  const workspaceScrollRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -954,225 +970,10 @@ export default function ClinicalNoteEditor({
   if (loading) return <div className="cn-empty">{t('noteEditor.loadingNote')}</div>;
   if (!note || !typeDef) return <div className="cn-empty">{t('noteEditor.noteNotFound')}</div>;
 
-
-  return (
-    <div className="cn-editor">
-      {/* The left rail runs the full height of the screen; the header and
-          toolbar belong to the note column, not the page. */}
-      <div className={`cn-body${showContextSidebar ? '' : ' cn-body--without-sidebar'}`}>
-        {showContextSidebar && <aside className="cn-sidebar">
-          {/* Patient identity — a bare block above the cards, per the design:
-              photo plate, name, one id line, then the risk/status pills. */}
-          <div className="cn-ident">
-            {patient?.photoUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img className="cn-patient-photo" src={patient.photoUrl} alt="" />
-              : <span className="cn-patient-photo" aria-hidden>{nameInitials(note.patientName)}</span>}
-            <div style={{ minWidth: 0 }}>
-              {/* The name is the way into the chart. It goes through
-                  navigateAway, not a plain link, so an unsaved section still
-                  gets its "you have unsaved changes" confirm first. */}
-              <h2 className="cn-ident-name">
-                <button
-                  type="button"
-                  className="cn-ident-name-link"
-                  onClick={() => navigateAway(`/patients/${note.patientId}`)}
-                  title={t('noteEditor.openChart', { name: note.patientName })}
-                >
-                  {note.patientName}
-                </button>
-              </h2>
-              <p className="cn-ident-line">
-                {[note.mrn, patient?.gender?.[0]?.toUpperCase(), dobWithAge(note.patientDob), patient?.phone ? formatPhoneDisplay(patient.phone) : null]
-                  .filter(Boolean).join(' · ')}
-              </p>
-            </div>
-          </div>
-
-          {/* The patient's other notes, newest first */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">{t('noteEditor.patientNotes')}</p>
-            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
-              {siblingNotes.length === 0 && (
-                <p className="cn-card-empty">{t('noteEditor.noOtherNotes')}</p>
-              )}
-              {siblingNotes.map(n => (
-                <button
-                  key={n._id}
-                  type="button"
-                  className="cn-note-row"
-                  title={`${noteTypeLabel(t, n.noteType)} — ${n.serviceDate}`}
-                  onClick={() => navigateAway(`/notes/${n._id}`)}
-                >
-                  <span className="cn-note-row-top">
-                    <b>{noteTypeLabel(t, n.noteType)}</b>
-                    <small>{new Date(`${n.serviceDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small>
-                  </span>
-                  <span className="cn-note-row-meta">
-                    {(n.assignedToName || n.authorName || t('noteEditor.unassigned'))}{isNoteLocked(n) ? ` · ${t('noteEditor.statusSigned')}` : n.status === 'awaiting_cosign' ? ` · ${t('noteEditor.statusAwaitingCosign')}` : ` · ${t('noteEditor.statusDraft')}`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Note sections (jump + remove) */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">
-              {t('noteEditor.noteSections')}
-              {!locked && optionalAvailable.length > 0 && (
-                <button type="button" className="cn-card-head-action" onClick={() => setShowAddOptional(true)}>
-                  {t('noteEditor.addOptional')}
-                </button>
-              )}
-            </p>
-            <div className="cn-card-body cn-card-body--flush">
-              <nav className="cn-section-nav">
-                {sectionIds.map((id) => {
-                  const content = note.sections.find(s => s.sectionId === id);
-                  const filled = !!(stripTemplateMarkers(content?.text || '').trim() || content?.snapshot);
-                  const removable = !locked && !typeDef.sections.includes(id);
-                  return (
-                    <div key={id} className="cn-section-nav-row">
-                      <button
-                        type="button"
-                        className="cn-section-nav-item"
-                        aria-current={activeSection === id}
-                        onClick={() => {
-                          setActiveSection(id);
-                          document.getElementById(`cn-section-${id}`)?.scrollIntoView({
-                            behavior: 'smooth', block: 'start',
-                          });
-                        }}
-                      >
-                        <span>{sectionLabel(t, id)}</span>
-                        {filled && <span className="cn-section-nav-badge">•</span>}
-                      </button>
-                      {removable && (
-                        <button
-                          type="button"
-                          className="cn-section-nav-remove"
-                          aria-label={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
-                          title={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
-                          onClick={async () => {
-                            // The section's narrative goes with it, and the
-                            // control is a 20px box beside the section name.
-                            const ok = await confirm({
-                              title: t('noteEditor.removeSectionTitle', { section: sectionLabel(t, id) }),
-                              message: t('noteEditor.removeSectionMessage'),
-                              confirmLabel: t('noteEditor.remove'),
-                              tone: 'danger',
-                            });
-                            if (ok) await persist(() => removeNoteSection(noteId, id));
-                          }}
-                        >
-                          <Minus size={12} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-
-          {/* Most recent resulted labs */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">{t('noteEditor.labsStudies')}</p>
-            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
-              {recentLabs !== null && recentLabs.length === 0 && (
-                <p className="cn-card-empty">{t('noteEditor.noPreviousLabs')}</p>
-              )}
-              {(recentLabs || []).map(lab => (
-                <button
-                  key={lab.id}
-                  type="button"
-                  className="cn-rail-row"
-                  onClick={() => navigateAway(`/patients/${note.patientId}?tab=labs&focus=${encodeURIComponent(lab.id)}`)}
-                >
-                  <span className="cn-rail-row-main">{lab.testName}</span>
-                  <span className="cn-rail-row-meta">{lab.date}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Uploaded documents, filterable by label */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">
-              {t('noteEditor.documents')}
-              <label className="cn-card-head-filter">
-                {t('noteEditor.filterByLabel')}
-                <Select
-                  value={docLabel}
-                  onChange={e => setDocLabel(e.target.value)}
-                  aria-label={t('noteEditor.filterDocuments')}
-                >
-                  <option value="all">{t('noteEditor.all')}</option>
-                  {[...new Set((documents || []).map(d => d.category))].map(cat => (
-                    <option key={cat} value={cat}>{docCategoryLabel(cat)}</option>
-                  ))}
-                </Select>
-              </label>
-            </p>
-            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
-              {documents !== null && documents.length === 0 && (
-                <p className="cn-card-empty">{t('noteEditor.noDocuments')}</p>
-              )}
-              {(documents || [])
-                .filter(doc => docLabel === 'all' || doc.category === docLabel)
-                .slice(0, 8)
-                .map(doc => (
-                  <button
-                    key={doc._id}
-                    type="button"
-                    className="cn-rail-row cn-rail-row-stacked"
-                    title={doc.title}
-                    onClick={() => navigateAway(`/patients/${note.patientId}?tab=documents&focus=${encodeURIComponent(doc._id)}`)}
-                  >
-                    <span className="cn-rail-row-main">
-                      {doc.createdAt ? `${new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} - ` : ''}{doc.title || doc.fileName}
-                    </span>
-                    <span className="cn-rail-row-sub">{docCategoryLabel(doc.category)}</span>
-                  </button>
-                ))}
-            </div>
-          </div>
-        </aside>}
-
-        <div className="cn-main">
-      {/* Header */}
-      <div className="cn-header">
-        {/* The context line states only what nothing else on this screen
-            already says: the facility. The note type sits in the "Note type"
-            field an inch below it, and the patient is named in the sidebar —
-            except when the editor is embedded in a chart, where that sidebar
-            is hidden and the name has nowhere else to appear. */}
-        <div className="cn-header-id">
-          <h1 className="cn-header-title">{t('noteEditor.title')}</h1>
-          <p className="cn-header-context">
-            {[!showContextSidebar ? note.patientName : null, note.hospitalName].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        {/* Note-level actions sit on the title line, top right; the identity
-            fields go in the strip beneath so the button never falls onto a
-            line of its own when the strip wraps. */}
-        <div className="cn-header-tools">
-          {!locked && copySource && (
-            <button
-              type="button"
-              className="cn-btn"
-              onClick={handleCopyForward}
-              disabled={saving}
-              title={t('noteEditor.copyForwardHint', { date: copySource.serviceDate })}
-            >
-              <Copy size={14} /> {t('noteEditor.copyForward')}
-            </button>
-          )}
-          <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
-            {t('noteEditor.clearNote')}
-          </button>
-        </div>
+  // Shared by both layouts: the standalone/queue layout below and the chart
+  // workspace's form layout (OpenMRS O3 shape). One set of fields, banners,
+  // section cards and dialogs, so the two can never behave differently.
+  const noteFields = (
         <div className="cn-header-fields">
         <label className="cn-field">
           <span className="cn-label">{t('noteEditor.noteType')}</span>
@@ -1239,10 +1040,9 @@ export default function ClinicalNoteEditor({
           />
         </div>
         </div>
-      </div>
-
-      {/* Note canvas */}
-      <div className="cn-canvas">
+  );
+  const lockBanners = (
+    <>
           {awaitingCosign && (
             <div className="cn-locked-banner">
               <Check size={15} />
@@ -1268,9 +1068,11 @@ export default function ClinicalNoteEditor({
             </div>
           )}
 
-          {note.sections.map((section) => {
-            const isOptional = !typeDef.sections.includes(section.sectionId);
-            return (
+    </>
+  );
+  const renderSectionCard = (section: ClinicalNoteDoc['sections'][number]) => {
+    const isOptional = !typeDef.sections.includes(section.sectionId);
+    return (
               <NoteSectionCard
                 key={section.sectionId}
                 sectionId={section.sectionId}
@@ -1299,9 +1101,12 @@ export default function ClinicalNoteEditor({
                 removable={isOptional}
                 onRemove={() => void persist(() => removeNoteSection(noteId, section.sectionId))}
               />
-            );
-          })}
+    );
+  };
+  const noteSections = <>{note.sections.map(renderSectionCard)}</>;
 
+  const noteTail = (
+    <>
           {(note.addenda || []).length > 0 && (
             <div style={{ marginTop: 18 }}>
               <h3 className="cn-section-name">{t('noteEditor.addenda')}</h3>
@@ -1331,99 +1136,10 @@ export default function ClinicalNoteEditor({
           {!locked && (
             <p className="cn-signature-note">{t('noteEditor.unsignedNote')}</p>
           )}
-      </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="cn-footer">
-        <button
-          type="button"
-          className="cn-btn cn-btn-primary"
-          onClick={openSignConfirm}
-          disabled={locked || saving}
-          title={t('noteEditor.signHint')}
-        >
-          <Check size={14} /> {t('noteEditor.sign')}
-        </button>
-        {canCosign && (
-          <button
-            type="button"
-            className="cn-btn cn-btn-primary"
-            onClick={handleCosign}
-            disabled={cosigning}
-            title={t('noteEditor.cosignHint', { name: note.signedByName || '' })}
-          >
-            <Check size={14} /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
-          </button>
-        )}
-        <button
-          type="button"
-          className="cn-btn"
-          onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}
-        >
-          <DollarSign size={14} /> {t('noteEditor.captureCharge')}
-        </button>
-        <button
-          type="button"
-          className="cn-btn"
-          onClick={() => {
-            const text = note.sections
-              .map(s => {
-                const dxLines = (s.diagnoses || [])
-                  .map(d => `• ${d.name}${d.icd11Code ? ` (ICD-11 ${d.icd11Code})` : ''}${d.startDate ? ` — since ${d.startDate}` : ''}`)
-                  .join('\n');
-                const body = [dxLines, sectionBody(s)].filter(Boolean).join('\n');
-                return `${sectionLabel(t, s.sectionId)}\n${body}`;
-              })
-              .join('\n\n');
-            void navigator.clipboard?.writeText(text);
-            showToast(t('noteEditor.copiedToClipboard'), 'success');
-          }}
-        >
-          <Copy size={14} /> {t('noteEditor.copy')}
-        </button>
-        <button type="button" className="cn-btn" onClick={() => setShowCoordination(true)}>
-          <Send size={14} /> {t('noteEditor.careCoordination')}
-        </button>
-        <button
-          type="button"
-          className="cn-btn"
-          // Named for the chart section it opens: Care plan (`careChecklist`).
-          // This pointed at `overview`, which is the Patient summary.
-          onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}
-        >
-          <ClipboardList size={14} /> {t('noteEditor.carePlan')}
-        </button>
-
-        <div className="cn-footer-spacer" />
-
-        <span className="cn-saved">
-          {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
-        </span>
-        {!locked && (
-          <button
-            type="button"
-            className="cn-btn"
-            onClick={() => void handleSaveDraft()}
-            disabled={saving}
-            title={t('noteEditor.saveDraftHint')}
-          >
-            <Save size={14} /> {t('noteEditor.saveDraft')}
-          </button>
-        )}
-        <button
-          type="button"
-          className="cn-btn cn-btn-save"
-          onClick={handleSaveAndClose}
-          title={note.encounterId
-            ? t('noteEditor.pauseHint')
-            : undefined}
-        >
-          <Save size={14} /> {note.encounterId ? t('noteEditor.pauseClose') : t('noteEditor.saveClose')}
-        </button>
-      </div>
-
+    </>
+  );
+  const noteModals = (
+    <>
       {/* Add optional section */}
       {showAddOptional && (
         <Modal onClose={() => setShowAddOptional(false)} width={420}>
@@ -1681,6 +1397,446 @@ export default function ClinicalNoteEditor({
           }}
         />
       )}
+    </>
+  );
+
+
+
+  if (layout === 'workspace') {
+    const groups = [
+      { id: 'visit-details', label: t('noteEditor.visitDetails') },
+      ...note.sections.map(sec => ({ id: `section-${sec.sectionId}`, label: sectionLabel(t, sec.sectionId) })),
+    ];
+    const toggleGroup = (id: string) => setFoldedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    const goToGroup = (id: string) => {
+      setWorkspaceGroup(id);
+      setFoldedGroups(prev => { const next = new Set(prev); next.delete(id); return next; });
+      workspaceScrollRef.current?.querySelector(`[data-omf-group="${id}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    };
+    // The section list follows the reader: the last group whose top has
+    // passed the top of the scroll pane is the current one.
+    const onWorkspaceScroll = () => {
+      const pane = workspaceScrollRef.current;
+      if (!pane) return;
+      const top = pane.getBoundingClientRect().top + 8;
+      let current = groups[0].id;
+      pane.querySelectorAll<HTMLElement>('[data-omf-group]').forEach(el => {
+        if (el.getBoundingClientRect().top <= top) current = el.dataset.omfGroup || current;
+      });
+      if (current !== workspaceGroup) setWorkspaceGroup(current);
+    };
+    const group = (id: string, label: string, body: React.ReactNode, major = false) => {
+      const folded = foldedGroups.has(id);
+      return (
+        <section key={id} className={`omf-group${major ? ' omf-group--major' : ''}`} data-omf-group={id}>
+          <button type="button" className="omf-group-head" aria-expanded={!folded} onClick={() => toggleGroup(id)}>
+            <span>{label}</span>
+            <ChevronDown size={16} className={folded ? 'omf-chevron is-folded' : 'omf-chevron'} aria-hidden />
+          </button>
+          {!folded && <div className="omf-group-body">{body}</div>}
+        </section>
+      );
+    };
+    return (
+      <div className="cn-editor omf-root">
+        {onBack && (
+          <button type="button" className="omf-back" onClick={() => { if (confirmNavigation()) onBack(); }}>
+            <ArrowLeft size={16} aria-hidden /> {t('noteEditor.backToForms')}
+          </button>
+        )}
+        <div className="omf-body">
+          <nav className="omf-nav" aria-label={t('noteEditor.sections')}>
+            {groups.map(g => (
+              <button
+                key={g.id}
+                type="button"
+                className={workspaceGroup === g.id ? 'omf-nav-item is-active' : 'omf-nav-item'}
+                aria-current={workspaceGroup === g.id ? 'true' : undefined}
+                onClick={() => goToGroup(g.id)}
+              >
+                {g.label}
+              </button>
+            ))}
+            {!locked && optionalAvailable.length > 0 && (
+              <button type="button" className="omf-nav-add" onClick={() => setShowAddOptional(true)}>
+                <Plus size={14} aria-hidden /> {t('noteEditor.addSection')}
+              </button>
+            )}
+            <div className="omf-nav-more">
+              {!locked && copySource && (
+                <button type="button" onClick={handleCopyForward} disabled={saving}><Copy size={13} aria-hidden /> {t('noteEditor.copyForward')}</button>
+              )}
+              <button type="button" onClick={() => setShowCoordination(true)}><Send size={13} aria-hidden /> {t('noteEditor.careCoordination')}</button>
+              <button type="button" onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}><ClipboardList size={13} aria-hidden /> {t('noteEditor.carePlan')}</button>
+              <button type="button" onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}><DollarSign size={13} aria-hidden /> {t('noteEditor.captureCharge')}</button>
+              {!locked && <button type="button" onClick={handleClear}>{t('noteEditor.clearNote')}</button>}
+            </div>
+            <div className="omf-nav-actions">
+              {!locked && (
+                <button type="button" className="omf-btn omf-btn--primary" onClick={() => void handleSaveDraft()} disabled={saving}>
+                  {saving ? t('noteEditor.saving') : t('noteEditor.save')}
+                </button>
+              )}
+              {!locked && (
+                <button type="button" className="omf-btn omf-btn--primary" onClick={openSignConfirm} disabled={saving} title={t('noteEditor.signHint')}>
+                  <Check size={14} aria-hidden /> {t('noteEditor.sign')}
+                </button>
+              )}
+              {canCosign && (
+                <button type="button" className="omf-btn omf-btn--primary" onClick={handleCosign} disabled={cosigning}>
+                  <Check size={14} aria-hidden /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
+                </button>
+              )}
+              <button type="button" className="omf-btn omf-btn--outline" onClick={() => void handleSaveAndClose()}>
+                {locked ? t('noteEditor.close') : t('noteEditor.cancel')}
+              </button>
+              <span className="omf-saved">
+                {savedAt && !saving ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
+              </span>
+            </div>
+          </nav>
+          <div className="omf-scroll" ref={workspaceScrollRef} onScroll={onWorkspaceScroll}>
+            {lockBanners}
+            {group('visit-details', t('noteEditor.visitDetails'), <div className="omf-fields">{noteFields}</div>, true)}
+            {note.sections.map(sec => group(
+              `section-${sec.sectionId}`,
+              sectionLabel(t, sec.sectionId),
+              renderSectionCard(sec),
+            ))}
+            <div className="omf-tail">{noteTail}</div>
+          </div>
+        </div>
+        {noteModals}
+      </div>
+    );
+  }
+
+  return (
+    <div className="cn-editor">
+      {/* The left rail runs the full height of the screen; the header and
+          toolbar belong to the note column, not the page. */}
+      <div className={`cn-body${showContextSidebar ? '' : ' cn-body--without-sidebar'}`}>
+        {showContextSidebar && <aside className="cn-sidebar">
+          {/* Patient identity — a bare block above the cards, per the design:
+              photo plate, name, one id line, then the risk/status pills. */}
+          <div className="cn-ident">
+            {patient?.photoUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img className="cn-patient-photo" src={patient.photoUrl} alt="" />
+              : <span className="cn-patient-photo" aria-hidden>{nameInitials(note.patientName)}</span>}
+            <div style={{ minWidth: 0 }}>
+              {/* The name is the way into the chart. It goes through
+                  navigateAway, not a plain link, so an unsaved section still
+                  gets its "you have unsaved changes" confirm first. */}
+              <h2 className="cn-ident-name">
+                <button
+                  type="button"
+                  className="cn-ident-name-link"
+                  onClick={() => navigateAway(`/patients/${note.patientId}`)}
+                  title={t('noteEditor.openChart', { name: note.patientName })}
+                >
+                  {note.patientName}
+                </button>
+              </h2>
+              <p className="cn-ident-line">
+                {[note.mrn, patient?.gender?.[0]?.toUpperCase(), dobWithAge(note.patientDob), patient?.phone ? formatPhoneDisplay(patient.phone) : null]
+                  .filter(Boolean).join(' · ')}
+              </p>
+            </div>
+          </div>
+
+          {/* The patient's other notes, newest first */}
+          <div className="cn-sidebar-card">
+            <p className="cn-card-head">{t('noteEditor.patientNotes')}</p>
+            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
+              {siblingNotes.length === 0 && (
+                <p className="cn-card-empty">{t('noteEditor.noOtherNotes')}</p>
+              )}
+              {siblingNotes.map(n => (
+                <button
+                  key={n._id}
+                  type="button"
+                  className="cn-note-row"
+                  title={`${noteTypeLabel(t, n.noteType)} — ${n.serviceDate}`}
+                  onClick={() => navigateAway(`/notes/${n._id}`)}
+                >
+                  <span className="cn-note-row-top">
+                    <b>{noteTypeLabel(t, n.noteType)}</b>
+                    <small>{new Date(`${n.serviceDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small>
+                  </span>
+                  <span className="cn-note-row-meta">
+                    {(n.assignedToName || n.authorName || t('noteEditor.unassigned'))}{isNoteLocked(n) ? ` · ${t('noteEditor.statusSigned')}` : n.status === 'awaiting_cosign' ? ` · ${t('noteEditor.statusAwaitingCosign')}` : ` · ${t('noteEditor.statusDraft')}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Note sections (jump + remove) */}
+          <div className="cn-sidebar-card">
+            <p className="cn-card-head">
+              {t('noteEditor.noteSections')}
+              {!locked && optionalAvailable.length > 0 && (
+                <button type="button" className="cn-card-head-action" onClick={() => setShowAddOptional(true)}>
+                  {t('noteEditor.addOptional')}
+                </button>
+              )}
+            </p>
+            <div className="cn-card-body cn-card-body--flush">
+              <nav className="cn-section-nav">
+                {sectionIds.map((id) => {
+                  const content = note.sections.find(s => s.sectionId === id);
+                  const filled = !!(stripTemplateMarkers(content?.text || '').trim() || content?.snapshot);
+                  const removable = !locked && !typeDef.sections.includes(id);
+                  return (
+                    <div key={id} className="cn-section-nav-row">
+                      <button
+                        type="button"
+                        className="cn-section-nav-item"
+                        aria-current={activeSection === id}
+                        onClick={() => {
+                          setActiveSection(id);
+                          document.getElementById(`cn-section-${id}`)?.scrollIntoView({
+                            behavior: 'smooth', block: 'start',
+                          });
+                        }}
+                      >
+                        <span>{sectionLabel(t, id)}</span>
+                        {filled && <span className="cn-section-nav-badge">•</span>}
+                      </button>
+                      {removable && (
+                        <button
+                          type="button"
+                          className="cn-section-nav-remove"
+                          aria-label={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
+                          title={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
+                          onClick={async () => {
+                            // The section's narrative goes with it, and the
+                            // control is a 20px box beside the section name.
+                            const ok = await confirm({
+                              title: t('noteEditor.removeSectionTitle', { section: sectionLabel(t, id) }),
+                              message: t('noteEditor.removeSectionMessage'),
+                              confirmLabel: t('noteEditor.remove'),
+                              tone: 'danger',
+                            });
+                            if (ok) await persist(() => removeNoteSection(noteId, id));
+                          }}
+                        >
+                          <Minus size={12} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+
+          {/* Most recent resulted labs */}
+          <div className="cn-sidebar-card">
+            <p className="cn-card-head">{t('noteEditor.labsStudies')}</p>
+            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
+              {recentLabs !== null && recentLabs.length === 0 && (
+                <p className="cn-card-empty">{t('noteEditor.noPreviousLabs')}</p>
+              )}
+              {(recentLabs || []).map(lab => (
+                <button
+                  key={lab.id}
+                  type="button"
+                  className="cn-rail-row"
+                  onClick={() => navigateAway(`/patients/${note.patientId}?tab=labs&focus=${encodeURIComponent(lab.id)}`)}
+                >
+                  <span className="cn-rail-row-main">{lab.testName}</span>
+                  <span className="cn-rail-row-meta">{lab.date}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Uploaded documents, filterable by label */}
+          <div className="cn-sidebar-card">
+            <p className="cn-card-head">
+              {t('noteEditor.documents')}
+              <label className="cn-card-head-filter">
+                {t('noteEditor.filterByLabel')}
+                <Select
+                  value={docLabel}
+                  onChange={e => setDocLabel(e.target.value)}
+                  aria-label={t('noteEditor.filterDocuments')}
+                >
+                  <option value="all">{t('noteEditor.all')}</option>
+                  {[...new Set((documents || []).map(d => d.category))].map(cat => (
+                    <option key={cat} value={cat}>{docCategoryLabel(cat)}</option>
+                  ))}
+                </Select>
+              </label>
+            </p>
+            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
+              {documents !== null && documents.length === 0 && (
+                <p className="cn-card-empty">{t('noteEditor.noDocuments')}</p>
+              )}
+              {(documents || [])
+                .filter(doc => docLabel === 'all' || doc.category === docLabel)
+                .slice(0, 8)
+                .map(doc => (
+                  <button
+                    key={doc._id}
+                    type="button"
+                    className="cn-rail-row cn-rail-row-stacked"
+                    title={doc.title}
+                    onClick={() => navigateAway(`/patients/${note.patientId}?tab=documents&focus=${encodeURIComponent(doc._id)}`)}
+                  >
+                    <span className="cn-rail-row-main">
+                      {doc.createdAt ? `${new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} - ` : ''}{doc.title || doc.fileName}
+                    </span>
+                    <span className="cn-rail-row-sub">{docCategoryLabel(doc.category)}</span>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </aside>}
+
+        <div className="cn-main">
+      {/* Header */}
+      <div className="cn-header">
+        {/* The context line states only what nothing else on this screen
+            already says: the facility. The note type sits in the "Note type"
+            field an inch below it, and the patient is named in the sidebar —
+            except when the editor is embedded in a chart, where that sidebar
+            is hidden and the name has nowhere else to appear. */}
+        <div className="cn-header-id">
+          <h1 className="cn-header-title">{t('noteEditor.title')}</h1>
+          <p className="cn-header-context">
+            {[!showContextSidebar ? note.patientName : null, note.hospitalName].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        {/* Note-level actions sit on the title line, top right; the identity
+            fields go in the strip beneath so the button never falls onto a
+            line of its own when the strip wraps. */}
+        <div className="cn-header-tools">
+          {!locked && copySource && (
+            <button
+              type="button"
+              className="cn-btn"
+              onClick={handleCopyForward}
+              disabled={saving}
+              title={t('noteEditor.copyForwardHint', { date: copySource.serviceDate })}
+            >
+              <Copy size={14} /> {t('noteEditor.copyForward')}
+            </button>
+          )}
+          <button type="button" className="cn-btn" onClick={handleClear} disabled={locked}>
+            {t('noteEditor.clearNote')}
+          </button>
+        </div>
+{noteFields}
+      </div>
+
+      {/* Note canvas */}
+      <div className="cn-canvas">
+{lockBanners}
+{noteSections}
+
+
+{noteTail}
+      </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="cn-footer">
+        <button
+          type="button"
+          className="cn-btn cn-btn-primary"
+          onClick={openSignConfirm}
+          disabled={locked || saving}
+          title={t('noteEditor.signHint')}
+        >
+          <Check size={14} /> {t('noteEditor.sign')}
+        </button>
+        {canCosign && (
+          <button
+            type="button"
+            className="cn-btn cn-btn-primary"
+            onClick={handleCosign}
+            disabled={cosigning}
+            title={t('noteEditor.cosignHint', { name: note.signedByName || '' })}
+          >
+            <Check size={14} /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
+          </button>
+        )}
+        <button
+          type="button"
+          className="cn-btn"
+          onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}
+        >
+          <DollarSign size={14} /> {t('noteEditor.captureCharge')}
+        </button>
+        <button
+          type="button"
+          className="cn-btn"
+          onClick={() => {
+            const text = note.sections
+              .map(s => {
+                const dxLines = (s.diagnoses || [])
+                  .map(d => `• ${d.name}${d.icd11Code ? ` (ICD-11 ${d.icd11Code})` : ''}${d.startDate ? ` — since ${d.startDate}` : ''}`)
+                  .join('\n');
+                const body = [dxLines, sectionBody(s)].filter(Boolean).join('\n');
+                return `${sectionLabel(t, s.sectionId)}\n${body}`;
+              })
+              .join('\n\n');
+            void navigator.clipboard?.writeText(text);
+            showToast(t('noteEditor.copiedToClipboard'), 'success');
+          }}
+        >
+          <Copy size={14} /> {t('noteEditor.copy')}
+        </button>
+        <button type="button" className="cn-btn" onClick={() => setShowCoordination(true)}>
+          <Send size={14} /> {t('noteEditor.careCoordination')}
+        </button>
+        <button
+          type="button"
+          className="cn-btn"
+          // Named for the chart section it opens: Care plan (`careChecklist`).
+          // This pointed at `overview`, which is the Patient summary.
+          onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}
+        >
+          <ClipboardList size={14} /> {t('noteEditor.carePlan')}
+        </button>
+
+        <div className="cn-footer-spacer" />
+
+        <span className="cn-saved">
+          {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
+        </span>
+        {!locked && (
+          <button
+            type="button"
+            className="cn-btn"
+            onClick={() => void handleSaveDraft()}
+            disabled={saving}
+            title={t('noteEditor.saveDraftHint')}
+          >
+            <Save size={14} /> {t('noteEditor.saveDraft')}
+          </button>
+        )}
+        <button
+          type="button"
+          className="cn-btn cn-btn-save"
+          onClick={handleSaveAndClose}
+          title={note.encounterId
+            ? t('noteEditor.pauseHint')
+            : undefined}
+        >
+          <Save size={14} /> {note.encounterId ? t('noteEditor.pauseClose') : t('noteEditor.saveClose')}
+        </button>
+      </div>
+
+      {noteModals}
     </div>
   );
 }

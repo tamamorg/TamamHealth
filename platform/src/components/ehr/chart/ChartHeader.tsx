@@ -135,7 +135,7 @@ function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onS
 
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
-  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onNote, onScripts, onOrders, onExchange, onEdit, onStartVisit, onAssignProvider,
+  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onExchange, onEdit, onStartVisit, onAssignProvider,
   onShowAllergies, onEndAssignment, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
@@ -147,8 +147,7 @@ export default function ChartHeader({
   // clerk never writes clinical notes or prescriptions, so those buttons are
   // dropped rather than dead weight on the card.
   const {
-    canSendMessages, canViewClinical, canPrescribe, canDispense,
-    canOrderLabs, canEnterLabResults, canManageReferrals, canRegisterPatients,
+    canSendMessages, canViewClinical, canManageReferrals, canRegisterPatients,
   } = usePermissions();
   const allergies = activeAllergies(patient);
 
@@ -216,19 +215,9 @@ export default function ChartHeader({
       <div className="tamam-header-aside">
       <div className="tamam-header-actions no-print">
 
-        {/* Primary clinical actions — one clear verb each. */}
-        {canViewClinical && (
-          <button type="button" className="tamam-header-actions-btn" onClick={onNote}><DuotoneIcon name="prescription" size={15} /> + Note</button>
-        )}
-        {(canPrescribe || canDispense) && (
-          <button type="button" className="tamam-header-actions-btn" onClick={onScripts}><DuotoneIcon name="pill" size={15} /> Prescribe</button>
-        )}
-        {(canOrderLabs || canEnterLabResults) && (
-          <button type="button" className="tamam-header-actions-btn" onClick={onOrders}><DuotoneIcon name="flask" size={15} /> Order labs</button>
-        )}
-        {canManageReferrals && (
-          <button type="button" className="tamam-header-actions-btn" onClick={onExchange}><DuotoneIcon name="arrowRightLeft" size={15} /> Refer</button>
-        )}
+        {/* The banner carries no form buttons (O3): notes open from Clinical
+            forms, prescribing and lab orders from the Order basket — both in
+            the chart's right rail — and everything else sits under More. */}
 
         {/* Everything else behind one overflow menu. */}
         <div className="tamam-header-overflow">
@@ -248,6 +237,11 @@ export default function ChartHeader({
             <>
               <div className="tamam-header-overflow-backdrop" {...dismissBackdrop(() => setMenuOpen(false))} />
               <div className="tamam-actions-menu" role="menu">
+                {canManageReferrals && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onExchange(); }}>
+                    <DuotoneIcon name="arrowRightLeft" size={15} /> Refer patient
+                  </button>
+                )}
                 {onStartVisit && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onStartVisit(); }}>
                     <DuotoneIcon name="calendar" size={15} /> Add visit

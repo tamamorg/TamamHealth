@@ -1,0 +1,244 @@
+/* Clinical note as an OpenMRS O3 form, in the patient chart's docked
+ * workspace (ClinicalNoteEditor layout="workspace"). `omf-` namespace. The
+ * note's own cards and fields keep their behaviour; this file only lays them
+ * out as a form: a section list on the left, collapsible grey groups on the
+ * right. */
+
+.omf-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--ehr-panel, var(--bg-card-solid));
+}
+
+.omf-back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin: 16px 20px 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.omf-back:hover { text-decoration: underline; }
+
+.omf-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+}
+
+/* ── Left: section list, then the form's actions ─────────────────────── */
+.omf-nav {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+}
+
+.omf-nav-item {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 16px 14px 20px;
+  border: 0;
+  border-left: 4px solid var(--color-info-bg, rgba(17, 116, 180, 0.18));
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 15px;
+  text-align: start;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.omf-nav-item:hover { background: var(--bg-app); }
+
+.omf-nav-item.is-active {
+  border-left-color: var(--accent-primary);
+  background: var(--color-slate-100, #e8e8e8);
+  font-weight: 600;
+}
+
+.omf-nav-item:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+.omf-nav-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 20px 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.omf-nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Save / Sign / Cancel never scroll out of reach behind a long section
+     list: they stick to the foot of the column. */
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid var(--border-medium, var(--border-light));
+  background: var(--ehr-panel, var(--bg-card-solid));
+}
+
+.omf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 0;
+  font-size: 15px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.omf-btn:disabled { opacity: 0.55; cursor: default; }
+.omf-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.omf-btn svg { width: 15px; height: 15px; }
+
+.omf-btn--primary { border: 1px solid var(--accent-primary); background: var(--accent-primary); color: #fff; }
+.omf-btn--outline { border: 1px solid var(--accent-primary); background: transparent; color: var(--accent-text, var(--accent-primary)); }
+
+.omf-saved { min-height: 16px; font-size: 12px; color: var(--text-muted); }
+
+.omf-nav-more {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 20px 16px;
+}
+
+.omf-nav-more button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.omf-nav-more button:disabled { color: var(--text-muted); cursor: default; }
+
+/* ── Right: collapsible groups ───────────────────────────────────────── */
+.omf-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 32px;
+}
+
+.omf-group { border-bottom: 1px solid var(--border-light); scroll-margin-top: 0; }
+
+.omf-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 0 24px;
+  border: 0;
+  background: var(--ehr-panel, var(--bg-card-solid));
+  color: var(--text-primary);
+  font-size: 16px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.omf-group--major > .omf-group-head { font-size: 24px; font-weight: 600; min-height: 72px; }
+
+.omf-group-head:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+.omf-chevron { transition: transform 0.15s ease; transform: rotate(180deg); flex: none; }
+.omf-chevron.is-folded { transform: none; }
+
+.omf-group-body {
+  padding: 20px 24px 28px;
+  background: var(--bg-app, #f4f4f4);
+}
+
+/* The note's section card sits inside the group: the group head already names
+   it, so the card's own frame and title give way; its tools stay. */
+.omf-group-body .cn-section,
+.omf-group-body .cn-section-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+
+.omf-group-body .cn-section-head { justify-content: flex-end; min-height: 0; margin-bottom: 10px; }
+.omf-group-body .cn-section-name { display: none; }
+
+/* Visit details: note type, date, time, assigned to — stacked like O3, each
+   label above its field. */
+.omf-fields .cn-header-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.omf-fields .cn-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
+.omf-fields .cn-field :is(input, select, .cn-select, .cn-input) { width: 100%; min-height: 44px; font-size: 14px; }
+
+/* Form field language: bold labels in sentence case, flat square fields
+   with a bottom rule on a white fill. */
+.omf-root .omf-group-body :is(.cn-label, label > span:first-child) {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.omf-root .omf-group-body :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea, .cn-textarea, .cn-input, .cn-select) {
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-strong, var(--color-slate-400, #8d8d8d)) !important;
+  border-radius: 0 !important;
+  background: var(--ehr-panel, #fff) !important;
+  box-shadow: none !important;
+  font-weight: 400;
+}
+
+.omf-root .omf-group-body :is(input, select, textarea, .cn-textarea):focus {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px;
+}
+
+.omf-tail { padding: 20px 24px; }
+
+@media (max-width: 720px) {
+  .omf-body { grid-template-columns: minmax(0, 1fr); }
+  .omf-nav { display: none; }
+}
