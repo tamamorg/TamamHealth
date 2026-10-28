@@ -40,6 +40,8 @@ const NO_ICON = new Set([
   '.rbc-tamam .rbc-header.rbc-today a', '.rbc-tamam .rbc-header.rbc-today span',
   '.rbc-tamam .rbc-date-cell.rbc-now a', '.rbc-tamam .rbc-header .gcal-colhead-date.is-today',
   '.msgs-bubble--mine', '.pp-bubble-line.me .pp-bubble', '.civ-marker', '.civ-label-list li>span',
+  // Order basket status tag: text only, never an icon.
+  '.obk-tag--danger',
   // Covered by a dedicated svg rule of their own:
   '.btn-primary', '.appt-edit-header-actions .btn-primary', '.pp-btn-primary', '.sadb-btn-danger',
   '.ehr-schedule-actions button.primary', '.listpage-icon-btn-primary', '.ehr-visit-pop-icon.is-primary',

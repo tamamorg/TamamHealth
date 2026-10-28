@@ -19,9 +19,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
-  ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, Maximize2,
+  ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
+import DrawerResizeHandle from './DrawerResizeHandle';
 import ClinicalNoteEditor from '@/components/clinical-notes/ClinicalNoteEditor';
 import { useUsers } from '@/lib/hooks/useUsers';
 import OrderBasketPanel from './panels/OrderBasketPanel';
@@ -55,7 +56,7 @@ interface DrawerPanelDef {
 // Right-rail workspace panels — icon + title only; the actual body is
 // resolved per-id in renderPanelBody() below.
 const DRAWER_PANELS: DrawerPanelDef[] = [
-  { id: 'order-basket', title: 'Active orders', icon: ShoppingCart, clinical: true },
+  { id: 'order-basket', title: 'Order basket', icon: ShoppingCart, clinical: true },
   // Stethoscope, not a pencil: this panel's primary action starts a
   // consultation, so it should read as clinical work rather than note-taking.
   { id: 'visit-note', title: 'Visit note', icon: Stethoscope, clinical: true },
@@ -123,7 +124,8 @@ interface TamamChartShellProps {
   /** A page-owned workspace (Record vitals) shown in the same docked slot as
    *  the rail panels, so it squeezes the chart the same way. Opening it closes
    *  any rail panel; opening a rail panel closes it. */
-  workspace?: { title: string; content: ReactNode; onClose: () => void } | null;
+  /** `wide` gives the workspace the note editor's wider column (Prescribe). */
+  workspace?: { title: string; content: ReactNode; onClose: () => void; wide?: boolean } | null;
 }
 
 export default function TamamChartShell({
@@ -151,12 +153,19 @@ export default function TamamChartShell({
     () => (users || []).map(u => ({ _id: u._id, name: u.name || u.username })),
     [users],
   );
-  // Drawer expand toggle — widens the workspace drawer to near-full-width.
+  // Full screen (the header's expand): the workspace covers the chart, up to
+  // the icon rail. It carries over as panels stack on one another, and a note
+  // form always opens full screen — Clinical forms → a form is a full page.
   const [drawerMaximized, setDrawerMaximized] = useState(false);
   const pushRail = useCallback((entry: { id: string; noteId?: string | null; noteTitle?: string | null }) => {
     setStack(prev => [...prev.filter(e => !(e.kind === 'rail' && e.id === entry.id)), { kind: 'rail', ...entry }]);
-    setDrawerMaximized(false);
+    if (entry.id === CLINICAL_NOTE_PANEL.id) setDrawerMaximized(true);
   }, []);
+  // Nothing open: the next workspace starts at its docked width again.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset when the last workspace closes
+    if (stack.length === 0) setDrawerMaximized(false);
+  }, [stack.length]);
 
   useEffect(() => {
     if (panelRequest) {
@@ -185,7 +194,6 @@ export default function TamamChartShell({
       const rest = prev.filter(e => e.kind !== 'page');
       return workspaceKey ? [...rest, { kind: 'page' }] : rest;
     });
-    setDrawerMaximized(false);
   }, [workspaceKey]);
   const activePanel: { id: string; title: string } | null = top?.kind === 'page' && workspace
     ? { id: PAGE_WORKSPACE_ID, title: workspace.title }
@@ -217,10 +225,16 @@ export default function TamamChartShell({
   // Close the top workspace only. A page workspace is closed by the page
   // (the effect above then drops it); a rail panel is popped here.
   const closeDrawer = () => {
-    setDrawerMaximized(false);
     if (top?.kind === 'page') { workspace?.onClose(); return; }
     notifyIfNoteClosing(null);
     setStack(prev => prev.slice(0, -1));
+  };
+  // Leave the workspaces altogether (the header's →): every stacked panel
+  // closes, not just the top one, and the chart gets its full width back.
+  const closeAllWorkspaces = () => {
+    if (stack.some(e => e.kind === 'rail' && e.id === CLINICAL_NOTE_PANEL.id)) onNoteSaved?.();
+    if (stack.some(e => e.kind === 'page')) workspace?.onClose();
+    setStack([]);
   };
 
   // A `?tab=` link inside the note editor (e.g. "go to Vitals") switches
@@ -300,8 +314,10 @@ export default function TamamChartShell({
             patient={patient}
             canPrescribe={canPrescribe}
             canOrderLabs={canOrderLabs}
-            onAddDrugOrder={() => { onOpenPrescribeModal(); closeDrawer(); }}
-            onAddLabOrder={() => { onOpenOrderLabModal(); closeDrawer(); }}
+            // The basket stays open beneath: Prescribe stacks on top of it and
+            // closing Prescribe brings the basket back.
+            onAddDrugOrder={onOpenPrescribeModal}
+            onAddLabOrder={onOpenOrderLabModal}
             onClose={closeDrawer}
           />
         );
@@ -440,32 +456,36 @@ export default function TamamChartShell({
           <div
             ref={drawerRef}
             tabIndex={-1}
-            className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
-            style={drawerHeight && !drawerMaximized ? { height: drawerHeight } : undefined}
+            className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
+            style={drawerHeight ? { height: drawerHeight } : undefined}
             role="dialog"
             aria-modal="false"
             aria-label={activePanel.title}
           >
+            {/* Drag the inner edge to resize (DrawerResizeHandle): note-width
+                and panel-width workspaces each remember their own width.
+                Hidden in full screen, where there is no edge to drag. */}
+            {!drawerMaximized && (
+              <DrawerResizeHandle storageKey={activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) ? 'tamam-drawer-w:note' : 'tamam-drawer-w:panel'} />
+            )}
             <div className="tamam-drawer-header">
               <span className="tamam-drawer-title">{activePanel.title}</span>
               <div className="tamam-drawer-controls">
-                {/* The note editor's expand leaves the drawer for the full
-                    consultation page (/notes/[id]), which carries the patient
-                    context rail the drawer hides. Widening the drawer only gave
-                    a bigger copy of the same railless editor. The editor flushes
-                    pending edits on unmount, so nothing typed is lost. */}
-                {/* Notes have no page of their own any more: expand widens the
-                    workspace over the chart instead of leaving it. */}
-                  <button
-                    type="button"
-                    title={drawerMaximized ? 'Restore panel size' : 'Maximize'}
-                    aria-label={drawerMaximized ? 'Restore panel size' : 'Maximize panel'}
-                    aria-pressed={drawerMaximized}
-                    onClick={() => setDrawerMaximized(v => !v)}
-                  >
-                    <Maximize2 />
-                  </button>
-                <button type="button" title="Close" aria-label="Close panel" onClick={closeDrawer}>
+                {/* → leaves the workspaces (every stacked panel closes);
+                    ✕ closes only this one and goes back to the one beneath. */}
+                <button
+                  type="button"
+                  title={drawerMaximized ? 'Exit full screen' : 'Full screen'}
+                  aria-label={drawerMaximized ? 'Exit full screen' : 'Full screen'}
+                  aria-pressed={drawerMaximized}
+                  onClick={() => setDrawerMaximized(v => !v)}
+                >
+                  {drawerMaximized ? <Minimize2 /> : <Maximize2 />}
+                </button>
+                <button type="button" className="tamam-drawer-leave" title="Close all panels" aria-label="Close all panels" onClick={closeAllWorkspaces}>
+                  <ArrowRight />
+                </button>
+                <button type="button" title={stack.length > 1 ? 'Back' : 'Close'} aria-label={stack.length > 1 ? 'Back to the previous panel' : 'Close panel'} onClick={closeDrawer}>
                   <X />
                 </button>
               </div>

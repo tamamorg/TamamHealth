@@ -4421,6 +4421,8 @@ const apd: TranslationMap = {
   'visitStatus.openEncounter': '{{name}} لسه عندو خطوات ما خلصت في الزيارة دي. الدكتور ولا الاستقبال بيكملوها.',
   'visitStatus.patient': 'عيان',
   'visitStatus.groupLabel': 'حالة الزيارة',
+  'chart.resizeWorkspace': 'غيّر عرض مساحة الشغل',
+  'chart.resizeWorkspaceHint': 'اسحب عشان تغيّر العرض. اضغط مرتين عشان ترجع العرض الأصلي.',
   'clinicalForms.search': 'دوّر في القائمة دي',
   'clinicalForms.formName': 'اسم النموذج (أ–ي)',
   'clinicalForms.lastCompleted': 'آخر مرة اتكمل',

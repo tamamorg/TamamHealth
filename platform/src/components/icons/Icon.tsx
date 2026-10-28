@@ -82,6 +82,7 @@ import {
   Mail,
   MapPin,
   Maximize2,
+  Minimize2,
   Menu,
   MessageSquare,
   Mic,
@@ -270,6 +271,7 @@ const ICON_COMPONENTS: Record<string, LucideComponent> = {
   mail: Mail,
   mapPin: MapPin,
   maximize: Maximize2,
+  minimize: Minimize2,
   mch: HeartPulse,
   // Lucide's real hamburger (three lines). This was 'PanelLeft', which drew a
   // sidebar glyph on the top rail's module-menu trigger.
@@ -513,6 +515,7 @@ export const DuotoneLock = makeLucide('lock');
 export const DuotoneLogIn = makeLucide('logIn');
 export const DuotoneMail = makeLucide('mail');
 export const DuotoneMaximize = makeLucide('maximize');
+export const DuotoneMinimize = makeLucide('minimize');
 export const DuotoneMic = makeLucide('mic');
 export const DuotoneMicOff = makeLucide('micOff');
 export const DuotoneMicroscope = makeLucide('microscope');

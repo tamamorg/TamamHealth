@@ -4435,6 +4435,8 @@ const en: TranslationMap = {
   'visitStatus.openEncounter': '{{name}} still has open steps in this visit. The clinician or the front desk completes it.',
   'visitStatus.patient': 'Patient',
   'visitStatus.groupLabel': 'Visit status',
+  'chart.resizeWorkspace': 'Resize workspace',
+  'chart.resizeWorkspaceHint': 'Drag to resize. Double-click to reset.',
   'clinicalForms.search': 'Search this list',
   'clinicalForms.formName': 'Form name (A–Z)',
   'clinicalForms.lastCompleted': 'Last completed',
