@@ -29,6 +29,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { MedicalRecordDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
+import { isAnyModalOpen } from '@/components/Modal';
 import './nurse-vitals-panel.css';
 
 type NurseVitals = VitalsInput & { height?: string };
@@ -171,7 +172,7 @@ export default function NurseVitalsModal({
     const opener = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLInputElement>('input')?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); close(); }
+      if (event.key === 'Escape' && !event.defaultPrevented && !isAnyModalOpen()) { event.preventDefault(); close(); }
     };
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); opener?.focus?.(); };

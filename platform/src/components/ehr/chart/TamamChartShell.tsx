@@ -31,6 +31,7 @@ import ClinicalFormsPanel from './panels/ClinicalFormsPanel';
 import PatientListsPanel from './panels/PatientListsPanel';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './tamam-chart.css';
+import { isAnyModalOpen } from '@/components/Modal';
 
 export interface OmrsRailItem {
   id: string;
@@ -254,10 +255,19 @@ export default function TamamChartShell({
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, [openPanel, hasWorkspace]);
+  // The latest closeDrawer, read when Escape fires: the stack's top can change
+  // (one page workspace replacing another) without re-binding the listener,
+  // and a stale closure would close the workspace that is no longer on top.
+  const closeDrawerRef = useRef(closeDrawer);
+  useEffect(() => { closeDrawerRef.current = closeDrawer; });
   useEffect(() => {
     if (!openPanel && !hasWorkspace) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeDrawer();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // A popup open over the workspace (prescribe, lab order, a confirm)
+      // takes Escape itself; closing it must not also close the panel.
+      if (isAnyModalOpen() || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      closeDrawerRef.current();
     };
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const firstItem = drawerRef.current?.querySelector<HTMLElement>(
@@ -272,7 +282,6 @@ export default function TamamChartShell({
     };
     // closeDrawer is recreated each render; keying on the open panel is what
     // actually decides whether the listener should be attached.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPanel, hasWorkspace]);
 
   const goToRecallTab = () => {

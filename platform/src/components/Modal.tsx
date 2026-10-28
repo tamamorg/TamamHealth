@@ -63,6 +63,12 @@ const openModals = new Set<number>();
 /** How many open modals hold the body scroll lock, and what it replaces. */
 let scrollLocks = 0;
 let overflowBeforeLock = '';
+/** True while any modal is open — lets a docked workspace underneath leave
+ *  Escape to the dialog, so one keypress closes only the top layer. */
+export function isAnyModalOpen(): boolean {
+  return openModals.size > 0;
+}
+
 function isTopModal(sequence: number): boolean {
   for (const other of openModals) if (other > sequence) return false;
   return true;
