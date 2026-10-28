@@ -36,6 +36,9 @@ interface ChartHeaderProps {
   onOrders: () => void;
   onExchange: () => void;
   onEdit: () => void;
+  /** Open the Start a visit workspace. Absent for roles that cannot check a
+   *  patient in, so the menu never offers a visit they cannot open. */
+  onStartVisit?: () => void;
   /** @deprecated No sticky-note model exists; the menu item was removed. */
   onStickyNote?: () => void;
   onAssignProvider?: () => void;
@@ -132,7 +135,7 @@ function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onS
 
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
-  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onNote, onScripts, onOrders, onExchange, onEdit, onAssignProvider,
+  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onNote, onScripts, onOrders, onExchange, onEdit, onStartVisit, onAssignProvider,
   onShowAllergies, onEndAssignment, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
@@ -245,6 +248,11 @@ export default function ChartHeader({
             <>
               <div className="tamam-header-overflow-backdrop" {...dismissBackdrop(() => setMenuOpen(false))} />
               <div className="tamam-actions-menu" role="menu">
+                {onStartVisit && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onStartVisit(); }}>
+                    <DuotoneIcon name="calendar" size={15} /> Add visit
+                  </button>
+                )}
                 {canSendMessages && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onMessage(); }}>
                     <DuotoneIcon name="message" size={15} /> Message patient

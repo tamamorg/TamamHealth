@@ -104,9 +104,11 @@ export default function NurseVitalsModal({
   onSaved?: () => void;
   /**
    * 'modal' (the default) slides the form in from the right; 'page' renders
-   * the form alone, for `/patients/[id]/vitals/new` inside `CreateRecordPage`.
+   * the form alone, for `/patients/[id]/vitals/new` inside `CreateRecordPage`;
+   * 'workspace' renders it to fill the patient chart's docked workspace slot,
+   * with its own scroll and a pinned footer (the slot supplies the header).
    */
-  presentation?: 'modal' | 'page';
+  presentation?: 'modal' | 'page' | 'workspace';
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -291,6 +293,9 @@ export default function NurseVitalsModal({
   );
 
   if (presentation === 'page') return <div className="nv-root nv-root--page">{form}{actions}</div>;
+  if (presentation === 'workspace') {
+    return <div className="nv-root nv-root--workspace"><div className="nv-body">{form}</div>{actions}</div>;
+  }
 
   const title = correctingRecord ? t('chart.correctVitals') : t('vitalsPanel.title');
   const panel = (

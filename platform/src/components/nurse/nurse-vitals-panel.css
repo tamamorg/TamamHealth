@@ -86,6 +86,14 @@
 
 .nv-root--page .nv-form { padding-bottom: 8px; }
 
+/* Docked in the chart's workspace slot: fills it, scrolls inside, footer pinned. */
+.nv-root--workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .nv-section + .nv-section { margin-top: 28px; }
 
 .nv-section-title {
@@ -157,13 +165,17 @@
    number field a border, padding, small bold type and an !important focus
    glow. Here the tile is the field and owns the focus ring, so the input
    inside it is bare. */
+/* Inside the patient chart `.ehr-chart-page input` and `.tamam-ehr-app input`
+   force a border, background, radius and min-height with !important, so the
+   tile's bare input has to answer in kind. */
 .nv-root input.nv-input,
 .nv-root input.nv-input:focus,
 .nv-root input.nv-input[aria-invalid="true"] {
-  border: 0;
-  border-radius: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
   padding: 0;
-  background: transparent;
+  min-height: 0;
+  background: transparent !important;
   box-shadow: none !important;
   font-size: 22px;
   font-weight: 400;
@@ -171,10 +183,15 @@
 
 .nv-root .nv-notes textarea,
 .nv-root .nv-notes textarea:focus {
-  border-radius: 0;
+  border: 2px solid transparent !important;
+  border-bottom: 1px solid var(--border-medium, var(--border-light)) !important;
+  border-radius: 0 !important;
+  background: var(--bg-app) !important;
   font-weight: 400;
   box-shadow: none !important;
 }
+
+.nv-root .nv-notes textarea:focus { border-color: var(--accent-primary) !important; }
 
 .nv-input::-webkit-outer-spin-button,
 .nv-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

@@ -1,0 +1,121 @@
+/* Start a visit — chart workspace (StartVisitPanel). `sv-` namespace. */
+
+.sv-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sv-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* The global `label` rule uppercases and bolds; this form reads in sentence case. */
+.sv-root label,
+.sv-root legend { text-transform: none; letter-spacing: normal; font-weight: inherit; }
+
+.sv-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.sv-label {
+  display: block;
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.sv-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border: 1px solid var(--border-medium, var(--border-light));
+  border-radius: var(--radius-md, 6px);
+  overflow: hidden;
+}
+
+.sv-segmented button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-inline-start: 1px solid var(--border-medium, var(--border-light));
+  background: var(--ehr-panel, var(--bg-card-solid));
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.sv-segmented button:first-child { border-inline-start: 0; }
+.sv-segmented button:hover { background: var(--bg-app); }
+
+.sv-segmented button.is-selected {
+  background: var(--color-info-bg, var(--bg-app));
+  color: var(--accent-text, var(--accent-primary));
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.sv-segmented button.is-danger.is-selected {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  box-shadow: inset 0 0 0 1px var(--color-danger);
+}
+
+.sv-segmented button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+.sv-form { display: flex; flex-direction: column; gap: 20px; }
+
+.sv-field { display: block; }
+
+.sv-field select,
+.sv-field textarea {
+  display: block;
+  width: 100%;
+  font-weight: 400;
+}
+
+.sv-facts {
+  margin: 0;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-app);
+  border-radius: var(--radius-md, 6px);
+}
+
+.sv-facts div { display: grid; grid-template-columns: 140px 1fr; gap: 12px; }
+.sv-facts dt { font-size: 13px; color: var(--text-secondary); }
+.sv-facts dd { margin: 0; font-size: 14px; color: var(--text-primary); }
+
+.sv-empty { margin: 0; font-size: 14px; color: var(--text-secondary); }
+
+/* Full-width split footer, as in the reference workspace. */
+.sv-footer {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--border-light);
+}
+
+.sv-footer-btn {
+  min-height: 64px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 0;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+
+.sv-footer-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -4px; }
+
+.sv-footer-btn--discard { background: var(--color-slate-800, #393939); color: #fff; }
+.sv-footer-btn--primary { background: var(--accent-primary); color: #fff; }
+.sv-footer-btn:disabled { background: var(--color-slate-200, #c6c6c6); color: var(--text-muted); cursor: default; }

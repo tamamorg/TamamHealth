@@ -31,7 +31,6 @@ import ClinicalFormsPanel from './panels/ClinicalFormsPanel';
 import PatientListsPanel from './panels/PatientListsPanel';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './tamam-chart.css';
-import { dismissBackdrop } from '@/lib/a11y';
 
 export interface OmrsRailItem {
   id: string;
@@ -78,6 +77,9 @@ export function visibleDrawerPanels(canViewClinical: boolean): DrawerPanelDef[] 
  * request (`clinical-note:<noteId>`) — the header's "+ Note", a Notes-tab row.
  * A bare rail button would have no note to open.
  */
+/** Drawer slot id for a page-owned workspace (see the `workspace` prop). */
+const PAGE_WORKSPACE_ID = 'page-workspace';
+
 const CLINICAL_NOTE_PANEL: DrawerPanelDef = { id: 'clinical-note', title: 'Clinical note', icon: FileText };
 
 interface TamamChartShellProps {
@@ -111,13 +113,17 @@ interface TamamChartShellProps {
    *  onPanelRequestHandled so the same panel can be requested again. */
   panelRequest?: string | null;
   onPanelRequestHandled?: () => void;
+  /** A page-owned workspace (Record vitals) shown in the same docked slot as
+   *  the rail panels, so it squeezes the chart the same way. Opening it closes
+   *  any rail panel; opening a rail panel closes it. */
+  workspace?: { title: string; content: ReactNode; onClose: () => void } | null;
 }
 
 export default function TamamChartShell({
   activeTab, setActiveTab, railItems, moreItems, header, vitalsBand, children,
   patient, currentUser, canPrescribe, canOrderLabs, canConsult, canViewClinical, router,
   onOpenPrescribeModal, onOpenOrderLabModal, onNoteSaved,
-  panelRequest, onPanelRequestHandled,
+  panelRequest, onPanelRequestHandled, workspace,
 }: TamamChartShellProps) {
 
   const [openPanel, setOpenPanel] = useState<string | null>(null);
@@ -151,8 +157,17 @@ export default function TamamChartShell({
   // Resolve from the permitted set, not the full list: a panel this role may
   // not open must not render even if something asked for it by id.
   const railPanels = useMemo(() => visibleDrawerPanels(canViewClinical), [canViewClinical]);
-  const activePanel = railPanels.find(p => p.id === openPanel)
+  const railPanel = railPanels.find(p => p.id === openPanel)
     || (openPanel === CLINICAL_NOTE_PANEL.id && canViewClinical ? CLINICAL_NOTE_PANEL : null);
+  // A page workspace takes the slot over; the rail panel it displaced is
+  // closed rather than hidden, so closing the workspace leaves the chart full.
+  const hasWorkspace = !!workspace;
+  useEffect(() => {
+    if (hasWorkspace) { setOpenPanel(null); setDrawerMaximized(false); }
+  }, [hasWorkspace]);
+  const activePanel: { id: string; title: string } | null = workspace
+    ? { id: PAGE_WORKSPACE_ID, title: workspace.title }
+    : railPanel;
 
   // One list, not two. `moreItems` used to hide behind a collapsed "More
   // sections" toggle, which meant half the chart's sections were one click away
@@ -169,11 +184,15 @@ export default function TamamChartShell({
   };
 
   const togglePanel = (id: string) => {
+    workspace?.onClose();
     notifyIfNoteClosing(openPanel === id ? null : id);
     setOpenPanel(prev => (prev === id ? null : id));
     setDrawerMaximized(false);
   };
-  const closeDrawer = () => { notifyIfNoteClosing(null); setOpenPanel(null); setDrawerMaximized(false); };
+  const closeDrawer = () => {
+    if (workspace) { workspace.onClose(); setDrawerMaximized(false); return; }
+    notifyIfNoteClosing(null); setOpenPanel(null); setDrawerMaximized(false);
+  };
 
   // A `?tab=` link inside the note editor (e.g. "go to Vitals") switches
   // tabs but leaves the editor mounted underneath — the drawer then covers
@@ -185,41 +204,37 @@ export default function TamamChartShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Escape closes the workspace drawer, the way every other dialog in the app
-  // behaves. Without it the only ways out were the X and the backdrop, and the
-  // note editor opens maximized over the whole chart.
-  //
-  // Tab is confined to the drawer while it is open. It declares aria-modal, so
-  // a screen reader is already told the chart behind it is inert — letting the
-  // keyboard walk out into that chart contradicts the announcement and strands
-  // the caret on controls the user cannot see.
+  // The drawer is a workspace docked beside the chart, not a dialog over it
+  // (OpenMRS O3's workspace model): the chart narrows to make room and stays
+  // usable, so there is no backdrop and Tab is not confined — a clinician can
+  // read the chart while filling the panel. Escape still closes it, focus
+  // moves in on open, and it goes back to whatever opened the drawer.
   const drawerRef = useRef<HTMLDivElement>(null);
+  // The docked drawer is as tall as the area the chart scrolls in (below the
+  // top rail AND the breadcrumb bar), so its footer is never pushed under the
+  // window's bottom edge. CSS alone only knows the top rail's height.
+  const [drawerHeight, setDrawerHeight] = useState<number | null>(null);
   useEffect(() => {
-    if (!openPanel) return;
-    const focusable = () => Array.from(
-      drawerRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    ).filter(el => el.offsetParent !== null);
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { closeDrawer(); return; }
-      if (e.key !== 'Tab') return;
-      const items = focusable();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      // Wrap at both ends, and pull focus back in if it escaped some other way.
-      if (!drawerRef.current?.contains(active)) { e.preventDefault(); first.focus(); return; }
-      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    if (!openPanel && !hasWorkspace) return;
+    const measure = () => {
+      let node = drawerRef.current?.parentElement ?? null;
+      while (node && !/(auto|scroll)/.test(getComputedStyle(node).overflowY)) node = node.parentElement;
+      // Less the chart shell's 1px top border, so the bottom edge lands on the window's.
+      setDrawerHeight(node ? node.clientHeight - 1 : null);
     };
-
-    // Move focus in on open, and hand it back to whatever opened the drawer on
-    // close, so a keyboard user doesn't restart from the top of the document.
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [openPanel, hasWorkspace]);
+  useEffect(() => {
+    if (!openPanel && !hasWorkspace) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    const firstItem = focusable()[0];
+    const firstItem = drawerRef.current?.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
     (firstItem ?? drawerRef.current)?.focus();
 
     window.addEventListener('keydown', onKeyDown);
@@ -230,7 +245,7 @@ export default function TamamChartShell({
     // closeDrawer is recreated each render; keying on the open panel is what
     // actually decides whether the listener should be attached.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openPanel]);
+  }, [openPanel, hasWorkspace]);
 
   const goToRecallTab = () => {
     // Recall reminders render on the Care plan tab (RemindersPanel), not
@@ -317,6 +332,10 @@ export default function TamamChartShell({
             onClose={closeDrawer}
           />
         );
+      case PAGE_WORKSPACE_ID:
+        // The workspace owns its own scroll and pinned footer (Save, Discard),
+        // so it gets the drawer's full height rather than a scrolling body.
+        return <div className="tamam-drawer-workspace">{workspace?.content}</div>;
       default:
         return null;
     }
@@ -370,32 +389,18 @@ export default function TamamChartShell({
         </div>
       </div>
 
-      {/* ══ Right action icon rail ══ */}
-      <aside className="tamam-right-rail no-print" aria-label="Chart workspace panels">
-        {railPanels.map(panel => (
-          <button
-            key={panel.id}
-            type="button"
-            className={openPanel === panel.id ? 'tamam-right-rail-btn is-active' : 'tamam-right-rail-btn'}
-            onClick={() => togglePanel(panel.id)}
-            title={panel.title}
-            aria-pressed={openPanel === panel.id}
-          >
-            <panel.icon className="w-4 h-4" />
-          </button>
-        ))}
-      </aside>
-
-      {/* ══ Slide-in workspace drawer ══ */}
+      {/* ══ Workspace drawer — docked between the chart and the icon rail ══
+          An in-flow column: the main column narrows to make room for it, so
+          the chart stays visible beside the panel instead of under it. */}
       {activePanel && (
         <>
-          <div className="tamam-drawer-backdrop no-print" {...dismissBackdrop(closeDrawer)} />
           <div
             ref={drawerRef}
             tabIndex={-1}
             className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
+            style={drawerHeight && !drawerMaximized ? { height: drawerHeight } : undefined}
             role="dialog"
-            aria-modal="true"
+            aria-modal="false"
             aria-label={activePanel.title}
           >
             <div className="tamam-drawer-header">
@@ -435,6 +440,23 @@ export default function TamamChartShell({
           </div>
         </>
       )}
+
+      {/* ══ Right action icon rail ══ */}
+      <aside className="tamam-right-rail no-print" aria-label="Chart workspace panels">
+        {railPanels.map(panel => (
+          <button
+            key={panel.id}
+            type="button"
+            className={openPanel === panel.id ? 'tamam-right-rail-btn is-active' : 'tamam-right-rail-btn'}
+            onClick={() => togglePanel(panel.id)}
+            title={panel.title}
+            aria-pressed={openPanel === panel.id}
+          >
+            <panel.icon className="w-4 h-4" />
+          </button>
+        ))}
+      </aside>
+
     </div>
   );
 }
