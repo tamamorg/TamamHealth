@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import { encountersDB } from '../db';
@@ -18,6 +19,7 @@ export function useRooming() {
   const [entries, setEntries] = useState<RoomingWorklistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -28,7 +30,7 @@ export function useRooming() {
       setEntries(await svc.getRoomingWorklist(scope));
     } catch (err) {
       console.error(err);
-      setError('Rooming worklist not loaded. Reload the page to try again.');
+      setError('msg.roomingWorklistNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -79,5 +81,5 @@ export function useRooming() {
     return doc;
   }, [load]);
 
-  return { entries, loading, error, markArrived, assignRoom, transferClinic, markReady, recordVitals, reload: load };
+  return { entries, loading, error: error && t(error), markArrived, assignRoom, transferClinic, markReady, recordVitals, reload: load };
 }

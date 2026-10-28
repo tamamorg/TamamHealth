@@ -333,7 +333,7 @@ export default function BookAppointmentModal({
       return;
     }
     if (!canBookAppointments) {
-      showToast('Your role does not allow booking appointments. Ask a clinician or the front desk to book.', 'error');
+      showToast(t('msg.yourRoleDoesNotAllow'), 'error');
       return;
     }
     if (stepped && (!visitReason || (!noAvailability && !slotChosen))) {

@@ -210,7 +210,7 @@ export default function ImmunizationsPage() {
   const handleSendRecall = async (d: ImmunizationDefaulter, key: string) => {
     const phone = phoneForDefaulter(d.patientId);
     if (!phone) {
-      showToast(`No SMS sent. ${d.patientName} has no phone number on file.`, 'error');
+      showToast(t('msg.noSmsSentHasNo', { patientName: d.patientName }), 'error');
       return;
     }
     setSendingRecall(s => ({ ...s, [key]: true }));
@@ -218,12 +218,12 @@ export default function ImmunizationsPage() {
       const { sendSms } = await import('@/lib/sms');
       const result = await sendSms({ to: phone, body: recallMessage(d) });
       if (result.ok) {
-        showToast(`Recall SMS sent to ${d.patientName}.`, 'success');
+        showToast(t('msg.recallSmsSentTo', { patientName: d.patientName }), 'success');
       } else {
-        showToast(`Recall SMS to ${d.patientName} not sent. Try again.`, 'error');
+        showToast(t('msg.recallSmsToNotSent', { patientName: d.patientName }), 'error');
       }
     } catch {
-      showToast(`Recall SMS to ${d.patientName} not sent. Try again.`, 'error');
+      showToast(t('msg.recallSmsToNotSent', { patientName: d.patientName }), 'error');
     } finally {
       setSendingRecall(s => ({ ...s, [key]: false }));
     }
@@ -249,7 +249,7 @@ export default function ImmunizationsPage() {
         }
       }
       showToast(
-        `${sent} reminders sent. ${failed} not sent. ${skipped} skipped (no phone number on file).`,
+        t('msg.remindersSentNotSentSkipped', { sent, failed, skipped }),
         sent > 0 ? 'success' : 'error',
       );
     } finally {
@@ -333,7 +333,7 @@ export default function ImmunizationsPage() {
     setShowModal(false);
     setForm({ patientId: '', patientName: '', gender: 'Male', dateOfBirth: '', vaccine: 'BCG', doseNumber: 1, dateGiven: todayIso(), nextDueDate: '', batchNumber: '', site: 'left arm', adverseReaction: false, adverseReactionDetails: '' });
     } catch (err) {
-      showToast(describeError(err, 'Immunization not recorded. Try again.'), 'error');
+      showToast(describeError(err, t('msg.immunizationNotRecordedTryAgain')), 'error');
     }
   };
 

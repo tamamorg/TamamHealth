@@ -28,6 +28,7 @@ import {
   BookingSelect, StepDots, ProviderAvatar,
 } from './primitives';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type BookingStep = 'slot' | 'details' | 'insurance' | 'done';
 
@@ -72,6 +73,7 @@ export default function BookingFlow({
   practiceSlug, practiceName, policy, reasons, provider,
   initialSlot, title = 'Request Appointment', onClose, onBooked,
 }: BookingFlowProps) {
+  const { t } = useTranslation();
   const [patientClass, setPatientClass] = useState<'new' | 'returning'>('new');
   const [reasonId, setReasonId] = useState('');
   const [date, setDate] = useState(initialSlot?.date || todayIso());
@@ -135,21 +137,21 @@ export default function BookingFlow({
     [slots, date],
   );
 
-  const pickTime = useCallback(async (t: string) => {
+  const pickTime = useCallback(async (slot: string) => {
     if (!reasonId) return;
     setError(null);
-    setTime(t);
+    setTime(slot);
     try {
       const hold = await holdSlot({
-        practice: practiceSlug, reason: reasonId, providerId: provider.id, date, startTime: t,
+        practice: practiceSlug, reason: reasonId, providerId: provider.id, date, startTime: slot,
       });
       setHoldToken(hold.holdToken);
       setStep('details');
     } catch (err) {
       setTime('');
-      setError(describeError(err, 'That time is no longer available. Choose another time.'));
+      setError(describeError(err, t('msg.thatTimeIsNoLonger')));
     }
-  }, [practiceSlug, reasonId, provider.id, date]);
+  }, [practiceSlug, reasonId, provider.id, date, t]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft(d => ({ ...d, [k]: v }));
 
@@ -187,7 +189,7 @@ export default function BookingFlow({
       onBooked?.(result);
     } catch (err) {
       const e = err as Error & { code?: string };
-      setError(describeError(e, 'Appointment not booked. Try again.'));
+      setError(describeError(e, t('appointments.toastFailedBook')));
       // A gone slot is not a form error — send them back to the times.
       if (e.code === 'SLOT_TAKEN' || e.code === 'HOLD_EXPIRED') {
         setStep('slot');
@@ -197,7 +199,7 @@ export default function BookingFlow({
     } finally {
       setSubmitting(false);
     }
-  }, [practiceSlug, reasonId, holdToken, patientClass, draft, onBooked]);
+  }, [practiceSlug, reasonId, holdToken, patientClass, draft, onBooked, t]);
 
   const stepIndex = step === 'slot' ? 0 : step === 'details' ? 1 : 2;
   const stepCount = needsInsurance ? 3 : 2;

@@ -185,11 +185,11 @@ export default function InquiriesPage() {
       setMessages(data);
     } catch (err) {
       console.error('[inquiries] failed to load:', err);
-      setError('Patient inquiries not loaded. Reload the page to try again.');
+      setError(t('msg.patientInquiriesNotLoadedReload'));
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, t]);
 
   useEffect(() => { loadEnquiries(); }, [loadEnquiries]);
 
@@ -241,7 +241,7 @@ export default function InquiriesPage() {
       if (updated) setMessages(prev => prev.map(m => (m._id === id ? updated : m)));
     } catch (err) {
       console.error('[inquiries] status update failed:', err);
-      showToast('Inquiry status not changed. Try again.', 'error');
+      showToast(t('msg.inquiryStatusNotChangedTry'), 'error');
     }
   };
   const handleAssignToMe = async (id: string) => {
@@ -251,7 +251,7 @@ export default function InquiriesPage() {
       if (updated) setMessages(prev => prev.map(m => (m._id === id ? updated : m)));
     } catch (err) {
       console.error('[inquiries] assign failed:', err);
-      showToast('Inquiry not assigned. Try again.', 'error');
+      showToast(t('msg.inquiryNotAssignedTryAgain'), 'error');
     }
   };
   const handleUnassign = async (id: string) => {
@@ -260,7 +260,7 @@ export default function InquiriesPage() {
       if (updated) setMessages(prev => prev.map(m => (m._id === id ? updated : m)));
     } catch (err) {
       console.error('[inquiries] unassign failed:', err);
-      showToast('Inquiry assignment not removed. Try again.', 'error');
+      showToast(t('msg.inquiryAssignmentNotRemovedTry'), 'error');
     }
   };
 
@@ -469,7 +469,7 @@ export default function InquiriesPage() {
           onCreated={created => {
             setMessages(prev => [created, ...prev]);
             setAddOpen(false);
-            showToast('Inquiry logged.', 'success');
+            showToast(t('createPage.inquiryLogged'), 'success');
           }}
         />
       )}

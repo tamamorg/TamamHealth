@@ -75,11 +75,11 @@ export default function InsurancePolicyModal({
 
   const handleSubmit = async () => {
     if (!form.payerName.trim()) {
-      showToast(t('billing.payerNameRequired') || 'Enter the payer or plan name.', 'error');
+      showToast(t('billing.payerNameRequired') || t('billing.payerNameRequired'), 'error');
       return;
     }
     if (!form.effectiveDate) {
-      showToast(t('billing.effectiveDateRequired') || 'Enter the effective date.', 'error');
+      showToast(t('billing.effectiveDateRequired') || t('billing.effectiveDateRequired'), 'error');
       return;
     }
     setSaving(true);
@@ -114,14 +114,14 @@ export default function InsurancePolicyModal({
       }
       showToast(
         isEdit
-          ? (t('billing.insuranceUpdated') || 'Insurance policy updated.')
-          : (t('billing.insuranceAdded') || 'Insurance policy added.'),
+          ? (t('billing.insuranceUpdated') || t('billing.insuranceUpdated'))
+          : (t('billing.insuranceAdded') || t('billing.insuranceAdded')),
         'success'
       );
       onSaved();
     } catch (err) {
       console.error('Failed to save insurance policy:', err);
-      showToast(t('billing.insuranceSaveFailed') || 'Insurance policy not saved. Try again.', 'error');
+      showToast(t('billing.insuranceSaveFailed') || t('billing.insuranceSaveFailed'), 'error');
     }
     setSaving(false);
   };

@@ -91,7 +91,7 @@ export default function NurseVitalsModal({
   const save = async () => {
     const entered = Object.entries(vitals).some(([key, value]) => key !== 'notes' && Boolean(value?.trim()));
     if (!entered) {
-      toast.showToast('Enter at least one vital sign.', 'error');
+      toast.showToast(t('msg.enterAtLeastOneVital'), 'error');
       return;
     }
     if (correctingRecord && correctionReason.trim().length < 3) {
@@ -101,7 +101,7 @@ export default function NurseVitalsModal({
     for (const field of FIELDS) {
       const value = vitals[field.key]?.trim();
       if (value && field.rangeKey && !isVitalInRange(field.rangeKey, value)) {
-        toast.showToast(`${field.label} is outside the accepted range. Check the reading and enter it again.`, 'error');
+        toast.showToast(t('msg.isOutsideTheAcceptedRange', { label: field.label }), 'error');
         return;
       }
     }
@@ -123,7 +123,7 @@ export default function NurseVitalsModal({
       onSaved?.();
       onClose();
     } catch (error) {
-      toast.showToast(describeError(error, 'Vitals not saved. Try again.'), 'error');
+      toast.showToast(describeError(error, t('msg.vitalsNotSavedTryAgain')), 'error');
     } finally {
       setSaving(false);
     }

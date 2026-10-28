@@ -487,7 +487,7 @@ export default function PatientDetailPage() {
   /** Same confirm-with-required-reason flow the dashboard used to run: this
    *  closes accountability for a patient, and the audit entry is worthless
    *  without the why. */
-  const handleEndAssignment = buildHandleEndAssignment({ patient, currentUser, confirmPrompt, showToast, reloadPatients });
+  const handleEndAssignment = buildHandleEndAssignment({ t, patient, currentUser, confirmPrompt, showToast, reloadPatients });
 
   // ── Deceased status (header ⋯ menu) ──────────────────────────────────────
   // One dialog serves both directions; which one it is comes off the record
@@ -554,7 +554,7 @@ export default function PatientDetailPage() {
 
   const regHospital = hospitals.find(h => h._id === patient.registrationHospital);
 
-  const sendPatientMessage = buildSendPatientMessage({ patient, currentUser, messageBody, setMessageError, messageChannel, messageTextConsent, setMessageSending, regHospital, messageSubject, messageIsEducation, setMessageSentWarning, setMessageSentNote, setMessageSent, setMessageBody, setMessageSubject, setMessageChannel, setMessageTextConsent, setMessageIsEducation });
+  const sendPatientMessage = buildSendPatientMessage({ t, patient, currentUser, messageBody, setMessageError, messageChannel, messageTextConsent, setMessageSending, regHospital, messageSubject, messageIsEducation, setMessageSentWarning, setMessageSentNote, setMessageSent, setMessageBody, setMessageSubject, setMessageChannel, setMessageTextConsent, setMessageIsEducation });
 
   // Appointment sort key for the Appointments tab.
   const apptTs = (a: { appointmentDate: string; appointmentTime?: string }) =>

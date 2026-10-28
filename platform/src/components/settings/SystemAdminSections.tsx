@@ -44,6 +44,7 @@ import {
   Building2, ChevronRight, ClipboardCheck, ClipboardList, Database, KeyRound, Layers,
   Search, Settings, X, type LucideIcon,
 } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type SystemAdminSectionId =
   | 'apps' | 'extensions' | 'privileges' | 'patientActions' | 'metadata' | 'properties';
@@ -121,6 +122,7 @@ function matches(query: string, ...fields: string[]): boolean {
  * that hasn't confirmed the current role even has system-admin access yet).
  */
 export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfigData {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   // A super_admin carries no orgId — that is what makes it cross-tenant — so
@@ -191,35 +193,35 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
   );
 
   const toggleApp = async (app: SystemAppDefinition, next: boolean) => {
-    if (!orgId || !currentUser) { showToast('Your account is not linked to an organization, so this setting cannot be saved. Contact your system administrator.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast(t('msg.yourAccountIsNotLinked'), 'error'); return; }
     setBusyId(app.id);
     setConfig(prev => prev ? { ...prev, appOverrides: { ...prev.appOverrides, [app.id]: next } } : prev);
     try {
       const { setAppEnabled } = await import('@/lib/services/system-config-service');
       await setAppEnabled(orgId, app.id, next, currentUser._id, currentUser.username);
       setDisabledApps({ ...appOverrides, [app.id]: next });
-      showToast(`${app.label} ${next ? 'enabled' : 'disabled'}.`, 'success');
+      showToast(t(next ? 'msg.labelEnabled' : 'msg.labelDisabled', { label: app.label }), 'success');
     } catch (err) {
       console.error(err);
       setConfig(prev => prev ? { ...prev, appOverrides: { ...prev.appOverrides, [app.id]: !next } } : prev);
-      showToast(`${app.label} not updated. Try again.`, 'error');
+      showToast(t('msg.notUpdatedTryAgain', { label: app.label }), 'error');
     } finally {
       setBusyId(null);
     }
   };
 
   const toggleExtension = async (ext: SystemExtensionDefinition, next: boolean) => {
-    if (!orgId || !currentUser) { showToast('Your account is not linked to an organization, so this setting cannot be saved. Contact your system administrator.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast(t('msg.yourAccountIsNotLinked'), 'error'); return; }
     setBusyId(ext.id);
     setConfig(prev => prev ? { ...prev, extensionOverrides: { ...prev.extensionOverrides, [ext.id]: next } } : prev);
     try {
       const { setExtensionEnabled } = await import('@/lib/services/system-config-service');
       await setExtensionEnabled(orgId, ext.id, next, currentUser._id, currentUser.username);
-      showToast(`${ext.label} ${next ? 'enabled' : 'disabled'}.`, 'success');
+      showToast(t(next ? 'msg.labelEnabled' : 'msg.labelDisabled', { label: ext.label }), 'success');
     } catch (err) {
       console.error(err);
       setConfig(prev => prev ? { ...prev, extensionOverrides: { ...prev.extensionOverrides, [ext.id]: !next } } : prev);
-      showToast(`${ext.label} not updated. Try again.`, 'error');
+      showToast(t('msg.notUpdatedTryAgain', { label: ext.label }), 'error');
     } finally {
       setBusyId(null);
     }
@@ -234,17 +236,17 @@ export function useSystemAdminConfig(enabled: boolean = true): SystemAdminConfig
 
   const saveEditor = async () => {
     if (!editing) return;
-    if (!orgId || !currentUser) { showToast('Your account is not linked to an organization, so this setting cannot be saved. Contact your system administrator.', 'error'); return; }
+    if (!orgId || !currentUser) { showToast(t('msg.yourAccountIsNotLinked'), 'error'); return; }
     setSaving(true);
     try {
       const { setPropertyValue } = await import('@/lib/services/system-config-service');
       await setPropertyValue(orgId, editing.id, draftValue, currentUser._id, currentUser.username);
       setConfig(prev => prev ? { ...prev, propertyOverrides: { ...prev.propertyOverrides, [editing.id]: draftValue } } : prev);
-      showToast(`${editing.label} saved.`, 'success');
+      showToast(t('msg.saved', { label: editing.label }), 'success');
       setEditing(null);
     } catch (err) {
       console.error(err);
-      showToast(`${editing.label} not saved. Try again.`, 'error');
+      showToast(t('msg.notSavedTryAgain', { label: editing.label }), 'error');
     } finally {
       setSaving(false);
     }

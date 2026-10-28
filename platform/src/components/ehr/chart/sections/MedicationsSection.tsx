@@ -175,12 +175,12 @@ export default function MedicationsSection({
         stoppedSource: 'clinician',
         stoppedReason: reason.trim() || 'Discontinued from the Medications tab',
       });
-      showToast(`${rx.medication} discontinued.`, 'success');
+      showToast(t('msg.discontinued', { medication: rx.medication }), 'success');
       setSelectedRx(null);
       setShowStopReason(false);
       setStopReason('');
     } catch (err) {
-      showToast(describeError(err, 'Medication not discontinued. Try again.'), 'error');
+      showToast(describeError(err, t('msg.medicationNotDiscontinuedTryAgain')), 'error');
     } finally {
       setBusyId(null);
     }
@@ -233,19 +233,19 @@ export default function MedicationsSection({
       } as PrescriptionCreateInput, scope);
       if (result.allergyWarnings?.length) {
         showToast(
-          `ALLERGY ALERT — renewed against a recorded allergy: ${result.allergyWarnings
+          t('msg.allergyAlertRenewedAgainstA', { value: result.allergyWarnings
             .map(a => `${a.allergy} → ${a.medication}`)
-            .join(', ')}. Review before sending.`,
+            .join(', ') }),
           'error',
         );
       } else if (result.interactionWarnings?.hasInteractions) {
-        showToast(`Renewed. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`, 'warning');
+        showToast(t('msg.renewedInteractionWarningReviewBefore', { value: result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ') }), 'warning');
       } else {
-        showToast(`${rx.medication} renewed.`, 'success');
+        showToast(t('msg.renewed', { medication: rx.medication }), 'success');
       }
       setSelectedRx(null);
     } catch (err) {
-      showToast(describeError(err, 'Medication not renewed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.medicationNotRenewedTryAgain')), 'error');
     } finally {
       setBusyId(null);
     }

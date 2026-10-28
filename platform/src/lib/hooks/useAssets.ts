@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { AssetDoc } from '../db-types-asset';
@@ -11,6 +12,7 @@ export function useAssets() {
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof import('../services/asset-service').getAssetSummary>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -23,7 +25,7 @@ export function useAssets() {
       setSummary(s);
     } catch (err) {
       console.error('Failed to load assets', err);
-      setError('Assets not loaded. Reload the page to try again.');
+      setError('msg.assetsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -52,5 +54,5 @@ export function useAssets() {
     return doc;
   }, [load]);
 
-  return { assets, summary, loading, error, create, setStatus, logService, reload: load };
+  return { assets, summary, loading, error: error && t(error), create, setStatus, logService, reload: load };
 }

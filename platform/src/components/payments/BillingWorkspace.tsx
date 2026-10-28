@@ -245,7 +245,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   const myName = currentUser?.name;
   const resolvePending = useCallback(async (p: PaymentDoc, approve: boolean) => {
     if (!p.reference) {
-      showToast('This payment has no reference number, so its status cannot be changed. Contact your system administrator.', 'error');
+      showToast(t('msg.thisPaymentHasNoReference'), 'error');
       return;
     }
     setPendingBusy(p._id);
@@ -257,15 +257,15 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         approve ? undefined : { reason: `Rejected in verification by ${myName || 'finance'}` },
       );
       if (!updated) throw new Error('Payment not found. Reload the page and try again.');
-      showToast(approve ? `Payment ${p.reference} approved and posted.` : `Payment ${p.reference} rejected.`, 'success');
+      showToast(approve ? t('msg.paymentApprovedAndPosted', { reference: p.reference }) : t('msg.paymentRejected', { reference: p.reference }), 'success');
       await loadData();
     } catch (err) {
       console.error('Pending payment resolution failed:', err);
-      showToast('Payment status not changed. Try again.', 'error');
+      showToast(t('msg.paymentStatusNotChangedTry'), 'error');
     } finally {
       setPendingBusy(null);
     }
-  }, [myName, loadData, showToast]);
+  }, [myName, loadData, showToast, t]);
 
   // ── Aggregate by patient ───────────────────────────────────────────
   const patientLines: PatientLine[] = useMemo(() => {
@@ -488,7 +488,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         ]),
       );
     }
-    showToast('Export downloaded.', 'success');
+    showToast(t('msg.exportDownloaded'), 'success');
   }, [tab, filteredClaims, filteredAccounts, t, showToast]);
 
   /** The accounts queue's columns, in order. Widths are equal by layout

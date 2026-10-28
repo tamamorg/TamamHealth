@@ -102,6 +102,7 @@ import {
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
+import { usePasswordPolicy } from '@/modules/identity/client';
 const SECTION_ICONS: Record<string, LucideIcon> = {
   user: User, bell: Bell, shield: Shield, steth: Stethoscope, pill: Pill,
   flask: FlaskConical, card: CreditCard, bed: BedDouble, clock: Clock,
@@ -170,6 +171,8 @@ export default function RoleSettingsView() {
   const { currentUser, refreshCurrentUser, platformPolicy } = useAuth();
   const { isOnline, syncPaused, lastSync, toggleOnline } = useSync();
   const { showToast } = useToast();
+  // The same minimum the server enforces, so the screen never accepts a password the API then refuses.
+  const { minLength: passwordMinLength } = usePasswordPolicy();
   const confirm = useConfirm();
   const { canManageUsers, canAccess } = usePermissions();
   const { users, update: updateUser } = useUsers();
@@ -572,9 +575,9 @@ export default function RoleSettingsView() {
       const { currentUserPreferences, persistUserPreferences } = await import('@/lib/settings/user-settings-sync');
       await persistUserPreferences(currentUser._id, currentUserPreferences(draft, locale));
       setBaseline(draft);
-      showToast('Settings saved.', 'success');
+      showToast(t('msg.settingsSaved'), 'success');
     } catch {
-      showToast('Settings not saved. Try again.', 'error');
+      showToast(t('msg.settingsNotSavedTryAgain'), 'error');
     } finally {
       setSaving(false);
     }
@@ -593,13 +596,13 @@ export default function RoleSettingsView() {
       persistUserPreferences(currentUser._id, currentUserPreferences(defaults, locale)));
     setDraft(defaults);
     setBaseline(defaults);
-    showToast('Settings reset to defaults.', 'success');
+    showToast(t('msg.settingsResetToDefaults'), 'success');
   };
 
   const handleChangePassword = async () => {
-    if (!pwForm.current) { showToast('Enter your current password.', 'error'); return; }
-    if (pwForm.next.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
-    if (pwForm.next !== pwForm.confirm) { showToast('The passwords do not match. Enter the same password in both fields.', 'error'); return; }
+    if (!pwForm.current) { showToast(t('msg.enterYourCurrentPassword'), 'error'); return; }
+    if (pwForm.next.length < passwordMinLength) { showToast(t('msg.enterAPasswordOfAt', { passwordMinLength }), 'error'); return; }
+    if (pwForm.next !== pwForm.confirm) { showToast(t('pactivate.errMismatch'), 'error'); return; }
     setPwSaving(true);
     try {
       const { apiFetch } = await import('@/lib/api-fetch');
@@ -609,33 +612,33 @@ export default function RoleSettingsView() {
         body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) { showToast(describeApiError(body, 'Password not changed. Try again.'), 'error'); return; }
+      if (!res.ok) { showToast(describeApiError(body, t('msg.passwordNotChangedTryAgain')), 'error'); return; }
       setPwForm({ current: '', next: '', confirm: '' });
       setPwOpen(false);
-      showToast('Password changed.', 'success');
+      showToast(t('msg.passwordChanged'), 'success');
     } catch {
-      showToast('Password not changed. Cannot reach the server. Check your internet connection and try again.', 'error');
+      showToast(t('msg.passwordNotChangedCannotReach'), 'error');
     } finally {
       setPwSaving(false);
     }
   };
 
   const handleSetPin = async () => {
-    if (!/^\d{4,6}$/.test(pinForm.next)) { showToast('Enter a PIN of 4 to 6 digits.', 'error'); return; }
-    if (pinForm.next !== pinForm.confirm) { showToast('The PINs do not match. Enter the same PIN in both fields.', 'error'); return; }
+    if (!/^\d{4,6}$/.test(pinForm.next)) { showToast(t('msg.enterAPinOf4'), 'error'); return; }
+    if (pinForm.next !== pinForm.confirm) { showToast(t('lock.pinsDoNotMatch'), 'error'); return; }
     setPinSaving(true);
     try {
       await setLockPin(pinForm.next, currentUser._id);
       setPinIsSet(true);
       setPinForm({ next: '', confirm: '' });
       setPinOpen(false);
-      showToast('Screen-lock PIN set.', 'success');
+      showToast(t('msg.screenLockPinSet'), 'success');
     } catch (err) {
       // Thrown on a non-secure context (no crypto.subtle) — this device
       // cannot hash a PIN safely, and setLockPin refuses rather than falling
       // back to a weaker scheme. Surface that instead of an uncaught
       // rejection with the dialog stuck open and no explanation.
-      showToast(describeError(err, 'Screen-lock PIN not set on this device. Try again.'), 'error');
+      showToast(describeError(err, t('msg.screenLockPinNotSet')), 'error');
     } finally {
       setPinSaving(false);
     }
@@ -799,17 +802,17 @@ export default function RoleSettingsView() {
     const smsOn = facilitySettings.itOperations.integrations.includes('sms');
     const lastPush = dhis2Log?.lastPush;
     const dhis2Status = !isDhis2Configured()
-      ? { label: 'Not set up', tone: 'neutral', detail: 'Set NEXT_PUBLIC_DHIS2_BASE_URL to enable national reporting. Sync now still prepares the export locally.' }
+      ? { label: 'Not set up', tone: 'neutral', detail: 'National reporting is not connected. Ask your system administrator to connect DHIS2. Sync now still prepares the report on this device.' }
       : lastPush?.status === 'pushed'
         ? { label: 'Connected', tone: 'green', detail: `HMIS + IDSR datasets. Last push ${dhis2Log?.lastSyncedAt ? new Date(dhis2Log.lastSyncedAt).toLocaleString() : '—'}.` }
         : lastPush?.status === 'failed'
-          ? { label: 'Error', tone: 'red', detail: lastPush.message || 'Last push failed — retry from Facility Sync.' }
-          : { label: 'Pending', tone: 'yellow', detail: 'Configured — no push recorded yet on this device.' };
+          ? { label: 'Error', tone: 'red', detail: describeError(lastPush.message ? new Error(lastPush.message) : null, 'The last report was not sent. Retry from Facility Sync.') }
+          : { label: 'Pending', tone: 'yellow', detail: 'Connected. No report has been sent from this device yet.' };
     const replicationStatus = syncPaused
       ? { label: 'Pending', tone: 'yellow', detail: 'Sync paused on this device.' }
       : isOnline
         ? { label: 'Connected', tone: 'green', detail: `Offline-first queue. Last sync ${lastSync ? new Date(lastSync).toLocaleString() : '—'}.` }
-        : { label: 'Error', tone: 'red', detail: 'Offline — changes queue locally until connectivity returns.' };
+        : { label: 'Offline', tone: 'yellow', detail: 'Offline. Changes are saved on this device and will sync when the connection returns.' };
     const cells = [
       { name: 'DHIS2 national reporting', ...dhis2Status },
       { name: 'Country node replication', ...replicationStatus },
@@ -897,13 +900,13 @@ export default function RoleSettingsView() {
           label: 'Merge duplicate patient records',
           hint: 'Review suspected duplicates in the patient registry. Merges are audited and cannot be undone.',
           action: 'Not available here',
-          onClick: () => showToast('Review patient merges from the patient registry.', 'error'),
+          onClick: () => showToast(t('msg.reviewPatientMergesFromThe'), 'error'),
         },
         {
           label: 'Export the full patient database',
           hint: 'Requires facility admin plus a Ministry authorisation code.',
           action: 'Request export',
-          onClick: () => showToast('Enter the Ministry of Health authorisation code for a full export.', 'error'),
+          onClick: () => showToast(t('msg.enterTheMinistryOfHealth'), 'error'),
         },
         {
           label: 'Reset settings on this device',
@@ -1329,7 +1332,7 @@ export default function RoleSettingsView() {
                   <button
                     type="button"
                     className="ehr-handoff-btn sm"
-                    onClick={() => { clearLockPin(currentUser._id); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast('Screen-lock PIN removed.', 'success'); }}
+                    onClick={() => { clearLockPin(currentUser._id); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast(t('msg.screenLockPinRemoved'), 'success'); }}
                   >
                     <Trash2 /> Remove
                   </button>

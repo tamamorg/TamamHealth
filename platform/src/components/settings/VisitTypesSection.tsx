@@ -23,6 +23,7 @@ import { Plus, Trash2, ClipboardCheck } from '@/components/icons/lucide';
 import type { VisitReasonDoc } from '@/lib/db-types-booking';
 import type { AppointmentType } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const DURATIONS = [10, 15, 20, 30, 40, 45, 60, 90];
 
@@ -40,6 +41,7 @@ const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
 ];
 
 export default function VisitTypesSection({ facilityId: facilityIdProp }: { facilityId?: string }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const facilityId = facilityIdProp || currentUser?.hospitalId || '';
@@ -63,11 +65,11 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       setUsingDefaults(list.length > 0 && list.every(isDefaultVisitReason));
     } catch (err) {
       console.error('[VisitTypesSection]', err);
-      showToast('Visit types not loaded. Reload the page to try again.', 'error');
+      showToast(t('msg.visitTypesNotLoadedReload'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [facilityId, orgId, showToast]);
+  }, [facilityId, orgId, showToast, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -95,7 +97,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       await updateVisitReason(target._id, updates, currentUser?._id, currentUser?.name);
       await load();
     } catch (err) {
-      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally {
       setBusyId(null);
     }
@@ -109,9 +111,9 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       const { retireVisitReason } = await import('@/lib/services/visit-reason-service');
       await retireVisitReason(reason._id, currentUser?._id, currentUser?.name);
       await load();
-      showToast(`"${reason.name}" removed from the booking menu.`, 'success');
+      showToast(t('msg.removedFromTheBookingMenu', { name: reason.name }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Visit type not removed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.visitTypeNotRemovedTry')), 'error');
     } finally {
       setBusyId(null);
     }
@@ -139,9 +141,9 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
       setNewDuration(30);
       setAdding(false);
       await load();
-      showToast('Visit type added.', 'success');
+      showToast(t('msg.visitTypeAdded'), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Visit type not added. Try again.'), 'error');
+      showToast(describeError(err, t('msg.visitTypeNotAddedTry')), 'error');
     } finally {
       setBusyId(null);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ANCVisitDoc } from '../db-types';
@@ -11,6 +12,7 @@ export function useANC() {
   const [stats, setStats] = useState<Awaited<ReturnType<typeof import('../services/anc-service').getANCStats>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -23,7 +25,7 @@ export function useANC() {
       setStats(s);
     } catch (err) {
       console.error('Failed to load ANC visits', err);
-      setError('ANC visits not loaded. Reload the page to try again.');
+      setError('msg.ancVisitsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -47,5 +49,5 @@ export function useANC() {
     return doc;
   }, [load]);
 
-  return { visits, stats, loading, error, register, update, reload: load };
+  return { visits, stats, loading, error: error && t(error), register, update, reload: load };
 }

@@ -7,6 +7,7 @@ import {
   AlertTriangle, XCircle, Wallet,
 } from '@/components/icons/lucide';
 import { describeApiError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /* ─────────────────────────────────────────────────────────────
    Pay-by-link checkout — PUBLIC page (no staff auth).
@@ -51,6 +52,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const { linkId } = useParams<{ linkId: string }>();
 
   const [link, setLink] = useState<CheckoutLink | null>(null);
@@ -80,19 +82,19 @@ export default function CheckoutPage() {
           return;
         }
         if (!res.ok) {
-          setLoadError('This payment link could not be opened. Reload the page to try again.');
+          setLoadError(t('msg.thisPaymentLinkCouldNot'));
           return;
         }
         const data = (await res.json()) as CheckoutLink;
         if (!cancelled) setLink(data);
       } catch {
-        if (!cancelled) setLoadError('Cannot reach the server. Check your internet connection and try again.');
+        if (!cancelled) setLoadError(t('pactivate.errNetwork'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [linkId]);
+  }, [linkId, t]);
 
   const submit = async () => {
     if (!method || submitting || !link) return;
@@ -111,12 +113,12 @@ export default function CheckoutPage() {
         return;
       }
       if (!res.ok || !data.reference) {
-        setSubmitError(describeApiError(data, 'Your payment was not recorded. Try again. If money has already left your account, contact the facility before paying again.'));
+        setSubmitError(describeApiError(data, t('msg.yourPaymentWasNotRecorded')));
         return;
       }
       setReference(data.reference as string);
     } catch {
-      setSubmitError('Cannot reach the server. Check your internet connection and try again.');
+      setSubmitError(t('pactivate.errNetwork'));
     } finally {
       setSubmitting(false);
     }
@@ -145,11 +147,11 @@ export default function CheckoutPage() {
             <XCircle size={56} style={{ color: 'var(--color-danger)' }} />
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-            {notFound ? 'Payment link not found' : 'Something went wrong'}
+            {notFound ? 'Payment link not found' : 'This payment page could not be loaded'}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             {notFound
-              ? 'This payment link is invalid or has expired. Please contact the facility that sent it to you for a new link.'
+              ? 'This payment link is incorrect or has expired. Contact the facility that sent it for a new link.'
               : loadError}
           </p>
         </div>

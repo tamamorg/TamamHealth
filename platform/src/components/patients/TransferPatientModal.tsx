@@ -30,6 +30,7 @@ import {
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type IconCmp = typeof ArrowRight;
 
@@ -133,6 +134,7 @@ export default function TransferPatientModal({
    */
   presentation?: 'modal' | 'page';
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { users } = useUsers();
@@ -273,7 +275,7 @@ export default function TransferPatientModal({
       onTransferred?.();
       onClose();
     } catch (e) {
-      setError(describeError(e, 'Transfer request not created. Try again.'));
+      setError(describeError(e, t('msg.transferRequestNotCreatedTry')));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useEffect, useCallback } from 'react';
 import type { MedicalRecordDoc } from '../db-types';
 import { medicalRecordsDB } from '../db';
@@ -10,6 +11,7 @@ export function useMedicalRecords(patientId?: string) {
   const [records, setRecords] = useState<MedicalRecordDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadRecords = useCallback(async () => {
@@ -26,7 +28,7 @@ export function useMedicalRecords(patientId?: string) {
       setRecords(data);
     } catch (err) {
       console.error(err);
-      setError('Medical records not loaded. Reload the page to try again.');
+      setError('msg.medicalRecordsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -57,5 +59,5 @@ export function useMedicalRecords(patientId?: string) {
     return record;
   }, [loadRecords]);
 
-  return { records, loading, error, create, reload: loadRecords };
+  return { records, loading, error: error && t(error), create, reload: loadRecords };
 }

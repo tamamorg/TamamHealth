@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { PaymentDoc, InsurancePolicyDoc, ClaimDoc, PaymentPlanDoc, LedgerEntryDoc, PatientFinancialSummary } from '../db-types-payments';
@@ -10,6 +11,7 @@ export function usePayments() {
   const [payments, setPayments] = useState<PaymentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadPayments = useCallback(async () => {
@@ -24,7 +26,7 @@ export function usePayments() {
       setPayments(data);
       setError(null);
     } catch (err) {
-      setError('Payments not loaded. Reload the page to try again.');
+      setError('msg.paymentsNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -35,7 +37,7 @@ export function usePayments() {
   // updated, or deleted anywhere in the app.
   usePouchLiveReload({ load: loadPayments, database: paymentsDB });
 
-  return { payments, loading, error, reload: loadPayments };
+  return { payments, loading, error: error && t(error), reload: loadPayments };
 }
 
 // One shared feed pair so a payment or a policy change reloads the patient ledger once.
@@ -48,6 +50,7 @@ export function usePatientPayments(patientId?: string) {
   const [summary, setSummary] = useState<PatientFinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadPatientPayments = useCallback(async () => {
@@ -75,7 +78,7 @@ export function usePatientPayments(patientId?: string) {
       setSummary(summaryData);
       setError(null);
     } catch (err) {
-      setError('Patient payments not loaded. Reload the page to try again.');
+      setError('msg.patientPaymentsNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -85,13 +88,14 @@ export function usePatientPayments(patientId?: string) {
   // Live PouchDB subscriptions for payments and policies
   usePouchLiveReload({ load: loadPatientPayments, database: patientPaymentDatabases, enabled: Boolean(patientId) });
 
-  return { payments, policies, balance, summary, loading, error, reload: loadPatientPayments };
+  return { payments, policies, balance, summary, loading, error: error && t(error), reload: loadPatientPayments };
 }
 
 export function useInsurancePolicies(patientId?: string) {
   const [policies, setPolicies] = useState<InsurancePolicyDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadInsurancePolicies = useCallback(async () => {
@@ -106,7 +110,7 @@ export function useInsurancePolicies(patientId?: string) {
       setPolicies(data);
       setError(null);
     } catch (err) {
-      setError('Insurance policies not loaded. Reload the page to try again.');
+      setError('msg.insurancePoliciesNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -116,7 +120,7 @@ export function useInsurancePolicies(patientId?: string) {
   // Live PouchDB subscription
   usePouchLiveReload({ load: loadInsurancePolicies, database: insurancePoliciesDB, enabled: Boolean(patientId) });
 
-  return { policies, loading, error, reload: loadInsurancePolicies };
+  return { policies, loading, error: error && t(error), reload: loadInsurancePolicies };
 }
 
 /** Patient ids holding at least one active insurance policy — powers the
@@ -146,6 +150,7 @@ export function useClaims() {
   const [claims, setClaims] = useState<ClaimDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadClaims = useCallback(async () => {
@@ -160,7 +165,7 @@ export function useClaims() {
       setClaims(data);
       setError(null);
     } catch (err) {
-      setError('Claims not loaded. Reload the page to try again.');
+      setError('msg.claimsNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -170,13 +175,14 @@ export function useClaims() {
   // Live PouchDB subscription
   usePouchLiveReload({ load: loadClaims, database: claimsDB });
 
-  return { claims, loading, error, reload: loadClaims };
+  return { claims, loading, error: error && t(error), reload: loadClaims };
 }
 
 export function usePaymentPlans() {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlanDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadPaymentPlans = useCallback(async () => {
@@ -191,7 +197,7 @@ export function usePaymentPlans() {
       setPaymentPlans(data);
       setError(null);
     } catch (err) {
-      setError('Payment plans not loaded. Reload the page to try again.');
+      setError('msg.paymentPlansNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -201,13 +207,14 @@ export function usePaymentPlans() {
   // Live PouchDB subscription
   usePouchLiveReload({ load: loadPaymentPlans, database: paymentPlansDB });
 
-  return { paymentPlans, loading, error, reload: loadPaymentPlans };
+  return { paymentPlans, loading, error: error && t(error), reload: loadPaymentPlans };
 }
 
 export function useLedger(patientId?: string) {
   const [ledger, setLedger] = useState<LedgerEntryDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadLedger = useCallback(async () => {
@@ -222,7 +229,7 @@ export function useLedger(patientId?: string) {
       setLedger(data);
       setError(null);
     } catch (err) {
-      setError('Ledger not loaded. Reload the page to try again.');
+      setError('msg.ledgerNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -232,5 +239,5 @@ export function useLedger(patientId?: string) {
   // Live PouchDB subscription
   usePouchLiveReload({ load: loadLedger, database: ledgerDB });
 
-  return { ledger, loading, error, reload: loadLedger };
+  return { ledger, loading, error: error && t(error), reload: loadLedger };
 }

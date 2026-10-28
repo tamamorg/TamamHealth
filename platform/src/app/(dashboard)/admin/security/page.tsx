@@ -251,9 +251,9 @@ export default function SecurityCompliancePage() {
     try {
       await update({ superAdminPolicies: draft }, currentUser._id, currentUser.username);
       setDirty(false);
-      showToast('Security and compliance policy saved.', 'success');
+      showToast(t('msg.securityAndCompliancePolicySaved'), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Security and compliance policy not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.securityAndCompliancePolicyNot')), 'error');
     } finally {
       setSaving(false);
     }
@@ -278,7 +278,7 @@ export default function SecurityCompliancePage() {
     if (!editing) return;
     const n = Number(editValue);
     if (!Number.isInteger(n) || n <= 0) {
-      showToast('Enter a whole number greater than 0.', 'error');
+      showToast(t('msg.enterAWholeNumberGreater'), 'error');
       return;
     }
     setField(editing.key, n);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useEffect, useCallback } from 'react';
 import type { EpidemicIntelligenceData } from '../services/epidemic-intelligence-service';
 import { useDataScope } from './useDataScope';
@@ -8,6 +9,7 @@ export function useEpidemicIntelligence() {
   const [data, setData] = useState<EpidemicIntelligenceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -19,7 +21,7 @@ export function useEpidemicIntelligence() {
       setData(result);
     } catch (err) {
       console.error('Failed to load epidemic intelligence', err);
-      setError('Epidemic intelligence not loaded. Reload the page to try again.');
+      setError('msg.epidemicIntelligenceNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -27,5 +29,5 @@ export function useEpidemicIntelligence() {
 
   useEffect(() => { load(); }, [load]);
 
-  return { data, loading, error, reload: load };
+  return { data, loading, error: error && t(error), reload: load };
 }

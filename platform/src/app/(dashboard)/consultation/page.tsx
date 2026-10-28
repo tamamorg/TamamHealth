@@ -33,8 +33,10 @@ import { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton
 import '@/components/clinical-notes/clinical-notes.css';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function ConsultationRedirectPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const { currentUser } = useAuth();
@@ -160,10 +162,10 @@ export default function ConsultationRedirectPage() {
         });
         router.replace(`/notes/${note._id}`);
       } catch (err) {
-        setError(describeError(err, 'Clinical note not opened. Try again.'));
+        setError(describeError(err, t('msg.clinicalNoteNotOpenedTry')));
       }
     })();
-  }, [currentUser, patientId, encounterParam, router]);
+  }, [currentUser, patientId, encounterParam, router, t]);
 
   if (error) {
     return (

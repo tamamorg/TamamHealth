@@ -27,6 +27,8 @@ import type { ProblemStatus } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { FOCUSED_ROW_STYLE, rowActivation } from './rowFocus';
 import type { ProblemDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { statusWord } from '@/lib/i18n/status-word';
 
 const STATUS_BADGE: Record<ProblemStatus, string> = {
   active: 'tamam-panel-badge tamam-panel-badge--active',
@@ -55,6 +57,7 @@ interface ConditionsSectionProps {
 export default function ConditionsSection({
   patientId, patientName, autoOpenAdd, onAutoOpenHandled, noKnownProblems, reconciledAt, focusId,
 }: ConditionsSectionProps) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   // Adding or retiring a coded diagnosis is a clinical write, gated the same
@@ -104,10 +107,10 @@ export default function ConditionsSection({
     setSavingStatus(id);
     try {
       await setStatus(id, status);
-      showToast(`Condition marked ${humanizeStatus(status).toLowerCase()}.`, 'success');
+      showToast(t('msg.conditionMarked', { value: statusWord(t, status) }), 'success');
     } catch (err) {
       console.error(err);
-      showToast('Condition not updated. Try again.', 'error');
+      showToast(t('msg.conditionNotUpdatedTryAgain'), 'error');
     } finally {
       setSavingStatus(null);
     }
@@ -116,7 +119,7 @@ export default function ConditionsSection({
   const resetForm = () => { setSearch(''); setPickedCode(null); setOnsetDate(''); setAdding(false); };
 
   const handleSubmit = async () => {
-    if (!pickedCode) { showToast('Select a diagnosis.', 'error'); return; }
+    if (!pickedCode) { showToast(t('msg.selectADiagnosis'), 'error'); return; }
     try {
       setSubmitting(true);
       await create({
@@ -132,11 +135,11 @@ export default function ConditionsSection({
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast('Condition added to the problem list.', 'success');
+      showToast(t('msg.conditionAddedToTheProblem'), 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Condition not added. Try again.', 'error');
+      showToast(t('msg.conditionNotAddedTryAgain'), 'error');
     } finally {
       setSubmitting(false);
     }

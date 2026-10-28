@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useEffect, useCallback } from 'react';
 import type { MCHAnalyticsData } from '../services/mch-analytics-service';
 import { useDataScope } from './useDataScope';
@@ -8,6 +9,7 @@ export function useMCHAnalytics() {
   const [data, setData] = useState<MCHAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -19,7 +21,7 @@ export function useMCHAnalytics() {
       setData(result);
     } catch (err) {
       console.error('Failed to load MCH analytics', err);
-      setError('Maternal and child health analytics not loaded. Reload the page to try again.');
+      setError('msg.maternalAndChildHealthAnalyticsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -27,5 +29,5 @@ export function useMCHAnalytics() {
 
   useEffect(() => { load(); }, [load]);
 
-  return { data, loading, error, reload: load };
+  return { data, loading, error: error && t(error), reload: load };
 }

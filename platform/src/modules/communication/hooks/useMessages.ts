@@ -5,8 +5,10 @@ import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import type { MessageDoc } from '@/lib/db-types';
 import { messagesDB } from '@/lib/db';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function useMessages() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +27,11 @@ export function useMessages() {
       setMessages(data);
     } catch (err) {
       console.error('Failed to load messages', err);
-      setError('Messages not loaded. Reload the page to try again.');
+      setError(t('chartMessages.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, t]);
 
   // Live PouchDB subscription: re-load on any new/edited message.
   usePouchLiveReload({ load: loadMessages, database: messagesDB });

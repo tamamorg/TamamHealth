@@ -14,8 +14,9 @@
  * clinical words rather than system words, no exclamation marks.
  */
 
-export const OFFLINE_MESSAGE =
-  'Cannot reach the server. Your work is saved on this device and will sync when the connection returns.';
+// Neutral on purpose: a failed fetch may be a password change or a payment,
+// where nothing was kept on the device, so never promise that work was saved.
+export const OFFLINE_MESSAGE = 'Cannot reach the server. Check your internet connection and try again.';
 export const CONFLICT_MESSAGE =
   'This record was changed on another device. Reload the page to see the latest version, then try again.';
 export const SESSION_MESSAGE = 'Your session has ended. Sign in again to continue.';

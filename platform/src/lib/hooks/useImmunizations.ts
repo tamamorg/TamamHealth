@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ImmunizationDoc } from '../db-types';
@@ -12,6 +13,7 @@ export function useImmunizations(patientId?: string) {
   const [coverage, setCoverage] = useState<Awaited<ReturnType<typeof import('../services/immunization-service').getVaccineCoverage>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -27,7 +29,7 @@ export function useImmunizations(patientId?: string) {
       setCoverage(c);
     } catch (err) {
       console.error('Failed to load immunizations', err);
-      setError('Immunizations not loaded. Reload the page to try again.');
+      setError('msg.immunizationsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -60,5 +62,5 @@ export function useImmunizations(patientId?: string) {
     return doc;
   }, [load]);
 
-  return { immunizations, stats, coverage, loading, error, register, update, enterInError, reload: load };
+  return { immunizations, stats, coverage, loading, error: error && t(error), register, update, enterInError, reload: load };
 }

@@ -587,7 +587,7 @@ export default function GovernmentNationalDashboard() {
                       </div>
                     ) : (
                       <div className="gov-map-hint">
-                        Click a state on the map to see its facilities, alert cases, immunization records, and reporting completeness here.
+                        Select a state on the map to see its facilities, alert cases, immunization records, and reporting completeness here.
                       </div>
                     )}
                   </div>

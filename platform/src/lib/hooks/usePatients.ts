@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import type { PatientDoc } from '../db-types';
 import type { CreatePatientOptions } from '../services/patient-service';
@@ -12,6 +13,7 @@ export function usePatients(enabled = true) {
   const [patients, setPatients] = useState<PatientDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadPatients = useCallback(async () => {
@@ -27,7 +29,7 @@ export function usePatients(enabled = true) {
       setPatients(data);
       setError(null);
     } catch (err) {
-      setError('Patient list not loaded. Reload the page to try again.');
+      setError('msg.patientListNotLoaded');
       console.error(err);
     } finally {
       setLoading(false);
@@ -80,5 +82,5 @@ export function usePatients(enabled = true) {
     return patient;
   }, [loadPatients, scope]);
 
-  return { patients, loading, error, search, create, update, reload: loadPatients };
+  return { patients, loading, error: error && t(error), search, create, update, reload: loadPatients };
 }

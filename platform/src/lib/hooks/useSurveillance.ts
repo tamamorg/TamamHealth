@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { DiseaseAlertDoc } from '../db-types';
@@ -10,6 +11,7 @@ export function useSurveillance() {
   const [alerts, setAlerts] = useState<DiseaseAlertDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadAlerts = useCallback(async () => {
@@ -25,7 +27,7 @@ export function useSurveillance() {
       setAlerts(data);
     } catch (err) {
       console.error(err);
-      setError('Surveillance alerts not loaded. Reload the page to try again.');
+      setError('msg.surveillanceAlertsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -43,5 +45,5 @@ export function useSurveillance() {
     return alert;
   }, [loadAlerts]);
 
-  return { alerts, loading, error, create, reload: loadAlerts };
+  return { alerts, loading, error: error && t(error), create, reload: loadAlerts };
 }

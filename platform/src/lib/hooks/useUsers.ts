@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { UserDoc, UserRole } from '../db-types';
 import { useDataScope } from './useDataScope';
@@ -22,6 +23,7 @@ export function useUsers(enabled = true) {
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const lastLoadedAtRef = useRef(0);
   const inFlightRef = useRef(false);
   const scope = useDataScope();
@@ -51,7 +53,7 @@ export function useUsers(enabled = true) {
       setError(null);
       lastLoadedAtRef.current = Date.now();
     } catch (err) {
-      setError('User accounts not loaded. Reload the page to try again.');
+      setError('msg.userAccountsNotLoaded');
       console.error(err);
     } finally {
       inFlightRef.current = false;
@@ -156,5 +158,5 @@ export function useUsers(enabled = true) {
     await loadUsers();
   }, [loadUsers]);
 
-  return { users, loading, error, create, update, resetPassword, deactivate, reactivate, reload: loadUsers };
+  return { users, loading, error: error && t(error), create, update, resetPassword, deactivate, reactivate, reload: loadUsers };
 }

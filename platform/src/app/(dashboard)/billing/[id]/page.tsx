@@ -34,12 +34,14 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatDobOmrs } from '@/lib/date-utils';
 import { dismissBackdrop } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit'];
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ChargeCategory[];
 
 export default function BillDetailPage() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const billId = params?.id;
   const router = useRouter();
@@ -157,15 +159,15 @@ export default function BillDetailPage() {
       const { cancelBill } = await import('@/lib/services/billing-service');
       const result = await cancelBill(bill._id, actorId, actorName);
       if (result === null) {
-        showToast('Bill not deleted. It has payments applied. Reverse the payments first.', 'error');
+        showToast(t('msg.billNotDeletedItHas'), 'error');
       } else {
-        showToast(`Bill ${bill.invoiceNumber} deleted.`, 'success');
+        showToast(t('msg.billDeleted', { invoiceNumber: bill.invoiceNumber }), 'success');
         router.push('/billing');
         return;
       }
     } catch (err) {
       console.error('Could not delete bill', err);
-      showToast('Bill not deleted. Try again.', 'error');
+      showToast(t('msg.billNotDeletedTryAgain'), 'error');
     } finally {
       setBusy(false);
       setConfirmDelete(false);
@@ -213,7 +215,7 @@ export default function BillDetailPage() {
     if (!bill) return;
     setOpenMenuId(null);
     if (bill.items.length <= 1) {
-      showToast('A bill needs at least one line item. To remove every item, delete the bill.', 'error');
+      showToast(t('msg.aBillNeedsAtLeast'), 'error');
       return;
     }
     await saveItems(bill.items.filter(i => i.id !== item.id), `${item.description} removed from bill`);
@@ -273,11 +275,11 @@ export default function BillDetailPage() {
     if (!bill) return;
     const amount = parseFloat(payAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      showToast('Enter a payment amount greater than zero.', 'error');
+      showToast(t('msg.enterAPaymentAmountGreater'), 'error');
       return;
     }
     if (amount > bill.balanceDue) {
-      showToast(`Enter an amount up to the ${money(bill.balanceDue)} balance due.`, 'error');
+      showToast(t('msg.enterAnAmountUpTo', { value: money(bill.balanceDue) }), 'error');
       return;
     }
     setSavingPayment(true);
@@ -285,16 +287,16 @@ export default function BillDetailPage() {
       const { recordPayment } = await import('@/lib/services/billing-service');
       const result = await recordPayment(bill._id, amount, payMethod, actorId, actorName, payReference.trim() || undefined);
       if (result === null) {
-        showToast('Payment not recorded. Try again.', 'error');
+        showToast(t('payments.errorPaymentFailed'), 'error');
       } else {
-        showToast(`Payment of ${money(amount)} recorded.`, 'success');
+        showToast(t('msg.paymentOfRecorded', { value: money(amount) }), 'success');
         setPayAmount('');
         setPayReference('');
         await loadBill();
       }
     } catch (err) {
       console.error('Could not record payment', err);
-      showToast('Payment not recorded. Try again.', 'error');
+      showToast(t('payments.errorPaymentFailed'), 'error');
     } finally {
       setSavingPayment(false);
     }

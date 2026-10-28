@@ -34,9 +34,9 @@ export default function GlobalError({
             <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.dangerBg, border: `1px solid ${colors.dangerBorder}` }}>
               <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>⚠️</span>
             </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>Something went wrong</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>This page could not be loaded</h2>
             <p style={{ fontSize: '14px', color: colors.muted, margin: '0 0 24px', lineHeight: 1.5 }}>
-              The app ran into an unexpected problem. Reloading usually fixes it. If it keeps happening, contact your administrator.
+              TamamHealth hit an unexpected problem. Records that were already saved are not affected. Reload the page, and contact your administrator if it happens again.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button

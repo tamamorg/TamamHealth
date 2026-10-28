@@ -44,13 +44,13 @@ export default function ForgotPasswordPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok && res.status !== 202) {
-        setError(describeApiError(body, 'Request not sent. Try again.'));
+        setError(describeApiError(body, t('msg.requestNotSentTryAgain')));
         return;
       }
       setMessage(describeError(body, ''));
       setSent(true);
     } catch {
-      setError('Cannot reach the server. Check your internet connection and try again.');
+      setError(t('pactivate.errNetwork'));
     } finally {
       setSending(false);
     }

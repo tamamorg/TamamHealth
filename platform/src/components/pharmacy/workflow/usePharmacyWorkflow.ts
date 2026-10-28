@@ -34,6 +34,7 @@ import {
   type PharmacyWorkflowStepKey,
 } from './pharmacy-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface ReviewDraft {
   /** Pharmacist confirmed they read the safety panel. */
@@ -70,6 +71,7 @@ export function usePharmacyWorkflow(
   /** The patient's other active medicines, for interaction and duplicate checks. */
   activeMedications: string[] = [],
 ) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { advance, dispense, markUnfilled } = usePrescriptions(rx.patientId);
@@ -191,12 +193,12 @@ export function usePharmacyWorkflow(
       return true;
     } catch (err) {
       console.error('[pharmacy-workflow]', err);
-      setError(describeError(err, 'Change not saved. Try again.'));
+      setError(describeError(err, t('msg.changeNotSavedTryAgain')));
       return false;
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   /** Take the script onto the pharmacy queue. */
   const receive = useCallback(() => run(async () => {

@@ -29,6 +29,7 @@ import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } fr
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type RangeFilter = '24h' | '7d' | '30d' | 'all';
 type SuccessFilter = 'all' | 'success' | 'failure';
@@ -47,6 +48,7 @@ function csvCell(v: string): string {
 }
 
 export default function AuditLogsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const scope = useDataScope();
@@ -381,28 +383,28 @@ export default function AuditLogsPage() {
                 note,
               }, actor);
               setResolutions(await getRiskResolutions());
-              showToast('Entry resolved and removed from the Risk Center queue.', 'success');
+              showToast(t('msg.entryResolvedAndRemovedFrom'), 'success');
             } catch (err) {
               console.error('Failed to resolve audit risk:', err);
-              showToast('Resolution not saved. Try again.', 'error');
+              showToast(t('msg.resolutionNotSavedTryAgain'), 'error');
             }
           }}
           onReopen={async () => {
             try {
               await reopenRisk(`audit-${selected.log._id}`, actor);
               setResolutions(await getRiskResolutions());
-              showToast('Entry reopened and returned to the Risk Center queue.', 'success');
+              showToast(t('msg.entryReopenedAndReturnedTo'), 'success');
             } catch (err) {
               console.error('Failed to reopen audit risk:', err);
-              showToast('Entry not reopened. Try again.', 'error');
+              showToast(t('msg.entryNotReopenedTryAgain'), 'error');
             }
           }}
           onCopyJson={async () => {
             try {
               await navigator.clipboard.writeText(JSON.stringify(selected.log, null, 2));
-              showToast('Audit entry copied as JSON.', 'success');
+              showToast(t('msg.auditEntryCopiedAsJson'), 'success');
             } catch {
-              showToast('Not copied. This browser blocked clipboard access.', 'error');
+              showToast(t('msg.notCopiedThisBrowserBlocked'), 'error');
             }
           }}
         />

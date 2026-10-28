@@ -902,7 +902,7 @@ export default function EhrClinicalDashboard({
     } else {
       // Both the direct id and the name-match fallback failed — say so
       // instead of silently doing nothing.
-      showToast(`No patient record found for ${appointment.patientName}. Search the patient registry or ask the front desk to link the record.`, 'error');
+      showToast(t('msg.noPatientRecordFoundFor', { patientName: appointment.patientName }), 'error');
     }
   };
 
@@ -914,7 +914,7 @@ export default function EhrClinicalDashboard({
     if (appointment) { openAppointmentPreview(appointment); return; }
     const patientId = uniquePatientIdByName(patients, entry.title);
     if (patientId) { router.push(`/patients/${patientId}`); return; }
-    showToast(`“${entry.title}” not opened. Try again.`, 'error');
+    showToast(t('msg.notOpenedTryAgain', { title: entry.title }), 'error');
   };
 
   const handleOutstandingAction = (entry: OutstandingEntry) => {
@@ -943,10 +943,10 @@ export default function EhrClinicalDashboard({
         notes: followUpNotes.trim() || undefined,
       });
       if (!updated) throw new Error('Follow-up not updated. Try again.');
-      showToast('Follow-up completed.', 'success');
+      showToast(t('msg.followUpCompleted'), 'success');
       setFollowUpToComplete(null);
     } catch {
-      showToast('Follow-up not completed. Try again.', 'error');
+      showToast(t('msg.followUpNotCompletedTry'), 'error');
     } finally {
       setFollowUpSaving(false);
     }
@@ -1332,12 +1332,12 @@ export default function EhrClinicalDashboard({
       const updates: Partial<TriageDoc> = { status: 'referred' };
       if (comment) updates.notes = withQueueNote(triage, 'Escalated', comment);
       await updateTriageDoc(triage._id, updates, { userId: currentUser?._id, username: currentUser?.name });
-      showToast(`${triage.patientName} escalated to emergency care.`, 'success');
+      showToast(t('msg.escalatedToEmergencyCare', { patientName: triage.patientName }), 'success');
       setMoveEntry(null);
       setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
-      showToast(describeError(err, 'Visit not escalated. Try again.'), 'error');
+      showToast(describeError(err, t('msg.visitNotEscalatedTryAgain')), 'error');
     } finally {
       setMoveSaving(false);
     }
@@ -1359,11 +1359,11 @@ export default function EhrClinicalDashboard({
       const updates: Partial<TriageDoc> = { status: 'lwbs' };
       if (reason) updates.notes = withQueueNote(triage, 'Left without being seen', reason);
       await updateTriageDoc(triage._id, updates, { userId: currentUser?._id, username: currentUser?.name });
-      showToast(`${triage.patientName} recorded as left without being seen. The front desk has been notified.`, 'success');
+      showToast(t('msg.recordedAsLeftWithoutBeing', { patientName: triage.patientName }), 'success');
       setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
-      showToast(describeError(err, 'Departure not recorded. Try again.'), 'error');
+      showToast(describeError(err, t('msg.departureNotRecordedTryAgain')), 'error');
     } finally {
       setMoveSaving(false);
     }
@@ -1387,11 +1387,11 @@ export default function EhrClinicalDashboard({
         actorName: currentUser?.name,
         actorRole: currentUser?.role,
       });
-      showToast(`${triage.patientName} returned to the front desk.`, 'success');
+      showToast(t('msg.returnedToTheFrontDesk', { patientName: triage.patientName }), 'success');
       setVisitAction(null);
       setVisitRow(null);
     } catch (err) {
-      showToast(describeError(err, 'Patient not returned to the front desk. Try again.'), 'error');
+      showToast(describeError(err, t('msg.patientNotReturnedToThe')), 'error');
     } finally {
       setMoveSaving(false);
     }
@@ -1423,9 +1423,9 @@ export default function EhrClinicalDashboard({
         status: 'seen',
       });
       if (!updated) throw new Error('Triage handoff not updated. Try again.');
-      showToast(`${triage.patientName} handoff acknowledged.`, 'success');
+      showToast(t('msg.handoffAcknowledged', { patientName: triage.patientName }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Handoff not acknowledged. Try again.'), 'error');
+      showToast(describeError(err, t('nurse.handoffAcknowledgeFailedToast')), 'error');
     }
   };
 
@@ -1437,7 +1437,7 @@ export default function EhrClinicalDashboard({
       || row.patient?.assignedDoctor === currentUser._id
       || latestTriageByPatient.get(row.patientId)?.assignedProviderId === currentUser._id;
     if (!assignedToViewer) {
-      showToast('Consultation not started. The front desk must assign this patient to a clinician first.', 'error');
+      showToast(t('msg.consultationNotStartedTheFront'), 'error');
       return;
     }
     const activeEncounter = encounterForRow(row);
@@ -1534,10 +1534,10 @@ export default function EhrClinicalDashboard({
       }
       const updated = await updateTriageDoc(moveEntry.triageId, updates);
       if (!updated) {
-        showToast('Patient not moved. The triage record could not be updated. Try again.', 'error');
+        showToast(t('msg.patientNotMovedTheTriage'), 'error');
         return;
       }
-      showToast(`${moveEntry.patientName} updated in the queue.`, 'success');
+      showToast(t('msg.updatedInTheQueue', { patientName: moveEntry.patientName }), 'success');
       setMoveEntry(null);
     } finally {
       setMoveSaving(false);
@@ -2225,7 +2225,7 @@ export default function EhrClinicalDashboard({
                                   try {
                                     await updateAppointmentStatus(row.appointment!._id, next);
                                   } catch (error) {
-                                    showToast(describeError(error, 'Visit status not changed. Try again.'), 'error');
+                                    showToast(describeError(error, t('msg.visitStatusNotChanged')), 'error');
                                   }
                                 }}
                               />

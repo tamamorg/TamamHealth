@@ -93,9 +93,9 @@ export default function AdminFlagsPage() {
       await updateConfig({
         globalFeatureFlags: { ...config.globalFeatureFlags, signupsEnabled: next },
       }, currentUser?._id, currentUser?.username);
-      showToast('Platform flag updated.', 'success');
+      showToast(t('msg.platformFlagUpdated'), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Platform flag not updated. Try again.'), 'error');
+      showToast(describeError(err, t('msg.platformFlagNotUpdatedTry')), 'error');
     } finally {
       setSavingKey(null);
     }
@@ -113,11 +113,12 @@ export default function AdminFlagsPage() {
     setCellOverrides(prev => ({ ...prev, [cellKey]: next }));
     try {
       await updateOrg(org._id, { featureFlags: { ...org.featureFlags, [key]: next } }, currentUser?._id, currentUser?.username);
-      showToast(`${TENANT_FLAGS.find(f => f.key === key)?.label} ${next ? 'enabled' : 'disabled'} for ${org.name}.`, 'success');
+      const label = TENANT_FLAGS.find(f => f.key === key)?.label ?? key;
+      showToast(t(next ? 'msg.featureEnabledFor' : 'msg.featureDisabledFor', { label, org: org.name }), 'success');
       clearOverride(cellKey);
     } catch (err) {
       clearOverride(cellKey); // roll back — the write failed, the optimistic value must not stand
-      showToast(describeError(err, 'Platform flag not updated. Try again.'), 'error');
+      showToast(describeError(err, t('msg.platformFlagNotUpdatedTry')), 'error');
     } finally {
       setSavingKey(null);
     }

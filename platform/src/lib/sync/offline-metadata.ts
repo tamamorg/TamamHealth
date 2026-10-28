@@ -174,7 +174,7 @@ export async function markDocsConflicted(
         offlineSync: {
           ...(current.offlineSync || {}),
           status: 'conflict',
-          error: `${current._conflicts.length} conflicting revision${current._conflicts.length === 1 ? '' : 's'}`,
+          error: `${current._conflicts.length} conflicting version${current._conflicts.length === 1 ? '' : 's'} saved on different devices.`,
           lastLocalChangeAt: current.offlineSync?.lastLocalChangeAt || at,
         },
         updatedAt: current.updatedAt,
@@ -220,7 +220,7 @@ export async function healStaleOfflineMetadata(
         offlineSync: {
           ...doc.offlineSync,
           status: 'conflict',
-          error: `${doc._conflicts.length} conflicting revision${doc._conflicts.length === 1 ? '' : 's'}`,
+          error: `${doc._conflicts.length} conflicting version${doc._conflicts.length === 1 ? '' : 's'} saved on different devices.`,
           lastLocalChangeAt: doc.offlineSync.lastLocalChangeAt || at,
         },
         updatedAt: doc.updatedAt,

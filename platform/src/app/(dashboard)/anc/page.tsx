@@ -224,7 +224,7 @@ export default function ANCPage() {
     resetRegistrationForm();
     } catch (err) {
       // Keep the form open: a refused save (e.g. no facility/organisation) must not look saved.
-      showToast(describeError(err, 'ANC visit not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.ancVisitNotSavedTry')), 'error');
     }
   };
 

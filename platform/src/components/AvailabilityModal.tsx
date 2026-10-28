@@ -13,6 +13,7 @@ import Select from '@/components/Select';
 import Modal from '@/components/Modal';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const SLOT_OPTIONS = [15, 20, 30, 45, 60];
 
@@ -24,6 +25,7 @@ function nowTimePlus(hours: number): string {
 }
 
 export default function AvailabilityModal({ onClose, onCreated }: { onClose: () => void; onCreated?: () => void }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const today = todayIso();
 
@@ -64,7 +66,7 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
       onCreated?.();
       onClose();
     } catch (err) {
-      setError(describeError(err, 'Availability not added. Try again.'));
+      setError(describeError(err, t('msg.availabilityNotAddedTryAgain')));
       setSaving(false);
     }
   };

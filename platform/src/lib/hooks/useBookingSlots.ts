@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 /**
  * useBookingSlots — bookable times for a facility, recomputed as the request
  * changes.
@@ -42,6 +43,7 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
 
   // Identify a request by value, so re-rendering with an equal provider array
@@ -81,7 +83,7 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
     } catch (err) {
       if (seq !== requestSeq.current) return;
       console.error('[useBookingSlots]', err);
-      setError('Available times not loaded. Reload the page to try again.');
+      setError('msg.availableTimesNotLoaded');
       setSlots([]);
     } finally {
       if (seq === requestSeq.current) setLoading(false);
@@ -113,7 +115,7 @@ export function useBookingSlots(options: UseBookingSlotsOptions) {
     /** First day with an opening — what a picker should land on. */
     firstAvailableDate: availableDates[0],
     loading,
-    error,
+    error: error && t(error),
     range,
     reload: load,
   };

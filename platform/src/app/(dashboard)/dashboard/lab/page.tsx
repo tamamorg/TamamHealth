@@ -188,14 +188,14 @@ export default function LabDashboardPage() {
       await setLabBenchStatus(order._id, next, currentUser?.name);
       showToast(
         next === 'in_progress'
-          ? `${order.testName} for ${order.patientName} is now in progress.`
-          : `${order.testName} for ${order.patientName} moved back to tests ordered.`,
+          ? t('msg.forIsNowInProgress', { testName: order.testName, patientName: order.patientName })
+          : t('msg.forMovedBackToTests', { testName: order.testName, patientName: order.patientName }),
         'success',
       );
     } catch (err) {
-      showToast(describeError(err, 'Test status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.testStatusNotChangedTry')), 'error');
     }
-  }, [benchHref, currentUser, router, showToast]);
+  }, [benchHref, currentUser, router, showToast, t]);
 
   // Feature 1: Result Entry Modal
   const [showResultModal, setShowResultModal] = useState(false);
