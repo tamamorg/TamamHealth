@@ -140,6 +140,13 @@ export default function PatientDetailPage() {
       setFocusId(focus);
       stripArrivalParams();
     }
+    // `?note=<id>` (where /notes/[id] now lands): open that note in the
+    // chart's workspace — notes are documented here, beside the record.
+    const noteParam = searchParams.get('note');
+    if (noteParam) {
+      setChartPanelRequest(`clinical-note:${noteParam}`);
+      stripArrivalParams();
+    }
   }, [searchParams]);
 
   // Strip the one-shot arrival params once they have been read into state, so
@@ -188,6 +195,10 @@ export default function PatientDetailPage() {
   const [showNurseVitals, setShowNurseVitals] = useState(false);
   // Start a visit workspace (header More → Add visit).
   const [showStartVisit, setShowStartVisit] = useState(false);
+  // Both page workspaces can be open at once; the one opened last shows, and
+  // closing it reveals the other (the chart's workspace stack does the same
+  // for the rail panels).
+  const [pageWorkspaceTop, setPageWorkspaceTop] = useState<'vitals' | 'startVisit'>('vitals');
   const [correctingVitalsRecord, setCorrectingVitalsRecord] = useState<MedicalRecordDoc | undefined>(undefined);
   const [assignTarget, setAssignTarget] = useState<AssignDoctorTarget | null>(null);
   // One-shot request for the chart shell to open a workspace drawer panel
@@ -534,7 +545,7 @@ export default function PatientDetailPage() {
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
     // alike — a full /consultation redirect was the wrong weight for "record
     // a set of numbers" and orphaned the visit from the chart tab it was on.
-    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { selectTab('vitals'); setShowNurseVitals(true); } } } : {}),
+    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { selectTab('vitals'); setShowNurseVitals(true); setPageWorkspaceTop('vitals'); } } } : {}),
     ...(canConsult ? { recommendations: { label: 'Review', onClick: () => selectTab('careChecklist'), icon: ClipboardList } } : {}),
   };
 
@@ -776,7 +787,7 @@ export default function PatientDetailPage() {
             onPanelRequestHandled={() => setChartPanelRequest(null)}
             // Record vitals docks in the chart's workspace slot beside the
             // record (OpenMRS O3), so the chart narrows instead of being covered.
-            workspace={showStartVisit && patient && currentUser ? {
+            workspace={showStartVisit && (pageWorkspaceTop === 'startVisit' || !showNurseVitals) && patient && currentUser ? {
               title: t('startVisit.title'),
               onClose: () => setShowStartVisit(false),
               content: (
@@ -835,7 +846,7 @@ export default function PatientDetailPage() {
                 onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onEdit={openEditModal}
-                onStartVisit={canCheckInAppointments ? () => { setShowNurseVitals(false); setShowStartVisit(true); } : undefined}
+                onStartVisit={canCheckInAppointments ? () => { setShowStartVisit(true); setPageWorkspaceTop('startVisit'); } : undefined}
                 // Only a link for roles that can open the section — for the
                 // desk, bench and imaging roles the click bounced them to their
                 // landing tab instead.
@@ -868,7 +879,7 @@ export default function PatientDetailPage() {
                 patientAgeYears={patientAgeYearsExact(patient) ?? undefined}
                 isPregnant={isPregnant}
                 onViewVitalsHistory={() => selectTab('vitals')}
-                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowStartVisit(false); setShowNurseVitals(true); }}
+                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); setPageWorkspaceTop('vitals'); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}
               />
             ) : undefined}
@@ -942,7 +953,7 @@ export default function PatientDetailPage() {
           {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} setShowPrescribeModal={setShowPrescribeModal} currentUser={currentUser} focusId={focusId} />}
 
           {/* Vitals Tab */}
-          {activeTab === 'vitals' && <PatientVitalsTab vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={setShowNurseVitals} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} />}
+          {activeTab === 'vitals' && <PatientVitalsTab vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) setPageWorkspaceTop('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} />}
 
           {/* Immunizations — dose history recorded in the chart, through the
               same service the /immunizations module writes with. */}

@@ -3075,3 +3075,70 @@
   line-height: 1;
 }
 .scr-note { margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--text-muted); }
+
+/* ══════════════════ CLINICAL FORMS LIST (O3) ══════════════════ */
+/* Search bar over a "Form name (A–Z) / Last completed" table of links. */
+.tamam-drawer-body.omf-forms { padding: 0; }
+
+.omf-forms-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 16px;
+  background: var(--bg-app, #f4f4f4);
+  border-bottom: 1px solid var(--border-medium, var(--border-light));
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.omf-forms-search svg { width: 18px; height: 18px; color: var(--text-secondary); flex: none; }
+
+.tamam-root .omf-forms-search input,
+.omf-forms-search input {
+  flex: 1;
+  min-height: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.omf-forms-table { width: 100%; border-collapse: collapse; }
+
+.omf-forms-table th {
+  padding: 14px 16px;
+  background: var(--color-slate-100, #e0e0e0);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.omf-forms-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.omf-forms-table tbody tr:nth-child(even) td { background: var(--bg-app, #f4f4f4); }
+
+.omf-forms-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 15px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.omf-forms-link:hover:not(:disabled) { text-decoration: underline; }
+.omf-forms-link:disabled { color: var(--text-muted); cursor: not-allowed; }
+.omf-forms-empty { color: var(--text-muted); }

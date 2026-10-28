@@ -18,9 +18,21 @@ describe('patient chart note workspace', () => {
     expect(chartCss).toMatch(/\.tamam-drawer\.is-maximized\s*{[\s\S]*?width:\s*100vw/);
   });
 
-  it("note editor's expand opens the full consultation page, with its context rail", () => {
-    expect(chartShell).toMatch(
-      /activePanel\.id === CLINICAL_NOTE_PANEL\.id && drawerNoteId \? \([\s\S]*?router\.push\(`\/notes\/\$\{encodeURIComponent\(drawerNoteId\)\}`\)/,
-    );
+  it('notes have no page of their own: expand stays in the chart, /notes/[id] opens the chart', () => {
+    expect(chartShell).not.toMatch(/router\.push\(`\/notes\//);
+    const notePage = fs.readFileSync(path.resolve(process.cwd(), 'src/app/(dashboard)/notes/[id]/page.tsx'), 'utf8');
+    expect(notePage).toContain('router.replace(`/patients/');
+    expect(notePage).toContain('?note=');
+    expect(notePage).not.toContain('ClinicalNoteEditor');
+  });
+
+  it('opens notes as O3 forms with a way back to the forms list', () => {
+    expect(chartShell).toContain('layout="workspace"');
+    expect(chartShell).toContain('onBack={closeDrawer}');
+  });
+
+  it('stacks workspaces: closing the top one reveals the one beneath', () => {
+    expect(chartShell).toContain('setStack(prev => prev.slice(0, -1))');
+    expect(chartShell).toMatch(/prev\.filter\(e => !\(e\.kind === 'rail' && e\.id === entry\.id\)\)/);
   });
 });
