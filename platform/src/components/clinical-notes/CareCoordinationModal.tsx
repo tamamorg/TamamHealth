@@ -26,6 +26,7 @@ import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface SummaryProblem {
   effectiveDate: string;
@@ -57,6 +58,7 @@ interface CareCoordinationModalProps {
 export default function CareCoordinationModal({
   note, problems, socialHistory, onSend, onClose,
 }: CareCoordinationModalProps) {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const [channel, setChannel] = useState<'direct_message' | 'efax'>('direct_message');
   const [recipient, setRecipient] = useState('');
@@ -157,7 +159,7 @@ export default function CareCoordinationModal({
 
   const handleSend = async () => {
     if (!recipient.trim()) {
-      showToast('Name the provider or facility receiving this referral.', 'error');
+      showToast(t('msg.nameTheProviderOrFacility'), 'error');
       return;
     }
     setSending(true);
@@ -171,7 +173,7 @@ export default function CareCoordinationModal({
       });
       onClose();
     } catch (err) {
-      showToast(describeError(err, 'Referral not sent. Try again.'), 'error');
+      showToast(describeError(err, t('referrals.toastSubmitFailed')), 'error');
     } finally {
       setSending(false);
     }

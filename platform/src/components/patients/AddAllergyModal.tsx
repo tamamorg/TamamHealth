@@ -17,6 +17,7 @@ import { COMMON_ALLERGENS, type AllergenClassification } from '@/data/allergens'
 import type { AllergyEntry } from '@/data/mock';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const CLASSIFICATIONS: AllergenClassification[] = ['drug', 'food', 'environmental', 'biologic', 'other'];
 const CRITICALITIES: NonNullable<AllergyEntry['criticality']>[] = ['mild', 'moderate', 'severe', 'unknown'];
@@ -49,6 +50,7 @@ export default function AddAllergyModal({
    */
   presentation?: 'modal' | 'page';
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [substance, setSubstance] = useState('');
   const [classification, setClassification] = useState<AllergyEntry['classification']>('drug');
@@ -65,7 +67,7 @@ export default function AddAllergyModal({
       await onSave({ substance: substance.trim(), classification, criticality, reaction, onsetDate });
       onClose();
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }

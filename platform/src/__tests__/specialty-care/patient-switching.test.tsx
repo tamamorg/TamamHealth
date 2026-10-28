@@ -14,7 +14,9 @@ jest.mock('@/lib/hooks/useDepartments', () => ({ useDepartments: () => ({ depart
 jest.mock('@/lib/hooks/useAppointments', () => ({ useAppointments: () => ({ appointments: [] }) }));
 jest.mock('@/lib/hooks/useSpecialtyEpisodes', () => ({ useSpecialtyEpisodes: () => ({ episodes: mockEpisodes, loading: false, reload: jest.fn() }) }));
 jest.mock('@/lib/hooks/useSpecialtyPathwayConfigs', () => ({ useSpecialtyPathwayConfigs: () => ({ configs: [], reload: jest.fn() }) }));
-jest.mock('@/lib/i18n/useTranslation', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+// One stable `t`, as in the app: a fresh function per render would re-run every effect that depends on it.
+const mockT = (key: string) => key;
+jest.mock('@/lib/i18n/useTranslation', () => ({ useTranslation: () => ({ t: mockT }) }));
 jest.mock('@/modules/identity/client', () => ({ CSRF_COOKIE_NAME: 'tamamhealth-csrf', CSRF_HEADER_NAME: 'x-csrf-token' }));
 
 let container: HTMLDivElement;
@@ -60,7 +62,7 @@ test('saving a restricted note sends the CSRF header', async () => {
   fireEvent.change(screen.getByPlaceholderText('specialtyCare.restrictedPlaceholder'), { target: { value: 'Private note' } });
   fireEvent.click(screen.getByRole('button', { name: 'specialtyCare.saveRestricted' }));
   await act(async () => { await Promise.resolve(); });
-  expect(container.textContent).toContain('Restricted note saved.');
+  expect(container.textContent).toContain('msg.restrictedNoteSaved');
   const call = (global.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
   expect(new Headers(call[1].headers).get('x-csrf-token')).toBe('test-token');
 });

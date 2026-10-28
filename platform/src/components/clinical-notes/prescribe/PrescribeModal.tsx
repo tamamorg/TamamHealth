@@ -245,16 +245,16 @@ export default function PrescribeModal({
         hospitalId: currentUser.hospitalId,
       });
       setFavorite(now);
-      showToast(now ? `${drug.name} added to your favorites.` : `${drug.name} removed from your favorites.`, 'success');
+      showToast(now ? t('msg.addedToYourFavorites', { name: drug.name }) : t('msg.removedFromYourFavorites', { name: drug.name }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Favorites not updated. Try again.'), 'error');
+      showToast(describeError(err, t('msg.favoritesNotUpdatedTryAgain')), 'error');
     }
-  }, [draft.drug, draft.instructions, draft.daysSupply, currentUser, showToast]);
+  }, [draft.drug, draft.instructions, draft.daysSupply, currentUser, showToast, t]);
 
   const write = useCallback(async (send: boolean): Promise<PrescriptionDoc | null> => {
     const drug = draft.drug;
-    if (!drug) { showToast('Select the drug.', 'error'); return null; }
-    if (!draft.instructions.trim()) { showToast('Enter the patient instructions.', 'error'); return null; }
+    if (!drug) { showToast(t('msg.selectTheDrug'), 'error'); return null; }
+    if (!draft.instructions.trim()) { showToast(t('msg.enterThePatientInstructions'), 'error'); return null; }
     let medicationSafetyAcknowledgement: { reviewedBy: string; reason: string } | undefined;
     if (severeAllergyWarnings.length) {
       const reason = await confirmPrompt({
@@ -311,21 +311,21 @@ export default function PrescribeModal({
         // just written. Surfaced after the write (the service is advisory),
         // so the prescriber can discontinue immediately.
         showToast(
-          `ALLERGY ALERT — patient has a recorded allergy: ${result.allergyWarnings
+          t('msg.allergyAlertRecordedAllergy', { value: result.allergyWarnings
             .map(a => `${a.allergy} → ${a.medication}${a.reaction ? ` (${a.reaction})` : ''}`)
-            .join(', ')}. Review before sending.`,
+            .join(', ') }),
           'error',
         );
       }
       if (result.interactionWarnings?.hasInteractions) {
         showToast(
-          `Saved. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`,
+          t('msg.savedInteractionWarningReviewBefore', { value: result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ') }),
           'warning',
         );
       }
       if (result.duplicateWarnings?.length) {
         showToast(
-          `Possible duplicate. ${result.duplicateWarnings.join(', ')} is already active for this patient.`,
+          t('msg.possibleDuplicateIsAlreadyActive', { value: result.duplicateWarnings.join(', ') }),
           'warning',
         );
       }
@@ -335,7 +335,7 @@ export default function PrescribeModal({
       if (!external && toHandOver.length === 0) onPrescribed?.();
       return result.prescription;
     } catch (err) {
-      showToast(describeError(err, 'Prescription not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.prescriptionNotSavedTryAgain')), 'error');
       return null;
     } finally {
       setBusy(false);
@@ -357,7 +357,7 @@ export default function PrescribeModal({
   const handleAddRx = async () => {
     const rx = await write(false);
     if (!rx) return;
-    showToast(`${rx.medication} added.`, 'success');
+    showToast(t('msg.added', { medication: rx.medication }), 'success');
     setActiveRx(prev => [rx, ...prev]);
     if (external) setToHandOver(prev => [...prev, rx]);
     setDraft(emptyDraft(facility));
@@ -369,19 +369,19 @@ export default function PrescribeModal({
     // where the patient would only find out at the pharmacy window.
     if (stock && cannotFillOnSite(stock)) {
       const proceed = await confirm({
-        title: 'The pharmacy cannot fill this as written',
+        title: t('msg.thePharmacyCannotFillThis'),
         message: stock.state === 'short'
-          ? `${facility} has ${stock.available} ${stock.unit || 'units'} of ${draft.drug?.name} in stock and this prescription asks for ${stock.requested}. Send it to the pharmacy anyway, or go back and issue it for an outside pharmacy.`
-          : `${draft.drug?.name} is not available at ${facility}. Send it to the pharmacy anyway, or go back and issue it for an outside pharmacy.`,
-        confirmLabel: 'Send to pharmacy anyway',
-        cancelLabel: 'Go back',
+          ? t('msg.hasOfInStockAnd', { facility, available: stock.available, unit: stock.unit || t('statusWord.units'), name: draft.drug?.name ?? '', requested: stock.requested })
+          : t('msg.isNotAvailableAtSend', { name: draft.drug?.name ?? '', facility }),
+        confirmLabel: t('msg.sendToPharmacyAnyway'),
+        cancelLabel: t('msg.goBack'),
         tone: 'warning',
       });
       if (!proceed) return;
     }
     const rx = await write(true);
     if (!rx) return;
-    showToast(`${rx.medication} sent to ${pharmacy}.`, 'success');
+    showToast(t('msg.sentTo', { medication: rx.medication, pharmacy }), 'success');
     finish();
   };
 
@@ -399,8 +399,8 @@ export default function PrescribeModal({
 
 
   const handlePrintDraft = () => {
-    if (!draft.drug) { showToast('Select the drug before printing the draft prescription.', 'error'); return; }
-    if (!draft.instructions.trim()) { showToast('Enter the patient instructions before printing the draft prescription.', 'error'); return; }
+    if (!draft.drug) { showToast(t('msg.selectTheDrugBeforePrinting'), 'error'); return; }
+    if (!draft.instructions.trim()) { showToast(t('msg.enterThePatientInstructionsBefore'), 'error'); return; }
     const e = escapeHtml;
     const allergyNames = (patient?.structuredAllergies || [])
       .filter(allergy => allergy.status === 'active')

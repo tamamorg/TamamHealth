@@ -30,6 +30,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelRouter, ChartPanelUser } from './types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface PickedDx { code: string; title: string; chapter: string }
 
@@ -43,6 +44,7 @@ interface VisitNotePanelProps {
 }
 
 export default function VisitNotePanel({ patient, currentUser, router, canConsult, onClose, onSaved }: VisitNotePanelProps) {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const scope = useDataScope();
   const icdOptions = useMemo(() => COMMON_ICD11_CODES.map(c => ({ code: c.code, name: c.title, meta: c.chapter, keywords: c.keywords })), []);
@@ -76,7 +78,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
     e.target.value = ''; // allow re-selecting the same file
     const oversized = files.filter(f => f.size > MAX_IMAGE_BYTES);
     if (oversized.length > 0) {
-      showToast(`${oversized.length} file(s) not attached. Files must be 5 MB or smaller.`, 'error');
+      showToast(t('msg.fileSNotAttachedFiles', { count: oversized.length }), 'error');
     }
     setImages(prev => [...prev, ...files.filter(f => f.size <= MAX_IMAGE_BYTES)]);
   };
@@ -194,12 +196,12 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
     try {
       setSubmitting(true);
       const imageFailures = await persistNote();
-      showToast(imageFailures > 0 ? `Visit note saved. ${imageFailures} image(s) not attached. Attach them again.` : 'Visit note saved.', imageFailures > 0 ? 'error' : 'success');
+      showToast(imageFailures > 0 ? t('msg.visitNoteSavedImageS', { imageFailures }) : t('msg.visitNoteSaved'), imageFailures > 0 ? 'error' : 'success');
       onSaved?.();
       onClose();
     } catch (err) {
       console.error(err);
-      showToast('Note not saved. Try again.', 'error');
+      showToast(t('noteEditor.saveFailed'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -218,8 +220,8 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
         const imageFailures = await persistNote();
         showToast(
           imageFailures > 0
-            ? `Note saved. ${imageFailures} image(s) not attached. Opening the consultation.`
-            : 'Note saved. Opening the consultation.',
+            ? t('msg.noteSavedImageSNot', { imageFailures })
+            : t('msg.noteSavedOpeningTheConsultation'),
           imageFailures > 0 ? 'error' : 'success',
         );
         onSaved?.();
@@ -228,7 +230,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
       router.push(`/consultation?patientId=${encodeURIComponent(patient._id)}`);
     } catch (err) {
       console.error(err);
-      showToast('Note not saved, so the consultation was not opened. Try again.', 'error');
+      showToast(t('msg.noteNotSavedSoThe'), 'error');
     } finally {
       setSubmitting(false);
     }

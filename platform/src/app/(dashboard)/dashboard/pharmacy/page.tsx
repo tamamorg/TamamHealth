@@ -611,7 +611,7 @@ export default function PharmacyDashboardPage() {
       await advance(rx._id, to);
       showToast(successMessage, 'success');
     } catch (err) {
-      showToast(describeError(err, 'Prescription status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.prescriptionStatusNotChangedTry')), 'error');
     }
   };
 
@@ -630,7 +630,7 @@ export default function PharmacyDashboardPage() {
       return;
     }
     if (!inv || inv.stockLevel < qty) {
-      advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available.`);
+      advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || t('statusWord.units')} available.`);
       return;
     }
     advanceRx(rx, 'cleared_for_dispensing', `${rx.medication} cleared. Send patient for payment if a balance remains.`);
@@ -658,14 +658,14 @@ export default function PharmacyDashboardPage() {
   const handleDispense = (rx: PrescriptionDoc) => {
     const stage = pharmacyStage(rx);
     if (stage !== 'cleared_for_dispensing') {
-      showToast('Verify the medication order before dispensing.', 'error');
+      showToast(t('msg.verifyTheMedicationOrderBefore'), 'error');
       return;
     }
     // Fail closed: an unresolved balance (still loading, or the ledger fetch
     // errored) is never treated as cleared — surfaced as its own visible
     // state rather than silently falling through to the stock check below.
     if (!isBalanceKnownFor(rx)) {
-      showToast(`${rx.patientName}'s balance could not be checked. Try again before dispensing.`, 'warning');
+      showToast(t('msg.sBalanceCouldNotBe', { patientName: rx.patientName }), 'warning');
       return;
     }
     // A patient must never be turned away from a life-sustaining medication
@@ -679,7 +679,7 @@ export default function PharmacyDashboardPage() {
     const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
-      showToast(`Not enough stock for the full course: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed. Dispense a partial fill or record a stockout.`, 'warning');
+      showToast(t('msg.notEnoughStockForThe', { stockLevel: inv?.stockLevel ?? 0, value: inv?.unit || t('statusWord.units'), qty }), 'warning');
       return;
     }
     setWitnessId('');
@@ -699,7 +699,7 @@ export default function PharmacyDashboardPage() {
     if (requiresWitness) {
       const w = users.find(u => u._id === witnessId);
       if (!w) {
-        showToast('Select a witness.', 'error');
+        showToast(t('msg.selectAWitness'), 'error');
         return;
       }
       witness = { id: w._id, name: w.name };
@@ -721,13 +721,13 @@ export default function PharmacyDashboardPage() {
           liveBalance = await getPatientBalance(patientId, scope);
         } catch {
           setBalanceByPatient(prev => new Map(prev).set(patientId, { balance: prev.get(patientId)?.balance ?? 0, status: 'error' }));
-          showToast(`Not dispensed. ${rx.patientName}'s balance could not be checked. Try again.`, 'warning');
+          showToast(t('msg.notDispensedSBalanceCould', { patientName: rx.patientName }), 'warning');
           setDispenseTarget(null);
           return;
         }
         setBalanceByPatient(prev => new Map(prev).set(patientId, { balance: liveBalance, status: 'ready' }));
         if (!isFinanciallyCleared(liveBalance) && !isTier1(rx)) {
-          showToast(`Payment due: ${rx.patientName} owes ${formatMoney(liveBalance)}. Send the patient to the cashier before dispensing.`, 'warning');
+          showToast(t('msg.paymentDueOwesSendThe', { patientName: rx.patientName, value: formatMoney(liveBalance) }), 'warning');
           setDispenseTarget(null);
           return;
         }
@@ -735,7 +735,7 @@ export default function PharmacyDashboardPage() {
           // Dispensed anyway, but said out loud — the balance is real and the
           // desk needs to know it is following the patient to checkout.
           showToast(
-            `${rx.medication} dispensed as life-sustaining medication. The ${formatMoney(liveBalance)} balance stays on the patient's account.`,
+            t('msg.dispensedAsLifeSustainingMedication', { medication: rx.medication, value: formatMoney(liveBalance) }),
             'success',
           );
         }
@@ -755,7 +755,7 @@ export default function PharmacyDashboardPage() {
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
         result.outcome === 'partial'
-          ? `Partial fill: ${result.quantityDispensed} ${inv.unit} of ${rx.medication} dispensed from batch ${batches}. The order stays open for the remainder.`
+          ? t('msg.partialFillOfDispensedFrom', { quantityDispensed: result.quantityDispensed, unit: inv.unit, medication: rx.medication, batches })
           : t('pharmacy.dispensedToast', { medication: rx.medication, patient: rx.patientName }),
         result.outcome === 'partial' ? 'error' : 'success',
       );
@@ -841,7 +841,7 @@ export default function PharmacyDashboardPage() {
     const stepCopy: Record<WorkflowStepKey, { note: string; icon: LucideIcon; action: WorkflowStepAction }> = {
       received: { note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', icon: ClipboardList, action: { label: 'Receive Order', onClick: () => handleStartReview(rx) } },
       review: { note: 'Confirm dose, frequency, patient, allergies and interactions.', icon: ClipboardList, action: { label: 'Check Order', onClick: () => handleStartReview(rx) } },
-      checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, action: { label: 'Clear Stock and Safety', onClick: () => handleClearForDispense(rx) } },
+      checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || t('statusWord.units')} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, action: { label: 'Clear Stock and Safety', onClick: () => handleClearForDispense(rx) } },
       payment: { note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, icon: Clock, action: { label: canAccess('/payments') ? 'Collect Payment' : 'Send to Cashier', onClick: () => handlePaymentStep(rx) } },
       dispensed: { note: 'Issue the full course and update inventory.', icon: Pill, action: { label: t('pharmacy.dispense'), onClick: () => handleDispense(rx) } },
       counseled: { note: 'Explain dose, timing, side effects and return precautions.', icon: CheckCircle2, action: { label: 'Record Counseling', onClick: () => handleCounsel(rx) } },
@@ -857,7 +857,7 @@ export default function PharmacyDashboardPage() {
           <div>
             <span className="block font-semibold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Prescription</span>
             <strong className="text-sm" style={{ color: 'var(--text-primary)' }}>{rx.medication}</strong>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatRxSig(rx)} · {qty} {inv?.unit || 'unit(s)'}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatRxSig(rx)} · {qty} {inv?.unit || t('statusWord.units')}</p>
           </div>
           <button
             type="button"

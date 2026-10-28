@@ -15,6 +15,7 @@ import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
 import { toIsoDate } from '@/lib/date-utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface TaskListPanelProps {
   patient: PatientDoc;
@@ -36,6 +37,7 @@ function badgeClass(status: string): string {
 }
 
 export default function TaskListPanel({ patient, currentUser, onClose, onGoToRecall }: TaskListPanelProps) {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const { reminders, loading, queue } = usePatientReminders(patient._id);
   const [adding, setAdding] = useState(false);
@@ -57,13 +59,13 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
         hospitalId: currentUser?.hospitalId,
         orgId: currentUser?.orgId,
       });
-      showToast('Task added.', 'success');
+      showToast(t('msg.taskAdded'), 'success');
       setMessage('');
       setSendDate(tomorrowISO());
       setAdding(false);
     } catch (err) {
       console.error(err);
-      showToast('Task not added. Try again.', 'error');
+      showToast(t('msg.taskNotAddedTryAgain'), 'error');
     } finally {
       setSubmitting(false);
     }

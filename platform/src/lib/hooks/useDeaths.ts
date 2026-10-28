@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { DeathRegistrationDoc } from '../db-types';
@@ -11,6 +12,7 @@ export function useDeaths() {
   const [stats, setStats] = useState<Awaited<ReturnType<typeof import('../services/death-service').getDeathStats>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -23,7 +25,7 @@ export function useDeaths() {
       setStats(s);
     } catch (err) {
       console.error('Failed to load deaths', err);
-      setError('Death records not loaded. Reload the page to try again.');
+      setError('msg.deathRecordsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -40,5 +42,5 @@ export function useDeaths() {
     return doc;
   }, [load, scope]);
 
-  return { deaths, stats, loading, error, register, reload: load };
+  return { deaths, stats, loading, error: error && t(error), register, reload: load };
 }

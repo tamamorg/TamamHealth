@@ -307,7 +307,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
       showToast(
         t(savedAs === 'created' ? 'orgAdmin.adminCreationPartialError' : 'orgAdmin.adminCreationPartialErrorEdit', {
           name: form.name,
-          reason: adminErr instanceof Error ? adminErr.message : 'Unknown error',
+          reason: describeError(adminErr, 'the reason was not reported'),
         }),
         'error',
         {
@@ -375,7 +375,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
         await update(editingId, orgData, currentUser?._id, currentUser?.username);
 
         if (!wantsAdmin) {
-          showToast(`Organization "${form.name}" updated.`, 'success');
+          showToast(t('msg.organizationUpdated', { name: form.name }), 'success');
           onSaved({});
           return;
         }
@@ -387,14 +387,14 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
       const newOrg = await create(orgData as Omit<OrganizationDoc, '_id' | '_rev' | 'type' | 'createdAt' | 'updatedAt'>, currentUser?._id, currentUser?.username);
 
       if (!wantsAdmin) {
-        showToast(`Organization "${form.name}" created.`, 'success');
+        showToast(t('msg.organizationCreated', { name: form.name }), 'success');
         onSaved({});
         return;
       }
 
       await provisionOrgAdmin(newOrg._id, 'created');
     } catch (err) {
-      showToast(describeError(err, 'Organization not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.organizationNotSavedTryAgain')), 'error');
     } finally {
       setFormLoading(false);
     }

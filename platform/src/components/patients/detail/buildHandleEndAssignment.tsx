@@ -5,7 +5,8 @@ import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AppUser } from '@/lib/context/types';
 import { describeError } from '@/lib/user-facing-error';
-export function buildHandleEndAssignment({ patient, currentUser, confirmPrompt, showToast, reloadPatients }: {
+export function buildHandleEndAssignment({ t, patient, currentUser, confirmPrompt, showToast, reloadPatients }: {
+  t: (key: string, vars?: Record<string, string | number>) => string;
   patient: PatientDoc | null | undefined;
   currentUser: AppUser | null;
   confirmPrompt: (options: ConfirmPromptOptions) => Promise<string | null>;
@@ -16,12 +17,12 @@ export function buildHandleEndAssignment({ patient, currentUser, confirmPrompt, 
     if (!patient || !currentUser) return;
     const displayName = patientFullName(patient);
     const reason = await confirmPrompt({
-      title: `End the assignment for ${displayName}?`,
-      message: 'They will leave the assigned worklists; their record is unaffected. The reason is kept in the audit trail.',
-      confirmLabel: 'End assignment',
+      title: t('msg.endTheAssignmentFor', { displayName }),
+      message: t('msg.theyWillLeaveTheAssigned'),
+      confirmLabel: t('msg.endAssignment'),
       tone: 'danger',
-      inputLabel: 'Reason',
-      inputPlaceholder: 'e.g. Patient left and has not returned; care handed to the ward team…',
+      inputLabel: t('appointments.labelReason'),
+      inputPlaceholder: t('msg.eGPatientLeftAnd'),
       inputRequired: true,
     });
     if (reason === null) return;
@@ -33,11 +34,11 @@ export function buildHandleEndAssignment({ patient, currentUser, confirmPrompt, 
         reason,
         actor: { id: currentUser._id, name: currentUser.name, role: currentUser.role },
       });
-      showToast(`Assignment for ${displayName} ended.`, 'success');
+      showToast(t('msg.assignmentForEnded', { displayName }), 'success');
       // The header's care-team line and the ⋯ menu both read the patient doc.
       await reloadPatients();
     } catch (err) {
-      showToast(describeError(err, 'Assignment not ended. Try again.'), 'error');
+      showToast(describeError(err, t('msg.assignmentNotEndedTryAgain')), 'error');
     }
   };
   return handleEndAssignment;

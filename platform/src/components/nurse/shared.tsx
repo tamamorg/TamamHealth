@@ -251,7 +251,7 @@ export function useMarEntries() {
     },
   ) => {
     if (!currentUser) {
-      showToast(t('nurse.medicationGivenFailedToast'), 'error');
+      showToast(t('nurse.noActiveUser'), 'error');
       return false;
     }
     const status = opts?.status ?? 'given';
@@ -281,7 +281,10 @@ export function useMarEntries() {
       return true;
     } catch (err) {
       console.error('Failed to persist medication administration:', err);
-      showToast(t('nurse.medicationGivenFailedToast'), 'error');
+      // The optimistic tick must not outlive a failed write: reopen the slot so
+      // the MAR never shows a dose that is not on the record.
+      setMarEntries(prev => prev.map(e => (e.id === entry.id ? entry : e)));
+      showToast(t('nurse.medicationGivenFailedToast'), 'error', { sticky: true });
       return false;
     }
   };
@@ -297,7 +300,7 @@ export function useMarEntries() {
   // (append-only — history is preserved) so the slot reverts to due/overdue.
   const undoAdministration = async (entry: MAREntry, reason: string) => {
     if (!currentUser || !entry.administrationId) {
-      showToast(t('nurse.medicationGivenFailedToast'), 'error');
+      showToast(t('nurse.medicationUndoFailedToast'), 'error');
       return false;
     }
     // Optimistic UI — reopen the slot immediately; the live reload reconciles.
@@ -317,7 +320,8 @@ export function useMarEntries() {
       return true;
     } catch (err) {
       console.error('Failed to void medication administration:', err);
-      showToast(t('nurse.medicationGivenFailedToast'), 'error');
+      setMarEntries(prev => prev.map(e => (e.id === entry.id ? entry : e)));
+      showToast(t('nurse.medicationUndoFailedToast'), 'error', { sticky: true });
       return false;
     }
   };

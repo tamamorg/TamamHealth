@@ -26,6 +26,7 @@ import {
   type RadiologyWorkflowStepKey,
 } from './radiology-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface ScheduleDraft {
   accessionNumber: string;
@@ -59,6 +60,7 @@ export interface ReportDraft {
 }
 
 export function useRadiologyWorkflow(study: LabResultDoc) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { advance, update } = useLabResults(study.patientId);
   const [busy, setBusy] = useState(false);
@@ -122,12 +124,12 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
       return true;
     } catch (err) {
       console.error('[radiology-workflow]', err);
-      setError(describeError(err, 'Change not saved. Try again.'));
+      setError(describeError(err, t('msg.changeNotSavedTryAgain')));
       return false;
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   /** Book the modality slot and stamp the accession. */
   const schedule = useCallback(() => run(async () => {

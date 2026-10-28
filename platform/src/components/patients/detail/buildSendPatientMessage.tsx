@@ -4,7 +4,8 @@ import type { PatientDoc } from '@/lib/db-types';
 import type { Dispatch, SetStateAction } from 'react';
 import type { HospitalDoc } from '@/lib/db-types';
 import type { AppUser } from '@/lib/context/types';
-export function buildSendPatientMessage({ patient, currentUser, messageBody, setMessageError, messageChannel, messageTextConsent, setMessageSending, regHospital, messageSubject, messageIsEducation, setMessageSentWarning, setMessageSentNote, setMessageSent, setMessageBody, setMessageSubject, setMessageChannel, setMessageTextConsent, setMessageIsEducation }: {
+export function buildSendPatientMessage({ t, patient, currentUser, messageBody, setMessageError, messageChannel, messageTextConsent, setMessageSending, regHospital, messageSubject, messageIsEducation, setMessageSentWarning, setMessageSentNote, setMessageSent, setMessageBody, setMessageSubject, setMessageChannel, setMessageTextConsent, setMessageIsEducation }: {
+  t: (key: string, vars?: Record<string, string | number>) => string;
   patient: PatientDoc;
   currentUser: AppUser | null;
   messageBody: string;
@@ -28,15 +29,15 @@ export function buildSendPatientMessage({ patient, currentUser, messageBody, set
     if (!patient || !currentUser) return;
     const body = messageBody.trim();
     if (!body) {
-      setMessageError('Enter a message before sending.');
+      setMessageError(t('msg.enterAMessageBeforeSending'));
       return;
     }
     if ((messageChannel === 'sms' || messageChannel === 'both') && !patient.phone) {
-      setMessageError('No SMS sent. This patient has no phone number on file.');
+      setMessageError(t('msg.noSmsSentThisPatient'));
       return;
     }
     if ((messageChannel === 'sms' || messageChannel === 'both') && !messageTextConsent) {
-      setMessageError('Confirm that the patient agreed to receive text messages on this number.');
+      setMessageError(t('msg.confirmThatThePatientAgreed'));
       return;
     }
     setMessageSending(true);
@@ -108,7 +109,7 @@ export function buildSendPatientMessage({ patient, currentUser, messageBody, set
       setMessageIsEducation(false);
     } catch (err) {
       console.error(err);
-      setMessageError('Message not sent. Try again.');
+      setMessageError(t('chartMessages.sendFailed'));
     } finally {
       setMessageSending(false);
     }

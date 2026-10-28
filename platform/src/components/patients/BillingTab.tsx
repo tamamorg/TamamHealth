@@ -30,7 +30,7 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { VisitFinancialReview } from '@/modules/financial-clearance/client';
-import { describeApiError } from '@/lib/user-facing-error';
+import { describeApiError, describeError } from '@/lib/user-facing-error';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
@@ -231,10 +231,10 @@ export default function BillingTab({
 
   const handleIssueRefund = async () => {
     if (refundInFlight.current) return;
-    if (!selectedRefundPayment) { showToast(t('billing.selectPayment') || 'Select the payment to refund.', 'error'); return; }
-    if (!refundReason.trim()) { showToast(t('billing.reasonRequired') || 'Enter a reason.', 'error'); return; }
+    if (!selectedRefundPayment) { showToast(t('billing.selectPayment') || t('msg.selectThePaymentToRefund'), 'error'); return; }
+    if (!refundReason.trim()) { showToast(t('billing.reasonRequired') || t('billing.reasonRequired'), 'error'); return; }
     if (refundAmount <= 0 || refundAmount > refundableAmount(selectedRefundPayment)) {
-      showToast(t('billing.invalidRefundAmount') || 'Enter a refund amount greater than zero and no more than the payment.', 'error');
+      showToast(t('billing.invalidRefundAmount') || t('msg.enterARefundAmountGreater'), 'error');
       return;
     }
     refundInFlight.current = true;
@@ -255,16 +255,14 @@ export default function BillingTab({
         facilityId,
         orgId,
       });
-      showToast(t('billing.refundIssued') || 'Refund issued.', 'success');
+      showToast(t('billing.refundIssued') || t('billing.refundIssued'), 'success');
       setShowRefund(false);
       reloadPayments();
       loadAll();
     } catch (err) {
       // Keep the dialog open (and the key) so a retry resumes safely.
       console.error('Failed to issue refund:', err);
-      const detail = err instanceof Error && err.message ? err.message : '';
-      const base = t('billing.refundFailed') || 'Failed to issue refund';
-      showToast(detail ? `${base}: ${detail}` : base, 'error');
+      showToast(describeError(err, t('billing.refundFailed')), 'error');
     } finally {
       refundInFlight.current = false;
       setProcessingRefund(false);
@@ -279,8 +277,8 @@ export default function BillingTab({
   const [processingAdj, setProcessingAdj] = useState(false);
 
   const handleCreateAdjustment = async () => {
-    if (!adjForm.reason.trim()) { showToast(t('billing.reasonRequired') || 'Enter a reason.', 'error'); return; }
-    if (adjForm.amount <= 0) { showToast(t('billing.invalidAmount') || 'Enter an amount greater than zero.', 'error'); return; }
+    if (!adjForm.reason.trim()) { showToast(t('billing.reasonRequired') || t('billing.reasonRequired'), 'error'); return; }
+    if (adjForm.amount <= 0) { showToast(t('billing.invalidAmount') || t('billing.invalidAmount'), 'error'); return; }
     setProcessingAdj(true);
     try {
       const svc = await import('@/lib/services/payment-service');
@@ -295,14 +293,14 @@ export default function BillingTab({
         facilityId,
         orgId,
       });
-      showToast(t('billing.adjustmentCreated') || 'Adjustment recorded.', 'success');
+      showToast(t('billing.adjustmentCreated') || t('billing.adjustmentCreated'), 'success');
       setShowAdjustment(false);
       setAdjForm({ adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '' });
       reloadPayments();
       loadAll();
     } catch (err) {
       console.error('Failed to create adjustment:', err);
-      showToast(t('billing.adjustmentFailed') || 'Adjustment not recorded. Try again.', 'error');
+      showToast(t('billing.adjustmentFailed') || t('billing.adjustmentFailed'), 'error');
     }
     setProcessingAdj(false);
   };
@@ -338,11 +336,11 @@ export default function BillingTab({
 
   const handleCreatePaymentLink = async () => {
     if (!linkAmount || linkAmount <= 0) {
-      setLinkError(t('billing.invalidAmount') || 'Enter an amount greater than zero.');
+      setLinkError(t('billing.invalidAmount') || t('billing.invalidAmount'));
       return;
     }
     if (!linkDescription.trim()) {
-      setLinkError(t('billing.reasonRequired') || 'Enter a description.');
+      setLinkError(t('billing.reasonRequired') || t('msg.enterADescription'));
       return;
     }
     setCreatingLink(true);
@@ -355,14 +353,14 @@ export default function BillingTab({
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setLinkError(describeApiError(payload, t('billing.paymentLinkFailed') || 'Payment link not created. Try again.'));
+        setLinkError(describeApiError(payload, t('billing.paymentLinkFailed') || t('billing.paymentLinkFailed')));
         setCreatingLink(false);
         return;
       }
       setCreatedLink(payload as CreatedPaymentLink);
     } catch (err) {
       console.error('Failed to create payment link:', err);
-      setLinkError(t('billing.paymentLinkFailed') || 'Cannot reach the server. Check your internet connection and try again.');
+      setLinkError(t('billing.paymentLinkFailed') || t('pactivate.errNetwork'));
     }
     setCreatingLink(false);
   };
@@ -374,7 +372,7 @@ export default function BillingTab({
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      showToast(t('billing.copyFailed') || 'Link not copied. This browser blocked clipboard access.', 'error');
+      showToast(t('billing.copyFailed') || t('billing.copyFailed'), 'error');
     }
   };
 

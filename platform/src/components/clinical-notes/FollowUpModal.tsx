@@ -20,6 +20,7 @@ import Modal from '@/components/Modal';
 import { CalendarClock, X } from '@/components/icons/lucide';
 import { toIsoDate } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import './clinical-notes.css';
 
 export interface FollowUpModalResult {
@@ -52,6 +53,7 @@ function defaultScheduledDate(): string {
 export default function FollowUpModal({
   patientName, defaultAssignedWorkerName, onSchedule, onClose,
 }: FollowUpModalProps) {
+  const { t } = useTranslation();
   const [condition, setCondition] = useState('');
   const [scheduledDate, setScheduledDate] = useState(defaultScheduledDate);
   const { currentUser } = useAuth();
@@ -63,10 +65,10 @@ export default function FollowUpModal({
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!condition.trim()) { setError('Enter the condition being followed up.'); return; }
-    if (!scheduledDate) { setError('Select a follow-up date.'); return; }
+    if (!condition.trim()) { setError(t('msg.enterTheConditionBeingFollowed')); return; }
+    if (!scheduledDate) { setError(t('msg.selectAFollowUpDate')); return; }
     const worker = workers.find(u => u._id === assignedWorkerId && u.isActive);
-    if (!worker) { setError('Select the staff member responsible for the follow-up.'); return; }
+    if (!worker) { setError(t('msg.selectTheStaffMemberResponsible')); return; }
     setError('');
     setSaving(true);
     try {
@@ -79,7 +81,7 @@ export default function FollowUpModal({
       });
       onClose();
     } catch (err) {
-      setError(describeError(err, 'Follow-up not scheduled. Try again.'));
+      setError(describeError(err, t('msg.followUpNotScheduledTry')));
     } finally {
       setSaving(false);
     }

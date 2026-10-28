@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { apiFetch } from '@/lib/api-fetch';
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck } from '@/components/icons/lucide';
 import { describeApiError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const MIN_LENGTH = 8;
 
@@ -21,6 +22,7 @@ export default function ForcePasswordChange({
   userName: string;
   onLogout: () => void;
 }) {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,19 +33,19 @@ export default function ForcePasswordChange({
   const handleSubmit = async () => {
     setError('');
     if (!currentPassword || !newPassword) {
-      setError('Enter your temporary password and a new password.');
+      setError(t('msg.enterYourTemporaryPasswordAnd'));
       return;
     }
     if (newPassword.length < MIN_LENGTH) {
-      setError(`New password must be at least ${MIN_LENGTH} characters.`);
+      setError(t('msg.newPasswordMustBeAt', { MIN_LENGTH }));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('New password and confirmation do not match.');
+      setError(t('msg.newPasswordAndConfirmationDo'));
       return;
     }
     if (newPassword === currentPassword) {
-      setError('New password must be different from your temporary password.');
+      setError(t('msg.newPasswordMustBeDifferent'));
       return;
     }
     setSubmitting(true);
@@ -55,7 +57,7 @@ export default function ForcePasswordChange({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(describeApiError(data, 'Password not changed. Try again.'));
+        setError(describeApiError(data, t('msg.passwordNotChangedTryAgain')));
         setSubmitting(false);
         return;
       }
@@ -63,7 +65,7 @@ export default function ForcePasswordChange({
       // A full reload re-hydrates currentUser from /api/auth/me and lifts the gate.
       window.location.assign('/');
     } catch {
-      setError('Cannot reach the server. Check your internet connection and try again.');
+      setError(t('pactivate.errNetwork'));
       setSubmitting(false);
     }
   };

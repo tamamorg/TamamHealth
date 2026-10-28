@@ -313,7 +313,7 @@ export default function AppointmentEditModal({
           });
         }
       }
-      showToast(`${appointment.patientName}: appointment updated.`, 'success');
+      showToast(t('msg.appointmentUpdated', { patientName: appointment.patientName }), 'success');
       onSaved?.();
       onClose();
     } catch (err) {

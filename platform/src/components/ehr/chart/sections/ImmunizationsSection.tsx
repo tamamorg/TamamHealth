@@ -114,11 +114,11 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
   const handleSubmit = async () => {
     const dose = parseInt(doseNumber, 10);
-    if (!Number.isFinite(dose) || dose < 1) { showToast('Enter the dose number.', 'error'); return; }
-    if (!dateGiven) { showToast('Select the date the dose was given.', 'error'); return; }
+    if (!Number.isFinite(dose) || dose < 1) { showToast(t('msg.enterTheDoseNumber'), 'error'); return; }
+    if (!dateGiven) { showToast(t('msg.selectTheDateTheDose'), 'error'); return; }
     // The record carries a batch number for recall: an adverse-event
     // investigation traces the lot, and a dose with no lot can't be traced.
-    if (!batchNumber.trim()) { showToast('Enter the vaccine batch number.', 'error'); return; }
+    if (!batchNumber.trim()) { showToast(t('msg.enterTheVaccineBatchNumber'), 'error'); return; }
     try {
       setSubmitting(true);
       const doseData = {
@@ -147,11 +147,11 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
         status: 'completed',
         orgId: currentUser?.orgId,
       });
-      showToast(editing ? t('chart.immunizationCorrected') : 'Immunization recorded.', 'success');
+      showToast(editing ? t('chart.immunizationCorrected') : t('msg.immunizationRecorded'), 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Immunization not recorded. Try again.', 'error');
+      showToast(t('msg.immunizationNotRecordedTryAgain'), 'error');
     } finally {
       setSubmitting(false);
     }

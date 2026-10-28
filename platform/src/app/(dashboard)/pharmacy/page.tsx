@@ -166,7 +166,7 @@ export default function PharmacyPage() {
       await advance(rx._id, to);
       showToast(successMessage, 'success');
     } catch (err) {
-      showToast(describeError(err, 'Prescription status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.prescriptionStatusNotChangedTry')), 'error');
     }
   };
 
@@ -174,7 +174,7 @@ export default function PharmacyPage() {
     const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
-      advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available.`);
+      advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || t('statusWord.units')} available.`);
       return;
     }
     advanceRx(rx, 'cleared_for_dispensing', `${rx.medication} cleared. Send patient for payment if a balance remains.`);
@@ -212,8 +212,8 @@ export default function PharmacyPage() {
       if (!clearance.cleared) {
         showToast(
           clearance.reason === 'outstanding'
-            ? `Payment due: ${rx.patientName} owes ${formatMoney(clearance.balance)}. Send the patient to the cashier before dispensing.`
-            : `Not dispensed. ${rx.patientName}'s balance could not be checked. Try again.`,
+            ? t('msg.paymentDueOwesSendThe', { patientName: rx.patientName, value: formatMoney(clearance.balance) })
+            : t('msg.notDispensedSBalanceCould', { patientName: rx.patientName }),
           'warning',
         );
         return false;
@@ -235,13 +235,13 @@ export default function PharmacyPage() {
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
         result.outcome === 'partial'
-          ? `Partial fill: ${result.quantityDispensed} ${inv?.unit || 'unit(s)'} of ${rx.medication} dispensed from batch ${batches}. The order stays open for the remainder.`
-          : `${rx.medication} dispensed from batch ${batches}.`,
+          ? t('msg.partialFillOfDispensedFrom2', { quantityDispensed: result.quantityDispensed, value: inv?.unit || t('statusWord.units'), medication: rx.medication, batches })
+          : t('msg.dispensedFromBatch', { medication: rx.medication, batches }),
         result.outcome === 'partial' ? 'error' : 'success',
       );
       return true;
     } catch (err) {
-      showToast(describeError(err, 'Medication not dispensed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.medicationNotDispensedTryAgain')), 'error');
       return false;
     }
   };
@@ -268,12 +268,12 @@ export default function PharmacyPage() {
       });
       showToast(
         reason === 'stock_out'
-          ? `${rx.medication} recorded as out of stock. The order stays open.`
-          : `${rx.medication} on hold until the prescriber clarifies the order.`,
+          ? t('msg.recordedAsOutOfStock', { medication: rx.medication })
+          : t('msg.onHoldUntilThePrescriber', { medication: rx.medication }),
         'success',
       );
     } catch (err) {
-      showToast(describeError(err, 'Outcome not recorded. Try again.'), 'error');
+      showToast(describeError(err, t('msg.outcomeNotRecordedTryAgain')), 'error');
     }
   };
 
@@ -284,7 +284,7 @@ export default function PharmacyPage() {
     // (still loading, or the ledger fetch errored) is not "money owed" — it's
     // "we don't know" — and must not fall through to the stock check below.
     if (!isKnownFor(rx.patientId)) {
-      showToast(`${rx.patientName}'s balance could not be checked. Try again before dispensing.`, 'warning');
+      showToast(t('msg.sBalanceCouldNotBe', { patientName: rx.patientName }), 'warning');
       return;
     }
     if (!isClearedFor(rx.patientId)) {
@@ -300,7 +300,7 @@ export default function PharmacyPage() {
       setWitnessId('');
     }
     if (!inv) {
-      showToast('No dispensable stock is available. Record a stockout instead.', 'error');
+      showToast(t('msg.noDispensableStockIsAvailable'), 'error');
       return;
     }
     setCounsellingConfirmed(false);
@@ -310,13 +310,13 @@ export default function PharmacyPage() {
   const confirmControlledDispense = async () => {
     if (!dispenseTarget) return;
     if (!counsellingConfirmed) {
-      showToast('Confirm that the patient was counselled before handing over the medication.', 'error');
+      showToast(t('msg.confirmThatThePatientWas'), 'error');
       return;
     }
     const requiresWitness = Boolean(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness);
     const witness = requiresWitness ? users.find(u => u._id === witnessId) : undefined;
     if (requiresWitness && !witness) {
-      showToast('Select a witness.', 'error');
+      showToast(t('msg.selectAWitness'), 'error');
       return;
     }
     const ok = await doDispense(
@@ -426,7 +426,7 @@ export default function PharmacyPage() {
       !completed.handedOver ? 'handedOver' :
       '';
     const steps = [
-      { key: 'checked', label: 'Review order and stock', note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
+      { key: 'checked', label: 'Review order and stock', note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || t('statusWord.units')} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
       { key: 'payment', label: 'Receive / confirm payment', note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, done: completed.payment },
       { key: 'handedOver', label: 'Counsel and dispense', note: 'Explain use, hand over medicine, and update stock in one action.', done: completed.handedOver },
     ];

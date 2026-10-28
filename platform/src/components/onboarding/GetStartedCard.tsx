@@ -161,8 +161,8 @@ function AllDoneBanner({ onFinish }: { onFinish: () => void }) {
           <Star className="w-5 h-5" style={{ color: 'var(--color-success-text)' }} />
         </div>
         <div>
-          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>You’re all set! 🎉</p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You’ve completed every step. Nice work.</p>
+          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>Setup complete</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You have completed every step.</p>
         </div>
       </div>
       <button

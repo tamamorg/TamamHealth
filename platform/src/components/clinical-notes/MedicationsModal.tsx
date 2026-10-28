@@ -156,7 +156,7 @@ export default function MedicationsModal({
   const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (err) {
-      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally { setBusy(false); }
   };
 
@@ -220,15 +220,15 @@ export default function MedicationsModal({
     } as PrescriptionCreateInput, scope);
     if (result.allergyWarnings?.length) {
       showToast(
-        `ALLERGY ALERT — renewed against a recorded allergy: ${result.allergyWarnings
+        t('msg.allergyAlertRenewedAgainstA', { value: result.allergyWarnings
           .map(a => `${a.allergy} → ${a.medication}`)
-          .join(', ')}. Review before sending.`,
+          .join(', ') }),
         'error',
       );
     } else if (result.interactionWarnings?.hasInteractions) {
-      showToast(`Renewed. Interaction warning: ${result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ')}. Review before sending.`, 'warning');
+      showToast(t('msg.renewedInteractionWarningReviewBefore', { value: result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ') }), 'warning');
     } else {
-      showToast(`${selected.medication} renewed.`, 'success');
+      showToast(t('msg.renewed', { medication: selected.medication }), 'success');
     }
     await load();
     setSelectedId(null);
@@ -245,7 +245,7 @@ export default function MedicationsModal({
     if (reason === null) return;
     const { updatePrescription } = await import('@/lib/services/prescription-service');
     await updatePrescription(selected._id, stopFields(reason || 'Discontinued at medications review'));
-    showToast(`${selected.medication} discontinued.`, 'success');
+    showToast(t('msg.discontinued', { medication: selected.medication }), 'success');
     await load();
     setSelectedId(null);
   });
@@ -253,7 +253,7 @@ export default function MedicationsModal({
   const handleMarkError = () => selected && withBusy(async () => {
     const { updatePrescription } = await import('@/lib/services/prescription-service');
     await updatePrescription(selected._id, { orderStatus: 'dispensing_error_recalled' });
-    showToast(`${selected.medication} marked as a dispensing error.`, 'success');
+    showToast(t('msg.markedAsADispensingError', { medication: selected.medication }), 'success');
     await load();
     setSelectedId(null);
   });
@@ -261,14 +261,14 @@ export default function MedicationsModal({
   const handleCancelRx = () => selected && withBusy(async () => {
     const { updatePrescription } = await import('@/lib/services/prescription-service');
     await updatePrescription(selected._id, stopFields('Prescription cancelled (ordered in error)'));
-    showToast(`${selected.medication} cancelled.`, 'success');
+    showToast(t('msg.cancelled', { medication: selected.medication }), 'success');
     await load();
     setSelectedId(null);
   });
 
   const handleAddMed = () => withBusy(async () => {
     if (!addMed.medication.trim() || !addMed.dose.trim() || !addMed.frequency.trim()) {
-      showToast('Medication, dose and frequency are required.', 'error');
+      showToast(t('msg.medicationDoseAndFrequencyAre'), 'error');
       return;
     }
     const medication = addMed.medication.trim();
@@ -293,7 +293,7 @@ export default function MedicationsModal({
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
     } as PrescriptionCreateInput, scope);
-    showToast(`${medication} added to the medication list.`, 'success');
+    showToast(t('msg.addedToTheMedicationList', { medication }), 'success');
     setAddMed({ medication: '', dose: '', frequency: '' });
     setShowAddMed(false);
     await load();

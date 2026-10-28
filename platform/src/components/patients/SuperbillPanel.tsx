@@ -10,6 +10,7 @@ import { Plus, X } from '@/components/icons/lucide';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface Line {
   fee: FeeScheduleDoc;
@@ -56,6 +57,7 @@ export function useSuperbill({
   /** Fired after a successful post — the charges table reloads on it. */
   onPosted?: (message: string) => void;
 }): Superbill {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const [fees, setFees] = useState<FeeScheduleDoc[]>([]);
@@ -126,7 +128,7 @@ export function useSuperbill({
       setLines([]);
       onPosted?.(message);
     } catch (e) {
-      setError(describeError(e, 'Charges not posted. Try again.'));
+      setError(describeError(e, t('msg.chargesNotPostedTryAgain')));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useCallback, useEffect, useState } from 'react';
 import type { SpecialtyCareEpisodeDoc, SpecialtyPathwayCode } from '@/modules/specialty-care';
 import { useDataScope } from './useDataScope';
@@ -9,6 +10,7 @@ export function useSpecialtyEpisodes(pathway?: SpecialtyPathwayCode, departmentI
   const [episodes, setEpisodes] = useState<SpecialtyCareEpisodeDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const reload = useCallback(async () => {
     if (!scope) { setEpisodes([]); setLoading(false); return; }
@@ -18,7 +20,7 @@ export function useSpecialtyEpisodes(pathway?: SpecialtyPathwayCode, departmentI
       setEpisodes(await getSpecialtyEpisodes(scope, { pathway, departmentId }));
     } catch (cause) {
       console.error(cause);
-      setError('Specialty episodes not loaded. Reload the page to try again.');
+      setError('msg.specialtyEpisodesNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -36,5 +38,5 @@ export function useSpecialtyEpisodes(pathway?: SpecialtyPathwayCode, departmentI
     return () => { cancelled = true; try { changes?.cancel(); } catch { /* noop */ } };
   }, [reload]);
 
-  return { episodes, loading, error, reload };
+  return { episodes, loading, error: error && t(error), reload };
 }

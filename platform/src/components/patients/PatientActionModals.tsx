@@ -218,7 +218,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
       onClose();
     } catch (err) {
       console.error('Prescribe failed', err);
-      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally {
       setSubmitting(false);
     }

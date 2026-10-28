@@ -55,7 +55,7 @@ export function StaffAssignmentControl({
         disabled={saving || draft === (currentId || '')}
         onClick={async () => { setSaving(true); try { await onSave(draft); } finally { setSaving(false); } }}
       >
-        {saving ? 'Saving...' : currentId ? 'Update' : 'Assign'}
+        {saving ? 'Saving…' : currentId ? 'Update' : 'Assign'}
       </button>
     </div>
   );
@@ -99,7 +99,7 @@ export function RoomAssignmentControl({
         disabled={saving}
         onClick={async () => { setSaving(true); try { await onSave(triageId, draft); } finally { setSaving(false); } }}
       >
-        {saving ? 'Saving...' : currentRoom ? 'Update' : 'Assign'}
+        {saving ? 'Saving…' : currentRoom ? 'Update' : 'Assign'}
       </button>
     </div>
   );

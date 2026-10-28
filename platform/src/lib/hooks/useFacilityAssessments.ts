@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import type { FacilityAssessmentDoc } from '../db-types';
 import { useDataScope } from './useDataScope';
@@ -11,6 +12,7 @@ export function useFacilityAssessments() {
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof import('../services/facility-assessment-service').getAssessmentSummary>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -23,7 +25,7 @@ export function useFacilityAssessments() {
       setSummary(s);
     } catch (err) {
       console.error('Failed to load assessments', err);
-      setError('Facility assessments not loaded. Reload the page to try again.');
+      setError('msg.facilityAssessmentsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -39,5 +41,5 @@ export function useFacilityAssessments() {
     return doc;
   }, [load]);
 
-  return { assessments, summary, loading, error, create, reload: load };
+  return { assessments, summary, loading, error: error && t(error), create, reload: load };
 }

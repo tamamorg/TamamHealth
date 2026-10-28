@@ -206,13 +206,13 @@ export default function RiskCenterPage() {
       setResolving(null);
       setNote('');
       if (failed > 0) {
-        showToast(`${resolved.length} resolved. ${failed} not saved. Try those again.`, 'error');
+        showToast(t('msg.resolvedNotSavedTryThose', { count: resolved.length, failed }), 'error');
       } else {
-        showToast(`Resolved ${resolved.length} risk signal${resolved.length === 1 ? '' : 's'}.`, 'success');
+        showToast(t(resolved.length === 1 ? 'msg.riskSignalResolved' : 'msg.riskSignalsResolved', { count: resolved.length }), 'success');
       }
     } catch (err) {
       console.error('Failed to resolve risks:', err);
-      showToast('Resolution not saved. Try again.', 'error');
+      showToast(t('msg.resolutionNotSavedTryAgain'), 'error');
     } finally {
       setSaving(false);
     }
@@ -225,10 +225,10 @@ export default function RiskCenterPage() {
       await reopenRisk(reopening.riskId, actor);
       await reloadResolutions();
       setReopening(null);
-      showToast('Risk signal reopened.', 'success');
+      showToast(t('msg.riskSignalReopened'), 'success');
     } catch (err) {
       console.error('Failed to reopen risk:', err);
-      showToast('Risk signal not reopened. Try again.', 'error');
+      showToast(t('msg.riskSignalNotReopenedTry'), 'error');
     } finally {
       setReopenBusy(false);
     }

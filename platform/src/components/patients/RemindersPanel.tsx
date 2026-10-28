@@ -16,6 +16,7 @@ import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSectio
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const CHANNELS: { v: ReminderChannel; label: string }[] = [
   { v: 'sms', label: 'SMS' },
@@ -29,6 +30,7 @@ function todayISO(): string {
 }
 
 export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { reminders, queued, queue, markSent, cancel } = usePatientReminders(patient._id);
   const [adding, setAdding] = useState(false);
@@ -58,7 +60,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
       setForm({ message: '', sendDate: todayISO(), channel: 'sms' });
       setAdding(false);
     } catch (e) {
-      setError(describeError(e, 'Reminder not scheduled. Try again.'));
+      setError(describeError(e, t('msg.reminderNotScheduledTryAgain')));
     } finally {
       setBusy(false);
     }

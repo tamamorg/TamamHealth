@@ -25,12 +25,14 @@ import { Send } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { canPostAnnouncements, createAnnouncement, getVisibleAnnouncements } from '@/modules/communication/services/announcement-service';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function priorityChipTone(p: AnnouncementPriority): ChipTone {
   return p === 'urgent' ? 'red' : p === 'important' ? 'yellow' : 'neutral';
 }
 
 export default function AdminAnnouncementsPage() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
@@ -79,9 +81,9 @@ export default function AdminAnnouncementsPage() {
       setAnnBody('');
       setAnnPriority('normal');
       loadAnnouncements();
-      showToast('Announcement posted.', 'success');
+      showToast(t('msg.announcementPosted'), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Announcement not posted. Try again.'), 'error');
+      showToast(describeError(err, t('msg.announcementNotPostedTryAgain')), 'error');
     } finally {
       setAnnPosting(false);
     }

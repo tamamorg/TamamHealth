@@ -16,6 +16,7 @@ import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/component
 import { ROLE_LABEL } from '@/lib/role-display';
 import type { UserRole } from '@/lib/db-types';
 import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface AssignDoctorTarget {
   patientId: string;
@@ -45,6 +46,7 @@ export default function AssignDoctorModal({
   onClose: () => void;
   onAssigned?: (doctor: { id: string; name: string }) => void;
 }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { users, loading } = useUsers();
   const { showToast } = useToast();
@@ -86,7 +88,7 @@ export default function AssignDoctorModal({
   const handleAssign = async () => {
     const doctor = doctors.find(d => d._id === selectedId);
     if (!doctor) {
-      showToast(`Select a ${providerLabel} to assign.`, 'error');
+      showToast(t(isHospital ? 'msg.selectADoctorToAssign' : 'msg.selectANurseToAssign'), 'error');
       return;
     }
     setSaving(true);
@@ -108,11 +110,11 @@ export default function AssignDoctorModal({
         note,
       });
 
-      showToast(`${target.patientName} assigned to ${doctor.name}.`, 'success');
+      showToast(t('msg.assignedTo', { patientName: target.patientName, name: doctor.name }), 'success');
       onAssigned?.({ id: doctor._id, name: doctor.name });
       onClose();
     } catch {
-      showToast('Patient not assigned. Try again.', 'error');
+      showToast(t('msg.patientNotAssignedTryAgain'), 'error');
     } finally {
       setSaving(false);
     }

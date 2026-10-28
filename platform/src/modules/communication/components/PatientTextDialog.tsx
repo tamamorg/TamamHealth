@@ -23,6 +23,7 @@ import { formatPhoneDisplay } from '@/lib/field-formats';
 import { MAX_PATIENT_TEXT_LENGTH, smsSegments, toSmsSafe } from '@/lib/sms/text';
 import type { MessageDoc } from '@/lib/db-types';
 import type { PatientTextOutcome, PatientTextResult } from '../services/patient-text-service';
+import { describeError } from '@/lib/user-facing-error';
 import './patient-text.css';
 
 export interface PatientTextDialogProps {
@@ -94,7 +95,7 @@ export default function PatientTextDialog({
       setResult({
         message: {} as MessageDoc,
         outcome: 'failed',
-        error: err instanceof Error ? err.message : undefined,
+        error: describeError(err, t('patientText.reasonUnknown')),
       });
     } finally {
       setSending(false);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { useDataScope } from './useDataScope';
 import { birthsDB, deathsDB } from '../db';
@@ -16,6 +17,7 @@ export function useVitalStatistics() {
   const [data, setData] = useState<VitalStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -28,7 +30,7 @@ export function useVitalStatistics() {
       setData({ birthStats, deathStats });
     } catch (err) {
       console.error('Failed to load vital statistics', err);
-      setError('Vital statistics not loaded. Reload the page to try again.');
+      setError('msg.vitalStatisticsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -40,5 +42,5 @@ export function useVitalStatistics() {
   // national level needs to track in near-real-time, not on cron.
   usePouchLiveReload({ load, database: vitalDatabases });
 
-  return { data, loading, error, reload: load };
+  return { data, loading, error: error && t(error), reload: load };
 }

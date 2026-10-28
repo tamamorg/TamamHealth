@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import type { OrganizationDoc } from '../db-types';
 import { usePouchLiveReload } from './usePouchLiveReload';
@@ -10,6 +11,7 @@ export function useOrganizations(enabled = true) {
   const [organizations, setOrganizations] = useState<OrganizationDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const role = currentUser?.role;
   const orgId = currentUser?.orgId;
@@ -37,7 +39,7 @@ export function useOrganizations(enabled = true) {
       setOrganizations(visible);
     } catch (err) {
       console.error(err);
-      setError('Organizations not loaded. Reload the page to try again.');
+      setError('msg.organizationsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -122,7 +124,7 @@ export function useOrganizations(enabled = true) {
     trashedOrganizations,
     /** Every tenant, live and trashed — for callers that must not filter. */
     allOrganizations: organizations,
-    loading, error, create, update, deactivate, restore, purge, getStats,
+    loading, error: error && t(error), create, update, deactivate, restore, purge, getStats,
     reload: loadOrganizations,
   };
 }

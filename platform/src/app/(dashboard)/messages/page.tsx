@@ -17,6 +17,7 @@ import {
   MoreVertical, Info, UserPlus, X, ChevronDown, Check, ShieldCheck,
   Trash2, Edit3, ArrowLeft, Bell, BellOff, LogOut, Settings, Archive,
 } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /* ─────────────────────────── constants ─────────────────────────── */
 
@@ -79,6 +80,7 @@ const NON_MESSAGEABLE_ROLES: UserRole[] = ['super_admin', 'government'];
 /* ─────────────────────────── page ─────────────────────────── */
 
 export default function MessagesPage() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const chat = useStaffChat();
   const {
@@ -199,9 +201,9 @@ export default function MessagesPage() {
   const saveEdit = async () => { if (editingId && editDraft.trim()) { await editMessage(editingId, editDraft); setEditingId(null); } };
   const removeMessage = async (m: MessageDoc) => {
     const ok = await confirm({
-      title: 'Remove this message?',
-      message: 'It will be taken out of the conversation, but it is not erased. Messages are part of the record: the original stays on file, and anyone in this conversation can still open it.',
-      confirmLabel: 'Remove message',
+      title: t('msg.removeThisMessage'),
+      message: t('msg.itWillBeTakenOut'),
+      confirmLabel: t('msg.removeMessage'),
       tone: 'warning',
     });
     if (ok) await deleteMessage(m._id);

@@ -30,6 +30,7 @@ import AppointmentEditModal from '@/components/appointments/AppointmentEditModal
 import { PatientRegistrationForm } from '@/components/patients/registration/PatientRegistrationForm';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { statusWord } from '@/lib/i18n/status-word';
 import { ClipboardList } from '@/components/icons/lucide';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
@@ -321,9 +322,9 @@ export default function FrontDeskDashboardPage() {
           await updateTriage(triage._id, { status: 'lwbs' }, { userId: currentUser?._id, username: currentUser?.name });
         }
       } catch { /* the encounter closure is the authoritative record */ }
-      showToast(`${encounter.patientName || 'Patient'} recorded as left without being seen. Visit closed.`, 'success');
+      showToast(t('msg.recordedAsLeftWithoutBeing2', { patientName: encounter.patientName || t('statusWord.thePatient') }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Visit not closed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.visitNotClosedTryAgain')), 'error');
     }
   }, [confirm, currentUser, showToast, t, updateTriage]);
 
@@ -753,7 +754,7 @@ export default function FrontDeskDashboardPage() {
 
   const handleAssignDoctor = useCallback(async (patient: PatientDoc, doctorId: string, visit?: { triageId?: string; appointmentId?: string; encounterId?: string }) => {
     const doctor = assignableDoctors.find(d => d._id === doctorId);
-    if (!doctor) { showToast('Select a doctor to assign.', 'error'); return; }
+    if (!doctor) { showToast(t('msg.selectADoctorToAssign'), 'error'); return; }
     try {
       const { assignProviderToPatient } = await import('@/lib/services/patient-assignment-service');
       await assignProviderToPatient({
@@ -768,15 +769,15 @@ export default function FrontDeskDashboardPage() {
         appointmentId: visit?.appointmentId,
         encounterId: visit?.encounterId,
       });
-      showToast(`Patient assigned to ${doctor.name || doctor.username}.`, 'success');
+      showToast(t('msg.patientAssignedTo', { name: doctor.name || doctor.username }), 'success');
     } catch {
-      showToast('Doctor not assigned. Try again.', 'error');
+      showToast(t('msg.doctorNotAssignedTryAgain'), 'error');
     }
-  }, [assignableDoctors, currentUser, showToast, myHospitalId]);
+  }, [assignableDoctors, currentUser, showToast, myHospitalId, t]);
 
   const handleAssignNurse = useCallback(async (patient: PatientDoc, nurseId: string, visit?: { appointmentId?: string; encounterId?: string }) => {
     const nurse = nurseId ? assignableNurses.find(n => n._id === nurseId) : null;
-    if (nurseId && !nurse) { showToast('Select a nurse to assign.', 'error'); return; }
+    if (nurseId && !nurse) { showToast(t('msg.selectANurseToAssign'), 'error'); return; }
     try {
       const { assignNurseToPatient } = await import('@/lib/services/patient-assignment-service');
       await assignNurseToPatient({
@@ -788,21 +789,21 @@ export default function FrontDeskDashboardPage() {
         appointmentId: visit?.appointmentId,
         encounterId: visit?.encounterId,
       });
-      showToast(nurse ? `Nurse ${nurse.name || nurse.username} assigned.` : 'Nurse assignment removed.', 'success');
+      showToast(nurse ? t('msg.nurseAssigned', { name: nurse.name || nurse.username }) : t('msg.nurseAssignmentRemoved'), 'success');
     } catch {
-      showToast('Nurse not assigned. Try again.', 'error');
+      showToast(t('msg.nurseNotAssignedTryAgain'), 'error');
     }
-  }, [assignableNurses, currentUser, showToast, myHospitalId]);
+  }, [assignableNurses, currentUser, showToast, myHospitalId, t]);
 
   const handleSaveRoom = useCallback(async (triageId: string, room: string) => {
     try {
       await updateTriage(triageId, { assignedRoom: room || undefined });
-      showToast(room ? `Room ${room} assigned.` : 'Room assignment removed.', 'success');
+      showToast(room ? t('msg.roomAssigned', { room }) : t('msg.roomAssignmentRemoved'), 'success');
       // Only assigning a room (not clearing one) counts as "roomed a walk-in".
     } catch {
-      showToast('Room not assigned. Try again.', 'error');
+      showToast(t('msg.roomNotAssignedTryAgain'), 'error');
     }
-  }, [updateTriage, showToast]);
+  }, [updateTriage, showToast, t]);
 
   // ── Final checkout: close out a completed visit ──
   // Stage 10 — Facility checkout gate (KAN-96). The gate decision comes from
@@ -816,7 +817,7 @@ export default function FrontDeskDashboardPage() {
     disposition?: import('@/lib/services/encounter-service').DischargeDisposition,
   ) => {
     try {
-      let gateNote = '';
+      let overrideItems = '';
       try {
         const {
           getEncounter, getOpenEncounterForPatient, dischargeEncounter,
@@ -830,7 +831,7 @@ export default function FrontDeskDashboardPage() {
 
           if (!evaluation.canDischarge && !override) {
             showToast(
-              `Patient not checked out. Complete these first: ${evaluation.blocking.map(b => b.label).join('; ')}.`,
+              t('msg.patientNotCheckedOutComplete', { value: evaluation.blocking.map(b => b.label).join('; ') }),
               'error',
             );
             return;
@@ -843,7 +844,7 @@ export default function FrontDeskDashboardPage() {
               `[${evaluation.blocking.map(b => b.key).join(', ')}]; reason recorded on the visit ` +
               `(authorized by ${override.authorizedBy})`,
             );
-            gateNote = ` — override: ${evaluation.blocking.map(b => b.label).join('; ')}`;
+            overrideItems = evaluation.blocking.map(b => b.label).join('; ');
           }
           // A walk-out ("dismissed") keeps its disposition even over unmet
           // items — it IS the maximal pending case; otherwise unmet items
@@ -876,10 +877,12 @@ export default function FrontDeskDashboardPage() {
         // 'discharged' is the terminal status in the TriageDoc status union.
         await updateTriage(target.triageId, { status: 'discharged' });
       }
-      showToast(`${target.patientName} checked out${gateNote}`, 'success');
+      showToast(overrideItems
+        ? t('msg.checkedOutWithOverride', { patientName: target.patientName, items: overrideItems })
+        : t('msg.checkedOut', { patientName: target.patientName }), 'success');
       setCheckoutTarget(null);
     } catch (error) {
-      showToast(error instanceof Error && error.message.includes('DISCHARGE_OVERRIDE') ? t('postConsult.clinicianAuthorization') : 'Patient not checked out. Try again.', 'error');
+      showToast(error instanceof Error && error.message.includes('DISCHARGE_OVERRIDE') ? t('postConsult.clinicianAuthorization') : t('msg.patientNotCheckedOutTry'), 'error');
     }
   }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope, t]);
 
@@ -906,12 +909,12 @@ export default function FrontDeskDashboardPage() {
         actorRole: currentUser?.role,
       });
     } catch (error) {
-      showToast(describeError(error, 'Patient not checked in. Try again.'), 'error');
+      showToast(describeError(error, t('frontDesk.patientCheckInFailed')), 'error');
       return;
     }
-    showToast(`${appt.patientName} checked in and added to the queue.`, 'success');
+    showToast(t('msg.checkedInAndAddedTo', { patientName: appt.patientName }), 'success');
     setCheckInTarget(null);
-  }, [showToast, currentUser, myHospitalId]);
+  }, [showToast, currentUser, myHospitalId, t]);
 
   // ── Mark an appointment a no-show. Confirmed first: a mistaken no-show
   //    hides the patient from the arrivals list, so reception gets one beat to
@@ -919,13 +922,13 @@ export default function FrontDeskDashboardPage() {
   const handleNoShow = useCallback(async (appt: AppointmentDoc) => {
     try {
       await updateAppointmentStatus(appt._id, 'no_show');
-      showToast(`${appt.patientName} marked as a no-show.`, 'success');
+      showToast(t('msg.markedAsANoShow', { patientName: appt.patientName }), 'success');
     } catch {
-      showToast('No-show not recorded. Try again.', 'error');
+      showToast(t('msg.noShowNotRecordedTry'), 'error');
     } finally {
       setNoShowTarget(null);
     }
-  }, [updateAppointmentStatus, showToast]);
+  }, [updateAppointmentStatus, showToast, t]);
 
   // ── A walk-in has no booking, so its rung lives on the triage record. The
   //    desk sets it from the same dropdown a booked patient uses; triage's own
@@ -938,11 +941,11 @@ export default function FrontDeskDashboardPage() {
       const patch: Partial<TriageDoc> = { visitStatus: status };
       if (status === 'completed') patch.status = 'discharged';
       await updateTriage(triage._id, patch);
-      if (!silent) showToast(`${triage.patientName}: status changed to ${appointmentStatusLabel(status).toLowerCase()}.`, 'success');
+      if (!silent) showToast(t('msg.statusChangedTo', { patientName: triage.patientName, value: statusWord(t, status) }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.statusNotChangedTryAgain')), 'error');
     }
-  }, [updateTriage, showToast]);
+  }, [updateTriage, showToast, t]);
 
   // ── Set any rung on the ladder straight from the row's status dropdown.
   //    Checking in, no-show and cancelling keep their own dialogs: those do
@@ -981,7 +984,7 @@ export default function FrontDeskDashboardPage() {
       if (status === 'rescheduled') {
         // One accidental click away from dropping off the live board — the
         // toast itself is the recovery path, restoring both records.
-        showToast(`${appt.patientName}: appointment marked as rescheduled.`, 'success', {
+        showToast(t('msg.appointmentMarkedAsRescheduled', { patientName: appt.patientName }), 'success', {
           action: {
             label: t('action.undo'),
             onClick: async () => {
@@ -992,18 +995,18 @@ export default function FrontDeskDashboardPage() {
                   actorRole: currentUser?.role,
                 });
                 if (mirrorTriage) await updateTriage(mirrorTriage._id, { visitStatus: prevVisitStatus });
-                showToast(`${appt.patientName}: appointment restored to ${appointmentStatusLabel(prevStatus).toLowerCase()}.`, 'success');
+                showToast(t('msg.appointmentRestoredTo', { patientName: appt.patientName, value: statusWord(t, prevStatus) }), 'success');
               } catch {
-                showToast('Appointment not restored. Try again.', 'error');
+                showToast(t('msg.appointmentNotRestoredTryAgain'), 'error');
               }
             },
           },
         });
       } else {
-        showToast(`${appt.patientName}: appointment status changed to ${appointmentStatusLabel(status).toLowerCase()}.`, 'success');
+        showToast(t('msg.appointmentStatusChangedTo', { patientName: appt.patientName, value: statusWord(t, status) }), 'success');
       }
     } catch (err) {
-      showToast(describeError(err, 'Appointment status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.appointmentStatusNotChangedTry')), 'error');
     }
   }, [encounters, updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t]);
 
@@ -1024,7 +1027,7 @@ export default function FrontDeskDashboardPage() {
         actorRole: currentUser?.role,
       });
       if (triage) await handleWalkInStatusChange(triage, 'cancelled', true);
-      showToast(`${appt.patientName}: appointment cancelled.`, 'success', {
+      showToast(t('msg.appointmentCancelled', { patientName: appt.patientName }), 'success', {
         action: {
           label: t('action.undo'),
           onClick: async () => {
@@ -1035,15 +1038,15 @@ export default function FrontDeskDashboardPage() {
                 actorRole: currentUser?.role,
               });
               if (triage) await updateTriage(triage._id, { visitStatus: prevVisitStatus });
-              showToast(`${appt.patientName}: appointment restored to ${appointmentStatusLabel(prevStatus).toLowerCase()}.`, 'success');
+              showToast(t('msg.appointmentRestoredTo', { patientName: appt.patientName, value: statusWord(t, prevStatus) }), 'success');
             } catch {
-              showToast('Appointment not restored. Try again.', 'error');
+              showToast(t('msg.appointmentNotRestoredTryAgain'), 'error');
             }
           },
         },
       });
     } catch {
-      showToast('Appointment not cancelled. Try again.', 'error');
+      showToast(t('msg.appointmentNotCancelledTryAgain'), 'error');
     } finally {
       setCancelTarget(null);
       setCancelReason('');
@@ -1062,11 +1065,11 @@ export default function FrontDeskDashboardPage() {
     setReschedSaving(true);
     try {
       await rescheduleAppointment(rescheduleTarget._id, rescheduleDate, rescheduleTime);
-      showToast(`${rescheduleTarget.patientName}: appointment moved to ${formatDayMonthYear(rescheduleDate)} at ${formatClockTime(rescheduleTime)}.`, 'success');
+      showToast(t('msg.appointmentMovedToAt', { patientName: rescheduleTarget.patientName, value: formatDayMonthYear(rescheduleDate), value2: formatClockTime(rescheduleTime) }), 'success');
       setRescheduleTarget(null);
     } catch (err) {
       // A booking conflict names the clash — show it rather than a shrug.
-      showToast(appointmentAmendRefusalMessage(err, t) ?? (err instanceof Error ? err.message : 'Appointment not rescheduled. Try again.'), 'error');
+      showToast(appointmentAmendRefusalMessage(err, t) ?? (err instanceof Error ? err.message : t('msg.appointmentNotRescheduledTryAgain')), 'error');
     } finally {
       setReschedSaving(false);
     }
@@ -1079,12 +1082,12 @@ export default function FrontDeskDashboardPage() {
   const handleUndoCheckIn = useCallback(async (appt: AppointmentDoc) => {
     try {
       await updateAppointmentStatus(appt._id, 'scheduled');
-      showToast(`${appt.patientName}: check-in reversed.`, 'success');
+      showToast(t('msg.checkInReversed', { patientName: appt.patientName }), 'success');
       setCheckInTarget(null);
     } catch {
-      showToast('Check-in not reversed. Try again.', 'error');
+      showToast(t('msg.checkInNotReversedTry'), 'error');
     }
-  }, [updateAppointmentStatus, showToast]);
+  }, [updateAppointmentStatus, showToast, t]);
 
   // ── Reverse a completed checkout for an APPOINTMENT-sourced visit: set the
   //    appointment back to checked_in so the patient re-enters the live queue.
@@ -1093,11 +1096,11 @@ export default function FrontDeskDashboardPage() {
   const handleUndoCheckout = useCallback(async (appointmentId: string, patientName: string) => {
     try {
       await updateAppointmentStatus(appointmentId, 'checked_in');
-      showToast(`${patientName}: checkout reversed.`, 'success');
+      showToast(t('msg.checkoutReversed', { patientName }), 'success');
     } catch {
-      showToast('Checkout not reversed. Try again.', 'error');
+      showToast(t('msg.checkoutNotReversedTryAgain'), 'error');
     }
-  }, [updateAppointmentStatus, showToast]);
+  }, [updateAppointmentStatus, showToast, t]);
 
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
   const canUseRoute = useCallback((href: string) => {

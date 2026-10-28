@@ -21,6 +21,7 @@ import { procedure as procedureLifecycle, type ProcedureStatus } from '@/lib/cli
 import { todayIso } from '@/lib/date-utils';
 import type { ProcedureDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { statusWord } from '@/lib/i18n/status-word';
 import { describeError } from '@/lib/user-facing-error';
 
 /** Stage 7 states, worded the way a clinician would say them. */
@@ -85,9 +86,9 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
     setAdvancing(id);
     try {
       await advance(id, to, { actorId: currentUser?._id, actorName: currentUser?.name, reason });
-      showToast(`Procedure moved to ${PROCEDURE_STATUS_LABELS[to]}.`, 'success');
+      showToast(t('msg.procedureMovedTo', { value: statusWord(t, to) }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Procedure not updated. Try again.'), 'error');
+      showToast(describeError(err, t('chart.procedureUpdateFailed')), 'error');
     } finally {
       setAdvancing(null);
     }
@@ -113,8 +114,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
   };
 
   const handleSubmit = async () => {
-    if (!name.trim()) { showToast('Enter the procedure name.', 'error'); return; }
-    if (!date) { showToast('Select the procedure date.', 'error'); return; }
+    if (!name.trim()) { showToast(t('msg.enterTheProcedureName'), 'error'); return; }
+    if (!date) { showToast(t('msg.selectTheProcedureDate'), 'error'); return; }
     if (editing && correctionReason.trim().length < 3) { showToast(t('chart.correctionReasonRequired'), 'error'); return; }
     try {
       setSubmitting(true);
@@ -138,11 +139,11 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast(editing ? t('chart.procedureCorrected') : 'Procedure recorded.', 'success');
+      showToast(editing ? t('chart.procedureCorrected') : t('msg.procedureRecorded'), 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Procedure not recorded. Try again.', 'error');
+      showToast(t('msg.procedureNotRecordedTryAgain'), 'error');
     } finally {
       setSubmitting(false);
     }

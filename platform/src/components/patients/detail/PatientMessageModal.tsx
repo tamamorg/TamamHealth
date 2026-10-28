@@ -115,7 +115,7 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
             <div className="flex items-center justify-end gap-2 mt-5">
               <button type="button" onClick={() => setShowMessageModal(false)} className="btn btn-sm btn-secondary" disabled={messageSending}>Close</button>
               <button type="button" onClick={sendPatientMessage} className="btn btn-sm btn-primary" disabled={messageSending || !messageBody.trim()}>
-                <MessageSquare className="w-3.5 h-3.5" /> {messageSending ? 'Sending...' : 'Send message'}
+                <MessageSquare className="w-3.5 h-3.5" /> {messageSending ? 'Sending…' : 'Send message'}
               </button>
             </div>
           </div>

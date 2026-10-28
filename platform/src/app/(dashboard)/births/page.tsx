@@ -179,7 +179,7 @@ export default function BirthsPage() {
           />
           <div className="ehr-list-scroll">
           {loading ? (
-            <div className="p-8 text-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading...</p></div>
+            <div className="p-8 text-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p></div>
           ) : (
             <table className="data-table" style={{ minWidth: 1080, tableLayout: 'fixed' }}>
               {/* State needs room for "Western Bahr el Ghazal", not the 6% it

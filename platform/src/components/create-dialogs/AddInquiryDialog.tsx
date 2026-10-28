@@ -56,7 +56,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
 
   const submit = async () => {
     if (!form.patientName.trim() || !form.subject.trim() || !form.body.trim()) {
-      setError('Enter the patient name, subject and message.');
+      setError(t('msg.enterThePatientNameSubject'));
       return;
     }
     setSaving(true);
@@ -76,7 +76,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
       onCreated(created);
     } catch (err) {
       console.error('[inquiries] create failed:', err);
-      setError(describeError(err, 'Inquiry not logged. Try again.'));
+      setError(describeError(err, t('msg.inquiryNotLoggedTryAgain')));
     } finally {
       setSaving(false);
     }

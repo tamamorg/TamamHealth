@@ -155,7 +155,7 @@ export default function PatientDispenseModal({
       await advance(rx._id, to);
       showToast(message, 'success');
     } catch (err) {
-      showToast(describeError(err, 'Prescription status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.prescriptionStatusNotChangedTry')), 'error');
     }
   };
 
@@ -174,7 +174,7 @@ export default function PatientDispenseModal({
       return;
     }
     if (!inv || inv.stockLevel < qty) {
-      void advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available.`);
+      void advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || t('statusWord.units')} available.`);
       return;
     }
     void advanceRx(rx, 'cleared_for_dispensing', `${rx.medication} cleared. Send patient for payment if a balance remains.`);
@@ -183,12 +183,12 @@ export default function PatientDispenseModal({
   // No navigation from here — that is the point of the dialog. The outstanding
   // amount is what the person at this screen needs in order to act.
   const flagPayment = (rx: PrescriptionDoc) => {
-    showToast(`Payment due: ${rx.patientName} owes ${formatMoney(balanceFor(patientId))}. Send the patient to the cashier before dispensing.`, 'warning');
+    showToast(t('msg.paymentDueOwesSendThe', { patientName: rx.patientName, value: formatMoney(balanceFor(patientId)) }), 'warning');
   };
 
   const startDispense = (rx: PrescriptionDoc) => {
     if (pharmacyStage(rx) !== 'cleared_for_dispensing') {
-      showToast('Verify the medication order before dispensing.', 'error');
+      showToast(t('msg.verifyTheMedicationOrderBefore'), 'error');
       return;
     }
     // Checked before the cleared/outstanding branch: an unknown balance is
@@ -196,7 +196,7 @@ export default function PatientDispenseModal({
     // different, and treating it as owed would misreport a ledger outage as
     // the patient's debt.
     if (!isKnownFor(patientId)) {
-      showToast('The patient\'s balance could not be checked. Confirm payment with the cashier before dispensing.', 'warning');
+      showToast(t('msg.thePatientSBalanceCould'), 'warning');
       return;
     }
     if (!isClearedFor(patientId)) {
@@ -206,7 +206,7 @@ export default function PatientDispenseModal({
     const qty = estimateCourseQuantity(rx);
     const inv = findInventoryFor(rx.medication);
     if (!inv || inv.stockLevel < qty) {
-      showToast(`Not enough stock for the full course: ${inv?.stockLevel ?? 0} ${inv?.unit || 'unit(s)'} available, ${qty} needed. Dispense a partial fill or record a stockout.`, 'warning');
+      showToast(t('msg.notEnoughStockForThe', { stockLevel: inv?.stockLevel ?? 0, value: inv?.unit || t('statusWord.units'), qty }), 'warning');
       return;
     }
     setWitnessId('');
@@ -221,7 +221,7 @@ export default function PatientDispenseModal({
     if (requiresWitness) {
       const w = users.find(u => u._id === witnessId);
       if (!w) {
-        showToast('Select a witness.', 'error');
+        showToast(t('msg.selectAWitness'), 'error');
         return;
       }
       witness = { id: w._id, name: w.name };
@@ -237,8 +237,8 @@ export default function PatientDispenseModal({
       if (!clearance.cleared) {
         showToast(
           clearance.reason === 'outstanding'
-            ? `Payment due: ${rx.patientName} owes ${formatMoney(clearance.balance)}. Send the patient to the cashier before dispensing.`
-            : 'Not dispensed. The patient\'s balance could not be checked. Confirm payment with the cashier.',
+            ? t('msg.paymentDueOwesSendThe', { patientName: rx.patientName, value: formatMoney(clearance.balance) })
+            : t('msg.notDispensedThePatientS'),
           'warning',
         );
         return;
@@ -257,7 +257,7 @@ export default function PatientDispenseModal({
       const batches = result.allocations.map(a => a.batchNumber).join(', ');
       showToast(
         result.outcome === 'partial'
-          ? `Partial fill: ${result.quantityDispensed} ${inv.unit} of ${rx.medication} dispensed from batch ${batches}. The order stays open for the remainder.`
+          ? t('msg.partialFillOfDispensedFrom', { quantityDispensed: result.quantityDispensed, unit: inv.unit, medication: rx.medication, batches })
           : t('pharmacy.dispensedToast', { medication: rx.medication, patient: rx.patientName }),
         result.outcome === 'partial' ? 'error' : 'success',
       );
@@ -305,7 +305,7 @@ export default function PatientDispenseModal({
     const copy: Record<StepKey, { note: string; icon: LucideIcon; label: string; onClick: () => void }> = {
       received: { note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', icon: ClipboardList, label: 'Receive order', onClick: () => startReview(rx) },
       review: { note: 'Confirm dose, frequency, patient, allergies and interactions.', icon: ClipboardList, label: 'Check order', onClick: () => startReview(rx) },
-      checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || 'unit(s)'} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, label: 'Clear stock and safety', onClick: () => clearForDispense(rx) },
+      checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || t('statusWord.units')} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, label: 'Clear stock and safety', onClick: () => clearForDispense(rx) },
       payment: {
         note: !balanceKnown
           ? 'Balance unavailable — verify before dispensing'
@@ -344,7 +344,7 @@ export default function PatientDispenseModal({
                     <div className="min-w-0">
                       <strong className="text-sm block" style={{ color: 'var(--text-primary)' }}>{rx.medication}</strong>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {formatRxSig(rx)} · {qty} {inv?.unit || 'unit(s)'}
+                        {formatRxSig(rx)} · {qty} {inv?.unit || t('statusWord.units')}
                       </p>
                     </div>
                     {/* Styled here rather than with `.ehr-queue-pill`: the

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { WardDoc, BedDoc, AdmissionDoc } from '../db-types-ward';
@@ -12,6 +13,7 @@ export function useWards() {
   const [admissions, setAdmissions] = useState<AdmissionDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -29,7 +31,7 @@ export function useWards() {
       setBeds(bedDocs);
     } catch (err) {
       console.error('Failed to load wards', err);
-      setError('Wards not loaded. Reload the page to try again.');
+      setError('msg.wardsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,7 @@ export function useWards() {
   return {
     wards, beds, admissions, activeAdmissions,
     totalBeds, occupiedBeds, availableBeds, occupancyRate,
-    loading, error,
+    loading, error: error && t(error),
     admit, discharge, reassignBed, markBedReady, reload: load,
   };
 }

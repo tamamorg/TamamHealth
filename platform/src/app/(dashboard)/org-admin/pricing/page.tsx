@@ -27,6 +27,7 @@ import { getSyncManager } from '@/lib/sync/sync-manager';
 import type { FeeScheduleDoc, ChargeCategory, BillingUnit } from '@/lib/db-types-billing';
 import { formatMoney } from '@/lib/format-utils';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const CATEGORIES: { value: ChargeCategory; label: string }[] = [
   { value: 'consultation', label: 'Consultation' },
@@ -57,6 +58,7 @@ const emptyForm = (): FeeInput & { isActive: boolean } => ({
 const FEE_GRID = 'minmax(200px, 1.6fr) minmax(110px, 0.8fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(90px, 0.7fr)';
 
 export default function ServicePricingPage() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { showToast } = useToast();
@@ -112,7 +114,7 @@ export default function ServicePricingPage() {
       }
       setFees(Array.from(byId.values()).sort((a, b) => (a.category + a.serviceName).localeCompare(b.category + b.serviceName)));
     } catch {
-      showToast('Price catalog not loaded. Reload the page to try again.', 'error');
+      showToast(t('msg.priceCatalogNotLoadedReload'), 'error');
     } finally {
       setLoading(false);
     }
@@ -142,7 +144,7 @@ export default function ServicePricingPage() {
 
   const save = async () => {
     if (!form.serviceName.trim() || form.unitPrice < 0) {
-      showToast('Enter a service name and a price of zero or more.', 'error');
+      showToast(t('msg.enterAServiceNameAnd'), 'error');
       return;
     }
     setSaving(true);
@@ -153,11 +155,11 @@ export default function ServicePricingPage() {
         ? await callFeeApi({ action: 'update', id: editingId, fee: { ...rest, isActive } })
         : await callFeeApi({ action: 'create', fee: { ...rest, isActive } });
       if (!result?.fee) {
-        showToast('Price not saved. Try again.', 'error');
+        showToast(t('msg.priceNotSavedTryAgain'), 'error');
         return;
       }
       confirmed.current.set(result.fee._id, result.fee);
-      showToast(editingId ? 'Price updated.' : 'Service added to the price catalog.', 'success');
+      showToast(editingId ? t('msg.priceUpdated') : t('msg.serviceAddedToThePrice'), 'success');
       setShowForm(false);
       void getSyncManager()?.syncNow().catch(() => undefined);
       await load();
@@ -170,11 +172,11 @@ export default function ServicePricingPage() {
     if (!removingFee) return;
     const result = await callFeeApi({ action: 'delete', id: removingFee._id });
     if (!result) {
-      showToast('Service not removed. Try again.', 'error');
+      showToast(t('msg.serviceNotRemovedTryAgain'), 'error');
       return;
     }
     confirmed.current.set(removingFee._id, null);
-    showToast('Service removed from the price catalog.', 'success');
+    showToast(t('msg.serviceRemovedFromThePrice'), 'success');
     setRemovingFee(null);
     setShowForm(false);
     void getSyncManager()?.syncNow().catch(() => undefined);

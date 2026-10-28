@@ -32,6 +32,7 @@ import { FileText, X, Eye, ArrowRightLeft, ChevronRight, Send, MessageSquare, Al
 import Select from '@/components/Select';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const CATEGORY_LABELS: Record<PatientDocumentCategory, string> = {
   radiology: 'Radiology',
@@ -123,6 +124,7 @@ export default function DocumentsPanel({
    *  into view and highlighted. */
   focusId?: string;
 }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const confirm = useConfirm();
@@ -319,12 +321,12 @@ export default function DocumentsPanel({
         <button
           onClick={async () => {
             const ok = await confirm({
-              title: 'Delete this document?',
+              title: t('msg.deleteThisDocument'),
               message: <>
                 <strong>{d.title || d.fileName}</strong> will be removed from this
                 patient&apos;s record. This cannot be undone.
               </>,
-              confirmLabel: 'Delete',
+              confirmLabel: t('action.delete'),
               tone: 'danger',
             });
             if (ok) await remove(d._id, currentUser?._id);

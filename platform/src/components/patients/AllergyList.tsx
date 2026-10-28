@@ -11,6 +11,7 @@ import Modal from '@/components/Modal';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const CRIT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
   severe:   { bg: 'var(--color-danger-bg, rgba(224, 49, 39,0.12))', fg: 'var(--color-danger-text)',  label: 'Severe'   },
@@ -25,6 +26,7 @@ const CRITICALITIES: NonNullable<AllergyEntry['criticality']>[] = ['mild', 'mode
 const EMPTY_FORM = { substance: '', classification: 'drug' as AllergyEntry['classification'], criticality: 'unknown' as NonNullable<AllergyEntry['criticality']>, reaction: '', onsetDate: '' };
 
 export default function AllergyList({ patient, hideAddButton = false }: { patient: PatientDoc; hideAddButton?: boolean }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
@@ -56,7 +58,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       await fn();
       onDone?.();
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }
