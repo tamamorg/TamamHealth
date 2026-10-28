@@ -106,7 +106,9 @@ export default function ConditionsSection({
   const handleStatusChange = async (id: string, status: ProblemStatus) => {
     setSavingStatus(id);
     try {
-      await setStatus(id, status);
+      // The service returns null when the write fails; without this check a
+      // refused save still said "Condition marked …".
+      if (!(await setStatus(id, status))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.conditionMarked', { value: statusWord(t, status) }), 'success');
     } catch (err) {
       console.error(err);
@@ -120,6 +122,11 @@ export default function ConditionsSection({
 
   const handleSubmit = async () => {
     if (!pickedCode) { showToast(t('msg.selectADiagnosis'), 'error'); return; }
+    // The same diagnosis twice on the open list reads as two problems.
+    if (problems.some(p => p.icd11Code === pickedCode.code && (p.status === 'active' || p.status === 'chronic'))) {
+      showToast(t('msg.conditionAlreadyOnList', { name: pickedCode.title }), 'warning');
+      return;
+    }
     try {
       setSubmitting(true);
       await create({

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Pencil } from '@/components/icons/lucide';
+import { MoreVertical } from '@/components/icons/lucide';
 import Menu, { type MenuItem } from '@/components/overlay/Menu';
 
 export type RowAction = {
@@ -18,8 +18,9 @@ export type RowAction = {
 };
 
 /**
- * Shared row-action menu (pencil trigger) used across every data table in
- * the platform. The trigger keeps each row's action area to a single compact
+ * Shared row-action menu (⋮ trigger) used across every data table in
+ * the platform. The trigger shows when the row is hovered or focused, as in
+ * OpenMRS O3 (always shown on touch screens, which have no hover). The trigger keeps each row's action area to a single compact
  * button regardless of how many actions a row offers; the panel is the
  * shared `Menu` surface, so it is portalled clear of the table's scroll
  * container, keyboard-navigable, and styled like every other menu.
@@ -40,7 +41,8 @@ export default function RowActionsMenu({ actions, ariaLabel = 'Actions' }: { act
     <Menu
       items={items}
       label={ariaLabel}
-      icon={<Pencil aria-hidden="true" />}
+      icon={<MoreVertical aria-hidden="true" />}
+      triggerClassName="tm-menu__trigger tm-row-actions-trigger"
       align="end"
       width={220}
     />

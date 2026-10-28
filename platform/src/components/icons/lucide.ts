@@ -151,6 +151,7 @@ export { DuotoneLock as Lock } from '@/components/icons';
 export { DuotoneLogIn as LogIn } from '@/components/icons';
 export { DuotoneMail as Mail } from '@/components/icons';
 export { DuotoneMaximize as Maximize2 } from '@/components/icons';
+export { DuotoneMinimize as Minimize2 } from '@/components/icons';
 export { DuotoneMic as Mic } from '@/components/icons';
 export { DuotoneMicOff as MicOff } from '@/components/icons';
 export { DuotoneMicroscope as Microscope } from '@/components/icons';

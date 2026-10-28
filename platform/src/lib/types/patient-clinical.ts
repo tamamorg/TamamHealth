@@ -30,6 +30,11 @@ export interface AllergyEntry {
   recordedBy?: string;
   recordedByName?: string;
   recordedAt: string;
+  /** Who last edited, reinstated or retired the entry, and when. Kept apart
+   *  from recordedBy so an edit never re-attributes the original recording. */
+  updatedBy?: string;
+  updatedByName?: string;
+  updatedAt?: string;
 }
 
 /**

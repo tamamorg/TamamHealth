@@ -1,0 +1,77 @@
+/* Width the clinician dragged the docked workspace to (DrawerResizeHandle).
+ * Three-part selector so it outranks `.tamam-drawer.is-note-editor`. */
+.tamam-drawer.tamam-drawer[data-resized] {
+  flex-basis: var(--tamam-drawer-w);
+  width: var(--tamam-drawer-w);
+}
+
+/* The handle straddles the workspace's inner edge: an 8px hit area, with a
+ * hairline that turns blue on hover, focus and while dragging. */
+.tamam-drawer-resize {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -4px;
+  width: 8px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.tamam-drawer-resize::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.tamam-drawer-resize:hover::after,
+.tamam-drawer-resize:focus-visible::after,
+.tamam-drawer-resize.is-dragging::after {
+  background: var(--accent-primary);
+}
+
+.tamam-drawer-resize:focus-visible { outline: none; }
+
+/* No text selection or iframe pointer capture while dragging. */
+.tamam-drawer:has(.tamam-drawer-resize.is-dragging) {
+  user-select: none;
+}
+
+@media (max-width: 899px) {
+  .tamam-drawer-resize { display: none; }
+  .tamam-drawer.tamam-drawer[data-resized] { flex-basis: auto; width: auto; }
+}
+
+/* Full screen (the header's expand): the workspace covers the chart from the
+ * window's start edge up to the icon rail, below the top rail, the way an
+ * OpenMRS O3 maximized workspace does. A note form opens like this. The inline
+ * height the shell measures for the docked drawer must not apply here. */
+.tamam-drawer.tamam-drawer.is-maximized {
+  position: fixed;
+  top: var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px));
+  bottom: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 56px;
+  width: auto;
+  height: calc(100dvh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px))) !important;
+  max-height: none;
+  flex-basis: auto;
+  z-index: 40;
+}
+
+@media (max-width: 900px) {
+  .tamam-drawer.tamam-drawer.is-maximized { inset-inline-end: 44px; }
+}
+
+/* Below 900px the workspace is a fixed overlay pinned top to bottom; the
+ * inline height the shell measures for the docked drawer would stop it short
+ * of the window's bottom edge. */
+@media (max-width: 900px) {
+  .tamam-drawer.tamam-drawer {
+    height: calc(100dvh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px))) !important;
+    max-height: none;
+  }
+}

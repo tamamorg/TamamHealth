@@ -205,7 +205,7 @@ control exists," not as a compliance certification.
 | AC-03 | Unique user identification | Implemented | Per-user accounts, admin-issued, JWT session |
 | AC-04 | Automatic session/idle timeout | Implemented | Auto-lock on tab-hidden + 10 min idle, PIN unlock (see NF-SEC-06) |
 | AC-05 | Encryption in transit | Implemented | HTTPS in production |
-| AC-06 | Encryption at rest | Not implemented for the primary write path | PouchDB/IndexedDB data is unencrypted in the browser — this is by design; the platform's real at-rest control is full-disk/volume encryption on the server (`PHI_AT_REST_STRATEGY=disk-encryption`, see `docs/GO-LIVE-STEP-BY-STEP.md`), not application-layer PouchDB encryption. A server-only field-encryption layer (`field-encryption.ts`) exists but is a no-op in the browser and does not cover patient demographics |
+| AC-06 | Encryption at rest | Implemented for catalogued PHI fields | `getDB()` encrypts strings named by `src/lib/phi-field-catalog.json` before they reach browser IndexedDB, replication, CouchDB, or backups; reads decrypt at the database boundary. Production still requires an explicitly configured disk- or field-encryption strategy. The fictional standalone demo seed is intentionally plaintext because it runs before a user/org key is available. |
 | AC-07 | Data integrity | Implemented | PouchDB revision tracking + CouchDB `validate_doc_update` guard |
 | AC-08 | Minimum necessary access | Implemented | Role-based data scoping (`filterByScope()`) |
 
@@ -263,8 +263,8 @@ After each fix, verify these critical paths still work:
 1. **Inventory management** - Was mock data at the time of this note; re-check against the current `pharmacy`/`equipment` modules rather than assuming it's still true.
 2. **Lab result → Medical record linking** - Was not back-linked at the time of this note; re-verify against the current clinical-flow implementation.
 3. ~~No idle session timeout~~ - **Resolved**: the shell now auto-locks on tab-hidden and after 10 min idle (`useAutoLock`), unlocked by a 4-digit PIN.
-4. **PouchDB data not encrypted at rest** - Still true, and by design: patient demographics in the browser IndexedDB are in the clear. The platform's real at-rest control is server-side full-disk encryption, not application-layer PouchDB encryption (see §9).
-5. ~~Demo credentials visible~~ - **Resolved**: `/login` no longer shows a seeded account roster; accounts are admin-issued.
+4. ~~PouchDB PHI stored only as plaintext~~ - **Resolved for catalogued string fields**: the encrypted database proxy seals those values before IndexedDB. Numeric/non-identifying operational fields remain queryable by design; keep the PHI catalog contract tests and production disk-encryption control enabled.
+5. **Demo credential roster is profile-gated** - `/login` shows the generated seeded-account roster only in an explicit standalone demo (`NEXT_PUBLIC_DEMO_MODE=true` with sync disabled). It is unavailable in synchronized or production deployments; real accounts remain administrator-issued.
 
 ---
 

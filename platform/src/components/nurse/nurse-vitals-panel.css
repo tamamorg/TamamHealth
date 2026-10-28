@@ -36,7 +36,7 @@
   align-items: center;
   gap: 0;
   padding: 0 0 0 20px;
-  min-height: 64px;
+  min-height: var(--ws-head-h, 48px);
   background: var(--color-slate-100, #e0e0e0);
   border-bottom: 1px solid var(--border-light);
   flex: none;
@@ -46,7 +46,7 @@
 
 .nv-title {
   margin: 0;
-  font-size: 19px;
+  font-size: var(--ws-title-size, 16px);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -61,8 +61,8 @@
 }
 
 .nv-icon-btn {
-  width: 56px;
-  height: 64px;
+  width: var(--ws-ctl-size, 48px);
+  height: var(--ws-head-h, 48px);
   display: inline-flex;
   align-items: center;
   justify-content: center;

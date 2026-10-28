@@ -1759,25 +1759,12 @@
   width: clamp(480px, 50vw, 860px);
 }
 
-/* Maximized (the header's expand toggle) is the one state that covers the
-   chart on purpose: a full-page workspace below the top rail. */
-.tamam-drawer.is-maximized {
-  position: fixed;
-  top: var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px));
-  right: 0;
-  bottom: 0;
-  width: 100vw;
-  height: auto;
-  z-index: 40;
-  box-shadow: -8px 0 28px rgba(17, 48, 85, 0.18);
-}
-
 .tamam-drawer-header {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
   gap: 0;
-  min-height: 64px;
+  min-height: var(--ws-head-h, 48px);
   padding: 0 0 0 20px;
   border-bottom: 1px solid var(--ehr-border, var(--border-light));
   background: var(--color-slate-100, #e0e0e0);
@@ -1786,7 +1773,7 @@
 
 .tamam-drawer-title {
   align-self: center;
-  font-size: 19px;
+  font-size: var(--ws-title-size, 16px);
   font-weight: 600;
   color: var(--ehr-text-title, #113055);
 }
@@ -1799,8 +1786,8 @@
 
 /* Square blocks, like the workspace header's arrow and close buttons. */
 .tamam-drawer-controls button {
-  width: 56px;
-  min-height: 64px;
+  width: var(--ws-ctl-size, 48px);
+  min-height: var(--ws-head-h, 48px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1821,7 +1808,7 @@
   outline-offset: -2px;
 }
 
-.tamam-drawer-controls button svg { width: 18px; height: 18px; }
+.tamam-drawer-controls button svg { width: var(--ws-glyph, 16px); height: var(--ws-glyph, 16px); }
 
 .tamam-drawer-body {
   flex: 1 1 auto;
@@ -3142,3 +3129,410 @@
 .omf-forms-link:hover:not(:disabled) { text-decoration: underline; }
 .omf-forms-link:disabled { color: var(--text-muted); cursor: not-allowed; }
 .omf-forms-empty { color: var(--text-muted); }
+
+/* ══════════════════ ORDER BASKET (O3) ══════════════════ */
+.obk-root { background: var(--ehr-panel, #fff); }
+
+/* Sizes follow the workspace standard (globals.css tokens): 16px gutters,
+   a 48px group head with a 16px title on one line, 14px rows. The head's
+   title shrinks with an ellipsis rather than wrapping, so the group reads
+   the same in a 360px docked workspace and in full screen. */
+.obk-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.obk-group {
+  min-width: 0;
+  border-inline-start: 4px solid var(--accent-primary);
+  background: var(--bg-app, #f4f4f4);
+  border-top: 1px solid color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.obk-group--lab { border-inline-start-color: var(--color-purple-500, #8a3ffc); border-top-color: color-mix(in srgb, var(--color-purple-500, #8a3ffc) 25%, transparent); }
+
+.obk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--ws-head-h, 48px);
+  padding: 0 4px 0 12px;
+}
+
+.obk-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  color: var(--accent-primary);
+}
+
+.obk-group--lab .obk-icon { background: color-mix(in srgb, var(--color-purple-500, #8a3ffc) 18%, transparent); color: var(--color-purple-500, #8a3ffc); }
+.obk-icon svg { width: var(--ws-glyph, 16px); height: var(--ws-glyph, 16px); }
+
+/* An h3 picks up the display face and its letter-spacing from globals; the
+   group title is body text at the workspace title size. */
+.tamam-root .obk-title,
+.obk-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: inherit;
+  font-size: var(--ws-title-size, 16px);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.obk-add {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.obk-add svg { width: var(--ws-glyph, 16px); height: var(--ws-glyph, 16px); }
+
+.obk-toggle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  cursor: pointer;
+}
+
+.obk-chevron { width: var(--ws-glyph, 16px); height: var(--ws-glyph, 16px); transition: transform 0.15s ease; }
+.obk-chevron.is-open { transform: rotate(180deg); }
+
+.obk-add:focus-visible,
+.obk-toggle:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+.obk-items { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.obk-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+
+.obk-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--color-slate-200, #c6c6c6);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 16px;
+  text-transform: capitalize;
+}
+
+.obk-tag--danger { background: var(--color-danger, #da1e28); color: #fff; }
+
+.obk-line { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.obk-warn { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-danger-text); }
+.obk-warn svg { width: 12px; height: 12px; }
+.obk-empty { margin: 0; font-size: 14px; color: var(--text-muted); }
+
+/* A narrow docked workspace drops the Add label to its + glyph. */
+@container (max-width: 340px) {
+  .obk-add-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+.obk-root { container-type: inline-size; }
+
+/* Footer: the shared action bar (globals.css, ACTION BAR). */
+.obk-footer { flex: none; }
+
+/* The drawer header's "close all panels" arrow points the way the workspace
+   leaves: flipped in right-to-left locales. */
+[dir="rtl"] .tamam-drawer-leave svg { transform: scaleX(-1); }
+
+/* Appointments tab: Upcoming / Today / Past content switcher (O3). */
+.tamam-appt-switcher {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(96px, 1fr);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tamam-appt-switcher button {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  background: var(--ehr-panel, #fff);
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.tamam-appt-switcher button:first-child { border-inline-start: 0; }
+.tamam-appt-switcher button:hover { background: var(--bg-app); }
+
+.tamam-appt-switcher button.is-selected {
+  background: var(--color-info-bg, var(--bg-app));
+  color: var(--accent-text, var(--accent-primary));
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.tamam-appt-switcher button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+/* ══════════════════ GHOST ACTIONS (O3) ══════════════════
+ * The chart's verbs — Actions ⋮, Add +, Record vitals →, Vitals history,
+ * "Record …" in an empty state, a panel's Add / Edit — are OpenMRS O3 ghost
+ * buttons: blue label, no fill and no border, the glyph AFTER the label.
+ * Placed after ACTION BUTTONS so it wins at equal specificity. Form submits
+ * (.tamam-btn-primary, .btn-primary) and the workspace action bars stay solid:
+ * those commit something; these open somewhere. */
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tamam-vitals-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button
+) {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.29;
+  text-decoration: none;
+}
+
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tamam-vitals-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button
+):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-slate-400, #8d8d8d) 12%, transparent) !important;
+  border-color: transparent;
+  color: var(--accent-hover, var(--accent-text));
+  text-decoration: none;
+}
+
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tamam-vitals-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button
+):focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+.tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tamam-vitals-record-link,
+  .tamam-vitals-link,
+  .tebra-panel-action,
+  .tebra-demo-edit,
+  .tebra-section-title button
+) svg,
+.tamam-root .tamam-header-overflow .tamam-header-actions-btn svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-text) !important;
+  stroke: currentColor !important;
+}
+
+
+/* Actions ⋮ needs no caret: the kebab already says "menu". */
+.tamam-root .tamam-header-actions-btn .tamam-header-caret { display: none; }
+
+/* A thin rule separates a section's view toggles from its Add, as in O3. */
+.tamam-root .tamam-section-controls > * + .tamam-section-add {
+  position: relative;
+  margin-inline-start: 12px;
+}
+.tamam-root .tamam-section-controls > * + .tamam-section-add::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: -12px;
+  top: 50%;
+  width: 1px;
+  height: 20px;
+  transform: translateY(-50%);
+  background: var(--text-primary);
+}
+
+.tamam-root :is(
+  .tamam-header-actions-btn, .tamam-section-add, .tamam-panel-add-btn,
+  .tamam-vitals-record-link, .tamam-vitals-link, .tebra-panel-action
+):disabled {
+  background: transparent !important;
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* ══════════════════ DATA TABLES (O3, Tamam colours) ══════════════════
+ * The OpenMRS O3 table shape in the Tamam palette: a solid slate head band,
+ * white rows split by hairlines, a faint action-blue tint on hover, and an
+ * empty state that sits on the plain card — never the cream record fill,
+ * which read as a yellow block when a list had nothing in it. */
+.tamam-root .tamam-table thead th {
+  /* !important: globals.css paints every chart table head at that priority. */
+  background: var(--color-slate-100) !important;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--ehr-border);
+}
+
+.tamam-root .tamam-table tbody tr,
+.tamam-root .tebra-panel table tbody tr {
+  background: var(--bg-card-solid);
+}
+
+.tamam-root .tamam-table tbody td {
+  border-bottom: 1px solid var(--ehr-border-soft, var(--border-light));
+}
+
+.tamam-root .tamam-table tbody tr:hover,
+.tamam-root .tebra-panel table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent-primary) 6%, var(--bg-card-solid));
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+/* The empty-state row is not a record: no fill, no hover, no edge. */
+.tamam-root .tamam-table tbody tr:has(> td > .tamam-empty-state),
+.tamam-root .tamam-table tbody tr:has(> td > .tamam-empty-state):hover {
+  background: var(--bg-card-solid);
+  box-shadow: none;
+}
+
+.tamam-root .tamam-table tbody tr:has(> td > .tamam-empty-state) > td { border-bottom: 0; }
+
+.tamam-root .tamam-empty-state p {
+  max-width: 480px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.tamam-root .tamam-empty-state svg {
+  color: var(--color-slate-400, var(--ehr-muted)) !important;
+  opacity: 1;
+}
+
+/* Icon view toggles (Vitals table / Flowsheet): square icon buttons in one
+   outlined group, the selected one tinted with an action-blue edge, as in O3.
+   The word lives in the tooltip and the accessible name. */
+.tamam-root .tamam-icon-toggle {
+  display: inline-flex;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tamam-root .tamam-icon-toggle button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.tamam-root .tamam-icon-toggle button:first-child { border-inline-start: 0; }
+.tamam-root .tamam-icon-toggle button:hover { background: var(--bg-app); }
+.tamam-root .tamam-icon-toggle button.is-active {
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-card-solid));
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+.tamam-root .tamam-icon-toggle button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.tamam-root .tamam-icon-toggle svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+/* ══════════════════ CONTRAST PASS (O3 type, Tamam ink) ══════════════════
+ * The chart read washed-out: 10px condensed uppercase column heads in muted
+ * grey, 12–14px section titles, and secondary text a step too light. One type
+ * scale in the body face, ink from --text-primary / --text-secondary only,
+ * the accent kept for what is clickable and for the section marker. */
+.tamam-root .tamam-section-title {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.tamam-root .tamam-section-underline {
+  width: 32px;
+  height: 3px;
+  background: var(--accent-primary);
+}
+
+.tamam-root .tamam-table thead th {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+  padding-block: 10px;
+}
+
+.tamam-root .tamam-table tbody td { color: var(--text-primary); font-size: 14px; }
+.tamam-root .tamam-table tbody td :is(.text-xs, small, .appointment-card-provider span) { color: var(--text-secondary); }
+
+/* Section cards: white tiles with a crisp edge on the canvas. */
+.tamam-root .tamam-section {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  box-shadow: none;
+}

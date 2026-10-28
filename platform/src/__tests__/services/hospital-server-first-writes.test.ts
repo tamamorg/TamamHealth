@@ -8,7 +8,7 @@
  * /api/users kept answering "Facility … has not reached the server yet" about
  * a record the server could never receive.
  *
- * `isBrowserRuntime()` treats a Jest worker as the server, so these tests
+ * `shouldUseServerHospitalApi()` treats a Jest worker as the server, so these tests
  * clear JEST_WORKER_ID to become "the browser" and restore it after.
  */
 
@@ -101,5 +101,21 @@ describe('browser reads', () => {
   it('getHospitalById returns null on a server 404 without touching the replica', async () => {
     apiFetchMock.mockResolvedValue(response(404, {}));
     expect(await getHospitalById('hosp-nope')).toBeNull();
+  });
+
+  it('uses the browser replica in a standalone demo instead of calling an unavailable server database', async () => {
+    const previousDemo = process.env.NEXT_PUBLIC_DEMO_MODE;
+    const previousSync = process.env.NEXT_PUBLIC_SYNC_ENABLED;
+    process.env.NEXT_PUBLIC_DEMO_MODE = 'true';
+    process.env.NEXT_PUBLIC_SYNC_ENABLED = 'false';
+    try {
+      expect(await getAllHospitals()).toEqual([]);
+      expect(apiFetchMock).not.toHaveBeenCalled();
+    } finally {
+      if (previousDemo === undefined) delete process.env.NEXT_PUBLIC_DEMO_MODE;
+      else process.env.NEXT_PUBLIC_DEMO_MODE = previousDemo;
+      if (previousSync === undefined) delete process.env.NEXT_PUBLIC_SYNC_ENABLED;
+      else process.env.NEXT_PUBLIC_SYNC_ENABLED = previousSync;
+    }
   });
 });

@@ -119,6 +119,12 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
     // The record carries a batch number for recall: an adverse-event
     // investigation traces the lot, and a dose with no lot can't be traced.
     if (!batchNumber.trim()) { showToast(t('msg.enterTheVaccineBatchNumber'), 'error'); return; }
+    // The same dose of the same vaccine recorded twice double-counts
+    // coverage. Editing that record itself is not a duplicate.
+    if (immunizations.some(i => i._id !== editing?._id && i.recordStatus !== 'entered_in_error' && i.vaccine === vaccine && i.doseNumber === dose)) {
+      showToast(t('msg.doseAlreadyRecorded', { vaccine, dose }), 'warning');
+      return;
+    }
     try {
       setSubmitting(true);
       const doseData = {

@@ -19,6 +19,8 @@ import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
 import { orderBannerAllergies, type BannerAllergy } from './allergy-order';
+import './chart-frame.css';
+import './chart-tables.css';
 
 
 interface ChartHeaderProps {
@@ -227,10 +229,10 @@ export default function ChartHeader({
             onClick={() => setMenuOpen(v => !v)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            aria-label="More actions"
-            title="More actions"
+            aria-label="Actions"
+            title="Actions"
           >
-            <DuotoneIcon name="moreVertical" size={15} aria-hidden /> More
+            <DuotoneIcon name="moreVertical" size={15} aria-hidden /> Actions
             <DuotoneIcon name="chevronDown" size={12} className="tamam-header-caret" aria-hidden />
           </button>
           {menuOpen && (

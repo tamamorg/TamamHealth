@@ -147,7 +147,8 @@ export async function updateAllergy(
     (patient) => {
       const existing = entriesOf(patient);
       if (!existing.some((e) => e.id === allergyId)) return null;
-      const next = existing.map((e) => (e.id === allergyId ? { ...e, ...patch, id: e.id } : e));
+      const updatedAt = new Date().toISOString();
+      const next = existing.map((e) => (e.id === allergyId ? { ...e, ...patch, id: e.id, updatedAt } : e));
       return { patch: patchFor(next), entries: next };
     },
     { action: 'UPDATE_ALLERGY', detail: `Allergy ${allergyId} updated for patient ${patientId}` },
@@ -164,6 +165,7 @@ export async function removeAllergy(
   allergyId: string,
   removalReason: string,
   status: 'inactive' | 'resolved' | 'entered_in_error' = 'inactive',
+  actor?: { id?: string; name?: string },
 ): Promise<AllergyEntry[] | null> {
   if (!removalReason || removalReason.trim().length === 0) {
     throw new Error('Enter the reason for removing this entry.');
@@ -174,7 +176,10 @@ export async function removeAllergy(
     (patient) => {
       const existing = entriesOf(patient);
       if (!existing.some((e) => e.id === allergyId)) return null;
-      const next = existing.map((e) => (e.id === allergyId ? { ...e, status, removalReason: removalReason.trim() } : e));
+      const updatedAt = new Date().toISOString();
+      const next = existing.map((e) => (e.id === allergyId
+        ? { ...e, status, removalReason: removalReason.trim(), updatedAt, ...(actor?.id ? { updatedBy: actor.id } : {}), ...(actor?.name ? { updatedByName: actor.name } : {}) }
+        : e));
       return { patch: patchFor(next), entries: next };
     },
     { action: 'REMOVE_ALLERGY', detail: `Allergy ${allergyId} ${status} (${removalReason.trim()}) for patient ${patientId}` },

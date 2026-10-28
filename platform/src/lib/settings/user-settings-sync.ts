@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { getStoredRoleSettings, saveStoredRoleSettings } from '@/lib/role-settings';
 import { initRoleSettings } from './role-settings-store';
 import { getUserPrefs, initUserPrefs, setUserPrefs } from '@/lib/user-prefs';
+import { isStandaloneDemoDeployment } from '@/lib/sync/sync-config';
 
 const pendingKey = (userId: string) => `tamamhealth.preferences.pending.${userId}`;
 
@@ -18,6 +19,13 @@ function readPending(userId: string): UserPreferences | null {
 /** Save locally first, then sync to the authenticated account when online. */
 export async function persistUserPreferences(userId: string, preferences: UserPreferences): Promise<boolean> {
   try { localStorage.setItem(pendingKey(userId), JSON.stringify(preferences)); } catch { /* best effort */ }
+  if (isStandaloneDemoDeployment()) {
+    // There is deliberately no server-side account database in this profile.
+    // The role/UI stores are the source of truth, so do not retry an endpoint
+    // that can never persist the preference.
+    try { localStorage.removeItem(pendingKey(userId)); } catch { /* best effort */ }
+    return true;
+  }
   try {
     const response = await apiFetch('/api/auth/preferences', {
       method: 'PATCH',
@@ -38,6 +46,10 @@ export async function retryPendingUserPreferences(userId: string): Promise<boole
 }
 
 export async function pullUserPreferences(userId: string, role: UserRole): Promise<boolean> {
+  if (isStandaloneDemoDeployment()) {
+    await hydrateUserPreferences(userId, role);
+    return true;
+  }
   try {
     const response = await fetch('/api/auth/preferences', {
       credentials: 'same-origin', cache: 'no-store',

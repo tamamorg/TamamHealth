@@ -8,6 +8,7 @@
  * overlay pattern used by the dashboard layout.
  */
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-fetch';
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck } from '@/components/icons/lucide';
 import { describeApiError } from '@/lib/user-facing-error';
@@ -23,6 +24,7 @@ export default function ForcePasswordChange({
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -63,7 +65,8 @@ export default function ForcePasswordChange({
       }
       // The server re-issued a session token without the forced-change flag.
       // A full reload re-hydrates currentUser from /api/auth/me and lifts the gate.
-      window.location.assign('/');
+      router.push('/');
+      router.refresh();
     } catch {
       setError(t('pactivate.errNetwork'));
       setSubmitting(false);

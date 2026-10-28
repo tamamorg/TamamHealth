@@ -95,27 +95,5 @@
 
 .sv-empty { margin: 0; font-size: 14px; color: var(--text-secondary); }
 
-/* Full-width split footer, as in the reference workspace. */
-.sv-footer {
-  flex: none;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-top: 1px solid var(--border-light);
-}
-
-.sv-footer-btn {
-  min-height: 64px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: 0;
-  font-size: 15px;
-  font-weight: 600;
-  text-align: start;
-  cursor: pointer;
-}
-
-.sv-footer-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -4px; }
-
-.sv-footer-btn--discard { background: var(--color-slate-800, #393939); color: #fff; }
-.sv-footer-btn--primary { background: var(--accent-primary); color: #fff; }
-.sv-footer-btn:disabled { background: var(--color-slate-200, #c6c6c6); color: var(--text-muted); cursor: default; }
+/* Footer: the shared action bar (globals.css, ACTION BAR). */
+.sv-footer { flex: none; }

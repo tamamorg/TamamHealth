@@ -154,6 +154,10 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   }, [focusId, showInactive, entries]);
 
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
+  // Edits and reinstatements are stamped as an update, never as a new
+  // recording: overwriting recordedBy re-attributed the allergy to whoever
+  // last touched it, beside the ORIGINAL recordedAt date.
+  const editor = { updatedBy: currentUser?._id, updatedByName: currentUser?.name || currentUser?.username };
 
   /** Legacy string-list entries have no stable id to write against — each id is
    *  synthesised from the substance itself — so they can be read but not edited
@@ -178,7 +182,8 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     setBusy(true);
     try {
       const svc = await import('@/lib/services/allergy-service');
-      await svc.updateAllergy(patient._id, needScope(), editing.id, { ...editForm, substance: editForm.substance.trim(), ...author });
+      // null: the entry is no longer on the record (retired elsewhere).
+      if (!(await svc.updateAllergy(patient._id, needScope(), editing.id, { ...editForm, substance: editForm.substance.trim(), ...editor }))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.allergyUpdated'), 'success');
       setEditing(null);
     } catch (err) {
@@ -193,7 +198,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     setBusy(true);
     try {
       const svc = await import('@/lib/services/allergy-service');
-      await svc.removeAllergy(patient._id, needScope(), retiring.id, retireReason.trim(), retireStatus);
+      if (!(await svc.removeAllergy(patient._id, needScope(), retiring.id, retireReason.trim(), retireStatus, { id: editor.updatedBy, name: editor.updatedByName }))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.allergyMarked', { substance: retiring.substance, value: statusWord(t, retireStatus) }), 'success');
       setRetiring(null);
       setRetireReason('');
@@ -209,7 +214,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     setBusy(true);
     try {
       const svc = await import('@/lib/services/allergy-service');
-      await svc.updateAllergy(patient._id, needScope(), a.id, { status: 'active', removalReason: undefined, ...author });
+      if (!(await svc.updateAllergy(patient._id, needScope(), a.id, { status: 'active', removalReason: undefined, ...editor }))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.allergyReinstated', { substance: a.substance }), 'success');
     } catch (err) {
       showToast(describeError(err, t('msg.allergyNotReinstatedTryAgain')), 'error');

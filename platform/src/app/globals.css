@@ -4,6 +4,23 @@
 
 /* ============ LAYOUT SYSTEM ============ */
 :root {
+  /* Workspace + dialog sizes (Carbon / OpenMRS O3). Every panel header and
+     every save/cancel footer reads these, so they cannot drift apart. */
+  --ws-head-h: 48px;
+  --ws-title-size: 16px;
+  --ws-ctl-size: 48px;
+  --ws-glyph: 16px;
+  --action-bar-h: 64px;
+  --action-bar-pad: 16px 16px 32px;
+  --action-bar-font: 14px;
+  --action-secondary: var(--color-slate-800);
+  --action-secondary-hover: var(--color-slate-700, var(--color-slate-800));
+  --action-danger: var(--color-danger);
+  --action-disabled: var(--color-slate-200);
+  --action-disabled-ink: var(--text-muted);
+  /* Dialog header band (O3): light grey with dark ink. */
+  --modal-head-bg: var(--color-slate-100);
+  --modal-head-ink: var(--text-primary);
   /* Module identity is categorical, never clinical severity. These reuse the
      established brand/chart hues without changing triage or alert semantics. */
   --module-care: var(--tm-deep);
@@ -392,7 +409,9 @@
   --bg-secondary:  color-mix(in srgb, var(--accent-primary) 6%, transparent);
   --bg-card:       var(--color-white);
   --bg-card-solid: var(--color-white);
-  --bg-card-hover: var(--color-cream-75);
+  /* A faint wash of the accent, not the palette's cream: lifted rows and
+     hovered surfaces read as yellow blocks on white. */
+  --bg-card-hover: color-mix(in srgb, var(--accent-primary) 5%, var(--color-white));
   --bg-input:      var(--color-white);
   --bg-sidebar:    var(--color-white);
   --overlay-subtle: color-mix(in srgb, var(--accent-primary) 7%, transparent);
@@ -1268,6 +1287,12 @@ svg.lucide:not([style*="color"]) {
   .tamam-nv-btn--primary,
   .nv-btn--primary,
   .omf-btn--primary,
+  :is(.tm-action-bar__btn--primary, .tm-dialog__foot > .btn-primary, .obk-footer-btn--primary, .sv-footer-btn--primary, .nv-root--workspace .nv-footer .nv-btn--primary),
+  .obk-footer-btn--primary,
+  .obk-footer-btn--secondary,
+  .tm-dialog__foot > .btn-primary,
+  .tm-dialog__foot > :is(.btn-secondary, .btn-ghost, .btn-outline),
+  .tm-dialog__foot > :is(.btn-danger-solid, .btn-danger),
   .sv-footer-btn--primary,
   .sv-footer-btn--discard,
   .labord-toggle--on,
@@ -1843,6 +1868,27 @@ input:focus, select:focus, textarea:focus {
 .sadb-search:hover:not(:focus-within),
 .tsel-search:hover:not(:focus-within) {
   border-color: var(--border-medium);
+}
+
+/* Every other field shell, by shape rather than by name: an element holding an
+   icon and a search input side by side is the box, and the input is bare text
+   inside it. The named list above kept missing new ones (the module menu's
+   "Find a module", the chart sections' search), and each one drew the focus
+   glow from `input:focus` — and inside the chart, the !important outline from
+   `.ehr-chart-content input:focus` — as a second rectangle inside the first.
+   `.search-icon-input` is the other pattern (the input IS the box, with an
+   icon laid over it) and keeps its own border. */
+:has(> svg):has(> input[type="search"]:not(.search-icon-input)) > input[type="search"]:not(.search-icon-input),
+:has(> svg):has(> input[type="search"]:not(.search-icon-input)) > input[type="search"]:not(.search-icon-input):focus {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+:has(> svg):has(> input[type="search"]:not(.search-icon-input)):focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
 }
 
 input::placeholder, textarea::placeholder {
@@ -27496,7 +27542,7 @@ table.patient-data-table.patient-data-table {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   background: transparent !important;
-  color: #fff !important;
+  color: var(--modal-head-ink) !important;
 }
 
 .modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol)))::before,
@@ -27509,7 +27555,8 @@ table.patient-data-table.patient-data-table {
   border-radius: inherit;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  background: var(--accent-primary, #015697);
+  /* O3 dialog header: the light grey band with dark type, not a brand fill. */
+  background: var(--modal-head-bg);
 }
 
 /* A floor, at zero specificity, for the spacing the old rule used to force.
@@ -27544,7 +27591,7 @@ table.patient-data-table.patient-data-table {
 
 .modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button),
 .modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) :is(h2, h3, p, span, small, b, strong, em, a, button) {
-  color: #fff !important;
+  color: var(--modal-head-ink) !important;
 }
 
 /* ── Exception: the header that already has a class ──────────────────────
@@ -35327,4 +35374,242 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 @media (prefers-reduced-motion: reduce) {
   .tm-skeleton { animation: none; background: var(--overlay-subtle); }
   .tm-spinner, .btn.is-loading::after { animation-duration: 1.2s; }
+}
+
+/* ══════════════════ DIALOGS — OpenMRS O3 shape ══════════════════
+   Confirmations, edits and other modify dialogs read as O3 (Carbon) modals:
+   a square panel on a grey fill, a plain title with a close button, the
+   message beneath, and a full-width split footer — the dismissive choice in
+   dark on the left, the action in blue (red when it destroys) on the right.
+   Applied to the shared dialog kit, so every dialog built on it follows. */
+.modal-portal-backdrop [role="dialog"]:has(> .tm-dialog),
+.modal-portal-backdrop [role="dialog"]:has(> * > .tm-dialog) {
+  border-radius: 0 !important;
+}
+
+.tm-dialog {
+  background: var(--o3-dialog-bg, var(--bg-app));
+  border-radius: 0;
+}
+
+.tm-dialog__head,
+.tm-dialog__head--brand {
+  align-items: center;
+  padding: 24px 16px 12px 24px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.tm-dialog__head--danger,
+.tm-dialog__head--warning { border-top: 0; }
+
+.tm-dialog__head .tm-dialog__icon { display: none; }
+
+.tm-dialog__title,
+.tm-dialog__head--brand .tm-dialog__title {
+  font-family: var(--font-platform);
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-primary);
+}
+
+.tm-dialog__desc,
+.tm-dialog__head--brand .tm-dialog__desc { color: var(--text-secondary); font-size: 14px; }
+
+.tm-dialog__head--brand .tm-dialog__ctl,
+.tm-dialog__ctl { color: var(--text-primary); border-radius: 0; width: 44px; height: 44px; }
+
+.tm-dialog__body {
+  padding: 4px 24px 40px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tm-dialog__foot {
+  padding: 0;
+  gap: 0;
+  border-top: 0;
+  align-items: stretch;
+  background: transparent;
+}
+.tm-dialog__foot > :is(.btn, button) { flex: 1 1 0; }
+
+/* A footer that also carries a note or a start-side control keeps it, as its
+   own strip above the split buttons. */
+.tm-dialog__foot:has(> .tm-dialog__foot-start) { flex-wrap: wrap; }
+.tm-dialog__foot > .tm-dialog__foot-start { flex-basis: 100%; padding: 12px 24px; margin: 0; }
+
+
+/* ══════════════════ ACTION BAR — one standard for every save footer ══════
+   Two equal columns: the dismissive choice dark on the left, the action blue
+   (red when it destroys) on the right. 64px tall, label 14px at the top
+   start, any glyph 16px at the trailing end (Carbon's expressive modal
+   buttons). Shared by dialogs, the Order basket, Start a visit and Record
+   vitals in the chart workspace. */
+.tm-action-bar,
+.tm-dialog__foot,
+.obk-footer,
+.sv-footer,
+.nv-root--workspace .nv-footer {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  border-top: 0;
+}
+
+:is(.tm-action-bar__btn,
+    .tm-dialog__foot > .btn, .tm-dialog__foot > button,
+    .obk-footer-btn, .sv-footer-btn,
+    .nv-root--workspace .nv-footer .nv-btn) {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: var(--action-bar-h);
+  height: auto;
+  padding: var(--action-bar-pad);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: var(--action-bar-font);
+  font-weight: 400;
+  /* 16px line + 16px top + 32px bottom padding = the 64px bar. */
+  line-height: 16px;
+  text-align: start;
+  cursor: pointer;
+}
+
+:is(.tm-action-bar__btn, .tm-dialog__foot > .btn, .tm-dialog__foot > button, .obk-footer-btn, .sv-footer-btn, .nv-root--workspace .nv-footer .nv-btn) svg {
+  width: var(--ws-glyph);
+  height: var(--ws-glyph);
+  flex: none;
+  /* The glyph trails the label whichever side it is written on. A row-reverse
+     bar did this too, but pushed a label with no glyph (Cancel) to the far end. */
+  order: 1;
+}
+
+:is(.tm-action-bar__btn--secondary,
+    .tm-dialog__foot > :is(.btn-secondary, .btn-ghost, .btn-outline),
+    .obk-footer-btn--secondary, .sv-footer-btn--discard,
+    .nv-root--workspace .nv-footer .nv-btn--ghost) {
+  background: var(--action-secondary);
+  color: #fff;
+}
+
+:is(.tm-action-bar__btn--secondary,
+    .tm-dialog__foot > :is(.btn-secondary, .btn-ghost, .btn-outline),
+    .obk-footer-btn--secondary, .sv-footer-btn--discard,
+    .nv-root--workspace .nv-footer .nv-btn--ghost):hover:not(:disabled) {
+  background: var(--action-secondary-hover);
+}
+
+:is(.tm-action-bar__btn--primary, .tm-dialog__foot > .btn-primary,
+    .obk-footer-btn--primary, .sv-footer-btn--primary,
+    .nv-root--workspace .nv-footer .nv-btn--primary) {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+:is(.tm-action-bar__btn--danger, .tm-dialog__foot > :is(.btn-danger-solid, .btn-danger)) {
+  background: var(--action-danger);
+  color: #fff;
+}
+
+:is(.tm-action-bar__btn, .tm-dialog__foot > .btn, .tm-dialog__foot > button, .obk-footer-btn, .sv-footer-btn, .nv-root--workspace .nv-footer .nv-btn):disabled {
+  background: var(--action-disabled);
+  color: var(--action-disabled-ink);
+  opacity: 1;
+  cursor: default;
+}
+
+:is(.tm-action-bar__btn, .tm-dialog__foot > .btn, .tm-dialog__foot > button, .obk-footer-btn, .sv-footer-btn, .nv-root--workspace .nv-footer .nv-btn):focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 4px var(--accent-primary);
+}
+
+/* ══════════════════ ROW ACTIONS — hover ⋮ (O3) ══════════════════
+   A record's ⋮ appears when its row is hovered or holds focus, so a table
+   reads as data until the pointer asks what can be done to a row. Kept while
+   its menu is open, and always shown where there is no hover (touch). */
+@media (hover: hover) {
+  tr .tm-row-actions-trigger,
+  [role="row"] .tm-row-actions-trigger {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  tr:is(:hover, :focus-within) .tm-row-actions-trigger,
+  [role="row"]:is(:hover, :focus-within) .tm-row-actions-trigger,
+  .tm-row-actions-trigger[aria-expanded="true"] {
+    opacity: 1;
+  }
+}
+.tm-row-actions-trigger[aria-expanded="true"] { background: var(--color-slate-150); }
+
+
+/* ══════════════════ GHOST ACTIONS — app-wide (O3) ══════════════════
+   The verbs that OPEN something — a list page's "New referral", "Register",
+   any primary button led by a plus — are OpenMRS O3 ghost buttons: blue
+   label, no fill and no border, the glyph after the label. What COMMITS
+   something (a form's Save, a dialog's confirm, the workspace action bars)
+   stays solid — so inside a dialog or modal a plus-led primary is the
+   dialog's commit ("Create group") and keeps its fill. The chart has its own
+   copy for its classes (tamam-chart.css).
+   `.tm-ghost-btn` opts any other opener in. */
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *) {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-slate-400) 12%, transparent);
+  color: var(--accent-hover, var(--accent-text));
+  text-decoration: none;
+}
+
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *):focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+:is(
+  .tm-ghost-btn,
+  .ehr-list-header-actions > .btn-primary,
+  .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
+):not(.tm-dialog__foot > *):not(.tm-action-bar > *) svg.lucide {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-text) !important;
+  stroke: currentColor !important;
 }

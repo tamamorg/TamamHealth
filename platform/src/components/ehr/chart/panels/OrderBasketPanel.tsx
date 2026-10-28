@@ -10,10 +10,11 @@
 
 import { useState } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
-import { Plus, ChevronDown, Pill, FlaskConical, Check, AlertTriangle } from '@/components/icons/lucide';
+import { Plus, ChevronDown, Pill, FlaskConical, AlertTriangle } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { PatientDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface OrderBasketPanelProps {
   patient: PatientDoc;
@@ -27,6 +28,7 @@ interface OrderBasketPanelProps {
 export default function OrderBasketPanel({
   patient, canPrescribe, canOrderLabs, onAddDrugOrder, onAddLabOrder, onClose,
 }: OrderBasketPanelProps) {
+  const { t } = useTranslation();
   // Scoped to this patient at the query, not filtered down from the whole
   // facility's orders: the un-scoped call pulled every prescription and lab
   // result in the hospital into the drawer to show at most a handful.
@@ -38,106 +40,63 @@ export default function OrderBasketPanel({
   const activeDrugOrders = (prescriptions || []).filter(rx => rx.patientId === patient._id && rx.status === 'pending');
   const activeLabOrders = (results || []).filter(l => l.patientId === patient._id && l.status !== 'completed');
 
-  return (
-    <>
-      <div className="tamam-drawer-body">
-        <div className="tamam-panel-section">
-          <button
-            type="button"
-            className={drugsOpen ? 'tamam-panel-section-head' : 'tamam-panel-section-head is-collapsed'}
-            onClick={() => setDrugsOpen(v => !v)}
-          >
-            <ChevronDown className="tamam-chevron" />
-            <Pill />
-            <span className="tamam-panel-section-title">Drug orders ({activeDrugOrders.length})</span>
-            {canPrescribe && (
-              <span
-                className="tamam-panel-add-btn"
-                role="button"
-                tabIndex={0}
-                onClick={e => { e.stopPropagation(); onAddDrugOrder(); }}
-                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); onAddDrugOrder(); } }}
-              >
-                <Plus /> Add
-              </span>
-            )}
+  const group = (kind: 'drug' | 'lab', title: string, open: boolean, toggle: () => void, canAdd: boolean, onAdd: () => void, body: React.ReactNode) => (
+    <section className={`obk-group obk-group--${kind}`}>
+      <div className="obk-head">
+        <span className="obk-icon" aria-hidden>{kind === 'drug' ? <Pill /> : <FlaskConical />}</span>
+        <h3 className="obk-title">{title}</h3>
+        {canAdd && (
+          <button type="button" className="obk-add" onClick={onAdd}>
+            <span className="obk-add-label">Add</span> <Plus aria-hidden />
           </button>
-          {drugsOpen && (
-            activeDrugOrders.length === 0 ? (
-              <p className="tamam-panel-empty">No active drug orders for this patient.</p>
-            ) : (
-              activeDrugOrders.map(rx => (
-                <div className="tamam-panel-row" key={rx._id}>
-                  <div>
-                    <div className="tamam-panel-row-main">{rx.medication}</div>
-                    <div className="tamam-panel-row-sub">{formatRxSig(rx)}</div>
-                    {!!(rx.medicationSafety?.allergyWarnings.length
-                      || rx.medicationSafety?.interactionWarnings.length
-                      || rx.medicationSafety?.duplicateWarnings.length) && (
-                      <div className="tamam-panel-row-sub" style={{ color: 'var(--color-danger, #D92B20)', fontWeight: 700 }}>
-                        <AlertTriangle aria-hidden style={{ width: 12, height: 12, display: 'inline', marginInlineEnd: 4 }} />
-                        Safety warning recorded — review before dispensing
-                      </div>
-                    )}
-                  </div>
-                  <span className={`tamam-panel-badge ${rx.status === 'pending' ? 'tamam-panel-badge--pending' : rx.status === 'discontinued' ? 'tamam-panel-badge--muted' : 'tamam-panel-badge--active'}`}>
-                    {rx.status}
-                  </span>
-                </div>
-              ))
-            )
-          )}
-        </div>
+        )}
+        <button type="button" className="obk-toggle" aria-expanded={open} aria-label={open ? `Collapse ${title}` : `Expand ${title}`} onClick={toggle}>
+          <ChevronDown aria-hidden className={open ? 'obk-chevron is-open' : 'obk-chevron'} />
+        </button>
+      </div>
+      {open && <div className="obk-items">{body}</div>}
+    </section>
+  );
 
-        <div className="tamam-panel-section">
-          <button
-            type="button"
-            className={labsOpen ? 'tamam-panel-section-head' : 'tamam-panel-section-head is-collapsed'}
-            onClick={() => setLabsOpen(v => !v)}
-          >
-            <ChevronDown className="tamam-chevron" />
-            <FlaskConical />
-            <span className="tamam-panel-section-title">Lab orders ({activeLabOrders.length})</span>
-            {canOrderLabs && (
-              <span
-                className="tamam-panel-add-btn"
-                role="button"
-                tabIndex={0}
-                onClick={e => { e.stopPropagation(); onAddLabOrder(); }}
-                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); onAddLabOrder(); } }}
-              >
-                <Plus /> Add
-              </span>
-            )}
-          </button>
-          {labsOpen && (
-            activeLabOrders.length === 0 ? (
-              <p className="tamam-panel-empty">No pending lab orders for this patient.</p>
-            ) : (
-              activeLabOrders.map(l => (
-                <div className="tamam-panel-row" key={l._id}>
-                  <div>
-                    <div className="tamam-panel-row-main">{l.testName}</div>
-                    <div className="tamam-panel-row-sub">{l.specimen}{l.tier ? ` · ${l.tier}` : ''}</div>
-                  </div>
-                  <span className={`tamam-panel-badge ${l.status === 'pending' ? 'tamam-panel-badge--pending' : 'tamam-panel-badge--active'}`}>
-                    {l.status.replace('_', ' ')}
-                  </span>
-                </div>
-              ))
-            )
-          )}
-        </div>
+  return (
+    <div className="tamam-drawer-workspace obk-root">
+      <div className="obk-body">
+        {group('drug', `Drug orders (${activeDrugOrders.length})`, drugsOpen, () => setDrugsOpen(v => !v), canPrescribe, onAddDrugOrder,
+          activeDrugOrders.length === 0 ? (
+            <p className="obk-empty">No active drug orders for this patient.</p>
+          ) : activeDrugOrders.map(rx => {
+            const warned = !!(rx.medicationSafety?.allergyWarnings.length
+              || rx.medicationSafety?.interactionWarnings.length
+              || rx.medicationSafety?.duplicateWarnings.length);
+            return (
+              <div className="obk-item" key={rx._id}>
+                <span className={warned ? 'obk-tag obk-tag--danger' : 'obk-tag'}>{warned ? 'Review' : rx.status}</span>
+                <p className="obk-line"><strong>{rx.medication}</strong> — {formatRxSig(rx)}</p>
+                {warned && (
+                  <p className="obk-warn"><AlertTriangle aria-hidden /> Safety warning recorded — review before dispensing</p>
+                )}
+              </div>
+            );
+          }),
+        )}
+        {group('lab', `Lab orders (${activeLabOrders.length})`, labsOpen, () => setLabsOpen(v => !v), canOrderLabs, onAddLabOrder,
+          activeLabOrders.length === 0 ? (
+            <p className="obk-empty">No pending lab orders for this patient.</p>
+          ) : activeLabOrders.map(l => (
+            <div className="obk-item" key={l._id}>
+              <span className="obk-tag">{l.status.replace('_', ' ')}</span>
+              <p className="obk-line"><strong>{l.testName}</strong> — {l.specimen}{l.tier ? ` · ${l.tier}` : ''}</p>
+            </div>
+          )),
+        )}
       </div>
-      <div className="tamam-drawer-footer">
-        {/* Orders persist the moment they're added via the Prescribe/OrderLab
-            modals — there is no separate signing step in the data model, so a
-            "Sign and close" affordance here would be a no-op lie. */}
-        <span className="tamam-panel-row-sub" style={{ marginInlineEnd: 'auto', alignSelf: 'center' }}>
-          These are already-saved active orders. There is no separate signing step here.
-        </span>
-        <button type="button" className="tamam-btn-primary" onClick={onClose}><Check aria-hidden /> Done</button>
+      {/* Every order here was saved and attributed to its prescriber the
+          moment it was placed (Prescribe / Order lab), so there is nothing
+          left to sign: a "Sign and close" button would promise a step that
+          does not exist. The footer is one honest Close. */}
+      <div className="obk-footer">
+        <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={onClose}>{t('action.close')}</button>
       </div>
-    </>
+    </div>
   );
 }

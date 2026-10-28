@@ -1,0 +1,88 @@
+/* Create new appointment — chart workspace (BookAppointmentPanel). `bap-`
+   namespace, laid out as the OpenMRS O3 appointment form: a heading per
+   question, a quiet helper line, grey filled fields with a bottom rule. */
+
+.bap-root { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+.bap-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* The global `label` rule uppercases and bolds; this form reads in sentence case. */
+.bap-root label { text-transform: none; letter-spacing: normal; font-weight: inherit; }
+
+.bap-section { display: flex; flex-direction: column; gap: 12px; }
+
+.bap-heading { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+
+.bap-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.bap-field--date { max-width: 320px; }
+
+.bap-label { font-size: 13px; font-weight: 400; color: var(--text-secondary); }
+.bap-label--split { display: flex; justify-content: space-between; }
+
+.bap-root :is(select, input, textarea) {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 1px solid var(--color-slate-400, var(--border-strong));
+  border-radius: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.bap-root textarea { padding: 12px 16px; min-height: 104px; resize: vertical; }
+.bap-root input[readonly] { color: var(--text-secondary); }
+.bap-root :is(select, input, textarea):focus { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.bap-root [aria-invalid="true"] { outline: 2px solid var(--color-danger); outline-offset: -2px; }
+
+.bap-time-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.bap-clock { display: grid; grid-template-columns: minmax(72px, 1fr) minmax(72px, 1fr); gap: 4px; }
+.bap-clock input { font-variant-numeric: tabular-nums; }
+
+.bap-toggle-row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-primary); }
+
+.bap-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-slate-400, #8d8d8d);
+  cursor: pointer;
+}
+
+.bap-switch.is-on { background: var(--color-success, #24a148); }
+.bap-switch:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+.bap-switch-knob {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-white);
+  transition: inset-inline-start 0.12s ease;
+}
+
+.bap-switch.is-on .bap-switch-knob { inset-inline-start: 27px; }
+
+.bap-desk-note { margin: 0; font-size: 13px; color: var(--text-muted); }
+
+.bap-root .tm-action-bar { flex: none; }
+
+@media (max-width: 520px) {
+  .bap-body { padding: 20px 16px 24px; }
+  .bap-time-row { grid-template-columns: minmax(0, 1fr); }
+}

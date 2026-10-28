@@ -10,12 +10,12 @@ describe('patient chart note workspace', () => {
     expect(chartShell).toContain('showContextSidebar={false}');
   });
 
-  it('opens wide and expands to the entire viewport', () => {
-    expect(chartShell).toContain("activePanel.id === CLINICAL_NOTE_PANEL.id ? 'is-note-editor' : ''");
+  it('opens wide; the header arrow closes every panel, the ✕ steps back one', () => {
+    expect(chartShell).toContain('onClick={closeAllWorkspaces}');
+    expect(chartShell).toContain("activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) ? 'is-note-editor' : ''");
     // Docked beside the chart (it narrows the chart rather than covering it),
     // so the note gets a wide column, not the viewport.
     expect(chartCss).toMatch(/\.tamam-drawer\.is-note-editor\s*{[\s\S]*?width:\s*clamp\(480px, 50vw, 860px\)/);
-    expect(chartCss).toMatch(/\.tamam-drawer\.is-maximized\s*{[\s\S]*?width:\s*100vw/);
   });
 
   it('notes have no page of their own: expand stays in the chart, /notes/[id] opens the chart', () => {

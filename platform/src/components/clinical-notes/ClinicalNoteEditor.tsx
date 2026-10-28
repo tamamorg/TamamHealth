@@ -23,6 +23,7 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import NoteSectionCard from './NoteSectionCard';
 import AssignPicker from './AssignPicker';
+import { patientFullName } from '@/lib/patient-utils';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import PrescribeModal from './prescribe/PrescribeModal';
@@ -136,11 +137,14 @@ interface ClinicalNoteEditorProps {
   layout?: 'standard' | 'workspace';
   /** Workspace only: "Back to clinical forms". */
   onBack?: () => void;
+  /** Fires with the new type's label after the note type changes, so a host
+   *  showing the note's name (the chart drawer's title) can follow it. */
+  onNoteTypeChange?: (label: string) => void;
 }
 
 export default function ClinicalNoteEditor({
   noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose, onOpenChartTab,
-  layout = 'standard', onBack,
+  layout = 'standard', onBack, onNoteTypeChange,
 }: ClinicalNoteEditorProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -557,7 +561,9 @@ export default function ClinicalNoteEditor({
   const handleTypeChange = async (next: string) => {
     if (!isNoteTypeId(next)) return;
     // The new type may bring derived sections the old one did not have.
-    await fillEmptyDerived(await persist(() => changeNoteType(noteId, next)));
+    const changed = await persist(() => changeNoteType(noteId, next));
+    await fillEmptyDerived(changed);
+    if (changed) onNoteTypeChange?.(noteTypeLabel(t, next));
   };
 
   const handleClear = async () => {
@@ -973,8 +979,10 @@ export default function ClinicalNoteEditor({
   // Shared by both layouts: the standalone/queue layout below and the chart
   // workspace's form layout (OpenMRS O3 shape). One set of fields, banners,
   // section cards and dialogs, so the two can never behave differently.
-  const noteFields = (
-        <div className="cn-header-fields">
+  // The note-type picker. The standard layout keeps it first among the
+  // header fields; the chart workspace lifts it to the top of the form as
+  // the note's own "which note is this" dropdown.
+  const noteTypeField = (
         <label className="cn-field">
           <span className="cn-label">{t('noteEditor.noteType')}</span>
           <Select
@@ -996,6 +1004,10 @@ export default function ClinicalNoteEditor({
             ))}
           </Select>
         </label>
+  );
+  const noteFields = (
+        <div className="cn-header-fields">
+        {layout !== 'workspace' && noteTypeField}
 
         <label className="cn-field">
           <span className="cn-label">{t('noteEditor.date')}</span>
@@ -1448,6 +1460,27 @@ export default function ClinicalNoteEditor({
             <ArrowLeft size={16} aria-hidden /> {t('noteEditor.backToForms')}
           </button>
         )}
+        {/* Which note this is, as a dropdown of every note form, and whose:
+            in full screen the chart's own patient header is covered. */}
+        <div className="omf-typebar">
+          {/* The loaded patient record is the truth; the note's own copy is
+              only a fallback while it loads. Some create paths stamped the
+              placeholder "Patient" with no MRN or date of birth, which made
+              this line read "Patient / F". */}
+          <div className="omf-patient">
+            <span className="omf-patient-name">
+              {(patient && patientFullName(patient)) || (note.patientName && note.patientName !== 'Patient' ? note.patientName : '') || t('noteEditor.patientLoading')}
+            </span>
+            <span className="omf-patient-line">
+              {[
+                patient?.hospitalNumber || note.mrn,
+                patient?.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : null,
+                dobWithAge(patient?.dateOfBirth || note.patientDob),
+              ].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+          <div className="omf-type">{noteTypeField}</div>
+        </div>
         <div className="omf-body">
           <nav className="omf-nav" aria-label={t('noteEditor.sections')}>
             {groups.map(g => (
@@ -1477,7 +1510,7 @@ export default function ClinicalNoteEditor({
             </div>
             <div className="omf-nav-actions">
               {!locked && (
-                <button type="button" className="omf-btn omf-btn--primary" onClick={() => void handleSaveDraft()} disabled={saving}>
+                <button type="button" className="omf-btn omf-btn--outline" onClick={() => void handleSaveDraft()} disabled={saving}>
                   {saving ? t('noteEditor.saving') : t('noteEditor.save')}
                 </button>
               )}
@@ -1491,7 +1524,7 @@ export default function ClinicalNoteEditor({
                   <Check size={14} aria-hidden /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
                 </button>
               )}
-              <button type="button" className="omf-btn omf-btn--outline" onClick={() => void handleSaveAndClose()}>
+              <button type="button" className="omf-btn omf-btn--ghost" onClick={() => void handleSaveAndClose()}>
                 {locked ? t('noteEditor.close') : t('noteEditor.cancel')}
               </button>
               <span className="omf-saved">

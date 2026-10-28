@@ -140,9 +140,9 @@ Copy the `.example` files and fill them in (strong random secrets; never commit)
 - `./.env` — compose-level: `COUCHDB_USER`, `COUCHDB_PASSWORD`, `COUCHDB_WEBHOOK_SECRET`, ports.
 - `./platform/.env.production` — `JWT_SECRET`, `SUPERADMIN_INITIAL_PASSWORD`
   (the actual bootstrap-account credential — required whenever
-  `NEXT_PUBLIC_SYNC_ENABLED=true`, and not in the `.example` template; add it
-  yourself), `ADMIN_INITIAL_PASSWORD` (optional, legacy `admin` account), sync
-  + domain vars.
+  `NEXT_PUBLIC_SYNC_ENABLED=true`; it is present in
+  `platform/.env.production.example`), `ADMIN_INITIAL_PASSWORD` (optional,
+  legacy `admin` account), sync + domain vars.
 - `./website/.env.production` — ops notify email / provider keys. No
   `.example` template exists for this file yet; `touch` an empty one, since
   the website container reads no env file from it today.

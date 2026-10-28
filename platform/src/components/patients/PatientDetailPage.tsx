@@ -19,7 +19,7 @@ import { MessageSquare } from '@/components/icons/lucide';
 import { Icon as DuotoneInfoIcon } from '@/components/icons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
-import { LabOrderModal, LabWorkspace, OrdersSection, PatientMessagesSection, HistorySection, ProceduresSection, ProgramsSection, ImmunizationsSection, AssignDoctorModal, NurseVitalsModal, PrescribeModal, ReferModal, VisitSummaryDialog } from './detail/lazy-panels';
+import { LabOrderModal, LabWorkspace, OrdersSection, PatientMessagesSection, HistorySection, ProceduresSection, ProgramsSection, ImmunizationsSection, AssignDoctorModal, NurseVitalsModal, ReferModal, VisitSummaryDialog } from './detail/lazy-panels';
 import { toIsoDate } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
@@ -82,6 +82,10 @@ import PatientPrintDocument from './detail/PatientPrintDocument';
 import PatientPrintModal from './detail/PatientPrintModal';
 import PatientVitalsTab from './detail/PatientVitalsTab';
 import StartVisitPanel from '@/components/ehr/chart/panels/StartVisitPanel';
+import NotePrescribeForm from '@/components/clinical-notes/prescribe/PrescribeModal';
+import BookAppointmentPanel from '@/components/ehr/chart/panels/BookAppointmentPanel';
+import { apptBucket, appointmentsInView, type ApptView } from './detail/appointment-buckets';
+import { jubaDate } from '@/lib/time-juba';
 
 
 export default function PatientDetailPage() {
@@ -195,10 +199,18 @@ export default function PatientDetailPage() {
   const [showNurseVitals, setShowNurseVitals] = useState(false);
   // Start a visit workspace (header More → Add visit).
   const [showStartVisit, setShowStartVisit] = useState(false);
-  // Both page workspaces can be open at once; the one opened last shows, and
-  // closing it reveals the other (the chart's workspace stack does the same
-  // for the rail panels).
-  const [pageWorkspaceTop, setPageWorkspaceTop] = useState<'vitals' | 'startVisit'>('vitals');
+  // The page's own workspaces (Record vitals, Start a visit, Prescribe) can all
+  // be open at once. The one opened last shows; closing it reveals the next
+  // one still open, and so on — the chart's workspace stack does the same for
+  // the rail panels. Reopening one brings it back to the top.
+  type PageWorkspace = 'vitals' | 'startVisit' | 'prescribe' | 'appointment';
+  const [showBookAppointment, setShowBookAppointment] = useState(false);
+  const [pageWorkspaceOrder, setPageWorkspaceOrder] = useState<PageWorkspace[]>([]);
+  const bringPageWorkspace = useCallback((ws: PageWorkspace) => {
+    setPageWorkspaceOrder(prev => [...prev.filter(x => x !== ws), ws]);
+  }, []);
+  const openPrescribe = useCallback(() => { setShowPrescribeModal(true); bringPageWorkspace('prescribe'); }, [bringPageWorkspace]);
+  const openBookAppointment = useCallback(() => { setShowBookAppointment(true); bringPageWorkspace('appointment'); }, [bringPageWorkspace]);
   const [correctingVitalsRecord, setCorrectingVitalsRecord] = useState<MedicalRecordDoc | undefined>(undefined);
   const [assignTarget, setAssignTarget] = useState<AssignDoctorTarget | null>(null);
   // One-shot request for the chart shell to open a workspace drawer panel
@@ -314,15 +326,19 @@ export default function PatientDetailPage() {
   const { immunizations: allImmunizations } = useImmunizations(patient?._id);
   const { visits: allANCVisits } = useANC();
   const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
-  // Deep-linked appointment: page to its slice of the newest-first list, then
-  // scroll it into view (same pattern as the other focus-capable sections).
+  // Upcoming / Today / Past on the Appointments tab.
+  const [apptView, setApptView] = useState<ApptView>('upcoming');
+  // Deep-linked appointment: open the view it falls in, page to its slice of
+  // that view, then scroll it into view (same pattern as the other
+  // focus-capable sections).
   useEffect(() => {
     if (activeTab !== 'appointments' || !focusId) return;
-    const ts = (a: { appointmentDate: string; appointmentTime?: string }) =>
-      new Date(`${a.appointmentDate}T${a.appointmentTime || '00:00'}:00`).getTime();
-    const sorted = [...(patientAppointments || [])].sort((a, b) => ts(b) - ts(a));
-    const idx = sorted.findIndex(a => a._id === focusId);
-    if (idx < 0) return;
+    const target = (patientAppointments || []).find(a => a._id === focusId);
+    if (!target) return;
+    const today = jubaDate();
+    const view = apptBucket(target, today);
+    const idx = appointmentsInView(patientAppointments || [], view, today).findIndex(a => a._id === focusId);
+    setApptView(view);
     setApptSearch('');
     setApptPage(Math.floor(idx / APPT_PAGE_SIZE) + 1);
     const frame = requestAnimationFrame(() => {
@@ -539,13 +555,13 @@ export default function PatientDetailPage() {
     // Nursing roles cannot order, but record what the patient already takes on
     // the Medications tab, whose Add opens that form for them.
     ...(canPrescribe
-      ? { medications: { label: 'Prescribe', onClick: () => setShowPrescribeModal(true) } }
+      ? { medications: { label: 'Prescribe', onClick: openPrescribe } }
       : canRecordMedicationHistory ? { medications: { label: 'Record', onClick: () => selectTab('prescriptions') } } : {}),
     ...(canConsult ? { problems: { label: 'Add', onClick: () => openSectionAdd('problems') } } : {}),
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
     // alike — a full /consultation redirect was the wrong weight for "record
     // a set of numbers" and orphaned the visit from the chart tab it was on.
-    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { selectTab('vitals'); setShowNurseVitals(true); setPageWorkspaceTop('vitals'); } } } : {}),
+    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { selectTab('vitals'); setShowNurseVitals(true); bringPageWorkspace('vitals'); } } } : {}),
     ...(canConsult ? { recommendations: { label: 'Review', onClick: () => selectTab('careChecklist'), icon: ClipboardList } } : {}),
   };
 
@@ -624,6 +640,8 @@ export default function PatientDetailPage() {
     weight: latestVitalsEntry.weight,
     height: latestVitalsEntry.height,
     bmi: latestVitalsEntry.bmi,
+    muac: latestVitalsEntry.muac,
+    bloodGlucose: latestVitalsEntry.bloodGlucose,
     recordedAt: latestVitalsEntry.at,
   } : undefined;
   // VitalsTrends only reads MedicalRecordDoc[] — a triage stop has no
@@ -780,14 +798,19 @@ export default function PatientDetailPage() {
             // or it becomes a second way in to the same clinical detail.
             canViewClinical={canViewClinical}
             router={router}
-            onOpenPrescribeModal={() => setShowPrescribeModal(true)}
+            onOpenPrescribeModal={openPrescribe}
             onOpenOrderLabModal={() => setShowOrderLabModal(true)}
             onNoteSaved={() => setNotesRefreshToken(t => t + 1)}
             panelRequest={chartPanelRequest}
             onPanelRequestHandled={() => setChartPanelRequest(null)}
             // Record vitals docks in the chart's workspace slot beside the
             // record (OpenMRS O3), so the chart narrows instead of being covered.
-            workspace={showStartVisit && (pageWorkspaceTop === 'startVisit' || !showNurseVitals) && patient && currentUser ? {
+            workspace={(() => {
+              if (!patient || !currentUser) return null;
+              const isOpen: Record<PageWorkspace, boolean> = { vitals: showNurseVitals, startVisit: showStartVisit, prescribe: showPrescribeModal, appointment: showBookAppointment };
+              const top = [...pageWorkspaceOrder].reverse().find(ws => isOpen[ws])
+                ?? (showNurseVitals ? 'vitals' : showStartVisit ? 'startVisit' : showPrescribeModal ? 'prescribe' : showBookAppointment ? 'appointment' : null);
+              if (top === 'startVisit') return {
               title: t('startVisit.title'),
               onClose: () => setShowStartVisit(false),
               content: (
@@ -804,7 +827,8 @@ export default function PatientDetailPage() {
                   onClose={() => setShowStartVisit(false)}
                 />
               ),
-            } : showNurseVitals && patient && currentUser ? {
+            };
+              if (top === 'vitals') return {
               title: correctingVitalsRecord ? t('chart.correctVitals') : t('vitalsPanel.title'),
               onClose: () => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); },
               content: (
@@ -823,7 +847,36 @@ export default function PatientDetailPage() {
                   onSaved={() => reloadRecords()}
                 />
               ),
-            } : null}
+            };
+              if (top === 'appointment') return {
+                title: t('bookPanel.title'),
+                onClose: () => setShowBookAppointment(false),
+                content: (
+                  <BookAppointmentPanel
+                    patient={patient}
+                    patientName={patientFullName(patient)}
+                    onClose={() => setShowBookAppointment(false)}
+                  />
+                ),
+              };
+              if (top === 'prescribe') return {
+                title: t('createPage.prescribeTitle'),
+                wide: true,
+                onClose: () => setShowPrescribeModal(false),
+                content: (
+                  <div className="tamam-drawer-body">
+                    <NotePrescribeForm
+                      presentation="page"
+                      patientId={patient._id}
+                      patientName={patientFullName(patient)}
+                      currentUser={currentUser}
+                      onClose={() => setShowPrescribeModal(false)}
+                    />
+                  </div>
+                ),
+              };
+              return null;
+            })()}
             header={
               <ChartHeader
                 patient={patient}
@@ -842,11 +895,11 @@ export default function PatientDetailPage() {
                 }}
                 onVisitSummary={() => setShowVisitSummary(true)}
                 onNote={() => (canConsult ? void openClinicalNoteDrawer() : selectTab('notes'))}
-                onScripts={() => (canPrescribe ? setShowPrescribeModal(true) : selectTab('prescriptions'))}
+                onScripts={() => (canPrescribe ? openPrescribe() : selectTab('prescriptions'))}
                 onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onEdit={openEditModal}
-                onStartVisit={canCheckInAppointments ? () => { setShowStartVisit(true); setPageWorkspaceTop('startVisit'); } : undefined}
+                onStartVisit={canCheckInAppointments ? () => { setShowStartVisit(true); bringPageWorkspace('startVisit'); } : undefined}
                 // Only a link for roles that can open the section — for the
                 // desk, bench and imaging roles the click bounced them to their
                 // landing tab instead.
@@ -879,7 +932,7 @@ export default function PatientDetailPage() {
                 patientAgeYears={patientAgeYearsExact(patient) ?? undefined}
                 isPregnant={isPregnant}
                 onViewVitalsHistory={() => selectTab('vitals')}
-                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); setPageWorkspaceTop('vitals'); }}
+                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); bringPageWorkspace('vitals'); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}
               />
             ) : undefined}
@@ -910,7 +963,7 @@ export default function PatientDetailPage() {
 
           {activeTab === 'overview' && <PatientOverviewTab patient={patient} latestVitals={latestVitals} vitalsReady={vitalsReady} latestPatientTriage={latestPatientTriage} patientProblems={patientProblems} allPrescriptions={allPrescriptions} allLabResults={allLabResults} allImmunizations={allImmunizations} canViewClinical={canViewClinical} selectTab={selectTab} facesheetActions={facesheetActions} facesheetPanels={facesheetPanels} showCustomizeView={showCustomizeView} setShowCustomizeView={setShowCustomizeView} toggleFacesheetPanel={toggleFacesheetPanel} setFacesheetPanels={setFacesheetPanels} />}
 
-          {activeTab === 'appointments' && patient && <PatientAppointmentsTab patientAppointments={patientAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} router={router} patient={patient} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
+          {activeTab === 'appointments' && patient && <PatientAppointmentsTab patientAppointments={patientAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} onBook={openBookAppointment} apptView={apptView} setApptView={setApptView} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
 
           {/* No wrapper card: PatientSBAR is built from ChartSection now, and
               nesting those inside a card produced a card-in-a-card. */}
@@ -953,7 +1006,7 @@ export default function PatientDetailPage() {
           {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} setShowPrescribeModal={setShowPrescribeModal} currentUser={currentUser} focusId={focusId} />}
 
           {/* Vitals Tab */}
-          {activeTab === 'vitals' && <PatientVitalsTab vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) setPageWorkspaceTop('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} />}
+          {activeTab === 'vitals' && <PatientVitalsTab patientAgeYears={patientAgeYearsExact(patient) ?? undefined} isPregnant={isPregnant} vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) bringPageWorkspace('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} onVitalsChanged={() => reloadRecords()} />}
 
           {/* Immunizations — dose history recorded in the chart, through the
               same service the /immunizations module writes with. */}
@@ -979,7 +1032,7 @@ export default function PatientDetailPage() {
               patientId={patient._id}
               canPrescribe={canPrescribe}
               canOrderLabs={canOrderLabs}
-              onAddDrug={() => setShowPrescribeModal(true)}
+              onAddDrug={openPrescribe}
               onAddLab={() => setShowOrderLabModal(true)}
               focusId={focusId}
             />
@@ -1040,12 +1093,6 @@ export default function PatientDetailPage() {
           presetPatientId={patient._id}
         />
       )}
-      <PrescribeModal
-        isOpen={showPrescribeModal}
-        onClose={() => setShowPrescribeModal(false)}
-        patient={patient}
-        currentUser={currentUser}
-      />
       <ReferModal
         isOpen={showReferModal}
         onClose={() => setShowReferModal(false)}

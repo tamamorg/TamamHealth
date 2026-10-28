@@ -17,7 +17,7 @@
  * to a screen reader.
  */
 
-import { AlertTriangle, Info, History, Activity } from '@/components/icons/lucide';
+import { AlertTriangle, History, ArrowRight } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { assessVitalsForDisplay, type VitalDisplayFlag, type VitalDisplayLevel } from '@/lib/clinical/vitals';
 import { formatDateTime } from '@/lib/format-utils';
@@ -35,6 +35,8 @@ type VitalsLike = Partial<{
   weight: number;
   height: number;
   bmi: number;
+  muac: number;
+  bloodGlucose: number;
 }>;
 
 function fmt(value: number | undefined | null, unit: string): { value: string; unit: string } {
@@ -114,13 +116,17 @@ export default function ChartVitalsBand({
 
   const cells: Array<{ label: string; value: string; unit: string; flag?: VitalDisplayFlag }> = [
     { label: 'BP', ...bp, flag: worst(flags.systolic, flags.diastolic) },
-    { label: 'Heart rate', ...fmt(latestVitals?.pulse, 'beats/min'), flag: flags.pulse },
-    { label: 'R. rate', ...fmt(latestVitals?.respiratoryRate, 'breaths/min'), flag: flags.respiratoryRate },
+    { label: 'Heart rate', ...fmt(latestVitals?.pulse, 'bpm'), flag: flags.pulse },
+    { label: 'R. rate', ...fmt(latestVitals?.respiratoryRate, '/min'), flag: flags.respiratoryRate },
     { label: 'SpO2', ...fmt(latestVitals?.oxygenSaturation, '%'), flag: flags.oxygenSaturation },
     { label: 'Temp', ...fmt(latestVitals?.temperature, '°C'), flag: flags.temperature },
     { label: 'Weight', ...fmt(latestVitals?.weight, 'kg') },
     { label: 'Height', ...fmt(latestVitals?.height, 'cm') },
     { label: 'BMI', ...fmt(bmi, 'kg/m²') },
+    // Recorded on the same vitals form; MUAC screens malnutrition, glucose
+    // is the bedside reading. The row fills the band edge to edge.
+    { label: 'MUAC', ...fmt(latestVitals?.muac, 'cm') },
+    { label: 'Glucose', ...fmt(latestVitals?.bloodGlucose, 'mmol/L') },
   ];
 
   // One line in the head for what the cells add up to — and for the one
@@ -166,9 +172,6 @@ export default function ChartVitalsBand({
           </span>
         )}
         <button type="button" className="tamam-vitals-link" onClick={onViewVitalsHistory}><History aria-hidden /> Vitals history</button>
-        <span className="tamam-vitals-info" title="Latest recorded vital signs for this patient">
-          <Info />
-        </span>
         <span className="tamam-vitals-spacer" />
         {/* The arrow used to double as the permission cue; the button now says
             so directly by being disabled when vitals cannot be recorded. */}
@@ -179,7 +182,7 @@ export default function ChartVitalsBand({
           disabled={!canRecordVitals}
           title={canRecordVitals ? undefined : 'Requires vitals-recording permission'}
         >
-          <Activity aria-hidden /> Record vitals
+          <ArrowRight aria-hidden /> Record vitals
         </button>
       </div>
       <div className="tamam-vitals-grid">
@@ -192,7 +195,7 @@ export default function ChartVitalsBand({
           >
             <div className="tamam-vitals-label">{cell.label}</div>
             <div className="tamam-vitals-value">
-              {cell.value}
+              <span className="tamam-vitals-number">{cell.value}</span>
               {cell.unit && <span className="tamam-vitals-unit">{cell.unit}</span>}
               {cell.flag && (
                 <span className="tamam-vitals-arrow" aria-hidden>{arrowFor(cell.flag)}</span>

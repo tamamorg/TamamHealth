@@ -1,0 +1,38 @@
+/* A flagged reading in the Vitals table (PatientVitalsTab → Reading): the
+ * value and its arrow in a pale box with a 1px rule, red for critical and
+ * high risk, amber for outside normal — the vitals band's language, so a
+ * reading reads the same in the band and in its history. */
+.tamam-vflag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tamam-vflag[data-level="critical"],
+.tamam-vflag[data-level="high_risk"] {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger, #da1e28);
+  color: var(--color-danger-text);
+}
+
+.tamam-vflag[data-level="abnormal"] {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning, #f1c21b);
+  color: var(--color-warning-text);
+}
+
+.tamam-vflag-arrow { font-weight: 800; letter-spacing: -1px; }
+
+.tamam-vflag-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

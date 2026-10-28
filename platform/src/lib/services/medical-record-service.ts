@@ -582,8 +582,11 @@ function numOrUndef(v?: string): number | undefined {
  * number; unlike weight/height it is not range-validated, so the placeholder
  * cannot fail a write.
  */
-function bmiFrom(weightKg?: number, heightCm?: number): number {
-  if (!weightKg || !heightCm) return 0;
+/** BMI when both measurements exist; absent (never 0) otherwise — a stored 0
+ *  read as a real value, so a weight-less reading showed "BMI 0" and an
+ *  entered-in-error correction (no values at all) still drew a row. */
+function bmiFrom(weightKg?: number, heightCm?: number): number | undefined {
+  if (!weightKg || !heightCm) return undefined;
   const m = heightCm / 100;
   return Math.round((weightKg / (m * m)) * 10) / 10;
 }

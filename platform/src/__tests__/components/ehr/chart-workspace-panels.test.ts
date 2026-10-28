@@ -24,7 +24,7 @@ describe('visibleDrawerPanels', () => {
       'clinical-forms',
       'patient-lists',
     ]);
-    expect(visibleDrawerPanels(true).find(panel => panel.id === 'order-basket')?.title).toBe('Active orders');
+    expect(visibleDrawerPanels(true).find(panel => panel.id === 'order-basket')?.title).toBe('Order basket');
   });
 
   it('withholds every clinical panel from a non-clinical viewer', () => {

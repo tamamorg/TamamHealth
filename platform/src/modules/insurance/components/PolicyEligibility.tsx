@@ -37,7 +37,10 @@ export default function PolicyEligibility({ patientId, policyId, facilityId, org
     } catch { setMessage(t('insuranceFlow.failed')); }
     finally { setBusy(false); }
   }
-  const status = check && ['verified', 'cached'].includes(check.status) && (!check.expiresAt || Date.parse(check.expiresAt) <= Date.now()) ? 'expired' : check?.status || 'none';
+  // getLatestEligibility is the single expiry authority and already normalizes
+  // stale evidence to `expired`; recomputing against Date.now() during render
+  // made the component impure and could disagree with the service result.
+  const status = check?.status || 'none';
   return <div className="space-y-2 mt-2">
     <EligibilityBadge status={status} compact />
     {check && <p>{t('insuranceFlow.checkedAt', { date: check.checkDate })}{check.expiresAt ? ` · ${t('insuranceFlow.expiresAt', { date: check.expiresAt })}` : ''}</p>}

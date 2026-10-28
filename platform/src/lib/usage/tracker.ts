@@ -11,6 +11,7 @@ import {
 } from './sanitize';
 import type { UsageEventName } from '../db-types';
 import { captureUsageToPostHog, isPostHogEnabled } from './posthog';
+import { isStandaloneDemoDeployment } from '../sync/sync-config';
 
 const QUEUE_KEY = 'tamamhealth_usage_queue';
 const SESSION_KEY = 'tamamhealth_usage_session';
@@ -92,6 +93,7 @@ export function track(
   opts: { path?: string; element?: string; meta?: Record<string, unknown> } = {},
 ): void {
   if (typeof window === 'undefined') return;
+  if (isStandaloneDemoDeployment()) return;
 
   const path = templatePath(opts.path || window.location.pathname);
   const raw = {
@@ -144,6 +146,12 @@ async function postEvents(batch: QueuedEvent[]): Promise<boolean> {
 
 export async function flushUsageQueue(): Promise<void> {
   if (flushing || typeof window === 'undefined') return;
+  if (isStandaloneDemoDeployment()) {
+    // Remove queues produced by older builds. Without CouchDB the ingestion
+    // route has nowhere durable to write them and retrying only creates noise.
+    saveQueue([]);
+    return;
+  }
   flushing = true;
   try {
     let queue = loadQueue();
@@ -161,6 +169,10 @@ export async function flushUsageQueue(): Promise<void> {
 
 export function startUsageFlushLoop(): () => void {
   if (typeof window === 'undefined') return () => {};
+  if (isStandaloneDemoDeployment()) {
+    saveQueue([]);
+    return () => {};
+  }
   if (flushTimer) clearInterval(flushTimer);
   flushTimer = setInterval(() => {
     void flushUsageQueue();

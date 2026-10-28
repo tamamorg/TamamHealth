@@ -31,7 +31,6 @@ import { verifyPassword } from '@/modules/identity/core/auth';
 // jsdom ships `crypto.getRandomValues` but not always `subtle`; a real browser
 // on https has both, which is what this stands in for.
 if (!globalThis.crypto?.subtle) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   Object.defineProperty(globalThis, 'crypto', { value: require('node:crypto').webcrypto, configurable: true });
 }
 
