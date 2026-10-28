@@ -20,6 +20,7 @@ import {
   formatHrDate, parseScheduleDateFromParams, shiftDuration, statusPillStyle,
   useHrContext, useUrlParams, type StaffingGap,
 } from '../hr-shared';
+import { roleLabel } from '@/lib/role-display';
 
 // Columns: Staff · Shift · Time · Department · Status — five, matching the
 // patient registry exactly, so the template comes from `.appointment-card-flow`
@@ -202,7 +203,7 @@ export default function HrSchedulePage() {
               const statusTok = SCHEDULE_STATUS_TOKENS[s.status] ?? SCHEDULE_STATUS_TOKENS.scheduled;
               return (
                 <div key={s._id} className="ehr-appointment-row appointment-card-row" style={{ cursor: 'default' }}>
-                  <StaffIdentity name={s.userName} sub={s.role.replace(/_/g, ' ')} capitalizeSub />
+                  <StaffIdentity name={s.userName} sub={roleLabel(s.role)} capitalizeSub />
 
                   {/* Shift — a tinted chip, so the shift's colour reads at a
                       glance the way it did as a dot, at the pill metrics every

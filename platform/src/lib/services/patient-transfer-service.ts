@@ -670,7 +670,7 @@ export async function sendDraftTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'draft') {
-    throw new TransferValidationError(`This transfer is ${doc.status}. Only a draft transfer can be sent.`);
+    throw new TransferValidationError('Only a draft transfer can be sent.');
   }
   const outstanding = outstandingChecklistItems(doc.checklist);
   if (outstanding.length > 0) {
@@ -709,7 +709,7 @@ export async function acceptTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'requested') {
-    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be accepted.`);
+    throw new TransferValidationError('This transfer can no longer be accepted.');
   }
 
   const now = new Date().toISOString();
@@ -749,7 +749,7 @@ export async function rejectTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (doc.status !== 'requested') {
-    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be rejected.`);
+    throw new TransferValidationError('This transfer can no longer be rejected.');
   }
   // A rejection with no explanation leaves the sending clinician with a patient
   // back on their list and no idea what to fix before trying again.
@@ -783,7 +783,7 @@ export async function cancelTransfer(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (!OPEN_TRANSFER_STATUSES.has(doc.status)) {
-    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be cancelled.`);
+    throw new TransferValidationError('This transfer can no longer be cancelled.');
   }
   doc.status = 'cancelled';
   doc.cancelledById = actor?.id;
@@ -829,7 +829,7 @@ export async function updateTransferLogistics(
   const doc = await getTransferById(id);
   if (!doc) return null;
   if (['rejected', 'cancelled', 'expired'].includes(doc.status)) {
-    throw new TransferValidationError(`This transfer is ${doc.status} and can no longer be changed.`);
+    throw new TransferValidationError('This transfer can no longer be changed.');
   }
   if (patch.destination?.bedId) {
     const wardDb = getDB('tamamhealth_wards');

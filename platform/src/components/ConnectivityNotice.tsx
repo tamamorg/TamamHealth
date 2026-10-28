@@ -33,6 +33,7 @@ import {
   DuotonePause as Pause,
   DuotoneClose as X,
 } from '@/components/icons';
+import { denialMessageKey } from '@/lib/sync/denial-text';
 
 type Tone = 'success' | 'warning' | 'danger';
 
@@ -159,11 +160,14 @@ export default function ConnectivityNotice() {
         const key = `${dbName}/${denial.id}/${denial.reason}`;
         if (announcedDenials.current.has(key)) continue;
         announcedDenials.current.add(key);
-        const record = dbName.replace(/^tamamhealth_/, '').replace(/_/g, ' ');
+        const record = dbName.replace(/^tamamhealth_/, '').split('--')[0].replace(/_/g, ' ');
+        // The validator's own reason is for developers; say what it means.
+        const reasonKey = denialMessageKey(denial.reason);
+        const reason = reasonKey ? t(reasonKey) : denial.reason.replace(/\.?$/, '.');
         show(
           'danger',
           t('connectivity.changeRejected'),
-          t('connectivity.changeRejectedBody', { record, reason: denial.reason }),
+          t('connectivity.changeRejectedBody', { record, reason }),
         );
         return;
       }

@@ -171,7 +171,7 @@ async function validateActiveOrganization(orgId: string | undefined): Promise<Ne
   const access = await getTenantAccess(orgId);
   if (!access.allowed) {
     return NextResponse.json(
-      { error: `${organization.name} is ${access.reason} — no new accounts can be created in it.` },
+      { error: `${organization.name} is ${access.reason}. New accounts cannot be added to it.` },
       { status: 400 },
     );
   }

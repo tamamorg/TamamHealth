@@ -15,7 +15,7 @@ import {
 import type { PatientDoc, AppointmentDoc, MedicalRecordDoc, PrescriptionDoc, ImmunizationDoc } from '@/lib/db-types';
 import type { PortalLabResult } from '@/lib/patient-portal-labs';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { formatClockTime , formatRxSig } from '@/lib/format-utils';
+import { formatClockTime , formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { readPatientPortalSession, clearPatientPortalSession, patientPortalFetch } from '@/lib/patient-portal-session';
 import { PatientLogin } from '@/components/patient-portal/PatientLogin';
@@ -641,7 +641,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                     <b style={{ fontSize: 13 }}>{rx.medication}</b>
                     <span style={{ fontSize: 11.5 }}>{formatRxSig(rx)}</span>
                   </div>
-                  <span style={{ flex: 'none', fontSize: 11, color: 'var(--ehr-muted)', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{rx.status}</span>
+                  <span style={{ flex: 'none', fontSize: 11, color: 'var(--ehr-muted)', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{humanizeStatus(rx.status)}</span>
                 </div>
               )) : (
                 <div className="pp-empty-line"><p>{t('patientPortal.noMedications')}</p></div>
@@ -895,7 +895,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                     <span>{formatRxSig(rx)}{rx.prescribedBy ? ` · ${t('patientPortal.prescribedBy', { name: rx.prescribedBy })}` : ''}</span>
                   </div>
                   <span className="pp-row-value">{shortDate(rx.createdAt.slice(0, 10))}</span>
-                  <span className={`pp-chip pp-chip--${rx.status === 'dispensed' ? 'green' : 'yellow'}`}>{rx.status}</span>
+                  <span className={`pp-chip pp-chip--${rx.status === 'dispensed' ? 'green' : 'yellow'}`}>{humanizeStatus(rx.status)}</span>
                 </div>
               ))}
             </div>

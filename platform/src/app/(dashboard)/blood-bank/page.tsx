@@ -17,7 +17,7 @@ import {
 import type { BloodBankDoc, PatientDoc } from '@/lib/db-types';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
-import { formatDate } from '@/lib/format-utils';
+import { formatDate, humanizeStatus } from '@/lib/format-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
 import type { RowAction } from '@/components/RowActionsMenu';
@@ -494,7 +494,7 @@ export default function BloodBankPage() {
                         {expired ? ' · expired' : expiringSoon ? ` · ${days}d left` : ''}
                       </td>
                       <td>
-                        <Badge tone={STATUS_TONE[u.status]}>{u.status}</Badge>
+                        <Badge tone={STATUS_TONE[u.status]}>{humanizeStatus(u.status)}</Badge>
                       </td>
                     </tr>
                   );

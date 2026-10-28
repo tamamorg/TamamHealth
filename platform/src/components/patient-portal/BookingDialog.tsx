@@ -40,7 +40,7 @@ async function portalApi<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let body: { error?: string; code?: string } = {};
     try { body = await res.json(); } catch { /* generic */ }
-    throw new HttpError(res.status, body.error || 'Request failed', body.code);
+    throw new HttpError(res.status, body.error || 'Request not completed. Try again.', body.code);
   }
   return res.json() as Promise<T>;
 }

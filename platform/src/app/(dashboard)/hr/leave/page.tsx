@@ -19,6 +19,7 @@ import {
   HrPageShell, STATUS_TOKENS, StaffIdentity, formatHrDate,
   parseLeaveStatusFromParams, statusPillStyle, useHrContext, useUrlParams,
 } from '../hr-shared';
+import { roleLabel } from '@/lib/role-display';
 
 // Columns: Staff · Leave type · Dates · Decision · Status — five, matching the
 // patient registry exactly, so the template comes from `.appointment-card-flow`
@@ -171,7 +172,7 @@ export default function HrLeavePage() {
                     outlineOffset: focusedRequestId === r._id ? -2 : undefined,
                   }}
                 >
-                  <StaffIdentity name={r.userName} sub={r.role.replace(/_/g, ' ')} capitalizeSub />
+                  <StaffIdentity name={r.userName} sub={roleLabel(r.role)} capitalizeSub />
 
                   {/* Leave type — value + the requester's own words. */}
                   <div className="appointment-card-provider">

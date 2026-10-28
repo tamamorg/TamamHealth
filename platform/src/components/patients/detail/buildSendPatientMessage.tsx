@@ -92,11 +92,11 @@ export function buildSendPatientMessage({ t, patient, currentUser, messageBody, 
         const undelivered = result.outcome === 'not_connected' || result.outcome === 'failed';
         setMessageSentWarning(undelivered);
         setMessageSentNote(result.outcome === 'failed'
-          ? `The message is saved, but the text was NOT sent: ${result.error || 'the gateway refused it'}`
+          ? 'Message saved. The text was not sent; the SMS gateway refused it. Try again later.'
           : result.outcome === 'not_connected'
             ? (messageChannel === 'both'
-              ? 'No SMS gateway is connected, so the text was NOT sent. The message is in the patient portal inbox.'
-              : 'No SMS gateway is connected, so the text was NOT sent. The message is saved in the record only.')
+              ? 'Message saved to the patient portal. No SMS gateway is connected, so no text was sent.'
+              : 'Message saved to the record. No SMS gateway is connected, so no text was sent.')
             : result.outcome === 'queued'
               ? 'The text is saved and will send when the connection returns.'
               : 'Text sent.');

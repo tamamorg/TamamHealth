@@ -32,6 +32,7 @@ import {
   type FacilityFormValues, type FacilityFormError, type OperationalStatus,
 } from '@/lib/facility-form';
 import type { HospitalDoc, OrganizationDoc } from '@/lib/db-types';
+import { describeError } from '@/lib/user-facing-error';
 
 export interface FacilityFormModalProps {
   onClose: () => void;
@@ -142,7 +143,7 @@ export default function FacilityFormModal({
       }
     } catch (err: unknown) {
       const e = err as { message?: string; fields?: Record<string, string> };
-      setError((e.fields && Object.values(e.fields)[0]) || e.message || t('orgHospitals.errCreateFailed'));
+      setError((e.fields && Object.values(e.fields)[0]) || describeError(err, t('orgHospitals.errCreateFailed')));
     } finally {
       setSaving(false);
     }

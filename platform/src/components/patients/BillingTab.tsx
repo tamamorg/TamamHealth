@@ -18,7 +18,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
-import { formatDate, formatMoney } from '@/lib/format-utils';
+import { formatDate, formatMoney, humanizeStatus } from '@/lib/format-utils';
 import { summariseLedger, type LedgerSummary } from '@/lib/ledger-summary';
 import type { PatientDoc } from '@/lib/db-types';
 import type {
@@ -616,7 +616,7 @@ export default function BillingTab({
                   <td><span className="bl-chip">{t(`billing.activityKind.${row.kind}`)}</span></td>
                   <td>{row.description}<div className="bl-muted">{row.detail}</div></td>
                   <td className="bl-activity-reference">{row.reference}</td>
-                  <td><span className={row.kind === 'charge' ? statusChipClass(row.status) : 'bl-chip'}>{row.status}</span></td>
+                  <td><span className={row.kind === 'charge' ? statusChipClass(row.status) : 'bl-chip'}>{humanizeStatus(row.status)}</span></td>
                   <td className="bl-num bl-right">{formatMoney(row.amount, { currency: row.currency })}</td>
                 </tr>)}
             </tbody>

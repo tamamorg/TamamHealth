@@ -151,7 +151,7 @@ export async function issueRefund(input: {
   }
 
   if (!doc) {
-    if (pmt.status !== 'posted') throw fail('PAYMENT_NOT_REFUNDABLE', `A ${pmt.status} payment cannot be refunded`);
+    if (pmt.status !== 'posted') throw fail('PAYMENT_NOT_REFUNDABLE', 'Only a posted payment can be refunded.');
     const existing = await processedRefundsFor(pmt._id, pmt.patientId);
     const alreadyRefunded = existing.reduce((sum, r) => sum + cents(r.amount), 0);
     if (cents(amount) > cents(pmt.amount) - alreadyRefunded) {

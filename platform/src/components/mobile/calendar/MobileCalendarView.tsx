@@ -10,6 +10,7 @@ import { useMobileShellState } from '@/lib/mobile-shell/use-mobile-shell-state';
 import MobileWeekStrip from './MobileWeekStrip';
 import { useAuth } from '@/lib/context';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
+import { appointmentStatusLabel } from '@/lib/appointment-status';
 
 export default function MobileCalendarView() {
   const { appointments, loading } = useAppointments();
@@ -63,7 +64,7 @@ export default function MobileCalendarView() {
                   <p className="mobile-appt-name">{appt.patientName}</p>
                   <p className="mobile-appt-reason">{appt.reason}</p>
                 </span>
-                <Badge tone={toneForStatus(appt.status)} size="sm">{appt.status}</Badge>
+                <Badge tone={toneForStatus(appt.status)} size="sm">{appointmentStatusLabel(appt.status)}</Badge>
               </article>
             );
           })

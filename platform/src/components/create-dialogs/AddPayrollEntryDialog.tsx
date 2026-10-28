@@ -17,6 +17,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
 import { expandHref } from '@/lib/navigation/expand-to-page';
+import { roleLabel } from '@/lib/role-display';
 
 export interface AddPayrollEntryDialogProps {
   onClose: () => void;
@@ -86,7 +87,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {facilityUsers.map(u => (
-              <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
+              <option key={u._id} value={u._id}>{u.name} ({roleLabel(u.role)})</option>
             ))}
           </Select>
         </div>

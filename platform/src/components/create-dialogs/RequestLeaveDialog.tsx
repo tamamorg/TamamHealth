@@ -19,6 +19,7 @@ import { LEAVE_TYPES } from '@/app/(dashboard)/hr/hr-shared';
 import type { LeaveType } from '@/lib/db-types-hr';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { expandHref } from '@/lib/navigation/expand-to-page';
+import { roleLabel } from '@/lib/role-display';
 
 const today = () => todayIso();
 const tomorrow = () => toIsoDate(new Date(Date.now() + 86400000));
@@ -87,7 +88,7 @@ export default function RequestLeaveDialog({ onClose, onCreated, presentation = 
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {selectable.map(u => (
-              <option key={u._id} value={u._id}>{u.name} ({u.role.replace(/_/g, ' ')})</option>
+              <option key={u._id} value={u._id}>{u.name} ({roleLabel(u.role)})</option>
             ))}
           </Select>
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2 } from '@/components/icons/lucide';
-import { formatRxSig } from '@/lib/format-utils';
+import { formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import Badge, { toneForStatus } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -30,7 +30,7 @@ export default function MobileMedicationsTab({ patientId }: { patientId: string 
             <strong>{rx.medication}</strong>
             <small>{formatRxSig(rx)}</small>
           </div>
-          <Badge tone={toneForStatus(rx.status)} size="sm">{rx.status}</Badge>
+          <Badge tone={toneForStatus(rx.status)} size="sm">{humanizeStatus(rx.status)}</Badge>
         </div>
       ))}
     </div>

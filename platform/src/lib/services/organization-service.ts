@@ -37,7 +37,7 @@ async function postOrganizationsApi(payload: Record<string, unknown>): Promise<R
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    throw new Error((body.error as string) || `Organization not saved (server code ${res.status}). Try again.`);
+    throw new Error((body.error as string) || 'Organization not saved. Try again.');
   }
   return body;
 }

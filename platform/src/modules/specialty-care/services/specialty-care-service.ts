@@ -221,7 +221,7 @@ export async function updateSpecialtyEpisode(input: {
 
   const nextStatus = input.status ?? existing.status;
   if (nextStatus !== existing.status && !TRANSITIONS[existing.status].includes(nextStatus)) {
-    throw new Error(`This episode is ${existing.status} and cannot move to ${nextStatus}.`);
+    throw new Error('This episode cannot move to that stage from its current one.');
   }
   if (nextStatus === 'cancelled' && !input.cancellationReason?.trim()) throw new Error('Enter the reason for cancelling this episode.');
   const now = new Date().toISOString();

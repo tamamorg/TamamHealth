@@ -59,6 +59,33 @@ export const CODE_MESSAGES: Record<string, string> = {
   POST_CONSULT_CONFLICT: 'The visit was updated on another device. Reload the page, then check the patient out.',
   USE_HANDOFF_SERVICE: 'This visit step cannot be changed here. Use the visit handoff to move the patient.',
   USE_DISCHARGE_SERVICE: 'Use Discharge to close this visit.',
+  AMBIGUOUS_NOTE_ENCOUNTER: 'This patient has more than one open visit. Open the note from its visit.',
+  CHECKOUT_BLOCKED: 'Checkout is blocked by open items. Resolve them, or ask a clinician to override.',
+  DISCHARGE_FORBIDDEN: 'Only clinical staff or the front desk can check a patient out.',
+  DISCHARGE_OVERRIDE_REQUIRES_CLINICIAN_AND_REASON: 'Only a signed-in clinician can override checkout, and a reason is required.',
+  // Post-consultation handoff
+  HANDOFF_ALREADY_OWNED: 'Another staff member already owns this handoff.',
+  HANDOFF_ALREADY_STARTED: 'Work on this handoff has started, so it cannot be bypassed.',
+  HANDOFF_CONFLICT: 'This visit changed on another device. Reload the page and try again.',
+  HANDOFF_FORBIDDEN: 'Only clinical staff can change this handoff.',
+  HANDOFF_INVALID: 'Enter a reason. Only a clinician can bypass a handoff.',
+  HANDOFF_INVALID_OWNER: 'Choose an active nurse or clinician.',
+  HANDOFF_NOT_ACCEPTED: 'Accept the handoff before completing its tasks.',
+  HANDOFF_NOT_ACTIVE: 'This visit has no active handoff.',
+  HANDOFF_NOT_FOUND: 'Visit not found. Reload the page.',
+  HANDOFF_PLAN_CHANGED: 'The plan changed since you reviewed it. Review it again.',
+  // Insurance workflow
+  INSURANCE_FORBIDDEN: 'You do not have access to insurance claims.',
+  INSURANCE_INVALID_METHOD: 'Choose how the payer sent the receipt.',
+  INSURANCE_INVALID_TRANSITION: 'This claim cannot take that step now.',
+  INSURANCE_LEGACY_SETTLEMENT_REVIEW: 'This older claim needs a billing supervisor to review its settlement.',
+  INSURANCE_NOT_FOUND: 'Claim not found. Reload the page.',
+  INSURANCE_OVERPAYMENT_REVIEW: 'The settlement is more than the balance due. A billing supervisor must review it.',
+  INSURANCE_REFERENCE_REQUIRED: 'Enter the payer reference (up to 160 characters).',
+  INSURANCE_SETTLEMENT_PENDING: 'A settlement with a different reference is already recorded.',
+  // Session-shaped guards thrown before any read
+  FINANCIAL_EVIDENCE_SCOPE_REQUIRED: SESSION_MESSAGE,
+  NO_SCOPE: SESSION_MESSAGE,
 };
 
 /** Domain errors whose messages are written for the person at the screen. */
@@ -84,13 +111,24 @@ export function isUserFacingText(message: string): boolean {
   return !TECHNICAL.test(text);
 }
 
+/**
+ * The code a message carries: the whole message, or its head when the thrower
+ * appended detail ("CHECKOUT_BLOCKED: rx_dispensed, notes_signed"). The
+ * detail is for logs; only the code's sentence reaches the screen.
+ */
+function leadingCode(text: string): string | undefined {
+  const trimmed = text.trim();
+  if (CODE_MESSAGES[trimmed]) return trimmed;
+  const head = /^([A-Z][A-Z0-9_]{2,}):/.exec(trimmed)?.[1];
+  return head && CODE_MESSAGES[head] ? head : undefined;
+}
+
 function codeOf(err: unknown): string | undefined {
   if (!err || typeof err !== 'object') return undefined;
   const code = (err as { code?: unknown }).code;
   if (typeof code === 'string' && CODE_MESSAGES[code]) return code;
   const message = (err as { message?: unknown }).message;
-  if (typeof message === 'string' && CODE_MESSAGES[message.trim()]) return message.trim();
-  return undefined;
+  return typeof message === 'string' ? leadingCode(message) : undefined;
 }
 
 /**
@@ -125,6 +163,7 @@ export function describeError(err: unknown, fallback: string): string {
 export function describeApiError(body: unknown, fallback: string): string {
   const error = body && typeof body === 'object' ? (body as { error?: unknown }).error : undefined;
   if (typeof error !== 'string') return fallback;
-  if (CODE_MESSAGES[error.trim()]) return CODE_MESSAGES[error.trim()];
+  const code = leadingCode(error);
+  if (code) return CODE_MESSAGES[code];
   return isUserFacingText(error) ? error.trim() : fallback;
 }

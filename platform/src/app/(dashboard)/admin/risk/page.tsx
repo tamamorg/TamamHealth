@@ -38,6 +38,7 @@ import {
   type ResolveRiskInput,
 } from '@/lib/services/risk-resolution-service';
 import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
+import { humanizeStatus } from '@/lib/format-utils';
 
 const SOURCE_HREF: Record<RiskSource, string> = {
   Audit: '/admin/audit',
@@ -304,7 +305,7 @@ export default function RiskCenterPage() {
                   <td>{r.source}</td>
                   <td>{r.detail}</td>
                   <td>{formatWhen(r.when)}</td>
-                  <td>{r.status}</td>
+                  <td>{humanizeStatus(r.status)}</td>
                   <td>
                     <button
                       type="button"
@@ -385,7 +386,7 @@ export default function RiskCenterPage() {
                     <SadbChip tone={SEVERITY_CHIP[single.severity]}>{single.severity.toUpperCase()}</SadbChip>
                   </div>
                   <div className="sadb-kv"><span>Source</span><span className="sadb-kv-value">{single.source}</span></div>
-                  <div className="sadb-kv"><span>Status</span><span className="sadb-kv-value">{single.status}</span></div>
+                  <div className="sadb-kv"><span>Status</span><span className="sadb-kv-value">{humanizeStatus(single.status)}</span></div>
                   <div className="sadb-kv"><span>Age</span><span className="sadb-kv-value">{formatWhen(single.when)}</span></div>
                 </div>
                 {/* The row's own detail line above is the NUMBERS; this is the

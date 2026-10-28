@@ -142,7 +142,7 @@ export default function AdminSyncPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = body?.result?.message || body?.error || `DHIS2 push failed (HTTP ${res.status}).`;
+        const msg = body?.result?.message || body?.error || 'DHIS2 export not sent. The server refused it; try again.';
         showToast(msg, 'error');
       } else {
         const ok = body.result?.ok !== false;

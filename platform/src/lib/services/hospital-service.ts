@@ -42,7 +42,7 @@ async function postHospitalsApi(payload: Record<string, unknown>): Promise<Recor
   }
   const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    const error = new Error((body.error as string) || `Facility request failed (${res.status})`);
+    const error = new Error((body.error as string) || 'Facility not saved. Try again.');
     // The facility form shows per-field messages when it has them; the API
     // forwards ValidationError fields, so hand them through.
     if (body.fields && typeof body.fields === 'object') {
@@ -255,7 +255,7 @@ async function assertOrganizationCanHoldAnotherFacility(orgId: string): Promise<
   const access = await getTenantAccess(orgId);
   if (!access.allowed) {
     throw new ValidationError({
-      orgId: `${organization.name} is ${access.reason} — no new facilities can be registered in it.`,
+      orgId: `${organization.name} is ${access.reason}. New facilities cannot be added to it.`,
     });
   }
 

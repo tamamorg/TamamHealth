@@ -31,7 +31,7 @@ export function useAssignableFacilities(orgId?: string, enabled = true) {
       const { apiFetch } = await import('@/lib/api-fetch');
       const response = await apiFetch(`/api/hospitals/assignment-options?orgId=${encodeURIComponent(orgId)}`);
       const body = await response.json().catch(() => ({})) as { facilities?: HospitalDoc[]; error?: string };
-      if (!response.ok) throw new Error(body.error || `Facility list not loaded (server code ${response.status}). Reload the page to try again.`);
+      if (!response.ok) throw new Error(body.error || 'Facility list not loaded. Reload the page.');
       setFacilities(Array.isArray(body.facilities) ? body.facilities : []);
     } catch (cause) {
       setFacilities([]);
