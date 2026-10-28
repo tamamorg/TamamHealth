@@ -26,13 +26,14 @@ jest.mock('@/lib/hooks/usePrescriptions', () => ({
 }));
 
 let hook: ReturnType<typeof useMarEntries>;
-function Probe() { hook = useMarEntries(); return null; }
+const capture = (value: ReturnType<typeof useMarEntries>) => { hook = value; };
+function Probe({ onRender }: { onRender: typeof capture }) { onRender(useMarEntries()); return null; }
 
 beforeEach(() => { showToast.mockReset(); administer.mockReset(); voidAdministration.mockReset(); });
 
 it('reopens the slot and keeps an error on screen when recording a dose fails', async () => {
   administer.mockRejectedValue(new Error('Document update conflict'));
-  const { unmount } = mount(<Probe />);
+  const { unmount } = mount(<Probe onRender={capture} />);
   const entry = hook.marEntries[0];
   expect(entry.status).toBe('upcoming');
   let ok = true;
@@ -46,7 +47,7 @@ it('reopens the slot and keeps an error on screen when recording a dose fails', 
 
 it('keeps the dose recorded when undoing it fails', async () => {
   voidAdministration.mockRejectedValue(new Error('offline'));
-  const { unmount } = mount(<Probe />);
+  const { unmount } = mount(<Probe onRender={capture} />);
   const given = { ...hook.marEntries[0], status: 'given' as const, administrationId: 'adm-1', givenAt: '2026-10-27T08:00:00.000Z' };
   act(() => hook.setMarEntries([given]));
   await act(async () => { await hook.undoAdministration(given, 'Charted on the wrong patient'); });
