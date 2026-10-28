@@ -1,10 +1,12 @@
 'use client';
 
 /**
- * Record vitals and biometrics — a panel that slides in from the right, over
- * the chart, the way OpenMRS O3's vitals workspace does: the patient's record
- * stays visible beside the form, and every value sits in a large tile with its
- * unit underneath so it can be read at a glance across the room.
+ * Record vitals and biometrics — a workspace docked on the right of the chart,
+ * the way OpenMRS O3's vitals workspace is: not a popup. The chart stays lit
+ * and usable beside it (no scrim; a click on the chart does not close it), so
+ * the nurse can read earlier readings while entering new ones. Only the ✕,
+ * Cancel, Escape or a save closes it. Every value sits in a large tile with
+ * its unit underneath so it can be read at a glance across the room.
  *
  * Two sections, in the order a nurse takes them: vitals (temperature, blood
  * pressure as one systolic/diastolic tile, heart rate, respiration, SpO2,
@@ -159,21 +161,15 @@ export default function NurseVitalsModal({
     }
   };
 
-  // Panel behaviour: focus the first field, keep Tab inside, Escape closes,
-  // and give focus back to whatever opened it.
+  // Workspace behaviour: focus the first field, Escape closes, and focus goes
+  // back to whatever opened it. Tab is NOT trapped — the chart beside the
+  // workspace stays reachable, as it is in OpenMRS.
   useEffect(() => {
     if (presentation !== 'modal') return;
     const opener = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLInputElement>('input')?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); close(); return; }
-      if (event.key !== 'Tab' || !panelRef.current) return;
-      const items = panelRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input, textarea');
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
     };
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); opener?.focus?.(); };
@@ -299,8 +295,7 @@ export default function NurseVitalsModal({
   const title = correctingRecord ? t('chart.correctVitals') : t('vitalsPanel.title');
   const panel = (
     <div className="nv-root">
-      <div className="nv-backdrop" onClick={close} aria-hidden />
-      <div ref={panelRef} className="nv-panel" role="dialog" aria-modal="true" aria-labelledby="nv-title">
+      <div ref={panelRef} className="nv-panel" role="dialog" aria-modal="false" aria-labelledby="nv-title">
         <header className="nv-header">
           <div className="nv-header-text">
             <h2 id="nv-title" className="nv-title">{title}</h2>
