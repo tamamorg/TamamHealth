@@ -81,6 +81,7 @@ import PatientNotesTab from './detail/PatientNotesTab';
 import PatientPrintDocument from './detail/PatientPrintDocument';
 import PatientPrintModal from './detail/PatientPrintModal';
 import PatientVitalsTab from './detail/PatientVitalsTab';
+import StartVisitPanel from '@/components/ehr/chart/panels/StartVisitPanel';
 
 
 export default function PatientDetailPage() {
@@ -185,6 +186,8 @@ export default function PatientDetailPage() {
   const [showPrescribeModal, setShowPrescribeModal] = useState(false);
   const [showReferModal, setShowReferModal] = useState(false);
   const [showNurseVitals, setShowNurseVitals] = useState(false);
+  // Start a visit workspace (header More → Add visit).
+  const [showStartVisit, setShowStartVisit] = useState(false);
   const [correctingVitalsRecord, setCorrectingVitalsRecord] = useState<MedicalRecordDoc | undefined>(undefined);
   const [assignTarget, setAssignTarget] = useState<AssignDoctorTarget | null>(null);
   // One-shot request for the chart shell to open a workspace drawer panel
@@ -339,7 +342,7 @@ export default function PatientDetailPage() {
     () => [...patientTriages].sort((a, b) => (b.triagedAt || b.createdAt || '').localeCompare(a.triagedAt || a.createdAt || ''))[0],
     [patientTriages],
   );
-  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients, canEnrollPrograms, canRecordMedicationHistory } = usePermissions();
+  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients, canEnrollPrograms, canRecordMedicationHistory, canCheckInAppointments } = usePermissions();
   const canAssignPatients = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
 
   // Which tabs this viewer may open at all: clinicians get the chart, lab
@@ -771,6 +774,45 @@ export default function PatientDetailPage() {
             onNoteSaved={() => setNotesRefreshToken(t => t + 1)}
             panelRequest={chartPanelRequest}
             onPanelRequestHandled={() => setChartPanelRequest(null)}
+            // Record vitals docks in the chart's workspace slot beside the
+            // record (OpenMRS O3), so the chart narrows instead of being covered.
+            workspace={showStartVisit && patient && currentUser ? {
+              title: t('startVisit.title'),
+              onClose: () => setShowStartVisit(false),
+              content: (
+                <StartVisitPanel
+                  patient={patient}
+                  patientName={patientFullName(patient)}
+                  currentUser={{
+                    _id: currentUser._id,
+                    name: currentUser.name,
+                    hospitalId: currentUser.hospitalId,
+                    hospitalName: currentUser.hospital?.name || currentUser.hospitalName || undefined,
+                    orgId: currentUser.orgId,
+                  }}
+                  onClose={() => setShowStartVisit(false)}
+                />
+              ),
+            } : showNurseVitals && patient && currentUser ? {
+              title: correctingVitalsRecord ? t('chart.correctVitals') : t('vitalsPanel.title'),
+              onClose: () => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); },
+              content: (
+                <NurseVitalsModal
+                  presentation="workspace"
+                  patientId={patient._id}
+                  patientName={patientFullName(patient)}
+                  hospitalNumber={patient.hospitalNumber}
+                  hospitalId={currentUser.hospitalId || patient.registrationHospital || ''}
+                  hospitalName={currentUser.hospital?.name || currentUser.hospitalName || patient.registrationHospital || undefined}
+                  orgId={currentUser.orgId}
+                  encounterId={nurseVitalsEncounterId}
+                  currentUser={currentUser}
+                  correctingRecord={correctingVitalsRecord}
+                  onClose={() => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); }}
+                  onSaved={() => reloadRecords()}
+                />
+              ),
+            } : null}
             header={
               <ChartHeader
                 patient={patient}
@@ -793,6 +835,7 @@ export default function PatientDetailPage() {
                 onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onEdit={openEditModal}
+                onStartVisit={canCheckInAppointments ? () => { setShowNurseVitals(false); setShowStartVisit(true); } : undefined}
                 // Only a link for roles that can open the section — for the
                 // desk, bench and imaging roles the click bounced them to their
                 // landing tab instead.
@@ -825,7 +868,7 @@ export default function PatientDetailPage() {
                 patientAgeYears={patientAgeYearsExact(patient) ?? undefined}
                 isPregnant={isPregnant}
                 onViewVitalsHistory={() => selectTab('vitals')}
-                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); }}
+                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowStartVisit(false); setShowNurseVitals(true); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}
               />
             ) : undefined}
@@ -966,21 +1009,6 @@ export default function PatientDetailPage() {
       </main>
 
       {/* Edit Demographics Modal */}
-      {showNurseVitals && patient && currentUser && (
-        <NurseVitalsModal
-          patientId={patient._id}
-          patientName={patientFullName(patient)}
-          hospitalNumber={patient.hospitalNumber}
-          hospitalId={currentUser.hospitalId || patient.registrationHospital || ''}
-          hospitalName={currentUser.hospital?.name || currentUser.hospitalName || patient.registrationHospital || undefined}
-          orgId={currentUser.orgId}
-          encounterId={nurseVitalsEncounterId}
-          currentUser={currentUser}
-          correctingRecord={correctingVitalsRecord}
-          onClose={() => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); }}
-          onSaved={() => reloadRecords()}
-        />
-      )}
 
       {showMessageModal && patient && <PatientMessageModal messageSending={messageSending} setShowMessageModal={setShowMessageModal} patient={patient} setMessageChannel={setMessageChannel} setMessageError={setMessageError} setMessageSent={setMessageSent} messageChannel={messageChannel} messageTextConsent={messageTextConsent} setMessageTextConsent={setMessageTextConsent} t={t} messageSubject={messageSubject} setMessageSubject={setMessageSubject} messageBody={messageBody} setMessageBody={setMessageBody} messageError={messageError} messageSent={messageSent} messageSentWarning={messageSentWarning} messageSentNote={messageSentNote} sendPatientMessage={sendPatientMessage} />}
 
