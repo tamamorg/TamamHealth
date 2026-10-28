@@ -173,7 +173,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/ehr/chart/sections/MedicationsSection.tsx': 2,
   'src/components/ehr/chart/sections/ProceduresSection.tsx': 2,
   'src/components/ehr/chart/sections/ResultsSection.tsx': 2,
-  'src/components/nurse/NurseVitalsModal.tsx': 2,
   'src/components/onboarding/GetStartedCard.tsx': 2,
   'src/components/patient-portal/BillingTab.tsx': 2,
   'src/components/patients/AssessmentsPanel.tsx': 2,
