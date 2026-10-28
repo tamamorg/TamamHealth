@@ -38,6 +38,7 @@ import {
 import {
   SectionCard, Field, SaveBar, CheckRow, toggleKey,
 } from '@/components/settings/settings-controls';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type NetworkModuleKey =
   | 'standards' | 'consultation' | 'reporting' | 'it' | 'billing' | 'security';
@@ -105,6 +106,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
   targets: Array<{ _id: string; orgId?: string }>;
   sessionHospitalId?: string;
 }) {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const [perFacility, setPerFacility] = useState<Record<string, FacilitySettings>>({});
   const [loading, setLoading] = useState(true);
@@ -152,13 +154,13 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
         sessionHospitalId,
       );
       if (failed > 0) {
-        showToast(`Saved to ${saved} of ${saved + failed} facilities. ${failed} not saved. Try again for those facilities.`, 'error');
+        showToast(t('msg.savedToOfFacilitiesNot', { saved, failed: saved + failed, failed2: failed }), 'error');
       } else {
-        showToast(saved === 1 ? 'Settings saved.' : `Saved to all ${saved} facilities.`, 'success');
+        showToast(saved === 1 ? t('msg.settingsSaved') : t('msg.savedToAllFacilities', { saved }), 'success');
       }
       await load();
     } catch {
-      showToast('Network defaults not saved. Try again.', 'error');
+      showToast(t('msg.networkDefaultsNotSavedTry'), 'error');
     } finally {
       setSaving(false);
     }

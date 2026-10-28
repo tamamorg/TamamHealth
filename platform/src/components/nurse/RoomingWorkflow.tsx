@@ -92,7 +92,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
     } catch (err) {
       // Surface the machine's own message — "Assign a room before marking the
       // patient ready" is more use than a generic failure.
-      toast.showToast(describeError(err, 'Change not saved. Try again.'), 'error');
+      toast.showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally {
       setBusy(null);
     }
@@ -122,13 +122,13 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
     if (!vitalsEntry || !currentUser) return;
     const entered = Object.entries(vitalsDraft).some(([key, value]) => key !== 'notes' && Boolean(value?.trim()));
     if (!entered) {
-      toast.showToast('Enter at least one vital sign.', 'error');
+      toast.showToast(t('msg.enterAtLeastOneVital'), 'error');
       return;
     }
     for (const field of VITAL_FIELDS) {
       const value = vitalsDraft[field.key]?.trim();
       if (value && field.rangeKey && !isVitalInRange(field.rangeKey, value)) {
-        toast.showToast(`${field.label} is outside the accepted range. Check the reading and enter it again.`, 'error');
+        toast.showToast(t('msg.isOutsideTheAcceptedRange', { label: field.label }), 'error');
         return;
       }
     }
@@ -146,10 +146,10 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
         vitals: vitalsDraft,
       });
       setVitalsRecorded(previous => ({ ...previous, [vitalsEntry.encounter._id]: new Date().toISOString() }));
-      toast.showToast(`Vitals saved for ${vitalsEntry.encounter.patientName}.`, 'success');
+      toast.showToast(t('msg.vitalsSavedFor', { patientName: vitalsEntry.encounter.patientName }), 'success');
       setVitalsEntry(null);
     } catch (err) {
-      toast.showToast(describeError(err, 'Vitals not saved. Try again.'), 'error');
+      toast.showToast(describeError(err, t('msg.vitalsNotSavedTryAgain')), 'error');
     } finally {
       setVitalsSaving(false);
     }

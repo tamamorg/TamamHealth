@@ -30,6 +30,7 @@ import type { DirectiveEntry, DirectiveType } from '@/data/mock';
 import type { DirectiveSignatory } from '@/lib/types/patient-clinical';
 import { clickable } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const TYPE_LABELS: Record<DirectiveType, string> = {
   informed_consent: 'Informed consent',
@@ -59,6 +60,7 @@ const fieldStyle = {
 const cardStyle = { background: 'var(--bg-card)', border: '1px solid var(--border-light)' } as const;
 
 export default function DirectivesSection({ patient }: { patient: PatientDoc }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
@@ -99,7 +101,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       showToast(ok, 'success');
       done();
     } catch (e) {
-      showToast(describeError(e, 'Change not saved. Try again.'), 'error');
+      showToast(describeError(e, t('msg.changeNotSavedTryAgain')), 'error');
     } finally {
       setBusy(false);
     }

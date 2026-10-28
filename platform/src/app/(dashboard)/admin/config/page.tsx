@@ -12,6 +12,7 @@ import {
 import { Building2, Server, ShieldAlert, Shield, MessageSquare } from '@/components/icons/lucide';
 import type { PlatformConfigDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** One flat draft covering every editable field across the identity,
  *  tenant-defaults, and maintenance sections — so the whole page shares a
@@ -69,6 +70,7 @@ function ColorField({ value, onChange }: { value: string; onChange: (v: string) 
 }
 
 export default function AdminConfigPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
@@ -114,9 +116,9 @@ export default function AdminConfigPage() {
         },
         maintenanceMode: draft.maintenanceMode,
       }, currentUser?._id, currentUser?.username);
-      showToast('Platform configuration saved.', 'success');
+      showToast(t('msg.platformConfigurationSaved'), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Platform configuration not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.platformConfigurationNotSavedTry')), 'error');
     } finally {
       setSaving(false);
     }

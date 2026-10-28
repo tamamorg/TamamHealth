@@ -13,6 +13,7 @@ import { ROLE_PERMISSIONS } from '@/lib/permissions';
 import { Megaphone, X, Loader2, Send, Plus, Check } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Roles an announcement can target. National oversight roles are excluded —
  *  they are not an org's staff, so an org announcement can't reach them. */
@@ -26,6 +27,7 @@ const PRIORITY_STYLE: Record<AnnouncementPriority, { color: string; bg: string; 
 };
 
 export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClose: () => void; onUnreadChange?: (n: number) => void }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const [items, setItems] = useState<AnnouncementDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
   const handlePost = async () => {
     setError('');
     if (!currentUser) return;
-    if (!title.trim() || !bodyText.trim()) { setError('Enter a title and a message.'); return; }
+    if (!title.trim() || !bodyText.trim()) { setError(t('msg.enterATitleAndA')); return; }
     setSaving(true);
     try {
       const { createAnnouncement } = await import('@/modules/communication/services/announcement-service');
@@ -117,7 +119,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
       setComposing(false);
       await load();
     } catch (err) {
-      setError(describeError(err, 'Announcement not posted. Try again.'));
+      setError(describeError(err, t('msg.announcementNotPostedTryAgain')));
     } finally {
       setSaving(false);
     }

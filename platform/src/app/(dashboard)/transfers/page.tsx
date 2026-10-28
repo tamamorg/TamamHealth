@@ -30,6 +30,7 @@ import type { PatientTransferDoc } from '@/lib/db-types';
 import { ArrowRightLeft, ArrowRight, Check, Clock } from '@/components/icons/lucide';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type Tab = 'incoming' | 'outgoing';
 
@@ -56,6 +57,7 @@ const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
 };
 
 export default function TransfersPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { incoming, outgoing, loading, reload } = useTransferQueue();
@@ -74,14 +76,14 @@ export default function TransfersPage() {
     orgId: currentUser.orgId,
   } : null;
 
-  const accept = async (t: PatientTransferDoc) => {
-    setBusyId(t._id);
+  const accept = async (transfer: PatientTransferDoc) => {
+    setBusyId(transfer._id);
     setError(null);
     try {
-      await acceptLocal(t._id);
+      await acceptLocal(transfer._id);
       await reload();
     } catch (e) {
-      setError(describeError(e, 'Transfer not accepted. Try again.'));
+      setError(describeError(e, t('msg.transferNotAcceptedTryAgain')));
     } finally {
       setBusyId(null);
     }

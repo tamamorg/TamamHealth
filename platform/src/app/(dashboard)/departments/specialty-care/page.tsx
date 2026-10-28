@@ -110,9 +110,9 @@ export default function SpecialtyCarePage() {
         if (!response.ok) throw new Error(body.error || 'Restricted notes not loaded. Reload the page to try again.');
         if (!controller.signal.aborted && selectedEpisodeId.current === episodeId) setRestrictedNotes(body.notes ?? []);
       })
-      .catch((cause) => { if (!controller.signal.aborted && selectedEpisodeId.current === episodeId) setMessage(describeError(cause, 'Restricted notes not loaded. Reload the page to try again.')); });
+      .catch((cause) => { if (!controller.signal.aborted && selectedEpisodeId.current === episodeId) setMessage(describeError(cause, t('msg.restrictedNotesNotLoadedReload'))); });
     return () => controller.abort();
-  }, [active, canAuthorRestrictedNote, pathwayCode]);
+  }, [active, canAuthorRestrictedNote, pathwayCode, t]);
 
   const choosePathway = (code: SpecialtyPathwayCode) => {
     selectedEpisodeId.current = null; setRestrictedNarrative(''); setRestrictedCategory('assessment'); setPatientId(''); setPatientName(''); setAppointmentId('');
@@ -123,7 +123,7 @@ export default function SpecialtyCarePage() {
     setActive(episode); setValues(episode.values); setPatientId(episode.patientId); setPatientName(episode.patientName); setRestrictedNotes([]); setMessage(null);
   };
   const create = async () => {
-    if (!scope?.orgId || !scope.hospitalId || !currentUser) { setMessage('Your account is not assigned to a facility. Ask your administrator to assign one.'); return; }
+    if (!scope?.orgId || !scope.hospitalId || !currentUser) { setMessage(t('equipment.toastNoFacility')); return; }
     setSaving(true); setMessage(null);
     try {
       const { createSpecialtyEpisode } = await import('@/modules/specialty-care/services/specialty-care-service');
@@ -131,8 +131,8 @@ export default function SpecialtyCarePage() {
       const department = departments.find(item => item.isActive && pathway.departmentCodes.includes(item.code));
       const created = await createSpecialtyEpisode({ pathway: pathwayCode, patientId, patientName, departmentId: department?._id, appointmentId: appointment?._id, hospitalId: scope.hospitalId, facilityName: currentUser.hospitalName, orgId: scope.orgId, responsibleClinicianId: currentUser._id, responsibleClinicianName: currentUser.name, scope, actor: { id: currentUser._id, name: currentUser.name } });
       selectedEpisodeId.current = created._id;
-      setActive(created); setValues(created.values); await reload(); setMessage('Episode created.');
-    } catch (cause) { setMessage(describeError(cause, 'Episode not created. Try again.')); }
+      setActive(created); setValues(created.values); await reload(); setMessage(t('msg.episodeCreated'));
+    } catch (cause) { setMessage(describeError(cause, t('msg.episodeNotCreatedTryAgain'))); }
     finally { setSaving(false); }
   };
   const save = async (status?: SpecialtyEpisodeStatus) => {
@@ -141,8 +141,8 @@ export default function SpecialtyCarePage() {
     try {
       const { updateSpecialtyEpisode } = await import('@/modules/specialty-care/services/specialty-care-service');
       const updated = await updateSpecialtyEpisode({ id: active._id, scope, values, status, actor: { id: currentUser._id, name: currentUser.name } });
-      setActive(updated); setValues(updated.values); await reload(); setMessage(status === 'completed' ? 'Episode completed.' : 'Changes saved.');
-    } catch (cause) { setMessage(describeError(cause, 'Changes not saved. Try again.')); }
+      setActive(updated); setValues(updated.values); await reload(); setMessage(status === 'completed' ? t('msg.episodeCompleted') : t('myFacility.savedSuccessfully'));
+    } catch (cause) { setMessage(describeError(cause, t('myFacility.saveFailed'))); }
     finally { setSaving(false); }
   };
   const addRestrictedNote = async () => {
@@ -153,8 +153,8 @@ export default function SpecialtyCarePage() {
       const response = await apiFetch('/api/restricted-mental-health-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientId: active.patientId, patientName: active.patientName, episodeId: active._id, category: restrictedCategory, narrative: restrictedNarrative }) });
       const body = await response.json() as { note?: RestrictedMentalHealthNote; error?: string };
       if (!response.ok || !body.note) throw new Error(body.error || 'Restricted note not saved. Try again.');
-      if (selectedEpisodeId.current === episodeId) { setRestrictedNotes((current) => [body.note!, ...current]); setRestrictedNarrative(''); setMessage('Restricted note saved.'); }
-    } catch (cause) { setMessage(describeError(cause, 'Restricted note not saved. Try again.')); }
+      if (selectedEpisodeId.current === episodeId) { setRestrictedNotes((current) => [body.note!, ...current]); setRestrictedNarrative(''); setMessage(t('msg.restrictedNoteSaved')); }
+    } catch (cause) { setMessage(describeError(cause, t('msg.restrictedNoteNotSavedTry'))); }
     finally { setSaving(false); }
   };
   const setConfigField = <K extends keyof ConfigDraft>(key: K, value: ConfigDraft[K]) => setConfigDrafts((current) => ({ ...current, [pathwayCode]: { ...configDraft, [key]: value } }));

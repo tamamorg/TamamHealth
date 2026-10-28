@@ -93,12 +93,12 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (err) {
-      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally { setBusy(false); }
   };
 
   const handleAdd = () => withBusy(async () => {
-    if (!draft.substance.trim()) { showToast('Select or enter the allergen.', 'error'); return; }
+    if (!draft.substance.trim()) { showToast(t('msg.selectOrEnterTheAllergen'), 'error'); return; }
     const { addAllergy } = await import('@/lib/services/allergy-service');
     const next = await addAllergy(patientId, needScope(), {
       substance: draft.substance,
@@ -110,7 +110,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
       recordedByName: userName,
     });
     if (next) setEntries(next);
-    showToast(`${draft.substance} recorded as an allergy.`, 'success');
+    showToast(t('msg.recordedAsAnAllergy', { substance: draft.substance }), 'success');
     setDraft({ substance: '', reaction: '', criticality: 'unknown', onsetDate: '' });
     setAddQuery('');
     setShowAdd(false);
@@ -131,11 +131,11 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
       if (answer === null) return;
       reason = answer;
     }
-    if (!reason) { showToast('Enter a reason.', 'error'); return; }
+    if (!reason) { showToast(t('billing.reasonRequired'), 'error'); return; }
     const { removeAllergy } = await import('@/lib/services/allergy-service');
     const next = await removeAllergy(patientId, needScope(), selected.id, reason, status);
     if (next) setEntries(next);
-    showToast(`${selected.substance} marked ${verb}.`, 'success');
+    showToast(t('msg.marked', { substance: selected.substance, verb }), 'success');
     setSelectedId(null);
   });
 
@@ -143,7 +143,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
     const { updateAllergy } = await import('@/lib/services/allergy-service');
     const next = await updateAllergy(patientId, needScope(), selected.id, { status: 'active', removalReason: undefined });
     if (next) setEntries(next);
-    showToast(`${selected.substance} reactivated.`, 'success');
+    showToast(t('msg.reactivated', { substance: selected.substance }), 'success');
     setSelectedId(null);
   });
 

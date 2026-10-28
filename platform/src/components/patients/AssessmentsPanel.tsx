@@ -12,6 +12,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const SEVERITY_COLOR: Record<string, string> = {
   minimal: 'var(--color-success)',
@@ -32,6 +33,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
    *  document they were sent to sign, not on a list to search. */
   focusId?: string;
 }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { assessments } = useAssessments(patient._id);
   const [busy, setBusy] = useState(false);
@@ -62,7 +64,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
       setAdding(false);
       setAnswers({});
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }

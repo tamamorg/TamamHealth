@@ -80,6 +80,7 @@ function TransferCard({
   onArrive: (id: string, assessment?: Record<string, unknown>) => Promise<unknown>;
   onClose: (id: string) => Promise<unknown>;
 }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const [expanded, setExpanded] = useState(transfer.status === 'requested');
   const [rejecting, setRejecting] = useState(false);
@@ -114,7 +115,7 @@ function TransferCard({
       setRejecting(false);
       setRejectNote('');
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }

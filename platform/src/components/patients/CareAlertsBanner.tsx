@@ -9,6 +9,7 @@ import type { CareAlertCategory } from '@/data/mock';
 import { AlertTriangle, Plus, X } from '@/components/icons/lucide';
 import CareAlertFields, { CARE_ALERT_CATEGORY_LABELS } from '@/components/patients/CareAlertFields';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
  * Chart-permanent care alerts (P1.2). Active alerts render as a prominent
@@ -19,6 +20,7 @@ import { describeError } from '@/lib/user-facing-error';
  * alert next to the alert it dismissed.
  */
 export default function CareAlertsBanner({ patient, hideAddButton = false }: { patient: PatientDoc; hideAddButton?: boolean }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
@@ -48,7 +50,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
       setReason('');
       setForm({ category: 'clinical_risk', message: '', priority: 'high' });
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }

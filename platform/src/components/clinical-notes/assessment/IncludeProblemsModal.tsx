@@ -116,7 +116,7 @@ export default function IncludeProblemsModal({
   const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
     try { await fn(); } catch (err) {
-      showToast(describeError(err, 'Change not saved. Try again.'), 'error');
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally { setBusy(false); }
   };
 
@@ -133,7 +133,7 @@ export default function IncludeProblemsModal({
 
   const saveProblem = (andAnother: boolean) => withBusy(async () => {
     const name = picked?.title || query.trim();
-    if (!name) { showToast('Search for and select the problem.', 'error'); return; }
+    if (!name) { showToast(t('msg.searchForAndSelectThe'), 'error'); return; }
     const { createProblem } = await import('@/lib/services/problem-service');
     await createProblem({
       patientId,
@@ -147,17 +147,17 @@ export default function IncludeProblemsModal({
       recordedByName: userName,
       orgId: currentUser?.orgId,
     });
-    showToast(`${name} added to the problem list.`, 'success');
+    showToast(t('msg.addedToTheProblemList', { name }), 'success');
     clearAddForm();
     if (!andAnother) setShowAdd(false);
     await load();
   });
 
-  const forChecked = (fn: (p: ProblemDoc) => Promise<void>, done: string) => withBusy(async () => {
+  const forChecked = (fn: (p: ProblemDoc) => Promise<void>, doneKey: string) => withBusy(async () => {
     const targets = rows.filter(p => checked.has(p._id));
     if (targets.length === 0) return;
     for (const p of targets) await fn(p);
-    showToast(`${targets.length} problem${targets.length === 1 ? '' : 's'} ${done}.`, 'success');
+    showToast(t(doneKey, { count: targets.length }), 'success');
     setChecked(new Set());
     await load();
   });
@@ -165,7 +165,7 @@ export default function IncludeProblemsModal({
   const handleDeactivate = () => forChecked(async (p) => {
     const { setProblemStatus } = await import('@/lib/services/problem-service');
     await setProblemStatus(p._id, tab === 'active' ? 'inactive' : 'active');
-  }, tab === 'active' ? 'deactivated' : 'reactivated');
+  }, tab === 'active' ? 'msg.problemsDeactivated' : 'msg.problemsReactivated');
 
   const handleMarkError = async () => {
     const n = rows.filter(p => checked.has(p._id)).length;
@@ -179,7 +179,7 @@ export default function IncludeProblemsModal({
     void forChecked(async (p) => {
       const { deleteProblem } = await import('@/lib/services/problem-service');
       await deleteProblem(p._id);
-    }, 'removed as entered in error');
+    }, 'msg.problemsRemovedAsError');
   };
 
   const handleInclude = () => {

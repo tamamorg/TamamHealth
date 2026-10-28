@@ -36,6 +36,8 @@ import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
 import { clickable } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { statusWord } from '@/lib/i18n/status-word';
 
 const SEVERITY_LABEL: Record<string, string> = {
   severe: 'Severe', moderate: 'Moderate', mild: 'Mild', unknown: 'Unknown',
@@ -93,6 +95,7 @@ interface AllergiesSectionProps {
 }
 
 export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandled, focusId }: AllergiesSectionProps) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const needScope = () => {
@@ -176,10 +179,10 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.updateAllergy(patient._id, needScope(), editing.id, { ...editForm, substance: editForm.substance.trim(), ...author });
-      showToast('Allergy updated.', 'success');
+      showToast(t('msg.allergyUpdated'), 'success');
       setEditing(null);
     } catch (err) {
-      showToast(describeError(err, 'Allergy not updated. Try again.'), 'error');
+      showToast(describeError(err, t('msg.allergyNotUpdatedTryAgain')), 'error');
     } finally {
       setBusy(false);
     }
@@ -191,12 +194,12 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.removeAllergy(patient._id, needScope(), retiring.id, retireReason.trim(), retireStatus);
-      showToast(`${retiring.substance} allergy marked ${retireStatus.replace(/_/g, ' ')}.`, 'success');
+      showToast(t('msg.allergyMarked', { substance: retiring.substance, value: statusWord(t, retireStatus) }), 'success');
       setRetiring(null);
       setRetireReason('');
       setRetireStatus('inactive');
     } catch (err) {
-      showToast(describeError(err, 'Allergy status not changed. Try again.'), 'error');
+      showToast(describeError(err, t('msg.allergyStatusNotChangedTry')), 'error');
     } finally {
       setBusy(false);
     }
@@ -207,9 +210,9 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
     try {
       const svc = await import('@/lib/services/allergy-service');
       await svc.updateAllergy(patient._id, needScope(), a.id, { status: 'active', removalReason: undefined, ...author });
-      showToast(`${a.substance} allergy reinstated.`, 'success');
+      showToast(t('msg.allergyReinstated', { substance: a.substance }), 'success');
     } catch (err) {
-      showToast(describeError(err, 'Allergy not reinstated. Try again.'), 'error');
+      showToast(describeError(err, t('msg.allergyNotReinstatedTryAgain')), 'error');
     } finally {
       setBusy(false);
     }

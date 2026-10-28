@@ -23,6 +23,7 @@ import {
   Server, ShieldCheck, Smartphone, Upload,
 } from '@/components/icons/lucide';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface DbStat {
   key: string;
@@ -60,6 +61,7 @@ export default function ItOperationsPanel({ embedded = false }: {
   /** True when hosted inside Settings — hides the self-referential console link. */
   embedded?: boolean;
 }) {
+  const { t } = useTranslation();
   // "Last synced N minutes ago" has to keep counting while the panel is open.
   const now = useNow(60_000);
   const { currentUser } = useAuth();
@@ -126,9 +128,9 @@ export default function ItOperationsPanel({ embedded = false }: {
     setMessage(null);
     try {
       await syncNow();
-      setMessage('Local sync started.');
+      setMessage(t('msg.localSyncStarted'));
     } catch (err) {
-      setMessage(describeError(err, 'Sync not started. Try again.'));
+      setMessage(describeError(err, t('msg.syncNotStartedTryAgain')));
     } finally {
       setSyncing(false);
     }
@@ -141,12 +143,12 @@ export default function ItOperationsPanel({ embedded = false }: {
       const res = await apiFetch(kind === 'sync' ? '/api/admin/sync-push' : '/api/admin/dhis2-push', { method: 'POST' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage(describeApiError(body, `Sync not sent. The server refused the request (code ${res.status}). Try again or contact your system administrator.`));
+        setMessage(describeApiError(body, t('msg.syncNotSentTheServer', { status: res.status })));
         return;
       }
-      setMessage(kind === 'sync' ? `Sync complete. ${body.pushed ?? 0} records sent.` : `DHIS2 report sent: ${body.dataValues ?? 0} data values.`);
+      setMessage(kind === 'sync' ? t('msg.syncCompleteRecordsSent', { pushed: body.pushed ?? 0 }) : t('msg.dhis2ReportSentDataValues2', { dataValues: body.dataValues ?? 0 }));
     } catch (err) {
-      setMessage(describeError(err, 'Not sent. Check the connection and try again.'));
+      setMessage(describeError(err, t('msg.notSentCheckTheConnection')));
     } finally {
       setPushing(null);
     }

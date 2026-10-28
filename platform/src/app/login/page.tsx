@@ -311,7 +311,7 @@ export default function LoginPage() {
       const result = await login(account.username, account.password, undefined, undefined, keepSignedIn);
       if (result) { setSignedIn(true); return; }
       else { setError(describeLoginFailure('That demo account could not sign in.')); setLoading(false); }
-    } catch { setError('Sign-in did not complete. Try again.'); setLoading(false); }
+    } catch { setError(t('login.errorLoginFailed')); setLoading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

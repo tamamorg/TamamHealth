@@ -24,6 +24,7 @@ import {
 } from '@/lib/services/sync-event-service';
 import type { SyncEventDoc } from '@/lib/db-types';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface SyncStats {
   total: number;
@@ -43,6 +44,7 @@ const STATUS_CHIP: Record<SyncEventDoc['syncStatus'], ChipTone> = {
 };
 
 export default function AdminSyncPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { showToast } = useToast();
   const { hospitals } = useHospitals();
@@ -96,15 +98,15 @@ export default function AdminSyncPage() {
     try {
       const result = await pushPendingToCountryNode(50);
       if (result.skipped) {
-        showToast('Nothing sent. National sync is not set up for this facility. Contact your system administrator.', 'error');
+        showToast(t('msg.nothingSentNationalSyncIs'), 'error');
       } else if (result.error) {
-        showToast(`Sync stopped after ${result.pushed} records. ${result.error}`, 'error');
+        showToast(t('msg.syncStoppedAfterRecords', { pushed: result.pushed, value: describeApiError({ error: result.error }, 'The national server did not accept the rest. Try again later.') }), 'error');
       } else {
-        showToast(`Sync complete. ${result.pushed} sent, ${result.acknowledged} confirmed by the national server.`, 'success');
+        showToast(t('msg.syncCompleteSentConfirmedBy', { pushed: result.pushed, acknowledged: result.acknowledged }), 'success');
       }
       await loadQueue();
     } catch (err) {
-      showToast(describeError(err, 'Not sent to the national server. Check the connection and try again.'), 'error');
+      showToast(describeError(err, t('msg.notSentToTheNational')), 'error');
     } finally {
       setPushingCountryNode(false);
     }
@@ -116,15 +118,15 @@ export default function AdminSyncPage() {
       const res = await apiFetch('/api/admin/sync-push', { method: 'POST' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showToast(describeApiError(body, `Sync not sent. The server refused the request (code ${res.status}). Try again or contact your system administrator.`), 'error');
+        showToast(describeApiError(body, t('msg.syncNotSentTheServer', { status: res.status })), 'error');
       } else {
         const pushed = typeof body.pushed === 'number' ? body.pushed : 0;
         const acked = typeof body.acknowledged === 'number' ? body.acknowledged : 0;
-        showToast(`Sync complete. ${pushed} sent, ${acked} confirmed by the server.`, 'success');
+        showToast(t('msg.syncCompleteSentConfirmedBy2', { pushed, acked }), 'success');
       }
       await loadQueue();
     } catch (err) {
-      showToast(describeError(err, 'Sync not sent. Check the connection and try again.'), 'error');
+      showToast(describeError(err, t('msg.syncNotSentCheckThe')), 'error');
     } finally {
       setSyncPushing(false);
     }
@@ -146,12 +148,12 @@ export default function AdminSyncPage() {
         const ok = body.result?.ok !== false;
         const values = typeof body.dataValues === 'number' ? body.dataValues : 0;
         showToast(
-          ok ? `DHIS2 report sent: ${values} data values for period ${body.period}.` : (body.result?.message || 'DHIS2 report not sent. Check the connection and try again.'),
+          ok ? t('msg.dhis2ReportSentDataValues', { values, period: body.period }) : (body.result?.message || t('msg.dhis2ReportNotSentCheck')),
           ok ? 'success' : 'error',
         );
       }
     } catch (err) {
-      showToast(describeError(err, 'DHIS2 report not sent. Check the connection and try again.'), 'error');
+      showToast(describeError(err, t('msg.dhis2ReportNotSentCheck')), 'error');
     } finally {
       setDhis2Pushing(false);
     }

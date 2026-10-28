@@ -704,16 +704,16 @@ export function useTriageForm({
     }
     const capillaryRefill = parseStrictVitalNumber(capillaryRefillSeconds);
     if (capillaryRefillSeconds.trim() && (capillaryRefill === null || capillaryRefill < 0 || capillaryRefill > 10)) {
-      showToast('Enter a capillary refill time between 0 and 10 seconds.', 'error');
+      showToast(t('msg.enterACapillaryRefillTime'), 'error');
       return;
     }
     const gestationalAge = parseStrictVitalNumber(gestationalAgeWeeks);
     if (gestationalAgeWeeks.trim() && (gestationalAge === null || !Number.isInteger(gestationalAge) || gestationalAge < 0 || gestationalAge > 45)) {
-      showToast('Enter gestational age as a whole number of weeks, from 0 to 45.', 'error');
+      showToast(t('msg.enterGestationalAgeAsA'), 'error');
       return;
     }
     if (recommendationRaisesPriority && overrideVitalUrgency && !vitalUrgencyOverrideReason.trim()) {
-      showToast('Enter a clinical reason to override the recommended urgency.', 'error');
+      showToast(t('msg.enterAClinicalReasonTo'), 'error');
       document.getElementById('triage-vital-override-reason')?.focus();
       return;
     }

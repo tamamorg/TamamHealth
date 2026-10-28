@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { TriageDoc } from '../db-types';
@@ -19,6 +20,7 @@ export function useTriage(patientId?: string) {
   const [triages, setTriages] = useState<TriageDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -35,7 +37,7 @@ export function useTriage(patientId?: string) {
       }
     } catch (err) {
       console.error(err);
-      setError('Triage records not loaded. Reload the page to try again.');
+      setError('msg.triageRecordsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -78,5 +80,5 @@ export function useTriage(patientId?: string) {
     return doc;
   }, [load, scope]);
 
-  return { triages, loading, error, create, update, reload: load };
+  return { triages, loading, error: error && t(error), create, update, reload: load };
 }

@@ -18,6 +18,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const SCHEDULES: ControlledSubstanceLogDoc['schedule'][] = ['I', 'II', 'III', 'IV', 'V'];
 const MOVEMENTS: ControlledSubstanceLogDoc['movement'][] = ['intake', 'dispense', 'waste', 'reconciliation', 'transfer'];
@@ -58,6 +59,7 @@ const blankForm = {
 };
 
 export default function ControlledSubstancesPage() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const scope = useDataScope();
@@ -80,11 +82,11 @@ export default function ControlledSubstancesPage() {
       setMovements(rows);
     } catch (err) {
       console.error(err);
-      showToast('Controlled-substance register not loaded. Reload the page to try again.', 'error');
+      showToast(t('msg.controlledSubstanceRegisterNotLoaded'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [scope, showToast]);
+  }, [scope, showToast, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -98,26 +100,26 @@ export default function ControlledSubstancesPage() {
 
   const handleSubmit = async () => {
     if (!currentUser) {
-      showToast('Your session has ended. Sign in again to record this movement.', 'error');
+      showToast(t('msg.yourSessionHasEndedSign'), 'error');
       return;
     }
     const operatorId = currentUser._id || '';
     const witnessId = slugify(form.witnessName);
     if (!form.medicationName.trim()) {
-      showToast('Enter the medication name.', 'error');
+      showToast(t('msg.enterTheMedicationName'), 'error');
       return;
     }
     if (!form.witnessName.trim()) {
-      showToast('Select a witness. Controlled-substance movements need a second staff member.', 'error');
+      showToast(t('msg.selectAWitnessControlledSubstance'), 'error');
       return;
     }
     if (operatorId && witnessId && operatorId === witnessId) {
-      showToast('Select a different witness. The witness cannot be the person recording the movement.', 'error');
+      showToast(t('msg.selectADifferentWitnessThe'), 'error');
       return;
     }
     const quantity = Number(form.quantity);
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      showToast('Enter a quantity greater than zero.', 'error');
+      showToast(t('rxFlow.errQuantity'), 'error');
       return;
     }
 
@@ -143,7 +145,7 @@ export default function ControlledSubstancesPage() {
     setSaving(true);
     try {
       await recordMovement(input);
-      showToast(`${MOVEMENT_LABELS[form.movement]} of ${input.medicationName} recorded.`, 'success');
+      showToast(t('msg.ofRecorded', { value: t(`msg.movement.${form.movement}`), medicationName: input.medicationName }), 'success');
       setOpen(false);
       setForm({ ...blankForm });
       await load();

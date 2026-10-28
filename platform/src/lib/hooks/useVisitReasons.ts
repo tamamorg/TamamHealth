@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 /**
  * useVisitReasons — the bookable service menu for the signed-in user's facility.
  *
@@ -19,6 +20,7 @@ export function useVisitReasons(facilityIdOverride?: string) {
   const [reasons, setReasons] = useState<VisitReasonDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const load = useCallback(async () => {
     if (!facilityId) {
@@ -32,7 +34,7 @@ export function useVisitReasons(facilityIdOverride?: string) {
       setReasons(await getVisitReasonsForFacility(facilityId, orgId));
     } catch (err) {
       console.error('[useVisitReasons]', err);
-      setError('Visit reasons not loaded. Reload the page to try again.');
+      setError('msg.visitReasonsNotLoaded');
       setReasons([]);
     } finally {
       setLoading(false);
@@ -55,7 +57,7 @@ export function useVisitReasons(facilityIdOverride?: string) {
     unconfigured: !loading && reasons.length === 0,
     bookableBy,
     loading,
-    error,
+    error: error && t(error),
     reload: load,
     byId: useMemo(() => new Map(reasons.map(r => [r._id, r])), [reasons]),
   };

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import type { LabResultDoc } from '../db-types';
 import { labResultsDB } from '../db';
@@ -10,6 +11,7 @@ export function useLabResults(patientId?: string) {
   const [results, setResults] = useState<LabResultDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadResults = useCallback(async () => {
@@ -25,7 +27,7 @@ export function useLabResults(patientId?: string) {
       setResults(data);
     } catch (err) {
       console.error(err);
-      setError('Lab results not loaded. Reload the page to try again.');
+      setError('msg.labResultsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -61,5 +63,5 @@ export function useLabResults(patientId?: string) {
     return result;
   }, [loadResults]);
 
-  return { results, loading, error, create, update, advance, reload: loadResults };
+  return { results, loading, error: error && t(error), create, update, advance, reload: loadResults };
 }

@@ -90,6 +90,7 @@ COPY --from=builder /app/scripts/install-validate-doc-updates.mjs ./scripts/inst
 COPY --from=builder /app/src/lib/sync ./src/lib/sync
 COPY --from=builder /app/src/lib/services/patient-transfer-permissions.ts ./src/lib/services/patient-transfer-permissions.ts
 COPY --from=builder /app/src/lib/care-team-permissions.ts ./src/lib/care-team-permissions.ts
+COPY --from=builder /app/src/lib/appointment-status.ts ./src/lib/appointment-status.ts
 COPY --from=builder /app/src/lib/db-types.ts ./src/lib/db-types.ts
 # Drop privileges. The `node` user (UID 1000) is shipped by node:20-alpine.
 # Required for the writable scratch dirs Next.js needs (.next/cache during

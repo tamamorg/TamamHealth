@@ -22,6 +22,7 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type FilterKey = 'open' | 'pending' | 'partial' | 'paid' | 'waived' | 'cancelled' | 'all';
 
@@ -50,6 +51,7 @@ const BILL_COLS: { key: string; label: string; width: number }[] = [
 const BILL_COL_TOTAL = BILL_COLS.reduce((sum, c) => sum + c.width, 0);
 
 export default function BillingHomePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const scope = useDataScope();
   const [bills, setBills] = useState<BillingDoc[]>([]);
@@ -68,11 +70,11 @@ export default function BillingHomePage() {
       setBills(await getAllBills(scope) || []);
     } catch (err) {
       console.error('Error loading bills:', err);
-      setError('Bills not loaded. Reload the page to try again.');
+      setError(t('msg.billsNotLoadedReloadThe'));
     } finally {
       setLoading(false);
     }
-  }, [scope]);
+  }, [scope, t]);
 
   useEffect(() => { loadBills(); }, [loadBills]);
 

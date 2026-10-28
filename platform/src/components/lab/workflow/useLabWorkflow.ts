@@ -34,6 +34,7 @@ import {
   valuesFromObservations,
 } from './lab-result-catalog';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface CollectDraft {
   container: string;
@@ -75,6 +76,7 @@ export function useLabWorkflow(
   seedResult?: { value: string; unit: string; referenceRange: string },
   canWork = true,
 ) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   // Reviewing a result, acting on it and telling the patient are the
   // clinician's half of the loop — the roles that order tests. The bench files
@@ -202,12 +204,12 @@ export function useLabWorkflow(
       return true;
     } catch (err) {
       console.error('[lab-workflow]', err);
-      setError(describeError(err, 'Change not saved. Try again.'));
+      setError(describeError(err, t('msg.changeNotSavedTryAgain')));
       return false;
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   /** Bench work: collecting, receiving, processing, filing, amending. */
   const run = useCallback(async (fn: () => Promise<unknown>) => {

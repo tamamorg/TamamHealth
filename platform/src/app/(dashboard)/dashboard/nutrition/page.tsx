@@ -234,7 +234,7 @@ export default function NutritionDashboard() {
       setSupplyFormError('');
       setShowSupplyForm(false);
     } catch (err) {
-      setSupplyFormError(describeError(err, 'Supply item not saved. Try again.'));
+      setSupplyFormError(describeError(err, t('msg.supplyItemNotSavedTry')));
     }
   };
 
@@ -266,7 +266,7 @@ export default function NutritionDashboard() {
       setFormError('');
       setShowForm(false);
     } catch (err) {
-      setFormError(describeError(err, 'Screening not saved. Try again.'));
+      setFormError(describeError(err, t('screenings.errFailed')));
     }
   };
 

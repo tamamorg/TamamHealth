@@ -17,7 +17,22 @@ jest.mock('@/modules/identity/client', () => ({
 
 import { teardownTestDBs, createDBMock } from '../helpers/test-db';
 
+// The full demo corpus is seeded into in-memory PouchDB per test; the 5s
+// default flakes once the whole suite shares the machine.
+jest.setTimeout(60000);
+
 type Doc = Record<string, unknown>;
+
+// This exercises the BROWSER seed, which only runs on a standalone demo. A
+// developer .env with NEXT_PUBLIC_SYNC_ENABLED=true sends seedDatabase() down
+// the server-seed path instead (seedComesFromServer), which writes nothing —
+// so pin the standalone setting rather than inherit the machine's.
+const savedSyncFlag = process.env.NEXT_PUBLIC_SYNC_ENABLED;
+beforeAll(() => { process.env.NEXT_PUBLIC_SYNC_ENABLED = 'false'; });
+afterAll(() => {
+  if (savedSyncFlag === undefined) delete process.env.NEXT_PUBLIC_SYNC_ENABLED;
+  else process.env.NEXT_PUBLIC_SYNC_ENABLED = savedSyncFlag;
+});
 
 afterEach(async () => {
   await teardownTestDBs();

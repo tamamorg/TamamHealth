@@ -19,6 +19,8 @@ import { formatDate } from '@/lib/format-utils';
 import type { ProgramKey, ProgramEnrollmentStatus } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { statusWord } from '@/lib/i18n/status-word';
 
 const PROGRAM_LABELS: Record<ProgramKey, string> = {
   art_hiv_care: 'ART / HIV care',
@@ -57,6 +59,7 @@ interface ProgramsSectionProps {
 }
 
 export default function ProgramsSection({ patientId, patientName, canEnroll }: ProgramsSectionProps) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { enrollments, create, setStatus } = usePrograms(patientId);
@@ -81,8 +84,8 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
 
   const handleSubmit = async () => {
     const programName = programKey === 'other' ? otherName.trim() : PROGRAM_LABELS[programKey];
-    if (!programName) { showToast('Enter the program name.', 'error'); return; }
-    if (!enrollmentDate) { showToast('Select the enrollment date.', 'error'); return; }
+    if (!programName) { showToast(t('msg.enterTheProgramName'), 'error'); return; }
+    if (!enrollmentDate) { showToast(t('msg.selectTheEnrollmentDate'), 'error'); return; }
     try {
       setSubmitting(true);
       await create({
@@ -99,11 +102,11 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
         hospitalName: currentUser?.hospitalName,
         orgId: currentUser?.orgId,
       });
-      showToast('Program enrollment recorded.', 'success');
+      showToast(t('msg.programEnrollmentRecorded'), 'success');
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast('Enrollment not recorded. Try again.', 'error');
+      showToast(t('msg.enrollmentNotRecordedTryAgain'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -113,10 +116,10 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
     setStatusBusy(id);
     try {
       await setStatus(id, next);
-      showToast(`Enrollment marked ${STATUS_LABELS[next].toLowerCase()}.`, 'success');
+      showToast(t('msg.enrollmentMarked', { status: statusWord(t, next) }), 'success');
     } catch (err) {
       console.error(err);
-      showToast('Enrollment status not changed. Try again.', 'error');
+      showToast(t('msg.enrollmentStatusNotChangedTry'), 'error');
     } finally {
       setStatusBusy(null);
     }

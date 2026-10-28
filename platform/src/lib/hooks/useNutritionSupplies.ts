@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback, useRef } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type {
@@ -26,6 +27,7 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
   const [items, setItems] = useState<NutritionSupplyDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
   const seedAttempted = useRef(false);
 
@@ -46,7 +48,7 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
       setItems(data);
     } catch (err) {
       console.error(err);
-      setError('Nutrition supply inventory not loaded. Reload the page to try again.');
+      setError('msg.nutritionSupplyInventoryNotLoaded');
       setItems([]);
     } finally {
       setLoading(false);
@@ -71,5 +73,5 @@ export function useNutritionSupplies(options: UseNutritionSuppliesOptions = {}) 
     return item;
   }, [load]);
 
-  return { items, loading, error, create, adjust, reload: load };
+  return { items, loading, error: error && t(error), create, adjust, reload: load };
 }

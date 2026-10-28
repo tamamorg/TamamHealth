@@ -28,6 +28,7 @@ import PatientAvatar from '@/components/patients/PatientAvatar';
 import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const BLOOD_GROUPS: BloodBankDoc['bloodGroup'][] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -58,6 +59,7 @@ const daysUntil = (date: string) =>
   Math.ceil((new Date(date).getTime() - new Date(todayStr()).getTime()) / 86400000);
 
 export default function BloodBankPage() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { patients } = usePatients();
@@ -99,11 +101,11 @@ export default function BloodBankPage() {
       setUnits(all);
     } catch (err) {
       console.error(err);
-      showToast('Blood units not loaded. Reload the page to try again.', 'error');
+      showToast(t('msg.bloodUnitsNotLoadedReload'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast, scope]);
+  }, [showToast, scope, t]);
 
   useEffect(() => { loadUnits(); }, [loadUnits]);
 
@@ -155,15 +157,15 @@ export default function BloodBankPage() {
 
   const handleAdd = async () => {
     if (!form.unitId.trim()) {
-      showToast('Enter the unit ID.', 'error');
+      showToast(t('msg.enterTheUnitId'), 'error');
       return;
     }
     if (!form.collectionDate || !form.expiryDate) {
-      showToast('Enter the collection date and the expiry date.', 'error');
+      showToast(t('msg.enterTheCollectionDateAnd'), 'error');
       return;
     }
     if (!facilityId) {
-      showToast('Your account is not assigned to a facility. Ask your administrator to assign one.', 'error');
+      showToast(t('equipment.toastNoFacility'), 'error');
       return;
     }
     try {
@@ -180,12 +182,12 @@ export default function BloodBankPage() {
         facilityName,
         notes: form.notes.trim() || undefined,
       });
-      showToast(`Blood unit ${form.unitId.trim()} added to inventory.`, 'success');
+      showToast(t('msg.bloodUnitAddedToInventory', { value: form.unitId.trim() }), 'success');
       setOpen(false);
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Blood unit not added. Check that the unit ID is not already in inventory, then try again.', 'error');
+      showToast(t('msg.bloodUnitNotAddedCheck'), 'error');
     }
   };
 
@@ -241,7 +243,7 @@ export default function BloodBankPage() {
 
   const handleReserve = async () => {
     if (!reserveUnitId || !reservePatient) {
-      showToast('Select the patient this unit is reserved for.', 'error');
+      showToast(t('msg.selectThePatientThisUnit'), 'error');
       return;
     }
     if (!scope) return;
@@ -249,12 +251,12 @@ export default function BloodBankPage() {
     try {
       const result = await reserveUnit(reserveUnitId, reservePatient._id, scope);
       if (!result) throw new Error('reserve-failed');
-      showToast(`Blood unit reserved for ${patientFullName(reservePatient)}.`, 'success');
+      showToast(t('msg.bloodUnitReservedFor', { value: patientFullName(reservePatient) }), 'success');
       closeReserve();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Blood unit not reserved. It may have been issued or reserved on another device. Refresh and check availability.', 'error');
+      showToast(t('msg.bloodUnitNotReservedIt'), 'error');
     } finally {
       setReserving(false);
     }
@@ -262,7 +264,7 @@ export default function BloodBankPage() {
 
   const handleDiscard = async () => {
     if (!discardUnitId || !discardReason.trim()) {
-      showToast('Enter the reason for discarding this unit.', 'error');
+      showToast(t('msg.enterTheReasonForDiscarding'), 'error');
       return;
     }
     if (!scope) return;
@@ -270,12 +272,12 @@ export default function BloodBankPage() {
     try {
       const result = await discardUnit(discardUnitId, discardReason.trim(), scope);
       if (!result) throw new Error('discard-failed');
-      showToast('Blood unit discarded.', 'success');
+      showToast(t('msg.bloodUnitDiscarded'), 'success');
       closeDiscard();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Blood unit not discarded. Try again.', 'error');
+      showToast(t('msg.bloodUnitNotDiscardedTry'), 'error');
     } finally {
       setDiscarding(false);
     }
@@ -289,15 +291,15 @@ export default function BloodBankPage() {
       if (!result) throw new Error('crossmatch-failed');
       showToast(
         crossmatchChoice === 'compatible'
-          ? 'Crossmatch recorded as compatible.'
-          : 'Crossmatch recorded as incompatible. The unit is back in available inventory.',
+          ? t('msg.crossmatchRecordedAsCompatible')
+          : t('msg.crossmatchRecordedAsIncompatibleThe'),
         'success',
       );
       closeCrossmatch();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Crossmatch result not recorded. Try again.', 'error');
+      showToast(t('msg.crossmatchResultNotRecordedTry'), 'error');
     } finally {
       setCrossmatching(false);
     }
@@ -307,7 +309,7 @@ export default function BloodBankPage() {
     if (!transfuseUnitId) return;
     const unit = units.find(u => u._id === transfuseUnitId);
     if (!unit?.reservedForPatient) {
-      showToast('This unit is not reserved for a patient. Reserve it before recording a transfusion.', 'error');
+      showToast(t('msg.thisUnitIsNotReserved'), 'error');
       return;
     }
     if (!scope) return;
@@ -316,12 +318,12 @@ export default function BloodBankPage() {
       const transfusedBy = currentUser?.name || currentUser?.username || currentUser?._id || 'Staff';
       const result = await recordTransfusion(transfuseUnitId, unit.reservedForPatient, transfusedBy, scope);
       if (!result) throw new Error('transfuse-failed');
-      showToast('Transfusion recorded.', 'success');
+      showToast(t('msg.transfusionRecorded'), 'success');
       closeTransfuse();
       await loadUnits();
     } catch (err) {
       console.error(err);
-      showToast('Transfusion not recorded. Try again.', 'error');
+      showToast(t('msg.transfusionNotRecordedTryAgain'), 'error');
     } finally {
       setTransfusing(false);
     }

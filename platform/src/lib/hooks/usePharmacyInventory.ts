@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { PharmacyInventoryDoc } from '../db-types';
@@ -10,6 +11,7 @@ export function usePharmacyInventory() {
   const [items, setItems] = useState<PharmacyInventoryDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -21,7 +23,7 @@ export function usePharmacyInventory() {
       setItems(data);
     } catch (err) {
       console.error(err);
-      setError('Pharmacy inventory not loaded. Reload the page to try again.');
+      setError('msg.pharmacyInventoryNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -55,5 +57,5 @@ export function usePharmacyInventory() {
     return ok;
   }, [load]);
 
-  return { items, loading, error, create, update, remove, reload: load };
+  return { items, loading, error: error && t(error), create, update, remove, reload: load };
 }

@@ -90,11 +90,11 @@ function FacilityOverview() {
         },
       });
     } catch (err) {
-      setSubmitError(describeError(err, 'Report not submitted to the Ministry of Health. Check the connection and try again.'));
+      setSubmitError(describeError(err, t('msg.reportNotSubmittedToThe')));
     } finally {
       setSubmitting(false);
     }
-  }, [hospitalId, update, currentUser]);
+  }, [hospitalId, update, currentUser, t]);
 
   // Not assigned to a facility — the dashboard has nothing to scope to.
   if (!hospitalId) {

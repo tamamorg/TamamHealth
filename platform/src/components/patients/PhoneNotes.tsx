@@ -54,7 +54,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
       setResponseText('');
       setForm({ callerName: '', callerPhone: '', subject: '', message: '', routedToId: '' });
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }

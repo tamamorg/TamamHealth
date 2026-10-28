@@ -419,10 +419,10 @@ export default function ReferralsPage() {
     try {
       setActionSubmitting(true);
       await updateStatus(reverseModal.id, reverseModal.to);
-      showToast(t('action.undo'), 'success');
+      showToast(t('referrals.toastReversed'), 'success');
       setReverseModal(null);
     } catch {
-      showToast(t('error.title'), 'error');
+      showToast(t('referrals.toastReverseFailed'), 'error');
     } finally {
       setActionSubmitting(false);
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback, useMemo } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ProblemDoc, ProblemStatus } from '../db-types';
@@ -10,6 +11,7 @@ export function useProblems(patientId?: string) {
   const [problems, setProblems] = useState<ProblemDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -23,7 +25,7 @@ export function useProblems(patientId?: string) {
       setProblems(rows);
     } catch (err) {
       console.error(err);
-      setError('Problem list not loaded. Reload the page to try again.');
+      setError('msg.problemListNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -83,7 +85,7 @@ export function useProblems(patientId?: string) {
     active,
     resolved,
     loading,
-    error,
+    error: error && t(error),
     create,
     update,
     setStatus,

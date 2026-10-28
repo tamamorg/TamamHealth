@@ -24,6 +24,7 @@ import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { locationLabel, states } from '@/lib/data/south-sudan-reference';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
   { value: 'disease_outbreak', label: 'Disease outbreak' },
@@ -84,6 +85,7 @@ const EMPTY_FORM = {
 };
 
 export default function EmergencyPreparednessPage() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const scope = useDataScope();
@@ -110,11 +112,11 @@ export default function EmergencyPreparednessPage() {
       setPlans(result);
     } catch (err) {
       console.error(err);
-      showToast('Emergency plans not loaded. Reload the page to try again.', 'error');
+      showToast(t('msg.emergencyPlansNotLoadedReload'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [scope, showToast]);
+  }, [scope, showToast, t]);
 
   useEffect(() => {
     load();
@@ -127,11 +129,11 @@ export default function EmergencyPreparednessPage() {
 
   const handleSubmit = async () => {
     if (!form.planName.trim()) {
-      showToast('Enter the plan name.', 'error');
+      showToast(t('msg.enterThePlanName'), 'error');
       return;
     }
     if (!form.incidentCommander.trim()) {
-      showToast('Enter the incident commander.', 'error');
+      showToast(t('msg.enterTheIncidentCommander'), 'error');
       return;
     }
     try {
@@ -164,13 +166,13 @@ export default function EmergencyPreparednessPage() {
         totalReferralsOut: 0,
         orgId: currentUser?.orgId,
       });
-      showToast('Emergency plan created.', 'success');
+      showToast(t('msg.emergencyPlanCreated'), 'success');
       setShowForm(false);
       setForm(EMPTY_FORM);
       await load();
     } catch (err) {
       console.error(err);
-      showToast('Emergency plan not created. Try again.', 'error');
+      showToast(t('msg.emergencyPlanNotCreatedTry'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -181,15 +183,15 @@ export default function EmergencyPreparednessPage() {
     try {
       if (plan.phase === 'response') {
         await deactivatePlan(plan._id, actor, scope);
-        showToast(`${plan.planName} moved to recovery.`, 'success');
+        showToast(t('msg.movedToRecovery', { planName: plan.planName }), 'success');
       } else {
         await activatePlan(plan._id, actor, undefined, scope);
-        showToast(`${plan.planName} activated.`, 'success');
+        showToast(t('msg.activated', { planName: plan.planName }), 'success');
       }
       await load();
     } catch (err) {
       console.error(err);
-      showToast('Plan status not changed. Try again.', 'error');
+      showToast(t('msg.planStatusNotChangedTry'), 'error');
     }
   };
 

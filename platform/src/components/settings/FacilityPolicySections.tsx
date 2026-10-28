@@ -27,6 +27,7 @@ import { useSettings, useSettingsContext } from '@/lib/settings/SettingsProvider
 import { saveFacilitySettings } from '@/lib/settings/settings-service';
 import type { FacilitySettings } from '@/lib/settings/facility-settings';
 import { Building2, FileText, Lock, RefreshCw, Stethoscope } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type FacilityPolicyPanelId = 'clinical' | 'reporting' | 'integrations';
 
@@ -79,6 +80,7 @@ function Choice({ label, value, options, onChange }: {
 }
 
 export default function FacilityPolicySections({ panel }: { panel: FacilityPolicyPanelId }) {
+  const { t } = useTranslation();
   const settings = useSettings();
   const { hospitalId, orgId } = useSettingsContext();
   const { showToast } = useToast();
@@ -132,9 +134,9 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
         orgId,
         hospitalId,
       );
-      showToast('Facility policy saved. It now applies to all staff at this facility.', 'success');
+      showToast(t('msg.facilityPolicySavedItNow'), 'success');
     } catch {
-      showToast('Facility policy not saved. Try again.', 'error');
+      showToast(t('msg.facilityPolicyNotSavedTry'), 'error');
     } finally {
       setSaving(false);
     }

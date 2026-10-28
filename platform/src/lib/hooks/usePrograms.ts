@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback, useMemo } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ProgramEnrollmentDoc, ProgramEnrollmentStatus } from '../db-types';
@@ -10,6 +11,7 @@ export function usePrograms(patientId?: string) {
   const [enrollments, setEnrollments] = useState<ProgramEnrollmentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -21,7 +23,7 @@ export function usePrograms(patientId?: string) {
       setEnrollments(all);
     } catch (err) {
       console.error(err);
-      setError('Program enrollments not loaded. Reload the page to try again.');
+      setError('msg.programEnrollmentsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,7 @@ export function usePrograms(patientId?: string) {
     allEnrollments: enrollments,
     active,
     loading,
-    error,
+    error: error && t(error),
     create,
     update,
     setStatus,

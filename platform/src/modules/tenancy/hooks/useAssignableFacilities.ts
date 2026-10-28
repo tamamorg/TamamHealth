@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { HospitalDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
  * Facilities that the central identity service can assign immediately.
@@ -12,6 +13,7 @@ import { describeError } from '@/lib/user-facing-error';
  * form creates a choice the server cannot honour.
  */
 export function useAssignableFacilities(orgId?: string, enabled = true) {
+  const { t } = useTranslation();
   const [facilities, setFacilities] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +35,11 @@ export function useAssignableFacilities(orgId?: string, enabled = true) {
       setFacilities(Array.isArray(body.facilities) ? body.facilities : []);
     } catch (cause) {
       setFacilities([]);
-      setError(describeError(cause, 'Facility list not loaded. Reload the page to try again.'));
+      setError(describeError(cause, t('msg.facilityListNotLoadedReload')));
     } finally {
       setLoading(false);
     }
-  }, [enabled, orgId]);
+  }, [enabled, orgId, t]);
 
   useEffect(() => { void reload(); }, [reload]);
 

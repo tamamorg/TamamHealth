@@ -10,7 +10,8 @@ import { jubaDate } from '../time-juba';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import {
   APPOINTMENT_PENDING_STATUSES, APPOINTMENT_SLOT_RELEASED_STATUSES,
-  APPOINTMENT_SCHEDULING_ROLES, APPOINTMENT_CLINICAL_ROLES,
+  APPOINTMENT_SCHEDULING_ROLES, APPOINTMENT_CLINICAL_ROLES, APPOINTMENT_STATION_ROLES,
+  APPOINTMENT_STATUS_EXITS, canRoleMoveAppointment,
 } from '../appointment-status';
 import { isTimeOverlap } from '../appointment-time';
 
@@ -47,6 +48,9 @@ const APPOINTMENT_EXIT_ROLES: UserRole[] = APPOINTMENT_SCHEDULING_ROLES;
 const APPOINTMENT_COMPLETE_ROLES: UserRole[] = [
   ...APPOINTMENT_SCHEDULING_ROLES,
   ...APPOINTMENT_CLINICAL_ROLES,
+  // The stations finish the visits they serve: a patient whose last stop is
+  // the pharmacy counter or the cashier is completed there.
+  ...APPOINTMENT_STATION_ROLES,
 ];
 
 async function linkedDepartmentId(data: Pick<AppointmentDoc, 'department' | 'facilityId' | 'orgId'>): Promise<string | undefined> {
@@ -364,7 +368,7 @@ export async function getAppointmentById(id: string): Promise<AppointmentDoc | n
 }
 
 /** The encounter this appointment's visit is being tracked against, if any. */
-async function findLinkedEncounterForAppointment(appointmentId: string): Promise<EncounterDoc | null> {
+export async function findLinkedEncounterForAppointment(appointmentId: string): Promise<EncounterDoc | null> {
   const rows = await findByType<EncounterDoc>(
     encountersDB(), 'clinical_encounter', { appointmentId }, { indexFields: ['type', 'appointmentId'] },
   );
@@ -463,11 +467,14 @@ export async function updateAppointmentStatus(
     // the visit. Both stay silent (fall through to the generic null return
     // below) rather than surfacing the reason, matching the 'confirmed' assert
     // above — callers already treat a null result as "the write didn't happen".
-    if ((status === 'cancelled' || status === 'no_show') && extra?.actorRole && !APPOINTMENT_EXIT_ROLES.includes(extra.actorRole)) {
-      throw new Error('Only the front desk, scheduling staff or an administrator can cancel an appointment or mark a no-show.');
+    if (APPOINTMENT_STATUS_EXITS.includes(status) && extra?.actorRole && !APPOINTMENT_EXIT_ROLES.includes(extra.actorRole)) {
+      throw new Error('Only the front desk, scheduling staff or an administrator can cancel, reschedule or mark a no-show.');
     }
     if (status === 'completed' && extra?.actorRole && !APPOINTMENT_COMPLETE_ROLES.includes(extra.actorRole)) {
       throw new Error('Only the front desk or the patient\'s care team can complete an appointment.');
+    }
+    if (!canRoleMoveAppointment(extra?.actorRole, existing.status, status)) {
+      throw new Error('This role cannot move the visit from its current status. Ask the front desk.');
     }
     // Approving a request turns it into a live booking. The portal write path
     // runs the conflict guard when the request is filed, but time passes

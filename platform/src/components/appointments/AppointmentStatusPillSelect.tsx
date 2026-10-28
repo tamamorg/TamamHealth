@@ -14,7 +14,7 @@
  * booking), it leads the list disabled so the control reads correctly.
  */
 
-import { appointmentStatusLabel, appointmentStatusOptionsForRole, canonicalAppointmentStatus, APPOINTMENT_STATUS_DESCRIPTIONS } from '@/lib/appointment-status';
+import { appointmentStatusLabel, appointmentStatusOptionsForRole, canonicalAppointmentStatus, canRoleMoveAppointment, APPOINTMENT_STATUS_DESCRIPTIONS } from '@/lib/appointment-status';
 import type { AppointmentStatus, UserRole } from '@/lib/db-types';
 import { stopsClickPropagation } from '@/lib/a11y';
 
@@ -33,10 +33,14 @@ interface AppointmentStatusPillSelectProps {
 export default function AppointmentStatusPillSelect({
   status, className = '', ariaLabel, role, labelFor = appointmentStatusLabel, onChange,
 }: AppointmentStatusPillSelectProps) {
-  const choices = appointmentStatusOptionsForRole(role);
   const current = canonicalAppointmentStatus(status);
+  // The role's rungs, narrowed to the moves it may make from THIS status
+  // (canRoleMoveAppointment — the rule the service enforces), so a doctor
+  // looking at a cancelled visit gets a plain pill, not a picker that fails.
+  const choices = appointmentStatusOptionsForRole(role)
+    .filter(option => option === current || canRoleMoveAppointment(role, status, option));
 
-  if (choices.length === 0) {
+  if (!choices.some(option => option !== current)) {
     return <span className={`appointment-status-pill ${className}`.trim()}>{labelFor(status)}</span>;
   }
 

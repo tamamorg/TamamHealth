@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { FollowUpDoc } from '../db-types';
@@ -27,6 +28,7 @@ export function useFollowUpsDue() {
   const [followUpsDue, setFollowUpsDue] = useState<FollowUpDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -49,7 +51,7 @@ export function useFollowUpsDue() {
       );
     } catch (err) {
       console.error('Failed to load follow-ups due', err);
-      setError('Follow-ups due not loaded. Reload the page to try again.');
+      setError('msg.followupsDueNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -59,5 +61,5 @@ export function useFollowUpsDue() {
   // completed, or rescheduled anywhere in the app. Replaces polling.
   usePouchLiveReload({ load, database: followUpsDB });
 
-  return { followUpsDue, loading, error, reload: load };
+  return { followUpsDue, loading, error: error && t(error), reload: load };
 }

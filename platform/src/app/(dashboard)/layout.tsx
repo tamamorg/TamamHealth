@@ -116,7 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <img src="/assets/logos/SVG/Tamam_Style_Guide-33.svg" alt="TamamHealth" className="w-14 h-14" />
           <div className="flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent-primary)' }} />
-            <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Loading TamamHealth...</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Loading TamamHealth…</p>
           </div>
         </div>
       </div>

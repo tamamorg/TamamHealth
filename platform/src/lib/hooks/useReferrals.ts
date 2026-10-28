@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useEffect, useCallback } from 'react';
 import { usePouchLiveReload } from './usePouchLiveReload';
 import type { ReferralDoc } from '../db-types';
@@ -11,6 +12,7 @@ export function useReferrals() {
   const [referrals, setReferrals] = useState<ReferralDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadReferrals = useCallback(async () => {
@@ -26,7 +28,7 @@ export function useReferrals() {
       setReferrals(data);
     } catch (err) {
       console.error(err);
-      setError('Referrals not loaded. Reload the page to try again.');
+      setError('msg.referralsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -78,13 +80,14 @@ export function useReferrals() {
     await loadReferrals();
   }, [loadReferrals]);
 
-  return { referrals, loading, error, create, createWithTransfer, updateStatus, updateNotes, completeWithOutcome, accept, reload: loadReferrals };
+  return { referrals, loading, error: error && t(error), create, createWithTransfer, updateStatus, updateNotes, completeWithOutcome, accept, reload: loadReferrals };
 }
 
 export function usePatientReferrals(patientId?: string) {
   const [referrals, setReferrals] = useState<ReferralDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadReferrals = useCallback(async () => {
@@ -100,7 +103,7 @@ export function usePatientReferrals(patientId?: string) {
       setReferrals(data);
     } catch (err) {
       console.error(err);
-      setError('Patient referrals not loaded. Reload the page to try again.');
+      setError('msg.patientReferralsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -110,5 +113,5 @@ export function usePatientReferrals(patientId?: string) {
     loadReferrals();
   }, [loadReferrals]);
 
-  return { referrals, loading, error, reload: loadReferrals };
+  return { referrals, loading, error: error && t(error), reload: loadReferrals };
 }

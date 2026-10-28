@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import type { PrescriptionDoc } from '../db-types';
 import type { PrescriptionCreateInput } from '../services/prescription-service';
@@ -15,6 +16,7 @@ export function usePrescriptions(patientId?: string) {
   const [prescriptions, setPrescriptions] = useState<PrescriptionDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
   // Identity only (useAuth, not useApp) — only used to supply advance()'s
   // actor id automatically below, so this must not re-render on every sync
@@ -30,7 +32,7 @@ export function usePrescriptions(patientId?: string) {
       setPrescriptions(data);
     } catch (err) {
       console.error(err);
-      setError('Prescriptions not loaded. Reload the page to try again.');
+      setError('msg.prescriptionsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -182,5 +184,5 @@ export function usePrescriptions(patientId?: string) {
     return result;
   }, [loadPrescriptions]);
 
-  return { prescriptions, loading, error, create, dispense, markUnfilled, administer, voidAdministration, advance, discontinue, reload: loadPrescriptions };
+  return { prescriptions, loading, error: error && t(error), create, dispense, markUnfilled, administer, voidAdministration, advance, discontinue, reload: loadPrescriptions };
 }

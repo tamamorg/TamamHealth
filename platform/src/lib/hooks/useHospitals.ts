@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useCallback } from 'react';
 import type { HospitalDoc } from '../db-types';
 import { useDataScope } from './useDataScope';
@@ -10,6 +11,7 @@ export function useHospitals() {
   const [hospitals, setHospitals] = useState<HospitalDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const loadHospitals = useCallback(async () => {
@@ -25,7 +27,7 @@ export function useHospitals() {
       setHospitals(data);
     } catch (err) {
       console.error(err);
-      setError('Facilities not loaded. Reload the page to try again.');
+      setError('msg.facilitiesNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -52,5 +54,5 @@ export function useHospitals() {
     return updated;
   }, [loadHospitals]);
 
-  return { hospitals, loading, error, create, update, reload: loadHospitals };
+  return { hospitals, loading, error: error && t(error), create, update, reload: loadHospitals };
 }

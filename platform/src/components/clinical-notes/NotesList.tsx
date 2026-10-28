@@ -101,7 +101,7 @@ export default function NotesList({
       );
       if (note && onOpenNote) { onOpenNote(note._id, 'clinical', note.status); void load(); }
     } catch (err) {
-      showToast(describeError(err, 'Note not started. Try again.'), 'error');
+      showToast(describeError(err, t('msg.noteNotStartedTryAgain')), 'error');
     }
   };
 

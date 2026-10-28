@@ -25,7 +25,8 @@ import { syncEventsDB } from '@/lib/db';
 import { findByType } from '@/lib/services/db-query';
 import type { SyncEventDoc } from '@/lib/db-types';
 import { RefreshCw } from '@/components/icons/lucide';
-import { describeError } from '@/lib/user-facing-error';
+import { describeApiError, describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface QueueHealth {
   total: number;
@@ -41,6 +42,7 @@ const RESULT_TONE: Record<string, 'ok' | 'danger' | 'info'> = {
 };
 
 export default function AdminInteropPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { showToast } = useToast();
   const { config, loading: configLoading } = usePlatformConfig();
@@ -80,15 +82,15 @@ export default function AdminInteropPage() {
     try {
       const result = await pushPendingToCountryNode(50);
       if (result.skipped) {
-        showToast('Retry not sent. National sync is not set up for this facility. Contact your system administrator.', 'error');
+        showToast(t('msg.retryNotSentNationalSync'), 'error');
       } else if (result.error) {
-        showToast(`Retry not sent. ${result.error}`, 'error');
+        showToast(t('msg.retryNotSent', { value: describeApiError({ error: result.error }, 'The national server did not accept the records. Try again later.') }), 'error');
       } else {
-        showToast(`Retry complete. ${result.pushed} sent, ${result.acknowledged} confirmed by the national server.`, 'success');
+        showToast(t('msg.retryCompleteSentConfirmedBy', { pushed: result.pushed, acknowledged: result.acknowledged }), 'success');
       }
       await loadAll();
     } catch (err) {
-      showToast(describeError(err, 'Retry not sent. Check the connection and try again.'), 'error');
+      showToast(describeError(err, t('msg.retryNotSentCheckThe')), 'error');
     } finally {
       setRetrying(false);
     }

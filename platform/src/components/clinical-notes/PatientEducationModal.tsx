@@ -19,6 +19,7 @@ import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { Send, X } from '@/components/icons/lucide';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import './clinical-notes.css';
 
 export interface PatientEducationModalResult {
@@ -35,20 +36,21 @@ interface PatientEducationModalProps {
 export default function PatientEducationModal({
   patientName, onSend, onClose,
 }: PatientEducationModalProps) {
+  const { t } = useTranslation();
   const [subject, setSubject] = useState('Patient education');
   const [body, setBody] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
-    if (!body.trim()) { setError('Enter the education content to send.'); return; }
+    if (!body.trim()) { setError(t('msg.enterTheEducationContentTo')); return; }
     setError('');
     setSending(true);
     try {
       await onSend({ subject: subject.trim() || 'Patient education', body: body.trim() });
       onClose();
     } catch (err) {
-      setError(describeError(err, 'Patient education not sent. Try again.'));
+      setError(describeError(err, t('msg.patientEducationNotSentTry')));
     } finally {
       setSending(false);
     }

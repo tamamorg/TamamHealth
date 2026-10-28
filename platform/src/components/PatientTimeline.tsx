@@ -11,7 +11,7 @@ import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatRxSig, humanizeStatus } from '@/lib/format-utils';
-import { priorityBadge } from '@/lib/clinical/triage-display';
+import { priorityBadge, priorityLabelKey } from '@/lib/clinical/triage-display';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import { clickable, stopsClickPropagation } from '@/lib/a11y';
 import { toIsoDate } from '@/lib/date-utils';
@@ -114,7 +114,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
       encounterId: tr.encounterId || undefined,
       date: tr.triagedAt || tr.createdAt,
       category: 'triage',
-      title: tr.chiefComplaint || t('timeline.titleTriage'),
+      title: tr.chiefComplaint || t('timeline.titleTriage', { priority: t(priorityLabelKey(tr.priority)) }),
       subtitle: tr.assessmentSource === 'clerical_checkin' || tr.airway === 'not_assessed'
         ? t('timeline.triageNotAssessed')
         : `A: ${tr.airway} · B: ${tr.breathing} · C: ${tr.circulation} · AVPU-${tr.consciousness.toUpperCase()[0]}`,

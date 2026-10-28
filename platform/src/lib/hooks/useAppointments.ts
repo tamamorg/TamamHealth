@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { useState, useEffect, useCallback } from 'react';
 import type { AppointmentDoc, AppointmentStatus, UserRole } from '../db-types';
 import { appointmentsDB } from '../db';
@@ -12,6 +13,7 @@ export function useAppointments() {
   const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
   const { currentUser } = useAuth();
 
@@ -28,7 +30,7 @@ export function useAppointments() {
       setAppointments(data);
     } catch (err) {
       console.error(err);
-      setError('Appointments not loaded. Reload the page to try again.');
+      setError('msg.appointmentsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -72,13 +74,14 @@ export function useAppointments() {
     await load();
   }, [currentUser?.role, load]);
 
-  return { appointments, loading, error, create, updateStatus, reschedule, update, reload: load };
+  return { appointments, loading, error: error && t(error), create, updateStatus, reschedule, update, reload: load };
 }
 
 export function usePatientAppointments(patientId?: string) {
   const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const scope = useDataScope();
 
   const load = useCallback(async () => {
@@ -90,7 +93,7 @@ export function usePatientAppointments(patientId?: string) {
       setAppointments(data);
     } catch (err) {
       console.error(err);
-      setError('Patient appointments not loaded. Reload the page to try again.');
+      setError('msg.patientAppointmentsNotLoaded');
     } finally {
       setLoading(false);
     }
@@ -98,7 +101,7 @@ export function usePatientAppointments(patientId?: string) {
 
   useEffect(() => { load(); }, [load]);
 
-  return { appointments, loading, error, reload: load };
+  return { appointments, loading, error: error && t(error), reload: load };
 }
 
 export function useAppointmentStats() {

@@ -7,6 +7,7 @@ import { Lock, Edit3, Plus, CheckCircle2, Clock, X } from '@/components/icons/lu
 import { formatDateTime } from '@/lib/format-utils';
 import { PROVIDER_ROLES, TRAINEE_AUTHOR_ROLES } from '@/lib/clinical-roles';
 import { describeError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function statusOf(rec: MedicalRecordDoc): 'draft' | 'awaiting_cosign' | 'signed' | 'amended' {
   return rec.documentStatus ?? 'draft';
@@ -19,6 +20,7 @@ function statusOf(rec: MedicalRecordDoc): 'draft' | 'awaiting_cosign' | 'signed'
  * signed note can only be corrected via an append-only addendum.
  */
 export default function RecordSignatureBar({ record }: { record: MedicalRecordDoc }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export default function RecordSignatureBar({ record }: { record: MedicalRecordDo
       setAddendumOpen(false);
       setAddendumText('');
     } catch (e) {
-      setError(describeError(e, 'Change not saved. Try again.'));
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
     } finally {
       setBusy(false);
     }

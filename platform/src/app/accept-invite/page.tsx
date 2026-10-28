@@ -25,8 +25,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
 import { Corners } from '@/components/login/login-chrome';
 import { describeApiError } from '@/lib/user-facing-error';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function AcceptInviteForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get('token') || '';
@@ -95,11 +97,11 @@ function AcceptInviteForm() {
     // Checked here as well as on the server so the common mistakes cost no
     // round trip — the server is still the authority.
     if (password.length < minLength) {
-      setError(`Password must be at least ${minLength} characters.`);
+      setError(t('msg.passwordMustBeAtLeast', { minLength }));
       return;
     }
     if (password !== confirm) {
-      setError('The passwords do not match. Enter the same password in both fields.');
+      setError(t('pactivate.errMismatch'));
       return;
     }
 
@@ -112,12 +114,12 @@ function AcceptInviteForm() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(describeApiError(payload, 'Password not set. Try again.'));
+        setError(describeApiError(payload, t('msg.passwordNotSetTryAgain')));
         return;
       }
       setDone(true);
     } catch {
-      setError('Cannot reach the server. Check your internet connection and try again.');
+      setError(t('pactivate.errNetwork'));
     } finally {
       setBusy(false);
     }
