@@ -1,7 +1,8 @@
 /**
  * Record vitals slides in from the right as a dialog: vitals then biometrics,
  * blood pressure as one tile, BMI worked out as weight and height are typed,
- * Escape closes it, and Save writes one nursing vitals record.
+ * Escape closes it, the chart beside it is not covered, and Save writes one
+ * nursing vitals record.
  */
 import React from 'react';
 import { act, click, flush, mountAndFlush, setValue, type Mounted } from '../clinical-notes/test-utils';
@@ -55,6 +56,12 @@ it('works out BMI from weight and height', async () => {
   await open();
   await act(async () => { setValue(input('Weight'), '70'); setValue(input('Height'), '175'); await flush(); });
   expect(panel().querySelector('.nv-tile--readonly')?.textContent).toContain('22.9');
+});
+
+it('docks beside the chart instead of covering it', async () => {
+  await open();
+  expect(document.body.querySelector('.nv-backdrop')).toBeNull();
+  expect(panel().getAttribute('aria-modal')).toBe('false');
 });
 
 it('closes on Escape', async () => {
