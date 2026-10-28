@@ -62,3 +62,13 @@ describe('login startup', () => {
     expect(source).not.toMatch(/manager\.startAll\(\);\s*(?:\/\/[^\n]*\n\s*)*manager\.syncNow\(/);
   });
 });
+
+describe('role landing-screen databases join the first wave', () => {
+  it('pulls billing first for the billing desk, and only for it', () => {
+    const { prioritySyncDatabasesFor } = jest.requireActual('@/lib/sync/sync-manager') as typeof import('@/lib/sync/sync-manager');
+    expect(prioritySyncDatabasesFor('cashier').has('tamamhealth_payments')).toBe(true);
+    expect(prioritySyncDatabasesFor('medical_biller').has('tamamhealth_claims')).toBe(true);
+    expect(prioritySyncDatabasesFor('doctor').has('tamamhealth_payments')).toBe(false);
+    expect(prioritySyncDatabasesFor('cashier').has('tamamhealth_patients')).toBe(true);
+  });
+});

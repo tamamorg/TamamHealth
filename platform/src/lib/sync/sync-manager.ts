@@ -45,6 +45,24 @@ export const PRIORITY_SYNC_DATABASES: ReadonlySet<string> = new Set([
   'tamamhealth_sync_events',
 ]);
 
+/**
+ * Databases a role's landing screen reads that are NOT in the clinical core.
+ * The billing desk lands on Bills & Claims, which aggregates billing data
+ * alone; left in the second wave, a new cashier device sat on "No billing
+ * activity" for about two minutes while the clinical core it never shows
+ * synced first.
+ */
+const ROLE_PRIORITY_SYNC_DATABASES: Readonly<Record<string, readonly string[]>> = {
+  cashier: ['tamamhealth_billing', 'tamamhealth_payments', 'tamamhealth_payment_plans'],
+  medical_biller: ['tamamhealth_billing', 'tamamhealth_payments', 'tamamhealth_payment_plans', 'tamamhealth_claims'],
+};
+
+/** The first-wave databases for a role: the clinical core plus its landing screen's own. */
+export function prioritySyncDatabasesFor(role?: string): ReadonlySet<string> {
+  const extra = (role && ROLE_PRIORITY_SYNC_DATABASES[role]) || [];
+  return extra.length === 0 ? PRIORITY_SYNC_DATABASES : new Set([...PRIORITY_SYNC_DATABASES, ...extra]);
+}
+
 /** How long the reference/history tail waits behind the clinical core. */
 export const SECOND_WAVE_DELAY_MS = 20_000;
 
@@ -254,8 +272,9 @@ export class SyncManager {
     // Nothing syncs less than before; the tail just queues behind the part
     // the user is looking at. `stopAll` cancels the timer, so a logout during
     // the window leaks nothing.
-    const firstWave = DATABASE_SYNC_CONFIGS.filter(c => PRIORITY_SYNC_DATABASES.has(c.localName));
-    const secondWave = DATABASE_SYNC_CONFIGS.filter(c => !PRIORITY_SYNC_DATABASES.has(c.localName));
+    const priority = prioritySyncDatabasesFor(this.user?.role);
+    const firstWave = DATABASE_SYNC_CONFIGS.filter(c => priority.has(c.localName));
+    const secondWave = DATABASE_SYNC_CONFIGS.filter(c => !priority.has(c.localName));
 
     const startConfigs = (configs: typeof DATABASE_SYNC_CONFIGS) => {
       for (const config of configs) {

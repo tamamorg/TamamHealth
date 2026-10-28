@@ -41,7 +41,12 @@ import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import type { PaymentDoc, ClaimDoc, PaymentPlanDoc, PaymentMethodType } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
-import type { EncounterDoc } from '@/lib/db-types';
+import type { AppointmentDoc, EncounterDoc } from '@/lib/db-types';
+import { useAppointments } from '@/lib/hooks/useAppointments';
+import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
+import { billingDB, claimsDB, paymentPlansDB, paymentsDB } from '@/lib/db';
+import VisitStatusPicker from '@/components/appointments/VisitStatusPicker';
+import { APPOINTMENT_SLOT_RELEASED_STATUSES } from '@/lib/appointment-status';
 import type { EncounterStatus } from '@/lib/clinical-flow/encounter-journey';
 import { formatMoney } from '@/lib/format-utils';
 import { shortenPersonName } from '@/lib/patient-utils';
@@ -91,6 +96,9 @@ function accountStatus(line: PatientLine): { label: string; chip: string } {
   if (line.totalCollected > 0) return { label: 'Partial', chip: 'bl-chip--partial' };
   return { label: 'Unpaid', chip: 'bl-chip--unpaid' };
 }
+
+/** The stores this screen aggregates; a change in any of them redraws it. */
+const billingFeeds = () => [paymentsDB(), billingDB(), claimsDB(), paymentPlansDB()];
 
 interface PatientLine {
   patientId: string;
@@ -177,9 +185,13 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   // same dialog replays the same refund instead of posting a second one.
   const refundKeyRef = useRef('');
 
+  // The spinner is for the first load only. Later reloads come from the live
+  // feeds below — a bill arriving by sync, a payment posted at the next desk —
+  // and redraw in place instead of blanking the queue.
+  const loadedOnce = useRef(false);
   const loadData = useCallback(async () => {
     if (!scope) return;
-    setLoading(true);
+    if (!loadedOnce.current) setLoading(true);
     setError('');
     try {
       const [{ getAllPayments, getAllClaims, getAllPaymentPlans }, { getAllBills }, { getEncountersClosedSince }] = await Promise.all([
@@ -196,6 +208,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         getEncountersClosedSince(since, [...ENCOUNTER_COMPLETION_STATUSES], scope),
       ]);
       setData({ payments: payments || [], claims: claims || [], plans: plans || [], bills: bills || [], encounters: encounters || [] });
+      loadedOnce.current = true;
     } catch (err) {
       console.error('Error loading payments data:', err);
       setError(t('payments.errorLoad'));
@@ -204,7 +217,11 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     }
   }, [scope, canSeeClaims, t]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Billing replicates in the second sync wave, so on a fresh device this
+  // screen opens before its bills and payments have arrived. Loading once left
+  // it on "No billing activity" until someone reloaded the page; the live
+  // feeds redraw it as the documents land.
+  usePouchLiveReload({ load: loadData, database: billingFeeds });
 
   // A role without the claims grant must never land on (or be left holding)
   // the claims tab, whichever route mounted this.
@@ -502,8 +519,26 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     ...(canSeeClaims ? [{ label: t('payments.colClaims'), align: 'right' as const }] : []),
     { label: t('payments.colPlans'), align: 'right' as const },
     { label: t('payments.colLastActivity'), align: 'left' as const },
+    { label: t('payments.colVisit'), align: 'left' as const },
     { label: t('payments.colBalance'), align: 'right' as const },
   ], [t, canSeeClaims]);
+  // Today's visit per patient, so the desk that settles the bill can also move
+  // the visit along (In Progress / Completed for cashier and biller).
+  const { appointments } = useAppointments();
+  const todaysVisitByPatient = useMemo(() => {
+    const today = todayIso();
+    const map = new Map<string, AppointmentDoc>();
+    for (const appointment of appointments) {
+      if (appointment.appointmentDate !== today || !appointment.patientId) continue;
+      // A patient rebooked after a cancellation has two visits today; the
+      // live one is the one to move, not the cancelled slot.
+      const held = map.get(appointment.patientId);
+      if (!held || (APPOINTMENT_SLOT_RELEASED_STATUSES.includes(held.status) && !APPOINTMENT_SLOT_RELEASED_STATUSES.includes(appointment.status))) {
+        map.set(appointment.patientId, appointment);
+      }
+    }
+    return map;
+  }, [appointments]);
 
   // The work queue's Actions menu — create, export, reset, reload, in that
   // order: the two that write come first, the three that only redraw follow.
@@ -880,6 +915,15 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           <td className="bl-num bl-right">{line.activePlans > 0 ? line.activePlans : '—'}</td>
                           <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
                             {line.lastActivity ? new Date(line.lastActivity).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                          </td>
+                          <td>
+                            {todaysVisitByPatient.has(line.patientId) ? (
+                              <VisitStatusPicker
+                                appointmentId={todaysVisitByPatient.get(line.patientId)!._id}
+                                status={todaysVisitByPatient.get(line.patientId)!.status}
+                                patientName={shortenPersonName(line.patientName)}
+                              />
+                            ) : <span className="bl-muted">—</span>}
                           </td>
                           <td className="bl-num bl-right" style={{ fontWeight: 700, color: owing ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
                             {formatMoney(owing ? line.outstanding : line.totalCollected, { decimals: 2 })}

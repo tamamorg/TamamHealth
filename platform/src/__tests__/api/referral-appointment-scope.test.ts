@@ -352,3 +352,68 @@ describe('reschedule — one policy across API, service and UI', () => {
       .rejects.toBeInstanceOf(AppointmentAmendNotAllowedError);
   });
 });
+
+describe('/api/appointments update_status for the service stations', () => {
+  const book = () => createAppointment({
+    patientId: 'pat-lab', patientName: 'Lab Patient',
+    providerId: 'doctor-a', providerName: 'Dr Test',
+    facilityId: HOSP_A, facilityName: 'Hospital A', facilityLevel: 'payam',
+    appointmentDate: futureDateString(20), appointmentTime: '09:00', duration: 30,
+    appointmentType: 'general', priority: 'routine', department: 'OPD',
+    status: 'checked_in', reason: 'Review', reminderSent: false, isRecurring: false,
+    bookedBy: 'desk-a', bookedByName: 'Desk A', state: 'Central Equatoria', orgId: ORG_A,
+  } as Parameters<typeof createAppointment>[0]);
+  const asLabTech = (orgId = ORG_A, hospitalId = HOSP_A) =>
+    mockGetAuth.mockResolvedValue({ ...authFor(orgId, hospitalId, 'lab-a'), role: 'lab_tech', name: 'Lab A' });
+
+  test('a lab tech moves a visit at their facility to In Progress', async () => {
+    const appt = await book();
+    asLabTech();
+    const res = await appointmentsPOST(postRequest('http://test/api/appointments', {
+      action: 'update_status', appointmentId: appt._id, status: 'in_progress',
+    }));
+    expect(res.status).toBe(200);
+    expect((await getAppointmentById(appt._id))?.statusHistory?.at(-1)).toMatchObject({ to: 'in_progress', by: 'lab-a' });
+  });
+
+  test('a lab tech cannot cancel, book, or reach another org', async () => {
+    const appt = await book();
+    asLabTech();
+    const cancel = await appointmentsPOST(postRequest('http://test/api/appointments', {
+      action: 'update_status', appointmentId: appt._id, status: 'cancelled',
+    }));
+    expect(cancel.status).toBe(403);
+    const create = await appointmentsPOST(postRequest('http://test/api/appointments', {
+      patientId: 'pat-x', appointmentDate: futureDateString(21), appointmentTime: '10:00',
+    }));
+    expect(create.status).toBe(403);
+    asLabTech(ORG_B, HOSP_B);
+    const foreign = await appointmentsPOST(postRequest('http://test/api/appointments', {
+      action: 'update_status', appointmentId: appt._id, status: 'in_progress',
+    }));
+    expect(foreign.status).toBe(404);
+    expect((await getAppointmentById(appt._id))?.status).toBe('checked_in');
+  });
+});
+
+describe('updateAppointmentStatus refuses moves a role may not make', () => {
+  test('a lab tech cannot revive a cancelled visit or check a patient in', async () => {
+    const { updateAppointmentStatus } = await import('@/lib/services/appointment-service');
+    const make = (status: 'cancelled' | 'scheduled') => createAppointment({
+      patientId: `pat-${status}`, patientName: 'P', providerId: 'doctor-a', providerName: 'Dr Test',
+      facilityId: HOSP_A, facilityName: 'Hospital A', facilityLevel: 'payam',
+      appointmentDate: futureDateString(20), appointmentTime: '09:00', duration: 30,
+      appointmentType: 'general', priority: 'routine', department: 'OPD',
+      status, reason: 'R', reminderSent: false, isRecurring: false,
+      bookedBy: 'desk-a', bookedByName: 'Desk A', state: 'Central Equatoria', orgId: ORG_A,
+    } as Parameters<typeof createAppointment>[0]);
+    const cancelled = await make('cancelled');
+    const booked = await make('scheduled');
+    const lab = { actorId: 'lab-a', actorRole: 'lab_tech' as const };
+    expect(await updateAppointmentStatus(cancelled._id, 'in_progress', lab)).toBeNull();
+    expect(await updateAppointmentStatus(booked._id, 'in_progress', lab)).toBeNull();
+    expect((await getAppointmentById(cancelled._id))?.status).toBe('cancelled');
+    expect((await getAppointmentById(booked._id))?.status).toBe('scheduled');
+    expect(await updateAppointmentStatus(cancelled._id, 'scheduled', { actorId: 'desk-a', actorRole: 'front_desk' })).not.toBeNull();
+  });
+});

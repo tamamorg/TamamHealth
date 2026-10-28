@@ -25,7 +25,8 @@
  * Pure module (no React, no DB): `useNotifications` reads the documents and
  * hands them here, and the tests exercise the derivation directly.
  */
-import type { EncounterDoc, PrescriptionDoc } from '@/lib/db-types';
+import type { AppointmentDoc, EncounterDoc, PrescriptionDoc } from '@/lib/db-types';
+import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { shortenPersonName } from '@/lib/patient-utils';
 import { encounterVisitState } from '@/lib/clinical-flow/visit-state';
 import { isOwnedByViewer, type FeedViewer } from './notification-scope';
@@ -213,6 +214,85 @@ export function dispensedItems(
       subtitle: `${rx.medication} · collected from pharmacy`,
       time: at,
       href: `/patients/${encodeURIComponent(rx.patientId)}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`,
+    });
+  }
+  return items
+    .sort((a, b) => (b.time || '').localeCompare(a.time || ''))
+    .slice(0, limit);
+}
+
+/** How long a hand-set status change stays in the feed. A status is "news"
+ *  for the shift it happened in, not for the weekend after it. */
+const STATUS_CHANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** The station each waiting-for-service stage hands the patient to. */
+const STATION_FOR_STAGE: Partial<Record<EncounterDoc['status'], readonly string[]>> = {
+  awaiting_labs: ['lab_tech'],
+  awaiting_imaging: ['radiologist'],
+  awaiting_pharmacy: ['pharmacist'],
+  ready_for_clinic_checkout: ['cashier', 'medical_biller'],
+  in_clinic_checkout: ['cashier', 'medical_biller'],
+};
+
+/** Encounter stage projections write a status-history note starting with this
+ *  (encounter-service); the care team already heard about those through
+ *  {@link visitUpdateItems}. */
+const PROJECTED_NOTE_PREFIX = 'Projected from encounter';
+
+/**
+ * A staff member moved a visit from a dashboard's status dropdown: tell the
+ * people who need to act on it. One item per status change, addressed to
+ *
+ *   - the visit's care team (the booked provider and staff on the appointment,
+ *     and the assigned clinician and nurse on its encounter),
+ *   - the front desk, which owns the visit end to end, and
+ *   - the station the patient is headed to next, read from the encounter's
+ *     stage (lab for `awaiting_labs`, pharmacy for `awaiting_pharmacy`, the
+ *     cashier at checkout).
+ *
+ * The person who made the change is never told about it. Every other screen
+ * at the facility already redraws from the appointments database's live feed;
+ * this is the bell, for the people the change asks something of.
+ */
+export function visitStatusChangeItems(
+  appointments: AppointmentDoc[],
+  encounters: EncounterDoc[],
+  viewer: FeedViewer | null | undefined,
+  nowMs: number,
+  limit: number,
+): NotificationItem[] {
+  const viewerId = viewer?._id;
+  if (!viewerId) return [];
+  const role = String(viewer?.role || '');
+  const encounterByAppointment = new Map<string, EncounterDoc>();
+  for (const encounter of encounters) {
+    if (encounter.appointmentId) encounterByAppointment.set(encounter.appointmentId, encounter);
+  }
+  const items: NotificationItem[] = [];
+  for (const appointment of appointments) {
+    const trail = appointment.statusHistory?.filter(entry => !entry.automated);
+    const last = trail && trail.length > 0 ? trail[trail.length - 1] : undefined;
+    if (!last?.by || last.by === viewerId) continue;
+    const ms = Date.parse(last.at);
+    if (Number.isNaN(ms) || nowMs - ms > STATUS_CHANGE_WINDOW_MS) continue;
+    const encounter = encounterByAppointment.get(appointment._id);
+    const projected = (last.note || '').startsWith(PROJECTED_NOTE_PREFIX);
+    const onTeam = appointment.providerId === viewerId
+      || appointment.staffId === viewerId
+      || (!!encounter && onCareTeam(encounter, viewerId));
+    const atDesk = RECEPTION_ROLES.has(role);
+    const nextStation = !!encounter && (STATION_FOR_STAGE[encounter.status] || []).includes(role);
+    if (!(onTeam && !projected) && !atDesk && !nextStation) continue;
+    const exit = last.to === 'cancelled' || last.to === 'no_show' || last.to === 'rescheduled';
+    items.push({
+      id: `visit-appt-${appointment._id}-${last.to}-${last.at}`,
+      type: 'visit',
+      severity: exit ? 'warning' : 'info',
+      title: `${shortenPersonName(appointment.patientName) || 'Patient'} · ${appointmentStatusLabel(last.to)}`,
+      subtitle: [last.byName ? `by ${last.byName}` : '', projected ? '' : (last.note || '')].filter(Boolean).join(' · ')
+        || 'visit status update',
+      time: last.at,
+      href: `/patients/${encodeURIComponent(appointment.patientId)}`,
     });
   }
   return items

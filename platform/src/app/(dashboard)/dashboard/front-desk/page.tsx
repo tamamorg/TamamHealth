@@ -15,7 +15,7 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, PatientDoc, TriageDoc } from '@/lib/db-types';
 import { APPOINTMENT_STATUS_TONES, APPOINTMENT_CHECKED_IN_STATUSES,
-  APPOINTMENT_PENDING_STATUSES, APPOINTMENT_STATUS_OPTIONS,
+  APPOINTMENT_PENDING_STATUSES, appointmentStatusOptionsForRole,
   appointmentStatusLabel, appointmentStatusGroup,
   APPOINTMENT_STATUS_GROUP_LABELS, APPOINTMENT_SLOT_RELEASED_STATUSES, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
@@ -114,8 +114,12 @@ export default function FrontDeskDashboardPage() {
   const scope = useDataScope();
   const { canConsult, canManageAppointmentSchedule, canCheckInAppointments, canAssignCareTeam } = usePermissions();
   // Reception schedules and checks in; a role that can do neither may look at
-  // the ladder but not move a booking along it.
-  const canSetAppointmentStatus = canManageAppointmentSchedule || canCheckInAppointments;
+  // the ladder but not move a booking along it. The rungs offered are the
+  // role's own (appointmentStatusOptionsForRole — the list the service
+  // enforces): a clinician who opens this board can advance a visit but is
+  // never offered Cancelled or No-show.
+  const deskStatusChoices = useMemo(() => appointmentStatusOptionsForRole(currentUser?.role), [currentUser?.role]);
+  const canSetAppointmentStatus = (canManageAppointmentSchedule || canCheckInAppointments) && deskStatusChoices.length > 0;
   // Same roles the chart's Assign-provider action uses, so routing a patient
   // means the same thing wherever it is done from.
   const { patients, loading: patientsLoading } = usePatients();
@@ -1239,7 +1243,7 @@ export default function FrontDeskDashboardPage() {
         statusOptions: canSetAppointmentStatus
           ? [
               ...(appointment.status === 'requested' ? [{ value: 'requested', label: appointmentStatusLabel('requested') }] : []),
-              ...APPOINTMENT_STATUS_OPTIONS.map(option => ({ value: option, label: appointmentStatusLabel(option) })),
+              ...deskStatusChoices.map(option => ({ value: option, label: appointmentStatusLabel(option) })),
             ]
           : undefined,
         onStatusChange: canSetAppointmentStatus
@@ -1424,7 +1428,7 @@ export default function FrontDeskDashboardPage() {
         // records never disagree (see the handler).
         statusValue: ladderStatus,
         statusOptions: canSetAppointmentStatus
-          ? APPOINTMENT_STATUS_OPTIONS.map(option => ({ value: option, label: appointmentStatusLabel(option) }))
+          ? deskStatusChoices.map(option => ({ value: option, label: appointmentStatusLabel(option) }))
           : undefined,
         onStatusChange: canSetAppointmentStatus
           ? async (value: string) => {
@@ -1826,6 +1830,7 @@ export default function FrontDeskDashboardPage() {
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <EhrCareDashboard
+          visitStatusPicker={false}
           title=""
           greetingName={currentUser.name || 'front desk'}
           dateLabel={dateLabel}

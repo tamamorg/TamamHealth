@@ -106,12 +106,64 @@ export const APPOINTMENT_CLINICAL_ROLES: UserRole[] = [
   'rooming_nurse',
 ];
 
+/**
+ * The service stations a checked-in patient passes through after (or instead
+ * of) the clinician. Each one moves the visit only while the patient is with
+ * them: picked up (In Progress) and finished (Completed). Checking a patient
+ * in, and taking one off the board, stay with reception.
+ */
+export const APPOINTMENT_STATION_ROLES: UserRole[] = [
+  'lab_tech',
+  'radiologist',
+  'pharmacist',
+  'nutritionist',
+  'cashier',
+  'medical_biller',
+];
+
 /** The rungs a role may SET from a status picker; empty = read-only pill. */
 export function appointmentStatusOptionsForRole(role?: UserRole): AppointmentStatus[] {
   if (!role) return [];
   if (APPOINTMENT_SCHEDULING_ROLES.includes(role)) return APPOINTMENT_STATUS_OPTIONS;
   if (APPOINTMENT_CLINICAL_ROLES.includes(role)) return ['checked_in', 'in_progress', 'completed'];
+  if (APPOINTMENT_STATION_ROLES.includes(role)) return ['in_progress', 'completed'];
   return [];
+}
+
+/** The rungs a station may act from: the patient is present and in the building. */
+const STATION_ACTIONABLE: AppointmentStatus[] = ['checked_in', 'in_progress', 'completed'];
+
+/**
+ * May `role` move a visit from `from` to `to`? The one rule behind both the
+ * dropdowns (which only offer moves that pass) and `updateAppointmentStatus`
+ * (which refuses the rest), so a pick is never offered that the write refuses.
+ *
+ *  - Reception and admins own the book: any move.
+ *  - Nobody else takes a visit OUT of an exit. A cancelled, no-show or
+ *    rescheduled visit was closed by reception, so reopening it is theirs too.
+ *  - A station acts only on a patient who is checked in, and only along its
+ *    own rungs — it never checks a patient in.
+ *  - A clinician never sets an exit or Confirmed (the existing gates).
+ *
+ * No role means a system write (reminders, encounter projections): allowed.
+ */
+export function canRoleMoveAppointment(role: UserRole | undefined, from: AppointmentStatus, to: AppointmentStatus): boolean {
+  if (!role || APPOINTMENT_SCHEDULING_ROLES.includes(role)) return true;
+  if (APPOINTMENT_STATUS_EXITS.includes(from)) return false;
+  if (APPOINTMENT_STATION_ROLES.includes(role)) {
+    return STATION_ACTIONABLE.includes(canonicalAppointmentStatus(from))
+      && ['in_progress', 'completed'].includes(canonicalAppointmentStatus(to));
+  }
+  return !APPOINTMENT_STATUS_EXITS.includes(to) && to !== 'confirmed';
+}
+
+/**
+ * Statuses that take a visit off the board without it being seen. Picking one
+ * from a row's dropdown asks for a reason first; every forward move saves
+ * straight from the pick.
+ */
+export function appointmentStatusNeedsReason(status: AppointmentStatus): boolean {
+  return APPOINTMENT_STATUS_EXITS.includes(status);
 }
 
 /**

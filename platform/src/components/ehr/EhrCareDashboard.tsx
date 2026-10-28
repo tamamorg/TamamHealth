@@ -16,13 +16,14 @@ import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import { initials, stateTint } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, titleCase } from '@/lib/format-utils';
 import { useAppointments } from '@/lib/hooks/useAppointments';
+import { useVisitStatusChange } from '@/lib/hooks/useVisitStatusChange';
 import { useAuth } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import {
   APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_GROUPS,
   APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusGroup, appointmentStatusLabel,
-  canonicalAppointmentStatus, type AppointmentStatusGroup,
+  canonicalAppointmentStatus, APPOINTMENT_SLOT_RELEASED_STATUSES, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import type { AppointmentStatus } from '@/lib/db-types';
@@ -30,6 +31,10 @@ import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigatio
 import { stopsClickPropagation } from '@/lib/a11y';
 
 const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
+/** Marks a visit-status pick on a locked row's picker, whose own options are
+ *  the station's vocabulary (see `lockStatus`). */
+const VISIT_OPTION_PREFIX = 'visit:';
+const LOCKED_STATUS_PLACEHOLDER = '__station-status';
 
 export type EhrCareDashboardAction = {
   label: string;
@@ -110,7 +115,7 @@ export type EhrCareDashboardRow = {
    * writing them straight — so a stray pick cannot quietly close a visit.
    */
   statusValue?: string;
-  statusOptions?: { value: string; label: string }[];
+  statusOptions?: { value: string; label: string; disabled?: boolean }[];
   onStatusChange?: (value: string) => void;
   /**
    * Opts a row out of the shared visit ladder taking over its status pill.
@@ -227,6 +232,7 @@ export default function EhrCareDashboard({
   metrics,
   metricsActions,
   showCalendar = true,
+  visitStatusPicker = true,
   filterRowsByDate = true,
   selectedDate: controlledSelectedDate,
   onSelectedDateChange,
@@ -280,6 +286,13 @@ export default function EhrCareDashboard({
    *  just placed in the sidebar instead of the header/rail. */
   metricsActions?: EhrCareDashboardAction[];
   showCalendar?: boolean;
+  /**
+   * Lets the signed-in role move a row's same-day visit from the status pill
+   * (the rungs `appointmentStatusOptionsForRole` grants it). On by default; a
+   * page that wires its own status dialogs for every row — the front desk —
+   * turns it off so a pick is never written behind those dialogs.
+   */
+  visitStatusPicker?: boolean;
   /**
    * Controlled calendar selection. When provided (with `onSelectedDateChange`),
    * the page owns the selected day — it can rebuild rows, tab counts and the
@@ -358,22 +371,25 @@ export default function EhrCareDashboard({
     return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
   }, [currentUser]);
 
-  // ── One status reading for every station ────────────────────────────────
+  // ── One visit status for every station ──────────────────────────────────
   // Lab, pharmacy, radiology, nutrition and reception all render their rows
   // through this component, so a patient's visit status reads the same wherever
-  // they are seen. It is a READING only: the pill was once a picker, which made
-  // a list you were scrolling into a control that could move a booking, and
-  // duplicated the appointment editor's Status & billing tab without its reason
-  // prompts. The editor is the single place a booking changes, for every role.
+  // they are seen — and each station moves it from the same pill, within the
+  // rungs its role is granted (useVisitStatusChange). Exits ask for a reason
+  // first, so a list being scrolled cannot quietly take a patient off the board.
   //
   // A row whose patient has no visit today keeps its own pill text.
+  const visitStatus = useVisitStatusChange();
   const { appointments } = useAppointments();
   const visitByPatient = useMemo(() => {
     const today = visitIsoDate(new Date());
     const map = new Map<string, { id: string; status: AppointmentStatus }>();
     for (const appointment of appointments || []) {
       if (appointment.appointmentDate !== today || !appointment.patientId) continue;
-      if (!map.has(appointment.patientId)) {
+      // A patient rebooked after a cancellation has two visits today; the
+      // live one owns the pill, not the cancelled slot.
+      const held = map.get(appointment.patientId);
+      if (!held || (APPOINTMENT_SLOT_RELEASED_STATUSES.includes(held.status) && !APPOINTMENT_SLOT_RELEASED_STATUSES.includes(appointment.status))) {
         map.set(appointment.patientId, { id: appointment._id, status: appointment.status });
       }
     }
@@ -904,14 +920,44 @@ export default function EhrCareDashboard({
                     // a plain pill.
                     const visit = row.patientId ? visitByPatient.get(row.patientId) : undefined;
                     const ladderOwnsRow = !!visit && !row.lockStatus;
+                    // The role's visit rungs, when this dashboard lets the pill
+                    // move the visit. A ladder-owned row with no picker of its
+                    // own gets them as its options; a locked row (the lab
+                    // bench's own vocabulary) keeps its options and gains them
+                    // as a second group, values prefixed so the two never mix.
+                    const visitOptions = visitStatusPicker && visit ? visitStatus.optionsFor(visit.status) : [];
+                    const moveVisit = (next: string) => {
+                      if (!visit) return;
+                      void visitStatus.change({ appointmentId: visit.id, patientName: row.title, status: visit.status }, next as AppointmentStatus);
+                    };
+                    const usesVisitPicker = !row.statusOptions?.length && ladderOwnsRow && visitOptions.length > 0;
+                    const addsVisitGroup = !!row.lockStatus && visitOptions.length > 0;
+                    // A locked row with no picker of its own (pharmacy,
+                    // radiology, nutrition) leads with its station status as a
+                    // disabled entry, so the pill still reads "Pending" while
+                    // the visit group sits underneath it.
+                    const lockedPlaceholder = addsVisitGroup && !row.statusOptions?.length;
                     const statusControl = {
                       // An encounter-derived label is more precise than the
                       // legacy scheduling rung. Keep the picker actions, but
                       // never replace "Ready for checkout" with "In Progress".
                       text: row.statusLabel || (ladderOwnsRow ? appointmentStatusLabel(visit!.status) : ''),
-                      value: row.statusValue,
-                      options: row.statusOptions,
-                      onChange: row.onStatusChange,
+                      value: usesVisitPicker ? visit!.status : lockedPlaceholder ? LOCKED_STATUS_PLACEHOLDER : row.statusValue,
+                      options: usesVisitPicker
+                        ? visitOptions
+                        : lockedPlaceholder
+                          ? [{ value: LOCKED_STATUS_PLACEHOLDER, label: statusText || '—', disabled: true }]
+                          : row.statusOptions,
+                      visitGroup: addsVisitGroup
+                        ? visitOptions.map(option => ({ ...option, value: `${VISIT_OPTION_PREFIX}${option.value}` }))
+                        : [],
+                      onChange: usesVisitPicker
+                        ? moveVisit
+                        : addsVisitGroup
+                          ? (value: string) => (value.startsWith(VISIT_OPTION_PREFIX)
+                            ? moveVisit(value.slice(VISIT_OPTION_PREFIX.length))
+                            : row.onStatusChange?.(value))
+                          : row.onStatusChange,
                     };
                     // Pill colour follows whichever state owns the pill's text:
                     // the visit's tone when the ladder owns it, the row's own
@@ -1046,11 +1092,21 @@ export default function EhrCareDashboard({
                                     <option
                                       key={option.value}
                                       value={option.value}
+                                      disabled={option.disabled}
                                       title={row.lockStatus ? undefined : (APPOINTMENT_STATUS_DESCRIPTIONS[option.value as AppointmentStatus] || undefined)}
                                     >
                                       {option.label}
                                     </option>
                                   ))}
+                                  {statusControl.visitGroup.length > 0 && (
+                                    <optgroup label={visitStatus.groupLabel}>
+                                      {statusControl.visitGroup.map(option => (
+                                        <option key={option.value} value={option.value} disabled={option.disabled}>
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
                                 </select>
                               </span>
                             ) : (

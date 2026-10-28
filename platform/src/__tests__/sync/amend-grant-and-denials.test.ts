@@ -104,6 +104,6 @@ describe('describeDenial', () => {
 describe('fieldsOutsideAmendGrant — roles with no grant at all', () => {
   it('a role with neither full write nor an amend grant may change nothing', () => {
     const before = booked as unknown as Record<string, unknown>;
-    expect(fieldsOutsideAmendGrant('appointment', 'lab_tech', before, { ...before, notes: 'x' })).toEqual(['notes']);
+    expect(fieldsOutsideAmendGrant('appointment', 'government', before, { ...before, notes: 'x' })).toEqual(['notes']);
   });
 });
