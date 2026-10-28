@@ -190,7 +190,7 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
       </ChartSection>
 
       {adding && (
-        <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-program-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-program-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="add-program-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Enroll in program</h2>

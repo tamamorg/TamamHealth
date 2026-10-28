@@ -98,13 +98,14 @@ describe('the nurse on a worklist row', () => {
       const booking = source(file);
       expect(booking).toContain('const { canBookAppointments, canAssignCareTeam } = usePermissions()');
       expect(booking).toContain('await mirrorBookingCareTeam({');
-      expect(booking.indexOf('await create({')).toBeLessThan(booking.indexOf('await mirrorBookingCareTeam({'));
+      expect(booking.indexOf('await createBookingSeries({')).toBeGreaterThan(-1);
+      expect(booking.indexOf('await createBookingSeries({')).toBeLessThan(booking.indexOf('await mirrorBookingCareTeam({'));
     }
   });
 
   test('a post-create assignment failure closes the booked appointment instead of inviting a duplicate', () => {
     const booking = source('components/appointments/BookAppointmentModal.tsx');
-    const created = booking.indexOf('const appointment = await create({');
+    const created = booking.indexOf('await createBookingSeries({');
     const warning = booking.indexOf("t('appointments.toastBookedAssignmentIncomplete')", created);
     const callback = booking.indexOf('onBooked?.();', warning);
     const close = booking.indexOf('onClose();', callback);

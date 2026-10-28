@@ -642,7 +642,7 @@ export default function NutritionDashboard() {
       </EhrCareDashboard>
 
       {showForm && (
-        <Modal
+        <Modal variant="slider"
           onClose={() => { setShowForm(false); setFormError(''); }}
           width={640}
           labelledBy="nutrition-screening-title"

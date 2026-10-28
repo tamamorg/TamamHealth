@@ -280,7 +280,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
       })}
 
       {form && (
-        <Modal
+        <Modal variant="slider"
           className="tamam-dialog"
           onClose={() => setForm(null)}
           width={480}

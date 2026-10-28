@@ -46,7 +46,7 @@ export default function CreateUserModal({
     router.push(`/admin/users/new?${query.toString()}`);
   };
   return (
-    <Modal onClose={onClose} width={620} labelledBy="create-user-title">
+    <Modal variant="slider" onClose={onClose} width={620} labelledBy="create-user-title">
       <div className="sadb-modal mgmt-user-modal">
         <PopupHeader
           titleId="create-user-title"

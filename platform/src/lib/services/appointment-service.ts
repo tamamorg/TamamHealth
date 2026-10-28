@@ -97,8 +97,17 @@ export async function getAppointmentsByProvider(providerId: string): Promise<App
  * doctor can be either. This is the calendar a clash is checked against.
  */
 export async function getAppointmentsForStaffMember(userId: string): Promise<AppointmentDoc[]> {
-  const all = await getAllAppointments();
-  return all.filter(a => a.providerId === userId || a.staffId === userId);
+  // Two indexed lookups rather than a scan of every appointment: this runs
+  // on every booking and, from the chart's booking form, as the time and the
+  // people change. Neither field is encrypted (phi-field-catalog), so both
+  // can be Mango selectors.
+  const db = appointmentsDB();
+  const [asProvider, asStaff] = await Promise.all([
+    findByType<AppointmentDoc>(db, 'appointment', { providerId: userId }, { indexFields: ['type', 'providerId'] }),
+    findByType<AppointmentDoc>(db, 'appointment', { staffId: userId }, { indexFields: ['type', 'staffId'] }),
+  ]);
+  const seen = new Set<string>();
+  return [...asProvider, ...asStaff].filter(a => (seen.has(a._id) ? false : (seen.add(a._id), true)));
 }
 
 export async function getAppointmentsByFacility(facilityId: string): Promise<AppointmentDoc[]> {

@@ -51,6 +51,9 @@ export function clickable(
     onClick: onActivate,
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
+      // A key pressed on a control inside the element (a row's ⋮, a link) is
+      // that control's own; it must not also activate the row around it.
+      if (event.target !== event.currentTarget) return;
       // Space scrolls; Enter can submit a surrounding form. Neither is what
       // the user asked for by activating this control.
       event.preventDefault();

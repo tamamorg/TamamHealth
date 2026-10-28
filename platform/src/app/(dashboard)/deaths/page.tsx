@@ -381,7 +381,7 @@ export default function DeathsPage() {
 
         {/* Death Registration Form Modal */}
         {showForm && (
-          <Modal onClose={() => setShowForm(false)} width={768} labelledBy="death-registration-title">
+          <Modal variant="slider" onClose={() => setShowForm(false)} width={768} labelledBy="death-registration-title">
             <div className="modal-panel w-full overflow-y-auto" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <div className="flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: 'var(--color-danger)' }} /><h2 id="death-registration-title" className="font-semibold">{t('deaths.modalTitle')}</h2></div>

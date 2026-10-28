@@ -28,7 +28,7 @@ interface StockInModalProps {
 export default function StockInModal({ stockForm, setStockForm, onClose, onSave }: StockInModalProps) {
   const { t } = useTranslation();
   return (
-      <Modal onClose={onClose}>
+      <Modal variant="slider" onClose={onClose}>
         <div className="modal-content card-elevated p-6 max-w-lg w-full" {...stopsClickPropagation}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">

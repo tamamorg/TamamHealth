@@ -32,8 +32,12 @@ interface ModalProps {
   /**
    * Layout variant. 'dialog' (default) is the centered popup; 'drawer' slides
    * in as a full-height panel anchored to the right edge of the screen.
+   * 'slider' is the OpenMRS O3 workspace the patient chart uses: docked to the
+   * right edge under the top rail, no dimming, the page beside it still
+   * readable and scrollable — for record-entry forms (admit, register a
+   * birth, record a vaccination). Escape and the form's own close dismiss it.
    */
-  variant?: 'dialog' | 'drawer';
+  variant?: 'dialog' | 'drawer' | 'slider';
   /** When true, clicking the backdrop does not close the modal. Default false. */
   disableBackdropClose?: boolean;
   /** id of the element labelling the dialog (for a11y). */
@@ -97,7 +101,8 @@ export default function Modal({
   describedBy,
   className,
 }: ModalProps) {
-  const isDrawer = variant === 'drawer';
+  const isSlider = variant === 'slider';
+  const isDrawer = variant === 'drawer' || isSlider;
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -118,7 +123,10 @@ export default function Modal({
   // saved-and-restored: with two modals stacked, the lower one closing first
   // restored '' and the upper one then "restored" the 'hidden' it had seen on
   // mount — leaving the page unscrollable with nothing open.
+  // A slider sits beside the page rather than over it, so the page stays
+  // scrollable.
   useEffect(() => {
+    if (isSlider) return;
     if (scrollLocks === 0) overflowBeforeLock = document.body.style.overflow;
     scrollLocks += 1;
     document.body.style.overflow = 'hidden';
@@ -126,7 +134,7 @@ export default function Modal({
       scrollLocks -= 1;
       if (scrollLocks === 0) document.body.style.overflow = overflowBeforeLock;
     };
-  }, []);
+  }, [isSlider]);
 
   // Esc closes and Tab stays inside the active dialog.
   useEffect(() => {
@@ -191,7 +199,7 @@ export default function Modal({
     // listener above). There is nothing here for a key handler to add.
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
-      className="modal-portal-backdrop tm-motion tm-motion--backdrop"
+      className={isSlider ? 'modal-portal-backdrop modal-portal-backdrop--slider' : 'modal-portal-backdrop tm-motion tm-motion--backdrop'}
       onMouseDown={disableBackdropClose ? undefined : e => {
         // Arm only when the press STARTS on the backdrop. A drag that begins
         // inside the dialog (selecting text in a field) and releases over the
@@ -233,7 +241,10 @@ export default function Modal({
         padding: isDrawer
           ? 0
           : 'calc(16px + env(safe-area-inset-top, 0px) + var(--app-overlay-top-inset, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px))',
-        background: 'rgba(15, 31, 29, 0.70)',
+        background: isSlider ? 'transparent' : 'rgba(15, 31, 29, 0.70)',
+        // A slider leaves the page usable: only the panel takes pointer input.
+        pointerEvents: isSlider ? 'none' : undefined,
+        top: isSlider ? 'var(--app-overlay-top-inset, 0px)' : undefined,
         overflowY: isDrawer ? 'hidden' : 'auto',
       }}
     >
@@ -246,6 +257,7 @@ export default function Modal({
           'tm-elevated',
           'tm-motion',
           isDrawer ? 'tm-motion--drawer modal-portal-dialog--drawer' : 'tm-motion--dialog',
+          isSlider && 'tm-slider',
           className,
         ].filter(Boolean).join(' ')}
         // Spread first: this element is a real dialog, so its own role and tab
@@ -260,10 +272,13 @@ export default function Modal({
         style={{
           width: '100%',
           maxWidth: size ? SIZE_WIDTH[size] : width,
-          maxHeight: isDrawer
-            ? '100dvh'
-            : 'calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px))',
-          height: isDrawer ? '100dvh' : undefined,
+          maxHeight: isSlider
+            ? 'calc(100dvh - var(--app-overlay-top-inset, 0px))'
+            : isDrawer
+              ? '100dvh'
+              : 'calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px))',
+          height: isSlider ? 'calc(100dvh - var(--app-overlay-top-inset, 0px))' : isDrawer ? '100dvh' : undefined,
+          pointerEvents: isSlider ? 'auto' : undefined,
           display: 'flex',
           flexDirection: 'column',
           overflowY: isDrawer ? 'hidden' : 'auto',

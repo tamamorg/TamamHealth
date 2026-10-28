@@ -1288,6 +1288,8 @@ svg.lucide:not([style*="color"]) {
   .nv-btn--primary,
   .omf-btn--primary,
   :is(.tm-action-bar__btn--primary, .tm-dialog__foot > .btn-primary, .obk-footer-btn--primary, .sv-footer-btn--primary, .nv-root--workspace .nv-footer .nv-btn--primary),
+  .tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child > :is(.btn-secondary, .btn-ghost, .btn-outline),
+  .tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child > .btn-primary,
   .obk-footer-btn--primary,
   .obk-footer-btn--secondary,
   .tm-dialog__foot > .btn-primary,
@@ -35613,3 +35615,230 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   color: var(--accent-text) !important;
   stroke: currentColor !important;
 }
+
+/* ══════════════════ SLIDERS — record forms as O3 workspaces ══════════════
+   `<Modal variant="slider">`: the module pages' record-entry forms (admit to
+   a ward, register a birth, record a vaccination, ANC, deaths …) open as the
+   same right-hand workspace the patient chart uses, not a centred popup.
+   The forms keep their own markup; this redraws whatever surface they bring
+   (`.modal-panel`, `.modal-content`, `.card-elevated`) as a full-height square
+   panel, and their first row — the title and the close button — as the O3
+   grey header band. */
+.tm-slider {
+  width: min(var(--slider-w, 640px), 100vw) !important;
+  max-width: 100vw !important;
+  border-radius: 0 !important;
+  border-inline-start: 1px solid var(--border-light);
+  box-shadow: -8px 0 24px -12px color-mix(in srgb, var(--text-primary) 25%, transparent) !important;
+}
+
+.modal-portal-backdrop--slider > .tm-slider { margin-inline-start: auto; }
+
+.tm-slider > :is(.modal-panel, .modal-content, .card-elevated, div) {
+  flex: 1 1 auto;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100%;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow-y: auto;
+}
+
+/* The form's title row becomes the header band, flush to the panel edges. */
+.tm-slider > div > :is(div, header):first-child:has(> :is(h2, h3, div)):has(> button) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 48px;
+  margin: 0 0 16px !important;
+  padding: 0 0 0 16px !important;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--color-slate-100);
+}
+
+/* Forms padded with p-6 / p-4: the panel drops its top padding so the band
+   sits at the very top (a negative top margin would push it out of the
+   scroll box, under the top rail), and the band reaches the side edges. */
+.tm-slider > div.p-6:has(> :is(div, header):first-child > button) { padding-top: 0 !important; }
+.tm-slider > div.p-4:has(> :is(div, header):first-child > button) { padding-top: 0 !important; }
+.tm-slider > div.p-6 > :is(div, header):first-child:has(> button) { margin: 0 -24px 16px !important; }
+.tm-slider > div.p-4 > :is(div, header):first-child:has(> button) { margin: 0 -16px 16px !important; }
+
+.tm-slider > div > :is(div, header):first-child:has(> button) :is(h2, h3) {
+  align-self: center;
+  margin: 0;
+  font-family: inherit;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary) !important;
+}
+
+.tm-slider > div > :is(div, header):first-child:has(> button) > div { align-self: center; }
+
+.tm-slider > div > :is(div, header):first-child:has(> button) > button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  min-height: 48px;
+  padding: 0 !important;
+  border: 0;
+  border-inline-start: 1px solid var(--border-light);
+  border-radius: 0 !important;
+  background: var(--bg-card-solid) !important;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tm-slider > div > :is(div, header):first-child:has(> button) > button:hover { background: var(--color-slate-150) !important; }
+.tm-slider > div > :is(div, header):first-child:has(> button) > button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.tm-slider > div > :is(div, header):first-child:has(> button) > button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-primary) !important;
+  stroke: currentColor !important;
+}
+
+/* The form's Cancel / Save row: pinned to the foot of the panel as the
+   workspace action bar — two equal square buttons, dark secondary on the
+   left, blue primary on the right, 64px, label top-start (the ACTION BAR
+   standard above). */
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid !important;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0 !important;
+  margin-top: 24px;
+  padding: 0 !important;
+  border: 0 !important;
+  background: var(--bg-card-solid);
+}
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child > :is(.btn, button) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: var(--action-bar-h, 64px);
+  height: auto !important;
+  padding: var(--action-bar-pad, 16px 16px 32px) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-size: var(--action-bar-font, 14px);
+  font-weight: 400;
+  line-height: 16px;
+  text-align: start;
+}
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child > :is(.btn-secondary, .btn-ghost, .btn-outline) {
+  background: var(--action-secondary) !important;
+  color: var(--color-white) !important;
+}
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child > .btn-primary {
+  background: var(--accent-primary) !important;
+  color: var(--color-white) !important;
+}
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child > .btn-primary:disabled {
+  background: var(--action-disabled) !important;
+  color: var(--action-disabled-ink) !important;
+}
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child svg {
+  order: 1;
+  margin-inline-start: auto;
+  width: 16px;
+  height: 16px;
+  color: var(--color-white) !important;
+  stroke: currentColor !important;
+}
+
+@media (max-width: 640px) {
+  .tm-slider { width: 100vw !important; border-inline-start: 0; }
+}
+
+/* Fields inside a slider, O3 style (the Immunization form): sentence-case
+   labels in the secondary ink, grey filled fields with a 1px bottom rule and
+   square corners, 48px tall, selects with a chevron at the end. The forms
+   carry Tailwind classes and inline styles from their popup days, hence
+   !important. */
+.tm-slider label,
+.tm-slider label > span:first-child:not(:only-child) {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--text-secondary) !important;
+}
+
+.tm-slider label:has(> input[type="checkbox"], > input[type="radio"]) {
+  color: var(--text-primary) !important;
+}
+
+.tm-slider :is(h3, h4):not(:is(div, header):first-child > *) {
+  font-family: inherit;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal;
+  text-transform: none !important;
+  color: var(--text-primary) !important;
+}
+
+.tm-slider :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]), select, textarea) {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-slate-400) !important;
+  border-radius: 0 !important;
+  background-color: var(--bg-app) !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 400;
+}
+
+.tm-slider textarea { padding: 12px 16px !important; min-height: 104px; resize: vertical; }
+
+.tm-slider select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline-end: 48px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 16px center !important;
+  background-size: 16px 16px !important;
+}
+
+[dir="rtl"] .tm-slider select { background-position: left 16px center !important; }
+
+/* On a tinted box inside the form (a "link to existing patient" panel),
+   the field turns white so it still reads as a field. */
+.tm-slider [class*="rounded-lg"][style*="background"] :is(input, select, textarea) {
+  background-color: var(--bg-card-solid) !important;
+}
+
+.tm-slider :is(input, select, textarea):focus {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px;
+}
+
+.tm-slider :is(input, select, textarea)::placeholder { color: var(--text-muted); opacity: 1; }
+
+/* The action bar sits on the panel's bottom edge whether the form is short or
+   long (O3): the panel is a column, the form fills it, and the bar takes the
+   leftover space above itself. It bleeds through the form's padding to the
+   panel edges. */
+.tm-slider > div { display: flex; flex-direction: column; }
+.tm-slider > div > form { flex: 1 0 auto; display: flex; flex-direction: column; }
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-top: auto !important; }
+.tm-slider > div.p-6 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-inline: -24px !important; margin-bottom: -24px !important; }
+.tm-slider > div.p-4 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-inline: -16px !important; margin-bottom: -16px !important; }
+.tm-slider > div.p-5 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-inline: -20px !important; margin-bottom: -20px !important; }

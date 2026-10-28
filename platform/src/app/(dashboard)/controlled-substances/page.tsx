@@ -236,7 +236,7 @@ export default function ControlledSubstancesPage() {
         </div>
 
         {open && (
-          <Modal onClose={() => setOpen(false)}>
+          <Modal variant="slider" onClose={() => setOpen(false)}>
             <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Record controlled-substance movement</h3>

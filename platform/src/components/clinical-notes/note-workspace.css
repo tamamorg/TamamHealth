@@ -18,7 +18,7 @@
   align-items: center;
   gap: 8px;
   align-self: flex-start;
-  margin: 12px 16px 4px;
+  margin: 16px 16px 12px;
   padding: 4px 0;
   border: 0;
   background: transparent;
@@ -41,7 +41,6 @@
   min-height: 0;
   overflow-y: auto;
   padding: 0;
-  border-inline-end: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
 }
@@ -52,7 +51,7 @@
   min-height: 40px;
   padding: 10px 16px;
   border: 0;
-  border-inline-start: 4px solid var(--color-info-bg, rgba(17, 116, 180, 0.18));
+  border-inline-start: 4px solid color-mix(in srgb, var(--accent-primary) 22%, transparent);
   background: transparent;
   color: var(--text-primary);
   font-size: 14px;
@@ -92,8 +91,8 @@
      list: they stick to the foot of the column. */
   position: sticky;
   bottom: 0;
-  margin-top: auto;
-  padding: 16px;
+  margin: 16px 8px 0;
+  padding: 16px 0;
   border-top: 1px solid var(--border-medium, var(--border-light));
   background: var(--ehr-panel, var(--bg-card-solid));
 }
@@ -102,6 +101,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   min-height: var(--control-height, 40px);
   padding: 0 16px;
   border-radius: 0;
@@ -115,6 +115,7 @@
 .omf-btn svg { width: 16px; height: 16px; }
 
 .omf-btn--primary { border: 1px solid var(--accent-primary); background: var(--accent-primary); color: #fff; }
+.omf-btn--primary:hover:not(:disabled) { background: var(--accent-hover, var(--accent-primary)); }
 .omf-btn--outline { border: 1px solid var(--accent-primary); background: transparent; color: var(--accent-text, var(--accent-primary)); }
 .omf-btn--ghost { border: 1px solid transparent; background: transparent; color: var(--accent-text, var(--accent-primary)); }
 .omf-btn--ghost:hover:not(:disabled), .omf-btn--outline:hover:not(:disabled) { background: var(--bg-app); }
@@ -157,17 +158,29 @@
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  min-height: var(--ws-head-h, 48px);
+  min-height: 56px;
   padding: 0 16px;
   border: 0;
   background: var(--ehr-panel, var(--bg-card-solid));
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 600;
   text-align: start;
   cursor: pointer;
 }
 
-.omf-group--major > .omf-group-head { font-size: 18px; font-weight: 600; min-height: 56px; }
+.omf-group--major > .omf-group-head { font-size: 22px; }
+
+/* O3's sub-heading row under a group title ("Visit particulars"). */
+.omf-subhead {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border-top: 1px solid var(--border-light);
+  font-size: 16px;
+  color: var(--text-primary);
+}
 
 .omf-group-head:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
 
@@ -175,9 +188,15 @@
 .omf-chevron.is-folded { transform: none; }
 
 .omf-group-body {
-  padding: 16px 16px 24px;
+  margin-inline-end: 32px;
+  padding: 24px 16px 32px;
   background: var(--bg-app, #f4f4f4);
 }
+
+.tamam-drawer.is-maximized .omf-group-body { margin-inline-end: 64px; }
+
+.omf-purpose { margin: 0 0 20px; font-size: 16px; line-height: 1.4; color: var(--text-primary); }
+.omf-purpose strong { font-weight: 600; }
 
 /* The note's section card sits inside the group: the group head already names
    it, so the card's own frame and title give way; its tools stay. */
@@ -212,7 +231,9 @@
   min-width: 0;
 }
 
-.omf-fields .cn-field :is(input, select, .cn-select, .cn-input) { width: 100%; min-height: var(--control-height, 40px); font-size: 14px; }
+.omf-fields .cn-field :is(input, select, .cn-select, .cn-input) { width: 100%; max-width: none; min-height: var(--control-height, 40px); font-size: 14px; }
+.omf-fields .cn-field:has(select, .cn-select, .cn-assign-trigger) { grid-column: 1 / -1; }
+.omf-fields .cn-assign-trigger { width: 100%; }
 
 /* Form field language: bold labels in sentence case, flat square fields
    with a bottom rule on a white fill. */
@@ -228,9 +249,12 @@
   border: 0 !important;
   border-bottom: 1px solid var(--border-strong, var(--color-slate-400, #8d8d8d)) !important;
   border-radius: 0 !important;
-  background: var(--ehr-panel, #fff) !important;
+  /* background-color, not background: the dropdowns draw their chevron as a
+     background image (workspace-fields.css), which the shorthand wiped. */
+  background-color: var(--ehr-panel, #fff) !important;
   box-shadow: none !important;
   font-weight: 400;
+  letter-spacing: normal;
 }
 
 .omf-root .omf-group-body :is(input, select, textarea, .cn-textarea):focus {
@@ -240,38 +264,47 @@
 
 .omf-tail { padding: 16px; }
 
-/* ── Top: whose note, and which note (a dropdown of every note form) ── */
-.omf-typebar {
-  flex: none;
+/* ── Which note: the type picker, first field of Visit details ──────── */
+.omf-type { margin-bottom: 20px; }
+.omf-type .cn-field { display: flex; flex-direction: column; align-items: stretch; gap: 8px; text-align: start; }
+
+/* ── Whose note: O3 patient banner, head of the form column ───────────
+ * Full screen only: docked, the chart's own patient header is beside it. */
+.omf-banner { display: none; }
+.tamam-drawer.is-maximized .omf-banner,
+.omf-root--page .omf-banner {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  padding: 8px 16px 12px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-app, #f4f4f4);
   border-bottom: 1px solid var(--border-light);
 }
-
-.omf-patient { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.omf-patient-name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
-.omf-patient-line { font-size: 13px; color: var(--text-muted); }
-
-.omf-type { flex: 0 1 320px; min-width: 220px; }
-.omf-type .cn-field { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: start; }
-.omf-type .cn-label {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary, var(--text-muted));
+.omf-banner-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 24px;
 }
+.omf-banner-text { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.omf-banner-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.omf-banner-name strong { font-size: 20px; font-weight: 600; color: var(--text-primary); }
+.omf-banner-sex { font-size: 16px; color: var(--text-secondary, var(--text-muted)); }
+.omf-banner-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: 16px; color: var(--text-secondary, var(--text-muted)); }
+.omf-banner-id { padding: 2px 10px; border-radius: 999px; background: var(--color-slate-100, #e0e0e0); color: var(--text-primary); }
+.omf-banner-id strong { font-weight: 600; }
+
 /* .cn-select is a 34px / 12px bold control elsewhere in the note; the
    dropdown that names the note is a standard field. */
 .omf-root .omf-type :is(select, .cn-select) {
   width: 100%;
   height: var(--control-height, 40px);
   min-height: var(--control-height, 40px);
-  padding-inline: 12px 32px;
+  padding-inline: 16px 40px;
   font-size: 14px;
   font-weight: 400;
 }
@@ -279,5 +312,6 @@
 @media (max-width: 720px) {
   .omf-body { grid-template-columns: minmax(0, 1fr); }
   .omf-nav { display: none; }
+  .omf-group-body, .tamam-drawer.is-maximized .omf-group-body { margin-inline-end: 0; }
 }
 

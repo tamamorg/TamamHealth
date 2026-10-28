@@ -314,7 +314,7 @@ export default function FacilityAssessmentsPage() {
 
       {/* Create Assessment Modal */}
       {showForm && (
-        <Modal onClose={() => !submitting && setShowForm(false)}>
+        <Modal variant="slider" onClose={() => !submitting && setShowForm(false)}>
           <div className="modal-content card-elevated p-6 max-w-2xl w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">

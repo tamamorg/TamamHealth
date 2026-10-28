@@ -6,7 +6,7 @@ import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 // Clean single-stroke Tailwind Labs Heroicons via the local compatibility shim.
-import { ArrowLeft, ArrowRightLeft, AlertTriangle, FileText, FlaskConical, Pill, Activity, ShieldAlert, ClipboardList, User as UserIcon, Wallet, Syringe, Stethoscope, Heart, History, Calendar, Bandage, Layers, Archive, Mail } from '@/components/icons/lucide';
+import { ArrowLeft, ArrowRightLeft, AlertTriangle, FileText, FlaskConical, Pill, Activity, ShieldAlert, ClipboardList, User as UserIcon, Wallet, Syringe, Stethoscope, Heart, History, Calendar, Bandage, Layers, Archive, Mail, Baby } from '@/components/icons/lucide';
 
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
@@ -81,6 +81,7 @@ import PatientNotesTab from './detail/PatientNotesTab';
 import PatientPrintDocument from './detail/PatientPrintDocument';
 import PatientPrintModal from './detail/PatientPrintModal';
 import PatientVitalsTab from './detail/PatientVitalsTab';
+import PatientAncTab from './detail/PatientAncTab';
 import StartVisitPanel from '@/components/ehr/chart/panels/StartVisitPanel';
 import NotePrescribeForm from '@/components/clinical-notes/prescribe/PrescribeModal';
 import BookAppointmentPanel from '@/components/ehr/chart/panels/BookAppointmentPanel';
@@ -324,7 +325,13 @@ export default function PatientDetailPage() {
   const { referrals: patientReferrals } = usePatientReferrals(patient?._id);
   const { results: allLabResults, reload: reloadLabResults } = useLabResults(patient?._id);
   const { immunizations: allImmunizations } = useImmunizations(patient?._id);
-  const { visits: allANCVisits } = useANC();
+  const { visits: allANCVisits, reload: reloadANC } = useANC();
+  // A visit names its mother in `motherId`; `patientId` is optional and only
+  // some visits carry it, so matching on it alone left visits off the chart.
+  const patientANC = (allANCVisits || []).filter(a => !!patient && (a.patientId || a.motherId) === patient._id);
+  // Antenatal care is a section of the record for any woman, and for anyone
+  // whose record already holds an ANC visit.
+  const showAncTab = patientANC.length > 0 || patient?.gender === 'Female';
   const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
   // Upcoming / Today / Past on the Appointments tab.
   const [apptView, setApptView] = useState<ApptView>('upcoming');
@@ -592,9 +599,9 @@ export default function PatientDetailPage() {
 
   const allTabs = [
     { id: 'overview', label: 'Patient summary', icon: Heart },
-    { id: 'history', label: 'Visits', icon: FileText },
+    { id: 'history', label: 'Visits & timeline', icon: FileText },
     { id: 'problems', label: 'Conditions', icon: AlertTriangle },
-    { id: 'medicalHistory', label: 'History', icon: Archive },
+    { id: 'medicalHistory', label: 'Medical history', icon: Archive },
     { id: 'prescriptions', label: 'Medications', icon: Pill },
     { id: 'immunizations', label: 'Immunizations', icon: Syringe },
     { id: 'allergies', label: 'Allergies', icon: ShieldAlert },
@@ -606,6 +613,7 @@ export default function PatientDetailPage() {
     { id: 'orders', label: 'Orders', icon: ClipboardList },
     { id: 'procedures', label: 'Procedures', icon: Bandage },
     { id: 'programs', label: 'Programs', icon: Layers },
+    ...(showAncTab ? [{ id: 'anc', label: t('ancChart.title'), icon: Baby }] : []),
     { id: 'demographics', label: 'Demographics', icon: UserIcon },
     { id: 'billing', label: 'Billing history', icon: Wallet },
     { id: 'careChecklist', label: 'Care plan', icon: ClipboardList },
@@ -711,7 +719,7 @@ export default function PatientDetailPage() {
     { id: 'labs', label: 'Results', icon: FlaskConical },
     // The timeline IS the visit history — encounters, with the labs, drugs and
     // referrals that hung off them.
-    { id: 'history', label: 'Visits', icon: History },
+    { id: 'history', label: 'Visits & timeline', icon: History },
     // The encounter notes themselves, next to the visits they document.
     { id: 'notes', label: 'Notes', icon: Stethoscope },
     // The conversation with the patient through their portal — what the care
@@ -726,10 +734,11 @@ export default function PatientDetailPage() {
     // The standing history — medical, surgical, family, social — recorded once
     // against the patient. Beside Conditions because the two are read together;
     // `history` (Visits) is the encounter timeline, a different thing.
-    { id: 'medicalHistory', label: 'History', icon: Archive },
+    { id: 'medicalHistory', label: 'Medical history', icon: Archive },
     { id: 'immunizations', label: 'Immunizations', icon: Syringe },
     { id: 'procedures', label: 'Procedures', icon: Bandage },
     { id: 'programs', label: 'Programs', icon: Layers },
+    ...(showAncTab ? [{ id: 'anc', label: t('ancChart.title'), icon: Baby }] : []),
     // Screenings/reminders/assessments — the forward-looking follow-through
     // half of the chart, closing out the clinical run.
     { id: 'careChecklist', label: 'Care plan', icon: ClipboardList },
@@ -746,12 +755,19 @@ export default function PatientDetailPage() {
   ];
   // Role restrictions still apply: a lab technician's rail is the two sections
   // LAB_TAB_IDS allows, not the full list.
-  const omrsRailItems = OMRS_RAIL_DEFS.filter(item => tabs.some(t => t.id === item.id));
+  // Labels come from the locale (chart.rail.<id>); the English above is the
+  // fallback and the in-code name of each section.
+  const omrsRailItems = OMRS_RAIL_DEFS
+    .filter(item => tabs.some(tab => tab.id === item.id))
+    .map(item => {
+      const key = 'chart.rail.' + item.id;
+      const label = t(key);
+      return { ...item, label: label === key ? item.label : label };
+    });
   const omrsMoreItems: typeof omrsRailItems = [];
 
   // Sticky header: pregnancy pill — hoisted unchanged from the old inline
   // patient-banner IIFE so the ANC-derived pill keeps behaving identically.
-  const patientANC = (allANCVisits || []).filter(a => a.patientId === patient._id);
   const activeANC = patientANC.find(a => !a.linkedBirthId);
   const isPregnant = !!activeANC;
   const pregnancyPillNode = isPregnant ? (
@@ -1067,6 +1083,15 @@ export default function PatientDetailPage() {
               EPI/NCD) with enroll + status-transition flows. */}
           {activeTab === 'programs' && (
             <ProgramsSection patientId={patient._id} patientName={patientFullName(patient)} canEnroll={canEnrollPrograms} />
+          )}
+          {activeTab === 'anc' && (
+            <PatientAncTab
+              visits={patientANC}
+              canEdit={canRecordVitalEvents}
+              onRegister={canRecordVitalEvents ? () => router.push(`/anc?patientId=${encodeURIComponent(patient._id)}`) : undefined}
+              focusId={focusId}
+              onChanged={() => { void reloadANC(); }}
+            />
           )}
           </section>
           </TamamChartShell>

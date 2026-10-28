@@ -508,7 +508,7 @@ export default function BloodBankPage() {
 
         {/* Add unit modal */}
         {open && (
-          <Modal onClose={() => setOpen(false)}>
+          <Modal variant="slider" onClose={() => setOpen(false)}>
             <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -595,7 +595,7 @@ export default function BloodBankPage() {
           if (!unit) return null;
           const isCompatible = reserveCompatibleGroups ? reserveCompatibleGroups.includes(unit.bloodGroup) : null;
           return (
-            <Modal onClose={closeReserve}>
+            <Modal variant="slider" onClose={closeReserve}>
               <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -676,7 +676,7 @@ export default function BloodBankPage() {
           const unit = units.find(u => u._id === discardUnitId);
           if (!unit) return null;
           return (
-            <Modal onClose={closeDiscard}>
+            <Modal variant="slider" onClose={closeDiscard}>
               <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -718,7 +718,7 @@ export default function BloodBankPage() {
           const unit = units.find(u => u._id === crossmatchUnitId);
           if (!unit) return null;
           return (
-            <Modal onClose={closeCrossmatch}>
+            <Modal variant="slider" onClose={closeCrossmatch}>
               <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -778,7 +778,7 @@ export default function BloodBankPage() {
           if (!unit) return null;
           const patient = patients.find(p => p._id === unit.reservedForPatient);
           return (
-            <Modal onClose={closeTransfuse}>
+            <Modal variant="slider" onClose={closeTransfuse}>
               <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">

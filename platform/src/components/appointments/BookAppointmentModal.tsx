@@ -52,6 +52,8 @@ import type {
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { mirrorBookingCareTeam } from '@/lib/booking/mirror-booking-care-team';
+import { withServerConflictCheck } from '@/lib/booking/server-conflict-check';
+import { createBookingSeries, SERIES_DEFAULT, SERIES_MAX, SERIES_MIN } from '@/lib/booking/recurring-series';
 
 const FALLBACK_DEPARTMENTS = [
   'Internal Medicine', 'Pediatrics', 'Obstetrics & Gynecology', 'Surgery',
@@ -165,6 +167,7 @@ export default function BookAppointmentModal({
   const [notes, setNotes] = useState('');
   const [recurring, setRecurring] = useState(false);
   const [recurrencePattern, setRecurrencePattern] = useState<'weekly' | 'biweekly' | 'monthly' | 'quarterly'>('monthly');
+  const [seriesVisits, setSeriesVisits] = useState(SERIES_DEFAULT);
   const [insuranceProvider, setInsuranceProvider] = useState('');
   const [insuranceMemberId, setInsuranceMemberId] = useState('');
   const [insuranceGroupId, setInsuranceGroupId] = useState('');
@@ -354,7 +357,7 @@ export default function BookAppointmentModal({
     }
     setSubmitting(true);
     try {
-      const appointment = await create({
+      const series = await createBookingSeries({
         patientId: patient._id,
         patientName: `${patient.firstName} ${patient.surname}`,
         patientPhone: patient.phone || undefined,
@@ -395,13 +398,13 @@ export default function BookAppointmentModal({
           }
           : undefined,
         reminderSent: false,
-        isRecurring: recurring,
-        recurrencePattern: recurring ? recurrencePattern : undefined,
+        isRecurring: false,
         bookedBy: currentUser?._id || '',
         bookedByName: currentUser?.name || '',
         state: '',
         orgId: currentUser?.orgId,
-      });
+      }, withServerConflictCheck(create), recurring ? { pattern: recurrencePattern, count: seriesVisits } : undefined);
+      const appointment = series.first;
 
       // A booking assignment must reach the same durable patient fields the
       // doctor and nurse dashboards read. The appointment already carries the
@@ -425,6 +428,14 @@ export default function BookAppointmentModal({
         assignmentFailures.length > 0 ? 'error' : 'success',
         assignmentFailures.length > 0 ? { durationMs: 8000 } : undefined,
       );
+      // A series reports what it could not book rather than hiding it.
+      if (series.skipped.length > 0) {
+        showToast(t('bookPanel.seriesPartial', {
+          booked: series.booked.length,
+          total: series.booked.length + series.skipped.length,
+          dates: series.skipped.map(s => s.date).join(', '),
+        }), 'warning', { durationMs: 10000 });
+      }
       onBooked?.();
       onClose();
     } catch (err) {
@@ -791,6 +802,13 @@ export default function BookAppointmentModal({
                     <option value="biweekly">{t('appointments.recurrenceBiweekly')}</option>
                     <option value="monthly">{t('appointments.recurrenceMonthly')}</option>
                     <option value="quarterly">{t('appointments.recurrenceQuarterly')}</option>
+                  </Select>
+                )}
+                {recurring && (
+                  <Select value={String(seriesVisits)} onChange={e => setSeriesVisits(Number(e.target.value))} style={{ width: 'auto' }} aria-label={t('bookPanel.visits')}>
+                    {Array.from({ length: SERIES_MAX - SERIES_MIN + 1 }, (_, i) => i + SERIES_MIN).map(n => (
+                      <option key={n} value={n}>{t('bookPanel.visitsCount', { count: n })}</option>
+                    ))}
                   </Select>
                 )}
               </label>

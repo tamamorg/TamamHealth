@@ -139,7 +139,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
 
       {/* Edit modal */}
       {editingEntry && (
-        <Modal onClose={() => setEditingEntry(null)} width={480} labelledBy="edit-allergy-title">
+        <Modal variant="slider" onClose={() => setEditingEntry(null)} width={480} labelledBy="edit-allergy-title">
           <div className="rounded-xl p-5 space-y-4" style={modalCard}>
             <div className="flex items-center justify-between">
               <h2 id="edit-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Allergy</h2>

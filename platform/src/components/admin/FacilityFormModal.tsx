@@ -432,7 +432,7 @@ export default function FacilityFormModal({
   if (presentation === 'page') return content;
 
   return (
-    <Modal onClose={onClose} width={520} labelledBy="facility-form-title">
+    <Modal variant="slider" onClose={onClose} width={520} labelledBy="facility-form-title">
       {content}
     </Modal>
   );

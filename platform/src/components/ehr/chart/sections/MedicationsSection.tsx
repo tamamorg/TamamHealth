@@ -27,7 +27,8 @@ import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
 import { RefreshCw, Ban, Printer, FileText, Pill } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
-import { clickable } from '@/lib/a11y';
+import { clickable, stopsClickPropagation } from '@/lib/a11y';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
 import { isScriptable } from '@/lib/prescription-script';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
@@ -297,7 +298,7 @@ export default function MedicationsSection({
       ) : patientRx.length === 0 ? null : (
         <table className="tamam-table tamam-table--interactive tamam-table--medications">
           <colgroup>
-            <col /><col /><col /><col />
+            <col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
@@ -305,6 +306,7 @@ export default function MedicationsSection({
               <th>Dosage instructions</th>
               <th>Start date</th>
               <th>Status</th>
+              <th>{t('chart.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -326,6 +328,23 @@ export default function MedicationsSection({
                 <td>{formatRxSig(rx)}</td>
                 <td>{formatDate(rx.createdAt)}</td>
                 <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{rxStatusLabel(rx, t)}</span></td>
+                <td>
+                  {/* The row opens its dialog on click and Enter; the ⋮ must
+                      not, so its clicks stop here (keys: see clickable). Discontinue opens
+                      the dialog at its reason step, which it requires. */}
+                  <span {...stopsClickPropagation}>
+                    <RowActionsMenu
+                      ariaLabel={t('chart.medicationRowActions', { name: rx.medication })}
+                      actions={[
+                        { key: 'open', label: t('chart.openDetails'), onClick: () => { setSelectedRx(rx); setShowStopReason(false); setStopReason(''); } },
+                        ...(canPrescribe ? [
+                          { key: 'renew', label: t('chart.medicationRenew'), disabled: busyId === rx._id, onClick: () => void handleRenew(rx) },
+                          { key: 'stop', label: t('chart.medicationDiscontinue'), tone: 'danger' as const, disabled: busyId === rx._id || rx.status === 'discontinued', onClick: () => { setSelectedRx(rx); setStopReason(''); setShowStopReason(true); } },
+                        ] : []),
+                      ]}
+                    />
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

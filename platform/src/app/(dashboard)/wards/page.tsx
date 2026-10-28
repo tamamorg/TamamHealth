@@ -452,7 +452,7 @@ export default function WardsPage() {
 
         {/* Admit modal */}
         {admitOpen && (
-          <Modal onClose={() => setAdmitOpen(false)}>
+          <Modal variant="slider" onClose={() => setAdmitOpen(false)}>
             <div className="modal-content card-elevated p-6 max-w-lg w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold">{t('ward.admitPatient')}</h3>
@@ -536,7 +536,7 @@ export default function WardsPage() {
              box. Labels stay real labels — the scope just takes the cascade
              back off them. */}
         {dischargeFor && (
-          <Modal onClose={() => setDischargeFor(null)} width={640} labelledBy="ward-discharge-title">
+          <Modal variant="slider" onClose={() => setDischargeFor(null)} width={640} labelledBy="ward-discharge-title">
             <div className="modal-content card-elevated wdis">
               <header className="wdis-head">
                 <div className="wdis-id">

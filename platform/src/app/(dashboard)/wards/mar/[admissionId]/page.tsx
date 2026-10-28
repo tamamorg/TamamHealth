@@ -472,7 +472,7 @@ export default function MARPage() {
 
         {/* Record-administration modal */}
         {modalRx && (
-          <Modal onClose={closeModal} width={448} labelledBy="mar-administration-title">
+          <Modal variant="slider" onClose={closeModal} width={448} labelledBy="mar-administration-title">
             <div
               className="modal-panel w-full card-elevated overflow-hidden"
               style={{ boxShadow: 'var(--card-shadow-xl)' }}

@@ -263,7 +263,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       </ChartSection>
 
       {adding && (
-        <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={520} labelledBy="add-immunization-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={520} labelledBy="add-immunization-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="add-immunization-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>

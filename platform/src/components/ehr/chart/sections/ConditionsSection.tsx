@@ -16,6 +16,10 @@ import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import CodedSearchField from '@/components/CodedSearchField';
 import Modal from '@/components/Modal';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { describeError } from '@/lib/user-facing-error';
+import { todayIso } from '@/lib/date-utils';
 import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
@@ -65,7 +69,11 @@ export default function ConditionsSection({
   // `canEditClinical` — nurses, midwives and the read-only super_admin all see
   // this tab — so leaving the control open let them author the problem list.
   const { canEditClinical } = usePermissions();
-  const { problems, create, setStatus } = useProblems(patientId);
+  const { problems, create, update, setStatus } = useProblems(patientId);
+  const confirmPrompt = useConfirmPrompt();
+  /** The detail dialog's onset-date correction, while it is open. */
+  const [onsetEdit, setOnsetEdit] = useState<string | null>(null);
+  const [correcting, setCorrecting] = useState(false);
   const [adding, setAdding] = useState(false);
   const [detail, setDetail] = useState<ProblemDoc | null>(null);
   /** The row mid-save, so a slow write can't be fired twice. */
@@ -115,6 +123,44 @@ export default function ConditionsSection({
       showToast(t('msg.conditionNotUpdatedTryAgain'), 'error');
     } finally {
       setSavingStatus(null);
+    }
+  };
+
+  // Corrections write over the entry with a reason, never a delete: a wrong
+  // onset date is fixed in place, a wrong entry is kept and hidden.
+  const saveOnset = async (problem: ProblemDoc) => {
+    if (!onsetEdit) return;
+    setCorrecting(true);
+    try {
+      if (!(await update(problem._id, { onsetDate: onsetEdit }))) throw new Error('Change not saved. Try again.');
+      showToast(t('msg.conditionOnsetCorrected'), 'success');
+      setOnsetEdit(null);
+      setDetail(null);
+    } catch (err) {
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
+    } finally {
+      setCorrecting(false);
+    }
+  };
+
+  const markEnteredInError = async (problem: ProblemDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chart.conditionErrorTitle'),
+      message: t('chart.conditionErrorMessage', { name: problem.name }),
+      inputLabel: t('chart.vitalsDeleteReason'),
+      confirmLabel: t('chart.conditionErrorConfirm'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    setCorrecting(true);
+    try {
+      if (!(await update(problem._id, { recordStatus: 'entered_in_error', correctionReason: reason.trim() }))) throw new Error('Change not saved. Try again.');
+      showToast(t('msg.conditionMarkedInError', { name: problem.name }), 'success');
+      setDetail(null);
+    } catch (err) {
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
+    } finally {
+      setCorrecting(false);
     }
   };
 
@@ -177,13 +223,14 @@ export default function ConditionsSection({
                 content, which left the condition name hard against a date and
                 the status stranded off at the right edge. */}
             <colgroup>
-              <col /><col /><col />
+              <col /><col /><col /><col />
             </colgroup>
             <thead>
               <tr>
                 <th>Condition</th>
                 <th>Date of onset</th>
                 <th>Status</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -216,6 +263,20 @@ export default function ConditionsSection({
                       </Select>
                     </span>
                   </td>
+                  <td>
+                    {/* The row's ⋮: the same corrections the detail dialog
+                        offers, one step closer. */}
+                    <RowActionsMenu
+                      ariaLabel={t('chart.conditionRowActions', { name: p.name })}
+                      actions={[
+                        { key: 'open', label: t('chart.openDetails'), onClick: () => setDetail(p) },
+                        ...(canEditClinical ? [
+                          { key: 'onset', label: t('chart.conditionCorrectOnset'), onClick: () => { setDetail(p); setOnsetEdit(p.onsetDate || ''); } },
+                          { key: 'error', label: t('chart.conditionErrorConfirm'), tone: 'danger' as const, onClick: () => void markEnteredInError(p) },
+                        ] : []),
+                      ]}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -224,7 +285,7 @@ export default function ConditionsSection({
       </ChartSection>
 
       {detail && (
-        <Modal className="tamam-dialog" onClose={() => setDetail(null)} width={480} labelledBy="condition-detail-title">
+        <Modal className="tamam-dialog" onClose={() => { setOnsetEdit(null); setDetail(null); }} width={480} labelledBy="condition-detail-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="condition-detail-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{detail.name}</h2>
@@ -248,13 +309,30 @@ export default function ConditionsSection({
               ))}
             </dl>
             {detail.notes && <p className="text-[13px]" style={{ color: 'var(--text-primary)' }}>{detail.notes}</p>}
-            <div className="flex justify-end"><button className="btn btn-sm btn-secondary" onClick={() => setDetail(null)}>Close</button></div>
+            {canEditClinical && onsetEdit !== null && (
+              <label className="block text-[13px]">
+                <span className="block mb-1 font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.conditionCorrectOnset')}</span>
+                <input type="date" className="w-full" value={onsetEdit} max={todayIso()} onChange={e => setOnsetEdit(e.target.value)} />
+              </label>
+            )}
+            <div className="flex flex-wrap justify-end gap-2">
+              {canEditClinical && onsetEdit === null && (
+                <>
+                  <button className="btn btn-sm btn-secondary" disabled={correcting} onClick={() => void markEnteredInError(detail)}>{t('chart.conditionErrorConfirm')}</button>
+                  <button className="btn btn-sm btn-secondary" disabled={correcting} onClick={() => setOnsetEdit(detail.onsetDate || '')}>{t('chart.conditionCorrectOnset')}</button>
+                </>
+              )}
+              {onsetEdit !== null && (
+                <button className="btn btn-sm btn-primary" disabled={correcting || !onsetEdit} onClick={() => void saveOnset(detail)}>{correcting ? t('noteEditor.saving') : t('chart.conditionSaveOnset')}</button>
+              )}
+              <button className="btn btn-sm btn-secondary" onClick={() => { setOnsetEdit(null); setDetail(null); }}>{t('action.close')}</button>
+            </div>
           </div>
         </Modal>
       )}
 
       {adding && (
-        <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-condition-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-condition-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="add-condition-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Add condition</h2>

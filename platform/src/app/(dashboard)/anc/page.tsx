@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import { useANC } from '@/lib/hooks/useANC';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
-import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -17,11 +16,10 @@ import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader'
 import Modal from '@/components/Modal';
 import {
   HeartPulse, Plus, X, Users,
-  Calendar, ChevronRight, ExternalLink, Edit3,
+  ChevronRight,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
 import {
   createAncRegistrationForm,
   deriveAncPatientPrefill,
@@ -43,10 +41,11 @@ const riskColors: Record<'low' | 'moderate' | 'high', { tone: BadgeTone; label: 
 };
 
 export default function ANCPage() {
+  const router = useRouter();
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { globalSearch } = useUi();
-  const { visits, stats, loading, register, update } = useANC();
+  const { visits, stats, loading, register } = useANC();
   const { patients } = usePatients();
   const { canRecordVitalEvents } = usePermissions();
   const { showToast } = useToast();
@@ -59,12 +58,9 @@ export default function ANCPage() {
   const [tableSearch, setTableSearch] = useState('');
   const search = `${tableSearch} ${globalSearch}`.trim();
   const [showModal, setShowModal] = useState(false);
-  // Edit/correct affordance for a saved ANC visit. Visits are corrected via
-  // updateANCVisit (audit/sync preserved), not hard-deleted from the UI.
-  const [editVisit, setEditVisit] = useState<ANCVisitDoc | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
-  useBodyScrollLock(showModal || !!editVisit);
-  const [selectedMother, setSelectedMother] = useState<string | null>(null);
+  // Correcting a saved visit happens in the mother's chart (Antenatal care,
+  // AncVisitEditor); this page is the register of mothers. The form is a
+  // slider beside the list, so the page behind it is not scroll-locked.
   const [patientLookup, setPatientLookup] = useState('');
 
   const [form, setForm] = useState(() => createAncRegistrationForm(todayIso()));
@@ -173,11 +169,6 @@ export default function ANCPage() {
     return motherSummaries.filter(m => m.latest.nextVisitDate && m.latest.nextVisitDate >= today && m.latest.nextVisitDate <= in7Str).length;
   }, [motherSummaries, today]);
 
-  const selectedMotherVisits = useMemo(() => {
-    if (!selectedMother) return [];
-    return (visits || []).filter(v => v.motherId === selectedMother).sort((a, b) => a.visitNumber - b.visitNumber);
-  }, [visits, selectedMother]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (missingAncRequiredFields(form).length > 0) {
@@ -225,29 +216,6 @@ export default function ANCPage() {
     } catch (err) {
       // Keep the form open: a refused save (e.g. no facility/organisation) must not look saved.
       showToast(describeError(err, t('msg.ancVisitNotSavedTry')), 'error');
-    }
-  };
-
-  // Persist a correction to a saved ANC visit, then close the edit modal.
-  const handleEditSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editVisit) return;
-    setEditSaving(true);
-    try {
-      await update(editVisit._id, {
-        visitDate: editVisit.visitDate,
-        gestationalAge: editVisit.gestationalAge,
-        bloodPressure: editVisit.bloodPressure,
-        weight: editVisit.weight,
-        hemoglobin: editVisit.hemoglobin,
-        fetalHeartRate: editVisit.fetalHeartRate,
-        riskLevel: editVisit.riskLevel,
-        nextVisitDate: editVisit.nextVisitDate,
-        notes: editVisit.notes,
-      });
-      setEditVisit(null);
-    } finally {
-      setEditSaving(false);
     }
   };
 
@@ -315,9 +283,10 @@ export default function ANCPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Mother List */}
-          <div className="lg:col-span-2 card-elevated overflow-hidden">
+        {/* The register is the list of mothers; each opens her own chart at
+            Antenatal care, where the visits, birth plan and corrections live. */}
+        <div>
+          <div className="card-elevated overflow-hidden">
             <EhrListHeader
               title={t('anc.title')}
               count={motherSummaries.length}
@@ -339,35 +308,26 @@ export default function ANCPage() {
             <div className="divide-y data-row-divider-sm" style={{ borderColor: 'var(--table-row-border)' }}>
               {filteredMothers.map(({ latest, visitCount }) => {
                 const risk = riskColors[latest.riskLevel] || riskColors.low;
-                const isSelected = selectedMother === latest.motherId;
-                const select = () => setSelectedMother(isSelected ? null : latest.motherId);
                 const hasRealPatientRecord = !!latest.motherId
                   && !latest.motherId.startsWith('demo-')
                   && !latest.motherId.startsWith('mother-new-')
                   && !latest.motherId.includes('_demo');
+                const chartHref = `/patients/${encodeURIComponent(latest.motherId)}?tab=anc`;
+                const open = () => { if (hasRealPatientRecord) router.push(chartHref); };
                 return (
                   <div
                     key={latest.motherId}
-                    role="button"
-                    tabIndex={0}
-                    onClick={select}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); } }}
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-[var(--table-row-hover)]"
-                    style={{ background: isSelected ? 'var(--nav-active-bg)' : undefined }}
+                    {...(hasRealPatientRecord ? {
+                      role: 'link',
+                      tabIndex: 0,
+                      'aria-label': t('ancChart.openChart', { name: latest.motherName }),
+                      onClick: open,
+                      onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } },
+                    } : {})}
+                    className={`flex items-center gap-3 px-4 py-3 transition-colors ${hasRealPatientRecord ? 'cursor-pointer hover:bg-[var(--table-row-hover)]' : ''}`}
                   >
                     <div className="flex-1 min-w-0">
-                      {hasRealPatientRecord ? (
-                        <Link
-                          href={`/patients/${latest.motherId}`}
-                          {...stopsClickPropagation}
-                          className="text-sm font-semibold truncate block hover:underline"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          {latest.motherName}
-                        </Link>
-                      ) : (
-                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{latest.motherName}</p>
-                      )}
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{latest.motherName}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {t('anc.motherMeta', { age: latest.motherAge, gravida: latest.gravida, parity: latest.parity, weeks: latest.gestationalAge, facility: latest.facilityName })}
                       </p>
@@ -377,18 +337,9 @@ export default function ANCPage() {
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {visitCount} visit{visitCount !== 1 ? 's' : ''}
                       </span>
-                      {hasRealPatientRecord && (
-                        <Link
-                          href={`/patients/${latest.motherId}`}
-                          {...stopsClickPropagation}
-                          className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:bg-[var(--accent-light)]"
-                          style={{ color: 'var(--accent-primary)' }}
-                          title="View patient record"
-                        >
-                          View <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      )}
-                      <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                      {hasRealPatientRecord
+                        ? <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} aria-hidden />
+                        : <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('ancChart.noRecord')}</span>}
                     </div>
                   </div>
                 );
@@ -406,114 +357,11 @@ export default function ANCPage() {
             </div>
           </div>
 
-          {/* Visit Detail Panel */}
-          <div className="space-y-4">
-            {selectedMother && selectedMotherVisits.length > 0 ? (
-              <>
-                {/* Mother Summary */}
-                <div className="card-elevated p-4">
-                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <HeartPulse className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
-                    Visit History
-                  </h3>
-                  <hr className="section-divider" />
-                  <div className="space-y-3 data-row-divider-sm">
-                    {selectedMotherVisits.map(v => {
-                      const risk = riskColors[v.riskLevel] || riskColors.low;
-                      return (
-                        <div key={v._id} className="p-3 rounded-lg border" style={{ borderColor: 'var(--border-light)' }}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>ANC {v.visitNumber}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge tone={risk.tone}>{risk.label}</Badge>
-                              {canRecordVitalEvents && (
-                                <button
-                                  type="button"
-                                  onClick={() => setEditVisit(v)}
-                                  aria-label={t('action.edit')}
-                                  title={t('action.edit')}
-                                  className="p-1 rounded hover:bg-[var(--overlay-light)]"
-                                  style={{ color: 'var(--text-muted)' }}
-                                >
-                                  <Edit3 size={14} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-y-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                            <span>Date: {v.visitDate}</span>
-                            <span>GA: {v.gestationalAge} wks</span>
-                            <span>BP: {v.bloodPressure}</span>
-                            <span>Wt: {v.weight} kg</span>
-                            <span>Hb: {v.hemoglobin} g/dL</span>
-                            <span>FHR: {v.fetalHeartRate} bpm</span>
-                          </div>
-                          {(v.riskFactors?.length ?? 0) > 0 && (
-                            <>
-                              <hr className="section-divider" />
-                              <div className="flex flex-wrap gap-1">
-                                {(v.riskFactors || []).map(rf => (
-                                  <span key={rf} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)' }}>
-                                    {rf.replace(/_/g, ' ')}
-                                  </span>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          {v.notes && (
-                            <p className="text-xs mt-2 italic" style={{ color: 'var(--text-muted)' }}>{v.notes}</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Birth Plan */}
-                {(() => {
-                  const latest = selectedMotherVisits[selectedMotherVisits.length - 1];
-                  return (
-                    <div className="card-elevated p-4">
-                      <h3 className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <Calendar className="w-4 h-4" style={{ color: '#1174B4' }} />
-                        Birth Plan
-                      </h3>
-                      <hr className="section-divider" />
-                      <div className="space-y-2 data-row-divider-sm text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        <div className="flex justify-between">
-                          <span>Delivery Facility</span>
-                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.facility || '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Transport</span>
-                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.transport || '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Blood Donor</span>
-                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{latest.birthPlan?.bloodDonor || '—'}</span>
-                        </div>
-                        <hr className="section-divider" />
-                        <div className="flex justify-between">
-                          <span>Next Visit</span>
-                          <span className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{latest.nextVisitDate || '—'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </>
-            ) : (
-              <div className="card-elevated p-8 text-center">
-                <HeartPulse className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--chart-2)', opacity: 0.2 }} />
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Select a mother to view visit history</p>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Registration Modal */}
         {showModal && (
-          <Modal onClose={closeRegistrationForm} width={672} labelledBy="anc-registration-title">
+          <Modal variant="slider" onClose={closeRegistrationForm} width={672} labelledBy="anc-registration-title">
             <div className="modal-panel p-6 w-full overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
                 <h3 id="anc-registration-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Register ANC Visit</h3>
@@ -775,78 +623,6 @@ export default function ANCPage() {
           </Modal>
         )}
 
-        {/* Edit / Correct a saved ANC visit */}
-        {editVisit && (
-          <Modal onClose={() => setEditVisit(null)} width={512} labelledBy="anc-edit-title">
-            <div className="modal-panel p-6 w-full overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <h3 id="anc-edit-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.edit')} · ANC {editVisit.visitNumber} · {editVisit.motherName}</h3>
-                <button onClick={() => setEditVisit(null)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
-                  <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </div>
-
-              <form onSubmit={handleEditSave} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label>Visit Date</label>
-                    <input type="date" value={editVisit.visitDate} onChange={e => setEditVisit({ ...editVisit, visitDate: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>GA (weeks)</label>
-                    <input type="number" step="1" min={4} max={44} value={editVisit.gestationalAge} onChange={e => setEditVisit({ ...editVisit, gestationalAge: parseInt(e.target.value, 10) || 0 })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label>BP (mmHg)</label>
-                    <input type="text" value={editVisit.bloodPressure} onChange={e => setEditVisit({ ...editVisit, bloodPressure: e.target.value })} placeholder="120/80" />
-                  </div>
-                  <div>
-                    <label>Weight (kg)</label>
-                    <input type="number" step="0.1" value={editVisit.weight || ''} onChange={e => setEditVisit({ ...editVisit, weight: parseFloat(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label>Hemoglobin</label>
-                    <input type="number" step="0.1" value={editVisit.hemoglobin || ''} onChange={e => setEditVisit({ ...editVisit, hemoglobin: parseFloat(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label>Fetal HR (bpm)</label>
-                    <input type="number" step="1" value={editVisit.fetalHeartRate || ''} onChange={e => setEditVisit({ ...editVisit, fetalHeartRate: parseInt(e.target.value) })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label>Risk Level</label>
-                    <Select value={editVisit.riskLevel} onChange={e => setEditVisit({ ...editVisit, riskLevel: e.target.value as 'low' | 'moderate' | 'high' })}>
-                      <option value="low">Low</option>
-                      <option value="moderate">Moderate</option>
-                      <option value="high">High</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <label>Next Visit Date</label>
-                    <input type="date" value={editVisit.nextVisitDate || ''} onChange={e => setEditVisit({ ...editVisit, nextVisitDate: e.target.value })} />
-                  </div>
-                </div>
-
-                <div>
-                  <label>Notes</label>
-                  <textarea rows={2} value={editVisit.notes || ''} onChange={e => setEditVisit({ ...editVisit, notes: e.target.value })} placeholder="Clinical notes..." />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setEditVisit(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                  <button type="submit" disabled={editSaving} className="btn btn-primary flex-1">
-                    {t('action.saveChanges')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </Modal>
-        )}
     </main>
   );
 }

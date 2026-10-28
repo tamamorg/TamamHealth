@@ -3246,6 +3246,8 @@
 }
 
 .obk-tag--danger { background: var(--color-danger, #da1e28); color: #fff; }
+.obk-tag--warn { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.obk-tags { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 
 .obk-line { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
 .obk-warn { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-danger-text); }

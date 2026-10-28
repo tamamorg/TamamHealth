@@ -124,7 +124,7 @@ export default function RequestLeaveDialog({ onClose, onCreated, presentation = 
   if (presentation === 'page') return body;
 
   return (
-    <Modal onClose={onClose} width={448} labelledBy="request-leave-title">
+    <Modal variant="slider" onClose={onClose} width={448} labelledBy="request-leave-title">
       <div className="sadb-modal">
         <PopupHeader
           titleId="request-leave-title"

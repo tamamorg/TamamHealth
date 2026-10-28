@@ -603,7 +603,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       {/* New claim modal — pick an insured patient, the policy, and the bill
           (or a manual amount), then submit through the real claims service. */}
       {newClaimOpen && (
-        <Modal onClose={() => !submittingClaim && resetNewClaim()} width={480} labelledBy="new-claim-title">
+        <Modal variant="slider" onClose={() => !submittingClaim && resetNewClaim()} width={480} labelledBy="new-claim-title">
           <div className="bl-root bl-modal-body">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 className="bl-modal-title" id="new-claim-title">New insurance claim</h3>

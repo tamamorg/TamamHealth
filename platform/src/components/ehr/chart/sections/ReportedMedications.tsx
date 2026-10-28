@@ -128,7 +128,7 @@ export default function ReportedMedications({
       )}
 
       {formOpen && canRecord && (
-        <Modal className="tamam-dialog" onClose={closeForm} width={480} labelledBy="reported-med-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={closeForm} width={480} labelledBy="reported-med-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="reported-med-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>

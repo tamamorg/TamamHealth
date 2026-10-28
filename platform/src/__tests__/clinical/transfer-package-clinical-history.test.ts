@@ -62,8 +62,8 @@ it('includes a signed note, the problem list and active prescriptions', async ()
   } as never);
 
   await createProblem({
-    patientId: PATIENT_ID, patientName: 'Nyakuma Deng', name: 'Hypertension, essential',
-    icd11Code: 'BA02', status: 'active', hospitalId: HOSP, orgId: ORG,
+    patientId: PATIENT_ID, patientName: 'Nyakuma Deng', name: 'Essential hypertension',
+    icd11Code: 'BA00', status: 'active', hospitalId: HOSP, orgId: ORG,
   } as never);
 
   const { prescription: active } = await createPrescription({
@@ -85,7 +85,7 @@ it('includes a signed note, the problem list and active prescriptions', async ()
   expect(pkg.clinicalNotes[0].signedByName).toBe('Dr. Wani');
 
   expect(pkg.problems).toHaveLength(1);
-  expect(pkg.problems[0]).toMatchObject({ name: 'Hypertension, essential', icd11Code: 'BA02' });
+  expect(pkg.problems[0]).toMatchObject({ name: 'Essential hypertension', icd11Code: 'BA00' });
 
   expect(pkg.activePrescriptions.map(rx => rx.id)).toEqual([active._id]);
   expect(pkg.activePrescriptions.map(rx => rx.id)).not.toContain(dispensed._id);

@@ -34,7 +34,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
-import { clickable } from '@/lib/a11y';
+import { clickable, stopsClickPropagation } from '@/lib/a11y';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { statusWord } from '@/lib/i18n/status-word';
@@ -255,7 +256,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
         ) : (
           <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--allergies">
             <colgroup>
-              <col /><col /><col /><col /><col />
+              <col /><col /><col /><col /><col /><col />
             </colgroup>
             <thead>
               <tr>
@@ -264,12 +265,13 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                 <th>Reaction</th>
                 <th>Comments</th>
                 <th>Status</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
+                  <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
                     <OmrsEmptyState
                       itemLabel="allergies"
                       actionLabel="Record allergies"
@@ -307,6 +309,26 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     <td>
                       <span className={STATUS_BADGE[a.status] || STATUS_BADGE.inactive}>
                         {STATUS_LABEL[a.status] || a.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      {/* The row opens its dialog on click and Enter; the ⋮
+                          must not, so its clicks and keys stop here. */}
+                      <span {...stopsClickPropagation}>
+                        <RowActionsMenu
+                          ariaLabel={t('chart.allergyRowActions', { name: a.substance })}
+                          actions={[
+                            { key: 'open', label: t('chart.openDetails'), onClick: () => setSelectedAllergy(a) },
+                            ...(canRecordAllergies && rowsAreEditable
+                              ? a.status === 'active'
+                                ? [
+                                  { key: 'edit', label: t('chart.allergyEdit'), onClick: () => openEdit(a) },
+                                  { key: 'retire', label: t('chart.allergyRetire'), tone: 'danger' as const, onClick: () => { setRetiring(a); setRetireReason(''); setRetireStatus('inactive'); } },
+                                ]
+                                : [{ key: 'reinstate', label: t('chart.allergyReinstate'), onClick: () => void reactivate(a) }]
+                              : []),
+                          ]}
+                        />
                       </span>
                     </td>
                   </tr>
@@ -363,7 +385,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       )}
 
       {editing && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="edit-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit allergy</h2>

@@ -688,7 +688,7 @@ export default function BillDetailPage() {
 
       {/* ── Add items modal ── */}
       {addItemsOpen && (
-        <Modal onClose={() => setAddItemsOpen(false)} width={560} labelledBy="bl-add-title">
+        <Modal variant="slider" onClose={() => setAddItemsOpen(false)} width={560} labelledBy="bl-add-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="bl-add-title">Add items to bill</h3>

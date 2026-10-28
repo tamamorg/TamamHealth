@@ -1441,7 +1441,7 @@ export default function ClinicalNoteEditor({
       });
       if (current !== workspaceGroup) setWorkspaceGroup(current);
     };
-    const group = (id: string, label: string, body: React.ReactNode, major = false) => {
+    const group = (id: string, label: string, body: React.ReactNode, major = false, subLabel?: string) => {
       const folded = foldedGroups.has(id);
       return (
         <section key={id} className={`omf-group${major ? ' omf-group--major' : ''}`} data-omf-group={id}>
@@ -1449,10 +1449,15 @@ export default function ClinicalNoteEditor({
             <span>{label}</span>
             <ChevronDown size={16} className={folded ? 'omf-chevron is-folded' : 'omf-chevron'} aria-hidden />
           </button>
+          {!folded && subLabel && <div className="omf-subhead">{subLabel}</div>}
           {!folded && <div className="omf-group-body">{body}</div>}
         </section>
       );
     };
+    // What this form is for, from the note type (O3's "This form is used to").
+    const purposeKey = `noteEditor.typeDesc.${note.noteType}`;
+    const purpose = t(purposeKey) !== purposeKey ? t(purposeKey) : typeDef.description;
+    const bannerName = (patient && patientFullName(patient)) || (note.patientName && note.patientName !== 'Patient' ? note.patientName : '') || t('noteEditor.patientLoading');
     return (
       <div className="cn-editor omf-root">
         {onBack && (
@@ -1460,27 +1465,6 @@ export default function ClinicalNoteEditor({
             <ArrowLeft size={16} aria-hidden /> {t('noteEditor.backToForms')}
           </button>
         )}
-        {/* Which note this is, as a dropdown of every note form, and whose:
-            in full screen the chart's own patient header is covered. */}
-        <div className="omf-typebar">
-          {/* The loaded patient record is the truth; the note's own copy is
-              only a fallback while it loads. Some create paths stamped the
-              placeholder "Patient" with no MRN or date of birth, which made
-              this line read "Patient / F". */}
-          <div className="omf-patient">
-            <span className="omf-patient-name">
-              {(patient && patientFullName(patient)) || (note.patientName && note.patientName !== 'Patient' ? note.patientName : '') || t('noteEditor.patientLoading')}
-            </span>
-            <span className="omf-patient-line">
-              {[
-                patient?.hospitalNumber || note.mrn,
-                patient?.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : null,
-                dobWithAge(patient?.dateOfBirth || note.patientDob),
-              ].filter(Boolean).join(' · ')}
-            </span>
-          </div>
-          <div className="omf-type">{noteTypeField}</div>
-        </div>
         <div className="omf-body">
           <nav className="omf-nav" aria-label={t('noteEditor.sections')}>
             {groups.map(g => (
@@ -1510,7 +1494,7 @@ export default function ClinicalNoteEditor({
             </div>
             <div className="omf-nav-actions">
               {!locked && (
-                <button type="button" className="omf-btn omf-btn--outline" onClick={() => void handleSaveDraft()} disabled={saving}>
+                <button type="button" className="omf-btn omf-btn--primary" onClick={() => void handleSaveDraft()} disabled={saving}>
                   {saving ? t('noteEditor.saving') : t('noteEditor.save')}
                 </button>
               )}
@@ -1524,7 +1508,7 @@ export default function ClinicalNoteEditor({
                   <Check size={14} aria-hidden /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
                 </button>
               )}
-              <button type="button" className="omf-btn omf-btn--ghost" onClick={() => void handleSaveAndClose()}>
+              <button type="button" className="omf-btn omf-btn--outline" onClick={() => void handleSaveAndClose()}>
                 {locked ? t('noteEditor.close') : t('noteEditor.cancel')}
               </button>
               <span className="omf-saved">
@@ -1533,8 +1517,30 @@ export default function ClinicalNoteEditor({
             </div>
           </nav>
           <div className="omf-scroll" ref={workspaceScrollRef} onScroll={onWorkspaceScroll}>
+            {/* Whose note: the O3 patient banner at the head of the form. The
+                docked workspace sits beside the chart's own header, so the
+                banner shows only full screen, where that header is covered. */}
+            <div className="omf-banner">
+              <span className="omf-banner-avatar" aria-hidden>{nameInitials(bannerName)}</span>
+              <div className="omf-banner-text">
+                <div className="omf-banner-name">
+                  <strong>{bannerName}</strong>
+                  {patient?.gender && <span className="omf-banner-sex">{patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)}</span>}
+                </div>
+                <div className="omf-banner-line">
+                  {dobWithAge(patient?.dateOfBirth || note.patientDob) && <span>{dobWithAge(patient?.dateOfBirth || note.patientDob)}</span>}
+                  {(patient?.hospitalNumber || note.mrn) && <span className="omf-banner-id">{t('noteEditor.patientId')}: <strong>{patient?.hospitalNumber || note.mrn}</strong></span>}
+                </div>
+              </div>
+            </div>
             {lockBanners}
-            {group('visit-details', t('noteEditor.visitDetails'), <div className="omf-fields">{noteFields}</div>, true)}
+            {group('visit-details', t('noteEditor.visitDetails'), (
+              <>
+                <p className="omf-purpose"><strong>{t('noteEditor.formUsedFor')}</strong> {purpose}</p>
+                <div className="omf-type">{noteTypeField}</div>
+                <div className="omf-fields">{noteFields}</div>
+              </>
+            ), true, t('noteEditor.visitParticulars'))}
             {note.sections.map(sec => group(
               `section-${sec.sectionId}`,
               sectionLabel(t, sec.sectionId),

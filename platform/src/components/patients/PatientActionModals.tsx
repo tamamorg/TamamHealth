@@ -227,7 +227,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
   if (!isOpen) return null;
 
   return (
-    <Modal onClose={close} width={560}>
+    <Modal variant="slider" onClose={close} width={560}>
       <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <ModalHeader
           icon={<Pill className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
@@ -420,7 +420,7 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
   if (!isOpen) return null;
 
   return (
-    <Modal onClose={close} width={600}>
+    <Modal variant="slider" onClose={close} width={600}>
       <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
         <ModalHeader
           icon={<ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}

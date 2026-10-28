@@ -302,7 +302,7 @@ export default function EmergencyPreparednessPage() {
         )}
 
         {showForm && (
-          <Modal onClose={() => !submitting && setShowForm(false)}>
+          <Modal variant="slider" onClose={() => !submitting && setShowForm(false)}>
             <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">

@@ -799,7 +799,7 @@ export default function SurveillancePage() {
 
         {/* Report Disease Alert Modal */}
         {showNewAlert && (
-          <Modal onClose={() => !alertSubmitting && setShowNewAlert(false)}>
+          <Modal variant="slider" onClose={() => !alertSubmitting && setShowNewAlert(false)}>
             <div className="modal-content p-6 max-w-lg w-full" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">

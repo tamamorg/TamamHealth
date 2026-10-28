@@ -976,6 +976,11 @@ export interface ProblemDoc extends BaseDoc {
   notes?: string;
   /** Encounter that first documented this problem */
   sourceEncounterId?: string;
+  /** Set when the entry was recorded on the wrong patient or by mistake. The
+   *  document is kept for the audit trail and dropped from every list. */
+  recordStatus?: 'active' | 'entered_in_error';
+  /** Why the entry was marked entered in error, or why its onset was corrected. */
+  correctionReason?: string;
   recordedBy?: string;
   recordedByName?: string;
   hospitalId?: string;
