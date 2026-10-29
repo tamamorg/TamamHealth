@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Fragment, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
@@ -10,7 +10,7 @@ import PatientAvatar from '@/components/patients/PatientAvatar';
 import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
 import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
 import EmptyState from '@/components/EmptyState';
-import Badge, { toneForStatus } from '@/components/Badge';
+import Badge from '@/components/Badge';
 import {
   ArrowRightLeft, Plus, CheckCircle2,
   AlertTriangle, ChevronDown, ChevronUp, X,
@@ -372,7 +372,6 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
 }
 
 export default function ReferralsPage() {
-  const router = useRouter();
   const { t } = useTranslation();
   const { referrals, accept, updateStatus, updateNotes, completeWithOutcome } = useReferrals();
   const { showToast } = useToast();
@@ -459,14 +458,60 @@ export default function ReferralsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedReferral]);
 
-  // The referral open in the detail popup. Resolved against the unfiltered
-  // list on purpose: a status change made from the popup (accept, complete)
-  // can move the row out of the current filter, and the dialog should not
-  // vanish mid-read because of it.
-  const detailReferral = expandedReferral
-    ? activeReferrals.find(r => r._id === expandedReferral)
-    : undefined;
-  const detailPackage = detailReferral?.transferPackage as TransferPackage | undefined;
+  // A referral's details, opened in place under its row: the outcome once one
+  // is recorded, then the data package — or, for a referral made before data
+  // packaging, its reason and clinical notes.
+  const renderReferralDetails = (r: (typeof activeReferrals)[number]) => {
+    const pkg = r.transferPackage as TransferPackage | undefined;
+    return (
+      <>
+          {r.outcome && (
+            <div className="mb-3 p-3 rounded-lg" style={{ background: 'rgba(79, 199, 155,0.08)', border: '1px solid rgba(79, 199, 155,0.25)' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-success-text)' }}>{t('referrals.outcomeReceived')}</p>
+                <Badge tone="success">{t(`referrals.disposition_${r.outcome.disposition}`)}</Badge>
+              </div>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{r.outcome.summary}</p>
+              {r.outcome.followUp && (
+                <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-semibold">{t('referrals.outcomeFollowUp')}: </span>{r.outcome.followUp}
+                </p>
+              )}
+              <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+                {t('referrals.outcomeRecordedBy', { name: r.outcome.recordedBy, date: r.outcome.recordedAt.slice(0, 10) })}
+              </p>
+            </div>
+          )}
+          {pkg ? (
+            <TransferPackageViewer
+              pkg={pkg}
+              refAttachments={r.referralAttachments as Attachment[] | undefined}
+              reason={r.reason}
+              notes={r.notes}
+              onPreview={setPreviewAttachment}
+            />
+          ) : (
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referral.reason')}</p>
+                <p className="text-sm">{r.reason}</p>
+              </div>
+              <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referral.notes')}</p>
+                <p className="text-sm whitespace-pre-wrap">{r.notes || t('referrals.none')}</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <div className="icon-box-sm">
+                  <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
+                </div>
+                {t('referrals.noDataPackage')}
+              </div>
+            </div>
+          )}
+      </>
+    );
+  };
 
   // Search filtering (+ status filter)
   const combinedSearch = localSearch.toLowerCase().trim();
@@ -647,7 +692,7 @@ export default function ReferralsPage() {
           {/* The registry's card grid (see patients/page.tsx) — identical
               head, row anatomy and trailing right-aligned Status column, so
               referrals read in the same list language as the registry. */}
-          <div className="appointment-card-surface patients-list-surface referrals-list-surface">
+          <div className={`appointment-card-surface patients-list-surface referrals-list-surface${canManageReferrals ? ' has-actions' : ''}`}>
             <div className="appointment-card-flow">
             {/* The column head is the list's frame, not a label for whichever
                 rows happen to be loaded — it stays put when nothing matches. */}
@@ -658,6 +703,7 @@ export default function ReferralsPage() {
               <span>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</span>
               <span>Context</span>
               <span>Status</span>
+              {canManageReferrals && <span>{t('chart.actions')}</span>}
             </div>
             {filteredReferrals.length === 0 ? (
               <div className="p-8">
@@ -680,13 +726,6 @@ export default function ReferralsPage() {
                 // pops up from a click anywhere on the row. No "open chart"
                 // entry for the same reason.
                 const rowActions: RowAction[] = [
-                  {
-                    key: 'view-details',
-                    label: 'View referral details',
-                    tone: 'default' as const,
-                    icon: <FileText className="w-4 h-4" />,
-                    onClick: () => setExpandedReferral(ref._id),
-                  },
                   ...(canManageReferrals && activeTab === 'incoming' && (ref.status === 'sent' || ref.status === 'received') ? [
                     { key: 'accept', label: t('referrals.accept'), tone: 'success' as const, icon: <CheckCircle2 className="w-4 h-4" />, onClick: async () => {
                       try { await accept(ref._id); showToast(t('referrals.toastAccepted', { name: ref.patientName }), 'success'); }
@@ -705,30 +744,28 @@ export default function ReferralsPage() {
                     { key: 'note', label: t('action.addNote'), tone: 'default' as const, icon: <MessageSquarePlus className="w-4 h-4" />, onClick: () => { setNoteModalId(ref._id); setNoteText(''); } },
                   ] : []),
                 ];
-                // Does this viewer have anything to change here? "View details"
-                // alone is not a status update, so a read-only viewer keeps a
-                // plain pill rather than a caret promising an action they
-                // cannot take.
-                const canUpdateStatus = rowActions.some(a => a.key !== 'view-details');
+                // A read-only viewer has nothing to change here, so their row
+                // shows no ⋮ promising an action they cannot take.
+                const canUpdateStatus = rowActions.length > 0;
+                const isOpen = expandedReferral === ref._id;
+                const toggleDetails = () => setExpandedReferral(prev => (prev === ref._id ? null : ref._id));
                 return (
+                  <Fragment key={ref._id}>
                   <div
-                    key={ref._id}
-                    className="ehr-appointment-row appointment-card-row"
+                    className={`ehr-appointment-row appointment-card-row${isOpen ? ' is-open' : ''}`}
                     role="button"
                     tabIndex={0}
-                    // The row IS the patient: clicking it opens the chart on
-                    // its Referrals tab. Referrals whose patient has no chart
-                    // (seeded demo ids) fall back to the details dialog.
-                    onClick={() => {
-                      if (hasPatientChart) router.push(`/patients/${ref.patientId}?tab=referrals`);
-                      else setExpandedReferral(ref._id);
-                    }}
+                    aria-expanded={isOpen}
+                    aria-controls={`referral-details-${ref._id}`}
+                    // Clicking the row opens its details in place, under it;
+                    // clicking again closes them. The patient's name is the
+                    // way to their chart.
+                    onClick={toggleDetails}
                     onKeyDown={e => {
                       if (e.target !== e.currentTarget) return;
                       if (isRowActivationKey(e.key)) {
                         e.preventDefault();
-                        if (hasPatientChart) router.push(`/patients/${ref.patientId}?tab=referrals`);
-                        else setExpandedReferral(ref._id);
+                        toggleDetails();
                       }
                     }}
                   >
@@ -774,23 +811,13 @@ export default function ReferralsPage() {
                       <strong>{ref.department || 'Department unassigned'}</strong>
                       <span>Referral service</span>
                     </div>
-                    {/* The registry's trailing stack: status pill with the
-                        urgency as the small operational cue beneath it. */}
+                    {/* Status reads: the pill with the urgency as the small
+                        operational cue beneath it. What can be done to the
+                        referral lives in its own Actions column after it. */}
                     <div className="appointment-card-status">
-                      {/* The pill is the status control: clicking it opens the
-                          Accept / Decline / Complete menu right where the
-                          status reads, instead of a popup from anywhere on
-                          the row. `--select` is the same caret + hover
-                          affordance the appointment board's status pill uses,
-                          so an updatable status looks updatable. */}
                       <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
                         {getStatusLabel(ref.status)}
                       </span>
-                      {canUpdateStatus && (
-                        <span {...stopsClickPropagation}>
-                          <RowActionsMenu ariaLabel={t('referrals.updateStatus')} actions={rowActions} />
-                        </span>
-                      )}
                       <small style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
                         {t(`referrals.urgency_${ref.urgency}`)}
                       </small>
@@ -800,7 +827,18 @@ export default function ReferralsPage() {
                         </span>
                       )}
                     </div>
+                    {canManageReferrals && (
+                      <div className="appointment-card-status appointment-card-actions" {...stopsClickPropagation}>
+                        {canUpdateStatus && <RowActionsMenu ariaLabel={t('referrals.updateStatus')} actions={rowActions} />}
+                      </div>
+                    )}
                   </div>
+                  {isOpen && (
+                    <div id={`referral-details-${ref._id}`} className="referral-row-details">
+                      {renderReferralDetails(ref)}
+                    </div>
+                  )}
+                  </Fragment>
                 );
               })}
             </>
@@ -811,81 +849,6 @@ export default function ReferralsPage() {
 
         {showNewReferral && (
           <ReferralFormModal onClose={() => setShowNewReferral(false)} />
-        )}
-
-        {/* Referral detail — a popup rather than an inline expansion row: the
-            package viewer is taller than a table row wants to be, and pushing
-            every row below it down the page lost the reader's place. */}
-        {detailReferral && (
-          <Modal onClose={() => setExpandedReferral(null)} width={760} labelledBy="referral-detail-title">
-            <div className="modal-panel" {...stopsClickPropagation} style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)', overflow: 'hidden' }}>
-              <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
-                <div className="min-w-0">
-                  <h3 id="referral-detail-title" className="text-base font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                    {detailReferral.patientName}
-                  </h3>
-                  <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>
-                    {detailReferral.fromHospital} → {detailReferral.toHospital}
-                    {detailReferral.department ? ` · ${detailReferral.department}` : ''}
-                    {` · ${detailReferral.referralDate}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Badge tone={toneForStatus(detailReferral.status)}>{getStatusLabel(detailReferral.status)}</Badge>
-                  <button onClick={() => setExpandedReferral(null)} aria-label={t('action.close')} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ overflowY: 'auto', minHeight: 0 }}>
-                {detailReferral.outcome && (
-                  <div className="mb-3 p-3 rounded-lg" style={{ background: 'rgba(79, 199, 155,0.08)', border: '1px solid rgba(79, 199, 155,0.25)' }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <ClipboardCheck className="w-4 h-4" style={{ color: 'var(--color-success-text)' }} />
-                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-success-text)' }}>{t('referrals.outcomeReceived')}</p>
-                      <Badge tone="success">{t(`referrals.disposition_${detailReferral.outcome.disposition}`)}</Badge>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{detailReferral.outcome.summary}</p>
-                    {detailReferral.outcome.followUp && (
-                      <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                        <span className="font-semibold">{t('referrals.outcomeFollowUp')}: </span>{detailReferral.outcome.followUp}
-                      </p>
-                    )}
-                    <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
-                      {t('referrals.outcomeRecordedBy', { name: detailReferral.outcome.recordedBy, date: detailReferral.outcome.recordedAt.slice(0, 10) })}
-                    </p>
-                  </div>
-                )}
-                {detailPackage ? (
-                  <TransferPackageViewer
-                    pkg={detailPackage}
-                    refAttachments={detailReferral.referralAttachments as Attachment[] | undefined}
-                    reason={detailReferral.reason}
-                    notes={detailReferral.notes}
-                    onPreview={setPreviewAttachment}
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referral.reason')}</p>
-                      <p className="text-sm">{detailReferral.reason}</p>
-                    </div>
-                    <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('referral.notes')}</p>
-                      <p className="text-sm whitespace-pre-wrap">{detailReferral.notes || t('referrals.none')}</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      <div className="icon-box-sm">
-                        <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-danger-text)' }} />
-                      </div>
-                      {t('referrals.noDataPackage')}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Modal>
         )}
 
         {/* Reverse status confirmation — undo an acceptance or reopen a

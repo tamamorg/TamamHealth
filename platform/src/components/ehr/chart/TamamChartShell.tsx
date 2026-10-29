@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
-  ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
+  ShoppingCart, Stethoscope, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
   Utensils, ScanLine, FlaskConical, Pill,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
@@ -31,6 +31,7 @@ import './workspace-fields.css';
 import ClinicalNoteEditor from '@/components/clinical-notes/ClinicalNoteEditor';
 import { useUsers } from '@/lib/hooks/useUsers';
 import OrderBasketPanel from './panels/OrderBasketPanel';
+import type { BasketContext, BasketRequest, BasketView } from './panels/order-basket/basket-types';
 import VisitNotePanel from './panels/VisitNotePanel';
 import TaskListPanel from './panels/TaskListPanel';
 import ClinicalFormsPanel from './panels/ClinicalFormsPanel';
@@ -66,9 +67,9 @@ interface DrawerPanelDef {
 // resolved per-id in renderPanelBody() below.
 const DRAWER_PANELS: DrawerPanelDef[] = [
   { id: 'order-basket', title: 'Order basket', icon: ShoppingCart, clinical: true },
-  // Stethoscope, not a pencil: this panel's primary action starts a
-  // consultation, so it should read as clinical work rather than note-taking.
-  { id: 'visit-note', title: 'Visit note', icon: Stethoscope, clinical: true },
+  // A pencil, as O3 draws its visit note: the panel writes a note (it no
+  // longer starts a consultation).
+  { id: 'visit-note', title: 'Visit note', icon: Pencil, clinical: true },
   // Recall reminders, not clinical detail — the front desk works this queue
   // (ADMIN_TAB_IDS carries 'recall' for exactly that reason), so it stays.
   { id: 'task-list', title: 'Task list', icon: ClipboardCheck },
@@ -162,12 +163,12 @@ interface TamamChartShellProps {
    *  `visibleDrawerPanels`. */
   canViewClinical: boolean;
   router: ChartPanelRouter;
-  onOpenPrescribeModal: () => void;
-  onOpenOrderLabModal: () => void;
   onNoteSaved?: () => void;
   /** One-shot request from the page to open a drawer panel by id (e.g. the
-   *  header's "+ Note" opening 'visit-note'); acknowledged via
-   *  onPanelRequestHandled so the same panel can be requested again. */
+   *  header's "+ Note" opening 'visit-note', or 'order-basket:drug' /
+   *  'order-basket:lab' for the header's Prescribe / Order labs);
+   *  acknowledged via onPanelRequestHandled so the same panel can be
+   *  requested again. */
   panelRequest?: string | null;
   onPanelRequestHandled?: () => void;
   /** A page-owned workspace (Record vitals) shown in the same docked slot as
@@ -182,7 +183,7 @@ interface TamamChartShellProps {
 export default function TamamChartShell({
   activeTab, setActiveTab, railItems, moreItems, header, vitalsBand, children,
   patient, currentUser, canPrescribe, canOrderLabs, canConsult, canViewClinical, router,
-  onOpenPrescribeModal, onOpenOrderLabModal, onNoteSaved,
+  onNoteSaved,
   panelRequest, onPanelRequestHandled, workspace, formFocusId,
 }: TamamChartShellProps) {
 
@@ -212,6 +213,19 @@ export default function TamamChartShell({
   const pushRail = useCallback((entry: { id: string; noteId?: string | null; noteTitle?: string | null }) => {
     setStack(prev => [...prev.filter(e => !(e.kind === 'rail' && e.id === entry.id)), { kind: 'rail', ...entry }]);
   }, []);
+  // The order basket opens on a screen (Add drug order, Add test order) when
+  // asked from a header button or the note editor; a request from a note also
+  // carries the note, so orders signed from it are filed under its visit.
+  const [basketRequest, setBasketRequest] = useState<BasketRequest | null>(null);
+  const [basketContext, setBasketContext] = useState<BasketContext | undefined>(undefined);
+  // The drawer title follows the basket's screen ("Add drug order").
+  const [basketTitle, setBasketTitle] = useState<string | null>(null);
+  const openOrderBasket = useCallback((view: BasketView, context?: BasketContext) => {
+    setBasketContext(context);
+    setBasketRequest({ view });
+    pushRail({ id: 'order-basket' });
+  }, [pushRail]);
+  const clearBasketRequest = useCallback(() => setBasketRequest(null), []);
   // Nothing open: the next workspace starts at its docked width again.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset when the last workspace closes
@@ -230,6 +244,8 @@ export default function TamamChartShell({
     if (panelRequest) {
       if (panelRequest.startsWith('clinical-note:')) {
         pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId: panelRequest.slice('clinical-note:'.length) });
+      } else if (panelRequest === 'order-basket:drug' || panelRequest === 'order-basket:lab') {
+        openOrderBasket(panelRequest === 'order-basket:drug' ? 'drug' : 'lab');
       } else if (railPanels.some(p => p.id === panelRequest) || roleFormPanels.some(p => p.id === panelRequest)) {
         // A request this viewer may not open (a shared `?form=imaging-report`
         // link reaching a doctor) is dropped, not pushed: it would never
@@ -238,7 +254,7 @@ export default function TamamChartShell({
       }
       onPanelRequestHandled?.();
     }
-  }, [panelRequest, onPanelRequestHandled, pushRail, railPanels, roleFormPanels]);
+  }, [panelRequest, onPanelRequestHandled, pushRail, openOrderBasket, railPanels, roleFormPanels]);
   const railPanel = railPanels.find(p => p.id === openPanel)
     || roleFormPanels.find(p => p.id === openPanel)
     || (openPanel === CLINICAL_NOTE_PANEL.id && canViewClinical ? CLINICAL_NOTE_PANEL : null);
@@ -259,7 +275,9 @@ export default function TamamChartShell({
     ? { id: PAGE_WORKSPACE_ID, title: workspace.title }
     : railPanel && railPanel.id === CLINICAL_NOTE_PANEL.id && drawerNoteTitle
       ? { id: railPanel.id, title: drawerNoteTitle }
-      : railPanel;
+      : railPanel && railPanel.id === 'order-basket' && basketTitle
+        ? { id: railPanel.id, title: basketTitle }
+        : railPanel;
 
   // One list, not two. `moreItems` used to hide behind a collapsed "More
   // sections" toggle, which meant half the chart's sections were one click away
@@ -372,12 +390,13 @@ export default function TamamChartShell({
         return (
           <OrderBasketPanel
             patient={patient}
+            currentUser={currentUser}
             canPrescribe={canPrescribe}
             canOrderLabs={canOrderLabs}
-            // The basket stays open beneath: Prescribe stacks on top of it and
-            // closing Prescribe brings the basket back.
-            onAddDrugOrder={onOpenPrescribeModal}
-            onAddLabOrder={onOpenOrderLabModal}
+            request={basketRequest}
+            onRequestHandled={clearBasketRequest}
+            context={basketContext}
+            onTitleChange={setBasketTitle}
             onClose={closeDrawer}
           />
         );
@@ -386,7 +405,6 @@ export default function TamamChartShell({
           <VisitNotePanel
             patient={patient}
             currentUser={currentUser}
-            router={router}
             canConsult={canConsult}
             onClose={closeDrawer}
             onSaved={onNoteSaved}
@@ -433,6 +451,10 @@ export default function TamamChartShell({
               // the drawer. The tab-change effect above only closes it when
               // the section actually changes, so close it here as well.
               onOpenChartTab={(tabId) => { setActiveTab(tabId); closeDrawer(); }}
+              // Prescribe / Order labs from the note go to the order basket on
+              // top of it, carrying the note's visit; closing the basket
+              // brings the note back.
+              onOpenOrderBasket={(view, ctx) => openOrderBasket(view, { ...ctx, noteId: drawerNoteId || undefined })}
             />
           </div>
         ) : null;

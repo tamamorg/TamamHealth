@@ -1,0 +1,263 @@
+/* ══════════════════ ORDER BASKET — search and order forms (O3) ══════════════════
+   The Add drug order / Add test order screens of the order basket, drawn the
+   OpenMRS O3 way: filled fields with a bottom rule, square corners, grey
+   tiles with two link actions, and the shared action bar underneath.
+   Scoped to .obk-root (the basket workspace) as `obf-*`. Two globals.css
+   traps are answered here: every <label> is force-uppercased and bolded, and
+   chart-page inputs are given a bordered white box with !important. */
+
+.obk-root { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+
+.obk-root label { display: block; text-transform: none; letter-spacing: normal; font-weight: 400; font-size: inherit; margin: 0; }
+/* The reset above outranks a bare class; the labelled layouts restate theirs. */
+.obk-root :is(.obf-field, .obf-toggle) { display: flex; }
+
+/* ── Search ── */
+.obf-search { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.obf-search-top { padding: 12px 16px 4px; display: flex; flex-direction: column; gap: 8px; }
+
+.obf-back,
+.obf-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 14px;
+  cursor: pointer;
+}
+.obf-back { min-height: 40px; align-self: flex-start; }
+.obf-back svg,
+.obf-link svg { width: 16px; height: 16px; flex: none; }
+[dir="rtl"] .obf-back svg,
+[dir="rtl"] .obf-link svg:last-child { transform: scaleX(-1); }
+.obf-back:hover,
+.obf-link:hover:not(:disabled) { text-decoration: underline; }
+.obf-link:disabled { color: var(--text-muted); cursor: default; text-decoration: none; }
+.obf-back:focus-visible,
+.obf-link:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+.obf-allergies { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.obf-allergies span { color: var(--text-primary); }
+.obf-allergies.has-allergies span { color: var(--color-danger-text); font-weight: 600; }
+
+.obf-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 8px 0 0;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--color-slate-400, #8d8d8d);
+}
+.obf-search-field:focus-within { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.obf-search-field > svg { position: absolute; inset-inline-start: 16px; width: 16px; height: 16px; color: var(--text-secondary); pointer-events: none; }
+.obk-root .obf-search-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 48px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+.obk-root .obf-search-field input::placeholder { font-weight: 400; color: var(--text-muted); }
+.obf-search-field input::-webkit-search-cancel-button { display: none; }
+.obf-search-clear {
+  position: absolute;
+  inset-inline-end: 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.obf-search-clear svg { width: 16px; height: 16px; }
+
+.obf-results { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 16px 24px; }
+.obf-results-count { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 14px; color: var(--text-secondary); }
+.obf-hint { margin: 8px 0; font-size: 14px; color: var(--text-muted); }
+
+.obf-tiles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.obf-tile { background: var(--bg-app); border: 1px solid var(--border-light); }
+.obf-tile-name { margin: 0; padding: 14px 16px; font-size: 14px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.obf-tile-name span { color: var(--text-secondary); }
+.obf-tile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 32px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-light);
+}
+.obf-tile-actions .obf-link { min-height: 32px; }
+
+/* ── Order forms ── */
+.obf-form { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.obf-form-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.obf-pad { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+/* The drug's name, pinned in the brand colour once its heading scrolls by. */
+.obf-pinned {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  padding: 14px 16px;
+  background: var(--accent-primary);
+  color: var(--color-white, #fff);
+  font-size: 16px;
+}
+.obf-pinned span { font-weight: 400; }
+
+.obf-banner { padding: 16px; background: var(--bg-app); border-bottom: 1px solid var(--border-light); display: flex; flex-direction: column; gap: 8px; }
+.obf-banner-name { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 16px; color: var(--text-primary); }
+.obf-banner-name strong { font-weight: 600; }
+.obf-banner-name span { font-size: 14px; color: var(--text-secondary); }
+
+.tamam-root .obf-form-title,
+.obf-form-title { margin: 0; font-family: inherit; font-size: 20px; font-weight: 400; letter-spacing: normal; text-transform: none; color: var(--text-primary); }
+.tamam-root .obf-drug,
+.obf-drug { margin: 0; font-family: inherit; font-size: 16px; font-weight: 400; letter-spacing: normal; text-transform: none; color: var(--text-primary); }
+.obf-drug strong { font-weight: 600; }
+
+.obf-alerts { display: flex; flex-direction: column; gap: 6px; }
+.obf-alert {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--color-warning-text);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.obf-alert svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+.obf-alert--danger { border-inline-start-color: var(--color-danger-text); background: var(--color-danger-bg, #fff1f1); color: var(--color-danger-text); }
+
+.obf-section { display: flex; flex-direction: column; gap: 16px; }
+.obf-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.tamam-root .obf-section-head h4,
+.obf-section-head h4 { margin: 0; font-family: inherit; font-size: 16px; font-weight: 600; letter-spacing: normal; text-transform: none; color: var(--text-primary); counter-increment: none; }
+
+.obf-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.obf-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.obf-field--half { max-width: calc(50% - 8px); }
+.obk-root .obf-label { display: block; font-size: 13px; font-weight: 400; color: var(--text-secondary); text-transform: none; letter-spacing: normal; }
+.obf-label--count { display: flex; justify-content: space-between; gap: 12px; }
+.obf-value { margin: 0; font-size: 16px; color: var(--text-primary); }
+.obf-value span { color: var(--text-secondary); }
+.obf-error { font-size: 12px; color: var(--color-danger-text); }
+
+.obk-root .obf-field :is(input:not([type="checkbox"]), textarea),
+.obk-root .obf-stepper input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-slate-400, #8d8d8d) !important;
+  border-radius: 0 !important;
+  background-color: var(--bg-app) !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary) !important;
+}
+.obk-root .obf-field textarea { padding: 12px 16px; resize: vertical; line-height: 1.45; }
+.obk-root .obf-field :is(input, textarea)::placeholder { font-weight: 400; color: var(--text-muted); }
+.obk-root .obf-field :is(input, textarea):focus,
+.obk-root .obf-stepper input:focus { outline: 2px solid var(--accent-primary) !important; outline-offset: -2px; }
+.obk-root .obf-field :is(input, textarea)[aria-invalid="true"],
+.obk-root .obf-field select[aria-invalid="true"] { outline: 2px solid var(--color-danger-text) !important; outline-offset: -2px; }
+.obk-root .obf-field textarea:disabled { color: var(--text-muted) !important; cursor: not-allowed; }
+.obk-root .obf-field textarea:disabled::placeholder { color: color-mix(in srgb, var(--text-muted) 60%, transparent); }
+
+/* −/+ beside a number, as one filled field. */
+.obf-stepper { display: flex; align-items: stretch; background: var(--bg-app); border-bottom: 1px solid var(--color-slate-400, #8d8d8d); }
+.obk-root .obf-stepper input { flex: 1 1 auto; min-width: 0; border-bottom: 0 !important; -moz-appearance: textfield; }
+.obf-stepper input::-webkit-inner-spin-button,
+.obf-stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.obf-stepper button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  border: 0;
+  border-inline-start: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.obf-stepper button:hover { background: var(--color-slate-150); }
+.obf-stepper button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.obf-stepper svg { width: 16px; height: 16px; }
+
+/* Free text dosage: a label over a switch with its On / Off. */
+.obf-toggle { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; flex: none; font-size: 13px; color: var(--text-secondary); }
+.obf-switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.obf-switch input { position: absolute; inset: 0; width: 48px; height: 24px; margin: 0; opacity: 0; cursor: pointer; }
+.obf-switch > span {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--color-slate-400, #8d8d8d);
+  transition: background 0.12s ease;
+}
+.obf-switch > span::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-white, #fff);
+  transition: transform 0.12s ease;
+}
+.obf-switch input:checked + span { background: var(--accent-primary); }
+.obf-switch input:checked + span::after { transform: translateX(24px); }
+[dir="rtl"] .obf-switch input:checked + span::after { transform: translateX(-24px); }
+.obf-switch input:focus-visible + span { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.obf-switch em { font-style: normal; font-size: 14px; color: var(--text-primary); }
+
+.obf-check { display: inline-flex !important; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.obf-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent-primary); }
+
+/* ── Basket list: the unsigned orders ── */
+.obk-item--draft { align-items: stretch; }
+.obk-draft-line { display: flex; align-items: flex-start; gap: 8px; }
+.obk-draft-line .obk-line { flex: 1 1 auto; min-width: 0; }
+.obk-draft-actions { display: inline-flex; flex: none; }
+.obk-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  cursor: pointer;
+}
+.obk-icon-btn:hover { background: var(--color-slate-150); }
+.obk-icon-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.obk-icon-btn svg { width: 16px; height: 16px; }
+.obk-tag--new { background: var(--accent-light); color: var(--accent-text, var(--accent-primary)); }
+.obk-subhead { margin: 4px 0 0; padding-top: 12px; border-top: 1px solid var(--border-light); font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.obk-warn--block { display: flex; align-items: flex-start; padding: 0 2px; line-height: 1.4; }
+
+@container (max-width: 380px) {
+  .obf-row { grid-template-columns: minmax(0, 1fr); }
+  .obf-field--half { max-width: none; }
+}
