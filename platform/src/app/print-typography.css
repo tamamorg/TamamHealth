@@ -1,0 +1,59 @@
+/* Printed from the screen (printElementById → [data-print-active]): the same
+   paper language as the generated printouts (lib/print-document.ts, the O3
+   Visit Summary shape) — a neutral sans face, bold sentence-case headings on
+   a hairline, tables with a light grey head row and hairline rows, quiet grey
+   labels. The page footer (facility, printed by, time, page n of N, system
+   ID) is added by printElementById itself. Print only; the screen is
+   untouched. */
+@media print {
+  [data-print-active] {
+    font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif !important;
+    color: black !important;
+    font-size: 9.5pt;
+    line-height: 1.45;
+  }
+
+  [data-print-active] :is(h1, h2, h3, h4) {
+    font-family: inherit !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: black !important;
+  }
+
+  [data-print-active] :is(h2, h3) {
+    padding-bottom: 1.2mm;
+    border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white);
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    break-after: avoid;
+  }
+
+  [data-print-active] table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  [data-print-active] thead { display: table-header-group; }
+
+  [data-print-active] th {
+    padding: 1.8mm 2mm !important;
+    background: color-mix(in srgb, black 4%, white) !important;
+    border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white) !important;
+    color: color-mix(in srgb, black 68%, white) !important;
+    font-size: 7.5pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    text-align: start;
+  }
+
+  [data-print-active] td {
+    padding: 1.8mm 2mm !important;
+    border-bottom: 0.5pt solid color-mix(in srgb, black 12%, white) !important;
+    color: black !important;
+    vertical-align: top;
+  }
+
+  [data-print-active] tr { break-inside: avoid; }
+
+  [data-print-active] :is(label, .text-xs.uppercase, [class*="uppercase"]) {
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+}

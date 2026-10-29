@@ -68,6 +68,7 @@ import PatientAllergiesTab from './detail/PatientAllergiesTab';
 import PatientCareChecklistTab from './detail/PatientCareChecklistTab';
 import PatientDocumentsTab from './detail/PatientDocumentsTab';
 import PatientHistoryTab from './detail/PatientHistoryTab';
+import { printWithFooter } from '@/lib/safe-html';
 import PatientAppointmentsTab from './detail/PatientAppointmentsTab';
 import PatientBillingTab from './detail/PatientBillingTab';
 import PatientChartPrintStyles from './detail/PatientChartPrintStyles';
@@ -234,7 +235,7 @@ export default function PatientDetailPage() {
   // Trigger print after React commits the selected document into the DOM.
   useEffect(() => {
     if (!printSigned) return;
-    const printFrame = window.requestAnimationFrame(() => window.print());
+    const printFrame = window.requestAnimationFrame(() => printWithFooter());
     const reset = () => setPrintSigned(false);
     window.addEventListener('afterprint', reset);
     return () => {
@@ -1004,7 +1005,7 @@ export default function PatientDetailPage() {
 
           {activeTab === 'documents' && patient && <PatientDocumentsTab patient={patient} patientReferrals={patientReferrals} canViewClinical={canViewClinical} focusId={focusId} setMessageSubject={setMessageSubject} setMessageIsEducation={setMessageIsEducation} setShowMessageModal={setShowMessageModal} router={router} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} />}
 
-          {activeTab === 'history' && patient && <PatientHistoryTab records={records} clinicalNotes={clinicalNotes} allLabResults={allLabResults} allPrescriptions={allPrescriptions} allImmunizations={allImmunizations} patientReferrals={patientReferrals} patientANC={patientANC} patientAppointments={patientAppointments} patientTriages={patientTriages} canViewClinical={canViewClinical} focusId={focusId} />}
+          {activeTab === 'history' && patient && <PatientHistoryTab patient={patient} patientProblems={patientProblems || []} vitalsTimeline={vitalsTimeline} facilityName={currentUser?.hospital?.name || currentUser?.hospitalName || regHospital?.name} records={records} clinicalNotes={clinicalNotes} allLabResults={allLabResults} allPrescriptions={allPrescriptions} allImmunizations={allImmunizations} patientReferrals={patientReferrals} patientANC={patientANC} patientAppointments={patientAppointments} patientTriages={patientTriages} canViewClinical={canViewClinical} focusId={focusId} />}
 
           {/* Labs Tab — results list, and the bench workflow for one order. */}
           {activeTab === 'labs' && (

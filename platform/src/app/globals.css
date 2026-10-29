@@ -27647,26 +27647,28 @@ table.patient-data-table.patient-data-table {
    needs to stay secondary without disappearing. */
 .modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p,
 .modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) p {
-  color: rgba(255, 255, 255, 0.82) !important;
+  /* The band is the light grey O3 header now (--modal-head-bg), so its
+     subtitle steps down in the dark ink rather than a white one. */
+  color: var(--text-secondary) !important;
 }
 
 /* Close and back buttons: the tinted grey disc they carry inline is invisible
    on blue, so they become a translucent white one. */
 .modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button,
 .modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button {
-  background: rgba(255, 255, 255, 0.16) !important;
-  color: #fff !important;
+  background: transparent !important;
+  color: var(--modal-head-ink) !important;
   border-color: transparent !important;
 }
 
 .modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover,
 .modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) button:hover {
-  background: rgba(255, 255, 255, 0.28) !important;
+  background: color-mix(in srgb, var(--modal-head-ink) 10%, transparent) !important;
 }
 
 .modal-portal-backdrop [role="dialog"] > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg,
 .modal-portal-backdrop [role="dialog"] > * > :is(div, header):first-child:not(.modal-panel):not(.modal-content):not(.card-elevated):not(.bl-root):not(.sadb-modal):not(.sadb-modal-copy):not(.ehr-handoff-head):not(.ehr-handoff-head-title):not(.modal-no-headband):is(.modal-headband, :has(h2, h3):not(:has(input, select, textarea, form, table, ul, ol))) svg {
-  color: #fff !important;
+  color: var(--modal-head-ink) !important;
   stroke: currentColor !important;
 }
 
@@ -35842,3 +35844,40 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-slider > div.p-6 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-inline: -24px !important; margin-bottom: -24px !important; }
 .tm-slider > div.p-4 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-inline: -16px !important; margin-bottom: -16px !important; }
 .tm-slider > div.p-5 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-inline: -20px !important; margin-bottom: -20px !important; }
+
+/* Slider header buttons nested in a group (PopupHeader puts Expand and Close
+   in one wrapper): same square, dark glyph. Their glyphs carry a brand-blue
+   stroke attribute, so the stroke is repainted too. */
+.tm-slider > div > :is(div, header):first-child:has(button) button:not(:only-child),
+.tm-slider > div > :is(div, header):first-child:has(button) > div > button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  min-height: 48px;
+  padding: 0 !important;
+  border: 0;
+  border-inline-start: 1px solid var(--border-light);
+  border-radius: 0 !important;
+  background: var(--bg-card-solid) !important;
+  color: var(--text-primary) !important;
+}
+.tm-slider > div > :is(div, header):first-child:has(button) button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-primary) !important;
+  stroke: currentColor !important;
+}
+.tm-slider > div > :is(div, header):first-child:has(button) > div:has(> button) {
+  display: flex;
+  align-self: stretch;
+  gap: 0;
+}
+
+/* The action bar meets the panel's bottom edge: the panel drops its bottom
+   padding when the bar is its last row. */
+.tm-slider > div:has(div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child) { padding-bottom: 0 !important; }
+.tm-slider div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-bottom: 0 !important; }
+.tm-slider > div[class] { padding-bottom: 0 !important; }
+.tm-slider > div.p-6 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child,
+.tm-slider > div.p-5 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child,
+.tm-slider > div.p-4 div:has(> .btn-primary):has(> :is(.btn-secondary, .btn-ghost, .btn-outline)):last-child { margin-bottom: 0 !important; }

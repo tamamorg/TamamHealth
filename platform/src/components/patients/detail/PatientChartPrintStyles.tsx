@@ -15,9 +15,8 @@ export default function PatientChartPrintStyles() {
              margin; the first keeps none so the header band bleeds. */
           @page chart-record {
             size: A4;
-            margin: 12mm 0;
+            margin: 14mm 14mm 18mm;
           }
-          @page chart-record:first { margin-top: 0; }
 
           html, body {
             background: #fff !important;
@@ -83,102 +82,71 @@ export default function PatientChartPrintStyles() {
 
           svg:not(.print-logo-svg) { display: none !important; }
 
-          /* ── Header band ── */
+          /* ── Header (O3 Visit Summary shape) ──
+             Facility mark and name at the left, the document's title and its
+             identifiers at the right, over one hairline. No band: the record
+             is monochrome and photocopier-safe like every other printout. */
           .rx-header {
-            background: var(--accent-hover) !important;
-            padding: 10mm 14mm 8mm;
+            background: none !important;
+            padding: 0 0 4mm;
+            border-bottom: 0.75pt solid #cfd6dd !important;
             display: flex;
             align-items: center;
             justify-content: space-between;
             page-break-inside: avoid;
           }
-          .rx-header-left { display: flex; align-items: center; gap: 12pt; }
-          .rx-logo-wrap {
-            background: #fff !important;
-            border-radius: 8pt;
-            padding: 5pt 7pt;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .rx-logo-wrap img { width: 36pt; height: 36pt; display: block !important; }
-          .rx-facility-name {
-            color: #fff !important;
-            font-size: 13pt;
-            font-weight: 700;
-            letter-spacing: 0.3pt;
-          }
-          .rx-facility-sub {
-            color: rgba(255,255,255,0.72) !important;
-            font-size: 8pt;
-            margin-top: 2pt;
-          }
-          .rx-doc-label {
-            text-align: right;
-          }
-          .rx-doc-label .rx-doc-title {
-            color: #fff !important;
-            font-size: 10pt;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1pt;
-          }
-          .rx-doc-label .rx-doc-meta {
-            color: rgba(255,255,255,0.75) !important;
-            font-size: 7.5pt;
-            margin-top: 4pt;
-            line-height: 1.6;
-          }
+          .rx-header-left { display: flex; align-items: center; gap: 10pt; }
+          .rx-logo-wrap { background: none !important; padding: 0; display: flex; }
+          .rx-logo-wrap img { width: 34pt; height: 34pt; display: block !important; }
+          .rx-facility-name { color: #001d3f !important; font-size: 14pt; font-weight: 700; letter-spacing: 0; }
+          .rx-facility-sub { color: #3c5574 !important; font-size: 8pt; margin-top: 1pt; }
+          .rx-doc-label { text-align: right; }
+          .rx-doc-label .rx-doc-title { color: #001d3f !important; font-size: 12pt; font-weight: 700; text-transform: none; letter-spacing: 0; }
+          .rx-doc-label .rx-doc-meta { color: #3c5574 !important; font-size: 8pt; margin-top: 2pt; line-height: 1.5; }
 
-          /* ── Patient banner ── */
+          /* ── Patient information ── */
           .rx-patient-banner {
-            background: #f5f7f8 !important;
-            border-bottom: 2px solid var(--accent-hover) !important;
-            padding: 6mm 14mm;
+            background: none !important;
+            border-bottom: 0 !important;
+            padding: 5mm 0 0;
             page-break-inside: avoid;
           }
           .rx-patient-name {
-            font-size: 15pt;
+            font-size: 11pt;
             font-weight: 700;
-            color: var(--accent-hover) !important;
-            margin-bottom: 5pt;
+            color: #001d3f !important;
+            margin-bottom: 3pt;
+            padding-bottom: 2pt;
+            border-bottom: 0.75pt solid #cfd6dd !important;
           }
-          .rx-patient-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6pt 12pt;
-          }
+          .rx-patient-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7pt 14pt; padding-top: 3pt; }
           .rx-patient-field label {
             display: block;
-            font-size: 6.5pt;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5pt;
-            color: #6b7f96 !important;
+            font-size: 7.5pt;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            color: #3c5574 !important;
             margin-bottom: 1pt;
           }
-          .rx-patient-field span {
-            font-size: 8.5pt;
-            color: #001d3f !important;
-            font-weight: 500;
-          }
+          .rx-patient-field span { font-size: 9.5pt; color: #001d3f !important; font-weight: 700; }
 
           /* ── Body ── */
-          .rx-body { padding: 6mm 14mm; }
+          .rx-body { padding: 5mm 0 0; }
 
           /* ── Section ── */
-          .rx-section { margin-bottom: 10pt; page-break-inside: avoid; }
+          .rx-section { margin-bottom: 12pt; page-break-inside: avoid; }
           .rx-section-title {
-            font-size: 8pt;
+            font-size: 11pt;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8pt;
-            color: var(--accent-hover) !important;
-            border-bottom: 1.5pt solid var(--accent-hover) !important;
+            text-transform: none;
+            letter-spacing: 0;
+            color: #001d3f !important;
+            border-bottom: 0.75pt solid #cfd6dd !important;
             padding-bottom: 2pt;
             margin-bottom: 5pt;
           }
-          .rx-section-body { font-size: 8.5pt; color: #001d3f !important; }
+          .rx-section-body { font-size: 9pt; color: #001d3f !important; }
 
           /* ── Two-column layout ── */
           .rx-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
@@ -197,7 +165,8 @@ export default function PatientChartPrintStyles() {
             text-align: center;
             color: #001d3f !important;
           }
-          .rx-vitals-table td:first-child { text-align: left; font-weight: 600; background: #f5f7f8 !important; }
+          .rx-vitals-table td { border: 0 !important; border-bottom: 0.5pt solid #e2e6eb !important; }
+          .rx-vitals-table td:first-child { text-align: left; font-weight: 700; background: #f1f3f5 !important; color: #3c5574 !important; }
 
           /* ── Med / lab rows ── */
           .rx-row {
@@ -207,11 +176,11 @@ export default function PatientChartPrintStyles() {
             color: #001d3f !important;
           }
           .rx-row:last-child { border-bottom: none !important; }
-          .rx-row b { color: var(--accent-hover) !important; }
+          .rx-row b { color: #001d3f !important; }
 
           /* ── Diagnosis rows ── */
           .rx-dx-row { display: flex; gap: 8pt; align-items: baseline; margin-bottom: 3pt; }
-          .rx-dx-code { font-size: 7pt; font-weight: 700; background: #f1f3f5 !important; color: var(--accent-hover) !important; padding: 1pt 5pt; border-radius: 3pt; flex-shrink: 0; }
+          .rx-dx-code { font-size: 7pt; font-weight: 700; background: #f1f3f5 !important; color: #001d3f !important; padding: 1pt 5pt; border-radius: 2pt; flex-shrink: 0; }
           .rx-dx-name { font-size: 8.5pt; color: #001d3f !important; }
           .rx-dx-type { font-size: 7pt; color: #888 !important; margin-left: 4pt; }
 
@@ -227,22 +196,25 @@ export default function PatientChartPrintStyles() {
           .rx-sig-block {
             margin-top: 14pt;
             padding-top: 10pt;
-            border-top: 1.5pt solid var(--accent-hover) !important;
+            border-top: 0.75pt solid #cfd6dd !important;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30pt;
             page-break-inside: avoid;
           }
-          .rx-sig-label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5pt; color: #6b7f96 !important; margin-bottom: 18pt; }
+          .rx-sig-label { font-size: 7.5pt; font-weight: 400; text-transform: none; letter-spacing: 0; color: #3c5574 !important; margin-bottom: 18pt; }
           .rx-sig-line { border-bottom: 1pt solid #333 !important; margin-bottom: 4pt; height: 1pt; }
           .rx-sig-name { font-size: 8.5pt; color: #001d3f !important; font-weight: 600; }
           .rx-sig-role { font-size: 7.5pt; color: #666 !important; }
 
           /* ── Footer ── */
+          /* The page footer (facility, printed by, time, page n of N, system
+             ID) is in the page margin on every page; this closing line only
+             carries the confidentiality notice. */
           .rx-footer {
-            background: #f5f7f8 !important;
-            border-top: 1pt solid #cfd6dd !important;
-            padding: 4mm 14mm;
+            background: none !important;
+            border-top: 0.5pt solid #cfd6dd !important;
+            padding: 3mm 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
