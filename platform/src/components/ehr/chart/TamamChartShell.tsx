@@ -158,12 +158,12 @@ export default function TamamChartShell({
     [users],
   );
   // Full screen (the header's expand): the workspace covers the chart, up to
-  // the icon rail. It carries over as panels stack on one another, and a note
-  // form always opens full screen — Clinical forms → a form is a full page.
+  // the icon rail. Only the user's own expand sets it — every workspace,
+  // note forms included, opens as the docked slider on the right — and it
+  // carries over as panels stack on one another.
   const [drawerMaximized, setDrawerMaximized] = useState(false);
   const pushRail = useCallback((entry: { id: string; noteId?: string | null; noteTitle?: string | null }) => {
     setStack(prev => [...prev.filter(e => !(e.kind === 'rail' && e.id === entry.id)), { kind: 'rail', ...entry }]);
-    if (entry.id === CLINICAL_NOTE_PANEL.id) setDrawerMaximized(true);
   }, []);
   // Nothing open: the next workspace starts at its docked width again.
   useEffect(() => {

@@ -8,6 +8,7 @@ import type { AdmissionDoc } from '@/lib/db-types-ward';
 import type { PaymentRecord } from '@/lib/db-types-billing';
 import type { PaymentMethodType } from '@/lib/db-types-payments';
 import { describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 export default function AdmissionDepositControls({ admissionId }: { admissionId: string }) {
   const { currentUser } = useAuth();
@@ -60,6 +61,6 @@ export default function AdmissionDepositControls({ admissionId }: { admissionId:
       {(['refund', 'forfeit', 'waive'] as const).map(action => <button key={action} className="btn btn-secondary" disabled={busy || !reason.trim() || !!admission.admissionDepositPendingRefund} onClick={() => void run(action)}>{t(`deposit.${action}`)}</button>)}
       {admission.admissionDepositStatus === 'refund_due' && <button className="btn btn-primary" disabled={busy || (!admission.admissionDepositPendingRefund && (!paymentId || !reason.trim() || Number(amount) <= 0))} onClick={() => void run('issue')}>{t('deposit.issue')}</button>}
     </div>
-    {error && <p role="alert">{error}</p>}
+    {error && <FormError message={error} />}
   </section>;
 }

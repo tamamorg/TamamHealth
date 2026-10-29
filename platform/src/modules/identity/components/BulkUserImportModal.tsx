@@ -22,6 +22,7 @@ import { Check, Loader2, Upload } from '@/components/icons/lucide';
 import { IMPORT_TEMPLATE_CSV, type ImportRow } from '@/modules/identity/provisioning/bulk-user-import';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeApiError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface ImportOutcome {
   line: number;
@@ -213,7 +214,7 @@ export default function BulkUserImportModal({
               </button>
             </div>
 
-            {error && <p className="bui-error" role="alert">{error}</p>}
+            {error && <FormError message={error} />}
 
             {preview && (
               <>
@@ -275,7 +276,7 @@ export default function BulkUserImportModal({
             width: 100%; padding: 10px 12px; border-radius: 6px;
             border: 1px solid var(--border-light); background: var(--overlay-subtle);
             color: var(--text-primary); outline: none; resize: vertical;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+            font-family: var(--font-platform-mono); font-size: 12.5px;
           }
           .bui-filerow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
           .bui-filebtn { position: relative; overflow: hidden; cursor: pointer; }

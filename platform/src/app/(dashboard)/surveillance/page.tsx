@@ -436,7 +436,7 @@ export default function SurveillancePage() {
                     const c = surveillanceProjector.centroid(s);
                     return (
                       <text key={s.name} x={c.x} y={c.y} textAnchor="middle" fontSize="8"
-                        fill="var(--text-muted)" opacity="0.65" fontFamily="'DM Sans', sans-serif">
+                        fill="var(--text-muted)" opacity="0.65" fontFamily="var(--font-platform)">
                         {s.name}
                       </text>
                     );

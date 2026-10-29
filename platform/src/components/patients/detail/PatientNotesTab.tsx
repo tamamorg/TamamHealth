@@ -6,7 +6,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import { NotesList, PhoneNotes } from './lazy-panels';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppUser } from '@/lib/context/types';
-export default function PatientNotesTab({ patient, currentUser, canConsult, setNoteViewer, notesRefreshToken, noteViewer, setNotesRefreshToken, setChartPanelRequest }: {
+export default function PatientNotesTab({ patient, currentUser, canConsult, setNoteViewer, notesRefreshToken, noteViewer, setNotesRefreshToken, setChartPanelRequest, onCreateNote }: {
   patient: PatientDoc;
   currentUser: AppUser | null;
   canConsult: boolean;
@@ -15,6 +15,9 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
   noteViewer: { id: string; kind: "clinical" | "record"; } | null;
   setNotesRefreshToken: Dispatch<SetStateAction<number>>;
   setChartPanelRequest: Dispatch<SetStateAction<string | null>>;
+  /** The header's "+ Note": today's unsigned draft or a new Consultation,
+   *  opened in the chart's slider. */
+  onCreateNote: () => void;
 }) {
   return (
             <div className="space-y-4">
@@ -29,6 +32,11 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
                 patientDob={patient.dateOfBirth}
                 currentUser={currentUser}
                 showCreate={canConsult}
+                // Create note goes straight to the Consultation form in the
+                // slider, like the header's "+ Note" — no note-type menu. The
+                // form's own type picker changes it if a different note is
+                // wanted.
+                onCreate={onCreateNote}
                 // Reading a note no longer leaves the chart: a signed note
                 // opens over it, read-only, with addendum and print. An
                 // unsigned draft is still being written, so tapping it goes

@@ -22,6 +22,7 @@ import { encounterVisitState } from '@/lib/clinical-flow/visit-state';
 import type { EncounterDoc, PatientDoc } from '@/lib/db-types';
 import type { CheckInAcuity } from '@/lib/services/check-in-service';
 import './start-visit-panel.css';
+import FormNotices from '@/components/overlay/FormNotices';
 
 type VisitTiming = 'new' | 'ongoing' | 'past';
 type Arrival = 'walk-in' | 'ambulance' | 'referral' | 'police' | 'other';
@@ -189,6 +190,7 @@ export default function StartVisitPanel({ patient, patientName, currentUser, onC
         )}
       </div>
 
+      <FormNotices />
       <div className="sv-footer">
         <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose} disabled={saving}>
           {t('startVisit.discard')}

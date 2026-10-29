@@ -8,6 +8,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import { PROVIDER_ROLES, TRAINEE_AUTHOR_ROLES } from '@/lib/clinical-roles';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 function statusOf(rec: MedicalRecordDoc): 'draft' | 'awaiting_cosign' | 'signed' | 'amended' {
   return rec.documentStatus ?? 'draft';
@@ -185,7 +186,7 @@ export default function RecordSignatureBar({ record }: { record: MedicalRecordDo
         </ul>
       )}
 
-      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
     </div>
   );
 }

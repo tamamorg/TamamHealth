@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Eye, Image as ImageIcon, Upload } from '@/components/icons/lucide';
 import { dismissBackdrop, stopsClickPropagation } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -127,7 +128,7 @@ export default function StudyImageWorkspace({ study, canUpload }: { study: LabRe
         ) : (
           <p className="labord-help" style={{ display: 'flex', alignItems: 'center', gap: 7, margin: 0 }}><ImageIcon className="w-4 h-4" aria-hidden /> {t('imageViewer.noStudyImages')}</p>
         )}
-        {error && <p className="labord-required" role="alert" style={{ marginBottom: 0 }}>{error}</p>}
+        {error && <FormError message={error} />}
       </div>
 
       {viewerImageId && (

@@ -26,8 +26,6 @@ import { useAuth } from '@/lib/context';
 import { systemConfigScope } from '@/lib/services/system-config-service';
 import { useToast } from '@/components/Toast';
 import PortalModal from '@/components/Modal';
-import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
-import FormField from '@/components/overlay/FormField';
 import { isPathAllowed } from '@/lib/role-routes';
 import {
   SYSTEM_APP_DEFINITIONS,
@@ -645,38 +643,47 @@ export function SystemAdminSectionContent({ sectionId, data, filter, showLocalFi
 
 /** The inline editor popup — global property values and "configurable"
  *  app/extension notes with no dedicated settings page. Shared by both
- *  hosts; renders nothing when `data.editing` is null. */
+ *  hosts; renders nothing when `data.editing` is null. Drawn in the same
+ *  slider as Settings' Update account / Change password / PIN popups, so
+ *  every popup Settings opens has one look. */
 export function SystemAdminEditorModal({ data }: { data: SystemAdminConfigData }) {
   if (!data.editing) return null;
+  const close = () => { if (!data.saving) data.closeEditor(); };
   return (
-    <PortalModal onClose={() => { if (!data.saving) data.closeEditor(); }} size="sm" labelledBy="sysadm-edit-title" describedBy="sysadm-edit-desc">
-      <DialogFrame busy={data.saving}>
-        <DialogHeader
-          titleId="sysadm-edit-title"
-          title={data.editing.label}
-          description={data.editing.description}
-          descriptionId="sysadm-edit-desc"
-          onClose={() => { if (!data.saving) data.closeEditor(); }}
-        />
-        <DialogBody tight>
-          <FormField id="sysadm-edit-value" label="Current value">
-            {control => (
-              <textarea
-                {...control}
-                className="fs-input"
-                data-modal-initial-focus
-                value={data.draftValue}
-                onChange={e => data.setDraftValue(e.target.value)}
-                rows={3}
-              />
-            )}
-          </FormField>
-        </DialogBody>
-        <DialogFooter>
-          <button type="button" className="btn btn-secondary" onClick={data.closeEditor} disabled={data.saving}>Cancel</button>
-          <button type="button" className="btn btn-primary" onClick={data.saveEditor} disabled={data.saving}>{data.saving ? 'Saving…' : 'Save'}</button>
-        </DialogFooter>
-      </DialogFrame>
+    <PortalModal variant="slider" onClose={close} width={480} labelledBy="sysadm-edit-title" describedBy="sysadm-edit-desc">
+      <div className="ehr-handoff-modal ehr-set-acct">
+        <div className="ehr-handoff-head">
+          <div className="ehr-handoff-head-title">
+            <Settings />
+            <div>
+              <h2 id="sysadm-edit-title">{data.editing.label}</h2>
+              <p id="sysadm-edit-desc">{data.editing.description}</p>
+            </div>
+          </div>
+          <div className="ehr-handoff-head-actions">
+            <button type="button" className="ehr-handoff-close" aria-label="Close" onClick={close}>✕</button>
+          </div>
+        </div>
+
+        <div className="ehr-handoff-body ehr-set-acct-body">
+          <div className="ehr-set-acct-field">
+            <label htmlFor="sysadm-edit-value">Current value</label>
+            <textarea
+              id="sysadm-edit-value"
+              className="ehr-handoff-input"
+              data-modal-initial-focus
+              value={data.draftValue}
+              onChange={e => data.setDraftValue(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <div className="ehr-set-acct-foot">
+          <button type="button" className="ehr-handoff-btn" onClick={data.closeEditor} disabled={data.saving}>Cancel</button>
+          <button type="button" className="ehr-handoff-btn primary" onClick={data.saveEditor} disabled={data.saving}>{data.saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </div>
     </PortalModal>
   );
 }

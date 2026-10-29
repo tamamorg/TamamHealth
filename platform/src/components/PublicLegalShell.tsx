@@ -127,7 +127,7 @@ export default function PublicLegalShell({
   min-height: 100vh;
   display: flex; flex-direction: column;
   background: var(--bg-app, #F5F8FB);
-  font-family: var(--font-platform, var(--font-dm-sans), 'DM Sans', system-ui, sans-serif);
+  font-family: var(--font-platform);
   color: var(--text-primary, #113055);
 }
 .lg-container { max-width: 860px; margin: 0 auto; padding: 0 24px; width: 100%; }

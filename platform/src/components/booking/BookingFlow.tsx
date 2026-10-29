@@ -29,6 +29,7 @@ import {
 } from './primitives';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 export type BookingStep = 'slot' | 'details' | 'insurance' | 'done';
 
@@ -244,7 +245,7 @@ export default function BookingFlow({
           </BookingSelect>
         )}
 
-        {error && <p className="booking-error">{error}</p>}
+        {error && <FormError message={error} />}
 
         {eligibleReasons.length > 0 && (
           <>
@@ -281,7 +282,7 @@ export default function BookingFlow({
         </div>
       </div>
 
-      {error && <p className="booking-error">{error}</p>}
+      {error && <FormError message={error} />}
 
       {step === 'details' ? (
         <>

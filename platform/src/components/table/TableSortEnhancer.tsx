@@ -142,6 +142,8 @@ function mark(root: ParentNode) {
 
 /** Put the container's rows in the order its sort state asks for. */
 function apply(header: Element) {
+  // A data-sorted table is ordered by React; moving its rows here would fight it.
+  if (header.closest('[data-sort="data"]')) return;
   const info = groupsFor(header);
   if (!info) return;
   const { container, groups } = info;

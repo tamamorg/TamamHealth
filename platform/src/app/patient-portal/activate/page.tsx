@@ -19,6 +19,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 
 import { PORTAL_MIN_PASSWORD_LENGTH as MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
 import { describeApiError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 function ActivateForm() {
   const { t } = useTranslation();
   const params = useSearchParams();
@@ -126,7 +127,7 @@ function ActivateForm() {
           />
         </div>
 
-        {error && <div role="alert" className="lg-error">{error}</div>}
+        {error && <FormError message={error} />}
 
         <button type="submit" className="lg-btn blueprint" disabled={busy}>
           {busy ? t('pactivate.activating') : t('pactivate.activate')}

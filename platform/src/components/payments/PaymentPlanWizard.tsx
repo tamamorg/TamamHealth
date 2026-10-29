@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface PaymentPlanWizardProps {
   patientId: string;
@@ -117,7 +118,7 @@ export default function PaymentPlanWizard({
         </div>
 
         <div className="ehr-finance-dialog__body" style={{ padding: 20 }}>
-          {error && <p role="alert" style={{ color: 'var(--error)', marginBottom: 12 }}>{error}</p>}
+          {error && <FormError message={error} />}
           {!loadingBalance && !error && balance <= 0 && <p role="status" style={{ color: 'var(--text-muted)', marginBottom: 12 }}>{t('payments.planNoBalance')}</p>}
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

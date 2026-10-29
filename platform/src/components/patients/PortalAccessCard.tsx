@@ -21,6 +21,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePortalSlipLabels } from '@/components/patients/PortalSlipDialog';
 import { buildPortalSlipText, printPortalSlip, type PortalSlip } from '@/lib/patient-portal-slip';
 import { describeApiError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface PortalAccess {
   enrolled: boolean;
@@ -185,7 +186,7 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
             </label>
           )}
 
-          {error && <p className="pac-error" role="alert">{error}</p>}
+          {error && <FormError message={error} />}
 
           <div className="pac-actions">
             {access.enrolled && !access.disabled && (
@@ -233,7 +234,7 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
         .pac-slip dt { color: var(--text-muted); font-weight: 600; }
         .pac-slip dd { margin: 0; color: var(--text-primary); }
         .pac-code {
-          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-family: var(--font-platform-mono);
           font-size: 15px; letter-spacing: 0.04em; word-break: break-all; user-select: all;
         }
         .pac-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }

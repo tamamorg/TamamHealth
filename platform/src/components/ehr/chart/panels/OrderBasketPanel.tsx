@@ -15,6 +15,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import type { PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import FormNotices from '@/components/overlay/FormNotices';
 
 interface OrderBasketPanelProps {
   patient: PatientDoc;
@@ -105,6 +106,7 @@ export default function OrderBasketPanel({
           prescriber when it was placed (Prescribe / Order lab), so this
           confirms the basket and closes it; it writes nothing new. It waits
           until the basket holds an order, as O3's does. */}
+      <FormNotices />
       <div className="obk-footer">
         <button type="button" className="obk-footer-btn obk-footer-btn--secondary" onClick={onClose}>{t('common.cancel')}</button>
         <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={onClose} disabled={activeDrugOrders.length + activeLabOrders.length === 0}>{t('chart.signAndClose')}</button>

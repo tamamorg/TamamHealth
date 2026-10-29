@@ -34,6 +34,7 @@ import { formatDate } from '@/lib/format-utils';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import type { AppointmentType, FacilityLevel, PatientDoc } from '@/lib/db-types';
 import './book-appointment-panel.css';
+import FormNotices from '@/components/overlay/FormNotices';
 
 const TYPE_OPTIONS: { value: AppointmentType; labelKey: string }[] = [
   { value: 'general', labelKey: 'appointments.typeGeneral' },
@@ -398,6 +399,7 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
         <p className="bap-desk-note">{t('bookPanel.deskConfirms')}</p>
       </div>
 
+      <FormNotices />
       <div className="tm-action-bar">
         <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClose} disabled={saving}>
           {t('bookPanel.discard')}

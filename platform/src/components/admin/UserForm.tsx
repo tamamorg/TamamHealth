@@ -34,6 +34,7 @@ import type { UserDoc, UserRole } from '@/lib/db-types';
 import { useDepartments } from '@/lib/hooks/useDepartments';
 import { CLINICAL_SPECIALTIES, specialtyLabel, type ClinicalSpecialty } from '@/modules/departments/client';
 import { describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 /** Credentials the host shows exactly once — see the note above. */
 export interface UserCredentialHandoff {
@@ -374,7 +375,7 @@ export function UserForm({
           )}
         </section>
 
-        {error && <p className="uf-error" role="alert">{error}</p>}
+        {error && <FormError message={error} />}
 
         <div className="uf-actions">
           <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={saving}>

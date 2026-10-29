@@ -14,6 +14,7 @@ import { Megaphone, X, Loader2, Send, Plus, Check } from '@/components/icons/luc
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 /** Roles an announcement can target. National oversight roles are excluded —
  *  they are not an org's staff, so an org announcement can't reach them. */
@@ -153,7 +154,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
 
       {composing && (
         <div className="px-4 py-3 space-y-2" style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}>
-          {error && <div className="text-xs px-2 py-1.5 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{error}</div>}
+          {error && <FormError message={error} />}
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle} />
           <textarea value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Message…" rows={3} className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle} />
           <div className="grid grid-cols-2 gap-2">
