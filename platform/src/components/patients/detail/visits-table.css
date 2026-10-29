@@ -16,7 +16,7 @@
 .vt-tabs button.is-active { border-bottom-color: var(--accent-primary); color: var(--text-primary); font-weight: 600; }
 .vt-tabs button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
 
-.vt-wrap { overflow-x: auto; background: var(--bg-card-solid); border: 1px solid var(--border-light); }
+.vt-wrap { overflow-x: auto; background: var(--bg-card-solid); border: 1px solid var(--color-slate-200); }
 
 .vt-table { width: 100%; border-collapse: collapse; font-size: 14px; color: var(--text-primary); }
 .vt-table thead th {
@@ -27,9 +27,44 @@
   font-size: 14px;
   font-weight: 600;
   text-align: start;
-  border-bottom: 1px solid var(--border-light);
 }
-.vt-table td { padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid var(--border-light); }
+/* The grid: every row and column ruled, the wrapper drawing the outer frame
+   so the table's own outside edges stay clear of a double line.
+   globals.css ("Chart tab lists: History-timeline row language") turns every
+   chart table that is not a .tamam-table into separated, rounded, unruled
+   pill rows with a tiny uppercase head — all !important, from a selector
+   (`.ehr-chart-content table:not(.tamam-table) tbody td`) that outranks one
+   class — so the grid is restated here at the same weight, the class doubled
+   to win on specificity, scoped to this table. */
+.vt-wrap .vt-table.vt-table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  background: var(--bg-card-solid) !important;
+}
+.vt-wrap .vt-table.vt-table :is(th, td) {
+  border: 1px solid var(--color-slate-200) !important;
+  border-radius: 0 !important;
+}
+.vt-wrap .vt-table.vt-table tr > :first-child { border-inline-start: 0 !important; }
+.vt-wrap .vt-table.vt-table tr > :last-child { border-inline-end: 0 !important; }
+.vt-wrap .vt-table.vt-table thead th { border-top: 0 !important; }
+.vt-wrap .vt-table.vt-table tbody tr:last-child td { border-bottom: 0 !important; }
+.vt-wrap .vt-table.vt-table thead th {
+  height: 48px;
+  background: var(--color-slate-100) !important;
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+.vt-wrap .vt-table.vt-table tbody td { padding: 12px 16px !important; background: var(--bg-card-solid); }
+.vt-wrap .vt-table.vt-table tbody .vt-col-toggle { padding-inline: 8px !important; }
+.vt-wrap .vt-table.vt-table tbody td.vt-empty { padding: 32px 16px !important; }
+.vt-wrap .vt-table.vt-table tbody tr.vt-row:hover td { background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-card-solid)) !important; }
+.vt-wrap .vt-table.vt-table tbody tr.vt-row.is-open td,
+.vt-wrap .vt-table.vt-table tbody tr.vt-detail td { background: var(--bg-app) !important; }
+.vt-table td { padding: 12px 16px; vertical-align: middle; }
 .vt-row:hover td { background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-card-solid)); }
 .vt-row.is-open td { background: var(--bg-app); }
 
@@ -75,10 +110,18 @@
 }
 .vt-chip-q { font-weight: 700; }
 
-.vt-detail td { background: var(--bg-app); padding-top: 4px; padding-bottom: 16px; }
-.vt-facts { margin: 0; display: grid; gap: 8px; }
-.vt-facts div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; }
-.vt-facts dt { color: var(--text-secondary); font-size: 13px; }
-.vt-facts dd { margin: 0; font-size: 14px; }
+.vt-wrap .vt-table.vt-table tbody .vt-detail td { padding-top: 12px !important; padding-bottom: 16px !important; }
+/* The opened visit: label | value rows on their own ruled grid. */
+.vt-facts { margin: 0; display: grid; border: 1px solid var(--color-slate-200); background: var(--bg-card-solid); }
+.vt-facts div { display: grid; grid-template-columns: 160px minmax(0, 1fr); }
+.vt-facts div + div { border-top: 1px solid var(--color-slate-200); }
+.vt-facts dt {
+  padding: 10px 12px;
+  border-inline-end: 1px solid var(--color-slate-200);
+  background: var(--color-slate-50);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.vt-facts dd { margin: 0; padding: 10px 12px; font-size: 14px; overflow-wrap: anywhere; }
 
 .vt-empty { color: var(--text-secondary); text-align: center; padding: 32px 16px !important; }
