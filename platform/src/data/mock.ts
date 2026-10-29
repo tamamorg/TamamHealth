@@ -1680,6 +1680,18 @@ export interface CareTeamMember {
   expiresAt?: string;
 }
 
+/** A service station a patient can be routed to by the front desk. */
+export type StationKey = 'lab' | 'pharmacy' | 'radiology' | 'nutrition';
+
+export interface StationAssignment {
+  staffId: string;
+  staffName: string;
+  assignedAt: string;
+  assignedBy?: string;
+  assignedByName?: string;
+  note?: string;
+}
+
 export interface Patient {
   id: string;
   hospitalNumber: string;
@@ -1792,6 +1804,13 @@ export interface Patient {
   assignedNurseAt?: string;
   assignedNurseBy?: string;
   assignedNurseByName?: string;
+  /**
+   * Who at each service station is looking after this patient: the lab tech,
+   * pharmacist, radiographer or nutritionist the front desk sent them to. A
+   * separate slot per station, so routing a patient to the lab never
+   * overwrites the doctor or nurse above. Reception-only, like them.
+   */
+  stationAssignments?: Partial<Record<StationKey, StationAssignment>>;
   /** Department currently responsible for the patient (e.g. "Paediatrics"). */
   assignedDepartment?: string;
   /**

@@ -1,5 +1,4 @@
 'use client';
-import Modal from '@/components/Modal';
 import ClinicalNoteViewer from '@/components/clinical-notes/ClinicalNoteViewer';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
@@ -52,19 +51,16 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
                   about a patient, not documentation of an encounter. PhoneNotes
                   brings its own ChartSection card. */}
               <PhoneNotes patient={patient} />
+              {/* Opens as a slider, like every other chart form: the note
+                  reads beside the list it was picked from. */}
               {noteViewer && (
-                <Modal
-                  className="tamam-dialog"
-                  width={880}
+                <ClinicalNoteViewer
+                  presentation="slider"
+                  noteId={noteViewer.id}
+                  kind={noteViewer.kind}
                   onClose={() => { setNoteViewer(null); setNotesRefreshToken(n => n + 1); }}
-                >
-                  <ClinicalNoteViewer
-                    noteId={noteViewer.id}
-                    kind={noteViewer.kind}
-                    onClose={() => { setNoteViewer(null); setNotesRefreshToken(n => n + 1); }}
-                    onEdit={id => { setNoteViewer(null); setChartPanelRequest(`clinical-note:${id}`); }}
-                  />
-                </Modal>
+                  onEdit={id => { setNoteViewer(null); setChartPanelRequest(`clinical-note:${id}`); }}
+                />
               )}
             </div>
   );

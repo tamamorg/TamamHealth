@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { BILLING } from '@/lib/sync/write-permissions';
 import EligibilityBadge from '@/components/payments/EligibilityBadge';
 import { checkEligibility, getLatestEligibility } from '@/lib/services/payment-service';
+import Select from '@/components/Select';
 
 export default function PolicyEligibility({ patientId, policyId, facilityId, orgId, editable }: {
   patientId: string; policyId: string; facilityId: string; orgId?: string; editable?: boolean;
@@ -51,12 +52,12 @@ export default function PolicyEligibility({ patientId, policyId, facilityId, org
       <div className="space-y-2">
         <button type="button" disabled={busy} onClick={() => void save(false)}>{t('insuranceFlow.localEstimate')}</button>
         <label>{t('insuranceFlow.reference')}<input maxLength={160} value={reference} onChange={e => setReference(e.target.value)} /></label>
-        <label>{t('insuranceFlow.method')}<select value={method} onChange={e => setMethod(e.target.value as typeof method)}>
+        <label>{t('insuranceFlow.method')}<Select value={method} onChange={e => setMethod(e.target.value as typeof method)}>
           <option value="phone">{t('insuranceFlow.phone')}</option><option value="portal">{t('insuranceFlow.portal')}</option><option value="written">{t('insuranceFlow.written')}</option>
-        </select></label>
-        <label>{t('insuranceFlow.decision')}<select value={decision} onChange={e => setDecision(e.target.value as typeof decision)}>
+        </Select></label>
+        <label>{t('insuranceFlow.decision')}<Select value={decision} onChange={e => setDecision(e.target.value as typeof decision)}>
           <option value="verified">{t('insuranceFlow.covered')}</option><option value="denied">{t('insuranceFlow.notCovered')}</option>
-        </select></label>
+        </Select></label>
         <label>{t('insuranceFlow.expiry')}<input type="datetime-local" value={expiry} onChange={e => setExpiry(e.target.value)} /></label>
         <button type="button" disabled={busy || !reference.trim() || !expiry} onClick={() => void save(true)}>{t('insuranceFlow.saveEvidence')}</button>
       </div>

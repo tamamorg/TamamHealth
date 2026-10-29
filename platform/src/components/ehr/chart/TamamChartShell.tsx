@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
+  Utensils, ScanLine, FlaskConical, Pill,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
 import DrawerResizeHandle from './DrawerResizeHandle';
@@ -34,6 +35,10 @@ import VisitNotePanel from './panels/VisitNotePanel';
 import TaskListPanel from './panels/TaskListPanel';
 import ClinicalFormsPanel from './panels/ClinicalFormsPanel';
 import PatientListsPanel from './panels/PatientListsPanel';
+import NutritionScreeningPanel from './panels/NutritionScreeningPanel';
+import ImagingReportPanel from './panels/ImagingReportPanel';
+import { DispensePanel, LabOrdersPanel } from './panels/StationOrdersPanel';
+import { getDefaultDashboard, isPathAllowed } from '@/lib/role-routes';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './tamam-chart.css';
 import { isAnyModalOpen } from '@/components/Modal';
@@ -94,6 +99,46 @@ const PAGE_WORKSPACE_ID = 'page-workspace';
 
 const CLINICAL_NOTE_PANEL: DrawerPanelDef = { id: 'clinical-note', title: 'Clinical note', icon: FileText };
 
+/**
+ * Role forms — the record a service role comes to the chart to make. They
+ * sit on the rail for the roles that may make them and open from Clinical
+ * forms (or a dashboard's `?form=` link) for everyone else allowed.
+ *
+ * Gated on the record, not on `canViewClinical`: a nutritionist or a
+ * radiologist does not get the clinical chart, but screening and reporting
+ * are exactly their work. A nutrition screening may also be taken by the
+ * clinical and nursing roles (the `nutrition_screening` sync grant is
+ * NURSING_AND_CLINICIANS + nutritionist); an imaging report only by whoever
+ * holds the radiology station.
+ */
+const ROLE_FORM_PANELS: (DrawerPanelDef & { station: string; clinicalMayOpen: boolean; wide?: boolean })[] = [
+  { id: 'nutrition-screening', title: 'Nutrition screening', icon: Utensils, station: '/dashboard/nutrition', clinicalMayOpen: true },
+  { id: 'imaging-report', title: 'Imaging report', icon: ScanLine, station: '/dashboard/radiology', clinicalMayOpen: false },
+  // The bench and the counter: the lab's and the pharmacy's six-step
+  // workflows, worked beside the record. Wide, as the note editor is — the
+  // step chevrons need the room.
+  { id: 'lab-orders', title: 'Lab orders', icon: FlaskConical, station: '/dashboard/lab', clinicalMayOpen: false, wide: true },
+  { id: 'dispense', title: 'Dispense', icon: Pill, station: '/dashboard/pharmacy', clinicalMayOpen: false, wide: true },
+];
+
+function isWideRoleForm(id: string): boolean {
+  return !!ROLE_FORM_PANELS.find(panel => panel.id === id)?.wide;
+}
+
+/** The role forms `role` may open in the chart. Exported for tests. */
+export function allowedRoleFormPanels(role: string | undefined, canViewClinical: boolean): DrawerPanelDef[] {
+  if (!role) return [];
+  return ROLE_FORM_PANELS.filter(panel => isPathAllowed(role, panel.station) || (panel.clinicalMayOpen && canViewClinical));
+}
+
+/** Role forms that get their own rail button: the form IS the role's work,
+ *  i.e. the station that owns it is the role's home dashboard. */
+export function railRoleFormPanels(role: string | undefined): DrawerPanelDef[] {
+  if (!role) return [];
+  const home = getDefaultDashboard(role);
+  return ROLE_FORM_PANELS.filter(panel => panel.station === home);
+}
+
 interface TamamChartShellProps {
   activeTab: string;
   setActiveTab: (id: string) => void;
@@ -130,13 +175,15 @@ interface TamamChartShellProps {
    *  any rail panel; opening a rail panel closes it. */
   /** `wide` gives the workspace the note editor's wider column (Prescribe). */
   workspace?: { title: string; content: ReactNode; onClose: () => void; wide?: boolean } | null;
+  /** The order a `?form=…&focus=` link named, for the station forms. */
+  formFocusId?: string;
 }
 
 export default function TamamChartShell({
   activeTab, setActiveTab, railItems, moreItems, header, vitalsBand, children,
   patient, currentUser, canPrescribe, canOrderLabs, canConsult, canViewClinical, router,
   onOpenPrescribeModal, onOpenOrderLabModal, onNoteSaved,
-  panelRequest, onPanelRequestHandled, workspace,
+  panelRequest, onPanelRequestHandled, workspace, formFocusId,
 }: TamamChartShellProps) {
 
   // Workspaces stack. Opening one while another is open keeps the earlier one
@@ -171,20 +218,29 @@ export default function TamamChartShell({
     if (stack.length === 0) setDrawerMaximized(false);
   }, [stack.length]);
 
+  // Resolve from the permitted set, not the full list: a panel this role may
+  // not open must not render even if something asked for it by id.
+  const railPanels = useMemo(() => visibleDrawerPanels(canViewClinical), [canViewClinical]);
+  const roleFormPanels = useMemo(
+    () => allowedRoleFormPanels(currentUser?.role, canViewClinical),
+    [currentUser?.role, canViewClinical],
+  );
+
   useEffect(() => {
     if (panelRequest) {
       if (panelRequest.startsWith('clinical-note:')) {
         pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId: panelRequest.slice('clinical-note:'.length) });
-      } else {
+      } else if (railPanels.some(p => p.id === panelRequest) || roleFormPanels.some(p => p.id === panelRequest)) {
+        // A request this viewer may not open (a shared `?form=imaging-report`
+        // link reaching a doctor) is dropped, not pushed: it would never
+        // render, and as an invisible top entry it hid the workspace beneath.
         pushRail({ id: panelRequest });
       }
       onPanelRequestHandled?.();
     }
-  }, [panelRequest, onPanelRequestHandled, pushRail]);
-  // Resolve from the permitted set, not the full list: a panel this role may
-  // not open must not render even if something asked for it by id.
-  const railPanels = useMemo(() => visibleDrawerPanels(canViewClinical), [canViewClinical]);
+  }, [panelRequest, onPanelRequestHandled, pushRail, railPanels, roleFormPanels]);
   const railPanel = railPanels.find(p => p.id === openPanel)
+    || roleFormPanels.find(p => p.id === openPanel)
     || (openPanel === CLINICAL_NOTE_PANEL.id && canViewClinical ? CLINICAL_NOTE_PANEL : null);
   // A page workspace (Record vitals, Start a visit) joins the stack when the
   // page opens one and leaves it when the page closes it; whatever was open
@@ -398,8 +454,17 @@ export default function TamamChartShell({
             currentUser={currentUser}
             onClose={closeDrawer}
             onOpenNote={(noteId, title) => pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId, noteTitle: title })}
+            onOpenForm={id => pushRail({ id })}
           />
         );
+      case 'nutrition-screening':
+        return <NutritionScreeningPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
+      case 'imaging-report':
+        return <ImagingReportPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
+      case 'lab-orders':
+        return <LabOrdersPanel patient={patient} focusId={formFocusId} />;
+      case 'dispense':
+        return <DispensePanel patient={patient} focusId={formFocusId} />;
       case 'patient-lists':
         return (
           <PatientListsPanel
@@ -483,7 +548,7 @@ export default function TamamChartShell({
           <div
             ref={drawerRef}
             tabIndex={-1}
-            className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
+            className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) || isWideRoleForm(activePanel.id) ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
             style={drawerHeight ? { height: drawerHeight } : undefined}
             role="dialog"
             aria-modal="false"
@@ -493,7 +558,7 @@ export default function TamamChartShell({
                 and panel-width workspaces each remember their own width.
                 Hidden in full screen, where there is no edge to drag. */}
             {!drawerMaximized && (
-              <DrawerResizeHandle storageKey={activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) ? 'tamam-drawer-w:note' : 'tamam-drawer-w:panel'} />
+              <DrawerResizeHandle storageKey={activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) || isWideRoleForm(activePanel.id) ? 'tamam-drawer-w:note' : 'tamam-drawer-w:panel'} />
             )}
             <div className="tamam-drawer-header">
               <span className="tamam-drawer-title">{activePanel.title}</span>
@@ -524,7 +589,7 @@ export default function TamamChartShell({
 
       {/* ══ Right action icon rail ══ */}
       <aside className="tamam-right-rail no-print" aria-label="Chart workspace panels">
-        {railPanels.map(panel => (
+        {[...railPanels, ...railRoleFormPanels(currentUser?.role)].map(panel => (
           <button
             key={panel.id}
             type="button"

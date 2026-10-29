@@ -30,6 +30,7 @@ import {
   periodKey, reportNameKey,
   type ReportFilter,
 } from './_ReportCatalogue';
+import Select from '@/components/Select';
 
 /** The view being assembled. Applied as one unit. */
 export interface ReportView {
@@ -114,7 +115,7 @@ export default function ReportControlPanel({
             />
           </div>
           <div className="rpt-rail-selects">
-            <select
+            <Select
               className="rpt-rail-select"
               value={filter.category}
               onChange={e => setFilter({ category: e.target.value })}
@@ -125,8 +126,8 @@ export default function ReportControlPanel({
               {REPORT_CATEGORIES.map(c => (
                 <option key={c} value={c}>{t(categoryKey[c] ?? c)}</option>
               ))}
-            </select>
-            <select
+            </Select>
+            <Select
               className="rpt-rail-select"
               value={filter.period}
               onChange={e => setFilter({ period: e.target.value })}
@@ -137,7 +138,7 @@ export default function ReportControlPanel({
               {REPORT_PERIODS.map(p => (
                 <option key={p} value={p}>{t(periodKey[p] ?? p)}</option>
               ))}
-            </select>
+            </Select>
           </div>
           {active && (
             <button

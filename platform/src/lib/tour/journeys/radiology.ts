@@ -8,42 +8,33 @@ export const RADIOLOGY_STEPS: TourStep[] = [
     route: '/dashboard/radiology',
     target: '.ehr-care-greeting',
     title: 'Welcome to Imaging',
-    body: 'Imaging orders from consultations land on this worklist automatically.',
+    body: 'Your workspace works like a doctor’s: patients with open imaging orders, your appointments, and what is outstanding — with the report written in the patient chart.',
     placement: 'bottom',
   },
   {
-    id: 'lanes',
+    id: 'book',
     route: '/dashboard/radiology',
-    target: '[data-tour="station-tabs"]',
+    target: '.ehr-segmented-single button',
     placement: 'bottom',
-    title: 'Pending → In Progress → Complete',
-    body: 'Every study lands Pending, moves to In Progress once you start acquiring images, and Complete once the report is submitted — the same three-lane shape as every worklist in the app.',
+    title: 'Book an appointment',
+    body: 'Book a scan slot — an ultrasound, a CT, an MRI — into your own diary; the front desk confirms it.',
   },
   {
-    id: 'study',
+    id: 'worklist',
     route: '/dashboard/radiology',
-    target: '[data-tour="station-queue"]',
+    target: '.ehr-appointment-list',
     placement: 'right',
-    title: 'Work a study',
-    body: 'Open a study → attach images or DICOM files (they save to the patient’s documents, so the ordering clinician sees them) → enter findings → Submit report. Completing returns the findings to the chart.',
+    title: 'Patients waiting for imaging',
+    body: 'Every X-ray, ultrasound, CT, MRI, fluoroscopy and mammography order from a consultation lands here, urgent studies first. Open a row to go to the chart.',
   },
   {
-    id: 'filter',
+    id: 'report-in-chart',
     route: '/dashboard/radiology',
-    target: '[data-tour="rail-search"]',
-    placement: 'bottom',
-    title: 'Find a study fast',
-    body: 'Filter the active lane by patient name, modality, or body part — useful once the worklist fills up mid-shift.',
-  },
-  {
-    id: 'attach-images',
-    route: '/dashboard/radiology',
-    // The attach control lives inside a study's own expanded card, which only
-    // exists once a specific study is opened — narrative rather than an
-    // invented static selector.
+    // The form lives in the patient chart's workspace, which only exists
+    // once a chart is open — narrative rather than an invented selector.
     target: '',
-    title: 'Attach the images',
-    body: 'Upload JPEG/PNG or a DICOM export (up to 5MB each) straight from a study’s card. They save to the patient’s chart under Radiology immediately — no separate upload step for the clinician to wait on.',
+    title: 'Report in the chart',
+    body: 'In the chart, open Imaging report on the right-hand rail: Start study, attach images or a DICOM export (up to 5MB each, saved to the patient’s documents), enter findings and Submit report.',
   },
   {
     id: 'findings-safety',
@@ -53,24 +44,12 @@ export const RADIOLOGY_STEPS: TourStep[] = [
     body: 'Submitting a report pages the ordering clinician directly, in addition to saving it to the chart — nothing to phone in or chase down.',
   },
   {
-    id: 'panels',
+    id: 'outstanding',
     route: '/dashboard/radiology',
-    target: '[data-tour="station-body"]',
-    // station-body only renders once one of the header toggles opens a panel
-    // (it's empty — and absent from the DOM — by default), so the toggle
-    // itself is clicked first to reveal what this step is describing.
-    preClickSelector: '[data-tour="radiology-modality-toggle"]',
-    placement: 'top',
-    title: 'Your analytics',
-    body: 'Modality breakdown, body regions, completion rate, and average turnaround time — at a glance.',
-  },
-  {
-    id: 'priority',
-    route: '/dashboard/radiology',
-    target: '[data-tour="side-cards"]',
+    target: '.ehr-outstanding-card',
     placement: 'left',
-    title: 'Urgent and emergency studies',
-    body: 'The right rail keeps a live count of urgent/emergency orders alongside your X-ray and ultrasound volumes, so you always know what needs reading first.',
+    title: 'What needs reading first',
+    body: 'Urgent studies, studies to perform, studies awaiting a report, and what you reported today. Each entry opens the chart with the report form already up.',
   },
   searchStep('/dashboard/radiology'),
   messagingStep('/dashboard/radiology'),

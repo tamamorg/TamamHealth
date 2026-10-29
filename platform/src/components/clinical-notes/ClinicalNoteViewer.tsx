@@ -5,8 +5,10 @@
  * diagnoses with their ICD-11 codes, addenda, and the signature lines.
  *
  * Renders a ClinicalNoteDoc (`kind="clinical"`) or a consultation
- * MedicalRecordDoc (`kind="record"`, always read only). The caller owns the
- * container (the chart's drawer, or a mobile sheet) and `onClose`.
+ * MedicalRecordDoc (`kind="record"`, always read only). Inline, the caller
+ * owns the container (a mobile sheet) and `onClose`; with
+ * `presentation="slider"` it brings the chart's own slider shell — title bar,
+ * body, and its actions in the shared action bar — like every chart form.
  *
  * Print goes through printElementById on this component's own root, so only
  * the note reaches paper, never the chart around it.
@@ -25,6 +27,8 @@ import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import type { MedicalRecordDoc } from '@/lib/db-types';
 import { formatDateTime } from '@/lib/format-utils';
 import { describeError } from '@/lib/user-facing-error';
+import FormSlider from '@/components/overlay/FormSlider';
+import type { ReactNode } from 'react';
 import './clinical-notes.css';
 import './note-viewer.css';
 import { localClockOf, localDayOf } from '@/lib/date-utils';
@@ -131,12 +135,13 @@ interface ViewModel {
 }
 
 export default function ClinicalNoteViewer({
-  noteId, kind, onClose, onEdit,
+  noteId, kind, onClose, onEdit, presentation = 'inline',
 }: {
   noteId: string;
   kind: 'clinical' | 'record';
   onClose: () => void;
   onEdit?: (noteId: string) => void;
+  presentation?: 'inline' | 'slider';
 }) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
@@ -214,13 +219,34 @@ export default function ClinicalNoteViewer({
     }
   }
 
-  if (state === 'loading') return <div className="tamam-note-viewer modal-no-headband"><p className="tamam-nv-muted">{t('noteViewer.loading')}</p></div>;
+  const inSlider = presentation === 'slider';
+  /** Inline the content stands alone; in the slider it takes the shell. */
+  const shell = (content: ReactNode, opts: { title?: ReactNode; subtitle?: ReactNode; footer?: ReactNode } = {}) => (
+    inSlider ? (
+      <FormSlider
+        title={opts.title ?? t('notesList.colNote')}
+        subtitle={opts.subtitle}
+        className="tamam-dialog"
+        width={720}
+        // The note's paper carries its own margins; a body gutter around it
+        // boxed the document inside the slider.
+        flush
+        onClose={onClose}
+        busy={busy}
+        footer={opts.footer ?? <button type="button" className="btn btn-secondary" onClick={onClose}>{t('noteViewer.close')}</button>}
+      >
+        {content}
+      </FormSlider>
+    ) : content
+  );
+
+  if (state === 'loading') return shell(<div className="tamam-note-viewer modal-no-headband"><p className="tamam-nv-muted">{t('noteViewer.loading')}</p></div>);
   if (state === 'missing' || !vm) {
-    return (
+    return shell(
       <div className="tamam-note-viewer modal-no-headband">
         <p className="tamam-nv-muted">{t('noteViewer.notFound')}</p>
-        <button type="button" className="tamam-nv-btn" onClick={onClose}>{t('noteViewer.close')}</button>
-      </div>
+        {!inSlider && <button type="button" className="tamam-nv-btn" onClick={onClose}>{t('noteViewer.close')}</button>}
+      </div>,
     );
   }
 
@@ -228,8 +254,24 @@ export default function ClinicalNoteViewer({
   const canAddAddendum = vm.kind === 'clinical' && (vm.status === 'signed' || vm.status === 'amended');
   const canEdit = vm.kind === 'clinical' && vm.status === 'draft' && Boolean(onEdit);
 
-  return (
-    <div className="tamam-note-viewer modal-no-headband">
+  const cancelAddendum = () => { setAdding(false); setAddendumText(''); setError(null); };
+  // Secondary choices first, the one that moves the note forward last.
+  const sliderFooter = adding ? (
+    <>
+      <button type="button" className="btn btn-secondary" disabled={busy} onClick={cancelAddendum}>{t('noteViewer.cancel')}</button>
+      <button type="button" className="btn btn-primary" disabled={busy || !addendumText.trim()} onClick={() => void saveAddendum()}>{t('noteViewer.saveAddendum')}</button>
+    </>
+  ) : (
+    <>
+      <button type="button" className="btn btn-secondary" onClick={onClose}>{t('noteViewer.close')}</button>
+      {locked && vm.kind === 'clinical' && <button type="button" className="btn btn-secondary" onClick={() => printElementById(printId)}>{t('noteViewer.print')}</button>}
+      {canAddAddendum && <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>{t('noteViewer.addAddendum')}</button>}
+      {canEdit && <button type="button" className="btn btn-primary" onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
+    </>
+  );
+
+  return shell(
+    <div className={`tamam-note-viewer modal-no-headband${inSlider ? ' tamam-note-viewer--slider' : ''}`}>
       <div id={printId} className="tamam-nv-doc modal-no-headband">
         <header className="tamam-nv-head">
           <div>
@@ -299,18 +341,20 @@ export default function ClinicalNoteViewer({
             aria-label={t('noteViewer.addAddendum')}
           />
           {error && <FormError message={error} />}
-          <div className="tamam-nv-actions">
-            <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" disabled={busy || !addendumText.trim()} onClick={() => void saveAddendum()}>
-              {t('noteViewer.saveAddendum')}
-            </button>
-            <button type="button" className="tamam-nv-btn" disabled={busy} onClick={() => { setAdding(false); setAddendumText(''); setError(null); }}>
-              {t('noteViewer.cancel')}
-            </button>
-          </div>
+          {!inSlider && (
+            <div className="tamam-nv-actions">
+              <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" disabled={busy || !addendumText.trim()} onClick={() => void saveAddendum()}>
+                {t('noteViewer.saveAddendum')}
+              </button>
+              <button type="button" className="tamam-nv-btn" disabled={busy} onClick={cancelAddendum}>
+                {t('noteViewer.cancel')}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {!adding && (
+      {!adding && !inSlider && (
         <div className="tamam-nv-actions">
           {canEdit && <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
           {canAddAddendum && <button type="button" className="tamam-nv-btn" onClick={() => setAdding(true)}>{t('noteViewer.addAddendum')}</button>}
@@ -318,6 +362,16 @@ export default function ClinicalNoteViewer({
           <button type="button" className="tamam-nv-btn" onClick={onClose}>{t('noteViewer.close')}</button>
         </div>
       )}
-    </div>
+    </div>,
+    {
+      title: vm.typeLabel,
+      subtitle: (
+        <>
+          {vm.patientName ? `${vm.patientName} · ` : ''}
+          <span className={`cn-badge ${status.cls}`}>{t(status.key)}</span>
+        </>
+      ),
+      footer: sliderFooter,
+    },
   );
 }

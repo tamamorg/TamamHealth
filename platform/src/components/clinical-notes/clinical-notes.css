@@ -1301,7 +1301,13 @@ select.cn-select {
 .cn-meds-close:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .cn-meds-close svg { color: currentColor; stroke: currentColor; }
 
+/* In the chart's workspace drawer the panel fills the slot (no 84vh cap):
+   the columns scroll, the action bar stays pinned at the bottom. */
+.cn-meds--page { flex: 1 1 auto; max-height: none; height: 100%; }
+.cn-meds-actions { flex: none; }
+
 .cn-meds-body {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   border-top: 1px solid var(--border-light);

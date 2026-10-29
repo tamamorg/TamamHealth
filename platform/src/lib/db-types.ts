@@ -1877,6 +1877,12 @@ export interface EncounterDoc extends BaseDoc {
    * existed. Previously computed and discarded by check-in-service.ts.
    */
   appointmentId?: string;
+  /** Asked when the visit starts (lib/visits/visit-details.ts): the kind of
+   *  visit, who pays for it, and — for a booked arrival — whether the patient
+   *  came on time. */
+  visitType?: import('./visits/visit-details').VisitType;
+  visitBilling?: import('./visits/visit-details').VisitBilling;
+  punctuality?: import('./visits/visit-details').VisitPunctuality;
   /**
    * Exam room the patient was placed in during rooming (KAN-99).
    *

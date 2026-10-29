@@ -68,7 +68,7 @@ export const COMMON_ICD11_CODES: ICD11CodeEntry[] = [
   // ===== PREGNANCY & CHILDBIRTH =====
   { code: 'JA43', title: 'Postpartum haemorrhage', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['PPH', 'bleeding'] },
   { code: 'JB40.0', title: 'Puerperal sepsis', chapter: 'Pregnancy/childbirth', minLevel: 'county', causeOfDeath: true, notifiable: true },
-  { code: 'JA24', title: 'Pre-eclampsia', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['eclampsia', 'fits in pregnancy'] },
+  { code: 'JA24', title: 'Pre-eclampsia', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['eclampsia', 'preeclampsia', 'pre eclampsia', 'pregnancy hypertension', 'fits in pregnancy'] },
   { code: 'JB06', title: 'Obstructed labour', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, keywords: ['obstructed labour', 'prolonged labour'] },
   { code: 'JA01', title: 'Ectopic pregnancy', chapter: 'Pregnancy/childbirth', minLevel: 'county', causeOfDeath: true },
   { code: 'JA00.0', title: 'Spontaneous abortion', chapter: 'Pregnancy/childbirth', minLevel: 'payam', keywords: ['miscarriage'] },
@@ -101,6 +101,20 @@ export const COMMON_ICD11_CODES: ICD11CodeEntry[] = [
   { code: 'PE20.Z', title: 'Assault by firearm', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
   { code: 'PA78', title: 'Snakebite or other animal envenoming', chapter: 'External causes', minLevel: 'boma', causeOfDeath: true, keywords: ['snakebite', 'snake'] },
   { code: 'NE2Z', title: 'Burns', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true, keywords: ['burn', 'scalding'] },
+  // Injuries — codes and titles checked against the WHO MMS tabulation
+  // (LinearizationMiniOutput-MMS-en, 2026-10-29). The list had none, so a
+  // fracture or head injury could only be filed as free text.
+  { code: 'NA01', title: 'Open wound of head', chapter: 'Injuries', minLevel: 'boma', keywords: ['head wound', 'scalp laceration', 'cut'] },
+  { code: 'NA02', title: 'Fracture of skull or facial bones', chapter: 'Injuries', minLevel: 'county', causeOfDeath: true, keywords: ['skull fracture', 'facial fracture', 'broken'] },
+  { code: 'NA07', title: 'Intracranial injury', chapter: 'Injuries', minLevel: 'county', causeOfDeath: true, keywords: ['head injury', 'concussion', 'brain injury', 'rta'] },
+  { code: 'NA82', title: 'Fracture of rib, sternum or thoracic spine', chapter: 'Injuries', minLevel: 'county', keywords: ['rib fracture', 'broken rib'] },
+  { code: 'NB52', title: 'Fracture of lumbar spine or pelvis', chapter: 'Injuries', minLevel: 'county', causeOfDeath: true, keywords: ['pelvic fracture', 'back fracture'] },
+  { code: 'NC12', title: 'Fracture of shoulder or upper arm', chapter: 'Injuries', minLevel: 'county', keywords: ['humerus fracture', 'clavicle fracture', 'broken arm'] },
+  { code: 'NC32', title: 'Fracture of forearm', chapter: 'Injuries', minLevel: 'payam', keywords: ['radius fracture', 'ulna fracture', 'broken arm', 'wrist fracture'] },
+  { code: 'NC72', title: 'Fracture of femur', chapter: 'Injuries', minLevel: 'county', causeOfDeath: true, keywords: ['hip fracture', 'thigh fracture', 'broken leg'] },
+  { code: 'NC92', title: 'Fracture of lower leg, including ankle', chapter: 'Injuries', minLevel: 'payam', keywords: ['tibia fracture', 'fibula fracture', 'ankle fracture', 'broken leg'] },
+  { code: 'ND13', title: 'Fracture of foot, except ankle', chapter: 'Injuries', minLevel: 'payam', keywords: ['foot fracture', 'toe fracture'] },
+  { code: 'ND56', title: 'Injury of unspecified body region', chapter: 'Injuries', minLevel: 'boma', keywords: ['injury', 'trauma', 'wound', 'road traffic accident', 'rta', 'assault'] },
 
   // ===== NEOPLASMS =====
   { code: '2D4Z', title: 'Malignant neoplasm (cancer), site unspecified', chapter: 'Neoplasms', minLevel: 'state', causeOfDeath: true },

@@ -17,6 +17,7 @@
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useState } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
+import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -40,12 +41,14 @@ interface ReportedMedicationsProps {
   adding: boolean;
   onCloseAdd: () => void;
   markInError: (id: string, actor?: { userId?: string; userName?: string }) => Promise<unknown>;
+  /** Render only the form slider, not the list. */
+  formOnly?: boolean;
 }
 
 const SUB = { color: 'var(--ehr-muted, #5D728B)', fontSize: 12 } as const;
 
 export default function ReportedMedications({
-  patientId, patientName, medications, entries, loadFailed, canRecord, currentUser, adding, onCloseAdd, markInError,
+  patientId, patientName, medications, entries, loadFailed, canRecord, currentUser, adding, onCloseAdd, markInError, formOnly,
 }: ReportedMedicationsProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -79,9 +82,9 @@ export default function ReportedMedications({
 
   return (
     <>
-      {loadFailed && <p className="tamam-attestation" role="alert">{t('meds.reported.loadFailed')}</p>}
+      {!formOnly && loadFailed && <p className="tamam-attestation" role="alert">{t('meds.reported.loadFailed')}</p>}
 
-      {medications.length > 0 && (
+      {!formOnly && medications.length > 0 && (
         <div className="tamam-reported-meds">
           <h4 className="tamam-reported-meds-title">{t('meds.reported.title')}</h4>
           <p style={SUB}>{t('meds.reported.hint')}</p>
@@ -147,5 +150,34 @@ export default function ReportedMedications({
         </FormSlider>
       )}
     </>
+  );
+}
+
+/**
+ * The "record a medicine the patient takes" slider on its own, for a button
+ * anywhere in the chart: it opens over the tab the clinician is on instead of
+ * switching to Medications first. Reads the history it needs itself.
+ */
+export function RecordMedicationSlider({ patientId, patientName, currentUser, onClose }: {
+  patientId: string;
+  patientName: string;
+  currentUser: HistoryFormUser | null | undefined;
+  onClose: () => void;
+}) {
+  const { entries, markInError } = useHistoryEntries(patientId);
+  return (
+    <ReportedMedications
+      formOnly
+      patientId={patientId}
+      patientName={patientName}
+      medications={[]}
+      entries={entries}
+      loadFailed={false}
+      canRecord
+      currentUser={currentUser}
+      adding
+      onCloseAdd={onClose}
+      markInError={markInError}
+    />
   );
 }

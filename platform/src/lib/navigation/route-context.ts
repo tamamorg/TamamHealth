@@ -103,6 +103,7 @@ const EXACT_ROUTES: Record<string, RouteContext> = {
   '/facility-management/queue': context('/facility-management', 'routeContext.facilityManagement', 'routeContext.approvalQueue', true),
   '/payments/claims': context('/payments', 'routeContext.payments', 'routeContext.claims', true),
   '/wards/mar': context('/wards', 'routeContext.wards', 'routeContext.medicationAdministration', true),
+  '/dashboard/nutrition/supplies': context('/dashboard/nutrition', 'breadcrumb.dashboard', 'nutrition.supplies', true),
   '/settings/manage': context('/settings', 'breadcrumb.settings', 'routeContext.manageSettings'),
 };
 

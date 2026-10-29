@@ -19,6 +19,20 @@ describe('focused triage completion', () => {
     expect(page).toContain('onSaved={() => router.replace(returnToFromSearch(window.location.search, backTarget))}');
   });
 
+  test('a repeat triage saved over the open record becomes the latest assessment', () => {
+    // A patient whose triage is still open is re-triaged in place (the form
+    // loads the record for edit). The chart's SBAR reads the newest triage by
+    // `triagedAt`, so the save must restamp when and by whom — or the handoff
+    // keeps the first assessment's time and nurse — and drop the provider's
+    // acknowledgement of the handoff it replaces.
+    const editSave = workflow.slice(workflow.indexOf('if (editingTriageId) {'), workflow.indexOf('} else {', workflow.indexOf('if (editingTriageId) {')));
+    expect(editSave).toContain('triagedAt: now');
+    expect(editSave).toContain('triagedBy: currentUser?._id');
+    expect(editSave).toContain('triagedByName: currentUser?.name');
+    expect(editSave).toContain('acknowledgedAt: undefined');
+    expect(editSave).toContain('...reassessment');
+  });
+
   test('captures the South Sudan-relevant IITT screen and anthropometrics', () => {
     expect(workflow).toContain('IITT_RED_CRITERIA');
     expect(workflow).toContain('IITT_YELLOW_CRITERIA');

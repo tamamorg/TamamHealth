@@ -19,7 +19,7 @@ import { MessageSquare } from '@/components/icons/lucide';
 import { Icon as DuotoneInfoIcon } from '@/components/icons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
-import { LabOrderModal, LabWorkspace, OrdersSection, PatientMessagesSection, HistorySection, ProceduresSection, ProgramsSection, ImmunizationsSection, AssignDoctorModal, NurseVitalsModal, ReferModal, VisitSummaryDialog } from './detail/lazy-panels';
+import { LabOrderModal, LabWorkspace, OrdersSection, PatientMessagesSection, HistorySection, ProceduresSection, ProgramsSection, ImmunizationsSection, AssignDoctorModal, NurseVitalsModal, ReferModal, VisitSummaryDialog, ConditionAddSlider, RecordMedicationSlider, ChartPaymentPanel } from './detail/lazy-panels';
 import { toIsoDate } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
@@ -91,6 +91,9 @@ import { jubaDate } from '@/lib/time-juba';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
 
+/** Role forms that work one named order (`&focus=`) in the chart workspace. */
+const STATION_FORM_IDS = new Set(['lab-orders', 'dispense']);
+
 export default function PatientDetailPage() {
   const routeParams = useParams<{ id?: string | string[] }>();
   const id = Array.isArray(routeParams?.id) ? routeParams.id[0] : routeParams?.id;
@@ -107,7 +110,15 @@ export default function PatientDetailPage() {
   // arrival state, not addressable state: they are read once here and then
   // stripped from the URL below. Left in place, the highlight came back every
   // later visit to that section and the reading was re-offered for filing.
-  const [focusId, setFocusId] = useState<string | undefined>(() => searchParams.get('focus') || undefined);
+  // A station form (`?form=lab-orders|dispense&focus=<id>`) works the named
+  // order in the workspace; the focus is the form's, not the tab's, or the
+  // same workflow opened twice — once in the form, once in the section.
+  const [focusId, setFocusId] = useState<string | undefined>(() => (
+    STATION_FORM_IDS.has(searchParams.get('form') || '') ? undefined : searchParams.get('focus') || undefined
+  ));
+  const [formFocusId, setFormFocusId] = useState<string | undefined>(() => (
+    STATION_FORM_IDS.has(searchParams.get('form') || '') ? searchParams.get('focus') || undefined : undefined
+  ));
   const [seedResult] = useState(() => (searchParams.get('value')
     ? {
         value: searchParams.get('value') || '',
@@ -144,7 +155,8 @@ export default function PatientDetailPage() {
     if (resolved) setActiveTab(resolved);
     const focus = searchParams.get('focus');
     if (focus) {
-      setFocusId(focus);
+      if (STATION_FORM_IDS.has(searchParams.get('form') || '')) setFormFocusId(focus);
+      else setFocusId(focus);
       stripArrivalParams();
     }
     // `?note=<id>` (where /notes/[id] now lands): open that note in the
@@ -152,6 +164,14 @@ export default function PatientDetailPage() {
     const noteParam = searchParams.get('note');
     if (noteParam) {
       setChartPanelRequest(`clinical-note:${noteParam}`);
+      stripArrivalParams();
+    }
+    // `?form=<panel>` (a dashboard's to-do entry: "screen this child",
+    // "report this study"): open that role form in the workspace. The shell
+    // ignores an id this viewer may not open.
+    const formParam = searchParams.get('form');
+    if (formParam === 'nutrition-screening' || formParam === 'imaging-report' || formParam === 'lab-orders' || formParam === 'dispense') {
+      setChartPanelRequest(formParam);
       stripArrivalParams();
     }
   }, [searchParams]);
@@ -326,7 +346,7 @@ export default function PatientDetailPage() {
 
   const patient = scopedPatient ?? (fallbackPatient?._id === id ? fallbackPatient : undefined);
   const { records, loading: recordsLoading, reload: reloadRecords } = useMedicalRecords(patient?._id);
-  const { referrals: patientReferrals } = usePatientReferrals(patient?._id);
+  const { referrals: patientReferrals, reload: reloadReferrals } = usePatientReferrals(patient?._id);
   const { results: allLabResults, reload: reloadLabResults } = useLabResults(patient?._id);
   const { immunizations: allImmunizations } = useImmunizations(patient?._id);
   const { visits: allANCVisits, reload: reloadANC } = useANC();
@@ -336,7 +356,7 @@ export default function PatientDetailPage() {
   // Antenatal care is a section of the record for any woman, and for anyone
   // whose record already holds an ANC visit.
   const showAncTab = patientANC.length > 0 || patient?.gender === 'Female';
-  const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
+  const { appointments: patientAppointments, reload: reloadAppointments } = usePatientAppointments(patient?._id);
   // Upcoming / Today / Past on the Appointments tab.
   // In the URL (?view=) so Back returns to the view the user was on.
   const [apptView, setApptView] = useUrlView(['upcoming', 'today', 'past'] as const, 'upcoming' as ApptView);
@@ -507,10 +527,9 @@ export default function PatientDetailPage() {
     setShowEditModal(true);
   };
 
-  const openPaymentFromHeader = () => {
-    selectTab('billing');
-    setShowPaymentPanel(true);
-  };
+  // Opens the payment slider over the tab in view; on Billing, BillingTab
+  // owns the panel, everywhere else the page renders it (below).
+  const openPaymentFromHeader = () => setShowPaymentPanel(true);
 
   // ── End assignment (header ⋯ menu) ───────────────────────────────────────
   // Moved here from the dashboard worklist rows: closing accountability for a
@@ -559,21 +578,25 @@ export default function PatientDetailPage() {
   // and lab-order modals, the visit-note drawer, the consultation vitals form,
   // and the Conditions tab's own "Add" modal (opened via
   // sectionAddRequest so the card's action lands directly in the add form).
+  // On the Conditions tab the section's own Add opens; anywhere else the
+  // add-condition slider opens over the current tab, where the button was.
+  const [addingConditionInPlace, setAddingConditionInPlace] = useState(false);
+  const [recordingMedicationInPlace, setRecordingMedicationInPlace] = useState(false);
   const openSectionAdd = (section: 'problems') => {
-    selectTab(section);
-    setSectionAddRequest(section);
+    if (activeTab === section) setSectionAddRequest(section);
+    else setAddingConditionInPlace(true);
   };
   const facesheetActions: FacesheetActions = {
     // Nursing roles cannot order, but record what the patient already takes on
     // the Medications tab, whose Add opens that form for them.
     ...(canPrescribe
       ? { medications: { label: 'Prescribe', onClick: openPrescribe } }
-      : canRecordMedicationHistory ? { medications: { label: 'Record', onClick: () => selectTab('prescriptions') } } : {}),
+      : canRecordMedicationHistory ? { medications: { label: 'Record', onClick: () => setRecordingMedicationInPlace(true) } } : {}),
     ...(canConsult ? { problems: { label: 'Add', onClick: () => openSectionAdd('problems') } } : {}),
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
     // alike — a full /consultation redirect was the wrong weight for "record
     // a set of numbers" and orphaned the visit from the chart tab it was on.
-    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { selectTab('vitals'); setShowNurseVitals(true); bringPageWorkspace('vitals'); } } } : {}),
+    ...((canConsult || canRecordVitalEvents) && patient ? { vitals: { label: 'Record', onClick: () => { setShowNurseVitals(true); bringPageWorkspace('vitals'); } } } : {}),
     ...(canConsult ? { recommendations: { label: 'Review', onClick: () => selectTab('careChecklist'), icon: ClipboardList } } : {}),
   };
 
@@ -823,6 +846,7 @@ export default function PatientDetailPage() {
             onOpenOrderLabModal={() => setShowOrderLabModal(true)}
             onNoteSaved={() => setNotesRefreshToken(t => t + 1)}
             panelRequest={chartPanelRequest}
+            formFocusId={formFocusId}
             onPanelRequestHandled={() => setChartPanelRequest(null)}
             // Record vitals docks in the chart's workspace slot beside the
             // record (OpenMRS O3), so the chart narrows instead of being covered.
@@ -841,6 +865,7 @@ export default function PatientDetailPage() {
                   currentUser={{
                     _id: currentUser._id,
                     name: currentUser.name,
+                    role: currentUser.role,
                     hospitalId: currentUser.hospitalId,
                     hospitalName: currentUser.hospital?.name || currentUser.hospitalName || undefined,
                     orgId: currentUser.orgId,
@@ -884,16 +909,16 @@ export default function PatientDetailPage() {
                 title: t('createPage.prescribeTitle'),
                 wide: true,
                 onClose: () => setShowPrescribeModal(false),
+                // No padded drawer-body wrapper: like Record vitals, the form
+                // runs edge to edge so its action bar spans the slider.
                 content: (
-                  <div className="tamam-drawer-body">
-                    <NotePrescribeForm
-                      presentation="page"
-                      patientId={patient._id}
-                      patientName={patientFullName(patient)}
-                      currentUser={currentUser}
-                      onClose={() => setShowPrescribeModal(false)}
-                    />
-                  </div>
+                  <NotePrescribeForm
+                    presentation="page"
+                    patientId={patient._id}
+                    patientName={patientFullName(patient)}
+                    currentUser={currentUser}
+                    onClose={() => setShowPrescribeModal(false)}
+                  />
                 ),
               };
               return null;
@@ -953,7 +978,7 @@ export default function PatientDetailPage() {
                 patientAgeYears={patientAgeYearsExact(patient) ?? undefined}
                 isPregnant={isPregnant}
                 onViewVitalsHistory={() => selectTab('vitals')}
-                onRecordVitals={() => { selectTab('vitals'); setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); bringPageWorkspace('vitals'); }}
+                onRecordVitals={() => { setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); bringPageWorkspace('vitals'); }}
                 canRecordVitals={canConsult || canRecordVitalEvents}
               />
             ) : undefined}
@@ -984,7 +1009,7 @@ export default function PatientDetailPage() {
 
           {activeTab === 'overview' && <PatientOverviewTab patient={patient} latestVitals={latestVitals} vitalsReady={vitalsReady} latestPatientTriage={latestPatientTriage} patientProblems={patientProblems} allPrescriptions={allPrescriptions} allLabResults={allLabResults} allImmunizations={allImmunizations} canViewClinical={canViewClinical} selectTab={selectTab} facesheetActions={facesheetActions} facesheetPanels={facesheetPanels} showCustomizeView={showCustomizeView} setShowCustomizeView={setShowCustomizeView} toggleFacesheetPanel={toggleFacesheetPanel} setFacesheetPanels={setFacesheetPanels} />}
 
-          {activeTab === 'appointments' && patient && <PatientAppointmentsTab patientAppointments={patientAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} onBook={openBookAppointment} apptView={apptView} setApptView={setApptView} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
+          {activeTab === 'appointments' && patient && <PatientAppointmentsTab patient={patient} patientAppointments={patientAppointments} onAppointmentsChanged={reloadAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} onBook={openBookAppointment} apptView={apptView} setApptView={setApptView} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
 
           {/* No wrapper card: PatientSBAR is built from ChartSection now, and
               nesting those inside a card produced a card-in-a-card. */}
@@ -1043,7 +1068,37 @@ export default function PatientDetailPage() {
 
           {/* Care coordination: internal transfers and external referrals share
               one ownership and follow-up destination. */}
-          {activeTab === 'referrals' && <PatientCoordinationTab patient={patient} canViewClinical={canViewClinical} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} router={router} patientReferrals={patientReferrals} />}
+          {activeTab === 'referrals' && <PatientCoordinationTab patient={patient} canViewClinical={canViewClinical} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} router={router} patientReferrals={patientReferrals} onReferralsChanged={reloadReferrals} />}
+
+          {/* Sliders opened by a chart button over whichever tab is showing. */}
+          {addingConditionInPlace && patient && (
+            <ConditionAddSlider
+              formOnly
+              autoOpenAdd
+              patientId={patient._id}
+              patientName={patientFullName(patient)}
+              onFormClosed={() => setAddingConditionInPlace(false)}
+            />
+          )}
+          {recordingMedicationInPlace && patient && (
+            <RecordMedicationSlider
+              patientId={patient._id}
+              patientName={patientFullName(patient)}
+              currentUser={currentUser}
+              onClose={() => setRecordingMedicationInPlace(false)}
+            />
+          )}
+          {showPaymentPanel && activeTab !== 'billing' && patient && (
+            <ChartPaymentPanel
+              patientId={patient._id}
+              patientName={`${patient.firstName} ${patient.surname}`}
+              hospitalNumber={patient.hospitalNumber}
+              amountDue={patientBalance}
+              encounterId={(latestRecord as { encounterId?: string } | undefined)?.encounterId}
+              onSuccess={() => { setShowPaymentPanel(false); reloadPayments(); }}
+              onCancel={() => setShowPaymentPanel(false)}
+            />
+          )}
 
           {activeTab === 'billing' && <PatientBillingTab patient={patient} patientBalance={patientBalance} showPaymentPanel={showPaymentPanel} showPlanWizard={showPlanWizard} setShowPaymentPanel={setShowPaymentPanel} setShowPlanWizard={setShowPlanWizard} reloadPayments={reloadPayments} latestRecord={latestRecord} hospitals={hospitals} />}
 

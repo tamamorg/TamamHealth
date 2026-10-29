@@ -35,6 +35,7 @@ import InlineBanner from '@/components/overlay/InlineBanner';
 import type { AppointmentType, FacilityLevel, PatientDoc } from '@/lib/db-types';
 import './book-appointment-panel.css';
 import FormNotices from '@/components/overlay/FormNotices';
+import Select from '@/components/Select';
 
 const TYPE_OPTIONS: { value: AppointmentType; labelKey: string }[] = [
   { value: 'general', labelKey: 'appointments.typeGeneral' },
@@ -265,10 +266,10 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
           <h3 className="bap-heading">{t('bookPanel.service')}</h3>
           <label className="bap-field">
             <span className="bap-label">{t('bookPanel.selectService')}</span>
-            <select value={visitReasonId} onChange={e => pickReason(e.target.value)}>
+            <Select value={visitReasonId} onChange={e => pickReason(e.target.value)}>
               <option value="">{t('bookPanel.selectServicePlaceholder')}</option>
               {reasons.map(r => <option key={r._id} value={r._id}>{r.name}</option>)}
-            </select>
+            </Select>
           </label>
         </section>
 
@@ -276,9 +277,9 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
           <h3 className="bap-heading">{t('bookPanel.type')}</h3>
           <label className="bap-field">
             <span className="bap-label">{t('bookPanel.selectType')}</span>
-            <select value={type} onChange={e => setType(e.target.value as AppointmentType)}>
+            <Select value={type} onChange={e => setType(e.target.value as AppointmentType)}>
               {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
-            </select>
+            </Select>
           </label>
         </section>
 
@@ -301,19 +302,19 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
           {recurring && (
             <label className="bap-field">
               <span className="bap-label">{t('bookPanel.repeats')}</span>
-              <select value={pattern} onChange={e => setPattern(e.target.value as typeof PATTERNS[number])}>
+              <Select value={pattern} onChange={e => setPattern(e.target.value as typeof PATTERNS[number])}>
                 {PATTERNS.map(p => <option key={p} value={p}>{t(`bookPanel.pattern.${p}`)}</option>)}
-              </select>
+              </Select>
             </label>
           )}
           {recurring && (
             <label className="bap-field">
               <span className="bap-label">{t('bookPanel.visits')}</span>
-              <select value={visits} onChange={e => setVisits(Number(e.target.value))}>
+              <Select value={visits} onChange={e => setVisits(Number(e.target.value))}>
                 {Array.from({ length: SERIES_MAX - SERIES_MIN + 1 }, (_, i) => i + SERIES_MIN).map(n => (
                   <option key={n} value={n}>{t('bookPanel.visitsCount', { count: n })}</option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
         </section>
@@ -338,10 +339,10 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
                   placeholder="hh:mm"
                   maxLength={5}
                 />
-                <select value={meridiem} onChange={e => setMeridiem(e.target.value as 'AM' | 'PM')} aria-label={t('bookPanel.meridiem')}>
+                <Select value={meridiem} onChange={e => setMeridiem(e.target.value as 'AM' | 'PM')} aria-label={t('bookPanel.meridiem')}>
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
-                </select>
+                </Select>
               </div>
             </div>
             <label className="bap-field">
@@ -355,17 +356,17 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
           <h3 className="bap-heading">{t('bookPanel.provider')}</h3>
           <label className="bap-field">
             <span className="bap-label">{t('bookPanel.selectProvider')}</span>
-            <select value={providerId} onChange={e => setProviderId(e.target.value)}>
+            <Select value={providerId} onChange={e => setProviderId(e.target.value)}>
               <option value="">{t('bookPanel.noProvider')}</option>
               {providerOptions.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="bap-field">
             <span className="bap-label">{t('bookPanel.selectNurse')}</span>
-            <select value={staffId} onChange={e => setStaffId(e.target.value)}>
+            <Select value={staffId} onChange={e => setStaffId(e.target.value)}>
               <option value="">{t('bookPanel.noNurse')}</option>
               {staffOptions.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-            </select>
+            </Select>
           </label>
         </section>
 

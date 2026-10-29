@@ -41,8 +41,20 @@ export default function RowActionsMenu({ actions, ariaLabel = 'Actions' }: { act
     <Menu
       items={items}
       label={ariaLabel}
-      icon={<MoreVertical aria-hidden="true" />}
-      triggerClassName="tm-menu__trigger tm-row-actions-trigger"
+      // A row that opens on click must not also open when its ⋮ is pressed —
+      // the trigger keeps its click to itself. (Keys are already safe:
+      // `clickable()` ignores keys pressed on a control inside the row.)
+      trigger={(props) => (
+        <button
+          type="button"
+          className="tm-menu__trigger tm-row-actions-trigger"
+          aria-label={ariaLabel}
+          {...props}
+          onClick={event => { event.stopPropagation(); props.onClick(); }}
+        >
+          <MoreVertical aria-hidden="true" />
+        </button>
+      )}
       menuClassName="tm-menu--row-actions"
       align="end"
       width={220}

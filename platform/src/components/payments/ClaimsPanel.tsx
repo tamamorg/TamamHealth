@@ -706,9 +706,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 {!newClaim.billingId && (
                   <div className="bl-field">
                     <label htmlFor="claim-currency">{t('insuranceFlow.currency')}</label>
-                    <select id="claim-currency" value={newClaim.currency} onChange={e => setNewClaim(f => ({ ...f, currency: e.target.value }))}>
+                    <Select id="claim-currency" value={newClaim.currency} onChange={e => setNewClaim(f => ({ ...f, currency: e.target.value }))}>
                       {['SSP', 'USD', 'KES', 'UGX'].map(currency => <option key={currency} value={currency}>{currency}</option>)}
-                    </select>
+                    </Select>
                     <label htmlFor="claim-amount">Claim amount</label>
                     <input
                       id="claim-amount"

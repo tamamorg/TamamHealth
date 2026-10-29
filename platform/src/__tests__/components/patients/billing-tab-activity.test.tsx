@@ -52,7 +52,7 @@ const render = () => mountAndFlush(
   <BillingTab patient={patient} patientBalance={0} showPaymentPanel={false} showPlanWizard={false}
     setShowPaymentPanel={() => {}} setShowPlanWizard={() => {}} reloadPayments={() => {}} />,
 );
-const rows = () => qa<HTMLTableRowElement>(mounted!.container, '.bl-table tbody tr').map(r => r.textContent || '');
+const rows = () => qa<HTMLTableRowElement>(mounted!.container, '.tamam-table--activity tbody tr').map(r => r.textContent || '');
 
 describe('BillingTab activity', () => {
   it('lists ledger charges that have no charge document', async () => {

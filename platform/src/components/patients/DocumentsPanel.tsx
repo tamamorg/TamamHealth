@@ -16,7 +16,7 @@
  * which this links out to); the education view can send a new message through
  * the chart's existing patient-education action.
  */
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
@@ -30,8 +30,10 @@ import { formatDate } from '@/lib/format-utils';
 import ChartSection from '@/components/ehr/chart/ChartSection';
 import type { Attachment } from '@/data/mock';
 import type { PatientDoc, PatientDocumentCategory, PatientDocumentDoc, ReferralDoc, MessageDoc } from '@/lib/db-types';
-import { FileText, X, Eye, ArrowRightLeft, ChevronRight, Send, MessageSquare, AlertTriangle } from '@/components/icons/lucide';
+import { FileText, X, ArrowRightLeft, ChevronRight, Send, AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { FOCUSED_ROW_STYLE } from '@/components/ehr/chart/sections/rowFocus';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -95,6 +97,14 @@ function deliveryLabel(m: MessageDoc): string {
     default: return m.status;
   }
 }
+
+const REFERRAL_BADGE: Record<string, string> = {
+  sent: 'tamam-panel-badge tamam-panel-badge--pending',
+  received: 'tamam-panel-badge tamam-panel-badge--active',
+  seen: 'tamam-panel-badge tamam-panel-badge--active',
+  completed: 'tamam-panel-badge tamam-panel-badge--done',
+  cancelled: 'tamam-panel-badge tamam-panel-badge--muted',
+};
 
 const CHANNEL_LABELS: Record<MessageDoc['channel'], string> = {
   app: 'in-app',
@@ -284,76 +294,78 @@ export default function DocumentsPanel({
     education: educationDocs.length + sentEducation.length,
   };
 
-  const docRow = (d: PatientDocumentDoc) => {
-    const isImage = d.mimeType.startsWith('image/');
-    const focused = d._id === focusId;
-    return (
-      <div
-        key={d._id}
-        id={`doc-row-${d._id}`}
-        className="flex items-center gap-3 p-2.5 rounded-lg"
-        style={{
-          background: focused ? 'var(--accent-light)' : 'var(--overlay-subtle)',
-          border: focused ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)',
-          boxShadow: focused ? 'inset 3px 0 0 var(--accent-primary)' : undefined,
-        }}
-      >
-        {isImage ? (
-          <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-black/20">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`data:${d.mimeType};base64,${d.base64Data}`} alt={d.title} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <div className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0">
-            <FileText className="w-5 h-5" style={{ color: 'var(--color-danger)' }} />
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{d.title}</span>
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>{CATEGORY_LABELS[d.category]}</span>
-          </div>
-          <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            {docDate(d.createdAt)}{docDate(d.createdAt) ? ' · ' : ''}{formatSize(d.sizeBytes)}{d.uploadedByName ? ` · ${d.uploadedByName}` : ''}{d.note ? ` · ${d.note}` : ''}
-          </div>
-        </div>
-        <button onClick={() => openPreview(d)} className="p-1.5 rounded flex-shrink-0" style={{ background: 'var(--accent-light)' }} title="Preview">
-          <Eye className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
-        </button>
-        {/* A bin icon sits one tap from Preview on a shared clinic machine, and
-            a deleted upload is not recoverable from here — so it asks, naming
-            the file so the answer is about a document rather than a dialog. */}
-        <button
-          onClick={async () => {
-            // Removed with a reason and kept in the record history, like
-            // every other clinical entry: never erased.
-            const reason = await confirmPrompt({
-              title: t('msg.deleteThisDocument'),
-              message: t('chart.documentRemoveMessage', { name: d.title || d.fileName }),
-              inputLabel: t('chart.vitalsDeleteReason'),
-              confirmLabel: t('action.delete'),
-              tone: 'danger',
-            });
-            if (!reason?.trim()) return;
-            try {
-              if (!(await remove(d._id, reason, { id: currentUser?._id, name: currentUser?.name }))) throw new Error('Change not saved. Try again.');
-              showToast(t('chart.documentRemoved', { name: d.title || d.fileName }), 'success');
-            } catch (err) {
-              showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
-            }
-          }}
-          className="p-1.5 rounded flex-shrink-0"
-          style={{ background: 'rgba(224, 49, 39,0.12)' }}
-          title="Remove"
-        >
-          <X className="w-3.5 h-3.5" style={{ color: 'var(--color-danger)' }} />
-        </button>
-      </div>
-    );
+  // Removed with a reason and kept in the record history, like every other
+  // clinical entry: never erased. The prompt names the file, so the answer is
+  // about a document rather than a dialog.
+  const removeDoc = async (d: PatientDocumentDoc) => {
+    const reason = await confirmPrompt({
+      title: t('msg.deleteThisDocument'),
+      message: t('chart.documentRemoveMessage', { name: d.title || d.fileName }),
+      inputLabel: t('chart.vitalsDeleteReason'),
+      confirmLabel: t('action.delete'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    try {
+      if (!(await remove(d._id, reason, { id: currentUser?._id, name: currentUser?.name }))) throw new Error('Change not saved. Try again.');
+      showToast(t('chart.documentRemoved', { name: d.title || d.fileName }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
+    }
   };
 
-  // The upload control, shared by all three views. The category picker only
-  // appears where there is a choice to make.
+  const downloadDoc = (d: PatientDocumentDoc) => {
+    const a = document.createElement('a');
+    a.href = `data:${d.mimeType};base64,${d.base64Data}`;
+    a.download = d.fileName || d.title;
+    a.click();
+  };
+
+  const docRow = (d: PatientDocumentDoc) => (
+    <tr key={d._id} id={`doc-row-${d._id}`} style={d._id === focusId ? FOCUSED_ROW_STYLE : undefined}>
+      <td className="tamam-cell-strong">{d.title}</td>
+      <td>{CATEGORY_LABELS[d.category]}</td>
+      <td className="tamam-num">{docDate(d.createdAt) || '—'}</td>
+      <td>
+        {formatSize(d.sizeBytes)}{d.uploadedByName ? ` · ${d.uploadedByName}` : ''}
+        {d.note && <div className="tamam-cell-sub tamam-cell-clamp" title={d.note}>{d.note}</div>}
+      </td>
+      <td><span className="tamam-panel-badge tamam-panel-badge--done">{t('documents.statusFiled')}</span></td>
+      <td>
+        <RowActionsMenu
+          ariaLabel={t('documents.rowActions', { name: d.title })}
+          actions={[
+            { key: 'preview', label: t('documents.preview'), onClick: () => openPreview(d) },
+            { key: 'download', label: t('documents.download'), onClick: () => downloadDoc(d) },
+            { key: 'remove', label: t('action.delete'), tone: 'danger' as const, onClick: () => void removeDoc(d) },
+          ]}
+        />
+      </td>
+    </tr>
+  );
+
+  /** One table shape for all three views: Name · Type · Date · Details · Status · ⋮. */
+  const listTable = (rows: ReactNode[], empty: string) => (
+    <table className="tamam-table tamam-table--fixed tamam-table--documents">
+      <thead>
+        <tr>
+          <th>{t('documents.col.name')}</th>
+          <th>{t('documents.col.type')}</th>
+          <th>{t('documents.col.date')}</th>
+          <th>{t('documents.col.details')}</th>
+          <th>{t('documents.col.status')}</th>
+          <th className="tamam-col-actions">{t('chart.actions')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 && (
+          <tr><td colSpan={6} style={{ cursor: 'default', background: 'transparent', color: 'var(--text-muted)' }}>{empty}</td></tr>
+        )}
+        {rows}
+      </tbody>
+    </table>
+  );
+
   const uploader = (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
@@ -426,11 +438,7 @@ export default function DocumentsPanel({
             </div>
           )}
 
-          {generalDocs.length === 0 ? (
-            <p className="text-[12px] mt-3" style={{ color: 'var(--text-muted)' }}>No documents filed yet.</p>
-          ) : (
-            <div className="space-y-2">{shownGeneral.map(docRow)}</div>
-          )}
+          {listTable(shownGeneral.map(docRow), 'No documents filed yet.')}
         </>
       )}
 
@@ -453,42 +461,40 @@ export default function DocumentsPanel({
           </div>
           {uploadOpen && uploader}
 
-          <div className="space-y-2 mt-4">
-            {referrals.length === 0 && referralDocs.length === 0 && (
-              <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>No referrals or referral letters on this chart.</p>
-            )}
-            {referrals.map(ref => (
-              <div key={ref._id} className="flex items-start gap-3 p-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                <div className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0">
-                  <ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                      {ref.fromHospital} → {ref.toHospital}
-                    </span>
+          {listTable([
+            ...referrals.map(ref => (
+              <tr key={ref._id}>
+                <td className="tamam-cell-strong">{ref.fromHospital} → {ref.toHospital}</td>
+                <td>
+                  {ref.department || 'Referral'}
+                  <div className="tamam-cell-sub">
                     <span className={`badge urgency-${ref.urgency} text-[9px]`}>
                       {ref.urgency === 'emergency' && <AlertTriangle className="w-3 h-3" />}
                       {ref.urgency.charAt(0).toUpperCase() + ref.urgency.slice(1)}
                     </span>
-                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
-                      {ref.status.charAt(0).toUpperCase() + ref.status.slice(1)}
-                    </span>
                   </div>
-                  <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    {/* referringDoctor is stored with its own title ("Dr. …"), so no prefix here. */}
-                    {docDate(ref.referralDate) || ref.referralDate} · {ref.department}{ref.referringDoctor ? ` · ${ref.referringDoctor}` : ''}
-                  </div>
+                </td>
+                <td className="tamam-num">{docDate(ref.referralDate) || ref.referralDate}</td>
+                <td>
                   {canViewClinical ? (
-                    ref.reason && <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>Reason: {ref.reason}</div>
+                    ref.reason && <div className="tamam-cell-clamp" title={ref.reason}>{ref.reason}</div>
                   ) : (
-                    <div className="text-[11px] mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</div>
+                    <span className="italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</span>
                   )}
-                </div>
-              </div>
-            ))}
-            {referralDocs.map(docRow)}
-          </div>
+                  {/* referringDoctor is stored with its own title ("Dr. …"), so no prefix here. */}
+                  {ref.referringDoctor && <div className="tamam-cell-sub">{ref.referringDoctor}</div>}
+                </td>
+                <td><span className={REFERRAL_BADGE[ref.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{ref.status.charAt(0).toUpperCase() + ref.status.slice(1)}</span></td>
+                <td>
+                  <RowActionsMenu
+                    ariaLabel={t('chart.referralRowActions', { name: ref.toHospital })}
+                    actions={onOpenAllReferrals ? [{ key: 'open', label: t('chart.referralOpen'), onClick: onOpenAllReferrals }] : []}
+                  />
+                </td>
+              </tr>
+            )),
+            ...referralDocs.map(docRow),
+          ], 'No referrals or referral letters on this chart.')}
         </>
       )}
 
@@ -504,33 +510,27 @@ export default function DocumentsPanel({
           </div>
           {uploadOpen && uploader}
 
-          <div className="space-y-2 mt-4">
-            {educationDocs.length === 0 && sentEducation.length === 0 && (
-              <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>Nothing yet. File a handout, or send education to the patient.</p>
-            )}
-            {educationDocs.map(docRow)}
-            {sentEducation.map(m => (
-              <div key={m._id} className="flex items-start gap-3 p-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                <div className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{m.subject || 'Patient education'}</span>
-                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
-                      Sent to patient
-                    </span>
-                  </div>
-                  <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    {docDate(m.sentAt)} · {CHANNEL_LABELS[m.channel]} · {deliveryLabel(m)}{m.fromDoctorName ? ` · ${m.fromDoctorName}` : ''}
-                  </div>
-                  {canViewClinical && m.body && (
-                    <div className="text-[11px] mt-0.5 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{m.body}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          {listTable([
+            ...educationDocs.map(docRow),
+            ...sentEducation.map(m => (
+              <tr key={m._id}>
+                <td className="tamam-cell-strong">{m.subject || 'Patient education'}</td>
+                <td>{t('documents.sentToPatient')}</td>
+                <td className="tamam-num">{docDate(m.sentAt) || '—'}</td>
+                <td>
+                  {CHANNEL_LABELS[m.channel]}{m.fromDoctorName ? ` · ${m.fromDoctorName}` : ''}
+                  {canViewClinical && m.body && <div className="tamam-cell-sub tamam-cell-clamp" title={m.body}>{m.body}</div>}
+                </td>
+                <td><span className={m.smsDelivery && m.smsDelivery.state !== 'sent' ? 'tamam-panel-badge tamam-panel-badge--pending' : 'tamam-panel-badge tamam-panel-badge--done'}>{deliveryLabel(m)}</span></td>
+                <td>
+                  <RowActionsMenu
+                    ariaLabel={t('documents.rowActions', { name: m.subject || 'Patient education' })}
+                    actions={onSendEducation ? [{ key: 'resend', label: t('documents.sendAgain'), onClick: onSendEducation }] : []}
+                  />
+                </td>
+              </tr>
+            )),
+          ], 'Nothing yet. File a handout, or send education to the patient.')}
         </>
       )}
 

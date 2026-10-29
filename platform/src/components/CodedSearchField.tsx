@@ -26,6 +26,11 @@ export interface CodedOption {
   keywords?: string[];
 }
 
+/** Lowercase, with anything that is not a letter or digit as one space. */
+function normalizeForSearch(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
 export default function CodedSearchField({
   label,
   placeholder,
@@ -70,12 +75,17 @@ export default function CodedSearchField({
   const available = options.filter(o => !excluded?.has(o.code));
   // Before the user has typed anything, focusing the field browses the top of
   // the list — clicking the search box always shows options, not a blank page.
+  // Every word of the query must appear somewhere in the option (code, name
+  // or a keyword), in any order, with punctuation ignored: "preeclampsia"
+  // finds "Pre-eclampsia", "diabetes type 2" finds "Type 2 diabetes mellitus",
+  // "1c62z" finds "1C62.Z".
+  const queryWords = normalizeForSearch(query).split(' ').filter(Boolean);
   const matches = (query.length >= minChars
-    ? available.filter(o =>
-        o.code.toLowerCase().includes(query) ||
-        o.name.toLowerCase().includes(query) ||
-        (o.keywords || []).some(k => k.toLowerCase().includes(query))
-      )
+    ? available.filter(o => {
+        const haystack = normalizeForSearch([o.code, o.name, ...(o.keywords || [])].join(' '));
+        const compact = haystack.replace(/ /g, '');
+        return queryWords.every(word => haystack.includes(word) || compact.includes(word));
+      })
     : available
   ).slice(0, maxResults);
   // Offer the free-text row once the user has typed something that isn't an
@@ -170,7 +180,7 @@ export default function CodedSearchField({
           ref={menuRef}
           id={listId}
           role="listbox"
-          className="fixed rounded-lg border overflow-hidden overflow-y-auto"
+          className="csf-menu fixed overflow-hidden overflow-y-auto"
           // Mousedown inside the menu (options, scrollbar) must not blur the
           // input — blur is what closes the dropdown, and the option's click
           // event only fires if the menu is still mounted.
@@ -178,7 +188,6 @@ export default function CodedSearchField({
           style={{
             top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight,
             zIndex: 3000, // above modal overlays (2000) — used inside SectionPopup / AddAllergyModal
-            background: 'var(--bg-card)', borderColor: 'var(--border-light)', boxShadow: 'var(--card-shadow-lg)',
           }}
         >
           {matches.map(option => (
@@ -188,15 +197,14 @@ export default function CodedSearchField({
               role="option"
               aria-selected={false}
               onClick={() => { onSelect(option); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-white/5 transition-colors"
-              style={{ borderBottom: '1px solid var(--border-light)' }}
+              className="csf-row"
             >
               {showCodeBadge && (
-                <span className="font-mono text-xs px-2 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>{option.code}</span>
+                <span className="csf-row-code">{option.code}</span>
               )}
               <span className="min-w-0">
-                <span className="text-sm font-bold block truncate" style={{ color: 'var(--text-primary)' }}>{option.name}</span>
-                {option.meta && <span className="text-[11px] block truncate" style={{ color: 'var(--text-muted)' }}>{option.meta}</span>}
+                <span className="csf-row-name">{option.name}</span>
+                {option.meta && <span className="csf-row-meta">{option.meta}</span>}
               </span>
             </button>
           ))}
@@ -206,10 +214,10 @@ export default function CodedSearchField({
               role="option"
               aria-selected={false}
               onClick={() => { onAddCustom!(customText); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-white/5 transition-colors"
+              className="csf-row csf-row--add"
             >
               <Plus className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} aria-hidden />
-              <span className="text-sm font-bold truncate" style={{ color: 'var(--accent-primary)' }}>Add &ldquo;{customText}&rdquo;</span>
+              <span className="csf-row-name">Add &ldquo;{customText}&rdquo;</span>
             </button>
           )}
         </div>,

@@ -64,6 +64,15 @@ describe('appointment calendar visibility', () => {
     expect(canViewAppointment(unassigned, { _id: 'nurse-1', role: 'nurse' })).toBe(false);
   });
 
+  test('nutritionists and radiologists see the visits they hold, and only those', () => {
+    const nutrition = appointment({ _id: 'appointment-nutrition', providerId: 'nutr-1', staffId: '' });
+    const scan = appointment({ _id: 'appointment-scan', providerId: 'doctor-1', staffId: 'rad-1' });
+    expect(canViewAppointment(nutrition, { _id: 'nutr-1', role: 'nutritionist' })).toBe(true);
+    expect(canViewAppointment(scan, { _id: 'rad-1', role: 'radiologist' })).toBe(true);
+    expect(canViewAppointment(assigned, { _id: 'nutr-1', role: 'nutritionist' })).toBe(false);
+    expect(canViewAppointment(nutrition, { _id: 'rad-1', role: 'radiologist' })).toBe(false);
+  });
+
   test('unrelated roles and anonymous viewers fail closed', () => {
     expect(canViewAppointment(assigned, { _id: 'lab-1', role: 'lab_tech' })).toBe(false);
     expect(canViewAppointment(assigned, null)).toBe(false);

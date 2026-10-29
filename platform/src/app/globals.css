@@ -45,16 +45,20 @@
   --input-radius: 10px;
   --sidebar-width: 220px;
   --sidebar-collapsed: 72px;
-  /* IBM Plex Sans everywhere — the OpenMRS O3 / Carbon face. One typeface
-     across dashboards, chart, dialogs, login and portal; the older names
-     below stay as aliases so the ~200 rules that use them need no edit. */
-  --font-platform: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
-  /* Headings and uppercase micro-labels used to sit on a condensed cut.
-     O3 sets them in the same Plex as the body, so this is now an alias. */
-  --font-condensed: var(--font-platform);
-  --font-platform-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Barlow, per the Clinical App design — the same voice tamamhealth.org
+     speaks, so a user crossing from the site into the app never changes
+     typeface. */
+  --font-platform: var(--font-barlow), 'Barlow', system-ui, sans-serif;
+  /* The condensed cut carries the design's headings and its letterspaced
+     uppercase micro-labels ("TODAY BY ACUITY", "AUGUST 2026"). Those set the
+     app's tone as much as the palette does, and no amount of tracking on a
+     normal-width face reproduces them. */
+  --font-condensed: var(--font-barlow-condensed), 'Barlow Condensed', var(--font-platform);
+  --font-platform-mono: var(--font-jetbrains-mono), 'JetBrains Mono', system-ui, sans-serif;
   --font-mono: var(--font-platform-mono);
-  --font-omrs: var(--font-platform);
+  /* Carbon's typeface, for the Tamam-styled surfaces only (`.tamam-reg`).
+     Never set this on body — the platform is Barlow. */
+  --font-omrs: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
 
   /* ============ Typography tokens ============
      Keep the app uniform by naming roles, not one-off pixel values. */
@@ -25151,6 +25155,93 @@ table.patient-data-table.patient-data-table {
   border-bottom: 0;
 }
 
+/* A patient's orders inside their one queue row (EhrPatientOrderList): one
+   hairline-ruled line per order — what it is, its own status, its own action. */
+/* A station's fact card in the right rail (lab turnaround, pharmacy stock):
+   label left, value right, one hairline between rows. */
+.ehr-station-facts {
+  margin: 0;
+}
+.ehr-station-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+}
+.ehr-station-facts > div:last-child { border-bottom: 0; }
+.ehr-station-facts dt { color: var(--text-secondary); }
+.ehr-station-facts dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: end;
+}
+.ehr-station-facts dd[data-tone='danger'] { color: var(--color-danger-text); }
+.ehr-station-facts dd[data-tone='warning'] { color: var(--color-warning-text, var(--color-warning)); }
+
+/* Chart station forms (Lab orders, Dispense): the order list or one order's
+   workflow, scrolling inside the docked workspace. */
+.station-orders__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+.station-orders__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Assign dialog: Doctor / Lab / Pharmacy / Radiology / Nutrition switch. */
+.assign-doctor-stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ehr-order-list {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ehr-order-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.ehr-order-list__item:last-child { border-bottom: 0; }
+.ehr-order-list__main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.ehr-order-list__main > strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.ehr-order-list__main > span {
+  margin-inline-start: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ehr-order-list__main > p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ehr-order-list__status,
+.ehr-order-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* With the underline gone, the facts line needs no gap below it either. */
 .ehr-row-detail__custom > .ehr-row-detail__body {
   row-gap: 6px;
@@ -26760,15 +26851,15 @@ table.patient-data-table.patient-data-table {
   display: flex;
   flex-direction: column;
   min-width: 180px;
-  background: var(--bg-card-solid);
-  border: 1px solid var(--border-medium);
-  border-radius: 12px;
-  box-shadow:
-    0 1px 2px rgba(0, 29, 63, 0.04),
-    0 12px 32px rgba(0, 29, 63, 0.14);
+  /* OpenMRS O3 (Carbon) dropdown: a square light-grey layer on one soft drop
+     shadow — no border, no radius, no glow. */
+  background: var(--color-slate-50);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--text-primary) 30%, transparent);
   overflow: hidden;
   outline: none;
-  animation: tselMenuIn 0.13s cubic-bezier(0.2, 0, 0.2, 1);
+  animation: tselMenuIn 0.11s cubic-bezier(0.2, 0, 0.38, 0.9);
   transform-origin: top center;
 }
 
@@ -26833,29 +26924,26 @@ table.patient-data-table.patient-data-table {
    same bar into the field you type in — the rows below narrow letter by
    letter while the bar keeps its place in the form. */
 
-/* The field's own focus treatment (see `input:focus` above), worn by the whole
-   popup: same 10px radius, same accent hairline, same 3px halo. Opening reads
-   as focusing the field, not as a panel landing on top of it. */
-.tsel-menu.is-inline {
-  border-radius: var(--input-radius);
-  border-color: var(--accent-primary);
-  box-shadow:
-    0 0 0 3px var(--accent-light),
-    0 16px 36px rgba(0, 29, 63, 0.13);
-}
-
+/* O3's open combo box: the bar is the field, square, with Carbon's 2px blue
+   inset focus outline; the list hangs from it on the same grey layer. */
 .tsel-menu.is-inline .tsel-search {
-  height: var(--tsel-trigger-h, 42px);
+  height: var(--tsel-trigger-h, 40px);
   display: flex;
   align-items: center;
   padding: 0;
+  background: var(--bg-card-solid);
+  border-bottom: 1px solid var(--border-medium);
+}
+
+.tsel-menu .tsel-search:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent-primary) !important;
 }
 
 .tsel-menu.is-inline .tsel-search .tsel-search-icon {
   inset-inline-start: 15px;
   width: 16px;
   height: 16px;
-  color: var(--accent-text);
+  color: var(--text-secondary);
 }
 
 .tsel-menu.is-inline .tsel-search input {
@@ -26863,8 +26951,8 @@ table.patient-data-table.patient-data-table {
   /* Left clears the magnifier; right clears the caret/count. Matches the
      field's own 16px text inset closely enough to look untouched. */
   padding: 0 44px 0 41px;
-  font-size: var(--tsel-trigger-fs, 0.85rem);
-  font-weight: 700;
+  font-size: var(--tsel-trigger-fs, 14px);
+  font-weight: 400;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -26887,7 +26975,7 @@ table.patient-data-table.patient-data-table {
      still show now that its own chevron is covered. */
   transform: translateY(-50%) rotate(180deg);
   pointer-events: none;
-  color: var(--accent-text);
+  color: var(--text-secondary);
 }
 
 /* Rows left after filtering, sitting where the chevron was. */
@@ -26917,13 +27005,13 @@ table.patient-data-table.patient-data-table {
 
 .tsel-menu.is-inline.is-flipped .tsel-search {
   border-bottom: none;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-medium);
 }
 
 .tsel-list {
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 6px;
+  padding: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--color-slate-300) transparent;
 
@@ -26933,8 +27021,8 @@ table.patient-data-table.patient-data-table {
      cover the two `scroll` ones, so each shadow fades out exactly as that end
      of the list is reached. No JS, no measuring. */
   background:
-    linear-gradient(var(--bg-card-solid) 30%, rgba(255, 255, 255, 0)) top / 100% 16px local no-repeat,
-    linear-gradient(rgba(255, 255, 255, 0), var(--bg-card-solid) 70%) bottom / 100% 16px local no-repeat,
+    linear-gradient(var(--color-slate-50) 30%, transparent) top / 100% 16px local no-repeat,
+    linear-gradient(transparent, var(--color-slate-50) 70%) bottom / 100% 16px local no-repeat,
     radial-gradient(farthest-side at 50% 0, rgba(0, 29, 63, 0.11), rgba(0, 29, 63, 0)) top / 100% 7px scroll no-repeat,
     radial-gradient(farthest-side at 50% 100%, rgba(0, 29, 63, 0.11), rgba(0, 29, 63, 0)) bottom / 100% 7px scroll no-repeat;
 }
@@ -26945,58 +27033,78 @@ table.patient-data-table.patient-data-table {
 .tsel-list::-webkit-scrollbar-track { background: transparent; }
 .tsel-list::-webkit-scrollbar-thumb {
   background: var(--color-slate-300);
-  border: 3px solid var(--bg-card-solid);
+  border: 3px solid var(--color-slate-50);
   border-radius: 999px;
 }
 .tsel-list::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 .tsel-row {
   width: 100%;
-  min-height: 36px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 0 12px;
+  padding: 0 16px;
   border: none;
+  border-radius: 0;
+  /* Carbon's item divider: a hairline across the top of each row after the
+     first, inset 16px from both edges. Drawn as a background so it can step
+     aside for a highlighted row (below) without shifting anything. */
   background: transparent;
-  border-radius: 8px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-family: var(--font-platform);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 18px;
   text-align: start;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background-color 0.11s ease, color 0.11s ease;
+}
+.tsel-row + .tsel-row {
+  background-image: linear-gradient(var(--border-light), var(--border-light));
+  background-size: calc(100% - 32px) 1px;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 
-/* Labels start where the typed query starts (6px list padding + 35px = the
-   input's 41px inset), so the eye follows one column from the box down through
-   the matches rather than two staggered edges. */
+/* Labels start where the typed query starts (the input's 41px inset), so the
+   eye follows one column from the box down through the matches. */
 .tsel-menu.is-inline .tsel-row {
-  padding-inline-start: 35px;
+  padding-inline-start: 41px;
+}
+.tsel-menu.is-inline .tsel-row + .tsel-row {
+  background-size: calc(100% - 57px) 1px;
+  background-position: right 16px top;
 }
 
 /* Keyboard and pointer share one highlight, so arrowing down and hovering
-   never disagree about which row is about to be chosen. */
+   never disagree about which row is about to be chosen. A filled row and the
+   row under it drop their dividers, as in O3. */
 .tsel-row.is-active {
-  background: var(--overlay-subtle);
+  background-color: var(--color-slate-100);
+  color: var(--text-primary);
 }
 
 .tsel-row.is-selected {
-  background: var(--accent-light);
-  color: var(--accent-text);
+  background-color: var(--color-slate-150);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
-/* Already chosen *and* under the cursor — needs to sit a step above both, or
-   arrowing onto the current row looks like nothing happened. */
+/* Already chosen *and* under the cursor — a step above both, or arrowing
+   onto the current row looks like nothing happened. */
 .tsel-row.is-selected.is-active {
-  background: rgba(33, 145, 208, 0.16);
+  background-color: var(--color-slate-200);
+}
+
+:is(.tsel-row.is-active, .tsel-row.is-selected),
+:is(.tsel-row.is-active, .tsel-row.is-selected) + .tsel-row {
+  background-image: none;
 }
 
 .tsel-row:disabled {
-  opacity: 0.45;
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
@@ -27008,25 +27116,19 @@ table.patient-data-table.patient-data-table {
   white-space: nowrap;
 }
 
-/* The matched run of characters. Flat treatment — weight and accent colour,
-   no highlighter block, which would fight the row tints above. */
+/* The matched run of characters: weight only, in the row's own ink — O3
+   bolds the match, it does not colour it. */
 .tsel-mark {
   background: none;
-  color: var(--accent-text);
-  font-weight: 700;
-}
-
-.tsel-row.is-selected .tsel-mark {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .tsel-row-tick {
   flex: none;
-  width: 15px;
-  height: 15px;
-  color: var(--accent-text);
+  width: 16px;
+  height: 16px;
+  color: var(--text-primary);
 }
 
 .tsel-empty {
@@ -27036,6 +27138,53 @@ table.patient-data-table.patient-data-table {
   color: var(--text-muted);
   text-align: center;
 }
+
+/* CodedSearchField's results (ICD-11, drugs, allergens…): the same O3 menu —
+   square grey layer, 40px+ rows with inset hairlines, grey hover. */
+.csf-menu {
+  background: var(--color-slate-50);
+  border: 0;
+  border-radius: 0;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--text-primary) 30%, transparent);
+}
+.csf-row {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.csf-row + .csf-row {
+  background-image: linear-gradient(var(--border-light), var(--border-light));
+  background-size: calc(100% - 32px) 1px;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+.csf-row:hover,
+.csf-row:focus-visible { background-color: var(--color-slate-100); outline: none; }
+.csf-row:hover + .csf-row,
+.csf-row:focus-visible + .csf-row { background-image: none; }
+.csf-row:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-primary); }
+.csf-row-name { display: block; color: var(--text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csf-row-meta { display: block; font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csf-row-code {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 0;
+  background: var(--color-slate-150);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.csf-row--add .csf-row-name { color: var(--accent-text); }
 
 @media (prefers-reduced-motion: reduce) {
   .tsel-menu { animation: none; }
@@ -35085,8 +35234,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .ehr-user-menu,
 .ehr-top-search-menu,
 .notifications-popover,
-.ehr-visit-more-menu,
-.tsel-menu {
+.ehr-visit-more-menu {
   box-shadow: var(--shadow-menu);
 }
 .notifications-popover { box-shadow: var(--shadow-popover); }
@@ -36065,3 +36213,43 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 }
 .tm-form-notices[hidden] { display: none; }
 @media (max-width: 639px) { .tm-form-notices { padding-inline: 16px; } }
+
+/* ── Nutrition supplies page (/dashboard/nutrition/supplies) — `nsup-`.
+   Stock keeping moved off the old nutrition station's centre panel when that
+   station became the shared clinical workspace. ── */
+.nsup-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.nsup-head h1 { margin: 0; font-size: var(--type-size-page-title); color: var(--text-strong, var(--text-primary)); }
+.nsup-card { padding: 0; overflow: auto; }
+.nsup-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.nsup-table th {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: start;
+}
+.nsup-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-primary); }
+.nsup-table tr:last-child td { border-bottom: 0; }
+.nsup-table tr[data-status='critical'] td { background: var(--color-danger-bg); }
+.nsup-table tr[data-status='low'] td { background: var(--color-warning-bg); }
+.nsup-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.nsup-table tr[data-status='critical'] .nsup-name svg.lucide { color: var(--color-danger-text); }
+.nsup-table tr[data-status='low'] .nsup-name svg.lucide { color: var(--color-warning-text); }
+.nsup-table tr[data-status='ok'] .nsup-name svg.lucide { color: var(--color-success-text); }
+.nsup-stepper { display: inline-flex; align-items: center; gap: 10px; }
+.nsup-stepper b { min-width: 96px; text-align: center; font-weight: 600; }
+.nsup-stepper button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-control, 6px);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.nsup-stepper button:hover { background: var(--bg-app); }
+.nsup-empty { text-align: center; color: var(--text-secondary); padding: 24px 16px; }

@@ -749,7 +749,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                     {pendingPayments.map(p => (
                       <tr key={p._id}>
                         <td style={{ fontWeight: 600 }}>{shortenPersonName(p.patientName)}</td>
-                        <td className="bl-muted" style={{ fontFamily: 'var(--font-platform-mono)' }}>{p.reference}</td>
+                        <td className="bl-muted" style={{ fontFamily: 'monospace' }}>{p.reference}</td>
                         <td>{getMethodConfig(p.method).label}</td>
                         <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
                           {p.createdAt ? new Date(p.createdAt).toLocaleString() : ''}
@@ -973,7 +973,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                   <div className="bl-fee-name">{shortenPersonName(reverseFor.payment.patientName)}</div>
                   <div className="bl-fee-cat">
                     {getMethodConfig(reverseFor.payment.method).label}
-                    {reverseFor.payment.reference && <span style={{ fontFamily: 'var(--font-platform-mono)' }}> · {reverseFor.payment.reference}</span>}
+                    {reverseFor.payment.reference && <span style={{ fontFamily: 'monospace' }}> · {reverseFor.payment.reference}</span>}
                   </div>
                 </div>
                 <span className="bl-num" style={{ fontWeight: 700, color: 'var(--color-danger-text)' }}>{formatMoney(reverseFor.mode === 'refund' ? reverseFor.payment.amount - (reverseFor.payment.refundedAmount ?? 0) : reverseFor.payment.amount)}</span>
@@ -1039,7 +1039,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                         >
                           <div className="min-w-0">
                             <div className="bl-fee-name">{shortenPersonName(line.patientName)}</div>
-                            {line.hospitalNumber && <div className="bl-fee-cat" style={{ fontFamily: 'var(--font-platform-mono)' }}>{line.hospitalNumber}</div>}
+                            {line.hospitalNumber && <div className="bl-fee-cat" style={{ fontFamily: 'monospace' }}>{line.hospitalNumber}</div>}
                           </div>
                           <span className="bl-num" style={{ fontWeight: 700, color: 'var(--color-danger-text)' }}>{formatMoney(line.outstanding)}</span>
                         </button>
@@ -1212,8 +1212,8 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
               </span>
             </div>
             <div className="bl-muted" style={{ fontSize: 11, textAlign: 'end' }}>
-              <div>{t('payments.charged')}: <span style={{ color: 'var(--ehr-text, #113055)', fontFamily: 'var(--font-platform-mono)' }}>{formatMoney(line.totalCharged)}</span></div>
-              <div>{t('payments.collected')}: <span style={{ color: 'var(--color-success-text)', fontFamily: 'var(--font-platform-mono)' }}>{formatMoney(line.totalCollected)}</span></div>
+              <div>{t('payments.charged')}: <span style={{ color: 'var(--ehr-text, #113055)', fontFamily: 'monospace' }}>{formatMoney(line.totalCharged)}</span></div>
+              <div>{t('payments.collected')}: <span style={{ color: 'var(--color-success-text)', fontFamily: 'monospace' }}>{formatMoney(line.totalCollected)}</span></div>
             </div>
           </div>
         </div>
@@ -1291,7 +1291,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                           {reversed && <span className="bl-chip bl-chip--cancelled">{humanizeStatus(p.status)}</span>}
                         </div>
                         <div className="bl-fee-cat">
-                          {p.reference && <span style={{ fontFamily: 'var(--font-platform-mono)' }}>{p.reference} · </span>}
+                          {p.reference && <span style={{ fontFamily: 'monospace' }}>{p.reference} · </span>}
                           {new Date(p.processedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
                         {(p.mobileMoneyPhone || p.cardLast4) && (
@@ -1349,7 +1349,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     <div className="min-w-0">
                       <div className="bl-fee-name">{c.payerName}</div>
                       <div className="bl-fee-cat">
-                        {c.claimNumber && <span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.claimNumber} · </span>}
+                        {c.claimNumber && <span style={{ fontFamily: 'monospace' }}>{c.claimNumber} · </span>}
                         {c.submittedDate ? t('payments.submittedOn', { date: c.submittedDate.slice(0, 10) }) : t('payments.draft')}
                       </div>
                     </div>

@@ -815,9 +815,26 @@ export function useTriageForm({
         // catch block below is what handles a rejected save; there is no
         // falsy "it silently failed" result to check for.
         const existingTriage = triageHistory.find(h => h._id === editingTriageId);
+        // Saving the form again IS the patient's latest triage — a repeat
+        // assessment of a patient whose triage is still open lands here, not
+        // in createTriage. Stamp it as such: when and by whom, so the chart's
+        // SBAR (which reads the newest triage) shows this assessment rather
+        // than the first one's time and nurse, and the vitals read as fresh.
+        // The payload resets the handoff to assigned/awaiting, so the
+        // receiving provider's acknowledgement of the OLD handoff goes too —
+        // they have a new one to acknowledge.
+        const reassessment = {
+          ...payload,
+          triagedAt: now,
+          triagedBy: currentUser?._id || existingTriage?.triagedBy || '',
+          triagedByName: currentUser?.name || existingTriage?.triagedByName || 'Unknown Nurse',
+          acknowledgedAt: undefined,
+          acknowledgedBy: undefined,
+          acknowledgedByName: undefined,
+        };
         await updateTriageRecord(
           editingTriageId,
-          existingTriage?.status === 'pending' ? { ...payload, status: 'seen' } : payload,
+          existingTriage?.status === 'pending' ? { ...reassessment, status: 'seen' } : reassessment,
           currentActor,
         );
       } else {

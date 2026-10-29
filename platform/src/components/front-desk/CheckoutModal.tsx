@@ -14,6 +14,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { allowedChartTabIds, chartHrefOpensForViewer } from '@/lib/chart-tabs';
 import { makeCoalescer } from '@/lib/hooks/live-reload';
 import { postConsultReady } from '@/modules/post-consult/client';
+import Select from '@/components/Select';
 
 /** Encounter statuses at or past the clinician closing their part of a visit. */
 const CLOSES_CLINIC_PORTION_OR_LATER = new Set<string>([
@@ -313,7 +314,7 @@ export default function CheckoutModal({
             <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
               Disposition
             </span>
-            <select
+            <Select
               value={disposition}
               onChange={e => setDisposition(e.target.value as typeof disposition)}
               className="mt-1 w-full rounded-lg px-3 py-2 text-[12px]"
@@ -322,7 +323,7 @@ export default function CheckoutModal({
               <option value="discharged">Routine discharge</option>
               <option value="discharged_with_referral">Discharged with referral</option>
               <option value="dismissed_without_formal_checkout">Patient left without formal checkout</option>
-            </select>
+            </Select>
           </label>
           {(!!gate?.blocking.length || disposition === 'dismissed_without_formal_checkout') && (
             <div role="status">

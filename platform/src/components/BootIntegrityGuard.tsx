@@ -133,7 +133,7 @@ export default function BootIntegrityGuard() {
         position: 'fixed', inset: 0, zIndex: 2147483647,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, boxSizing: 'border-box',
         background: '#001d3f', color: '#f1f3f5',
-        fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+        fontFamily: 'system-ui, sans-serif',
       }}
     >
       <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>

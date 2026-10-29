@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { RefreshCw } from '@/components/icons/lucide';
 import type { VisitFinancialEvidence } from '../evidence';
 import styles from './VisitFinancialReview.module.css';
+import Select from '@/components/Select';
 
 type Visit = VisitFinancialEvidence & { startedAt: string };
 
@@ -58,10 +59,10 @@ export function VisitFinancialReview({ patientId, encounterId }: { patientId: st
       </div>
       <div className={styles.selection}>
         <label htmlFor={selectId}>{t('financialReview.visit')}</label>
-        <select id={selectId} value={visit?.encounterId ?? ''} onChange={event => setSelected(event.target.value)} disabled={!visits.length}>
+        <Select id={selectId} value={visit?.encounterId ?? ''} onChange={event => setSelected(event.target.value)} disabled={!visits.length}>
           {!visits.length && <option value="">{t('financialReview.noVisit')}</option>}
           {visits.map(item => <option key={item.encounterId} value={item.encounterId}>{new Date(item.startedAt).toLocaleString()} — {item.encounterId}</option>)}
-        </select>
+        </Select>
         <span className={styles.status} data-status={loading || failed ? 'not_reviewed' : status} role="status">
           {t(loading ? 'financialReview.loading' : failed ? 'financialReview.unavailable' : `financialReview.${status}`)}
         </span>

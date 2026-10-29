@@ -18,6 +18,10 @@ export const FACILITY_APPOINTMENT_ROLES: readonly UserRole[] = [
 
 const PROVIDER_ROLES: readonly UserRole[] = ['doctor', 'clinical_officer', 'clinician'];
 const NURSING_ROLES: readonly UserRole[] = ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'];
+// Service roles that work the shared clinical workspace (NutritionHomeView,
+// RadiologyHomeView) and book into it: their book is the visits they hold,
+// as the provider or as the visit's second person.
+const SERVICE_ROLES: readonly UserRole[] = ['nutritionist', 'radiologist', 'lab_tech', 'pharmacist'];
 
 /**
  * Calendar/worklist visibility is narrower than tenant data visibility.
@@ -35,7 +39,7 @@ export function canViewAppointment(appointment: AppointmentDoc, viewer?: Appoint
   if (PROVIDER_ROLES.includes(viewer.role)) return appointment.providerId === viewer._id;
   // At primary-care facilities a nurse or midwife may carry the visit as the
   // responsible provider rather than as secondary staff.
-  if (NURSING_ROLES.includes(viewer.role)) {
+  if (NURSING_ROLES.includes(viewer.role) || SERVICE_ROLES.includes(viewer.role)) {
     return appointment.staffId === viewer._id || appointment.providerId === viewer._id;
   }
   return false;

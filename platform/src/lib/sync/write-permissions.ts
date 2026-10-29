@@ -398,6 +398,8 @@ export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   appointment: [
     'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
     'triage_nurse', 'rooming_nurse', 'medical_superintendent', 'super_admin',
+    // Same clinical workspace, same Book appointment (usePermissions).
+    'nutritionist', 'radiologist',
   ],
   // Ward/rooming vitals are stored as medical_record documents so the chart,
   // trends and sync worker all consume one canonical observation stream. Do
@@ -540,6 +542,8 @@ export const PATIENT_CARE_TEAM_FIELDS = [
   'assignmentAcceptedByName', 'assignmentSource', 'assignmentTransferId',
   'assignedNurse', 'assignedNurseName',
   'assignedNurseAt', 'assignedNurseBy', 'assignedNurseByName', 'careTeam',
+  // Lab / pharmacy / radiology / nutrition routing — reception's, like the rest.
+  'stationAssignments',
 ] as const;
 
 /**

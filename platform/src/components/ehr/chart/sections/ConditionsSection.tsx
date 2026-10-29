@@ -56,10 +56,15 @@ interface ConditionsSectionProps {
   onAutoOpenHandled?: () => void;
   /** Deep-link focus: the condition `_id` to scroll to and highlight. */
   focusId?: string;
+  /** Render only the Add slider, over whatever tab is open — a button
+   *  elsewhere in the chart opens the form where it was pressed. */
+  formOnly?: boolean;
+  /** Form-only mode: the slider closed (saved or cancelled). */
+  onFormClosed?: () => void;
 }
 
 export default function ConditionsSection({
-  patientId, patientName, autoOpenAdd, onAutoOpenHandled, noKnownProblems, reconciledAt, focusId,
+  patientId, patientName, autoOpenAdd, onAutoOpenHandled, noKnownProblems, reconciledAt, focusId, formOnly, onFormClosed,
 }: ConditionsSectionProps) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
@@ -164,7 +169,10 @@ export default function ConditionsSection({
     }
   };
 
-  const resetForm = () => { setSearch(''); setPickedCode(null); setOnsetDate(''); setAdding(false); };
+  const resetForm = () => {
+    setSearch(''); setPickedCode(null); setOnsetDate(''); setAdding(false);
+    if (formOnly) onFormClosed?.();
+  };
 
   const handleSubmit = async () => {
     if (!pickedCode) { showToast(t('msg.selectADiagnosis'), 'error'); return; }
@@ -200,6 +208,7 @@ export default function ConditionsSection({
 
   return (
     <>
+      {!formOnly && <>
       <ChartSection title="Conditions" addLabel="Add" onAdd={canEditClinical ? () => setAdding(true) : undefined} searchValue={tableSearch} onSearchChange={setTableSearch}>
         {/* Attested at a problem review in a note: an empty list means nobody
             has asked, this means someone asked and the answer was none. */}
@@ -287,6 +296,8 @@ export default function ConditionsSection({
           </DialogFrame>
         </Modal>
       )}
+
+      </>}
 
       {adding && (
         <FormSlider

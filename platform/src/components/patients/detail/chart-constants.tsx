@@ -40,7 +40,7 @@ export type FacesheetActions = Partial<Record<FacesheetPanelId, {
   icon?: typeof Plus;
 }>>;
 
-export const ARRIVAL_PARAMS = ['focus', 'value', 'unit', 'range', 'note'];
+export const ARRIVAL_PARAMS = ['focus', 'value', 'unit', 'range', 'note', 'form'];
 
 /** Drop the one-shot arrival params from the address bar. The current history
  *  state is passed through rather than replaced with null: the App Router

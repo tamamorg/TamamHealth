@@ -62,3 +62,46 @@ body .tamam-root table tbody td:last-child:has(.tm-row-actions-trigger) {
 body .tamam-root .tamam-table tbody tr:hover > td {
   background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-card-solid));
 }
+
+/* Money reads by its last digit: the amount column aligns right, head and
+   cells alike. */
+body .tamam-root .tamam-table :is(th, td).tamam-cell-amount { text-align: end; }
+
+/* Dates, times and reference numbers: tabular figures in the body face.
+   Several lists had them in the monospace face, which read as a different
+   table from the one beside it. */
+body .tamam-root .tamam-table td.tamam-num {
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* a long reference ends in … (full text on hover), never spills over the next column */
+}
+
+/* Column shares for the wider lists. Each sums to 94%: the remainder is the
+   fixed 72px Actions column above, so the data columns fill the row instead
+   of crowding into equal slices. */
+body .tamam-root .tamam-table--orders th:nth-child(1) { width: 12%; }
+body .tamam-root .tamam-table--orders th:nth-child(2) { width: 11%; }
+body .tamam-root .tamam-table--orders th:nth-child(3) { width: 11%; }
+body .tamam-root .tamam-table--orders th:nth-child(4) { width: 24%; }
+body .tamam-root .tamam-table--orders th:nth-child(5) { width: 9%; }
+body .tamam-root .tamam-table--orders th:nth-child(6) { width: 15%; }
+body .tamam-root .tamam-table--orders th:nth-child(7) { width: 12%; }
+
+body .tamam-root .tamam-table--activity th:nth-child(1) { width: 12%; }
+body .tamam-root .tamam-table--activity th:nth-child(2) { width: 13%; }
+body .tamam-root .tamam-table--activity th:nth-child(3) { width: 27%; }
+body .tamam-root .tamam-table--activity th:nth-child(4) { width: 16%; }
+body .tamam-root .tamam-table--activity th:nth-child(5) { width: 12%; }
+body .tamam-root .tamam-table--activity th:nth-child(6) { width: 14%; }
+
+body .tamam-root .tamam-table--documents th:nth-child(1) { width: 22%; }
+body .tamam-root .tamam-table--documents th:nth-child(2) { width: 15%; }
+body .tamam-root .tamam-table--documents th:nth-child(3) { width: 12%; }
+body .tamam-root .tamam-table--documents th:nth-child(4) { width: 27%; }
+body .tamam-root .tamam-table--documents th:nth-child(5) { width: 18%; }
+
+/* The Actions column is 72px even when this viewer can do nothing on any row
+   (an empty menu renders no ⋮, so the `:has(trigger)` rule above cannot see
+   it) — otherwise a fixed table hands it a full equal share of empty space. */
+body .tamam-root table thead th.tamam-col-actions { width: 72px; text-align: center; }

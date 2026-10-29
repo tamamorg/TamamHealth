@@ -14,7 +14,7 @@ export const LAB_STEPS: TourStep[] = [
   {
     id: 'lifecycle',
     route: '/dashboard/lab',
-    target: '[data-tour="station-tabs"]',
+    target: '.ehr-day-tabs',
     placement: 'bottom',
     title: 'The order lifecycle',
     body: 'Every order is a state machine: ordered → specimen collected → received at lab → in process → resulted → reviewed by clinician. Rejected specimens loop back for re-collection. STAT orders arrive already in-process and flagged.',
@@ -22,23 +22,23 @@ export const LAB_STEPS: TourStep[] = [
   {
     id: 'specimen-intake',
     route: '/dashboard/lab',
-    target: '[data-tour="station-queue"]',
+    target: '.ehr-appointment-list',
     placement: 'right',
     title: 'Specimen intake',
-    body: 'Collect the specimen, then Receive at lab once it reaches the bench — or Reject with a reason if it’s compromised; a rejected specimen loops back to Ordered for re-collection.',
+    body: 'One row per patient — their most pressing test, plus how many more. Open a row for the patient’s tests, the visit and vitals; Work opens the chart with the Lab orders form up. There: collect the specimen, receive it at the bench — or reject it with a reason, which loops it back for re-collection.',
   },
   {
     id: 'result-entry',
     route: '/dashboard/lab',
-    target: '[data-tour="station-queue"]',
+    target: '.ehr-appointment-list',
     placement: 'right',
     title: 'Enter a result',
-    body: 'Start processing, then enter the result with value, unit, reference range, and abnormal/critical flags. This bench workflow lives in the patient’s own chart — open it from any row here.',
+    body: 'Start processing, then enter the result with value, unit, reference range, and abnormal/critical flags — all in the chart’s Lab orders form, beside the record.',
   },
   {
     id: 'critical',
     route: '/dashboard/lab',
-    target: '[data-tour="side-cards"]',
+    target: '.ehr-outstanding-card',
     placement: 'left',
     title: 'Critical results — two eyes',
     body: 'Entered values are auto-scored against the critical-value table — the Critical tile here tracks the count. A critical result requires a two-person confirmation and fires a high-priority message to the ordering clinician.',
@@ -53,20 +53,11 @@ export const LAB_STEPS: TourStep[] = [
   {
     id: 'batch',
     route: '/dashboard/lab',
-    // Not `station-body`: this page self-closes <EhrCareDashboard />, and the
-    // shell only renders station-body when it is given children, so the old
-    // target matched nothing and the step fell back to a centred card. Not
-    // `station-actions` either — the shell promotes the FIRST action into the
-    // primary slot, and this page passes exactly one, leaving station-actions
-    // rendered but empty and zero-sized. The button this step describes is the
-    // primary action.
-    target: '[data-tour="station-primary-action"]',
-    placement: 'bottom',
+    // A header action on the shared workspace, which has no tour anchor of its
+    // own — narrative rather than an invented selector.
+    target: '',
     title: 'Batch result entry',
-    // Analyzer import is on the registry (/lab), not here — a later step
-    // covers it. Describing it on this screen sent people looking for a
-    // control that isn't on it.
-    body: 'Enter a whole run of the same test in one pass. Single results are entered in the patient chart’s bench workflow instead.',
+    body: 'Batch entry, in the header, fills in a whole run of the same test in one pass. Single results are entered in the chart’s Lab orders form instead.',
   },
   {
     id: 'registry-worklists',

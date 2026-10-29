@@ -20,9 +20,10 @@ import {
   Stethoscope,
   X,
 } from '@/components/icons/lucide';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import EhrMissionCard from './EhrMissionCard';
 import EhrPanelTitle from './EhrPanelTitle';
+import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
@@ -102,6 +103,29 @@ export type WorklistPatient = {
   assignedNurse?: string;
   assignmentStatus?: 'assigned' | 'accepted' | 'in_progress' | 'completed';
   assignmentNote?: string;
+  /**
+   * A station's own reading of the row (lab, pharmacy, radiology, nutrition):
+   * the worklist is the doctor's, but what a row says is the station's work —
+   * "Collect specimen", not the visit rung. Each field overrides the doctor
+   * column it names; a doctor's rows never set them.
+   */
+  station?: {
+    /** The Time column — when the order came in — and the line under it. */
+    timeLabel?: string;
+    timeSubtext?: string;
+    /** The Context column: the work itself ("HIV Rapid Test +2") and its detail. */
+    context?: string;
+    contextSubtext?: string;
+    status: string;
+    statusTone?: 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger';
+    statusSubtext?: string;
+    /** The Care team column's second line (the doctor's nurse slot). */
+    careTeamSecondary?: string;
+    /** Which lane tab the row files under. */
+    lane: AppointmentStatusGroup;
+    /** Where Open chart lands: the chart with the station's form up. */
+    chartHref?: string;
+  };
 };
 
 export type UnifiedPatientRow = {
@@ -324,7 +348,7 @@ export function buildUnifiedPatientRows({
       assignmentStatus: patient.assignmentStatus || (patient.assignedDoctor ? 'assigned' : undefined),
       assignmentNote: patient.assignmentNote,
       reason: appointment?.reason || patient.division || patient.ward || (patient.assignedDoctor ? 'Assigned patient' : 'Awaiting provider'),
-      timeLabel: appointment?.appointmentTime ? formatClockTime(appointment.appointmentTime) : (patient.assignedDoctor ? 'Assigned' : 'Unclaimed'),
+      timeLabel: appointment?.appointmentTime ? formatClockTime(appointment.appointmentTime) : (patient.station?.timeLabel || (patient.assignedDoctor ? 'Assigned' : 'Unclaimed')),
       status: status as AppointmentStatus,
       department,
       // Only borrow the viewing clinician's own name once the patient
@@ -488,6 +512,16 @@ export interface RowQueueColumns {
   operationalLane: VisitLane | null;
 }
 
+/** A station row's pill tint; a doctor's patient rows keep the confirmed tint. */
+function stationPillClass(tone: NonNullable<WorklistPatient['station']>['statusTone']): string {
+  return tone === 'done' ? 'status-completed'
+    : tone === 'active' ? 'status-checked-in'
+    : tone === 'danger' ? 'status-no-show'
+    : tone === 'warning' ? 'status-attention'
+    : tone === 'scheduled' ? 'status-scheduled'
+    : 'status-confirmed';
+}
+
 export function computeRowQueueColumns(
   row: UnifiedPatientRow,
   entry: QueueEntry | null,
@@ -532,10 +566,11 @@ export function computeRowQueueColumns(
         : assignment === 'completed'
           ? 'Completed'
           : null;
+  const station = row.appointment ? undefined : row.patient?.station;
   return {
     entry: entry ?? null,
     triage: triage ?? null,
-    comingFrom: entry
+    comingFrom: station?.context ? (station.contextSubtext ?? '') : entry
       ? (entry.stage === 'awaiting_triage' ? 'Registration' : 'Triage')
       : row.appointment ? 'Appointment' : 'Registry',
     careTeamPrimary: row.provider || entry?.assignedToName || 'Doctor unassigned',
@@ -551,22 +586,24 @@ export function computeRowQueueColumns(
        `staffName` onto the appointment (and `assignedNurseName` onto the
        patient), so the appointment is the field to read when there is no
        patient record on the row. */
-    careTeamSecondary: row.patient?.nurse || row.appointment?.staffName || 'Nurse unassigned',
-    statusText: operationalState?.label || (triage?.handoffStatus === 'acknowledged'
+    careTeamSecondary: row.patient?.station?.careTeamSecondary ?? (row.patient?.nurse || row.appointment?.staffName || 'Nurse unassigned'),
+    statusText: row.patient?.station?.status || operationalState?.label || (triage?.handoffStatus === 'acknowledged'
       ? 'Acknowledged'
       : triage?.assignedProviderId && triage.handoffStatus === 'assigned'
         ? 'Assigned'
         : inService
       ? 'In service'
       : entry ? 'Waiting' : assignmentLabel || statusLabel(row.status)),
-    queueText: operationalState?.label || (entry ? STAGE_LABELS[entry.stage] : typeLabel(row.department)),
-    waitText: entry ? formatClockTime(entry.enteredStageAt) : row.appointment?.appointmentTime ? formatClockTime(row.appointment.appointmentTime) : '—',
-    waitSubtext: entry
+    queueText: station?.context || operationalState?.label || (entry ? STAGE_LABELS[entry.stage] : typeLabel(row.department)),
+    waitText: station?.timeLabel ? station.timeLabel : entry ? formatClockTime(entry.enteredStageAt) : row.appointment?.appointmentTime ? formatClockTime(row.appointment.appointmentTime) : '—',
+    waitSubtext: station?.timeLabel ? (station.timeSubtext ?? '') : entry
       ? waitLabel(entry.minutesWaiting)
       // No appointment behind the row: say so, rather than a label that
       // reads like a booking detail.
       : appointmentRelative || row.appointment?.appointmentDate || 'No booking today',
-    statusSubtext: triage?.handoffStatus
+    statusSubtext: row.patient?.station?.statusSubtext !== undefined
+      ? row.patient.station.statusSubtext
+      : triage?.handoffStatus
       ? triage.handoffStatus.replaceAll('_', ' ')
       : entry?.acuity === 'RED'
       ? 'Critical'
@@ -669,6 +706,12 @@ export default function EhrClinicalDashboard({
   missionTitle,
   missionDescription,
   missionIcon,
+  extraHeaderActions,
+  laneLabels,
+  acuityDonut,
+  railCards,
+  stationDetail,
+  canWriteNotes = true,
 }: {
   clinicianName: string;
   patients: WorklistPatient[];
@@ -692,6 +735,22 @@ export default function EhrClinicalDashboard({
   missionTitle?: string;
   missionDescription?: string;
   missionIcon?: ComponentType<{ className?: string }>;
+  /**
+   * Role actions for the greeting row, after Print and before the nav
+   * shortcuts — e.g. the nutrition workspace's stock list. The role's own
+   * record-making work belongs in the chart, not here.
+   */
+  extraHeaderActions?: { key: string; label: string; icon: ComponentType<{ className?: string }>; run: () => void }[];
+  /** A station's names for the three lane tabs ("To collect", "On the bench", "Resulted"). */
+  laneLabels?: Partial<Record<AppointmentStatusGroup, string>>;
+  /** The left rail's ring, in the station's terms; defaults to today by acuity. */
+  acuityDonut?: { title: string; centerLabel: string; segments: { name: string; value: number; color: string }[] };
+  /** Station cards for the right rail, under Outstanding items (stock, turnaround). */
+  railCards?: ReactNode;
+  /** The station's section at the top of a row's expanded panel. */
+  stationDetail?: (patientId: string) => ReactNode;
+  /** False for roles that do not write clinical notes (lab, pharmacy, radiology). */
+  canWriteNotes?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1122,13 +1181,14 @@ export default function EhrClinicalDashboard({
       icon: Printer,
       run: () => setPrintOpen(true),
     },
+    ...(extraHeaderActions ?? []),
     ...quickNavItems.map(item => ({
       key: item.href,
       label: item.label,
       icon: item.icon,
       run: () => router.push(item.href),
     })),
-  ], [canDispense, quickNavItems, router, setFindPatientQuery, setFindPatientOpen, setPrintOpen]);
+  ], [canDispense, extraHeaderActions, quickNavItems, router, setFindPatientQuery, setFindPatientOpen, setPrintOpen]);
 
   /* The More menu's open state, and the outside-click that closes it. */
   const [moreOpen, setMoreOpen] = useState(false);
@@ -1238,6 +1298,7 @@ export default function EhrClinicalDashboard({
     // A live queue entry means the patient is physically here even when the
     // appointment rung still says scheduled/arrived (walk-ins, triage). The
     // encounter's lane outranks both — it is what the status chip displays.
+    if (row.patient?.station && !row.appointment) return row.patient.station.lane;
     const columns = rowQueueColumns(row);
     return computeRowStatusGroup(
       row.status,
@@ -1246,6 +1307,12 @@ export default function EhrClinicalDashboard({
     );
   };
   const groupCounts = tallyByStatusGroup(visiblePatientRows, rowStatusGroup);
+  // Move, escalate, left-without-being-seen and return-to-desk all write the
+  // triage record. A station role on this workspace (lab, pharmacy,
+  // radiology, nutrition) holds no triage grant, so the write would save
+  // locally and be refused at sync with nothing on screen.
+  const canWriteTriage = !!currentUser?.role && (DOC_WRITE_ROLES.triage ?? []).includes(currentUser.role);
+  const laneLabel = (group: AppointmentStatusGroup) => laneLabels?.[group] ?? APPOINTMENT_STATUS_GROUP_LABELS[group];
   const filteredPatientRows = visiblePatientRows.filter(row => rowStatusGroup(row) === worklistFilter);
 
   // The print dialog's choices: each lane as a pure text list, derived through
@@ -1253,7 +1320,7 @@ export default function EhrClinicalDashboard({
   // Built only while the dialog is open.
   const printSections: PrintListSection[] = printOpen ? APPOINTMENT_STATUS_GROUPS.map(group => ({
     key: group,
-    label: APPOINTMENT_STATUS_GROUP_LABELS[group],
+    label: laneLabel(group),
     columns: [
       { key: 'patient', label: 'Patient' },
       { key: 'reason', label: 'Reason' },
@@ -1907,9 +1974,9 @@ export default function EhrClinicalDashboard({
               triage colours of the doctor's own list, so the ring and the row
               plates can never disagree. */}
           <EhrStageDonut
-            title="Today by acuity"
-            centerLabel="on list"
-            segments={[
+            title={acuityDonut?.title ?? 'Today by acuity'}
+            centerLabel={acuityDonut?.centerLabel ?? 'on list'}
+            segments={acuityDonut?.segments ?? [
               { name: 'Emergency', value: visiblePatientRows.filter(row => row.triagePriority === 'RED').length, color: '#9E1B14' },
               { name: 'Urgent', value: visiblePatientRows.filter(row => row.triagePriority === 'YELLOW').length, color: '#B35900' },
               { name: 'Routine', value: visiblePatientRows.filter(row => row.triagePriority !== 'RED' && row.triagePriority !== 'YELLOW').length, color: '#0A6E4A' },
@@ -2082,7 +2149,7 @@ export default function EhrClinicalDashboard({
                   {/* The count is its own fixed-width cell: a lane going 7 → 24
                       would otherwise widen the whole tab row, and the row's
                       width is what positions the search field beside it. */}
-                  {APPOINTMENT_STATUS_GROUP_LABELS[group]} · <span className="ehr-day-tab-count">{groupCounts[group]}</span>
+                  {laneLabel(group)} · <span className="ehr-day-tab-count">{groupCounts[group]}</span>
                 </button>
               ))}
 	            </div>
@@ -2128,8 +2195,8 @@ export default function EhrClinicalDashboard({
                   )}
                   {visiblePatientRows.length > 0 && filteredPatientRows.length === 0 && (
                     <div className="ehr-empty-state">
-                      <strong>No {APPOINTMENT_STATUS_GROUP_LABELS[worklistFilter].toLowerCase()} patients</strong>
-                      <span>Nothing is in the {APPOINTMENT_STATUS_GROUP_LABELS[worklistFilter].toLowerCase()} lane right now.</span>
+                      <strong>No {laneLabel(worklistFilter).toLowerCase()} patients</strong>
+                      <span>Nothing is in the {laneLabel(worklistFilter).toLowerCase()} lane right now.</span>
                     </div>
                   )}
                   {filteredPatientRows.map((row) => {
@@ -2252,7 +2319,7 @@ export default function EhrClinicalDashboard({
                               />
                             );
                           })() : (
-                            <span className="appointment-status-pill status-confirmed">{columns.statusText}</span>
+                            <span className={`appointment-status-pill ${stationPillClass(row.patient?.station?.statusTone)}`}>{columns.statusText}</span>
                           )}
                           <small>{columns.statusSubtext}</small>
                         </div>
@@ -2277,24 +2344,25 @@ export default function EhrClinicalDashboard({
                             onAcknowledge={columns.triage && canConsult && columns.triage.assignedProviderId === currentUser?._id
                               ? () => void acknowledgeTriage(columns.triage!)
                               : undefined}
-                            onMove={columns.entry ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}
-                            onOpenChart={row.patientId ? () => router.push(`/patients/${row.patientId}`) : undefined}
+                            onMove={columns.entry && canWriteTriage ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}
+                            onOpenChart={row.patientId ? () => router.push(row.patient?.station?.chartHref || `/patients/${row.patientId}`) : undefined}
+                            stationBody={row.patientId ? stationDetail?.(row.patientId) : undefined}
                             onStartTriage={row.patientId && canTriage && (!columns.triage || columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => router.push(`/triage/${row.patientId}`)
                               : undefined}
-                            onEscalate={canEscalateVisit(columns.triage)
+                            onEscalate={canWriteTriage && canEscalateVisit(columns.triage)
                               ? () => setVisitAction({ kind: 'escalate', triage: columns.triage! })
                               : undefined}
-                            onLwbs={columns.triage && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
+                            onLwbs={canWriteTriage && columns.triage && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               ? () => setVisitAction({ kind: 'lwbs', triage: columns.triage! })
                               : undefined}
-                            onReturnToDesk={columns.triage
+                            onReturnToDesk={canWriteTriage && columns.triage
                               && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               && columns.triage.handoffStatus !== 'returned_to_desk'
                               ? () => setVisitAction({ kind: 'return_to_desk', triage: columns.triage! })
                               : undefined}
                             creatingNote={creatingNote}
-                            onCreateNote={row.patientId ? (noteType) => {
+                            onCreateNote={row.patientId && canWriteNotes ? (noteType) => {
                               void createNote({
                                 noteType,
                                 patientId: row.patientId!,
@@ -2495,6 +2563,7 @@ export default function EhrClinicalDashboard({
               clinician, results back, treatment dispensed). The same card
               every station rail carries; it renders nothing when the feed is
               empty or the role has no configured slice. */}
+          {railCards}
           <ProgressFeedCard />
           {/* The clinical mission card — the design closes the rail with the
               day's one instruction, same treatment as reception's "Keep the
