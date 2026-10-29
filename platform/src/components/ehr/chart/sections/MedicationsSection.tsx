@@ -35,6 +35,7 @@ import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
 import { MEDICATION_HISTORY_DOMAIN, historyForDomain } from '@/lib/clinical/patient-history';
 import ReportedMedications from './ReportedMedications';
 import { describeError } from '@/lib/user-facing-error';
+import { useColumnSort } from '@/components/table/useColumnSort';
 
 const PAGE_SIZE = 8;
 
@@ -138,6 +139,7 @@ export default function MedicationsSection({
     const query = tableSearch.trim().toLowerCase();
     return query ? patientRx.filter(rx => `${rx.medication} ${formatRxSig(rx)} ${rx.status}`.toLowerCase().includes(query)) : patientRx;
   }, [patientRx, tableSearch]);
+  const columnSort = useColumnSort<PrescriptionDoc>();
 
   // Deep-link focus: jump to the page holding the focused prescription once
   // the data loads, then scroll it into view and let the highlight draw
@@ -155,7 +157,7 @@ export default function MedicationsSection({
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusId, page]);
 
-  const pageRows = filteredRx.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageRows = columnSort.sort(filteredRx).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
 
   const handleDiscontinue = async (rx: PrescriptionDoc, reason: string) => {
@@ -297,16 +299,16 @@ export default function MedicationsSection({
       {patientRx.length === 0 && reportedMeds.length === 0 && !noKnownMedications ? (
         <OmrsEmptyState itemLabel="medications" actionLabel="Record medications" onAction={handleAdd} disabledReason={handleAdd ? undefined : 'Requires clinical permission'} />
       ) : patientRx.length === 0 ? null : (
-        <table className="tamam-table tamam-table--interactive tamam-table--medications">
+        <table data-sort="data" className="tamam-table tamam-table--interactive tamam-table--medications">
           <colgroup>
             <col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
-              <th>Medication</th>
-              <th>Dosage instructions</th>
-              <th>Start date</th>
-              <th>Status</th>
+              <th {...columnSort.headerProps(0, rx => rx.medication)}>Medication</th>
+              <th {...columnSort.headerProps(1, rx => formatRxSig(rx))}>Dosage instructions</th>
+              <th {...columnSort.headerProps(2, rx => rx.createdAt || '')}>Start date</th>
+              <th {...columnSort.headerProps(3, rx => rxStatusLabel(rx, t))}>Status</th>
               <th>{t('chart.actions')}</th>
             </tr>
           </thead>

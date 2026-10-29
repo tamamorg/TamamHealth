@@ -7,6 +7,7 @@ import { ClipboardList } from '@/components/icons/lucide';
 import { jubaDate } from '@/lib/time-juba';
 import { appointmentsInView, type ApptView } from './appointment-buckets';
 import type { Dispatch, SetStateAction } from 'react';
+import { useColumnSort } from '@/components/table/useColumnSort';
 
 const VIEWS: { id: ApptView; labelKey: string }[] = [
   { id: 'upcoming', labelKey: 'chart.apptUpcoming' },
@@ -34,11 +35,13 @@ export default function PatientAppointmentsTab({ patientAppointments, apptSearch
   setApptPage: Dispatch<SetStateAction<number>>;
   focusId: string | undefined;
 }) {
+  const columnSort = useColumnSort<AppointmentDoc>();
   const today = jubaDate();
   const inView = appointmentsInView(patientAppointments, apptView, today);
   const query = apptSearch.trim().toLowerCase();
   const filteredAppts = query ? inView.filter(appt => `${appt.reason || ''} ${appt.department || ''} ${appt.providerName || ''} ${appt.staffName || ''} ${appt.status} ${appt.appointmentDate}`.toLowerCase().includes(query)) : inView;
-  const apptPageRows = filteredAppts.slice((apptPage - 1) * APPT_PAGE_SIZE, apptPage * APPT_PAGE_SIZE);
+  const sorted = columnSort.sort(filteredAppts);
+  const apptPageRows = sorted.slice((apptPage - 1) * APPT_PAGE_SIZE, apptPage * APPT_PAGE_SIZE);
 
   const switcher = (
     <div className="tamam-appt-switcher" role="tablist" aria-label={t('chart.apptViews')}>
@@ -69,17 +72,17 @@ export default function PatientAppointmentsTab({ patientAppointments, apptSearch
         onSearchChange={value => { setApptSearch(value); setApptPage(1); }}
         pagination={{ page: apptPage, pageSize: APPT_PAGE_SIZE, total: filteredAppts.length, onPageChange: setApptPage }}
       >
-        <table className="tamam-table tamam-table--fixed">
+        <table data-sort="data" className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
-              <th>{t('chart.apptDate')}</th>
-              <th>{t('chart.apptTime')}</th>
-              <th>{t('chartMessages.careTeam')}</th>
-              <th>{t('chart.apptContext')}</th>
-              <th>{t('chart.apptStatus')}</th>
+              <th {...columnSort.headerProps(0, a => a.appointmentDate)}>{t('chart.apptDate')}</th>
+              <th {...columnSort.headerProps(1, a => a.appointmentTime || '')}>{t('chart.apptTime')}</th>
+              <th {...columnSort.headerProps(2, a => a.providerName || '')}>{t('chartMessages.careTeam')}</th>
+              <th {...columnSort.headerProps(3, a => a.reason || a.department || '')}>{t('chart.apptContext')}</th>
+              <th {...columnSort.headerProps(4, a => humanizeStatus(a.status))}>{t('chart.apptStatus')}</th>
             </tr>
           </thead>
           <tbody>
