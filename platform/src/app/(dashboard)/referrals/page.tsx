@@ -24,7 +24,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import ReferralFilterFields, { referralFilterCount, type ReferralFilterState } from '@/components/referrals/ReferralFilters';
-import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import { isRowActivationKey } from '@/components/RowActionsPopup';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
 import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
@@ -387,7 +388,6 @@ export default function ReferralsPage() {
   const [showNewReferral, setShowNewReferral] = useState(false);
   const [expandedReferral, setExpandedReferral] = useState<string | null>(null);
   // One popup for the table; the clicked row supplies its actions and position.
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
   // Structured filters — surfaced in a popover beside the platform search bar.
   const [colFilters, setColFilters] = useState<ReferralFilterState>({ patient: '', route: '', department: '', urgency: '', status: '' });
   // Deep link from a patient chart: /referrals?patient=<name> pre-filters.
@@ -722,6 +722,7 @@ export default function ReferralsPage() {
                       else setExpandedReferral(ref._id);
                     }}
                     onKeyDown={e => {
+                      if (e.target !== e.currentTarget) return;
                       if (isRowActivationKey(e.key)) {
                         e.preventDefault();
                         if (hasPatientChart) router.push(`/patients/${ref.patientId}?tab=referrals`);
@@ -780,23 +781,12 @@ export default function ReferralsPage() {
                           the row. `--select` is the same caret + hover
                           affordance the appointment board's status pill uses,
                           so an updatable status looks updatable. */}
-                      {canUpdateStatus ? (
-                        <button
-                          type="button"
-                          className={`appointment-status-pill appointment-status-pill--select ${STATUS_PILL_CLASS[ref.status] ?? ''}`}
-                          title={t('referrals.updateStatus')}
-                          aria-haspopup="menu"
-                          /* Stops the row's own click in the same handler — the
-                             stopsClickPropagation spread also carries an onClick,
-                             and two onClicks on one element means one is lost. */
-                          onClick={e => { e.stopPropagation(); setRowMenu(rowActionsAt(e, rowActions)); }}
-                          onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); e.stopPropagation(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions)); } }}
-                        >
-                          {getStatusLabel(ref.status)}
-                        </button>
-                      ) : (
-                        <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
-                          {getStatusLabel(ref.status)}
+                      <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
+                        {getStatusLabel(ref.status)}
+                      </span>
+                      {canUpdateStatus && (
+                        <span {...stopsClickPropagation}>
+                          <RowActionsMenu ariaLabel={t('referrals.updateStatus')} actions={rowActions} />
                         </span>
                       )}
                       <small style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
@@ -813,7 +803,6 @@ export default function ReferralsPage() {
               })}
             </>
             )}
-            <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
             </div>
           </div>
         </div>

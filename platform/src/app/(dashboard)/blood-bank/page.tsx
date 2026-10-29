@@ -19,7 +19,7 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDate, humanizeStatus } from '@/lib/format-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -330,7 +330,6 @@ export default function BloodBankPage() {
   };
 
   // One popup for the table; the clicked row supplies its actions and position.
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
 
   const rowActions = (u: BloodBankDoc): RowAction[] => {
     const discardAction: RowAction = {
@@ -452,12 +451,13 @@ export default function BloodBankPage() {
                   <th>Collected</th>
                   <th>Expires</th>
                   <th>Status</th>
+                  <th>{t('chart.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {units.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: 0 }}>
+                    <td colSpan={8} style={{ padding: 0 }}>
                       <EmptyState
                         icon={Droplets}
                         title="No blood units stocked yet"
@@ -467,7 +467,7 @@ export default function BloodBankPage() {
                   </tr>
                 ) : visibleUnits.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <td colSpan={8} className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                       No units match “{unitSearch}”.
                     </td>
                   </tr>
@@ -477,9 +477,7 @@ export default function BloodBankPage() {
                   const expiringSoon = !expired && days < 7;
                   const expiryColor = expired ? 'var(--color-danger)' : expiringSoon ? 'var(--color-warning)' : 'var(--text-muted)';
                   return (
-                    <tr key={u._id} style={{ cursor: 'pointer' }} tabIndex={0}
-                        onClick={e => setRowMenu(rowActionsAt(e, rowActions(u)))}
-                        onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, rowActions(u))); } }}>
+                    <tr key={u._id}>
                       <td className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{u.unitId}</td>
                       <td>
                         <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
@@ -496,13 +494,13 @@ export default function BloodBankPage() {
                       <td>
                         <Badge tone={STATUS_TONE[u.status]}>{humanizeStatus(u.status)}</Badge>
                       </td>
+                      <td><RowActionsMenu ariaLabel={`Actions for unit ${u.unitId}`} actions={rowActions(u)} /></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           )}
-          <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
           </div>
         </div>
 

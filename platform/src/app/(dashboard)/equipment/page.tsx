@@ -4,7 +4,7 @@ import DepartmentInput from '@/components/DepartmentInput';
 import { useState, useMemo } from 'react';
 import Modal from '@/components/Modal';
 import { Plus, X, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
-import RowActionsPopup, { rowActionsAt, rowActionsFromElement, isRowActivationKey, type RowActionsPopupState } from '@/components/RowActionsPopup';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { useAuth, useUi } from '@/lib/context';
 import { useAssets } from '@/lib/hooks/useAssets';
@@ -52,7 +52,6 @@ export default function AssetsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [serviceFor, setServiceFor] = useState<AssetDoc | null>(null);
   // One popup for the table; the clicked row supplies its actions and position.
-  const [rowMenu, setRowMenu] = useState<RowActionsPopupState | null>(null);
 
   /** What a row offers. "Mark operational" only shows while it is not. */
   const actionsFor = (a: AssetDoc): RowAction[] => [
@@ -193,19 +192,18 @@ export default function AssetsPage() {
                 <th>{t('equipment.colLocation')}</th>
                 <th>{t('equipment.colStatus')}</th>
                 <th>{t('equipment.colService')}</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('equipment.noAssetsMatch')}</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('equipment.noAssetsMatch')}</td></tr>
               )}
               {filtered.map(a => {
                 const tok = STATUS_TOKENS[a.status];
                 const dueSoon = a.nextServiceDueAt && (new Date(a.nextServiceDueAt).getTime() - now) < 30 * 86400000;
                 return (
-                  <tr key={a._id} style={{ cursor: 'pointer' }} tabIndex={0}
-                      onClick={e => setRowMenu(rowActionsAt(e, actionsFor(a)))}
-                      onKeyDown={e => { if (isRowActivationKey(e.key)) { e.preventDefault(); setRowMenu(rowActionsFromElement(e.currentTarget, actionsFor(a))); } }}>
+                  <tr key={a._id}>
                     <td>
                       <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{a.name}</div>
                       <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -229,12 +227,12 @@ export default function AssetsPage() {
                         </span>
                       ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
+                    <td><RowActionsMenu ariaLabel={`Actions for ${a.name}`} actions={actionsFor(a)} /></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <RowActionsPopup state={rowMenu} onClose={() => setRowMenu(null)} />
           </div>
         </div>
 
