@@ -26,6 +26,7 @@ import { patientFullName } from '@/lib/patient-utils';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import PrescribeModal from './prescribe/PrescribeModal';
+import { takeNoteOrdersSigned } from '@/components/ehr/chart/panels/order-basket/note-orders-signal';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
 import { reasonContextFromNote } from '@/components/lab/order/lab-order-reasons';
 import type { NoteSectionActionId } from '@/lib/clinical-notes/section-actions';
@@ -130,6 +131,13 @@ interface ClinicalNoteEditorProps {
    */
   onOpenChartTab?: (tabId: string) => void;
   /**
+   * Prescribe and Order labs from the note. The chart's drawer supplies it:
+   * the order basket opens on top of the note, and the orders signed there
+   * are filed under the note's visit. Without it (the standalone notes route)
+   * the editor opens its own Prescribe / lab order popups.
+   */
+  onOpenOrderBasket?: (view: 'drug' | 'lab', context: { encounterId?: string }) => void;
+  /**
    * 'workspace' lays the note out as an OpenMRS O3 form for the patient
    * chart's docked workspace: a section list on the left with Save / Sign /
    * Cancel beneath it, and collapsible sections on the right. Same fields,
@@ -144,7 +152,7 @@ interface ClinicalNoteEditorProps {
 }
 
 export default function ClinicalNoteEditor({
-  noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose, onOpenChartTab,
+  noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose, onOpenChartTab, onOpenOrderBasket,
   layout = 'standard', onBack, onNoteTypeChange,
 }: ClinicalNoteEditorProps) {
   const router = useRouter();
@@ -467,6 +475,15 @@ export default function ClinicalNoteEditor({
     showToast(t('noteEditor.refreshed', { section: sectionLabel(t, sectionId) }), 'success');
   }, [note, noteId, persist, showToast, readChart, t]);
 
+  // Orders were signed for this note in the order basket while it was
+  // covered: bring its medication list in line with the chart now it is back.
+  const noteLoaded = Boolean(note);
+  useEffect(() => {
+    if (!noteLoaded || locked || !takeNoteOrdersSigned(noteId)) return;
+    const timer = setTimeout(() => { void refreshDerived('medications'); }, 0);
+    return () => clearTimeout(timer);
+  }, [noteLoaded, locked, noteId, refreshDerived]);
+
   // The chart's history changed under the note (the History popup closed):
   // re-read it into whichever history sections the note carries. One chart
   // read for all of them, and no toast — the clinician just made the change.
@@ -593,7 +610,10 @@ export default function ClinicalNoteEditor({
       case 'include_problems': setShowProblems(true); return;
       case 'review_medications': setShowMedications(true); return;
       case 'manage_allergies': setShowAllergies(true); return;
-      case 'prescribe': setShowPrescribe(true); return;
+      case 'prescribe':
+        if (onOpenOrderBasket) onOpenOrderBasket('drug', { encounterId: note.encounterId });
+        else setShowPrescribe(true);
+        return;
       // Opens the chart's own vitals form over the note. It used to navigate
       // to the chart's Vitals tab: the clinician left a half-written note,
       // recorded the reading, found their way back, and then had to press
@@ -611,7 +631,8 @@ export default function ClinicalNoteEditor({
         setShowFollowUp(true);
         return;
       case 'order_lab':
-        setShowLabOrder(true);
+        if (onOpenOrderBasket) onOpenOrderBasket('lab', { encounterId: note.encounterId });
+        else setShowLabOrder(true);
         return;
       // Care Coordination already creates the referral and records the plan
       // action itself, only on success (see handleCoordination) — reuse it
@@ -636,7 +657,7 @@ export default function ClinicalNoteEditor({
         return;
       default: return;
     }
-  }, [note, noteId, navigateAway]);
+  }, [note, noteId, navigateAway, onOpenOrderBasket]);
 
   // ── Assessment: problems checked in the Include Problems popup become
   //    diagnosis lines on the note, deduped against what is already there ──

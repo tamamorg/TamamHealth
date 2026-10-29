@@ -3,15 +3,15 @@ import { Building2 } from '@/components/icons/lucide';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { PharmacyWorkspace } from './lazy-panels';
-import type { Dispatch, SetStateAction } from 'react';
 import type { AppUser } from '@/lib/context/types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-export default function PatientMedicationsTab({ patient, canPrescribe, canRecordMedications, canDispense, setShowPrescribeModal, currentUser, focusId }: {
+export default function PatientMedicationsTab({ patient, canPrescribe, canRecordMedications, canDispense, onPrescribe, currentUser, focusId }: {
   patient: PatientDoc;
   canPrescribe: boolean;
   canRecordMedications: boolean;
   canDispense: boolean;
-  setShowPrescribeModal: Dispatch<SetStateAction<boolean>>;
+  /** Opens the order basket's Add drug order (or the Prescribe form). */
+  onPrescribe: () => void;
   currentUser: AppUser | null;
   focusId: string | undefined;
 }) {
@@ -41,7 +41,7 @@ export default function PatientMedicationsTab({ patient, canPrescribe, canRecord
                 canPrescribe={canPrescribe}
                 canRecordMedications={canRecordMedications}
                 canWork={canDispense}
-                onAdd={() => setShowPrescribeModal(true)}
+                onAdd={onPrescribe}
                 noKnownMedications={patient.noKnownMedications}
                 reconciliation={patient.medReconciliation}
                 reconciledAt={patient.medReconciliationAt}
