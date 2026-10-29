@@ -25,13 +25,20 @@ export function scheduleForFrequency(frequency: string, anchorIso?: string): str
   const value = (frequency || '').trim().toLowerCase();
   if (!value) return [];
   if (isPrnFrequency(value)) return ['PRN'];
-  if (value === 'od' || value === 'qd' || value.includes('once') || value.includes('daily')) return ['08:00'];
-  if (value === 'bd' || value === 'bid' || value.includes('twice')) return ['08:00', '20:00'];
-  if (value === 'tds' || value === 'tid' || value.includes('three times') || value.includes('thrice')) return ['08:00', '14:00', '22:00'];
+  // Most specific first. "Three times daily" and "Twice daily" both contain
+  // "daily": checked before them, the generic once-daily rule gave the
+  // prescribe form's own sigs ("Twice daily with food", "Three times daily
+  // after meals") a single 08:00 slot, so the MAR showed one dose a day.
   if (value === 'qds' || value === 'qid' || value.includes('four times')) return ['00:00', '06:00', '12:00', '18:00'];
-  const intervalMatch = value.match(/q\s*(\d+)\s*h/);
+  if (value === 'tds' || value === 'tid' || value.includes('three times') || value.includes('thrice')) return ['08:00', '14:00', '22:00'];
+  if (value === 'bd' || value === 'bid' || value.includes('twice')) return ['08:00', '20:00'];
+  if (value === 'od' || value === 'qd' || value.includes('once') || value.includes('daily') || value.includes('at bedtime') || value === 'nocte') {
+    return value.includes('bedtime') || value === 'nocte' ? ['22:00'] : ['08:00'];
+  }
+  // "q8h", "q 8 h", and the form's "Every 8 hours" / "8 hourly".
+  const intervalMatch = value.match(/(?:q|every)\s*(\d+)\s*(?:h\b|hours?\b|hrs?\b)|(\d+)\s*hourly/);
   if (!intervalMatch) return [];
-  const interval = Number(intervalMatch[1]);
+  const interval = Number(intervalMatch[1] || intervalMatch[2]);
   if (!Number.isInteger(interval) || interval < 1 || interval > 24) return [];
   const anchor = jubaClock(anchorIso);
   const startMinutes = anchor.hour * 60 + anchor.minute;

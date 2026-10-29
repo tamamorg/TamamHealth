@@ -12,6 +12,7 @@
  * that record is what releases the order from the checkout gate; printing
  * records it at once, a text records it when the gateway accepts it.
  */
+import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
@@ -102,7 +103,8 @@ export default function PrescriptionCopyDialog({
   }, [patientId, scope]);
 
   const userName = currentUser?.name || currentUser?.username || '';
-  const facilityName = currentUser?.hospitalName || items[0]?.hospitalName || t('patientCopy.thisFacility');
+  const facilityNameLive = useFacilityName();
+  const facilityName = facilityNameLive || items[0]?.hospitalName || t('patientCopy.thisFacility');
   const reroutable = useMemo(() => items.filter(isReroutable), [items]);
 
   const context = useCallback((nameForText: boolean): ScriptContext => ({

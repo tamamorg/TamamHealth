@@ -11,7 +11,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
-import { Camera, Check, RefreshCw, Upload, X } from '@/components/icons/lucide';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import { Camera, Check, RefreshCw, Upload } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface PhotoCaptureModalProps {
@@ -119,18 +120,14 @@ export default function PhotoCaptureModal({ onCapture, onClose }: PhotoCaptureMo
 
   return (
     <Modal onClose={handleClose} width={440} labelledBy="photo-capture-title">
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-        {/* Header — same layout as the check-in card popup */}
-        <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-          <h3 id="photo-capture-title" className="text-sm font-semibold flex items-center gap-2">
-            <Camera className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-            {t('photoCapture.title')}
-          </h3>
-          <button onClick={handleClose} aria-label={t('action.close')} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+      <DialogFrame>
+        <DialogHeader
+          titleId="photo-capture-title"
+          title={t('photoCapture.title')}
+          icon={<Camera />}
+          onClose={handleClose}
+        />
+        <DialogBody flush>
         <div className="p-5 flex flex-col gap-4">
           {/* Camera / preview area */}
           <div
@@ -200,7 +197,8 @@ export default function PhotoCaptureModal({ onCapture, onClose }: PhotoCaptureMo
             {t('photoCapture.footerGuidance')}
           </p>
         </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

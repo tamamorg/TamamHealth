@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
@@ -889,37 +891,37 @@ export default function ReferralsPage() {
         {/* Reverse status confirmation — undo an acceptance or reopen a
             declined referral. Clinical reversals are confirmed first. */}
         {reverseModal && (
-          <Modal onClose={() => setReverseModal(null)}>
-            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.reverse')}</h3>
-                <button onClick={() => setReverseModal(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <Modal labelledBy="page-tsx-dlg-892" onClose={() => setReverseModal(null)}>
+            <DialogFrame>
+              <DialogHeader titleId="page-tsx-dlg-892" title={t('action.reverse')} onClose={() => setReverseModal(null)} />
+              <DialogBody className="space-y-4">
               <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
                 {reverseModal.name} &middot; {getStatusLabel(reverseModal.to)}
               </p>
-              <div className="flex gap-2">
-                <button onClick={() => setReverseModal(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleReverseStatus} disabled={actionSubmitting} className="btn btn-primary flex-1">
+              </DialogBody>
+              <DialogFooter>
+                <button onClick={() => setReverseModal(null)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleReverseStatus} disabled={actionSubmitting} className="btn btn-primary">
                   {actionSubmitting ? t('referrals.saving') : t('action.confirm')}
                 </button>
-              </div>
-            </div>
+              </DialogFooter>
+            </DialogFrame>
           </Modal>
         )}
 
         {/* Add Note Modal */}
         {noteModalId && (
-          <Modal variant="slider" onClose={() => setNoteModalId(null)}>
-            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.addNote')}</h3>
-                <button onClick={() => setNoteModalId(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
+          <FormSlider
+            title={t('action.addNote')}
+            onClose={() => setNoteModalId(null)}
+            footer={<>
+                <button onClick={() => setNoteModalId(null)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleAddNote} disabled={!noteText.trim() || actionSubmitting} className="btn btn-primary" style={{ opacity: !noteText.trim() ? 0.5 : 1 }}>
+                  {actionSubmitting ? t('referrals.saving') : t('action.addNote')}
                 </button>
-              </div>
+            </>}
+          >
+            <div className="space-y-4">
               <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
                 {t('referrals.addNoteHint')}
               </p>
@@ -931,26 +933,16 @@ export default function ReferralsPage() {
                 className="w-full mb-4"
                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
               />
-              <div className="flex gap-2">
-                <button onClick={() => setNoteModalId(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleAddNote} disabled={!noteText.trim() || actionSubmitting} className="btn btn-primary flex-1" style={{ opacity: !noteText.trim() ? 0.5 : 1 }}>
-                  {actionSubmitting ? t('referrals.saving') : t('action.addNote')}
-                </button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* Decline Modal */}
         {declineModalId && (
-          <Modal onClose={() => setDeclineModalId(null)}>
-            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('referrals.declineReferral')}</h3>
-                <button onClick={() => setDeclineModalId(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <Modal labelledBy="page-tsx-dlg-946" onClose={() => setDeclineModalId(null)}>
+            <DialogFrame>
+              <DialogHeader titleId="page-tsx-dlg-946" title={t('referrals.declineReferral')} onClose={() => setDeclineModalId(null)} />
+              <DialogBody className="space-y-4">
               <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
                 {t('referrals.declineHint')}
               </p>
@@ -962,26 +954,30 @@ export default function ReferralsPage() {
                 className="w-full mb-4"
                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
               />
-              <div className="flex gap-2">
-                <button onClick={() => setDeclineModalId(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleDecline} disabled={!declineReason.trim() || actionSubmitting} className="btn btn-primary flex-1" style={{ opacity: !declineReason.trim() ? 0.5 : 1, background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}>
+              </DialogBody>
+              <DialogFooter>
+                <button onClick={() => setDeclineModalId(null)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleDecline} disabled={!declineReason.trim() || actionSubmitting} className="btn btn-primary" style={{ opacity: !declineReason.trim() ? 0.5 : 1, background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}>
                   {actionSubmitting ? t('referrals.declining') : t('referrals.confirmDecline')}
                 </button>
-              </div>
-            </div>
+              </DialogFooter>
+            </DialogFrame>
           </Modal>
         )}
 
         {/* Complete Modal */}
         {completeModalId && (
-          <Modal variant="slider" onClose={() => setCompleteModalId(null)}>
-            <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('referrals.completeReferral')}</h3>
-                <button onClick={() => setCompleteModalId(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
+          <FormSlider
+            title={t('referrals.completeReferral')}
+            onClose={() => setCompleteModalId(null)}
+            footer={<>
+                <button onClick={() => setCompleteModalId(null)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleComplete} disabled={!completeOutcome.trim() || actionSubmitting} className="btn btn-primary" style={{ opacity: !completeOutcome.trim() ? 0.5 : 1, background: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
+                  {actionSubmitting ? t('referrals.completing') : t('referrals.markComplete')}
                 </button>
-              </div>
+            </>}
+          >
+            <div className="space-y-4">
               <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
                 {t('referrals.completeHint')}
               </p>
@@ -1014,14 +1010,8 @@ export default function ReferralsPage() {
                 className="w-full mb-4"
                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
               />
-              <div className="flex gap-2">
-                <button onClick={() => setCompleteModalId(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleComplete} disabled={!completeOutcome.trim() || actionSubmitting} className="btn btn-primary flex-1" style={{ opacity: !completeOutcome.trim() ? 0.5 : 1, background: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
-                  {actionSubmitting ? t('referrals.completing') : t('referrals.markComplete')}
-                </button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* Preview Modal for attachments */}

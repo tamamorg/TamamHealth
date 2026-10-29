@@ -12,6 +12,8 @@ import { useUsers } from '@/lib/hooks/useUsers';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { checkNewPrescription, type DrugInteraction, type InteractionSeverity } from '@/lib/services/drug-interaction-service';
 import { formatMoney , formatRxSig, formatClockTime } from '@/lib/format-utils';
@@ -30,25 +32,7 @@ import { tooltipStyle, axisTick } from '@/components/ChartCard';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, ResponsiveContainer,
 } from 'recharts';
-import {
-  Pill,
-  Package,
-  ShieldCheck,
-  ClipboardList,
-  Activity,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  ChevronRight,
-  AlertOctagon,
-  X,
-  Check,
-  Plus,
-  BarChart3,
-  Loader2,
-  FileText,
-  type LucideIcon,
-} from '@/components/icons/lucide';
+import { Pill, Package, ShieldCheck, ClipboardList, Activity, AlertTriangle, Clock, CheckCircle2, ChevronRight, AlertOctagon, Check, Plus, BarChart3, Loader2, FileText, type LucideIcon } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { useNow } from '@/lib/hooks/useNow';
 import { describeError } from '@/lib/user-facing-error';
@@ -116,15 +100,10 @@ function DispenseModal({
   const canConfirm = !confirming && (!requiresWitness || !!witnessId);
 
   return (
-    <Modal onClose={onCancel} width={448}>
-      <div className="dash-card rounded-2xl p-5 w-full" style={{
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-      }}>
-        <div className="flex items-center gap-2 mb-4">
-          <Pill className="w-5 h-5" style={{ color: ACCENT }} />
-          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('pharmacy.confirmDispensing')}</h3>
-        </div>
-
+    <Modal labelledBy="page-tsx-dlg-119" onClose={onCancel} width={448}>
+      <DialogFrame>
+        <DialogHeader titleId="page-tsx-dlg-119" title={t('pharmacy.confirmDispensing')} onClose={onCancel} />
+        <DialogBody className="space-y-4">
         {/* Interaction Warnings — real drug-interaction-service check against
             the patient's other active prescriptions. */}
         {interactions.length > 0 && (
@@ -193,21 +172,21 @@ function DispenseModal({
             </Select>
           </div>
         )}
-
-        <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2 rounded-lg text-sm font-bold transition-all" style={{
+        </DialogBody>
+        <DialogFooter>
+          <button onClick={onCancel} className=" py-2 rounded-lg text-sm font-bold transition-all" style={{
             background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
           }}>{t('action.cancel')}</button>
           <button
             onClick={() => canConfirm && onConfirm()}
             disabled={!canConfirm}
-            className="flex-1 py-2 rounded-lg text-sm font-bold text-white transition-all flex items-center justify-center gap-1.5"
+            className=" py-2 rounded-lg text-sm font-bold text-white transition-all flex items-center justify-center gap-1.5"
             style={{ background: 'var(--color-success)', opacity: canConfirm ? 1 : 0.6 }}
           >
             {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {t('pharmacy.dispense')}
           </button>
-        </div>
-      </div>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }
@@ -230,16 +209,25 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
   const canSave = !saving && name.trim().length > 0 && qtyNum > 0;
 
   return (
-    <Modal variant="slider" onClose={onClose} width={448}>
-      <div className="dash-card rounded-2xl p-5 w-full" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Package className="w-5 h-5" style={{ color: ACCENT }} />
-            <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('pharmacy.receiveStock')}</h3>
-          </div>
-          <button onClick={onClose} aria-label={t('action.close')}><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
-        </div>
-
+    <FormSlider
+      title={t('pharmacy.receiveStock')}
+      width={448}
+      onClose={onClose}
+      footer={<>
+          <button onClick={onClose} className=" py-2 rounded-lg text-sm font-bold transition-all" style={{
+            background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
+          }}>{t('action.cancel')}</button>
+          <button
+            onClick={() => canSave && onConfirm(name.trim(), qtyNum, unit)}
+            disabled={!canSave}
+            className=" py-2 rounded-lg text-sm font-bold text-white transition-all flex items-center justify-center gap-1.5"
+            style={{ background: canSave ? 'var(--color-success)' : 'var(--text-muted)', opacity: canSave ? 1 : 0.6 }}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} {t('pharmacy.addToStock')}
+          </button>
+      </>}
+    >
+      <div className="space-y-4">
         <div className="space-y-3 mb-5">
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.medication')}</label>
@@ -277,22 +265,8 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
             )}
           </div>
         </div>
-
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-bold transition-all" style={{
-            background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)',
-          }}>{t('action.cancel')}</button>
-          <button
-            onClick={() => canSave && onConfirm(name.trim(), qtyNum, unit)}
-            disabled={!canSave}
-            className="flex-1 py-2 rounded-lg text-sm font-bold text-white transition-all flex items-center justify-center gap-1.5"
-            style={{ background: canSave ? 'var(--color-success)' : 'var(--text-muted)', opacity: canSave ? 1 : 0.6 }}
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} {t('pharmacy.addToStock')}
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }
 
@@ -641,10 +615,13 @@ export default function PharmacyDashboardPage() {
       router.push(`/payments?patientId=${rx.patientId}`);
       return;
     }
+    // A pharmacist without the payments module cannot take the money or route
+    // the visit to a cashier (the visit journey has no cashier station), so
+    // this step says what is owed and what to do — a soft stop, not an error.
     const message = isBalanceKnownFor(rx)
-      ? `Payment due for ${rx.patientName}: ${formatMoney(patientBalanceFor(rx))}. Send the patient to cashier before dispensing.`
-      : `Could not confirm ${rx.patientName}'s balance. Send the patient to cashier to verify before dispensing.`;
-    showToast(message, 'error');
+      ? `${rx.medication} not dispensed yet: ${formatMoney(patientBalanceFor(rx))} is due. Send ${rx.patientName} to the cashier, then dispense once it is paid.`
+      : `${rx.medication} not dispensed yet: ${rx.patientName}'s balance could not be confirmed. Send them to the cashier to check it.`;
+    showToast(message, 'warning');
   };
 
   const handleCounsel = (rx: PrescriptionDoc) =>
@@ -842,7 +819,7 @@ export default function PharmacyDashboardPage() {
       received: { note: rx.prescribedBy ? `Ordered by ${rx.prescribedBy}` : 'Waiting in pharmacy queue', icon: ClipboardList, action: { label: 'Receive Order', onClick: () => handleStartReview(rx) } },
       review: { note: 'Confirm dose, frequency, patient, allergies and interactions.', icon: ClipboardList, action: { label: 'Check Order', onClick: () => handleStartReview(rx) } },
       checked: { note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || t('statusWord.units')} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, icon: ShieldCheck, action: { label: 'Clear Stock and Safety', onClick: () => handleClearForDispense(rx) } },
-      payment: { note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, icon: Clock, action: { label: canAccess('/payments') ? 'Collect Payment' : 'Send to Cashier', onClick: () => handlePaymentStep(rx) } },
+      payment: { note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, icon: Clock, action: { label: canAccess('/payments') ? 'Collect Payment' : 'Payment due', onClick: () => handlePaymentStep(rx) } },
       dispensed: { note: 'Issue the full course and update inventory.', icon: Pill, action: { label: t('pharmacy.dispense'), onClick: () => handleDispense(rx) } },
       counseled: { note: 'Explain dose, timing, side effects and return precautions.', icon: CheckCircle2, action: { label: 'Record Counseling', onClick: () => handleCounsel(rx) } },
       cleared: { note: 'Medication workflow complete.', icon: Check, action: { label: 'Complete Pharmacy Visit', onClick: () => handleComplete(rx) } },

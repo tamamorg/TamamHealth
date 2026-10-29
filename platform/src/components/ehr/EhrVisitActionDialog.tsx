@@ -17,8 +17,8 @@
  */
 
 import { useState } from 'react';
-import { X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { shortenPersonName } from '@/lib/patient-utils';
 
@@ -76,12 +76,17 @@ export default function EhrVisitActionDialog({ kind, patientName, saving, onClos
   const reason = [reasonKey ? t(reasonKey) : '', comment.trim()].filter(Boolean).join(' — ');
 
   return (
-    <Modal onClose={onClose} width={520} labelledBy="ehr-visit-action-title">
-      <div className="modal-content card-elevated ehr-queue-move">
-        <div className="ehr-queue-move-head">
-          <h3 id="ehr-visit-action-title">{t(action.title, { name })}</h3>
-          <button type="button" aria-label={t('action.close')} onClick={onClose}><X className="w-4 h-4" /></button>
-        </div>
+    <Modal onClose={onClose} size="md" labelledBy="ehr-visit-action-title">
+      <DialogFrame className="ehr-queue-move" busy={saving}>
+        <DialogHeader
+          className="ehr-queue-move-head"
+          titleId="ehr-visit-action-title"
+          title={t(action.title, { name })}
+          tone={action.danger ? 'danger' : 'plain'}
+          closeLabel={t('action.close')}
+          onClose={onClose}
+        />
+        <DialogBody className="ehr-queue-move-body">
 
         <p className={action.danger ? 'ehr-queue-move-escalate-note' : 'ehr-queue-move-note'} role="note">
           {t(action.note, { name })}
@@ -122,19 +127,19 @@ export default function EhrVisitActionDialog({ kind, patientName, saving, onClos
             onChange={event => setComment(event.target.value)}
           />
         </label>
-
-        <div className="ehr-queue-move-footer">
-          <button type="button" onClick={onClose}>{t('common.cancel')}</button>
+        </DialogBody>
+        <DialogFooter className="ehr-queue-move-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
           <button
             type="button"
-            className={action.danger ? 'primary danger' : 'primary'}
+            className={action.danger ? 'btn btn-danger-solid primary danger' : 'btn btn-primary primary'}
             disabled={saving}
             onClick={() => onConfirm(reason)}
           >
             {saving ? t(action.saving) : t(action.submit)}
           </button>
-        </div>
-      </div>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }

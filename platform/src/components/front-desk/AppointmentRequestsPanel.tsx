@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatClockTime } from '@/lib/format-utils';
@@ -91,14 +92,17 @@ export default function AppointmentRequestsPanel({
   };
 
   return (
-    <Modal onClose={onClose} width={640} labelledBy="fd-requests-title">
-      <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <h3 id="fd-requests-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-            {t('frontDesk.requestsTitle')}
-          </h3>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('frontDesk.requestsBody')}</p>
-        </div>
+    <Modal onClose={onClose} size="lg" labelledBy="fd-requests-title" describedBy="fd-requests-body">
+      <DialogFrame>
+        <DialogHeader
+          titleId="fd-requests-title"
+          title={t('frontDesk.requestsTitle')}
+          descriptionId="fd-requests-body"
+          description={t('frontDesk.requestsBody')}
+          closeLabel={t('action.close')}
+          onClose={onClose}
+        />
+        <DialogBody className="flex flex-col gap-3">
         {requests.length === 0 && (
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('frontDesk.requestsEmpty')}</p>
         )}
@@ -164,7 +168,7 @@ export default function AppointmentRequestsPanel({
                     <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => { setDeclining(null); setReason(''); setError(appt._id, null); }}>
                       {t('appointments.goBack')}
                     </button>
-                    <button type="button" className="btn btn-primary btn-sm" disabled={busy} style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => void decline(appt)}>
+                    <button type="button" className="btn btn-danger-solid btn-sm" disabled={busy} onClick={() => void decline(appt)}>
                       {t('frontDesk.requestDecline')}
                     </button>
                   </div>
@@ -185,10 +189,11 @@ export default function AppointmentRequestsPanel({
             </div>
           );
         })}
-        <div className="flex justify-end">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>{t('action.close')}</button>
-        </div>
-      </div>
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('action.close')}</button>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }

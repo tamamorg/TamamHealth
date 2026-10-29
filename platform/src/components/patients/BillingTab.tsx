@@ -1,18 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  Wallet, CalendarClock,
-  Receipt, Printer, Search,
-  ShieldCheck, RotateCcw, RefreshCw,
-  Send, Copy, Check, ExternalLink,
-} from '@/components/icons/lucide';
+import { Wallet, CalendarClock, Receipt, Printer, Search, ShieldCheck, RotateCcw, RefreshCw, Send, Copy, Check, ExternalLink } from '@/components/icons/lucide';
 import { PaymentPanel, PaymentPlanWizard } from '@/components/payments';
 import { useSuperbill, SuperbillPicker, SuperbillDraft } from '@/components/patients/SuperbillPanel';
 import '@/components/billing/billing.css';
 import InsurancePolicyModal from '@/components/payments/InsurancePolicyModal';
 import { PolicyEligibility } from '@/modules/insurance/client';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -75,6 +72,8 @@ interface FinancialOverview {
   policies: InsurancePolicyDoc[];
   /** The account as the ledger records it — what the balance is summed from. */
   ledger: LedgerSummary;
+  /** The entries behind `ledger`, for the activity table. */
+  ledgerEntries: LedgerEntryDoc[];
 }
 
 interface CreatedPaymentLink {
@@ -455,12 +454,13 @@ export default function BillingTab({
         plans,
         policies,
         ledger,
+        ledgerEntries,
       });
     } catch (err) {
       console.error('Failed to load billing data:', err);
       setData({
         totalCharged: 0, totalPaid: 0, totalDiscount: 0, totalRefunds: 0, insurancePaid: 0, selfPaid: 0,
-        payments: [], charges: [], plans: [], policies: [], ledger: summariseLedger([]),
+        payments: [], charges: [], plans: [], policies: [], ledger: summariseLedger([]), ledgerEntries: [],
       });
     }
     setLoading(false);
@@ -506,14 +506,35 @@ export default function BillingTab({
   // "Search this table" — same client-side filter the bill detail page uses
   // for its line items, scoped to description/category.
   const chargeQuery = chargeSearch.trim().toLowerCase();
-  const activity = [
-    ...d.charges.map(c => ({ id: `charge-${c._id}`, kind: 'charge', date: c.serviceDate,
-      description: c.description, detail: c.category, reference: c._id, status: c.status,
-      amount: c.billedAmount, currency: 'SSP' })),
-    ...d.payments.map(p => ({ id: `payment-${p._id}`, kind: 'payment', date: p.processedAt,
-      description: getMethodConfig(p.method).label, detail: p.processedByName,
-      reference: p.reference || p._id, status: p.status, amount: p.amount, currency: p.currency })),
-  ].filter(row => !chargeQuery || [row.description, row.detail, row.reference, row.status].some(value => value.toLowerCase().includes(chargeQuery)))
+  // The table lists what the totals above are summed from. With a ledger that
+  // is its entries — orders and prescriptions post there without a charge
+  // document, so a charge/payment-only list showed "SSP 3,500 billed" over an
+  // empty history. Each entry is filled in from the charge or payment it
+  // points at, when there is one. An account that predates the ledger falls
+  // back to its charge and payment documents, as the totals do.
+  const chargeById = new Map(d.charges.map(c => [c._id, c]));
+  const paymentById = new Map(d.payments.map(p => [p._id, p]));
+  const sourceRows = d.ledgerEntries.length > 0
+    ? d.ledgerEntries.map(e => {
+      const charge = e.referenceId ? chargeById.get(e.referenceId) : undefined;
+      const payment = e.referenceId ? paymentById.get(e.referenceId) : undefined;
+      return {
+        id: `ledger-${e._id}`, kind: e.entryType as string, date: e.createdAt,
+        description: e.description, detail: charge?.category || payment?.processedByName || '',
+        reference: payment?.reference || e.referenceId || e._id,
+        status: charge?.status || payment?.status || 'posted',
+        amount: Math.abs(Number(e.amount) || 0), currency: e.currency || 'SSP',
+      };
+    })
+    : [
+      ...d.charges.map(c => ({ id: `charge-${c._id}`, kind: 'charge', date: c.serviceDate,
+        description: c.description, detail: c.category, reference: c._id, status: c.status,
+        amount: c.billedAmount, currency: 'SSP' })),
+      ...d.payments.map(p => ({ id: `payment-${p._id}`, kind: 'payment', date: p.processedAt,
+        description: getMethodConfig(p.method).label, detail: p.processedByName,
+        reference: p.reference || p._id, status: p.status, amount: p.amount, currency: p.currency })),
+    ];
+  const activity = sourceRows.filter(row => !chargeQuery || [row.description, row.detail, row.reference, row.status].some(value => value.toLowerCase().includes(chargeQuery)))
     .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) || a.id.localeCompare(b.id));
   const pageCount = Math.max(1, Math.ceil(activity.length / 10));
   const currentPage = Math.min(activityPage, pageCount);
@@ -641,8 +662,9 @@ export default function BillingTab({
 
       {/* ─── Payment Panel Modal ─── */}
       {showBillingActions && <Modal onClose={() => setShowBillingActions(false)} width={600} labelledBy="billing-actions-title">
-        <div className="bl-root bl-modal-body">
-          <div className="bl-modal-head"><h3 id="billing-actions-title" className="bl-modal-title">{t('billing.actionsTitle')}</h3></div>
+        <DialogFrame>
+          <DialogHeader titleId="billing-actions-title" title={t('billing.actionsTitle')} onClose={() => setShowBillingActions(false)} />
+          <DialogBody className="bl-root">
           <p>{t('billing.actionsHelp')}</p>
           <div className="bl-action-choices">
             {[
@@ -659,12 +681,23 @@ export default function BillingTab({
               ] : []),
             ].map(action => <button key={action.label} type="button" onClick={() => { setShowBillingActions(false); action.run(); }}><action.icon size={22} /><span>{action.label}</span></button>)}
           </div>
-          <div className="bl-modal-actions"><button type="button" className="bl-btn bl-btn--outline" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button></div>
-        </div>
+          </DialogBody>
+          <DialogFooter>
+<button type="button" className="btn btn-secondary" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button>
+          </DialogFooter>
+        </DialogFrame>
       </Modal>}
-      {showServices && <Modal variant="slider" onClose={() => { if (!superbill.busy) setShowServices(false); }} width={760} disableBackdropClose={superbill.busy} labelledBy="billing-services-title">
-        <div className="bl-root bl-modal-body bl-services-dialog">
-          <div className="bl-modal-head"><h3 id="billing-services-title" className="bl-modal-title">{t('billing.servicesPopup')}</h3></div>
+      {showServices && <FormSlider
+        title={t('billing.servicesPopup')}
+        width={760}
+        onClose={() => { if (!superbill.busy) setShowServices(false); }}
+        busy={superbill.busy}
+        footer={<>
+            <button type="button" className="btn btn-secondary" disabled={superbill.busy} onClick={() => setShowServices(false)}>{t('billing.activityClose')}</button>
+            <button type="button" className="btn btn-primary" disabled={superbill.busy || !!superbill.error || !superbill.posted || superbill.lines.length > 0} onClick={() => { setShowServices(false); setShowPaymentPanel(true); }}>{t('billing.continuePayment')}</button>
+        </>}
+      >
+        <div className="bl-root">
           <ol className="bl-dialog-steps">
             <li>{t('billing.servicesSelectStep')}</li>
             <li>{t('billing.servicesPostStep')}</li>
@@ -672,12 +705,8 @@ export default function BillingTab({
           </ol>
           <SuperbillPicker sb={superbill} />
           <SuperbillDraft sb={superbill} />
-          <div className="bl-modal-actions">
-            <button type="button" className="bl-btn bl-btn--outline" disabled={superbill.busy} onClick={() => setShowServices(false)}>{t('billing.activityClose')}</button>
-            <button type="button" className="bl-btn bl-btn--primary" disabled={superbill.busy || !!superbill.error || !superbill.posted || superbill.lines.length > 0} onClick={() => { setShowServices(false); setShowPaymentPanel(true); }}>{t('billing.continuePayment')}</button>
-          </div>
         </div>
-      </Modal>}
+      </FormSlider>}
       {showPaymentPanel && (
         <PaymentPanel
           patientId={patient._id}
@@ -704,11 +733,18 @@ export default function BillingTab({
 
       {/* ─── Issue Refund Modal ─── */}
       {showRefund && (
-        <Modal variant="slider" onClose={() => setShowRefund(false)} width={460} labelledBy="bl-refund-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-refund-title">{t('billing.issueRefund')}</h3>
-            </div>
+        <FormSlider
+          title={t('billing.issueRefund')}
+          width={460}
+          onClose={() => setShowRefund(false)}
+          footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowRefund(false)}>{t('common.cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={handleIssueRefund} disabled={processingRefund || refundablePayments.length === 0}>
+                {processingRefund ? t('common.processing') : t('billing.issueRefund')}
+              </button>
+          </>}
+        >
+          <div className="bl-root">
             {refundablePayments.length === 0 ? (
               <div className="bl-empty" style={{ padding: '20px 0' }}>
                 <p>{t('billing.noRefundablePayments')}</p>
@@ -747,23 +783,24 @@ export default function BillingTab({
                 </div>
               </>
             )}
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setShowRefund(false)}>{t('common.cancel')}</button>
-              <button type="button" className="bl-btn bl-btn--primary" onClick={handleIssueRefund} disabled={processingRefund || refundablePayments.length === 0}>
-                {processingRefund ? t('common.processing') : t('billing.issueRefund')}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ─── Adjustment / Write-off Modal ─── */}
       {showAdjustment && (
-        <Modal variant="slider" onClose={() => setShowAdjustment(false)} width={460} labelledBy="bl-adj-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-adj-title">{t('billing.adjustmentWriteOff')}</h3>
-            </div>
+        <FormSlider
+          title={t('billing.adjustmentWriteOff')}
+          width={460}
+          onClose={() => setShowAdjustment(false)}
+          footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAdjustment(false)}>{t('common.cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={handleCreateAdjustment} disabled={processingAdj}>
+                {processingAdj ? t('common.processing') : t('common.save')}
+              </button>
+          </>}
+        >
+          <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="bl-adj-type">{t('billing.adjustmentType')}</label>
               <Select id="bl-adj-type" value={adjForm.adjustmentType} onChange={e => setAdjForm({ ...adjForm, adjustmentType: e.target.value as AdjustmentType })}>
@@ -782,14 +819,8 @@ export default function BillingTab({
               <label htmlFor="bl-adj-reason">{t('billing.reason')}</label>
               <textarea id="bl-adj-reason" rows={2} value={adjForm.reason} onChange={e => setAdjForm({ ...adjForm, reason: e.target.value })} placeholder={t('billing.reasonPlaceholder')} />
             </div>
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setShowAdjustment(false)}>{t('common.cancel')}</button>
-              <button type="button" className="bl-btn bl-btn--primary" onClick={handleCreateAdjustment} disabled={processingAdj}>
-                {processingAdj ? t('common.processing') : t('common.save')}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ─── Add Insurance Policy Modal ─── */}

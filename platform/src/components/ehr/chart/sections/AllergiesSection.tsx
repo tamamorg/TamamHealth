@@ -23,8 +23,9 @@ import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import Select from '@/components/Select';
-import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { useAuth } from '@/lib/context';
@@ -343,12 +344,20 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       )}
 
       {editing && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="edit-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit allergy</h2>
-              <button className="p-1 rounded" disabled={busy} onClick={() => setEditing(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title="Edit allergy"
+          className="tamam-dialog"
+          width={480}
+          onClose={() => !busy && setEditing(null)}
+          busy={busy}
+          footer={<>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-primary" disabled={busy || !editForm.substance.trim()} onClick={saveEdit}>
+                {busy ? 'Saving…' : 'Save changes'}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="allergy-substance" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Allergen</label>
               <input id="allergy-substance" value={editForm.substance} onChange={e => setEditForm({ ...editForm, substance: e.target.value })} className={fieldCls} style={fieldStyle} />
@@ -371,23 +380,15 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
               <label htmlFor="allergy-reaction" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reaction</label>
               <input id="allergy-reaction" value={editForm.reaction} onChange={e => setEditForm({ ...editForm, reaction: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={busy || !editForm.substance.trim()} onClick={saveEdit}>
-                {busy ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {retiring && (
         <Modal className="tamam-dialog" onClose={() => !busy && setRetiring(null)} width={440} labelledBy="retire-allergy-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="retire-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Retire allergy</h2>
-              <button className="p-1 rounded" disabled={busy} onClick={() => setRetiring(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
+          <DialogFrame busy={busy}>
+            <DialogHeader titleId="retire-allergy-title" title="Retire allergy" onClose={() => !busy && setRetiring(null)} />
+            <DialogBody className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
               Take <strong>{retiring.substance}</strong> off the active allergy list. The entry is kept with its
               reason — allergies are never deleted outright.
@@ -412,13 +413,14 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                 style={fieldStyle}
               />
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setRetiring(null)}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={busy || !retireReason.trim()} onClick={confirmRetire}>
+            </DialogBody>
+            <DialogFooter>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setRetiring(null)}>Cancel</button>
+              <button className="btn btn-primary" disabled={busy || !retireReason.trim()} onClick={confirmRetire}>
                 {busy ? 'Saving…' : 'Retire allergy'}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </>

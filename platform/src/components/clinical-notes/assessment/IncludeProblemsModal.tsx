@@ -21,8 +21,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, X } from '@/components/icons/lucide';
-import Modal from '@/components/Modal';
+import { Plus } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -207,15 +207,12 @@ export default function IncludeProblemsModal({
   });
 
   return (
-    <Modal variant="slider" onClose={onClose} width={1060} labelledBy="cn-incprob-title">
-      <div className="cn-meds">
-        <div className="cn-meds-header modal-no-headband">
-          <h2 className="cn-meds-title" id="cn-incprob-title">Include Problems</h2>
-          <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close include problems">
-            <X size={18} />
-          </button>
-        </div>
-
+    <FormSlider
+      title="Include Problems"
+      width={1060}
+      onClose={onClose}
+    >
+      <div className="space-y-4">
         <div className="cn-meds-body cn-meds-body--single">
           <div className="cn-meds-left">
             <div className="cn-meds-controlrow">
@@ -392,6 +389,6 @@ export default function IncludeProblemsModal({
           </div>
         </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

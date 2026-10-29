@@ -27,6 +27,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import { describeError } from '@/lib/user-facing-error';
 import './clinical-notes.css';
 import './note-viewer.css';
+import { localClockOf, localDayOf } from '@/lib/date-utils';
 
 const STATUS_KEY: Record<NoteStatus, { key: string; cls: string }> = {
   draft: { key: 'notesList.statusUnsigned', cls: 'is-draft' },
@@ -172,8 +173,8 @@ export default function ClinicalNoteViewer({
           kind, id: r._id,
           typeLabel: t('notesList.recordConsultation'),
           status: r.documentStatus ?? 'draft',
-          date: r.visitDate || stamp.slice(0, 10),
-          time: stamp.length >= 16 ? stamp.slice(11, 16) : undefined,
+          date: r.visitDate || localDayOf(stamp),
+          time: localClockOf(stamp),
           author: r.providerName || '',
           encounterId: r.encounterId,
           sections: recordViewerSections(r, {

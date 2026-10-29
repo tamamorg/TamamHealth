@@ -9,7 +9,7 @@ import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useToast } from '@/components/Toast';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
@@ -491,27 +491,36 @@ export default function LabDashboardPage() {
       {/* Batch result entry — a whole run of one test in a single pass. Single
           results are entered in the chart's bench workflow instead. */}
       {showResultModal && (
-        <Modal variant="slider"
-          onClose={() => { setShowResultModal(false); setBatchTestType(''); }}
+        <FormSlider
+          title={t('lab.batchEntry')}
           width={672}
-        >
-          <div className="dash-card w-full rounded-2xl overflow-hidden" style={{
-            boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
-            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-          }}>
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-              <div className="flex items-center gap-2">
-                <Microscope className="w-4 h-4" style={{ color: ACCENT }} />
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('lab.batchEntry')}</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => { setShowResultModal(false); setBatchTestType(''); }} className="p-1 rounded-lg transition-all" style={{ color: 'var(--text-muted)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+          onClose={() => { setShowResultModal(false); setBatchTestType(''); }}
+          footer={<>
+              <button
+                onClick={() => { setShowResultModal(false); setBatchTestType(''); }}
+                className="px-4 py-1.5 rounded-lg text-[11px] font-medium transition-all"
+                style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
+              >
+                {t('action.cancel')}
+              </button>
 
+              {(
+                <button
+                  onClick={handleBatchSave}
+                  disabled={batchEntries.filter(e => e.resultValue.trim() !== '').length === 0 || batchSaving}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-[11px] font-semibold transition-all disabled:opacity-40"
+                  style={{
+                    background: batchEntries.some(e => e.resultValue.trim()) ? ACCENT : 'var(--border-light)',
+                    color: batchEntries.some(e => e.resultValue.trim()) ? '#fff' : 'var(--text-muted)',
+                  }}
+                >
+                  {batchSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  {t('lab.saveAll', { count: batchEntries.filter(e => e.resultValue.trim() !== '').length })}
+                </button>
+              )}
+          </>}
+        >
+          <div className="space-y-4">
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-4">
               {(
@@ -666,32 +675,8 @@ export default function LabDashboardPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--border-light)' }}>
-              <button
-                onClick={() => { setShowResultModal(false); setBatchTestType(''); }}
-                className="px-4 py-1.5 rounded-lg text-[11px] font-medium transition-all"
-                style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
-              >
-                {t('action.cancel')}
-              </button>
-
-              {(
-                <button
-                  onClick={handleBatchSave}
-                  disabled={batchEntries.filter(e => e.resultValue.trim() !== '').length === 0 || batchSaving}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-[11px] font-semibold transition-all disabled:opacity-40"
-                  style={{
-                    background: batchEntries.some(e => e.resultValue.trim()) ? ACCENT : 'var(--border-light)',
-                    color: batchEntries.some(e => e.resultValue.trim()) ? '#fff' : 'var(--text-muted)',
-                  }}
-                >
-                  {batchSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  {t('lab.saveAll', { count: batchEntries.filter(e => e.resultValue.trim() !== '').length })}
-                </button>
-              )}
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

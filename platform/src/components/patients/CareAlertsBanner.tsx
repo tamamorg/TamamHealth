@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import FormField from '@/components/overlay/FormField';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
@@ -38,6 +40,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
 
   const active = (patient.careAlerts ?? []).filter((a) => a.status === 'active');
   const resolvingAlert = active.find((a) => a.id === resolvingId) ?? null;
+  const closeResolve = () => { if (!busy) { setResolvingId(null); setReason(''); } };
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
 
   async function run(fn: () => Promise<unknown>) {
@@ -133,63 +136,64 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
 
       {resolvingAlert && (
         <Modal
-          onClose={() => { if (!busy) { setResolvingId(null); setReason(''); } }}
-          width={440}
+          onClose={closeResolve}
+          size="sm"
           labelledBy="care-alert-resolve-title"
+          describedBy="care-alert-resolve-desc"
         >
-          <div className="modal-panel p-4">
-            <h2 id="care-alert-resolve-title" className="text-[16px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Resolve this care alert?
-            </h2>
-            <p className="text-[12.5px] mt-1.5" style={{ color: 'var(--text-secondary)' }}>
-              It stops showing on the chart banner. The alert is kept with the reason you
-              give here — it is never deleted.
-            </p>
-
-            <div className="rounded-lg p-3 mt-3" style={{ background: 'var(--overlay-subtle)' }}>
-              <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                {CARE_ALERT_CATEGORY_LABELS[resolvingAlert.category]}
-              </span>
-              <p className="text-[13px] font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>
-                {resolvingAlert.message}
-              </p>
-              {resolvingAlert.recordedByName && (
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Added by {resolvingAlert.recordedByName}
-                </p>
-              )}
-            </div>
-
-            <label htmlFor="care-alert-resolve-reason" className="block text-[11px] mt-3 mb-1.5" style={{ color: 'var(--text-muted)' }}>
-              Reason (required)
-            </label>
-            <input
-              id="care-alert-resolve-reason"
-              autoFocus
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Reassessed — no longer a fall risk"
-              className="w-full p-2 rounded-md text-[13px]"
-              style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+          <DialogFrame busy={busy}>
+            <DialogHeader
+              titleId="care-alert-resolve-title"
+              title="Resolve this care alert?"
+              onClose={closeResolve}
             />
+            <DialogBody tight>
+              <p id="care-alert-resolve-desc">
+                It stops showing on the chart banner. The alert is kept with the reason you
+                give here — it is never deleted.
+              </p>
 
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                className="btn btn-sm btn-secondary"
-                disabled={busy}
-                onClick={() => { setResolvingId(null); setReason(''); }}
-              >
+              <div className="rounded-lg p-3 mt-3" style={{ background: 'var(--overlay-subtle)' }}>
+                <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  {CARE_ALERT_CATEGORY_LABELS[resolvingAlert.category]}
+                </span>
+                <p className="text-[13px] font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                  {resolvingAlert.message}
+                </p>
+                {resolvingAlert.recordedByName && (
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    Added by {resolvingAlert.recordedByName}
+                  </p>
+                )}
+              </div>
+
+              <FormField id="care-alert-resolve-reason" label="Reason" required className="mt-3">
+                {control => (
+                  <input
+                    {...control}
+                    data-modal-initial-focus
+                    className="fs-input"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g. Reassessed — no longer a fall risk"
+                  />
+                )}
+              </FormField>
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeResolve}>
                 Cancel
               </button>
               <button
-                className="btn btn-sm btn-primary"
+                type="button"
+                className="btn btn-primary"
                 disabled={busy || reason.trim().length === 0}
                 onClick={() => run(() => doResolve(resolvingAlert.id))}
               >
                 {busy ? 'Saving…' : 'Resolve alert'}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </div>

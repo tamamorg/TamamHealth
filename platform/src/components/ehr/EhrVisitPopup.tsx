@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Clock, FileText, HeartPulse, LogOut, RotateCcw, X } from '@/components/icons/lucide';
 import CreateNoteButton, { defaultNoteTypeFor } from '@/components/clinical-notes/CreateNoteButton';
 import EhrVisitMoreMenu, { type VisitMoreItem } from '@/components/ehr/EhrVisitMoreMenu';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
 import { STAGE_LABELS, type QueueEntry, type QueueStage } from '@/lib/services/patient-queue-service';
@@ -12,7 +13,9 @@ import { formatClockTime, formatCompactDateTime } from '@/lib/format-utils';
 import { initials, stateTint, shortenPersonName } from '@/lib/patient-utils';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
 import type { AppointmentDoc, TriageDoc } from '@/lib/db-types';
-import { todayIso as isoToday } from '@/lib/date-utils';
+import { localDayOf, todayIso as isoToday } from '@/lib/date-utils';
+import { useDataScope } from '@/lib/hooks/useDataScope';
+import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA } from '@/lib/clinical/iitt';
 import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
 
@@ -218,8 +221,40 @@ export default function EhrVisitPopup({
       .sort((a, b) => (b.consultedAt || b.visitDate).localeCompare(a.consultedAt || a.visitDate)),
     [records],
   );
-  const todaysNote = consultations.find(record => (record.consultedAt || record.visitDate).startsWith(todayIso));
-  const previousNote = consultations.find(record => !(record.consultedAt || record.visitDate).startsWith(todayIso));
+  // The day a record belongs to, on the local calendar: `consultedAt` is a
+  // timestamp, and its UTC prefix is tomorrow for a late-evening visit.
+  const recordDay = (record: { consultedAt?: string; visitDate: string }) => record.visitDate || localDayOf(record.consultedAt);
+  const todaysRecord = consultations.find(record => recordDay(record) === todayIso);
+  const previousNote = consultations.find(record => recordDay(record) !== todayIso);
+
+  // Consultation notes are written to the clinical-notes store now (the chart's
+  // Visit note and the O3 note forms). Reading only medical records said "Visit
+  // form has not been completed" under a signed note, and offered a second one.
+  const scope = useDataScope();
+  const [clinicalNotes, setClinicalNotes] = useState<ClinicalNoteDoc[]>([]);
+  useEffect(() => {
+    if (!patientId || !scope) return;
+    let cancelled = false;
+    void import('@/lib/clinical-notes/note-service')
+      .then(m => m.listClinicalNotes({ patientId }, scope))
+      .then(rows => { if (!cancelled) setClinicalNotes(rows); })
+      .catch(() => { if (!cancelled) setClinicalNotes([]); });
+    return () => { cancelled = true; };
+  }, [patientId, scope]);
+  const todaysClinicalNote = clinicalNotes
+    .filter(note => note.serviceDate === todayIso)
+    .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
+  const todaysNote: { title: string; author: string; signed: boolean } | null = todaysRecord
+    ? { title: todaysRecord.chiefComplaint || 'Consultation note', author: todaysRecord.providerName, signed: todaysRecord.documentStatus === 'signed' }
+    : todaysClinicalNote
+      ? {
+        title: todaysClinicalNote.sections.find(section => section.sectionId === 'cc')?.text?.trim()
+          || todaysClinicalNote.sections.find(section => section.text?.trim())?.text?.trim().split('\n')[0]
+          || 'Consultation note',
+        author: todaysClinicalNote.authorName || '',
+        signed: todaysClinicalNote.status === 'signed' || todaysClinicalNote.status === 'amended',
+      }
+      : null;
 
   // Vitals come from the active triage when there is one, and otherwise from
   // the last ETAT on record — an admitted patient's arrival assessment is
@@ -389,7 +424,7 @@ export default function EhrVisitPopup({
                   {appointment?.appointmentTime
                     ? `Scheduled today · ${formatClockTime(appointment.appointmentTime)}`
                     : triage
-                      ? `Arrived · triaged ${formatClockTime(triage.triagedAt.slice(11, 16))}`
+                      ? `Arrived · triaged ${formatClockTime(triage.triagedAt)}`
                       /* Dated, and never "Arrived": the reading is real but it
                          belongs to an earlier day, not to today's visit. */
                       : lastTriage
@@ -404,8 +439,8 @@ export default function EhrVisitPopup({
               <div>
                 {todaysNote ? (
                   <>
-                    <strong>{todaysNote.chiefComplaint || 'Consultation note'}</strong>
-                    <p>{todaysNote.providerName} · {todaysNote.documentStatus === 'signed' ? 'Signed' : 'Draft'}</p>
+                    <strong>{todaysNote.title}</strong>
+                    <p>{todaysNote.author} · {todaysNote.signed ? 'Signed' : 'Draft'}</p>
                   </>
                 ) : (
                   <p>Visit form has not been completed for this visit</p>
@@ -461,7 +496,7 @@ export default function EhrVisitPopup({
                     {vitalsTriage && (
                       <p className="ehr-visit-pop-stamp">
                         {vitalsAreCurrent
-                          ? formatClockTime(vitalsTriage.triagedAt.slice(11, 16))
+                          ? formatClockTime(vitalsTriage.triagedAt)
                           : formatCompactDateTime(vitalsTriage.triagedAt)} · {vitalsTriage.triagedByName}
                       </p>
                     )}
@@ -478,7 +513,7 @@ export default function EhrVisitPopup({
                   <span className="ehr-visit-pop-label">Last visit</span>
                   <div>
                     <strong>{previousNote.chiefComplaint || 'Consultation'}</strong>
-                    <p>{(previousNote.consultedAt || previousNote.visitDate).slice(0, 10)} · {previousNote.providerName} · {previousNote.department}</p>
+                    <p>{recordDay(previousNote)} · {previousNote.providerName} · {previousNote.department}</p>
                   </div>
                 </div>
                 {previousNote.diagnoses?.length > 0 && (
@@ -503,7 +538,6 @@ export default function EhrVisitPopup({
             )}
           </div>
         )}
-
       </div>
   );
 
@@ -563,12 +597,15 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
     : [{ stage: entry.stage, label: STAGE_LABELS[entry.stage] }];
 
   return (
-    <Modal onClose={onClose} width={520} labelledBy="ehr-queue-move-title">
-      <div className="modal-content card-elevated ehr-queue-move">
-        <div className="ehr-queue-move-head">
-          <h3 id="ehr-queue-move-title">Move {shortenPersonName(entry.patientName)}</h3>
-          <button type="button" aria-label="Close" onClick={onClose}><X className="w-4 h-4" /></button>
-        </div>
+    <Modal onClose={onClose} size="md" labelledBy="ehr-queue-move-title">
+      <DialogFrame className="ehr-queue-move" busy={saving}>
+        <DialogHeader
+          className="ehr-queue-move-head"
+          titleId="ehr-queue-move-title"
+          title={<>Move {shortenPersonName(entry.patientName)}</>}
+          onClose={onClose}
+        />
+        <DialogBody className="ehr-queue-move-body">
 
         {(movable || onEscalate) && (
           <fieldset>
@@ -656,16 +693,16 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
             onChange={event => setComment(event.target.value)}
           />
         </label>
-
-        <div className="ehr-queue-move-footer">
-          <button type="button" onClick={onClose}>Cancel</button>
+        </DialogBody>
+        <DialogFooter className="ehr-queue-move-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           {escalating ? (
             /* The dialog IS the confirmation: the destination was chosen on
                purpose and the note above says what it does, so this commits
                without a second browser prompt. */
             <button
               type="button"
-              className="primary danger"
+              className="btn btn-danger-solid primary danger"
               disabled={saving}
               onClick={() => onEscalate?.(comment.trim())}
             >
@@ -674,7 +711,7 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
           ) : (
             <button
               type="button"
-              className="primary"
+              className="btn btn-primary primary"
               disabled={!dirty || roomMissing || saving}
               onClick={() => onMove({
                 stage: stageChanged ? stage : null,
@@ -686,8 +723,8 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
               {saving ? 'Moving…' : 'Move'}
             </button>
           )}
-        </div>
-      </div>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }

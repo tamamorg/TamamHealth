@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Banknote, Smartphone, CreditCard, Building2, Shield, CheckCircle2, Loader2, Printer, Mail } from '@/components/icons/lucide';
+import { Banknote, Smartphone, CreditCard, Building2, Shield, CheckCircle2, Loader2, Printer, Mail } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { PAYOR_LABELS, type PaymentMethodKey } from '@/lib/settings/facility-settings';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { formatMoney } from '@/lib/format-utils';
 import type { PaymentDoc } from '@/lib/db-types-payments';
 import '@/components/billing/billing.css';
@@ -379,19 +380,19 @@ export default function PaymentPanel({
   }
 
   return (
-    <Modal variant="slider" onClose={onCancel} width={560}>
-      <div className="modal-content pp-pay ehr-finance-dialog" style={{ width: '100%' }}>
-        {/* Header */}
-        <div className="ehr-finance-dialog__header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{t('billing.collectPayment')}</h3>
-            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{patientName}</p>
-          </div>
-          <button className="ehr-finance-dialog__close" onClick={onCancel} aria-label={t('action.close')} style={{ background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', width: 32, height: 32, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <X size={16} style={{ color: 'inherit', stroke: 'currentColor' }} />
+    <FormSlider
+      title={t('billing.collectPayment')}
+      subtitle={patientName}
+      width={560}
+      onClose={onCancel}
+      footer={<>
+          <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={onCancel}>{t('action.cancel')}</button>
+          <button type="button" className="btn btn-primary" style={{ flex: 2 }} disabled={processing || !Number.isFinite(Number(amount)) || Number(amount) <= 0} onClick={handleSubmit}>
+            {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: (Number.isFinite(Number(amount)) ? Number(amount) : 0).toLocaleString(), currency })}
           </button>
-        </div>
-
+      </>}
+    >
+      <div className="bl-root">
         {/* Scoped field styling. It sits after the header so the header
             stays the panel's first child — the popup header bar is matched
             structurally, and a leading <style> node displaced it. */}
@@ -611,13 +612,7 @@ export default function PaymentPanel({
 
         {/* Footer — flat bl-btn instead of the gradient-fill + drop-shadow
             "glow" button; the amount label already carries the emphasis. */}
-        <div className="bl-root ehr-finance-dialog__footer" style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'row', gap: 10, position: 'sticky', bottom: 0, background: 'var(--bg-card-solid, #FFFFFF)', borderTop: '1px solid var(--border-light)' }}>
-          <button type="button" className="bl-btn bl-btn--ghost" style={{ flex: 1 }} onClick={onCancel}>{t('action.cancel')}</button>
-          <button type="button" className="bl-btn bl-btn--primary" style={{ flex: 2 }} disabled={processing || !Number.isFinite(Number(amount)) || Number(amount) <= 0} onClick={handleSubmit}>
-            {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: (Number.isFinite(Number(amount)) ? Number(amount) : 0).toLocaleString(), currency })}
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

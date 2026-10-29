@@ -15,12 +15,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Save, Check, Copy, Send, ClipboardList, DollarSign,
-  Plus, AlertTriangle, Minus, ArrowLeft, ChevronDown,
-} from '@/components/icons/lucide';
+import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, AlertTriangle, Minus, ArrowLeft, ChevronDown } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import NoteSectionCard from './NoteSectionCard';
 import AssignPicker from './AssignPicker';
 import { patientFullName } from '@/lib/patient-utils';
@@ -111,7 +110,9 @@ function docCategoryLabel(category: string): string {
 
 interface ClinicalNoteEditorProps {
   noteId: string;
-  currentUser: { _id: string; name?: string; username?: string; role?: string; orgId?: string } | null;
+  /** `hospitalId` stamps what the note writes (prescriptions, orders) with the
+   *  facility; without it they are visible across the whole organisation. */
+  currentUser: { _id: string; name?: string; username?: string; role?: string; orgId?: string; hospitalId?: string; hospitalName?: string } | null;
   /** Providers offered in "Assigned To". */
   assignableUsers?: Array<{ _id: string; name: string }>;
   /**
@@ -1182,16 +1183,10 @@ export default function ClinicalNoteEditor({
 
       {/* Sign confirmation */}
       {showSignConfirm && (
-        <Modal onClose={() => setShowSignConfirm(false)} width={480}>
-          <div style={{ padding: 20 }}>
-            <div className="modal-headband">
-              <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={16} /> {t('noteEditor.signTitle')}
-              </h2>
-              <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: '0 0 16px' }}>
-                {t('noteEditor.signBody')}
-              </p>
-            </div>
+        <Modal labelledBy="clinicalnoteeditor-tsx-dlg-1185" onClose={() => setShowSignConfirm(false)} width={480}>
+          <DialogFrame>
+            <DialogHeader titleId="clinicalnoteeditor-tsx-dlg-1185" title={<><AlertTriangle size={16} /> {t('noteEditor.signTitle')}</>} description={t('noteEditor.signBody')} onClose={() => setShowSignConfirm(false)} />
+            <DialogBody className="space-y-4">
             {missingSections.length > 0 && (
               <div role="alert" style={{ margin: '0 0 14px', fontSize: 13.5 }}>
                 <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--color-danger-text, var(--color-danger))' }}>
@@ -1232,7 +1227,8 @@ export default function ClinicalNoteEditor({
                 </Select>
               </label>
             )}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            </DialogBody>
+            <DialogFooter>
               <button type="button" className="cn-btn" onClick={() => setShowSignConfirm(false)}>{t('noteEditor.cancel')}</button>
               <button
                 type="button"
@@ -1242,29 +1238,19 @@ export default function ClinicalNoteEditor({
               >
                 <Check size={14} /> {cosignFromId ? t('noteEditor.signRequestCosign') : t('noteEditor.signNote')}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
       {/* Addendum */}
       {showAddendum && (
-        <Modal variant="slider" onClose={() => setShowAddendum(false)} width={520}>
-          <div style={{ padding: 20 }}>
-            <div className="modal-headband">
-              <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addendumTitle')}</h2>
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 10px' }}>
-                {t('noteEditor.addendumHelp')}
-              </p>
-            </div>
-            <textarea
-              className="cn-textarea"
-              value={addendumText}
-              onChange={e => setAddendumText(e.target.value)}
-              placeholder={t('noteEditor.addendumPlaceholder')}
-              aria-label={t('noteEditor.addendumText')}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+        <FormSlider
+          title={t('noteEditor.addendumTitle')}
+          subtitle={t('noteEditor.addendumHelp')}
+          width={520}
+          onClose={() => setShowAddendum(false)}
+          footer={<>
               <button type="button" className="cn-btn" onClick={() => setShowAddendum(false)}>{t('noteEditor.cancel')}</button>
               <button
                 type="button"
@@ -1274,9 +1260,18 @@ export default function ClinicalNoteEditor({
               >
                 {t('noteEditor.addAddendum')}
               </button>
-            </div>
+          </>}
+        >
+          <div className="space-y-4">
+            <textarea
+              className="cn-textarea"
+              value={addendumText}
+              onChange={e => setAddendumText(e.target.value)}
+              placeholder={t('noteEditor.addendumPlaceholder')}
+              aria-label={t('noteEditor.addendumText')}
+            />
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {showMedications && (

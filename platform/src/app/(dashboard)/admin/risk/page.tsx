@@ -24,6 +24,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { apiFetch } from '@/lib/api-fetch';
@@ -359,19 +360,19 @@ export default function RiskCenterPage() {
           on a single click into a dense table. */}
       {resolving && (
         <Modal onClose={() => setResolving(null)} width={480} labelledBy="resolve-risk-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="resolve-risk-title" className="sadb-modal-title">
-                {single ? single.signal : `Resolve ${resolving.length} risks`}
-              </h2>
-              <p className="sadb-modal-sub">
-                {single
+          <DialogFrame>
+            <DialogHeader
+              titleId="resolve-risk-title"
+              title={<>{single ? single.signal : `Resolve ${resolving.length} risks`}</>}
+              descriptionId="resolve-risk-title-desc"
+              description={<>{single
                   ? 'Resolve this signal?'
                   : `${resolving.length} signals currently shown in the queue.`}
                 {' '}Resolving records that it has been dealt with — it does not change the
-                underlying data. If the condition happens again it comes back on its own.
-              </p>
-            </div>
+                underlying data. If the condition happens again it comes back on its own.</>}
+              onClose={() => setResolving(null)}
+            />
+            <DialogBody tight>
 
             {single && (
               <>
@@ -427,10 +428,11 @@ export default function RiskCenterPage() {
               onChange={e => setNote(e.target.value)}
               placeholder="e.g. Reset the account and confirmed the login succeeded"
             />
+            </DialogBody>
             {/* The row used to be a link to the subsystem it came from. That
                 navigation lives here now, so opening the popup costs nothing. */}
-            <div className="sadb-modal-actions" style={{ justifyContent: single ? 'space-between' : 'flex-end' }}>
-              {single && (
+            <DialogFooter
+              start={single && (
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -440,16 +442,15 @@ export default function RiskCenterPage() {
                   Open in {single.source}
                 </button>
               )}
-              <span style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setResolving(null)} disabled={saving}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={confirmResolve} disabled={saving}>
-                  {saving ? 'Saving…' : single ? 'Resolve' : `Resolve ${resolving.length}`}
-                </button>
-              </span>
-            </div>
-          </div>
+            >
+              <button type="button" className="btn btn-secondary" onClick={() => setResolving(null)} disabled={saving}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmResolve} disabled={saving}>
+                {saving ? 'Saving…' : single ? 'Resolve' : `Resolve ${resolving.length}`}
+              </button>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
@@ -457,14 +458,15 @@ export default function RiskCenterPage() {
           asked for the same way resolving is rather than firing from a row. */}
       {reopening && (
         <Modal onClose={() => setReopening(null)} width={480} labelledBy="reopen-risk-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="reopen-risk-title" className="sadb-modal-title">{reopening.signal}</h2>
-              <p className="sadb-modal-sub">
-                Reopen this signal? It goes back into the Open queue and counts against the
-                readiness score again. The record of what was done is kept.
-              </p>
-            </div>
+          <DialogFrame>
+            <DialogHeader
+              titleId="reopen-risk-title"
+              title={reopening.signal}
+              descriptionId="reopen-risk-title-desc"
+              description="Reopen this signal? It goes back into the Open queue and counts against the readiness score again. The record of what was done is kept."
+              onClose={() => setReopening(null)}
+            />
+            <DialogBody tight>
             <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
               <div className="sadb-kv">
                 <span>Severity</span>
@@ -481,15 +483,16 @@ export default function RiskCenterPage() {
             }}>
               {reopening.note || 'Acknowledged, no note.'}
             </p>
-            <div className="sadb-modal-actions">
+            </DialogBody>
+            <DialogFooter>
               <button type="button" className="btn btn-secondary" onClick={() => setReopening(null)} disabled={reopenBusy}>
                 Cancel
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmReopen} disabled={reopenBusy}>
                 {reopenBusy ? 'Reopening…' : 'Reopen'}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </SadbPage>

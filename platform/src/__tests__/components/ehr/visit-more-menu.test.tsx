@@ -12,6 +12,8 @@ jest.mock('@/lib/i18n/useTranslation', () => ({
 jest.mock('@/lib/hooks/useMedicalRecords', () => ({
   useMedicalRecords: () => ({ records: [] }),
 }));
+// No scope: the panel reads no clinical notes here (it only reads them when one is set).
+jest.mock('@/lib/hooks/useDataScope', () => ({ useDataScope: () => undefined }));
 jest.mock('@/components/Modal', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div data-modal>{children}</div>,
@@ -194,7 +196,7 @@ describe('visit action dialog — one shape for every exit under More', () => {
     const { container } = mount(
       <EhrVisitActionDialog kind={kind} patientName="Test User" saving={false} onClose={jest.fn()} onConfirm={jest.fn()} />,
     );
-    expect(container.querySelector('.ehr-queue-move .ehr-queue-move-head h3')).not.toBeNull();
+    expect(container.querySelector('.ehr-queue-move .ehr-queue-move-head h2')).not.toBeNull();
     expect(container.querySelector('.ehr-queue-move-comment textarea')).not.toBeNull();
     expect(container.querySelectorAll('.ehr-queue-move-footer button')).toHaveLength(2);
   });

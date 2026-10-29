@@ -8,8 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -91,7 +90,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
     }
   };
 
-  const body = (
+  const fields = (
     <>
       <div className="space-y-3">
         <div>
@@ -139,28 +138,36 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
           <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
         </div>
       </div>
-      <hr className="section-divider" />
-      <div className="flex gap-2 mt-2">
+    </>
+  );
+  const actions = (
+    <>
         <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
         <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.saveShift')}</button>
-      </div>
     </>
   );
 
-  if (presentation === 'page') return body;
+  if (presentation === 'page') {
+    return (
+      <>
+        {fields}
+        <hr className="section-divider" />
+        <div className="flex gap-2 mt-2">{actions}</div>
+      </>
+    );
+  }
 
   return (
-    <Modal variant="slider" onClose={onClose} width={448} labelledBy="create-shift-title">
-      <div className="sadb-modal">
-        <PopupHeader
-          titleId="create-shift-title"
-          title={t('hr.scheduleShift')}
-          subtitle={t('createPage.shiftNote')}
-          onExpand={() => { onClose(); router.push(expandHref(`/hr/schedule/new?date=${encodeURIComponent(form.shiftDate)}`)); }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+    <FormSlider
+      title={t('hr.scheduleShift')}
+      subtitle={t('createPage.shiftNote')}
+      onExpand={() => { onClose(); router.push(expandHref(`/hr/schedule/new?date=${encodeURIComponent(form.shiftDate)}`)); }}
+      onClose={onClose}
+      width={448}
+      busy={saving}
+      footer={actions}
+    >
+      {fields}
+    </FormSlider>
   );
 }

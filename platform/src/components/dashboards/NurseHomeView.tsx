@@ -22,7 +22,7 @@ import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient
 import type { AppointmentDoc, PatientDoc, TriageDoc, FollowUpDoc, ShiftHandoffDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
-import { toIsoDate } from '@/lib/date-utils';
+import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 
@@ -385,7 +385,7 @@ export function assembleNurseWeekActivity(
   admissions: AdmissionDoc[],
   triages: TriageDoc[],
 ): DayStatsItem[] {
-  const dayOf = (iso?: string) => (iso || '').slice(0, 10);
+  const dayOf = (iso?: string) => localDayOf(iso);
   const admittedOnDay = new Set(
     admissions.map(a => `${a.patientId}:${dayOf(a.admissionDate)}`),
   );
@@ -399,7 +399,7 @@ export function assembleNurseWeekActivity(
     const date = dayOf(triage.triagedAt);
     if (!date) continue;
     if (admittedOnDay.has(`${triage.patientId}:${date}`)) continue;
-    items.push({ date, time: triage.triagedAt.slice(11, 16), series: 1 });
+    items.push({ date, time: localClockOf(triage.triagedAt), series: 1 });
   }
   return items;
 }

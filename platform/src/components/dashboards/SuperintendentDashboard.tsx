@@ -13,7 +13,7 @@ import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHea
 import {
   Users, Stethoscope, HeartPulse, BedDouble,
   ClipboardCheck, Activity, AlertTriangle, SendHorizontal,
-  ChevronRight, ArrowRight, X, Maximize2} from '@/components/icons/lucide';
+  ChevronRight, ArrowRight} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -22,6 +22,7 @@ import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { todayIso } from '@/lib/date-utils';
 import { userWorksAtFacility } from '@/modules/tenancy/client';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -46,27 +47,22 @@ function SuperintendentPreviewDialog({ preview, closeLabel, expandLabel, onClose
   const titleId = 'superintendent-dashboard-preview-title';
   return (
     <Modal onClose={onClose} width={480} labelledBy={titleId}>
-      <div className="modal-panel">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{preview.context}</p>
-            <h2 id={titleId} className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{preview.title}</h2>
-          </div>
-          {/* Expand and close, once each — the footer used to restate both. */}
-          <span className="flex items-center gap-1 flex-shrink-0">
-            <button type="button" className="p-2 rounded-lg" onClick={onOpen} aria-label={expandLabel} title={expandLabel} data-action="preview-expand">
-              <Maximize2 className="w-4 h-4" />
-            </button>
-            <button type="button" className="p-2 rounded-lg" onClick={onClose} aria-label={closeLabel}>
-              <X className="w-4 h-4" />
-            </button>
-          </span>
-        </div>
-        <div className="py-5">
+      <DialogFrame>
+        {/* Expand and close, once each — the footer used to restate both. */}
+        <DialogHeader
+          titleId={titleId}
+          title={preview.title}
+          description={preview.context}
+          onClose={onClose}
+          closeLabel={closeLabel}
+          onExpand={onOpen}
+          expandLabel={expandLabel}
+        />
+        <DialogBody>
           <p className="stat-value text-3xl" style={{ color: 'var(--text-primary)' }}>{preview.value}</p>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{preview.detail}</p>
-        </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }
