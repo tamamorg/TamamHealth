@@ -16,8 +16,8 @@
  */
 
 import { useState } from 'react';
-import Modal from '@/components/Modal';
-import { Send, X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { Send } from '@/components/icons/lucide';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './clinical-notes.css';
@@ -57,16 +57,18 @@ export default function PatientEducationModal({
   };
 
   return (
-    <Modal variant="slider" onClose={onClose} width={520} labelledBy="cn-patied-title">
-      <div style={{ padding: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <h2 id="cn-patied-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, flex: 1 }}>
-            Send Patient Education to {patientName}
-          </h2>
-          <button type="button" className="cn-tool" onClick={onClose} aria-label="Close">
-            <X size={14} />
+    <FormSlider
+      title={<>Send Patient Education to {patientName}</>}
+      width={520}
+      onClose={onClose}
+      footer={<>
+          <button type="button" className="cn-btn" onClick={onClose} disabled={sending}>Cancel</button>
+          <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={sending}>
+            <Send size={14} /> {sending ? 'Sending…' : 'Send'}
           </button>
-        </div>
+      </>}
+    >
+      <div className="space-y-4">
         <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 14px' }}>
           Sent as a message to the patient and filed under the chart&rsquo;s Documents ▸ Patient education.
         </p>
@@ -94,14 +96,7 @@ export default function PatientEducationModal({
         {error && (
           <p style={{ color: 'var(--color-danger, #d92b20)', fontSize: 12.5, margin: '8px 0 0' }}>{error}</p>
         )}
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button type="button" className="cn-btn" onClick={onClose} disabled={sending}>Cancel</button>
-          <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={sending}>
-            <Send size={14} /> {sending ? 'Sending…' : 'Send'}
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DemoModeBanner from '@/components/DemoModeBanner';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -642,27 +642,30 @@ export default function NutritionDashboard() {
       </EhrCareDashboard>
 
       {showForm && (
-        <Modal variant="slider"
-          onClose={() => { setShowForm(false); setFormError(''); }}
+        <FormSlider
+          title={t('nutrition.newScreening')}
           width={640}
-          labelledBy="nutrition-screening-title"
-        >
-          <div className="p-5" style={{ background: 'var(--bg-card-solid)', borderRadius: 'var(--card-radius)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 id="nutrition-screening-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                {t('nutrition.newScreening')}
-              </h2>
+          onClose={() => { setShowForm(false); setFormError(''); }}
+          footer={<>
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setFormError(''); }}
-                aria-label={t('nutrition.formCancel')}
-                className="p-1.5 rounded-lg"
-                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}
+                className="px-4 py-2 rounded-md text-xs font-semibold"
+                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)' }}
               >
-                <X className="w-4 h-4" />
+                {t('nutrition.formCancel')}
               </button>
-            </div>
-
+              <button
+                type="button"
+                onClick={submitScreening}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold"
+                style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer' }}
+              >
+                <CheckCircle2 className="w-3 h-3" /> {t('nutrition.formSave')}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="mb-3">
               <label className="text-[10px] font-bold uppercase block mb-1" style={{ color: 'var(--text-muted)' }}>
                 Patient chart (optional)
@@ -788,27 +791,8 @@ export default function NutritionDashboard() {
             {formError && (
               <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--color-danger-text)' }}>{formError}</p>
             )}
-
-            <div className="flex items-center justify-end gap-2 mt-4">
-              <button
-                type="button"
-                onClick={() => { setShowForm(false); setFormError(''); }}
-                className="px-4 py-2 rounded-md text-xs font-semibold"
-                style={{ background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-medium)' }}
-              >
-                {t('nutrition.formCancel')}
-              </button>
-              <button
-                type="button"
-                onClick={submitScreening}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold"
-                style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer' }}
-              >
-                <CheckCircle2 className="w-3 h-3" /> {t('nutrition.formSave')}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </main>
   );

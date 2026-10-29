@@ -10,8 +10,7 @@
 import { useState } from 'react';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
-import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useToast } from '@/components/Toast';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useAuth } from '@/lib/context';
@@ -263,14 +262,25 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
       </ChartSection>
 
       {adding && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-procedure-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="add-procedure-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {editing ? t('chart.correctProcedure') : 'Record procedure'}
-              </h2>
-              <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title={editing ? t('chart.correctProcedure') : 'Record procedure'}
+          className="tamam-dialog"
+          width={480}
+          onClose={() => !submitting && resetForm()}
+          busy={submitting}
+          footer={<>
+              {editing && (
+                <button className="btn btn-secondary" disabled={submitting || correctionReason.trim().length < 3} onClick={markEnteredInError}>
+                  {t('chart.markError')}
+                </button>
+              )}
+              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
+              <button className="btn btn-primary" disabled={submitting || !name.trim()} onClick={handleSubmit}>
+                {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save procedure'}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Procedure</label>
               <input
@@ -352,19 +362,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              {editing && (
-                <button className="btn btn-sm btn-secondary" disabled={submitting || correctionReason.trim().length < 3} onClick={markEnteredInError}>
-                  {t('chart.markError')}
-                </button>
-              )}
-              <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={submitting || !name.trim()} onClick={handleSubmit}>
-                {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save procedure'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

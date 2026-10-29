@@ -359,12 +359,18 @@ export default function TamamChartShell({
               assignableUsers={assignableUsers}
               // ChartPanelUser allows a missing _id; the editor does not — an
               // id-less session gets the editor's own signed-out handling.
+              // The facility travels with the user: everything written from the
+              // note (prescriptions, orders) is stamped with it. Without it a
+              // prescription had no hospitalId, and the scope filter then
+              // showed it to every facility in the organisation.
               currentUser={currentUser?._id ? {
                 _id: currentUser._id,
                 name: currentUser.name,
                 username: currentUser.username,
                 role: currentUser.role,
                 orgId: currentUser.orgId,
+                hospitalId: currentUser.hospitalId,
+                hospitalName: currentUser.hospitalName,
               } : null}
               onClose={closeDrawer}
               // The chart is already on screen: switch its section and close

@@ -12,8 +12,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, X } from '@/components/icons/lucide';
-import Modal from '@/components/Modal';
+import { Plus } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useToast } from '@/components/Toast';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -155,15 +155,12 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
   });
 
   return (
-    <Modal variant="slider" onClose={onClose} width={760} labelledBy="cn-allergies-title">
-      <div className="cn-meds">
-        <div className="cn-meds-header modal-no-headband">
-          <h2 className="cn-meds-title" id="cn-allergies-title">Allergies</h2>
-          <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close allergies">
-            <X size={18} />
-          </button>
-        </div>
-
+    <FormSlider
+      title="Allergies"
+      width={760}
+      onClose={onClose}
+    >
+      <div className="space-y-4">
         <div className="cn-meds-body cn-meds-body--single">
           <div className="cn-meds-left">
             <div className="cn-meds-controlrow">
@@ -303,6 +300,6 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
           </div>
         </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

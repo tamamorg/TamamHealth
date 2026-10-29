@@ -36,6 +36,8 @@ import BillingOverviewCards from '@/components/payments/BillingOverviewCards';
 import BillingFilterMenu, { type FilterField } from '@/components/payments/BillingFilterMenu';
 import { claimFilterOptions, filterClaims, PAYER_LABEL_KEYS } from '@/components/payments/claims-filter';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import FormSlider from '@/components/overlay/FormSlider';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
@@ -961,13 +963,10 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           biller must state a reason; the action runs through the audited service. */}
       {reverseFor && (
         <Modal onClose={() => { if (!reversing) setReverseFor(null); }} width={420} labelledBy="bl-reverse-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-reverse-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={16} style={{ color: 'var(--color-danger-text)' }} />
-                {reverseFor.mode === 'void' ? t('action.reverse') : t('action.undo')}
-              </h3>
-            </div>
+          <DialogFrame>
+            <DialogHeader titleId="bl-reverse-title" title={<><AlertTriangle size={16} style={{ color: 'var(--color-danger-text)' }} />
+                {reverseFor.mode === 'void' ? t('action.reverse') : t('action.undo')}</>} onClose={() => { if (!reversing) setReverseFor(null); }} />
+            <DialogBody className="bl-root">
             <div className="bl-fee-list" style={{ maxHeight: 'none', overflow: 'visible' }}>
               <div className="bl-fee-row">
                 <div className="min-w-0">
@@ -990,44 +989,32 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                 autoFocus
               />
             </div>
-            <div className="bl-modal-actions">
-              <button type="button" onClick={() => setReverseFor(null)} disabled={reversing} className="bl-btn bl-btn--ghost">{t('action.cancel')}</button>
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" onClick={() => setReverseFor(null)} disabled={reversing} className="btn btn-secondary">{t('action.cancel')}</button>
               <button
                 type="button"
                 onClick={handleConfirmReverse}
                 disabled={!reverseReason.trim() || reversing}
-                className="bl-btn bl-btn--dark"
+                className="btn btn-primary"
                 style={{ background: 'var(--color-danger)' }}
               >
                 {reverseFor.mode === 'void' ? <Ban size={16} /> : <RotateCcw size={16} />}
                 {t('action.confirm')}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
       {/* Collect-payment patient picker (opened from the header button) */}
       {collectPickerOpen && (
-        <Modal variant="slider" onClose={() => setCollectPickerOpen(false)} width={460}>
-          <div className="bl-root" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
-              <div className="flex items-center gap-2">
-                <Banknote size={18} style={{ color: 'var(--bl-teal)' }} />
-                <h2 className="bl-modal-title">{t('billing.collectPayment')}</h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCollectPickerOpen(false)}
-                aria-label="Close"
-                style={{
-                  background: 'transparent', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6,
-                  width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
+        <FormSlider
+          title={t('billing.collectPayment')}
+          width={460}
+          onClose={() => setCollectPickerOpen(false)}
+        >
+          <div className="space-y-4">
             <div className="p-3">
               <SearchInput value={collectSearch} onChange={setCollectSearch} placeholder={t('payments.searchPlaceholder')} />
               <div className="mt-2" style={{ maxHeight: 360, overflowY: 'auto' }}>
@@ -1063,7 +1050,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               </div>
             </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* Record-payment form (cash / mobile money / card / insurance) */}
@@ -1080,28 +1067,25 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
 
       {/* Record an installment against a payment plan */}
       {recordPlanFor && (
-        <Modal variant="slider" onClose={() => setRecordPlanFor(null)} width={440}>
-          <div className="bl-root bl-modal-body">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Receipt size={18} style={{ color: 'var(--bl-teal)' }} />
-                <div>
-                  <h3 className="bl-modal-title">{t('plans.recordPayment')}</h3>
-                  <p className="bl-card-sub" style={{ margin: '2px 0 0' }}>{recordPlanFor.patientName}</p>
-                </div>
-              </div>
+        <FormSlider
+          title={t('plans.recordPayment')}
+          subtitle={recordPlanFor.patientName}
+          width={440}
+          onClose={() => setRecordPlanFor(null)}
+          footer={<>
+              <button type="button" onClick={() => setRecordPlanFor(null)} className="btn btn-secondary">{t('action.cancel')}</button>
               <button
                 type="button"
-                onClick={() => setRecordPlanFor(null)}
-                aria-label="Close"
-                style={{
-                  background: 'transparent', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6,
-                  width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-                }}
+                onClick={handleRecordPlanPayment}
+                disabled={!planAmount || savingPlan}
+                className="btn btn-primary"
               >
-                <X size={16} />
+                <Receipt size={16} />
+                {t('plans.recordPayment')}
               </button>
-            </div>
+          </>}
+        >
+          <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="bl-plan-amount">{t('plans.paymentAmountLabel')}</label>
               <input
@@ -1123,20 +1107,8 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                 rows={3}
               />
             </div>
-            <div className="bl-modal-actions">
-              <button type="button" onClick={() => setRecordPlanFor(null)} className="bl-btn bl-btn--ghost">{t('action.cancel')}</button>
-              <button
-                type="button"
-                onClick={handleRecordPlanPayment}
-                disabled={!planAmount || savingPlan}
-                className="bl-btn bl-btn--primary"
-              >
-                <Receipt size={16} />
-                {t('plans.recordPayment')}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );
@@ -1439,7 +1411,6 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
             </div>
           )}
         </Section>
-
         </div>{/* /scrollable account sections */}
 
         {/* Footer actions */}

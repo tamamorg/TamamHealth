@@ -18,9 +18,8 @@
 import { useState } from 'react';
 import ChartSection from '../ChartSection';
 import HistoryEntryForm from './HistoryEntryForm';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -282,21 +281,13 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
       })}
 
       {form && (
-        <Modal variant="slider"
+        <FormSlider
+          title={t(`${form.entry ? 'history.editTitle' : 'history.addTitle'}.${form.domain}`)}
           className="tamam-dialog"
-          onClose={() => setForm(null)}
           width={480}
-          labelledBy="history-entry-title"
+          onClose={() => setForm(null)}
         >
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="history-entry-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {t(`${form.entry ? 'history.editTitle' : 'history.addTitle'}.${form.domain}`)}
-              </h2>
-              <button type="button" className="p-1 rounded" aria-label={t('history.close')} onClick={() => setForm(null)} style={{ color: 'var(--text-muted)' }}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+          <div className="space-y-4">
             <HistoryEntryForm
               key={form.entry?._id || `new-${form.domain}`}
               domain={form.domain}
@@ -310,7 +301,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
               onCancel={() => setForm(null)}
             />
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

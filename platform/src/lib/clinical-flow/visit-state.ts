@@ -69,8 +69,20 @@ export function encounterVisitState(status: EncounterStatus): OperationalVisitSt
 export function resolveOperationalVisitState(
   appointment: Pick<AppointmentDoc, 'status'>,
   encounter?: Pick<EncounterDoc, 'status'> | null,
+  /**
+   * `nursingReviewOpen`: the encounter has post-consultation nursing still to
+   * do (the post-consult handoff queue). Signing the note moves the encounter
+   * to ready-for-checkout, but checkout stays blocked until that nursing is
+   * done — so the visit reads as post-consultation nursing, on every board.
+   * The desk applied this and the clinician board did not, so the doctor saw
+   * "Ready for clinic checkout" for a visit the desk could not check out.
+   */
+  options: { nursingReviewOpen?: boolean } = {},
 ): OperationalVisitState {
   const key = encounter?.status ?? appointment.status;
+  if (options.nursingReviewOpen && (encounter?.status === 'ready_for_clinic_checkout' || encounter?.status === 'in_clinic_checkout')) {
+    return { key, label: 'Post-consultation nursing', i18nKey: 'postConsult.title', lane: 'in_facility' };
+  }
   const state = encounter ? encounterStates[encounter.status] : appointmentFallbacks[appointment.status];
   return { key, ...state };
 }

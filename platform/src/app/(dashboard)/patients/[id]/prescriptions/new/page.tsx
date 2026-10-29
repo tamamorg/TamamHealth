@@ -62,7 +62,9 @@ export default function NewPrescriptionPage() {
       layout="full"
       title={t('createPage.prescribeTitle')}
       note={t('createPage.prescribeNote')}
-      backLabel={t('createPage.backToChart')}
+      // Name the destination only when it is the chart; a ward's MAR (or any
+      // other caller passing returnTo) gets a plain Back.
+      backLabel={returnTo.startsWith(`/patients/${encodeURIComponent(patientId)}`) ? t('createPage.backToChart') : t('routeContext.back')}
       returnTo={returnTo}
     >
       <PrescribeModal
@@ -72,7 +74,8 @@ export default function NewPrescriptionPage() {
         currentUser={currentUser}
         encounterId={encounterId}
         onClose={() => router.push(returnTo)}
-        onPrescribed={() => router.push(chart)}
+        // Back to where the order was raised (a ward's MAR, the chart).
+        onPrescribed={() => router.push(returnTo)}
       />
     </CreateRecordPage>
   );

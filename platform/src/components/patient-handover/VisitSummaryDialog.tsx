@@ -9,6 +9,7 @@
  * editable, because that is the one part written in the clinician's voice.
  * The text version leaves the diagnosis out unless the sender asks for it.
  */
+import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
@@ -58,7 +59,8 @@ export default function VisitSummaryDialog({
   const [includeDiagnosis, setIncludeDiagnosis] = useState(false);
 
   const userName = currentUser?.name || currentUser?.username || '';
-  const facilityName = currentUser?.hospitalName || t('patientCopy.thisFacility');
+  const facilityNameLive = useFacilityName();
+  const facilityName = facilityNameLive || t('patientCopy.thisFacility');
 
   const summary = useMemo(() => (day ? buildVisitSummary({
     visitDate: day,

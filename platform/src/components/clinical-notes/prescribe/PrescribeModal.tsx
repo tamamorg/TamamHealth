@@ -22,6 +22,8 @@ import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useAuth } from '@/lib/context';
+import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { cannotFillOnSite, stockPositionFor } from '@/lib/pharmacy-stock-position';
 import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
@@ -30,7 +32,7 @@ import DrugInfoSection from './DrugInfoSection';
 import PharmacyInfoSection from './PharmacyInfoSection';
 import PatientCostSection from './PatientCostSection';
 import DrugMonographPanel, { type MonographWarning } from './DrugMonographPanel';
-import { emptyDraft, type RxDraft } from './types';
+import { doseFrom, draftQuantity, emptyDraft, type RxDraft } from './types';
 import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc, ProblemDoc } from '@/lib/db-types';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
@@ -42,12 +44,6 @@ import './../clinical-notes.css';
 
 /** The destination that hands the script to the patient instead of a queue. */
 const OUTSIDE_PHARMACY = 'Outside pharmacy (patient takes the script)';
-
-/** Strength fragment from a formulary name, for the stored dose. */
-function doseFrom(name: string): string {
-  const m = name.match(/\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|%|iu)(?:\/\S+)?/i);
-  return m ? m[0] : 'As directed';
-}
 
 interface PrescribeModalProps {
   patientId: string;
@@ -81,7 +77,14 @@ export default function PrescribeModal({
   // every prescription is issued to the patient as a script.
   const onSitePharmacy = useSettings().clinicalPolicy.onSitePharmacy;
   const userName = currentUser?.name || currentUser?.username || 'Unknown user';
-  const facility = currentUser?.hospitalName || 'This facility';
+  const facilityName = useFacilityName();
+  // The facility this prescription is filed under. Callers pass a trimmed user
+  // object; one that leaves hospitalId off (the chart's note editor did) must
+  // not produce a prescription with none — the scope filter shows a doc with
+  // no facility to every facility in the organisation.
+  const { currentUser: signedIn } = useAuth();
+  const hospitalId = currentUser?.hospitalId || signedIn?.hospitalId;
+  const facility = facilityName || 'This facility';
   const pharmacyName = `${facility} Pharmacy`;
 
   const [patient, setPatient] = useState<PatientDoc | null>(null);
@@ -114,7 +117,13 @@ export default function PrescribeModal({
   const [showSigs, setShowSigs] = useState(true);
   const [showReasons, setShowReasons] = useState(false);
 
-  const patch = useCallback((p: Partial<RxDraft>) => setDraft(d => ({ ...d, ...p })), []);
+  // The quantity follows the course until the prescriber types one (draftQuantity).
+  const [quantityEdited, setQuantityEdited] = useState(false);
+  const patch = useCallback((p: Partial<RxDraft>) => {
+    if (p.quantity !== undefined) setQuantityEdited(true);
+    setDraft(d => ({ ...d, ...p }));
+  }, []);
+  const quantity = draftQuantity(draft, quantityEdited);
   const allergyWarnings = useMemo(() => draft.drug ? checkAllergiesStructured(
     [draft.drug.name],
     (patient?.structuredAllergies || []).filter(entry => entry.status === 'active'),
@@ -215,15 +224,15 @@ export default function PrescribeModal({
   // shelf: their scope spans several hospitals, and summing those would report
   // another site's stock as "in stock here". They get "not tracked" instead.
   const shelf = useMemo(
-    () => (currentUser?.hospitalId ? inventory : []),
-    [inventory, currentUser?.hospitalId],
+    () => (hospitalId ? inventory : []),
+    [inventory, hospitalId],
   );
   const stock = useMemo(() => {
     if (!draft.drug || !onSitePharmacy) return null;
-    return stockPositionFor(draft.drug.name, shelf, Math.max(1, parseInt(draft.quantity, 10) || 1), {
-      facilityId: currentUser?.hospitalId,
+    return stockPositionFor(draft.drug.name, shelf, Math.max(1, parseInt(quantity, 10) || 1), {
+      facilityId: hospitalId,
     });
-  }, [draft.drug, draft.quantity, shelf, onSitePharmacy, currentUser?.hospitalId]);
+  }, [draft.drug, quantity, shelf, onSitePharmacy, hospitalId]);
 
   const handleToggleFavorite = useCallback(async () => {
     const drug = draft.drug;
@@ -294,14 +303,14 @@ export default function PrescribeModal({
         // A script for an outside pharmacy never enters this facility's queue.
         orderStatus: send && !external ? 'received_in_pharmacy_queue' : 'prescribed',
         fulfilment: external ? 'external' : undefined,
-        quantityToDispense: Math.max(1, parseInt(draft.quantity, 10) || 1),
+        quantityToDispense: Math.max(1, parseInt(quantity, 10) || 1),
         indication: draft.reason || undefined,
         allowSubstitution: draft.allowSubstitution,
         refills: parseInt(draft.refills, 10) || 0,
         effectiveOn: draft.effectiveOn,
         pharmacyInstructions: draft.pharmacyNote.trim() || undefined,
-        hospitalId: currentUser?.hospitalId,
-        hospitalName: currentUser?.hospitalName,
+        hospitalId,
+        hospitalName: facilityName,
         orgId: currentUser?.orgId,
         medicationSafetyAcknowledgement,
       } as PrescriptionCreateInput, scope);
@@ -340,7 +349,7 @@ export default function PrescribeModal({
     } finally {
       setBusy(false);
     }
-  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length, severeAllergyWarnings, confirmPrompt, t, scope]);
+  }, [draft, patientId, patientName, encounterId, userName, currentUser, onPrescribed, showToast, external, toHandOver.length, severeAllergyWarnings, confirmPrompt, t, scope, facilityName, quantity, hospitalId]);
 
   // Every way out of the dialog goes through here. Scripts already saved for
   // an outside pharmacy still have to reach the patient, so leaving — Cancel,
@@ -361,6 +370,7 @@ export default function PrescribeModal({
     setActiveRx(prev => [rx, ...prev]);
     if (external) setToHandOver(prev => [...prev, rx]);
     setDraft(emptyDraft(facility));
+    setQuantityEdited(false);
     setQuery('');
   };
 
@@ -393,6 +403,7 @@ export default function PrescribeModal({
     setActiveRx(prev => [rx, ...prev]);
     setToHandOver(prev => [...prev, rx]);
     setDraft(emptyDraft(facility));
+    setQuantityEdited(false);
     setQuery('');
     setHandingOver(true);
   };
@@ -415,7 +426,7 @@ export default function PrescribeModal({
           <tr><td class="muted">Medication</td><td><strong>${e(draft.drug.name)}</strong></td></tr>
           <tr><td class="muted">Dose / form</td><td>${e(doseFrom(draft.drug.name))}${draft.drug.form ? ` · ${e(draft.drug.form)}` : ''}</td></tr>
           <tr><td class="muted">Directions for patient</td><td><strong>${e(draft.instructions.trim())}</strong></td></tr>
-          <tr><td class="muted">Quantity</td><td>${e(draft.quantity || '1')}</td></tr>
+          <tr><td class="muted">Quantity</td><td>${e(quantity || '1')}</td></tr>
           <tr><td class="muted">Days supply</td><td>${e(draft.daysSupply ? `${draft.daysSupply} days` : 'Not specified')}</td></tr>
           <tr><td class="muted">Refills</td><td>${e(draft.refills || '0')}</td></tr>
           <tr><td class="muted">Effective date</td><td>${e(draft.effectiveOn || '—')}</td></tr>
@@ -447,12 +458,15 @@ export default function PrescribeModal({
 
   const panel = (
       <div className="cn-meds">
-        <div className="cn-meds-header modal-no-headband">
-          <h2 className="cn-meds-title" id="cn-rx-title">Prescribe Medications</h2>
-          {/* One group, so the header's space-between has two children — left
-              loose, Expand was the middle of three and sat dead centre. */}
-          <div className="cn-meds-header-actions">
-            {presentation === 'modal' && (
+        {/* The header belongs to the slider. On a page — the chart's workspace
+            drawer or the /prescriptions/new route — the host already has a
+            title and a close, and a second set read as two dialogs nested. */}
+        {presentation === 'modal' && (
+          <div className="cn-meds-header modal-no-headband">
+            <h2 className="cn-meds-title" id="cn-rx-title">Prescribe Medications</h2>
+            {/* One group, so the header's space-between has two children — left
+                loose, Expand was the middle of three and sat dead centre. */}
+            <div className="cn-meds-header-actions">
               <button
                 type="button"
                 className="cn-meds-close"
@@ -467,18 +481,18 @@ export default function PrescribeModal({
               >
                 <Maximize2 size={18} />
               </button>
-            )}
-            <button type="button" className="cn-meds-close" onClick={requestClose} aria-label="Close prescribe medications" title="Close" data-action="popup-close">
-              <X size={18} />
-            </button>
+              <button type="button" className="cn-meds-close" onClick={requestClose} aria-label="Close prescribe medications" title="Close" data-action="popup-close">
+                <X size={18} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="cn-meds-body">
           <div className="cn-meds-left">
             <CollapsibleSection title="Drug Info" open={openDrug} onToggle={() => setOpenDrug(v => !v)}>
               <DrugInfoSection
-                draft={draft}
+                draft={{ ...draft, quantity }}
                 onChange={patch}
                 query={query}
                 onQueryChange={setQuery}
@@ -493,7 +507,7 @@ export default function PrescribeModal({
                 showReasons={showReasons}
                 onToggleReasons={() => setShowReasons(v => !v)}
                 inventory={onSitePharmacy ? shelf : undefined}
-                facilityId={currentUser?.hospitalId}
+                facilityId={hospitalId}
                 facilityName={facility}
                 stock={stock}
                 onIssueOutside={external ? undefined : () => setPharmacy(OUTSIDE_PHARMACY)}

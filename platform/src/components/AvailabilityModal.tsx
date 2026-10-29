@@ -8,9 +8,9 @@ import DepartmentInput from '@/components/DepartmentInput';
  */
 import { useState } from 'react';
 import { useAuth } from '@/lib/context';
-import { Calendar, Clock, X, Loader2, Check, AlertCircle } from '@/components/icons/lucide';
+import { Clock, Loader2, Check, AlertCircle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -72,19 +72,19 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
   };
 
   return (
-    <Modal variant="slider" onClose={onClose} width={448} labelledBy="availability-modal-title">
-      <div
-        className="modal-panel w-full p-6 overflow-y-auto"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
-      >
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <h2 id="availability-modal-title" className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add availability</h2>
-          </div>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:opacity-80"><X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} /></button>
-        </div>
-
+    <FormSlider
+      title="Add availability"
+      width={448}
+      onClose={onClose}
+      footer={<>
+          <button onClick={onClose} className="btn btn-secondary">Cancel</button>
+          <button onClick={handleSubmit} disabled={saving} className="btn btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            Publish availability
+          </button>
+      </>}
+    >
+      <div className="space-y-4">
         <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
           Publish a bookable window for <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.name}</strong>
           {currentUser?.hospitalName ? ` at ${currentUser.hospitalName}` : ''}.
@@ -126,16 +126,8 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
         <div className="flex items-center gap-2 mt-4 text-[11px]" style={{ color: 'var(--text-muted)' }}>
           <Clock className="w-3 h-3" /> Patients and front-desk can book appointments into this window.
         </div>
-
-        <div className="flex items-center justify-end gap-3 mt-5">
-          <button onClick={onClose} className="btn btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} className="btn btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Publish availability
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }
 

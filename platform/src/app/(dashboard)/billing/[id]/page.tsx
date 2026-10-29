@@ -17,11 +17,11 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import AdmissionDepositControls from '@/components/billing/AdmissionDepositControls';
-import {
-  Receipt, Printer, Plus, Search, Activity, ChevronLeft,
-} from '@/components/icons/lucide';
+import { Receipt, Printer, Plus, Search, Activity, ChevronLeft } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import { patientFullName, patientInitials, patientAgeLabel, avatarTint } from '@/lib/patient-utils';
 import {
@@ -649,12 +649,19 @@ export default function BillDetailPage() {
 
       {/* ── Request discount modal ── */}
       {discountOpen && (
-        <Modal variant="slider" onClose={() => setDiscountOpen(false)} width={440} labelledBy="bl-discount-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-discount-title">Request discount</h3>
-              <p className="bl-modal-sub">Applies to invoice {bill.invoiceNumber} — subtotal {money(bill.subtotal)}.</p>
-            </div>
+        <FormSlider
+          title="Request discount"
+          subtitle={<>Applies to invoice {bill.invoiceNumber} — subtotal {money(bill.subtotal)}.</>}
+          width={440}
+          onClose={() => setDiscountOpen(false)}
+          footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setDiscountOpen(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleApplyDiscount} disabled={busy || !discountAmount || !discountReason.trim()}>
+                Apply discount
+              </button>
+          </>}
+        >
+          <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="bl-disc-amount">Discount amount ({currency})</label>
               <input id="bl-disc-amount" type="number" min={0} step="0.01" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} autoFocus />
@@ -663,25 +670,25 @@ export default function BillDetailPage() {
               <label htmlFor="bl-disc-reason">Reason</label>
               <textarea id="bl-disc-reason" rows={2} value={discountReason} onChange={e => setDiscountReason(e.target.value)} placeholder="e.g. Indigent patient — approved by supervisor" />
             </div>
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setDiscountOpen(false)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--primary" onClick={handleApplyDiscount} disabled={busy || !discountAmount || !discountReason.trim()}>
-                Apply discount
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ── Add items modal ── */}
       {addItemsOpen && (
-        <Modal variant="slider" onClose={() => setAddItemsOpen(false)} width={560} labelledBy="bl-add-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-add-title">Add items to bill</h3>
-              <p className="bl-modal-sub">Pick from the fee schedule or add a custom charge.</p>
-            </div>
-
+        <FormSlider
+          title="Add items to bill"
+          subtitle="Pick from the fee schedule or add a custom charge."
+          width={560}
+          onClose={() => setAddItemsOpen(false)}
+          footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setAddItemsOpen(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleSaveNewItems} disabled={busy || pendingItems.length === 0}>
+                Save {pendingItems.length > 0 ? `${pendingItems.length} item${pendingItems.length === 1 ? '' : 's'}` : 'items'}
+              </button>
+          </>}
+        >
+          <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="bl-fee-search">Search fee schedule</label>
               <input id="bl-fee-search" type="text" value={feeSearch} onChange={e => setFeeSearch(e.target.value)} placeholder="Service name or category" />
@@ -758,54 +765,37 @@ export default function BillDetailPage() {
                 ))}
               </div>
             )}
-
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setAddItemsOpen(false)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--primary" onClick={handleSaveNewItems} disabled={busy || pendingItems.length === 0}>
-                Save {pendingItems.length > 0 ? `${pendingItems.length} item${pendingItems.length === 1 ? '' : 's'}` : 'items'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ── Finalize confirm ── */}
       {confirmFinalize && (
         <Modal onClose={() => setConfirmFinalize(false)} width={420} labelledBy="bl-finalize-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-finalize-title">Finalize bill {bill.invoiceNumber}?</h3>
-              <p className="bl-modal-sub">
-                Once finalized, line items and the bill itself can no longer be changed or deleted — only payments and discounts can be applied.
-              </p>
-            </div>
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setConfirmFinalize(false)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--primary" onClick={handleFinalize} disabled={busy}>
+          <DialogFrame>
+            <DialogHeader titleId="bl-finalize-title" title={<>Finalize bill {bill.invoiceNumber}?</>} description="Once finalized, line items and the bill itself can no longer be changed or deleted — only payments and discounts can be applied." onClose={() => setConfirmFinalize(false)} />
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmFinalize(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleFinalize} disabled={busy}>
                 {busy ? 'Finalizing…' : 'Finalize bill'}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
       {/* ── Delete confirm ── */}
       {confirmDelete && (
         <Modal onClose={() => setConfirmDelete(false)} width={420} labelledBy="bl-delete-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-delete-title">Delete bill {bill.invoiceNumber}?</h3>
-              <p className="bl-modal-sub">
-                The bill will be cancelled and the {money(bill.totalAmount)} charge reversed from {bill.patientName}&rsquo;s balance. This cannot be undone.
-              </p>
-            </div>
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--dark" style={{ background: 'var(--color-danger, #D92B20)' }} onClick={handleDelete} disabled={busy}>
+          <DialogFrame>
+            <DialogHeader titleId="bl-delete-title" title={<>Delete bill {bill.invoiceNumber}?</>} description={<>The bill will be cancelled and the {money(bill.totalAmount)} charge reversed from {bill.patientName}&rsquo;s balance. This cannot be undone.</>} onClose={() => setConfirmDelete(false)} />
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" style={{ background: 'var(--color-danger, #D92B20)' }} onClick={handleDelete} disabled={busy}>
                 {busy ? 'Deleting…' : 'Delete bill'}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </main>

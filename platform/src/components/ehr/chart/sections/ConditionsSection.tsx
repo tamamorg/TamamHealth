@@ -16,11 +16,12 @@ import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import CodedSearchField from '@/components/CodedSearchField';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import FormSlider from '@/components/overlay/FormSlider';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { describeError } from '@/lib/user-facing-error';
 import { todayIso } from '@/lib/date-utils';
-import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -274,27 +275,34 @@ export default function ConditionsSection({
 
       {onsetTarget && (
         <Modal className="tamam-dialog" onClose={() => !correcting && closeOnset()} width={420} labelledBy="condition-onset-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="condition-onset-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.conditionCorrectOnset')} · {onsetTarget.name}</h2>
-              <button className="p-1 rounded" onClick={() => !correcting && closeOnset()} aria-label="Close" style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
+          <DialogFrame>
+            <DialogHeader titleId="condition-onset-title" title={<>{t('chart.conditionCorrectOnset')} · {onsetTarget.name}</>} onClose={() => !correcting && closeOnset()} />
+            <DialogBody className="space-y-4">
             <input type="date" className="w-full" aria-label={t('chart.conditionCorrectOnset')} value={onsetEdit ?? ''} max={todayIso()} onChange={e => setOnsetEdit(e.target.value)} autoFocus />
-            <div className="flex flex-wrap justify-end gap-2">
-              <button className="btn btn-sm btn-secondary" disabled={correcting} onClick={closeOnset}>{t('action.cancel')}</button>
-              <button className="btn btn-sm btn-primary" disabled={correcting || !onsetEdit} onClick={() => void saveOnset(onsetTarget)}>{correcting ? t('noteEditor.saving') : t('chart.conditionSaveOnset')}</button>
-            </div>
-          </div>
+            </DialogBody>
+            <DialogFooter>
+              <button className="btn btn-secondary" disabled={correcting} onClick={closeOnset}>{t('action.cancel')}</button>
+              <button className="btn btn-primary" disabled={correcting || !onsetEdit} onClick={() => void saveOnset(onsetTarget)}>{correcting ? t('noteEditor.saving') : t('chart.conditionSaveOnset')}</button>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
       {adding && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-condition-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="add-condition-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Add condition</h2>
-              <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title="Add condition"
+          className="tamam-dialog"
+          width={480}
+          onClose={() => !submitting && resetForm()}
+          busy={submitting}
+          footer={<>
+              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
+              <button className="btn btn-primary" disabled={submitting || !pickedCode} onClick={handleSubmit}>
+                {submitting ? 'Saving…' : 'Save condition'}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             {pickedCode ? (
               <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
                 <div className="min-w-0">
@@ -324,14 +332,8 @@ export default function ConditionsSection({
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
               />
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={submitting || !pickedCode} onClick={handleSubmit}>
-                {submitting ? 'Saving…' : 'Save condition'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

@@ -18,12 +18,8 @@ import { toCsvRows, downloadCsvText } from '@/lib/export-file';
 import type { ImmunizationDefaulter } from '@/lib/services/immunization-service';
 import type { ImmunizationDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import Modal from '@/components/Modal';
-import {
-  Syringe, Search, Plus, X, CheckCircle2, Clock, AlertTriangle,
-  XCircle, ChevronDown, ChevronUp, Users, ExternalLink, Edit3, Download,
-  MessageSquare, Send,
-} from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { Syringe, Search, Plus, CheckCircle2, Clock, AlertTriangle, XCircle, ChevronDown, ChevronUp, Users, ExternalLink, Edit3, Download, MessageSquare, Send } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -868,15 +864,12 @@ export default function ImmunizationsPage() {
 
         {/* Registration Modal */}
         {showModal && (
-          <Modal variant="slider" onClose={() => setShowModal(false)} width={512} labelledBy="immunization-registration-title">
-            <div className="modal-panel p-6 w-full overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <h3 id="immunization-registration-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('immun.recordVaccination')}</h3>
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
-                  <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </div>
-
+          <FormSlider
+            title={t('immun.recordVaccination')}
+            width={512}
+            onClose={() => setShowModal(false)}
+          >
+            <div className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Link to existing patient (recommended) */}
                 <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.25))' }}>
@@ -1008,20 +1001,17 @@ export default function ImmunizationsPage() {
                 </div>
               </form>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* Edit / Correct a saved dose */}
         {editDose && (
-          <Modal variant="slider" onClose={() => setEditDose(null)} width={512} labelledBy="immunization-edit-title">
-            <div className="modal-panel p-6 w-full overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <h3 id="immunization-edit-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.edit')} · {editDose.patientName}</h3>
-                <button onClick={() => setEditDose(null)} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
-                  <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </div>
-
+          <FormSlider
+            title={<>{t('action.edit')} · {editDose.patientName}</>}
+            width={512}
+            onClose={() => setEditDose(null)}
+          >
+            <div className="space-y-4">
               <form onSubmit={handleEditSave} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1068,7 +1058,7 @@ export default function ImmunizationsPage() {
                 </div>
               </form>
             </div>
-          </Modal>
+          </FormSlider>
         )}
     </main>
   );

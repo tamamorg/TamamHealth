@@ -14,6 +14,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
@@ -237,12 +238,13 @@ export default function ServicePricingPage() {
 
       {showForm && (
         <Modal variant="slider" onClose={() => setShowForm(false)} width={460} labelledBy="fee-form-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fee-form-title" className="sadb-modal-title">
-                {editingId ? 'Edit service price' : 'Add service price'}
-              </h2>
-            </div>
+          <DialogFrame>
+            <DialogHeader
+              titleId="fee-form-title"
+              title={editingId ? 'Edit service price' : 'Add service price'}
+              onClose={() => setShowForm(false)}
+            />
+            <DialogBody tight>
             <div className="flex flex-col gap-3">
               <Field label="Service name">
                 <input className="sadb-modal-input" value={form.serviceName} onChange={e => setForm({ ...form, serviceName: e.target.value })} placeholder="e.g. General consultation" />
@@ -275,24 +277,24 @@ export default function ServicePricingPage() {
                 Active (available for charging)
               </label>
             </div>
-            <div className="sadb-modal-actions" style={editingId ? { justifyContent: 'space-between' } : undefined}>
-              {editingId && (
+            </DialogBody>
+            <DialogFooter
+              start={editingId && (
                 <button
                   type="button"
-                  className="sadb-action-btn is-danger"
+                  className="btn btn-danger"
                   onClick={() => setRemovingFee(editingFee)}
                 >
                   Remove service
                 </button>
               )}
-              <span className="flex gap-2">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
-                <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-2" onClick={save} disabled={saving}>
-                  <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
-                </button>
-              </span>
-            </div>
-          </div>
+            >
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+                <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
+              </button>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 

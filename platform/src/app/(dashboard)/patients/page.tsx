@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { patientFullName, patientDisplayName, patientAgeLabel, patientAge } from '@/lib/patient-utils';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { ScanLine, Hash, X, ArrowRight, UserPlus } from '@/components/icons/lucide';
+import { ScanLine, Hash, ArrowRight, UserPlus } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -24,6 +24,7 @@ import { EhrSearchFilter } from '@/components/ehr/EhrListHeader';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 import { useNow } from '@/lib/hooks/useNow';
 import { formatLocationShared } from '@/lib/field-formats';
@@ -458,14 +459,9 @@ export default function PatientsPage() {
           width={448}
           labelledBy="find-patient-title"
         >
-          <div className="modal-panel w-full overflow-hidden" style={{ background: 'var(--card-bg, var(--bg-card))' }}>
-            <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-              <h3 id="find-patient-title" className="text-sm font-semibold">{t('boma.findPatient')}</h3>
-              <button onClick={() => { setShowFindPatient(false); setLookupId(''); setLookupError(''); }} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+          <DialogFrame>
+            <DialogHeader titleId="find-patient-title" title={t('boma.findPatient')} onClose={() => { setShowFindPatient(false); setLookupId(''); setLookupError(''); }} />
+            <DialogBody className="space-y-4">
             <div className="p-5 space-y-4">
               {/* Hospital ID / Geocode ID Lookup */}
               <div>
@@ -536,7 +532,8 @@ export default function PatientsPage() {
                 </button>
               )}
             </div>
-          </div>
+            </DialogBody>
+          </DialogFrame>
         </Modal>
       )}
 

@@ -13,7 +13,7 @@ import type { MedicalRecordDoc, PatientNoteDoc } from '@/lib/db-types';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import { notePreview } from '@/lib/clinical-notes/note-service';
-import { toIsoDate } from '@/lib/date-utils';
+import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
 
 export type NoteRowKind = 'clinical' | 'record' | 'legacy';
 
@@ -82,8 +82,8 @@ function recordPreview(r: MedicalRecordDoc): string {
 
 export function recordToRow(r: MedicalRecordDoc, patientName = ''): NoteRow {
   const stamp = r.consultedAt || r.startedAt || '';
-  const date = r.visitDate || stamp.slice(0, 10) || (r.createdAt || '').slice(0, 10);
-  const time = stamp.length >= 16 ? stamp.slice(11, 16) : undefined;
+  const date = r.visitDate || localDayOf(stamp) || localDayOf(r.createdAt);
+  const time = localClockOf(stamp);
   return {
     key: `r:${r._id}`,
     id: r._id,
@@ -111,8 +111,8 @@ export function legacyNoteToRow(n: PatientNoteDoc): NoteRow {
     preview: (n.body || '').replace(/\s+/g, ' ').trim().slice(0, 120),
     author: n.authorName || '',
     patientName: '',
-    date: created.slice(0, 10),
-    time: created.length >= 16 ? created.slice(11, 16) : undefined,
+    date: localDayOf(created),
+    time: localClockOf(created),
     status: 'signed',
     sortKey: created,
   };

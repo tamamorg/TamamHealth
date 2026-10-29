@@ -26,7 +26,7 @@ jest.setTimeout(30000);
 import { teardownTestDBs } from '../helpers/test-db';
 import { billingDB, encountersDB } from '@/lib/db';
 import { clinicalNotesDB, createClinicalNote, getClinicalNoteById, saveNoteSection, recordPlanAction } from '@/lib/clinical-notes/note-service';
-import { createPrescription as createPrescriptionScoped, rerouteToOutsidePharmacy } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, rerouteToOutsidePharmacy, updatePrescription } from '@/lib/services/prescription-service';
 
 // Fixtures here are single-tenant; a system-wide scope reads every doc, so the
 // tenant barrier is exercised by the dedicated cross-org suite instead.
@@ -132,6 +132,35 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
     const after = await bill(prescription._id);
     expect(after.status).toBe('cancelled');
     expect(after.balanceDue).toBe(0);
+  });
+
+  it('cancels the charge when the order is discontinued before it is dispensed', async () => {
+    // A discontinue used to leave the full charge on the bill: found walking
+    // a patient through checkout on 2026-10-29 — blocked by SSP 15,000 for a
+    // script that was stopped and never handed over.
+    await seedVisit();
+    const { prescription } = await createPrescription(order());
+    await seedCharge(prescription._id);
+
+    await updatePrescription(prescription._id, {
+      status: 'discontinued', stoppedAt: new Date().toISOString(), stoppedBy: 'user-1',
+      stoppedByName: 'Dr. James Wani', stoppedSource: 'clinician', stoppedReason: 'Written in error',
+    });
+
+    const after = await bill(prescription._id);
+    expect(after.status).toBe('cancelled');
+    expect(after.balanceDue).toBe(0);
+  });
+
+  it('leaves the charge of an order that was already dispensed', async () => {
+    await seedVisit();
+    const { prescription } = await createPrescription(order());
+    await seedCharge(prescription._id);
+    await updatePrescription(prescription._id, { dispensedAt: new Date().toISOString() });
+
+    await updatePrescription(prescription._id, { status: 'discontinued', stoppedReason: 'Course stopped early' });
+
+    expect((await bill(prescription._id)).status).toBe('approved');
   });
 
   it('turns a charge the patient already paid into a credit they are owed', async () => {

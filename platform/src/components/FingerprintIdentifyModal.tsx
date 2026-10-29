@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ScanLine, X, RefreshCw, ChevronRight, UserCheck } from '@/components/icons/lucide';
+import { ScanLine, RefreshCw, ChevronRight, UserCheck } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import {
@@ -22,6 +22,7 @@ import {
 } from '@/lib/services/fingerprint-service';
 import type { DataScope } from '@/lib/services/data-scope';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { describeError } from '@/lib/user-facing-error';
 
 interface FingerprintIdentifyModalProps {
@@ -66,17 +67,14 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
 
   return (
     <Modal onClose={onClose} width={448} labelledBy="fingerprint-identify-title">
-      <div className="modal-panel w-full overflow-hidden" style={{ background: 'var(--card-bg, var(--bg-card))' }}>
-        <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-          <h3 id="fingerprint-identify-title" className="text-sm font-semibold flex items-center gap-2">
-            <ScanLine className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
-            {t('fingerprint.identifyTitle')}
-          </h3>
-          <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+      <DialogFrame>
+        <DialogHeader
+          titleId="fingerprint-identify-title"
+          title={t('fingerprint.identifyTitle')}
+          icon={<ScanLine />}
+          onClose={onClose}
+        />
+        <DialogBody flush>
         <div className="p-5 space-y-4">
           {!ready && (
             <div className="flex items-center gap-2 p-3 rounded-lg text-xs" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
@@ -144,7 +142,8 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
             </div>
           )}
         </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

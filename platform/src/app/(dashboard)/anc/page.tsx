@@ -13,11 +13,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import type { ANCVisitDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import Modal from '@/components/Modal';
-import {
-  HeartPulse, Plus, X, Users,
-  ChevronRight,
-} from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { HeartPulse, Plus, Users, ChevronRight } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import {
@@ -356,20 +353,16 @@ export default function ANCPage() {
               )}
             </div>
           </div>
-
         </div>
 
         {/* Registration Modal */}
         {showModal && (
-          <Modal variant="slider" onClose={closeRegistrationForm} width={672} labelledBy="anc-registration-title">
-            <div className="modal-panel p-6 w-full overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <h3 id="anc-registration-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Register ANC Visit</h3>
-                <button type="button" onClick={closeRegistrationForm} className="p-1 rounded-lg hover:bg-[var(--overlay-light)]">
-                  <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </div>
-
+          <FormSlider
+            title="Register ANC Visit"
+            width={672}
+            onClose={closeRegistrationForm}
+          >
+            <div className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Link to existing patient (recommended) */}
                 <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.25))' }}>
@@ -620,7 +613,7 @@ export default function ANCPage() {
                 </div>
               </form>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
     </main>

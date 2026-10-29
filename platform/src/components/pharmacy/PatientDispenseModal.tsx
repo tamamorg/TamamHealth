@@ -21,7 +21,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
@@ -37,10 +37,7 @@ import {
 } from '@/lib/pharmacy-workflow';
 import type { PrescriptionDoc, PharmacyInventoryDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
-import {
-  AlertOctagon, Check, CheckCircle2, ClipboardList, Clock, Loader2, Pill, ShieldCheck, X,
-  type LucideIcon,
-} from '@/components/icons/lucide';
+import { AlertOctagon, Check, CheckCircle2, ClipboardList, Clock, Loader2, Pill, ShieldCheck, type LucideIcon } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -65,8 +62,8 @@ const STAGE_PILL: Record<ReturnType<typeof pharmacyStageTone>, React.CSSProperti
   danger: { background: 'rgba(217, 43, 32,0.12)', color: 'var(--color-danger)' },
 };
 
-/** Portal modal + the shared panel chrome (title, close), which `Modal` itself
- *  does not carry — every caller supplies its own. */
+/** The dispensing workspace: the shared FormSlider chrome (band, close),
+ *  with each step's own content and actions inside. */
 function Panel({ title, onClose, width, children }: {
   title: string;
   onClose: () => void;
@@ -74,26 +71,9 @@ function Panel({ title, onClose, width, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <Modal variant="slider" onClose={onClose} width={width}>
-      <div className="modal-panel" style={{ maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 10 }}>
-          <h2 className="truncate" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
-              width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0,
-            }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </Modal>
+    <FormSlider title={title} onClose={onClose} width={width}>
+      {children}
+    </FormSlider>
   );
 }
 

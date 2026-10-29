@@ -4,7 +4,7 @@ import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useStaffChat } from '@/lib/hooks/useStaffChat';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { isMessageEditable } from '@/modules/communication/client';
@@ -598,14 +598,12 @@ function StaffPickerModal({
   const canCreate = mode === 'add' ? selectedList.length > 0 : (selectedList.length > 0 && groupName.trim().length > 0);
 
   return (
-    <Modal variant="slider" onClose={onClose} width={460}>
-      <div className="card-elevated" style={{ background: 'var(--bg-card-solid)', borderRadius: 12, overflow: 'hidden' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--ehr-border)' }}>
-          <h2 className="text-base font-bold" style={{ color: 'var(--text-strong)' }}>{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg transition-colors hover:bg-[var(--ehr-hover)]" style={{ color: 'var(--ehr-muted)' }}><X className="w-4 h-4" /></button>
-        </div>
-
+    <FormSlider
+      title={title}
+      width={460}
+      onClose={onClose}
+    >
+      <div className="space-y-4">
         <div className="px-5 pt-4">
           {mode === 'new' && (
             <div className="grid grid-cols-2 gap-1 p-1 mb-3 rounded-xl keep-cols" style={{ background: 'var(--ehr-head)', border: '1px solid var(--ehr-border-soft)' }}>
@@ -716,6 +714,6 @@ function StaffPickerModal({
           </div>
         )}
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

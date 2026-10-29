@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Modal from '@/components/Modal';
-import { LogOut, X, Wallet, CheckCircle } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { Wallet, CheckCircle } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import type { CheckoutTarget } from '@/lib/front-desk-utils';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -113,10 +113,22 @@ export default function CheckoutModal({
         // the desk can resolve conditions before pressing the button.
         const { evaluateCheckoutGate } = await import('@/lib/services/checkout-gate-service');
         const evaluation = await evaluateCheckoutGate(target.patientId, (enc ?? undefined) as never, scope);
+        // "Done here" means done against the plan THIS device holds. A review
+        // signed off before the plan changed (a script discontinued, an order
+        // added) is invalidated on purpose — that block is real work, not sync
+        // lag, so the "notes have not reached this device" message must not
+        // explain it away.
+        let handoffReadyHere = !!enc && postConsultReady(enc.postConsult);
+        if (handoffReadyHere && enc?.postConsult?.reviewedPlan) {
+          try {
+            const { currentPlanRevision } = await import('@/modules/post-consult/services/plan-service');
+            handoffReadyHere = (await currentPlanRevision(enc as never, scope)) === enc.postConsult.reviewedPlan;
+          } catch { /* plan unreadable here: keep the sync explanation */ }
+        }
         if (!cancelled) {
           setGate(evaluation);
           setEncounterStatus(enc?.status ?? null);
-          setHandoffDoneHere(!!enc && postConsultReady(enc.postConsult));
+          setHandoffDoneHere(handoffReadyHere);
         }
       } catch { /* non-fatal — balance still shows */ }
     };
@@ -160,24 +172,43 @@ export default function CheckoutModal({
   const owes = (balance ?? 0) > 0;
 
   return (
-    <Modal variant="slider" onClose={onClose} width={440}>
-      <div className="modal-content card-elevated" style={{ width: '100%' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <LogOut className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <div>
-              <h2 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Final checkout</h2>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {target.patientName}{target.hospitalNumber ? ` · ${target.hospitalNumber}` : ''}
-              </p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-black/5" aria-label="Close">
-            <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+    <FormSlider
+      title="Final checkout"
+      subtitle={<>{target.patientName}{target.hospitalNumber ? ` · ${target.hospitalNumber}` : ''}</>}
+      width={440}
+      onClose={onClose}
+      footer={<>
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
+            Cancel
           </button>
-        </div>
-
+          {(() => {
+            const blocked = !!gate && gate.blocking.length > 0;
+            const needsAuthorization = blocked || disposition === 'dismissed_without_formal_checkout';
+            const canSubmit = !!gate && balance !== null && !completing
+              && (!needsAuthorization || (canAuthorize && overrideReason.trim().length > 0));
+            return (
+              <button
+                onClick={async () => {
+                  setCompleting(true);
+                  await onComplete(
+                    target,
+                    needsAuthorization ? { reason: overrideReason.trim(), authorizedBy: currentUser!._id } : undefined,
+                    disposition,
+                  );
+                  setCompleting(false);
+                }}
+                disabled={!canSubmit}
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                style={{ background: blocked ? 'var(--color-warning)' : 'var(--color-success)' }}
+              >
+                <CheckCircle className="w-4 h-4" />
+                {completing ? 'Closing…' : blocked ? 'Override & check out' : 'Complete checkout'}
+              </button>
+            );
+          })()}
+      </>}
+    >
+      <div className="space-y-4">
         {/* Body */}
         <div className="p-4 space-y-3">
           {charges.length > 0 && (
@@ -306,37 +337,7 @@ export default function CheckoutModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
-            Cancel
-          </button>
-          {(() => {
-            const blocked = !!gate && gate.blocking.length > 0;
-            const needsAuthorization = blocked || disposition === 'dismissed_without_formal_checkout';
-            const canSubmit = !!gate && balance !== null && !completing
-              && (!needsAuthorization || (canAuthorize && overrideReason.trim().length > 0));
-            return (
-              <button
-                onClick={async () => {
-                  setCompleting(true);
-                  await onComplete(
-                    target,
-                    needsAuthorization ? { reason: overrideReason.trim(), authorizedBy: currentUser!._id } : undefined,
-                    disposition,
-                  );
-                  setCompleting(false);
-                }}
-                disabled={!canSubmit}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: blocked ? 'var(--color-warning)' : 'var(--color-success)' }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                {completing ? 'Closing…' : blocked ? 'Override & check out' : 'Complete checkout'}
-              </button>
-            );
-          })()}
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

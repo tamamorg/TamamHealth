@@ -16,8 +16,7 @@
 
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useState } from 'react';
-import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -125,16 +124,13 @@ export default function ReportedMedications({
       )}
 
       {formOpen && canRecord && (
-        <Modal variant="slider" className="tamam-dialog" onClose={closeForm} width={480} labelledBy="reported-med-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="reported-med-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {t(editing ? 'history.editTitle.medication' : 'history.addTitle.medication')}
-              </h2>
-              <button type="button" className="p-1 rounded" aria-label={t('history.close')} onClick={closeForm} style={{ color: 'var(--text-muted)' }}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <FormSlider
+          title={t(editing ? 'history.editTitle.medication' : 'history.addTitle.medication')}
+          className="tamam-dialog"
+          width={480}
+          onClose={closeForm}
+        >
+          <div className="space-y-4">
             <p style={SUB}>{t('meds.reported.hint')}</p>
             <HistoryEntryForm
               key={editing?._id || 'new-medication'}
@@ -148,7 +144,7 @@ export default function ReportedMedications({
               onCancel={closeForm}
             />
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

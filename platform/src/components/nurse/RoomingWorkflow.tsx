@@ -8,10 +8,10 @@ import { useToast } from '@/components/Toast';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useRooming } from '@/lib/hooks/useRooming';
-import { BedDouble, Clock, CheckCircle2, ArrowRightLeft, LogIn, Activity, Save, X } from '@/components/icons/lucide';
+import { BedDouble, Clock, CheckCircle2, ArrowRightLeft, LogIn, Activity, Save } from '@/components/icons/lucide';
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
 import { getVitalFlags, isVitalInRange, type VitalsInput } from '@/lib/clinical/vitals';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { describeError } from '@/lib/user-facing-error';
 
 /**
@@ -338,18 +338,19 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
       )}
 
       {vitalsEntry && (
-        <Modal variant="slider" onClose={() => { if (!vitalsSaving) setVitalsEntry(null); }} width={620} labelledBy="rooming-vitals-title">
-          <div className="p-5" style={{ background: 'var(--bg-card-solid, var(--bg-card))' }}>
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <h2 id="rooming-vitals-title" className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Record vitals</h2>
-                </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{vitalsEntry.encounter.patientName} · {vitalsEntry.encounter.hospitalNumber || 'No ID'}</p>
-              </div>
-              <button type="button" onClick={() => setVitalsEntry(null)} disabled={vitalsSaving} aria-label="Close" style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title="Record vitals"
+          subtitle={<>{vitalsEntry.encounter.patientName} · {vitalsEntry.encounter.hospitalNumber || 'No ID'}</>}
+          width={620}
+          onClose={() => { if (!vitalsSaving) setVitalsEntry(null); }}
+          footer={<>
+              <button type="button" onClick={() => setVitalsEntry(null)} disabled={vitalsSaving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Cancel</button>
+              <button type="button" onClick={() => void saveVitals()} disabled={vitalsSaving} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent-primary)' }}>
+                <Save className="w-3.5 h-3.5" /> {vitalsSaving ? 'Saving…' : 'Save vitals'}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {VITAL_FIELDS.map(field => {
                 const flagged = Boolean(getVitalFlags(vitalsDraft)[field.key]);
@@ -376,14 +377,8 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
               Notes
               <textarea value={vitalsDraft.notes || ''} onChange={event => setVitalsDraft(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-none" placeholder="Position, oxygen, symptoms, or other observation" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
             </label>
-            <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: '1px solid var(--border-light)' }}>
-              <button type="button" onClick={() => setVitalsEntry(null)} disabled={vitalsSaving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Cancel</button>
-              <button type="button" onClick={() => void saveVitals()} disabled={vitalsSaving} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent-primary)' }}>
-                <Save className="w-3.5 h-3.5" /> {vitalsSaving ? 'Saving…' : 'Save vitals'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </div>
   );

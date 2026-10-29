@@ -36,6 +36,30 @@ export function toIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * The local calendar day of a stored value. A bare `YYYY-MM-DD` is already a
+ * day and passes through; a full timestamp is read in local time. Slicing a
+ * timestamp (`iso.slice(0, 10)`) gives the UTC day, which is tomorrow for a
+ * record written after 22:00 in Juba.
+ */
+export function localDayOf(value?: string | null): string {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value.slice(0, 10) : toIsoDate(d);
+}
+
+/**
+ * The local `HH:MM` of a stored timestamp, or undefined when it carries no
+ * time. `iso.slice(11, 16)` is the UTC clock — two hours early in Juba.
+ */
+export function localClockOf(value?: string | null): string | undefined {
+  if (!value || value.length < 16) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /** `YYYY-MM-DD` back to a Date at LOCAL midnight (not UTC midnight). */
 export function parseIsoDate(value: string): Date {
   const [year, month, day] = value.split('-').map(Number);
