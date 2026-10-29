@@ -6798,7 +6798,7 @@ const apd: TranslationMap = {
   'referral.notes': 'ملاحظات طبية',
   'referral.reason': 'السبب',
   'referral.received': 'اتستلم',
-  'referral.seen': 'بيتشاف',
+  'referral.seen': 'اتقبل',
   'referral.sent': 'اترسل',
   'referral.title': 'تاريخ التحويلات',
   'referrals.outcomeDisposition': 'المآل',

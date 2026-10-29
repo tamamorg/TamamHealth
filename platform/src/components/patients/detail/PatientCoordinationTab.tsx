@@ -200,7 +200,7 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
                             </td>
                             <td>
                               <span className={`badge ${ref.status === 'sent' ? 'ref-sent' : ref.status === 'received' ? 'ref-received' : ref.status === 'seen' ? 'ref-seen' : ref.status === 'completed' ? 'ref-completed' : 'ref-cancelled'} text-[10px]`}>
-                                {ref.status === 'sent' ? 'Sent' : ref.status === 'received' ? 'Received' : ref.status === 'seen' ? 'Being Seen' : ref.status === 'completed' ? 'Completed' : 'Cancelled'}
+                                {t(`referral.${ref.status}`)}
                               </span>
                             </td>
                             <td>

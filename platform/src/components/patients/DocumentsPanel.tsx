@@ -484,7 +484,7 @@ export default function DocumentsPanel({
                   {/* referringDoctor is stored with its own title ("Dr. …"), so no prefix here. */}
                   {ref.referringDoctor && <div className="tamam-cell-sub">{ref.referringDoctor}</div>}
                 </td>
-                <td><span className={REFERRAL_BADGE[ref.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{ref.status.charAt(0).toUpperCase() + ref.status.slice(1)}</span></td>
+                <td><span className={REFERRAL_BADGE[ref.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{t(`referral.${ref.status}`)}</span></td>
                 <td>
                   <RowActionsMenu
                     ariaLabel={t('chart.referralRowActions', { name: ref.toHospital })}
