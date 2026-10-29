@@ -1,0 +1,52 @@
+/* Sortable column headers (TableSortEnhancer) — the OpenMRS O3 header sort:
+   the ↑↓ glyph appears on hover or focus, and the sorted column keeps a ↑ or
+   ↓. The glyph's space is always reserved, so the label never moves; a
+   right-aligned header (Status) carries it on the left, so the label stays
+   flush over its column. */
+.tm-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  --tm-sort-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+.tm-sortable::after,
+.tm-sortable--end::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  background-color: currentColor;
+  -webkit-mask: var(--tm-sort-glyph) center / 14px 14px no-repeat;
+  mask: var(--tm-sort-glyph) center / 14px 14px no-repeat;
+  visibility: hidden;
+}
+.tm-sortable::after { margin-inline-start: 8px; }
+.tm-sortable--end::after { content: none; }
+.tm-sortable--end::before { margin-inline-end: 8px; }
+
+.tm-sortable:hover,
+.tm-sortable:focus-visible { color: var(--text-primary); }
+
+.tm-sortable:is(:hover, :focus-visible)::after,
+.tm-sortable--end:is(:hover, :focus-visible)::before,
+.tm-sortable:is([aria-sort="ascending"], [aria-sort="descending"])::after,
+.tm-sortable--end:is([aria-sort="ascending"], [aria-sort="descending"])::before {
+  visibility: visible;
+}
+
+.tm-sortable[aria-sort="ascending"] {
+  --tm-sort-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20V4M6 10l6-6 6 6'/%3E%3C/svg%3E");
+}
+.tm-sortable[aria-sort="descending"] {
+  --tm-sort-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v16M6 14l6 6 6-6'/%3E%3C/svg%3E");
+}
+.tm-sortable:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+/* A sorted grey head band (chart tables) darkens a step, as in O3. */
+.tamam-table thead th.tm-sortable:hover,
+.tamam-table thead th.tm-sortable[aria-sort="ascending"],
+.tamam-table thead th.tm-sortable[aria-sort="descending"] {
+  background: color-mix(in srgb, var(--text-primary) 8%, var(--color-slate-100)) !important;
+}

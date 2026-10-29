@@ -27,6 +27,7 @@ import RouteContextBar from '@/components/navigation/RouteContextBar';
 import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
 import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
+import TableSortEnhancer from '@/components/table/TableSortEnhancer';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -179,6 +180,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Stamps each page's history entry, so every Back control can return
           to the screen the user came from (lib/navigation/nav-history.ts). */}
       <Suspense fallback={null}><NavHistoryTracker /></Suspense>
+      {/* Sortable column headers on every table and list (O3 header sort). */}
+      <TableSortEnhancer />
       {useShell ? (
         <MobileAppShell archetype={mobileArchetype!}>
           <RoleGuard>{children}</RoleGuard>

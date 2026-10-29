@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useColumnSort } from '@/components/table/useColumnSort';
 import { useRouter } from 'next/navigation';
 import { FileText } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -124,7 +125,9 @@ export default function NotesList({
     [allRows, search, labelOf, statusLabelOf],
   );
 
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const columnSort = useColumnSort<NoteRow>();
+  const sorted = columnSort.sort(filtered);
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const canCreate = showCreate && Boolean(patientId);
   const filtering = search.trim() !== '';
 
@@ -153,15 +156,15 @@ export default function NotesList({
           `col { width: auto !important }`, so colgroup widths are silently
           dropped and every column comes out the same size. */}
       {!loading && (
-        <table className={`tamam-table tamam-table--fixed tamam-table--notes${patientId ? '' : ' tamam-table--notes-queue'}`}>
+        <table data-sort="data" className={`tamam-table tamam-table--fixed tamam-table--notes${patientId ? '' : ' tamam-table--notes-queue'}`}>
           <thead>
             <tr>
-              <th>{t('notesList.colType')}</th>
-              <th>{t('notesList.colNote')}</th>
-              <th>{t('notesList.colAuthor')}</th>
-              {!patientId && <th>{t('notesList.colPatient')}</th>}
-              <th>{t('notesList.colDateOfService')}</th>
-              <th>{t('notesList.colStatus')}</th>
+              <th {...columnSort.headerProps(0, labelOf)}>{t('notesList.colType')}</th>
+              <th {...columnSort.headerProps(1, r => r.preview)}>{t('notesList.colNote')}</th>
+              <th {...columnSort.headerProps(2, r => r.author || '')}>{t('notesList.colAuthor')}</th>
+              {!patientId && <th {...columnSort.headerProps(3, r => r.patientName)}>{t('notesList.colPatient')}</th>}
+              <th {...columnSort.headerProps(4, r => `${r.date}${r.time ? ` ${r.time}` : ''}`)}>{t('notesList.colDateOfService')}</th>
+              <th {...columnSort.headerProps(5, r => statusLabelOf(r.status))}>{t('notesList.colStatus')}</th>
             </tr>
           </thead>
           <tbody>

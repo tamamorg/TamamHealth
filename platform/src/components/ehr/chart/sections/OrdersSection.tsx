@@ -18,6 +18,7 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import { formatDate , formatRxSig , humanizeStatus } from '@/lib/format-utils';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import Select from '@/components/Select';
+import { useColumnSort } from '@/components/table/useColumnSort';
 
 const PAGE_SIZE = 10;
 
@@ -119,15 +120,18 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
     if (q) list = list.filter(r => r.description.toLowerCase().includes(q) || r.orderNumber.toLowerCase().includes(q));
     return list;
   }, [rows, typeFilter, search]);
+  const columnSort = useColumnSort<UnifiedOrderRow>();
+  const sorted = columnSort.sort(filtered);
 
   // Deep-link focus: jump to the page holding the focused order once the
   // data loads, then scroll it into view and let the highlight draw attention.
   useEffect(() => {
     if (!focusId) return;
-    const idx = filtered.findIndex(r => r.id === focusId);
+    const idx = sorted.findIndex(r => r.id === focusId);
     if (idx < 0) return;
     setPage(Math.floor(idx / PAGE_SIZE) + 1);
-  }, [focusId, filtered]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorted` is rebuilt each render; the sort state is its real input
+  }, [focusId, filtered, columnSort.active]);
 
   useEffect(() => {
     if (!focusId) return;
@@ -135,7 +139,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusId, page]);
 
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const canAdd = canPrescribe || canOrderLabs;
 
   const filterSlot = (
@@ -172,19 +176,19 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         </div>
       )}
 
-      <table className="tamam-table tamam-table--fixed tamam-table--interactive">
+      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
-              <th>Order number</th>
-              <th>Date of order</th>
-              <th>Order type</th>
-              <th>Order</th>
-              <th>Priority</th>
-              <th>Ordered by</th>
-              <th>Status</th>
+              <th {...columnSort.headerProps(0, r => r.orderNumber)}>Order number</th>
+              <th {...columnSort.headerProps(1, r => r.date || '')}>Date of order</th>
+              <th {...columnSort.headerProps(2, r => r.orderType)}>Order type</th>
+              <th {...columnSort.headerProps(3, r => r.description)}>Order</th>
+              <th {...columnSort.headerProps(4, r => r.priority)}>Priority</th>
+              <th {...columnSort.headerProps(5, r => r.orderedBy)}>Ordered by</th>
+              <th {...columnSort.headerProps(6, r => humanizeStatus(r.status))}>Status</th>
             </tr>
           </thead>
           <tbody>
