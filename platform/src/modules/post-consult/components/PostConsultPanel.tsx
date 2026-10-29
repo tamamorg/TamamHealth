@@ -13,6 +13,7 @@ import { postConsultReady } from '../types';
 import { currentPlanRevision } from '../services/plan-service';
 import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import './post-consult.css';
+import { FormError } from '@/components/overlay/FormNotices';
 
 export default function PostConsultPanel({ encounterId, patientId, embedded = false }: { encounterId?: string; patientId?: string; embedded?: boolean }) {
   const scope = useDataScope();
@@ -116,7 +117,7 @@ function HandoffCard({ encounter, onChanged }: { encounter: EncounterDoc; onChan
         {entry.handoff.tasks.map(task => <p key={task.kind}>{t(`postConsult.task.${task.kind}`)}: {t(`postConsult.status.${task.status}`)}{task.note ? ` — ${task.note}` : ''}</p>)}
       </div>)}
     </details>}
-    {error && <p role="alert">{t('postConsult.error')}</p>}
+    {error && <FormError message={t('postConsult.error')} />}
   </article>;
 }
 function TaskEditor({ task, disabled, save }: { task: PostConsultTask; disabled: boolean; save: (action: HandoffAction) => Promise<void> }) {

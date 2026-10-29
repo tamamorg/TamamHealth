@@ -25,6 +25,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const COMMON_SCREENINGS = ['Blood pressure', 'HIV test', 'Cervical cancer (VIA)', 'Diabetes (blood glucose)', 'TB symptom screen', 'Well-child check', 'Nutrition (MUAC)'];
 const screeningOptions = COMMON_SCREENINGS.map(s => ({ code: '', name: s }));
@@ -231,7 +232,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
         </div>
       )}
 
-      {error && <p role="alert" className="text-[11px] mt-1" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
     </ChartSection>
   );
 }

@@ -26,6 +26,7 @@ import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
 import { Corners } from '@/components/login/login-chrome';
 import { describeApiError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 function AcceptInviteForm() {
   const { t } = useTranslation();
@@ -156,7 +157,7 @@ function AcceptInviteForm() {
         />
       </div>
 
-      {error && <p className="lg-error" role="alert">{error}</p>}
+      {error && <FormError message={error} />}
 
         <button type="submit" className="lg-btn blueprint" disabled={busy}>
           {busy ? 'Setting your password…' : 'Set password'}

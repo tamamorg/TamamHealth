@@ -30,6 +30,7 @@ import { stopsClickPropagation } from '@/lib/a11y';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { canAssignStaffAtFacility, canRescheduleAppointmentRole } from '@/lib/care-team-permissions';
 import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
   { value: 'general', label: 'General consultation' },
@@ -346,7 +347,7 @@ export default function AppointmentEditModal({
 
   const body = (
       <div className={inline ? 'appt-edit-shell is-inline' : 'appt-edit-shell'}>
-      {saveError && <div role="alert" className="appointment-billing-panel">{saveError}</div>}
+      {saveError && <FormError message={saveError} />}
       {!inline && (
       <div className="appt-edit-head">
         <h2>Edit appointment</h2>

@@ -31,6 +31,7 @@ import type { MedicalRecordDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
 import { isAnyModalOpen } from '@/components/Modal';
 import './nurse-vitals-panel.css';
+import FormNotices from '@/components/overlay/FormNotices';
 
 type NurseVitals = VitalsInput & { height?: string };
 type FieldKey = Exclude<keyof NurseVitals, 'notes'>;
@@ -285,12 +286,15 @@ export default function NurseVitalsModal({
   );
 
   const actions = (
+    <>
+    <FormNotices />
     <div className="nv-footer">
       <button type="button" className="nv-btn nv-btn--ghost" onClick={close} disabled={saving}>{t('vitalsPanel.cancel')}</button>
       <button type="button" className="nv-btn nv-btn--primary" onClick={() => void save()} disabled={saving}>
         <Save aria-hidden /> {saving ? t('vitalsPanel.saving') : correctingRecord ? t('chart.saveCorrection') : t('vitalsPanel.save')}
       </button>
     </div>
+    </>
   );
 
   if (presentation === 'page') return <div className="nv-root nv-root--page">{form}{actions}</div>;

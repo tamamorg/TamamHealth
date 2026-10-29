@@ -1898,95 +1898,6 @@ input::placeholder, textarea::placeholder {
   color: var(--text-muted);
 }
 
-/* ══════════════════ Toast ══════════════════
-   A receipt, not a banner: read in one glance, then gone. On the flat rev
-   the receipt is a white card on the app's hairline, like every other
-   surface — the status lives in the icon and a 3px inset edge, not in a
-   saturated slab. The dark-ink text also ends the old white-on-green
-   contrast worry outright. The 44px close pointer target stays a ::after
-   overlay, so a11y keeps it without the layout paying for it. */
-.ehr-toast {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 10px 10px 10px 16px;
-  background: var(--bg-card-solid);
-  color: var(--ehr-text, var(--text-primary));
-  border: 1px solid var(--ehr-border, var(--border-medium));
-  border-radius: 10px;
-  box-shadow:
-    inset 3px 0 0 var(--ehr-toast-edge, transparent),
-    0 8px 20px -10px rgba(17, 48, 85, 0.28);
-  max-width: 100%;
-}
-
-/* The one place the status colour appears: the leading icon and the inset
-   edge, both on the text rung (4.5:1) since the icon is the signal. */
-.ehr-toast--success { --ehr-toast-edge: var(--ehr-success-text, #0A6E4A); }
-.ehr-toast--success .ehr-toast-icon { color: var(--ehr-success-text, #0A6E4A); stroke: var(--ehr-success-text, #0A6E4A); }
-.ehr-toast--error { --ehr-toast-edge: var(--ehr-danger-text, #B4180F); }
-.ehr-toast--error .ehr-toast-icon { color: var(--ehr-danger-text, #B4180F); stroke: var(--ehr-danger-text, #B4180F); }
-
-.ehr-toast-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  /* lucide writes stroke as a presentation attribute, so `color` alone would
-     leave the glyph its default ink. */
-  color: currentColor;
-  stroke: currentColor;
-}
-
-.ehr-toast-text {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.35;
-  padding-block: 1px;
-  overflow-wrap: anywhere;
-}
-
-.ehr-toast-action {
-  flex-shrink: 0;
-  padding: 5px 11px;
-  border: 1px solid var(--ehr-border, var(--border-medium));
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--accent-text);
-  font-size: 12.5px;
-  font-weight: 700;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-}
-
-.ehr-toast-action:hover { background: var(--ehr-hover, rgba(17, 48, 85, 0.05)); }
-
-.ehr-toast-close {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border: none;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--ehr-muted, var(--text-muted));
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.ehr-toast-close:hover { background: var(--ehr-hover, rgba(17, 48, 85, 0.05)); color: var(--ehr-text, var(--text-primary)); }
-.ehr-toast-close svg { color: currentColor; stroke: currentColor; }
-
-/* The 44px pointer target WCAG asks for, without a 44px box in the layout. */
-.ehr-toast-close::after { content: ''; position: absolute; inset: -8px; }
-
-.ehr-toast-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-
 /* ══════════════════ Bold text ══════════════════
    One rule rather than a token swap: --ehr-text paints body copy as well as
    bold copy (135 call sites), so re-pointing it would turn every paragraph
@@ -35054,71 +34965,6 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-segmented--sm .tm-segmented__btn { min-height: 26px; padding: 0 10px; font-size: 12px; }
 .tm-segmented__btn svg.tm-segmented__icon { width: 14px; height: 14px; color: currentColor; stroke: currentColor; }
 
-/* ── Inline banner ── a message that belongs to the surface it sits on:
-   "eLabs are not enabled", "consent required", "changes not saved". Four
-   tones on the status pairs; an optional action and a dismiss. */
-.tm-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-info-border);
-  border-inline-start-width: 3px;
-  border-radius: var(--radius-md);
-  background: var(--color-info-bg);
-  color: var(--text-primary);
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-.tm-banner--compact { padding: var(--space-2) var(--space-3); font-size: 13px; }
-.tm-banner--success { border-color: var(--color-success-border); background: var(--color-success-bg); }
-.tm-banner--warning { border-color: var(--color-warning-border); background: var(--color-warning-bg); }
-.tm-banner--danger { border-color: var(--color-danger-border); background: var(--color-danger-bg); }
-.tm-banner__icon { flex: none; display: inline-flex; width: 18px; height: 18px; margin-top: 2px; color: var(--color-info-text); }
-.tm-banner--success .tm-banner__icon { color: var(--color-success-text); }
-.tm-banner--warning .tm-banner__icon { color: var(--color-warning-text); }
-.tm-banner--danger .tm-banner__icon { color: var(--color-danger-text); }
-.tm-banner__icon svg { width: 100%; height: 100%; color: currentColor; stroke: currentColor; }
-.tm-banner__body { flex: 1 1 auto; min-width: 0; }
-.tm-banner__title { display: block; font-weight: 700; }
-.tm-banner__text { color: var(--text-secondary); }
-.tm-banner__action {
-  flex: none;
-  align-self: center;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent-text);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.tm-banner__action:hover { background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
-.tm-banner__action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.tm-banner__dismiss {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-block: -4px;
-  margin-inline-end: -6px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.tm-banner__dismiss:hover { background: var(--state-hover); color: var(--text-primary); }
-.tm-banner__dismiss:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.tm-banner__dismiss svg { width: 14px; height: 14px; color: currentColor; stroke: currentColor; }
-
 /* ── Field ── label · control · helper · error, wired by id. The label is a
    sentence-case caption, NOT the file's uppercase tracked default: inside a
    dialog the eye reads down a column of questions, and shouting them slows
@@ -35213,21 +35059,6 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .btn-danger-solid { background: var(--color-danger-600); color: var(--color-white); border: 1px solid transparent; }
 .btn-danger-solid:hover:not(:disabled) { background: var(--color-danger-700); }
 
-/* ── Toast: two more tones, a title line, elevation and a real edge. The
-   coloured edge used to be an inset box-shadow, which the flat baseline
-   discarded — it is a border now, so it actually shows. */
-.ehr-toast {
-  border-inline-start: 3px solid var(--ehr-toast-edge, var(--border-medium));
-  box-shadow: var(--shadow-toast);
-}
-.ehr-toast--info { --ehr-toast-edge: var(--color-info-text); }
-.ehr-toast--info .ehr-toast-icon { color: var(--color-info-text); stroke: var(--color-info-text); }
-.ehr-toast--warning { --ehr-toast-edge: var(--color-warning-text); }
-.ehr-toast--warning .ehr-toast-icon { color: var(--color-warning-text); stroke: var(--color-warning-text); }
-.ehr-toast-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ehr-toast-title { margin: 0; font-size: 13.5px; font-weight: 700; line-height: 1.3; }
-.ehr-toast-copy .ehr-toast-text { font-weight: 500; color: var(--text-secondary); }
-.ehr-toast-close:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 
 /* ── The rail's own menus, on the shared tokens ── the module directory, the
    account menu, the search results and the header popovers now share one
@@ -35983,3 +35814,229 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   /* The status header sits over its right-aligned pills. */
   .appointment-card-flow .appointment-card-head > :last-child { justify-self: end; text-align: end; }
 }
+
+
+/* ══════════════════ NOTIFICATIONS — OpenMRS O3 (Carbon) shape ══════════════════
+   Two forms of one notification, the same anatomy in both: a filled status
+   mark, a bold title, the detail under it, a ✕ — on a square panel with a 3px
+   edge in the tone.
+
+   - Toast (`.ehr-toast`): the high-contrast dark panel, stacked bottom-left,
+     newest at the bottom. For outcomes that are not about an open form.
+   - Inline (`.tm-banner`): the low-contrast tinted panel inside a surface. A
+     form's own errors land in its `.tm-form-notices` slot just above the
+     action bar (FormNotices), so the failure sits where the eye already is.
+
+   Tones come from the status pairs: the toast takes the bright rung that
+   reads on its dark panel, the inline panel the text rung on its tint, and
+   the status tokens already flip for dark mode. The toast panel inverts. */
+:root {
+  --ntf-toast-bg: var(--action-secondary);
+  --ntf-toast-ink: var(--color-white);
+  --ntf-toast-close-hover: var(--action-secondary-hover);
+  --ntf-toast-error: var(--color-danger-400);
+  --ntf-toast-success: var(--color-success-400);
+  --ntf-toast-warning: var(--gold-500);
+  --ntf-toast-info: var(--brand-300);
+
+  --ntf-inline-ink: var(--text-primary);
+  --ntf-error: var(--color-danger-600);
+  --ntf-error-bg: var(--color-danger-bg);
+  --ntf-success: var(--color-success-500);
+  --ntf-success-bg: var(--color-success-bg);
+  --ntf-warning: var(--gold-500);
+  --ntf-warning-bg: var(--color-warning-bg);
+  --ntf-info: var(--accent-primary);
+  --ntf-info-bg: var(--color-info-bg);
+}
+:root[data-theme="dark"] {
+  --ntf-toast-bg: var(--color-white);
+  --ntf-toast-ink: var(--tm-ink);
+  --ntf-toast-close-hover: color-mix(in srgb, var(--tm-ink) 10%, var(--color-white));
+  --ntf-toast-error: var(--color-danger-600);
+  --ntf-toast-success: var(--color-success-700);
+  --ntf-toast-info: var(--accent-primary);
+
+  --ntf-error: var(--color-danger-400);
+  --ntf-success: var(--color-success-400);
+  --ntf-info: var(--brand-300);
+}
+
+/* The filled mark. A warning's knockout is dark on the yellow triangle in
+   both forms; every other mark knocks out to the panel's own ink contrast. */
+.tm-status-glyph { flex: none; width: 20px; height: 20px; display: block; }
+.tm-status-glyph--warning { --tm-status-knockout: var(--tm-ink); }
+
+/* ── Toast stack ── */
+.ehr-toast-stack {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(400px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.ehr-toast-stack:empty { display: none; }
+
+.ehr-toast {
+  --tm-status-knockout: var(--ntf-toast-bg);
+  pointer-events: auto;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 14px;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 0 14px 13px;
+  background: var(--ntf-toast-bg);
+  color: var(--ntf-toast-ink);
+  border: 0;
+  border-inline-start: 3px solid var(--ntf-tone);
+  border-radius: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  font-family: var(--font-platform);
+}
+.ehr-toast--error   { --ntf-tone: var(--ntf-toast-error); }
+.ehr-toast--success { --ntf-tone: var(--ntf-toast-success); }
+.ehr-toast--warning { --ntf-tone: var(--ntf-toast-warning); }
+.ehr-toast--info    { --ntf-tone: var(--ntf-toast-info); }
+.ehr-toast .ehr-toast-icon { color: var(--ntf-tone); margin-top: 0; }
+/* The close cell sits in the top-right; the action, when there is one, drops
+   onto its own line under the copy so a long message keeps the full width. */
+.ehr-toast > .ehr-toast-close { grid-column: 3; grid-row: 1; }
+.ehr-toast > .ehr-toast-action { grid-column: 2; grid-row: 2; justify-self: start; }
+
+.ehr-toast-copy { min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.ehr-toast-title,
+.ehr-toast-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.16px;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.ehr-toast-title { font-weight: 600; }
+.ehr-toast-text,
+.ehr-toast-copy .ehr-toast-text { font-weight: 400; color: inherit; padding: 0; }
+
+.ehr-toast-action {
+  margin-top: 12px;
+  padding: 7px 16px;
+  border: 1px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ehr-toast-action:hover { background: var(--ntf-toast-close-hover); }
+
+.ehr-toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: -14px 0 -14px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ehr-toast-close:hover { background: var(--ntf-toast-close-hover); }
+.ehr-toast-close:focus-visible { outline: 2px solid var(--ntf-toast-ink); outline-offset: -2px; }
+/* The global icon rules repaint `svg.lucide` in the accent and dim it;
+   the ✕ takes the panel's own ink, like Carbon's. */
+.ehr-toast-close svg.lucide,
+.tm-banner__dismiss svg.lucide { color: inherit !important; stroke: currentColor !important; opacity: 1; }
+.ehr-toast-close svg { width: 20px; height: 20px; }
+
+@media (max-width: 639px) {
+  .ehr-toast-stack { left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: auto; }
+}
+
+/* ── Inline notification ── */
+.tm-banner {
+  --tm-status-knockout: var(--color-white);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 48px;
+  padding: 14px 0 14px 13px;
+  border: 1px solid color-mix(in srgb, var(--ntf-tone) 50%, transparent);
+  border-inline-start: 3px solid var(--ntf-tone);
+  border-radius: 0;
+  background: var(--ntf-tone-bg);
+  color: var(--ntf-inline-ink);
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.16px;
+}
+.tm-banner,
+.tm-banner--info    { --ntf-tone: var(--ntf-info);    --ntf-tone-bg: var(--ntf-info-bg); }
+.tm-banner--danger  { --ntf-tone: var(--ntf-error);   --ntf-tone-bg: var(--ntf-error-bg); }
+.tm-banner--success { --ntf-tone: var(--ntf-success); --ntf-tone-bg: var(--ntf-success-bg); }
+.tm-banner--warning { --ntf-tone: var(--ntf-warning); --ntf-tone-bg: var(--ntf-warning-bg); }
+.tm-banner--compact { min-height: 40px; padding-block: 10px; }
+:root[data-theme="dark"] .tm-banner { --tm-status-knockout: var(--tm-ink); }
+
+.tm-banner__icon { flex: none; display: inline-flex; width: 20px; height: 20px; margin: 0; color: var(--ntf-tone); }
+.tm-banner__body { flex: 1 1 auto; min-width: 0; padding-inline-end: 4px; overflow-wrap: anywhere; }
+.tm-banner__title { display: block; font-weight: 600; }
+.tm-banner__text { color: inherit; }
+.tm-banner__action {
+  flex: none;
+  align-self: center;
+  margin-inline-start: 8px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tm-banner__action:hover { background: color-mix(in srgb, var(--ntf-inline-ink) 8%, transparent); }
+.tm-banner__action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.tm-banner__dismiss {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: -14px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.tm-banner--compact .tm-banner__dismiss { height: 40px; margin-block: -10px; }
+.tm-banner__dismiss:hover { background: color-mix(in srgb, var(--ntf-inline-ink) 8%, transparent); }
+.tm-banner__dismiss:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.tm-banner__dismiss svg { width: 20px; height: 20px; color: currentColor; stroke: currentColor; }
+
+/* A form's own errors, above its action bar. */
+.tm-form-notices {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 24px 16px;
+}
+.tm-form-notices[hidden] { display: none; }
+@media (max-width: 639px) { .tm-form-notices { padding-inline: 16px; } }

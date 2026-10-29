@@ -15,6 +15,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import '@/components/clinical-notes/note-viewer.css';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   open: { cls: 'tamam-panel-badge tamam-panel-badge--pending', label: 'Open' },
@@ -197,7 +198,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
           </tbody>
         </table>
 
-      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
     </ChartSection>
   );
 }

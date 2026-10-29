@@ -28,6 +28,7 @@ import { describeError } from '@/lib/user-facing-error';
 import './clinical-notes.css';
 import './note-viewer.css';
 import { localClockOf, localDayOf } from '@/lib/date-utils';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const STATUS_KEY: Record<NoteStatus, { key: string; cls: string }> = {
   draft: { key: 'notesList.statusUnsigned', cls: 'is-draft' },
@@ -297,7 +298,7 @@ export default function ClinicalNoteViewer({
             placeholder={t('noteViewer.addendumPlaceholder')}
             aria-label={t('noteViewer.addAddendum')}
           />
-          {error && <p className="tamam-nv-error" role="alert">{error}</p>}
+          {error && <FormError message={error} />}
           <div className="tamam-nv-actions">
             <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" disabled={busy || !addendumText.trim()} onClick={() => void saveAddendum()}>
               {t('noteViewer.saveAddendum')}

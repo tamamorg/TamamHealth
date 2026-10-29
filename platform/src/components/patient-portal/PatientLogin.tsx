@@ -18,6 +18,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { IS_DEMO, writePatientPortalSession } from '@/lib/patient-portal-session';
 import { Corners } from '@/components/login/login-chrome';
 import { describeApiError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 /* ═════════════════════════════════════════
    PATIENT LOGIN SCREEN
@@ -150,7 +151,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
                   />
                 </div>
 
-                {error && <div role="alert" className="lg-error">{error}</div>}
+                {error && <FormError message={error} />}
 
                 <button type="submit" className="lg-btn blueprint" disabled={loading || otpCode.length !== 6}>
                   {loading ? 'Verifying…' : 'Verify and sign in'}
@@ -219,7 +220,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
                   </p>
                 )}
 
-                {error && <div role="alert" className="lg-error">{error}</div>}
+                {error && <FormError message={error} />}
 
                 <button type="submit" disabled={loading} className="lg-btn blueprint">
                   {loading ? t('patientPortal.searching') : 'Log in'}

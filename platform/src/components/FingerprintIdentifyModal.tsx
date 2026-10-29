@@ -24,6 +24,7 @@ import type { DataScope } from '@/lib/services/data-scope';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface FingerprintIdentifyModalProps {
   onSelect: (patientId: string) => void;
@@ -100,7 +101,7 @@ export default function FingerprintIdentifyModal({ onSelect, onClose }: Fingerpr
               <button onClick={handleScan} disabled={phase === 'scanning'} className="btn btn-primary" style={{ opacity: phase === 'scanning' ? 0.6 : 1 }}>
                 <ScanLine className="w-4 h-4" /> {t('fingerprint.identifyScan')}
               </button>
-              {error && <p className="text-[11px]" role="alert" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+              {error && <FormError message={error} />}
             </div>
           )}
 

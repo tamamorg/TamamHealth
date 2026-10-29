@@ -26,6 +26,7 @@ import {
   type IssueCategory, type IssueSeverity,
 } from '../issue-rules';
 import { ISSUE_STATUS_TOKENS } from './issue-status-tokens';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const labelClass = 'field-required text-xs font-semibold uppercase tracking-wider mb-1 block';
 const labelStyle = { color: 'var(--text-muted)' } as const;
@@ -154,7 +155,7 @@ export default function ReportIssueScreen() {
             {`${t('issues.pageLabel')}: ${fromPage || t('issues.pageNone')}`}
           </p>
 
-          {formError && <p role="alert" className="text-[12.5px]" style={{ color: 'var(--color-danger-text)' }}>{formError}</p>}
+          {formError && <FormError message={formError} />}
 
           <div className="flex justify-end">
             <button type="button" className="btn btn-primary" disabled={!canSubmit} onClick={() => void submit()}>

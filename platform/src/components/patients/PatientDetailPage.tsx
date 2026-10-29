@@ -1001,7 +1001,7 @@ export default function PatientDetailPage() {
               stay reachable here since they don't have their own rail slot. */}
           {activeTab === 'allergies' && patient && <PatientAllergiesTab focusId={focusId} patient={patient} sectionAddRequest={sectionAddRequest} setSectionAddRequest={setSectionAddRequest} />}
 
-          {activeTab === 'notes' && patient && <PatientNotesTab patient={patient} currentUser={currentUser} canConsult={canConsult} setNoteViewer={setNoteViewer} notesRefreshToken={notesRefreshToken} noteViewer={noteViewer} setNotesRefreshToken={setNotesRefreshToken} setChartPanelRequest={setChartPanelRequest} />}
+          {activeTab === 'notes' && patient && <PatientNotesTab patient={patient} currentUser={currentUser} canConsult={canConsult} setNoteViewer={setNoteViewer} notesRefreshToken={notesRefreshToken} noteViewer={noteViewer} setNotesRefreshToken={setNotesRefreshToken} setChartPanelRequest={setChartPanelRequest} onCreateNote={() => void openClinicalNoteDrawer()} />}
 
           {activeTab === 'demographics' && patient && <PatientDemographicsTab patient={patient} demographicsTab={demographicsTab} setDemographicsTab={setDemographicsTab} openEditModal={openEditModal} canRegisterPatients={canRegisterPatients} patientAppointments={patientAppointments} regHospital={regHospital} />}
 
