@@ -3486,3 +3486,18 @@
   border: 1px solid var(--border-light);
   box-shadow: none;
 }
+
+/* ══════════════════ WORKSPACES STACK, NEVER SIDE BY SIDE ══════════════════
+   O3 shows one workspace at a time: a form opened while the docked drawer is
+   up (Add condition over a Visit note) goes on top of it, and closing it
+   brings the drawer back. Sliders portal to <body> and dock beside the icon
+   rail, so without this the two stood next to each other. The drawer steps
+   out of the flow instead of unmounting — display:none would drop its
+   scroll position, and unmounting would drop an unsaved note. */
+html.tm-slider-open .tamam-root .tamam-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
