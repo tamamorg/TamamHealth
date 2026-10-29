@@ -164,21 +164,21 @@ describe('signClinicalNote — notifiable diagnosis raises surveillance (item 4)
     const enc = await withClinicianEncounter();
     const note = await draftNoteFor(enc._id);
     await saveNoteSection(note._id, 'assessment', {
-      diagnoses: [{ id: 'dx-1', name: 'Measles', icd11Code: '1E30', addedAt: new Date().toISOString() }],
+      diagnoses: [{ id: 'dx-1', name: 'Measles', icd11Code: '1F03', addedAt: new Date().toISOString() }],
     });
 
     await signClinicalNote(note._id, { signedBy: DOCTOR_ID, signedByName: DOCTOR_NAME, signerRole: 'doctor' });
 
     const alerts = await getAlertsBySourceRecord(note._id);
     expect(alerts).toHaveLength(1);
-    expect(alerts[0]).toMatchObject({ icd11Code: '1E30', sourceRecordId: note._id, patientId: PATIENT_ID });
+    expect(alerts[0]).toMatchObject({ icd11Code: '1F03', sourceRecordId: note._id, patientId: PATIENT_ID });
   });
 
   it('does not raise anything for a non-notifiable diagnosis', async () => {
     const enc = await withClinicianEncounter();
     const note = await draftNoteFor(enc._id);
     await saveNoteSection(note._id, 'assessment', {
-      diagnoses: [{ id: 'dx-1', name: 'Hypertension, essential', icd11Code: 'BA02', addedAt: new Date().toISOString() }],
+      diagnoses: [{ id: 'dx-1', name: 'Essential hypertension', icd11Code: 'BA00', addedAt: new Date().toISOString() }],
     });
 
     await signClinicalNote(note._id, { signedBy: DOCTOR_ID, signedByName: DOCTOR_NAME, signerRole: 'doctor' });

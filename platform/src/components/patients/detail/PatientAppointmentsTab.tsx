@@ -41,7 +41,7 @@ export default function PatientAppointmentsTab({ patientAppointments, apptSearch
   const apptPageRows = filteredAppts.slice((apptPage - 1) * APPT_PAGE_SIZE, apptPage * APPT_PAGE_SIZE);
 
   const switcher = (
-    <div className="tamam-appt-switcher" role="tablist" aria-label={t('chart.apptUpcoming')}>
+    <div className="tamam-appt-switcher" role="tablist" aria-label={t('chart.apptViews')}>
       {VIEWS.map(view => (
         <button
           key={view.id}
@@ -60,7 +60,7 @@ export default function PatientAppointmentsTab({ patientAppointments, apptSearch
   return (
     <div className="space-y-2">
       <ChartSection
-        title="Appointments"
+        title={t('chart.apptTitle')}
         addLabel={t('chart.apptAdd')}
         onAdd={canBookAppointments ? onBook : undefined}
         filterSlot={switcher}
@@ -75,11 +75,11 @@ export default function PatientAppointmentsTab({ patientAppointments, apptSearch
           </colgroup>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Time</th>
+              <th>{t('chart.apptDate')}</th>
+              <th>{t('chart.apptTime')}</th>
               <th>{t('chartMessages.careTeam')}</th>
-              <th>Context</th>
-              <th>Status</th>
+              <th>{t('chart.apptContext')}</th>
+              <th>{t('chart.apptStatus')}</th>
             </tr>
           </thead>
           <tbody>
@@ -106,14 +106,14 @@ export default function PatientAppointmentsTab({ patientAppointments, apptSearch
                       own second staff member — never the patient's current
                       nurse, who may not have been part of this booking. */}
                   <div className="appointment-card-provider">
-                    <strong>{appt.providerName || 'Doctor unassigned'}</strong>
+                    <strong>{appt.providerName || t('chart.apptNoDoctor')}</strong>
                     {appt.staffName && <span>{appt.staffName}</span>}
                   </div>
                 </td>
                 <td>
                   <div className="appointment-card-provider">
-                    <strong>{appt.reason || appt.department || 'Follow-up'}</strong>
-                    <span>{[appt.department, appt.room].filter(Boolean).join(' · ') || 'Appointment'}</span>
+                    <strong>{appt.reason || appt.department || t('chart.apptFollowUp')}</strong>
+                    <span>{[appt.department, appt.room].filter(Boolean).join(' · ') || t('chart.apptGeneric')}</span>
                   </div>
                 </td>
                 <td><span className="badge badge-normal clinical-status-pill">{humanizeStatus(appt.status)}</span></td>

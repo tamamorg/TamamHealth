@@ -505,5 +505,5 @@ export default function AppointmentEditModal({
   );
 
   if (inline) return body;
-  return <Modal onClose={onClose} width={1040}>{body}</Modal>;
+  return <Modal variant="slider" onClose={onClose} width={1040}>{body}</Modal>;
 }

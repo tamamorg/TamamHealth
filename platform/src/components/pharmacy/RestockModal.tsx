@@ -22,7 +22,7 @@ interface RestockModalProps {
 export default function RestockModal({ restockTarget, restockForm, setRestockForm, onClose, onSave }: RestockModalProps) {
   const { t } = useTranslation();
   return (
-      <Modal onClose={onClose} width={448}>
+      <Modal variant="slider" onClose={onClose} width={448}>
         <div className="modal-content card-elevated p-6 w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
           <div className="flex items-center justify-between mb-4">
             <div>

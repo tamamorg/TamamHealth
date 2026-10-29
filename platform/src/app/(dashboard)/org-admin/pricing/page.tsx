@@ -236,7 +236,7 @@ export default function ServicePricingPage() {
       </div>
 
       {showForm && (
-        <Modal onClose={() => setShowForm(false)} width={460} labelledBy="fee-form-title">
+        <Modal variant="slider" onClose={() => setShowForm(false)} width={460} labelledBy="fee-form-title">
           <div className="sadb-modal">
             <div className="sadb-modal-copy">
               <h2 id="fee-form-title" className="sadb-modal-title">

@@ -172,7 +172,8 @@ export function PatientFacesheetView({
               <div key={problem._id} className="tebra-list-row">
                 <strong>{problem.name}</strong>
                 <span className="tebra-list-row-meta">
-                  {problem.icd10Code && <span>{problem.icd10Code}</span>}
+                  {/* Problems are coded in ICD-11; icd10Code is only on legacy imports. */}
+                  {(problem.icd11Code || problem.icd10Code) && <span>{problem.icd11Code || problem.icd10Code}</span>}
                   <Badge tone={problem.status === 'chronic' ? 'warning' : 'success'}>{humanizeStatus(problem.status)}</Badge>
                 </span>
               </div>
@@ -183,9 +184,6 @@ export function PatientFacesheetView({
       )}
 
       {showPanel('vitals') && (() => {
-        const bpElevated = !!(latestVitals?.systolic && latestVitals.systolic >= 140) || !!(latestVitals?.diastolic && latestVitals.diastolic >= 90);
-        const tempElevated = !!(latestVitals?.temperature && latestVitals.temperature >= 38);
-        const spo2Low = !!(latestVitals?.oxygenSaturation && latestVitals.oxygenSaturation < 94);
         return (
       <section className="tebra-panel tebra-panel--highlight" {...clickable(() => onOpenTab('vitals'), { label: 'Open latest observations' })}>
         <FacesheetPanelHead icon={Activity} title="Latest observations" action={actions.vitals} />
@@ -211,16 +209,16 @@ export function PatientFacesheetView({
             )}
           </div>
         )}
-        {vitalsLoading ? (
-          <p className="tebra-none">{t('chart.vitalsLoading')}</p>
-        ) : latestVitals ? (
-          <div className="tebra-vitals">
-            <span className={bpElevated ? 'is-out-of-range' : ''}>BP <strong>{latestVitals.systolic && latestVitals.diastolic ? `${latestVitals.systolic}/${latestVitals.diastolic}` : '-'}</strong></span>
-            <span>Pulse <strong>{latestVitals.pulse ?? '-'}</strong></span>
-            <span className={tempElevated ? 'is-out-of-range' : ''}>Temp <strong>{latestVitals.temperature ?? '-'}</strong></span>
-            <span className={spo2Low ? 'is-out-of-range' : ''}>SpO2 <strong>{latestVitals.oxygenSaturation ?? '-'}</strong></span>
-          </div>
-        ) : <p className="tebra-none">(None documented)</p>}
+        {/* The latest BP / pulse / temperature / SpO2 are the vitals band's job,
+            directly above this card, with the shared age- and pregnancy-aware
+            flags. Repeating them here showed the same numbers twice, flagged
+            by different cut-offs. The card keeps what the band does not have:
+            the triage assessment and the newest results. */}
+        {!latestTriage && recentLabs.length === 0 && (
+          vitalsLoading
+            ? <p className="tebra-none">{t('chart.vitalsLoading')}</p>
+            : <p className="tebra-none">{latestVitals ? t('chart.observationsInBand') : '(None documented)'}</p>
+        )}
         {recentLabs.length > 0 && (
           // Results live on their own section, not Vitals — without the
           // stopPropagation these rows inherited the card's click and opened

@@ -24,6 +24,7 @@ import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
 import { useProblems } from '@/lib/hooks/useProblems';
@@ -85,11 +86,12 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
     if (!ok) return;
     setRetiring(entry._id);
     try {
-      await markInError(entry._id, { userId: currentUser?._id, userName: currentUser?.name });
+      // null: not found, or not in this user's scope. Not a success.
+      if (!(await markInError(entry._id, { userId: currentUser?._id, userName: currentUser?.name }))) throw new Error('Change not saved. Try again.');
       showToast(t('history.markedError'), 'success');
     } catch (err) {
       console.error(err);
-      showToast(t('history.updateFailed'), 'error');
+      showToast(describeError(err, t('history.updateFailed')), 'error');
     } finally {
       setRetiring(null);
     }
@@ -280,7 +282,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
       })}
 
       {form && (
-        <Modal
+        <Modal variant="slider"
           className="tamam-dialog"
           onClose={() => setForm(null)}
           width={480}

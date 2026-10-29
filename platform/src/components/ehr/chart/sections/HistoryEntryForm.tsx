@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import Select from '@/components/Select';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import type { HistoryDomain, HistoryEntryDoc } from '@/lib/db-types';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
@@ -122,12 +123,12 @@ export default function HistoryEntryForm({
             hospitalName: currentUser?.hospitalName,
             orgId: currentUser?.orgId,
           });
-      if (!saved) throw new Error('history entry not found');
+      if (!saved) throw new Error('Change not saved. Try again.');
       showToast(t(domain === 'medication' && !target ? 'meds.reported.saved' : target ? 'history.updated' : 'history.saved'), 'success');
       onSaved(saved);
     } catch (err) {
       console.error(err);
-      showToast(t('history.saveFailed'), 'error');
+      showToast(describeError(err, t('history.saveFailed')), 'error');
     } finally {
       setSubmitting(false);
     }

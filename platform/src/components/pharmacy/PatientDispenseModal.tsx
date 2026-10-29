@@ -74,7 +74,7 @@ function Panel({ title, onClose, width, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <Modal onClose={onClose} width={width}>
+    <Modal variant="slider" onClose={onClose} width={width}>
       <div className="modal-panel" style={{ maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 10 }}>
           <h2 className="truncate" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h2>

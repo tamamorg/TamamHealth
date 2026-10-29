@@ -71,10 +71,10 @@ describe('suggestReasonsFromText', () => {
   });
 
   it('suggests the symptom, never the disease that lists it as a keyword', () => {
-    // 1A40 (falciparum malaria) carries the keyword "fever".
+    // 1F40 (falciparum malaria) carries the keyword "fever".
     const suggested = codes(suggestReasonsFromText('fever and chills'));
     expect(suggested).toContain('MG26');
-    expect(suggested).not.toContain('1A40');
+    expect(suggested).not.toContain('1F40');
     expect(suggested.every(code => SYMPTOM_REASONS.some(reason => reason.code === code))).toBe(true);
   });
 
@@ -120,8 +120,8 @@ describe('reasonContextFromNote', () => {
         sectionId: 'assessment',
         text: 'Likely malaria',
         diagnoses: [
-          { name: 'Malaria, unspecified', icd11Code: '1A42' },
-          { name: 'Malaria, unspecified', icd11Code: '1A42' },
+          { name: 'Malaria, unspecified', icd11Code: '1F4Z' },
+          { name: 'Malaria, unspecified', icd11Code: '1F4Z' },
           { name: 'Typhoid fever' },
           { name: 'Feeling generally off' },
         ],
@@ -132,7 +132,7 @@ describe('reasonContextFromNote', () => {
 
   it('puts the note’s coded diagnoses on the order, once each', () => {
     expect(reasonContextFromNote(note).indications).toEqual([
-      { code: '1A42', title: 'Malaria, unspecified' },
+      { code: '1F4Z', title: 'Malaria, unspecified' },
       // No code on the line, but the name is a title the ICD list knows.
       { code: '1A07', title: 'Typhoid fever' },
     ]);

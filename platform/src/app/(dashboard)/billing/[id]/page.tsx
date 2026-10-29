@@ -17,9 +17,10 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import Modal from '@/components/Modal';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import AdmissionDepositControls from '@/components/billing/AdmissionDepositControls';
 import {
-  Receipt, Printer, Plus, Search, Activity, MoreVertical, ChevronLeft,
+  Receipt, Printer, Plus, Search, Activity, ChevronLeft,
 } from '@/components/icons/lucide';
 import { formatMoney } from '@/lib/format-utils';
 import { patientFullName, patientInitials, patientAgeLabel, avatarTint } from '@/lib/patient-utils';
@@ -33,8 +34,8 @@ import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatDobOmrs } from '@/lib/date-utils';
-import { dismissBackdrop } from '@/lib/a11y';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit'];
@@ -45,6 +46,8 @@ export default function BillDetailPage() {
   const params = useParams<{ id: string }>();
   const billId = params?.id;
   const router = useRouter();
+  // Back is the screen the user came from; ?returnTo= or the bill list when there is none.
+  const goBack = useGoBack(typeof window !== 'undefined' ? returnToFromSearch(window.location.search, '/billing') : '/billing');
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { showToast } = useToast();
@@ -57,7 +60,6 @@ export default function BillDetailPage() {
 
   // Line items
   const [itemSearch, setItemSearch] = useState('');
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [qtyDraft, setQtyDraft] = useState('1');
 
@@ -213,7 +215,6 @@ export default function BillDetailPage() {
 
   const handleRemoveItem = async (item: BillLineItem) => {
     if (!bill) return;
-    setOpenMenuId(null);
     if (bill.items.length <= 1) {
       showToast(t('msg.aBillNeedsAtLeast'), 'error');
       return;
@@ -411,7 +412,7 @@ export default function BillDetailPage() {
             </div>
           </div>
           <div className="bl-banner-actions no-print">
-            <button type="button" className="bl-btn bl-btn--link" onClick={() => router.push(returnToFromSearch(window.location.search, '/billing'))}>
+            <button type="button" className="bl-btn bl-btn--link" onClick={goBack}>
               <ChevronLeft size={15} /> Back
             </button>
           </div>
@@ -522,29 +523,15 @@ export default function BillDetailPage() {
                     <td className="bl-num bl-right">{money(item.totalPrice)}</td>
                     {editable && (
                       <td style={{ width: 34 }}>
-                        <div className="bl-row-menu">
-                          <button
-                            type="button"
-                            className="bl-row-menu-btn"
-                            aria-label={`Actions for ${item.description}`}
-                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                          >
-                            <MoreVertical size={15} />
-                          </button>
-                          {openMenuId === item.id && (
-                            <>
-                              <div className="bl-menu-backdrop" {...dismissBackdrop(() => setOpenMenuId(null))} />
-                              <div className="bl-menu" role="menu">
-                                <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setEditingItemId(item.id); setQtyDraft(String(item.quantity)); }}>
-                                  Edit quantity
-                                </button>
-                                <button type="button" role="menuitem" className="bl-menu-danger" onClick={() => handleRemoveItem(item)}>
-                                  Remove item
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        {/* The shared list ⋮ (RowActionsMenu): same O3 menu, keyboard
+                            and hover behaviour as every other list's row actions. */}
+                        <RowActionsMenu
+                          ariaLabel={`Actions for ${item.description}`}
+                          actions={[
+                            { key: 'qty', label: 'Edit quantity', onClick: () => { setEditingItemId(item.id); setQtyDraft(String(item.quantity)); } },
+                            { key: 'remove', label: 'Remove item', tone: 'danger', onClick: () => handleRemoveItem(item) },
+                          ]}
+                        />
                       </td>
                     )}
                   </tr>
@@ -662,7 +649,7 @@ export default function BillDetailPage() {
 
       {/* ── Request discount modal ── */}
       {discountOpen && (
-        <Modal onClose={() => setDiscountOpen(false)} width={440} labelledBy="bl-discount-title">
+        <Modal variant="slider" onClose={() => setDiscountOpen(false)} width={440} labelledBy="bl-discount-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="bl-discount-title">Request discount</h3>
@@ -688,7 +675,7 @@ export default function BillDetailPage() {
 
       {/* ── Add items modal ── */}
       {addItemsOpen && (
-        <Modal onClose={() => setAddItemsOpen(false)} width={560} labelledBy="bl-add-title">
+        <Modal variant="slider" onClose={() => setAddItemsOpen(false)} width={560} labelledBy="bl-add-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="bl-add-title">Add items to bill</h3>

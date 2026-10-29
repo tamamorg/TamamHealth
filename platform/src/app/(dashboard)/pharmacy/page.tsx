@@ -39,10 +39,12 @@ import DispenseConfirmModal from '@/components/pharmacy/DispenseConfirmModal';
 import { RX_STAGE_PILL_CLASS, prescriptionSig, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
 import { describeError } from '@/lib/user-facing-error';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 export default function PharmacyPage() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<PharmacyTab>(() => searchParams.get('panel') === 'stock' ? 'inventory' : 'queue');
+  // In the URL so Back returns to the tab the user was on.
+  const [activeTab, setActiveTab] = useUrlView<PharmacyTab>(['queue', 'inventory', 'reorder', 'expiry', 'overview', 'patients'], searchParams.get('panel') === 'stock' ? 'inventory' : 'queue', 'tab');
   const stockExpiryChoice = useRoleChoice('stock.expiry', '30 days');
   const stockReorderChoice = useRoleChoice('stock.reorder', '');
   // Per-column filters: queue table (q*) + inventory table (medication name).

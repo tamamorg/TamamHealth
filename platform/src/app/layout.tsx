@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Barlow, Barlow_Condensed, JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import './print-typography.css';
 import "./tablet-desktop.css";
 import { AppProvider } from "@/lib/context";
 

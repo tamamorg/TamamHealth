@@ -68,7 +68,7 @@ const DEEP_LINK_TAB_IDS = new Set([
     'overview', 'appointments', 'history', 'problems', 'prescriptions', 'immunizations',
   'allergies', 'vitals', 'notes', 'labs', 'demographics', 'billing', 'careChecklist',
     'documents', 'recall', 'referrals', 'sbar', 'transfers',
-    'orders', 'procedures', 'programs', 'medicalHistory', 'messages',
+    'orders', 'procedures', 'programs', 'anc', 'medicalHistory', 'messages',
 ]);
 
 /** Legacy/alias `?tab=` values that don't have a section of their own: transfers

@@ -379,7 +379,7 @@ export default function PaymentPanel({
   }
 
   return (
-    <Modal onClose={onCancel} width={560}>
+    <Modal variant="slider" onClose={onCancel} width={560}>
       <div className="modal-content pp-pay ehr-finance-dialog" style={{ width: '100%' }}>
         {/* Header */}
         <div className="ehr-finance-dialog__header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-light)' }}>

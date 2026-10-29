@@ -103,7 +103,7 @@ export default function PaymentPlanWizard({
   }
 
   return (
-    <Modal onClose={() => { if (!processing) onCancel(); }} width={560} disableBackdropClose={processing}>
+    <Modal variant="slider" onClose={() => { if (!processing) onCancel(); }} width={560} disableBackdropClose={processing}>
       <div className="modal-content ehr-finance-dialog" {...stopsClickPropagation}>
         {/* Header */}
         <div className="ehr-finance-dialog__header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-medium)' }}>

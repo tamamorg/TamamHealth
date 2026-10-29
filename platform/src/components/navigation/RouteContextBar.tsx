@@ -8,6 +8,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { getDefaultDashboard } from '@/lib/role-routes';
 import { resolveRouteContext, routeContextBackHref } from '@/lib/navigation/route-context';
 import { useConsoleTrailValue } from './ConsoleTrail';
+import BackLink from './BackLink';
 
 export default function RouteContextBar() {
   const pathname = usePathname();
@@ -49,10 +50,13 @@ export default function RouteContextBar() {
     <div className="route-context-bar">
       {showBack && (
         <>
-          <Link className="route-context-back" href={backHref} aria-label={t('routeContext.back')}>
+          {/* Back is the screen the user came from (history); `backHref`
+              — ?returnTo=, the trail's parent, or the route's parent — is
+              only where it goes when there is no in-app page behind this one. */}
+          <BackLink className="route-context-back" fallbackHref={backHref} ariaLabel={t('routeContext.back')}>
             <ChevronLeft aria-hidden="true" />
             <span>{t('routeContext.back')}</span>
-          </Link>
+          </BackLink>
           <span className="route-context-divider" aria-hidden="true" />
         </>
       )}

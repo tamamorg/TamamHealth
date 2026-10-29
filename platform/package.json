@@ -23,6 +23,7 @@
     "db:verify:couchdb-tenants": "node --import tsx scripts/verify-couchdb-tenant-migration.mjs",
     "db:audit:demo-artifacts": "node scripts/audit-production-demo-artifacts.mjs",
     "db:strip-totp": "node --import tsx scripts/strip-totp-fields.mjs",
+    "db:remap:icd11": "node --import tsx scripts/remap-icd11-codes.mjs",
     "docs:api": "typedoc",
     "i18n:check": "node scripts/check-i18n.mjs",
     "config:check:offline": "node --import tsx scripts/check-offline-deployment.mjs",

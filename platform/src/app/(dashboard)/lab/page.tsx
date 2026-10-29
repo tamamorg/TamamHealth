@@ -476,7 +476,7 @@ export default function LabPage() {
 
           {/* Import from Analyzer Modal */}
           {showImportModal && (
-            <Modal onClose={resetImport}>
+            <Modal variant="slider" onClose={resetImport}>
               <div className="modal-content card-elevated p-6 max-w-2xl w-full" {...stopsClickPropagation}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">

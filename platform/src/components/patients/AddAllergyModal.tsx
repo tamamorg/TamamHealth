@@ -143,7 +143,7 @@ export default function AddAllergyModal({
   if (presentation === 'page') return body;
 
   return (
-    <Modal onClose={busy ? () => {} : onClose} width={480} labelledBy="add-allergy-title">
+    <Modal variant="slider" onClose={busy ? () => {} : onClose} width={480} labelledBy="add-allergy-title">
       <div className="sadb-modal">
         <PopupHeader
           titleId="add-allergy-title"

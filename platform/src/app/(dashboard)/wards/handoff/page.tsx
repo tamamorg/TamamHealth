@@ -11,18 +11,19 @@
  * previous shift's report.
  */
 
-import { useRouter } from 'next/navigation';
 import { ArrowLeft } from '@/components/icons/lucide';
 import HandoffWorkflow from '@/components/nurse/HandoffWorkflow';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 export default function ShiftHandoffPage() {
-  const router = useRouter();
+  // Back is the screen the user came from; the dashboard when there is none.
+  const goBack = useGoBack('/dashboard');
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <button
         type="button"
-        onClick={() => router.push('/dashboard')}
+        onClick={goBack}
         className="flex items-center gap-1.5 text-[12px] font-bold mb-2 no-print"
         style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
       >

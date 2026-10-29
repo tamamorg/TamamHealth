@@ -72,7 +72,7 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
   };
 
   return (
-    <Modal onClose={onClose} width={448} labelledBy="availability-modal-title">
+    <Modal variant="slider" onClose={onClose} width={448} labelledBy="availability-modal-title">
       <div
         className="modal-panel w-full p-6 overflow-y-auto"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}

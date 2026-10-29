@@ -230,7 +230,7 @@ function ReceiveStockModal({ items, onConfirm, onClose, saving }: {
   const canSave = !saving && name.trim().length > 0 && qtyNum > 0;
 
   return (
-    <Modal onClose={onClose} width={448}>
+    <Modal variant="slider" onClose={onClose} width={448}>
       <div className="dash-card rounded-2xl p-5 w-full" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

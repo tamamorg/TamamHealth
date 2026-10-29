@@ -15,101 +15,104 @@ export interface ICD11CodeEntry {
   keywords?: string[];
 }
 
-// Common ICD-11 codes for South Sudan context — expanded for clinical diagnosis use
+// Common ICD-11 codes for South Sudan context. Every code was checked against
+// the WHO ICD-11 MMS tabulation (LinearizationMiniOutput-MMS-en, 2026-10-28);
+// 54 of the earlier entries named the wrong condition (e.g. epilepsy filed
+// under 6A20, which is schizophrenia).
+// — expanded for clinical diagnosis use
 // Covers both cause-of-death AND clinical diagnosis at all facility levels
 export const COMMON_ICD11_CODES: ICD11CodeEntry[] = [
   // ===== INFECTIOUS DISEASES (highest burden in South Sudan) =====
-  { code: '1A40', title: 'Malaria due to Plasmodium falciparum', chapter: 'Infectious diseases', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['malaria', 'fever', 'chills'] },
-  { code: '1A41', title: 'Malaria due to Plasmodium vivax', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['vivax', 'malaria'] },
-  { code: '1A42', title: 'Malaria, unspecified', chapter: 'Infectious diseases', minLevel: 'boma', notifiable: true, keywords: ['malaria', 'suspected malaria'] },
-  { code: '1B10', title: 'Tuberculosis of lung', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['tb', 'tuberculosis', 'cough'] },
-  { code: '1B11', title: 'Tuberculosis, extrapulmonary', chapter: 'Infectious diseases', minLevel: 'state', causeOfDeath: true, notifiable: true },
-  { code: '1C60', title: 'HIV disease', chapter: 'Infectious diseases', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['hiv', 'aids'] },
+  { code: '1F40', title: 'Malaria due to Plasmodium falciparum', chapter: 'Infectious diseases', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['malaria', 'fever', 'chills'] },
+  { code: '1F41', title: 'Malaria due to Plasmodium vivax', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['vivax', 'malaria'] },
+  { code: '1F4Z', title: 'Malaria, unspecified', chapter: 'Infectious diseases', minLevel: 'boma', notifiable: true, keywords: ['malaria', 'suspected malaria'] },
+  { code: '1B10', title: 'Tuberculosis of the respiratory system', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['tb', 'tuberculosis', 'cough'] },
+  { code: '1B12', title: 'Tuberculosis of other systems or organs (extrapulmonary)', chapter: 'Infectious diseases', minLevel: 'state', causeOfDeath: true, notifiable: true },
+  { code: '1C62', title: 'HIV disease', chapter: 'Infectious diseases', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['hiv', 'aids'] },
   { code: '1C62.Z', title: 'HIV disease, unspecified', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true },
   { code: '1A00', title: 'Cholera', chapter: 'Infectious diseases', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['cholera', 'watery diarrhea'] },
   { code: '1A07', title: 'Typhoid fever', chapter: 'Infectious diseases', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['typhoid', 'enteric fever'] },
-  { code: '1E30', title: 'Measles', chapter: 'Infectious diseases', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['measles', 'rash', 'rubella'] },
-  { code: '1D80', title: 'Hepatitis B', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true },
-  { code: '1D81', title: 'Hepatitis C', chapter: 'Infectious diseases', minLevel: 'county', notifiable: true },
-  { code: '1A30', title: 'Leishmaniasis (Kala-azar)', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['kala-azar', 'visceral leishmaniasis'] },
-  { code: '1B90', title: 'Meningitis', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['meningitis', 'neck stiffness'] },
-  { code: '1C80', title: 'Acute viral hepatitis', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true },
-  { code: '1A70', title: 'Yellow fever', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['yellow fever', 'jaundice'] },
-  { code: '1E50', title: 'Rabies', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['rabies', 'dog bite'] },
-  { code: '1A80', title: 'Tetanus', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['tetanus', 'lockjaw'] },
+  { code: '1F03', title: 'Measles', chapter: 'Infectious diseases', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['measles', 'rash', 'rubella'] },
+  { code: '1E51.0', title: 'Chronic hepatitis B', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true },
+  { code: '1E51.1', title: 'Chronic hepatitis C', chapter: 'Infectious diseases', minLevel: 'county', notifiable: true },
+  { code: '1F54.0', title: 'Visceral leishmaniasis (Kala-azar)', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['kala-azar', 'visceral leishmaniasis'] },
+  { code: '1D01', title: 'Infectious meningitis', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['meningitis', 'neck stiffness'] },
+  { code: '1E50', title: 'Acute viral hepatitis', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true },
+  { code: '1D47', title: 'Yellow fever', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['yellow fever', 'jaundice'] },
+  { code: '1C82', title: 'Rabies', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['rabies', 'dog bite'] },
+  { code: '1C13', title: 'Tetanus', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, notifiable: true, keywords: ['tetanus', 'lockjaw'] },
 
   // ===== DIARRHEAL & GI DISEASES =====
-  { code: 'DA90', title: 'Diarrhoeal diseases', chapter: 'Digestive system', minLevel: 'boma', causeOfDeath: true, keywords: ['diarrhea', 'loose stool', 'gastroenteritis'] },
-  { code: 'DA93', title: 'Dysentery', chapter: 'Digestive system', minLevel: 'boma', notifiable: true, keywords: ['dysentery', 'bloody diarrhea'] },
-  { code: 'DA70', title: 'Intestinal worms (Helminthiasis)', chapter: 'Digestive system', minLevel: 'boma', keywords: ['worms', 'parasites'] },
+  { code: '1A40', title: 'Diarrhoeal disease (gastroenteritis)', chapter: 'Digestive system', minLevel: 'boma', causeOfDeath: true, keywords: ['diarrhea', 'loose stool', 'gastroenteritis'] },
+  { code: '1A02', title: 'Dysentery (shigellosis)', chapter: 'Digestive system', minLevel: 'boma', notifiable: true, keywords: ['dysentery', 'bloody diarrhea'] },
+  { code: '1F9Z', title: 'Intestinal worms (Helminthiasis)', chapter: 'Digestive system', minLevel: 'boma', keywords: ['worms', 'parasites'] },
 
   // ===== RESPIRATORY =====
   { code: 'CA40', title: 'Pneumonia', chapter: 'Respiratory system', minLevel: 'boma', causeOfDeath: true, keywords: ['pneumonia', 'chest infection', 'breathing difficulty'] },
   { code: 'CA07', title: 'Acute upper respiratory infection', chapter: 'Respiratory system', minLevel: 'boma', keywords: ['cold', 'cough', 'sore throat', 'URTI'] },
-  { code: 'CA20', title: 'Chronic obstructive pulmonary disease', chapter: 'Respiratory system', minLevel: 'county', causeOfDeath: true },
+  { code: 'CA22', title: 'Chronic obstructive pulmonary disease', chapter: 'Respiratory system', minLevel: 'county', causeOfDeath: true },
   { code: 'CA23', title: 'Asthma', chapter: 'Respiratory system', minLevel: 'payam', keywords: ['asthma', 'wheeze'] },
 
   // ===== CIRCULATORY =====
-  { code: 'BA00', title: 'Ischaemic heart disease', chapter: 'Circulatory system', minLevel: 'state', causeOfDeath: true },
-  { code: 'BA01', title: 'Cerebrovascular diseases (Stroke)', chapter: 'Circulatory system', minLevel: 'state', causeOfDeath: true, keywords: ['stroke', 'CVA'] },
-  { code: 'BA80', title: 'Hypertensive heart disease', chapter: 'Circulatory system', minLevel: 'payam', causeOfDeath: true, keywords: ['hypertension', 'high blood pressure'] },
-  { code: 'BA02', title: 'Hypertension, essential', chapter: 'Circulatory system', minLevel: 'payam', keywords: ['hypertension', 'high BP'] },
+  { code: 'BA6Z', title: 'Ischaemic heart disease', chapter: 'Circulatory system', minLevel: 'state', causeOfDeath: true },
+  { code: '8B20', title: 'Stroke', chapter: 'Neurological', minLevel: 'state', causeOfDeath: true, keywords: ['stroke', 'CVA'] },
+  { code: 'BA01', title: 'Hypertensive heart disease', chapter: 'Circulatory system', minLevel: 'payam', causeOfDeath: true, keywords: ['hypertension', 'high blood pressure'] },
+  { code: 'BA00', title: 'Essential hypertension', chapter: 'Circulatory system', minLevel: 'payam', keywords: ['hypertension', 'high BP'] },
 
   // ===== NUTRITIONAL =====
-  { code: '5B70', title: 'Malnutrition', chapter: 'Nutritional deficiencies', minLevel: 'boma', causeOfDeath: true, keywords: ['malnutrition', 'wasting', 'MUAC'] },
-  { code: '5B71', title: 'Severe acute malnutrition (SAM)', chapter: 'Nutritional deficiencies', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['SAM', 'kwashiorkor', 'marasmus'] },
-  { code: '5B72', title: 'Moderate acute malnutrition (MAM)', chapter: 'Nutritional deficiencies', minLevel: 'boma', keywords: ['MAM', 'underweight'] },
-  { code: '5A00', title: 'Anaemia', chapter: 'Blood diseases', minLevel: 'payam', causeOfDeath: true, keywords: ['anemia', 'anaemia', 'pale'] },
-  { code: '5B50', title: 'Vitamin A deficiency', chapter: 'Nutritional deficiencies', minLevel: 'payam', keywords: ['night blindness'] },
+  { code: '5B7Z', title: 'Undernutrition (malnutrition)', chapter: 'Nutritional deficiencies', minLevel: 'boma', causeOfDeath: true, keywords: ['malnutrition', 'wasting', 'MUAC'] },
+  { code: '5B51', title: 'Acute malnutrition (wasting): SAM or MAM', chapter: 'Nutritional deficiencies', minLevel: 'boma', causeOfDeath: true, notifiable: true, keywords: ['SAM', 'MAM', 'kwashiorkor', 'marasmus', 'acute malnutrition', 'wasting'] },
+  { code: '3A00', title: 'Iron deficiency anaemia', chapter: 'Blood diseases', minLevel: 'payam', causeOfDeath: true, keywords: ['anemia', 'anaemia', 'pale'] },
+  { code: '5B55', title: 'Vitamin A deficiency', chapter: 'Nutritional deficiencies', minLevel: 'payam', keywords: ['night blindness'] },
 
   // ===== PREGNANCY & CHILDBIRTH =====
-  { code: 'JA00', title: 'Maternal haemorrhage', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['PPH', 'bleeding'] },
-  { code: 'JA03', title: 'Maternal sepsis', chapter: 'Pregnancy/childbirth', minLevel: 'county', causeOfDeath: true, notifiable: true },
-  { code: 'JA04', title: 'Pre-eclampsia / Eclampsia', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['eclampsia', 'fits in pregnancy'] },
-  { code: 'JA06', title: 'Obstructed labour', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, keywords: ['obstructed labour', 'prolonged labour'] },
-  { code: 'JA10', title: 'Ectopic pregnancy', chapter: 'Pregnancy/childbirth', minLevel: 'county', causeOfDeath: true },
-  { code: 'JA20', title: 'Spontaneous abortion', chapter: 'Pregnancy/childbirth', minLevel: 'payam', keywords: ['miscarriage'] },
+  { code: 'JA43', title: 'Postpartum haemorrhage', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['PPH', 'bleeding'] },
+  { code: 'JB40.0', title: 'Puerperal sepsis', chapter: 'Pregnancy/childbirth', minLevel: 'county', causeOfDeath: true, notifiable: true },
+  { code: 'JA24', title: 'Pre-eclampsia', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, notifiable: true, keywords: ['eclampsia', 'fits in pregnancy'] },
+  { code: 'JB06', title: 'Obstructed labour', chapter: 'Pregnancy/childbirth', minLevel: 'payam', causeOfDeath: true, keywords: ['obstructed labour', 'prolonged labour'] },
+  { code: 'JA01', title: 'Ectopic pregnancy', chapter: 'Pregnancy/childbirth', minLevel: 'county', causeOfDeath: true },
+  { code: 'JA00.0', title: 'Spontaneous abortion', chapter: 'Pregnancy/childbirth', minLevel: 'payam', keywords: ['miscarriage'] },
 
   // ===== PERINATAL =====
-  { code: 'KA00', title: 'Neonatal sepsis', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true, notifiable: true },
-  { code: 'KA01', title: 'Birth asphyxia', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true },
-  { code: 'KA02', title: 'Neonatal prematurity', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true },
-  { code: 'KA03', title: 'Low birth weight', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true },
+  { code: 'KA60', title: 'Neonatal sepsis', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true, notifiable: true },
+  { code: 'KB21', title: 'Birth asphyxia', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true },
+  { code: 'KA21.4', title: 'Preterm newborn', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true },
+  { code: 'KA21', title: 'Low birth weight or short gestation', chapter: 'Perinatal conditions', minLevel: 'payam', causeOfDeath: true },
 
   // ===== ENDOCRINE =====
-  { code: 'DB90', title: 'Diabetes mellitus', chapter: 'Endocrine diseases', minLevel: 'payam', causeOfDeath: true, keywords: ['diabetes', 'sugar'] },
-  { code: 'DB91', title: 'Diabetes mellitus, type 1', chapter: 'Endocrine diseases', minLevel: 'county' },
-  { code: 'DB92', title: 'Diabetes mellitus, type 2', chapter: 'Endocrine diseases', minLevel: 'payam', keywords: ['type 2 diabetes'] },
+  { code: '5A14', title: 'Diabetes mellitus, type unspecified', chapter: 'Endocrine diseases', minLevel: 'payam', causeOfDeath: true, keywords: ['diabetes', 'sugar'] },
+  { code: '5A10', title: 'Type 1 diabetes mellitus', chapter: 'Endocrine diseases', minLevel: 'county' },
+  { code: '5A11', title: 'Type 2 diabetes mellitus', chapter: 'Endocrine diseases', minLevel: 'payam', keywords: ['type 2 diabetes'] },
 
   // ===== SKIN & EYES =====
-  { code: 'ED90', title: 'Skin infection', chapter: 'Skin diseases', minLevel: 'boma', keywords: ['skin infection', 'abscess', 'boil'] },
-  { code: '9A00', title: 'Conjunctivitis', chapter: 'Eye diseases', minLevel: 'boma', keywords: ['red eye', 'eye infection'] },
-  { code: '9B10', title: 'Trachoma', chapter: 'Eye diseases', minLevel: 'payam', notifiable: true, keywords: ['trachoma'] },
+  { code: '1B7Z', title: 'Bacterial skin infection', chapter: 'Infectious diseases', minLevel: 'boma', keywords: ['skin infection', 'abscess', 'boil'] },
+  { code: '9A60', title: 'Conjunctivitis', chapter: 'Eye diseases', minLevel: 'boma', keywords: ['red eye', 'eye infection'] },
+  { code: '1C23', title: 'Trachoma', chapter: 'Eye diseases', minLevel: 'payam', notifiable: true, keywords: ['trachoma'] },
 
   // ===== MENTAL HEALTH =====
-  { code: '6A70', title: 'Depression', chapter: 'Mental health', minLevel: 'payam', keywords: ['depression', 'sadness'] },
+  { code: '6A7Z', title: 'Depressive disorder', chapter: 'Mental health', minLevel: 'payam', keywords: ['depression', 'sadness'] },
   { code: '6B40', title: 'Post-traumatic stress disorder', chapter: 'Mental health', minLevel: 'county', keywords: ['PTSD', 'trauma'] },
-  { code: '6A20', title: 'Epilepsy', chapter: 'Neurological', minLevel: 'payam', keywords: ['epilepsy', 'seizure', 'fits'] },
+  { code: '8A6Z', title: 'Epilepsy or seizures', chapter: 'Neurological', minLevel: 'payam', keywords: ['epilepsy', 'seizure', 'fits'] },
 
   // ===== EXTERNAL CAUSES =====
-  { code: 'NF00', title: 'Road traffic injuries', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
-  { code: 'NE00', title: 'Drowning', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
-  { code: 'PB00', title: 'Assault by sharp object', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
-  { code: 'PA00', title: 'Assault by firearm', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
-  { code: 'MG30', title: 'Snakebite envenoming', chapter: 'External causes', minLevel: 'boma', causeOfDeath: true, keywords: ['snakebite', 'snake'] },
-  { code: 'NC00', title: 'Burns', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true, keywords: ['burn', 'scalding'] },
+  { code: 'PA0Z', title: 'Road traffic injury', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
+  { code: 'NF08.1', title: 'Drowning or nonfatal submersion', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
+  { code: 'PE3Z', title: 'Assault by sharp object', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
+  { code: 'PE20.Z', title: 'Assault by firearm', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true },
+  { code: 'PA78', title: 'Snakebite or other animal envenoming', chapter: 'External causes', minLevel: 'boma', causeOfDeath: true, keywords: ['snakebite', 'snake'] },
+  { code: 'NE2Z', title: 'Burns', chapter: 'External causes', minLevel: 'payam', causeOfDeath: true, keywords: ['burn', 'scalding'] },
 
   // ===== NEOPLASMS =====
-  { code: '2C00', title: 'Malignant neoplasm (Cancer)', chapter: 'Neoplasms', minLevel: 'state', causeOfDeath: true },
+  { code: '2D4Z', title: 'Malignant neoplasm (cancer), site unspecified', chapter: 'Neoplasms', minLevel: 'state', causeOfDeath: true },
   { code: '2E00', title: "Kaposi's sarcoma", chapter: 'Neoplasms', minLevel: 'state', causeOfDeath: true },
 
   // ===== UROGENITAL =====
-  { code: 'GC00', title: 'Urinary tract infection', chapter: 'Genitourinary', minLevel: 'payam', keywords: ['UTI', 'burning urination'] },
-  { code: 'GA00', title: 'Acute kidney injury', chapter: 'Genitourinary', minLevel: 'county', causeOfDeath: true },
+  { code: 'GC08', title: 'Urinary tract infection', chapter: 'Genitourinary', minLevel: 'payam', keywords: ['UTI', 'burning urination'] },
+  { code: 'GB60', title: 'Acute kidney failure', chapter: 'Genitourinary', minLevel: 'county', causeOfDeath: true },
 
   // ===== STIs =====
-  { code: '1A60', title: 'Syphilis', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['syphilis'] },
-  { code: '1A61', title: 'Gonorrhoea', chapter: 'Infectious diseases', minLevel: 'payam', keywords: ['gonorrhea', 'discharge'] },
+  { code: '1A6Z', title: 'Syphilis', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['syphilis'] },
+  { code: '1A7Z', title: 'Gonorrhoea (gonococcal infection)', chapter: 'Infectious diseases', minLevel: 'payam', keywords: ['gonorrhea', 'discharge'] },
   // ===== ADDITIONAL COMMON PRESENTATIONS =====
   { code: 'RA01', title: 'COVID-19', chapter: 'Infectious diseases', minLevel: 'payam', notifiable: true, keywords: ['covid', 'coronavirus', 'sars-cov-2'] },
   { code: '1G40', title: 'Sepsis', chapter: 'Infectious diseases', minLevel: 'county', causeOfDeath: true, keywords: ['sepsis', 'septicaemia', 'blood infection'] },

@@ -21,6 +21,7 @@ import {
   type Dhis2SyncLogDoc,
 } from '@/lib/services/dhis2-sync-log-service';
 import Select from '@/components/Select';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 // ── HMIS report catalog (South Sudan standard report names/cadence). This is
 // structural metadata, not per-record data — the completeness/status shown
@@ -36,7 +37,8 @@ const REPORT_TYPES = [
 
 export default function DHIS2ExportPage() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'aggregate' | 'export' | 'log'>('overview');
+  // In the URL (?view=) so Back returns to the tab the user was on.
+  const [activeTab, setActiveTab] = useUrlView(['overview', 'reports', 'aggregate', 'export', 'log'] as const, 'overview');
   const [syncing, setSyncing] = useState(false);
   const [period, setPeriod] = useState(todayIso().slice(0, 7));
   const [exportLevel, setExportLevel] = useState<'facility' | 'payam' | 'county' | 'state' | 'national'>('facility');

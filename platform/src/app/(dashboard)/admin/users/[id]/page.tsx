@@ -47,6 +47,7 @@ import {
   resetClientUserPassword, setClientUserActive, updateClientUser,
 } from '@/modules/identity/services/user-client';
 import { describeError } from '@/lib/user-facing-error';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 const ROLE_OPTIONS: UserRole[] = [
   'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist',
@@ -143,7 +144,8 @@ export default function AdminUserDetailPage() {
     : null;
   const orgHref = user?.orgId ? `/admin/organizations/${encodeURIComponent(user.orgId)}` : null;
   const parentHref = returnTo ?? facilityHref ?? orgHref ?? '/manage';
-  const backToRoster = () => router.push(parentHref);
+  // Back is the screen the user came from; the roster when there is none.
+  const backToRoster = useGoBack(parentHref);
 
   /* … › <tenant> › <facility> › <person>. Each rung is the page that lists
      the one after it, so the trail is also the way back up. */

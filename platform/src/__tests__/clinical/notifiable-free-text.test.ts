@@ -11,19 +11,19 @@ import {
 
 describe('matchNotifiableByName', () => {
   it('matches a bare disease name', () => {
-    expect(matchNotifiableByName('measles')?.code).toBe('1E30');
+    expect(matchNotifiableByName('measles')?.code).toBe('1F03');
     expect(matchNotifiableByName('cholera')?.code).toBe('1A00');
   });
 
   it('matches the disease name inside a longer free text', () => {
-    expect(matchNotifiableByName('suspected measles with rash')?.code).toBe('1E30');
+    expect(matchNotifiableByName('suspected measles with rash')?.code).toBe('1F03');
     expect(matchNotifiableByName('Typhoid fever')?.code).toBe('1A07');
   });
 
   it('prefers the "unspecified" variant for a generic name', () => {
     // "malaria" alone matches several catalogue entries; the honest bucket
     // for an uncoded entry is the unspecified one.
-    expect(matchNotifiableByName('malaria')?.code).toBe('1A42');
+    expect(matchNotifiableByName('malaria')?.code).toBe('1F4Z');
   });
 
   it('does NOT promote symptom-level text into a case', () => {
@@ -46,15 +46,15 @@ describe('validateDiagnosisCodes — free-text notifiable surface', () => {
     const result = validateDiagnosisCodes([{ name: 'Measles' }]);
     expect(result.errors).toHaveLength(0);
     expect(result.freeTextNotifiableMatches).toEqual([
-      { name: 'Measles', code: '1E30', title: 'Measles' },
+      { name: 'Measles', code: '1F03', title: 'Measles' },
     ]);
     // The clinician is nudged toward the code, advisory only.
-    expect(result.warnings.some(w => w.includes('1E30'))).toBe(true);
+    expect(result.warnings.some(w => w.includes('1F03'))).toBe(true);
   });
 
   it('keeps coded notifiable diagnoses in notifiableCodes, not the free-text list', () => {
-    const result = validateDiagnosisCodes([{ name: 'Measles', icd11Code: '1E30' }]);
-    expect(result.notifiableCodes).toEqual(['1E30']);
+    const result = validateDiagnosisCodes([{ name: 'Measles', icd11Code: '1F03' }]);
+    expect(result.notifiableCodes).toEqual(['1F03']);
     expect(result.freeTextNotifiableMatches).toHaveLength(0);
   });
 

@@ -16,6 +16,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
 import { toIsoDate } from '@/lib/date-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import { humanizeStatus } from '@/lib/format-utils';
 
 interface TaskListPanelProps {
@@ -66,7 +67,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
       setAdding(false);
     } catch (err) {
       console.error(err);
-      showToast(t('msg.taskNotAddedTryAgain'), 'error');
+      showToast(describeError(err, t('msg.taskNotAddedTryAgain')), 'error');
     } finally {
       setSubmitting(false);
     }

@@ -30,7 +30,7 @@ interface HistoryModalProps {
 export default function HistoryModal({ patientId, patientName, noteId, onClose }: HistoryModalProps) {
   const { t } = useTranslation();
   return (
-    <Modal onClose={onClose} width={880} labelledBy="cn-history-title">
+    <Modal variant="slider" onClose={onClose} width={880} labelledBy="cn-history-title">
       <div className="cn-meds">
         <div className="cn-meds-header modal-no-headband">
           <h2 className="cn-meds-title" id="cn-history-title">{t('history.modalTitle')}</h2>

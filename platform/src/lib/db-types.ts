@@ -976,6 +976,11 @@ export interface ProblemDoc extends BaseDoc {
   notes?: string;
   /** Encounter that first documented this problem */
   sourceEncounterId?: string;
+  /** Set when the entry was recorded on the wrong patient or by mistake. The
+   *  document is kept for the audit trail and dropped from every list. */
+  recordStatus?: 'active' | 'entered_in_error';
+  /** Why the entry was marked entered in error, or why its onset was corrected. */
+  correctionReason?: string;
   recordedBy?: string;
   recordedByName?: string;
   hospitalId?: string;
@@ -1668,6 +1673,13 @@ export interface PatientDocumentDoc extends BaseDoc {
   uploadedByName?: string;
   hospitalId?: string;
   orgId?: string;
+  /** Set when a document is removed from the chart. The document is kept
+   *  for the record history and left out of every list. */
+  recordStatus?: 'active' | 'entered_in_error';
+  removalReason?: string;
+  removedById?: string;
+  removedByName?: string;
+  removedAt?: string;
 }
 
 /** WHO-aligned malnutrition classification from MUAC + edema. */

@@ -321,7 +321,7 @@ export default function MedicationsModal({
   const shortDate = (iso?: string) => (iso ? iso.slice(0, 10) : '');
 
   return (
-    <Modal onClose={onClose} width={1120} labelledBy="cn-meds-title">
+    <Modal variant="slider" onClose={onClose} width={1120} labelledBy="cn-meds-title">
       <div className="cn-meds">
         <div className="cn-meds-header modal-no-headband">
           <h2 className="cn-meds-title" id="cn-meds-title">Medications</h2>

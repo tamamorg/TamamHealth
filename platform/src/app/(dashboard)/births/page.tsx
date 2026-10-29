@@ -265,7 +265,7 @@ export default function BirthsPage() {
 
         {/* Registration Form Modal */}
         {showForm && (
-          <Modal onClose={() => setShowForm(false)} width={672} labelledBy="birth-registration-title">
+          <Modal variant="slider" onClose={() => setShowForm(false)} width={672} labelledBy="birth-registration-title">
             <div className="modal-panel w-full overflow-y-auto" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
               <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <div className="flex items-center gap-2"><Baby className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} /><h2 id="birth-registration-title" className="font-semibold">Register New Birth</h2></div>

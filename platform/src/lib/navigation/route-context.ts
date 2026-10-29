@@ -31,6 +31,7 @@ const GROUPS: RouteGroup[] = [
     rootLabelKey: 'breadcrumb.admin',
     children: {
       analytics: 'routeContext.analytics',
+      announcements: 'routeContext.announcements',
       audit: 'routeContext.auditLog',
       billing: 'routeContext.billing',
       config: 'routeContext.configuration',
@@ -97,6 +98,11 @@ const GROUPS: RouteGroup[] = [
 
 const EXACT_ROUTES: Record<string, RouteContext> = {
   '/patients/new': context('/patients', 'breadcrumb.patients', 'routeContext.newPatient'),
+  // Second-level pages whose parent is a page of its own: they get the bar
+  // and its Back, which follows ?returnTo= first, the parent otherwise.
+  '/facility-management/queue': context('/facility-management', 'routeContext.facilityManagement', 'routeContext.approvalQueue', true),
+  '/payments/claims': context('/payments', 'routeContext.payments', 'routeContext.claims', true),
+  '/wards/mar': context('/wards', 'routeContext.wards', 'routeContext.medicationAdministration', true),
   '/settings/manage': context('/settings', 'breadcrumb.settings', 'routeContext.manageSettings'),
 };
 
@@ -106,7 +112,9 @@ type DynamicRoute = {
 };
 
 const DYNAMIC_ROUTES: DynamicRoute[] = [
-  dynamic(segments => segments.length === 2 && segments[0] === 'patients', '/patients', 'breadcrumb.patients', 'routeContext.patientRecord'),
+  // The chart draws no Back of its own, so the bar's Back is the way out —
+  // to the worklist it was opened from (?returnTo=), or the patient list.
+  dynamic(segments => segments.length === 2 && segments[0] === 'patients', '/patients', 'breadcrumb.patients', 'routeContext.patientRecord', true),
   dynamic(segments => segments.length === 2 && segments[0] === 'notes', '/notes', 'routeContext.notes', 'routeContext.noteDetails'),
   dynamic(segments => segments.length === 2 && segments[0] === 'billing', '/billing', 'routeContext.billing', 'routeContext.billDetails'),
   dynamic(segments => segments.length === 2 && segments[0] === 'rooming', '/dashboard', 'breadcrumb.dashboard', 'routeContext.rooming'),
@@ -141,7 +149,7 @@ export function resolveRouteContext(
     // crumb, so the one back affordance returns to where the clinician was.
     if (segments[0] === 'patients') {
       const origin = chartOriginCrumb(returnTo, normalizedPath);
-      if (origin) return context(origin.href, origin.labelKey, 'routeContext.patientRecord');
+      if (origin) return context(origin.href, origin.labelKey, 'routeContext.patientRecord', true);
     }
     return dynamicRoute.context;
   }
@@ -219,8 +227,9 @@ function dynamic(
   parentHref: string,
   parentLabelKey: string,
   currentLabelKey: string,
+  showBack = false,
 ): DynamicRoute {
-  return { matches, context: context(parentHref, parentLabelKey, currentLabelKey) };
+  return { matches, context: context(parentHref, parentLabelKey, currentLabelKey, showBack) };
 }
 
 function normalizePath(pathname: string): string {

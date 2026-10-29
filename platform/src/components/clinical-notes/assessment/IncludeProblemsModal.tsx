@@ -207,7 +207,7 @@ export default function IncludeProblemsModal({
   });
 
   return (
-    <Modal onClose={onClose} width={1060} labelledBy="cn-incprob-title">
+    <Modal variant="slider" onClose={onClose} width={1060} labelledBy="cn-incprob-title">
       <div className="cn-meds">
         <div className="cn-meds-header modal-no-headband">
           <h2 className="cn-meds-title" id="cn-incprob-title">Include Problems</h2>

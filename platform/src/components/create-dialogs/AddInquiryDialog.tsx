@@ -123,7 +123,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
   if (presentation === 'page') return body;
 
   return (
-    <Modal onClose={onClose} width={448} labelledBy="add-inquiry-title">
+    <Modal variant="slider" onClose={onClose} width={448} labelledBy="add-inquiry-title">
       <div className="sadb-modal">
         <PopupHeader
           titleId="add-inquiry-title"

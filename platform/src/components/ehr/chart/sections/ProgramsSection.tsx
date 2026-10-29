@@ -18,8 +18,10 @@ import { usePrograms } from '@/lib/hooks/usePrograms';
 import { formatDate } from '@/lib/format-utils';
 import type { ProgramKey, ProgramEnrollmentStatus } from '@/lib/db-types';
 import Select from '@/components/Select';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { todayIso } from '@/lib/date-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import { statusWord } from '@/lib/i18n/status-word';
 
 const PROGRAM_LABELS: Record<ProgramKey, string> = {
@@ -111,7 +113,7 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast(t('msg.enrollmentNotRecordedTryAgain'), 'error');
+      showToast(describeError(err, t('msg.enrollmentNotRecordedTryAgain')), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +126,7 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
       showToast(t('msg.enrollmentMarked', { status: statusWord(t, next) }), 'success');
     } catch (err) {
       console.error(err);
-      showToast(t('msg.enrollmentStatusNotChangedTry'), 'error');
+      showToast(describeError(err, t('msg.enrollmentStatusNotChangedTry')), 'error');
     } finally {
       setStatusBusy(null);
     }
@@ -139,8 +141,8 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
               <tr>
                 <th>Program</th>
                 <th>Enrolled</th>
-                <th>Update</th>
                 <th>Status</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -166,23 +168,20 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
                     {formatDate(e.enrollmentDate)}
                     {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
                   </td>
-                  <td>
-                    {canEnroll ? (
-                      <Select
-                        className="tamam-section-filter"
-                        disabled={statusBusy === e._id}
-                        value=""
-                        onChange={ev => { if (ev.target.value) handleStatusChange(e._id, ev.target.value as ProgramEnrollmentStatus); }}
-                        aria-label={`Update ${e.programName} enrollment status`}
-                      >
-                        <option value="">{statusBusy === e._id ? 'Saving…' : 'Mark as…'}</option>
-                        {(Object.keys(STATUS_LABELS) as ProgramEnrollmentStatus[])
-                          .filter(status => status !== e.status)
-                          .map(status => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
-                      </Select>
-                    ) : '—'}
-                  </td>
                   <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
+                  <td>
+                    <RowActionsMenu
+                      ariaLabel={t('chart.programRowActions', { name: e.programName })}
+                      actions={canEnroll ? (Object.keys(STATUS_LABELS) as ProgramEnrollmentStatus[])
+                        .filter(status => status !== e.status)
+                        .map(status => ({
+                          key: `status-${status}`,
+                          label: t('chart.markStatus', { status: STATUS_LABELS[status] }),
+                          disabled: statusBusy === e._id,
+                          onClick: () => void handleStatusChange(e._id, status),
+                        })) : []}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -190,7 +189,7 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
       </ChartSection>
 
       {adding && (
-        <Modal className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-program-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-program-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="add-program-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Enroll in program</h2>

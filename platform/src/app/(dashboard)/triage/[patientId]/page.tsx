@@ -27,6 +27,7 @@ import { ArrowLeft } from '@/components/icons/lucide';
 import TriageWorkflow from '@/components/nurse/TriageWorkflow';
 import type { PatientDoc } from '@/lib/db-types';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 export default function PatientTriagePage() {
 
@@ -45,6 +46,8 @@ export default function PatientTriagePage() {
   const backTarget = currentUser
     ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
     : '/dashboard';
+  // Back is the screen the user came from; ?returnTo= or the dashboard when there is none.
+  const goBack = useGoBack(typeof window !== 'undefined' ? returnToFromSearch(window.location.search, backTarget) : backTarget);
 
   const scopedPatient = useMemo(
     () => patients.find(p => p._id === patientId) || null,
@@ -107,7 +110,7 @@ export default function PatientTriagePage() {
           to the chart, which has its own way back. */}
       <button
         type="button"
-        onClick={() => router.push(returnToFromSearch(window.location.search, backTarget))}
+        onClick={goBack}
         className="patient-registration-back no-print"
       >
         <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />

@@ -38,7 +38,7 @@ import { useLabOrderDraft, type LabOrderController } from '@/components/lab/orde
 import type { OrderIndication } from '@/components/lab/order/lab-order-types';
 
 const FEVER: OrderIndication = { code: 'MG26', title: 'Fever of unknown origin' };
-const SUSPECTED_MALARIA: OrderIndication = { code: '1A42', title: 'Malaria, unspecified' };
+const SUSPECTED_MALARIA: OrderIndication = { code: '1F4Z', title: 'Malaria, unspecified' };
 const FROM_NOTE: OrderIndication[] = [SUSPECTED_MALARIA];
 
 function flush(): Promise<void> {
@@ -108,7 +108,7 @@ it('starts an order opened from a note with the note’s reasons, removable', as
   act(() => { draft.controller!.toggleTest({ name: 'Full Blood Count', specimen: 'Blood', tier: 'basic' }); });
   expect(draft.controller!.blockersFor('clinical')).toEqual([]);
 
-  act(() => { draft.controller!.removeIndication('1A42'); });
+  act(() => { draft.controller!.removeIndication('1F4Z'); });
   expect(draft.controller!.draft.indications).toEqual([]);
   expect(draft.controller!.blockersFor('clinical')).toEqual(['labOrder.errReason']);
 

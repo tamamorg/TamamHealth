@@ -20,7 +20,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
   handleEditSubmit: () => Promise<void>;
 }) {
   return (
-        <Modal className="tamam-dialog" onClose={() => !editSubmitting && setShowEditModal(false)}>
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !editSubmitting && setShowEditModal(false)}>
           {/* No max-width here: Modal already sizes the dialog panel (600px) and
               paints it opaque, so a narrower child left ~90px of empty panel
               showing past the form's right edge. Matches the message modal above. */}

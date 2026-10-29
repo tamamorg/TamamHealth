@@ -135,7 +135,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
   if (presentation === 'page') return body;
 
   return (
-    <Modal onClose={onClose} width={448} labelledBy="add-payroll-title">
+    <Modal variant="slider" onClose={onClose} width={448} labelledBy="add-payroll-title">
       <div className="sadb-modal">
         <PopupHeader
           titleId="add-payroll-title"

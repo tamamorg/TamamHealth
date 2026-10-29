@@ -52,6 +52,7 @@ import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { isPendingApproval } from '@/lib/appointment-workflow';
 import { appointmentCalendarClinicalAction } from '@/lib/appointment-calendar-role';
 import { describeError } from '@/lib/user-facing-error';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -167,7 +168,8 @@ export default function AppointmentsPage() {
   // The day — today and tomorrow — is what a desk opens on. Month is a
   // planning view, and landing in it meant scanning a grid of dots to find
   // the shift you are actually working.
-  const [calView, setCalView] = useState<'month' | 'week' | 'day'>('day');
+  // In the URL so Back returns to the tab the user was on.
+  const [calView, setCalView] = useUrlView(['month', 'week', 'day'] as const, 'day');
   // The day the calendar is parked on. Empty means "today" in Africa/Juba;
   // the calendar's own navigation writes it as it moves month to month.
   const [focusDate, setFocusDate] = useState('');
@@ -849,7 +851,7 @@ export default function AppointmentsPage() {
 
         {/* Walk-In */}
         {showWalkIn && canBookAppointments && (
-          <Modal onClose={closeWalkIn} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
+          <Modal variant="slider" onClose={closeWalkIn} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               {t('appointments.walkInIntro')}
             </p>
@@ -939,13 +941,13 @@ export default function AppointmentsPage() {
 
 function Modal({ children, onClose, title, titleColor, icon, size = 'md', nav, variant = 'dialog' }: {
   children: React.ReactNode; onClose: () => void; title: string; titleColor?: string;
-  icon?: React.ReactNode; size?: 'sm' | 'md' | 'lg'; nav?: React.ReactNode; variant?: 'dialog' | 'drawer';
+  icon?: React.ReactNode; size?: 'sm' | 'md' | 'lg'; nav?: React.ReactNode; variant?: 'dialog' | 'drawer' | 'slider';
 }) {
   const sizeClass = size === 'sm' ? 'modal-panel--sm' : size === 'lg' ? 'modal-panel--lg' : 'modal-panel--md';
   const width = size === 'sm' ? 400 : size === 'lg' ? 720 : 560;
   return (
     <PortalModal onClose={onClose} width={width} variant={variant}>
-      <div className={`modal-panel ${sizeClass}`} style={{ maxHeight: variant === 'drawer' ? '100vh' : 'calc(100vh - 32px)', height: variant === 'drawer' ? '100%' : undefined, overflowY: 'auto', width: '100%' }}>
+      <div className={`modal-panel ${sizeClass}`} style={{ maxHeight: variant !== 'dialog' ? '100%' : 'calc(100vh - 32px)', height: variant !== 'dialog' ? '100%' : undefined, overflowY: 'auto', width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             {icon}

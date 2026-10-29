@@ -1413,54 +1413,10 @@
   text-decoration: none;
 }
 
-/* One shared anatomy for a row detail popup. Editing is reached from the
-   popup's labelled actions; the tiny trailing pencil column is intentionally
-   absent, giving the clinical table its full usable width. */
-.clinical-row-dialog__facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.clinical-row-dialog__facts > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 7px;
-  background: var(--ehr-page-bg, #F5F8FB);
-}
-.clinical-row-dialog__facts span,
-.clinical-row-dialog__field > span {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--ehr-muted, #5D728B);
-}
-.clinical-row-dialog__facts strong { color: var(--ehr-text-strong, #113055); font-size: 13px; overflow-wrap: anywhere; }
-.clinical-row-dialog__fact--wide { grid-column: 1 / -1; }
-.clinical-row-dialog__field { display: flex; flex-direction: column; gap: 6px; }
-.clinical-row-dialog__field textarea {
-  width: 100%;
-  resize: vertical;
-  padding: 10px 12px;
-  border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 7px;
-  background: var(--bg-secondary, #fff);
-  color: var(--text-primary);
-  font: inherit;
-}
-.clinical-row-dialog__actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-
 @media (max-width: 640px) {
   .tamam-section-head { padding-inline: 14px; }
   .tamam-section-body { padding-inline: 14px; overflow-x: auto; }
   .tamam-root .tamam-table { min-width: 680px; }
-  .clinical-row-dialog__facts { grid-template-columns: 1fr; }
-  .clinical-row-dialog__fact--wide { grid-column: auto; }
-  .clinical-row-dialog__actions > .btn { flex: 1 1 auto; }
 }
 
 /* ══════════════════ WORKSPACE PANELS (Stage 2) ══════════════════ */
@@ -2754,6 +2710,7 @@
    reading "General consent to treat — signed at reg…" is not a consent record. */
 .tamam-table--directives { table-layout: fixed; }
 .tamam-table--directives td { white-space: normal; }
+.tamam-root .tamam-table--directives th:last-child { width: 72px; }
 
 /* Messages tab — the patient's conversation with their care team. Staff on the
    right on the action-blue tint, the patient on the left on a neutral. */
@@ -3050,17 +3007,6 @@
   stroke: currentColor !important;
 }
 
-/* Screenings row actions: one height for the three buttons. The chart's
-   primary-button rule gives .btn-primary a 36px minimum, which made Done
-   taller than Decline and remove beside it. */
-.tamam-root .scr-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.tamam-root .scr-actions .btn.btn-xs {
-  min-height: 30px;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 12px;
-  line-height: 1;
-}
 .scr-note { margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--text-muted); }
 
 /* ══════════════════ CLINICAL FORMS LIST (O3) ══════════════════ */
@@ -3246,6 +3192,8 @@
 }
 
 .obk-tag--danger { background: var(--color-danger, #da1e28); color: #fff; }
+.obk-tag--warn { background: var(--color-warning-bg); color: var(--color-warning-text); }
+.obk-tags { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 
 .obk-line { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
 .obk-warn { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-danger-text); }

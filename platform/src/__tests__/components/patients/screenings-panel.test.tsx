@@ -51,22 +51,33 @@ async function mount(entries: Entry[]) {
   return mounted.container;
 }
 const rowOf = (root: ParentNode, type: string) => qa<HTMLTableRowElement>(root, 'tbody tr').find(r => r.textContent?.includes(type))!;
-const button = (row: ParentNode, text: string) => qa<HTMLButtonElement>(row, 'button').find(b => b.textContent?.includes(text) || b.getAttribute('aria-label')?.startsWith(text))!;
 const press = async (b: HTMLButtonElement) => { await act(async () => { click(b); }); await flush(); };
+/** A row's actions live in its ⋮ menu: open it, then find the item. The menu
+ *  is portalled to <body>, so items are looked up there. */
+const action = async (row: ParentNode, text: string) => {
+  await press(row.querySelector<HTMLButtonElement>('button.tm-row-actions-trigger')!);
+  return qa<HTMLButtonElement>(document.body, '[role="menuitem"]').find(b => b.textContent?.includes(text));
+};
+/** Whether the row's ⋮ offers an action — the menu is closed again after. */
+const offers = async (row: ParentNode, text: string) => {
+  const found = !!(await action(row, text));
+  await press(row.querySelector<HTMLButtonElement>('button.tm-row-actions-trigger')!);
+  return found;
+};
 
 test('Done on a one-off screening shows it completed straight away, and keeps it', async () => {
   const root = await mount([via]);
-  await press(button(rowOf(root, 'Cervical'), 'Done'));
+  await press((await action(rowOf(root, 'Cervical'), 'Done'))!);
   const row = rowOf(root, 'Cervical');
   expect(row.textContent).toContain('Completed');
   expect(row.textContent).toContain('last done 2026-10-16');
-  expect(button(row, 'Done')).toBeUndefined();
+  expect(await offers(row, 'Done')).toBe(false);
   expect(showToast).toHaveBeenCalledWith('Cervical cancer (VIA) marked done.', 'success');
 });
 
 test('Done on a recurring screening re-arms it to the next interval', async () => {
   const root = await mount([bp]);
-  await press(button(rowOf(root, 'Blood pressure'), 'Done'));
+  await press((await action(rowOf(root, 'Blood pressure'), 'Done'))!);
   const row = rowOf(root, 'Blood pressure');
   expect(row.textContent).toContain('2027-10-16');
   expect(row.textContent).toContain('Every 12 months · last done 2026-10-16');
@@ -75,7 +86,7 @@ test('Done on a recurring screening re-arms it to the next interval', async () =
 
 test('Decline asks for a reason and records it on the row', async () => {
   const root = await mount([via]);
-  await press(button(rowOf(root, 'Cervical'), 'Decline'));
+  await press((await action(rowOf(root, 'Cervical'), 'Decline'))!);
   expect(confirmPrompt).toHaveBeenCalledTimes(1);
   const row = rowOf(root, 'Cervical');
   expect(row.textContent).toContain('Declined');
@@ -85,17 +96,17 @@ test('Decline asks for a reason and records it on the row', async () => {
 test('cancelling the decline prompt changes nothing', async () => {
   confirmPrompt.mockResolvedValueOnce(null);
   const root = await mount([via]);
-  await press(button(rowOf(root, 'Cervical'), 'Decline'));
+  await press((await action(rowOf(root, 'Cervical'), 'Decline'))!);
   const { declineScreening } = jest.requireMock('@/lib/services/screening-service') as { declineScreening: jest.Mock };
   expect(declineScreening).not.toHaveBeenCalled();
   const row = rowOf(root, 'Cervical');
   expect(row.textContent).not.toContain('Declined');
-  expect(button(row, 'Decline')).toBeDefined();
+  expect(await offers(row, 'Decline')).toBe(true);
 });
 
 test('remove asks first, then the row goes', async () => {
   const root = await mount([via, bp]);
-  await press(button(rowOf(root, 'Cervical'), 'Remove'));
+  await press((await action(rowOf(root, 'Cervical'), 'Remove'))!);
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(rowOf(root, 'Cervical')).toBeUndefined();
   expect(rowOf(root, 'Blood pressure')).toBeDefined();

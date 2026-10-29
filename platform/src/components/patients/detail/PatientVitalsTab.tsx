@@ -51,7 +51,7 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
   canRecordVitalEvents: boolean;
   setCorrectingVitalsRecord: Dispatch<SetStateAction<MedicalRecordDoc | undefined>>;
   setShowNurseVitals: Dispatch<SetStateAction<boolean>>;
-  setVitalsView: Dispatch<SetStateAction<"table" | "flowsheet">>;
+  setVitalsView: (view: "table" | "flowsheet") => void;
   recordsWithTriageVitals: MedicalRecordDoc[];
   t: (key: string, vars?: Record<string, string | number> | undefined) => string;
   vitalsTimeline: VitalsTimelineEntry[];
@@ -101,15 +101,15 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
               onAdd={(canConsult || canRecordVitalEvents) ? () => { setCorrectingVitalsRecord(undefined); setShowNurseVitals(true); } : undefined}
               addLabel="Record vitals"
               toggleSlot={(
-                <div className="tamam-icon-toggle" role="tablist" aria-label="Vitals view">
+                <div className="tamam-icon-toggle" role="tablist" aria-label={t('chart.vitalsViewToggle')}>
                   <button
                     type="button"
                     className={vitalsView === 'table' ? 'is-active' : ''}
                     onClick={() => setVitalsView('table')}
                     role="tab"
                     aria-selected={vitalsView === 'table'}
-                    aria-label="Table view"
-                    title="Table view"
+                    aria-label={t('chart.vitalsTableView')}
+                    title={t('chart.vitalsTableView')}
                   >
                     <List aria-hidden />
                   </button>
@@ -119,8 +119,8 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
                     onClick={() => setVitalsView('flowsheet')}
                     role="tab"
                     aria-selected={vitalsView === 'flowsheet'}
-                    aria-label="Chart view"
-                    title="Chart view"
+                    aria-label={t('chart.vitalsChartView')}
+                    title={t('chart.vitalsChartView')}
                   >
                     <LineChart aria-hidden />
                   </button>

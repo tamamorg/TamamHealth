@@ -6,13 +6,13 @@ import type { PatientDoc } from '@/lib/db-types';
 import { useAssessments } from '@/lib/hooks/useAssessments';
 import { ASSESSMENT_INSTRUMENTS, getInstrument, scoreAssessment } from '@/lib/clinical/assessment-instruments';
 import { isClinicalAuthorRole } from '@/lib/clinical-roles';
-import { Lock } from '@/components/icons/lucide';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import { formatDateTime } from '@/lib/format-utils';
 import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import RowActionsMenu from '@/components/RowActionsMenu';
 
 const SEVERITY_COLOR: Record<string, string> = {
   minimal: 'var(--color-success)',
@@ -143,8 +143,8 @@ export default function AssessmentsPanel({ patient, focusId }: {
               <th>Answered</th>
               <th>Entered by</th>
               <th>Date</th>
-              <th>Actions</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -177,16 +177,17 @@ export default function AssessmentsPanel({ patient, focusId }: {
                   </td>
                   <td>{formatDateTime(a.createdAt)}</td>
                   <td>
-                    {!signed && isProvider && (
-                      <button className="btn btn-xs btn-primary" disabled={busy} onClick={() => run(() => doSign(a._id))}>
-                        <Lock className="w-3 h-3" /> Review &amp; sign
-                      </button>
-                    )}
-                  </td>
-                  <td>
                     <span className={signed ? 'tamam-panel-badge tamam-panel-badge--done' : 'tamam-panel-badge tamam-panel-badge--pending'}>
                       {signed ? 'Signed' : 'Held'}
                     </span>
+                  </td>
+                  <td>
+                    <RowActionsMenu
+                      ariaLabel={`Actions for ${a.instrumentName}`}
+                      actions={!signed && isProvider ? [
+                        { key: 'sign', label: 'Review & sign', disabled: busy, onClick: () => run(() => doSign(a._id)) },
+                      ] : []}
+                    />
                   </td>
                 </tr>
               );

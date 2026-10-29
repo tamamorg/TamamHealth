@@ -17,7 +17,6 @@ import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ScreeningEntry } from '@/lib/types/patient-clinical';
-import { Check, X } from '@/components/icons/lucide';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
@@ -25,6 +24,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
+import RowActionsMenu from '@/components/RowActionsMenu';
 
 const COMMON_SCREENINGS = ['Blood pressure', 'HIV test', 'Cervical cancer (VIA)', 'Diabetes (blood glucose)', 'TB symptom screen', 'Well-child check', 'Nutrition (MUAC)'];
 const screeningOptions = COMMON_SCREENINGS.map(s => ({ code: '', name: s }));
@@ -157,8 +157,8 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
               <th>{t('screenings.colScreening')}</th>
               <th>{t('screenings.colDue')}</th>
               <th>{t('screenings.colRecall')}</th>
-              <th>{t('screenings.colActions')}</th>
               <th>{t('screenings.colStatus')}</th>
+              <th>{t('screenings.colActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -180,24 +180,19 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
                   <td>{s.status === 'due' ? (s.dueDate || '—') : '—'}</td>
                   <td>{recall(s)}</td>
                   <td>
-                    <div className="scr-actions">
-                      {s.status === 'due' && (
-                        <>
-                          <button type="button" className="btn btn-xs btn-primary" disabled={busy} onClick={() => complete(s)} title={t('screenings.doneHint')}>
-                            <Check className="w-3 h-3" /> {t('screenings.done')}
-                          </button>
-                          <button type="button" className="btn btn-xs btn-secondary" disabled={busy} onClick={() => decline(s)} title={t('screenings.declineHint')}>
-                            {t('screenings.decline')}
-                          </button>
-                        </>
-                      )}
-                      <button type="button" className="btn btn-xs btn-secondary" disabled={busy} onClick={() => remove(s)} title={t('screenings.remove')} aria-label={t('screenings.removeAria', { type: s.type })}>
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
+                    <span className={`tamam-panel-badge tamam-panel-badge--${chip.tone}`}>{chip.label}</span>
                   </td>
                   <td>
-                    <span className={`tamam-panel-badge tamam-panel-badge--${chip.tone}`}>{chip.label}</span>
+                    <RowActionsMenu
+                      ariaLabel={t('screenings.rowActions', { type: s.type })}
+                      actions={[
+                        ...(s.status === 'due' ? [
+                          { key: 'done', label: t('screenings.done'), hint: t('screenings.doneHint'), disabled: busy, onClick: () => complete(s) },
+                          { key: 'decline', label: t('screenings.decline'), hint: t('screenings.declineHint'), disabled: busy, onClick: () => decline(s) },
+                        ] : []),
+                        { key: 'remove', label: t('screenings.remove'), tone: 'danger' as const, disabled: busy, onClick: () => remove(s) },
+                      ]}
+                    />
                   </td>
                 </tr>
               );

@@ -44,6 +44,8 @@ const NO_ICON = new Set([
   '.obk-tag--danger',
   // Chart banner avatar: the patient's photo or initials, never an icon.
   'body .tamam-root .tamam-avatar',
+  // Note form patient banner avatar: initials only, never an icon.
+  '.omf-banner-avatar',
   // Covered by a dedicated svg rule of their own:
   '.btn-primary', '.appt-edit-header-actions .btn-primary', '.pp-btn-primary', '.sadb-btn-danger',
   '.ehr-schedule-actions button.primary', '.listpage-icon-btn-primary', '.ehr-visit-pop-icon.is-primary',

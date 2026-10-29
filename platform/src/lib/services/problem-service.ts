@@ -28,6 +28,7 @@ async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | und
 export async function getAllProblems(scope?: DataScope): Promise<ProblemDoc[]> {
   const db = problemsDB();
   const all = (await findByType<ProblemDoc>(db, 'problem'))
+    .filter(p => p.recordStatus !== 'entered_in_error')
     .sort((a, b) => (b.onsetDate || b.createdAt || '').localeCompare(a.onsetDate || a.createdAt || ''));
   return scope ? filterByScope(all, scope) : all;
 }
@@ -39,7 +40,8 @@ export async function getProblemsByPatient(patientId: string, scope?: DataScope)
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
-  const visible = scope ? filterByScope(rows, scope) : rows;
+  const live = rows.filter(p => p.recordStatus !== 'entered_in_error');
+  const visible = scope ? filterByScope(live, scope) : live;
   return visible.sort((a, b) => (b.onsetDate || b.createdAt || '').localeCompare(a.onsetDate || a.createdAt || ''));
 }
 

@@ -26,6 +26,7 @@ import { ConfirmProvider } from '@/components/ConfirmDialog';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
 import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
+import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -175,6 +176,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
       <a href="#main-content" className="skip-link">Skip to main content</a>
+      {/* Stamps each page's history entry, so every Back control can return
+          to the screen the user came from (lib/navigation/nav-history.ts). */}
+      <Suspense fallback={null}><NavHistoryTracker /></Suspense>
       {useShell ? (
         <MobileAppShell archetype={mobileArchetype!}>
           <RoleGuard>{children}</RoleGuard>

@@ -1,3 +1,5 @@
+import { pageFooterCss } from './print-identity';
+
 /**
  * Encode an arbitrary value for an HTML text node.
  *
@@ -61,9 +63,31 @@ export function printElementById(id: string): boolean {
   const target = document.getElementById(id);
   if (!target) return false;
   target.setAttribute('data-print-active', 'true');
-  const cleanup = () => target.removeAttribute('data-print-active');
+  // The same page footer every generated printout carries (facility, printed
+  // by, time, page n of N, system ID), added for this print only.
+  const footer = document.createElement('style');
+  footer.setAttribute('data-print-footer', '');
+  footer.textContent = pageFooterCss();
+  document.head.appendChild(footer);
+  const cleanup = () => { target.removeAttribute('data-print-active'); footer.remove(); };
   window.addEventListener('afterprint', cleanup, { once: true });
   window.print();
   window.setTimeout(cleanup, 60_000);
   return true;
+}
+
+/**
+ * window.print() with the shared page footer (facility, printed by, time,
+ * page n of N, system ID) added for that print only — for documents that
+ * print themselves rather than through printElementById.
+ */
+export function printWithFooter(): void {
+  const footer = document.createElement('style');
+  footer.setAttribute('data-print-footer', '');
+  footer.textContent = pageFooterCss();
+  document.head.appendChild(footer);
+  const cleanup = () => footer.remove();
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
+  window.setTimeout(cleanup, 60_000);
 }

@@ -19,15 +19,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { formatDate, formatRxSig } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
-import { RefreshCw, Ban, Printer, FileText, Pill } from '@/components/icons/lucide';
+import { FileText, Pill } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
-import { clickable } from '@/lib/a11y';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
 import { isScriptable } from '@/lib/prescription-script';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
@@ -112,9 +110,6 @@ export default function MedicationsSection({
   const [page, setPage] = useState(1);
   const [tableSearch, setTableSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [selectedRx, setSelectedRx] = useState<PrescriptionDoc | null>(null);
-  const [showStopReason, setShowStopReason] = useState(false);
-  const [stopReason, setStopReason] = useState('');
   /** The order whose copy is being handed to the patient (print or text). */
   const [copyFor, setCopyFor] = useState<PrescriptionDoc | null>(null);
   const { entries: historyEntries, error: historyFailed, markInError } = useHistoryEntries(patientId);
@@ -178,14 +173,22 @@ export default function MedicationsSection({
       // updatePrescription returns null when the write fails.
       if (!stopped) throw new Error('Change not saved. Try again.');
       showToast(t('msg.discontinued', { medication: rx.medication }), 'success');
-      setSelectedRx(null);
-      setShowStopReason(false);
-      setStopReason('');
     } catch (err) {
       showToast(describeError(err, t('msg.medicationNotDiscontinuedTryAgain')), 'error');
     } finally {
       setBusyId(null);
     }
+  };
+
+  const promptDiscontinue = async (rx: PrescriptionDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chart.medicationDiscontinueTitle', { medication: rx.medication }),
+      inputLabel: t('chart.medicationDiscontinueReason'),
+      inputRequired: true,
+      confirmLabel: t('chart.medicationDiscontinue'),
+      tone: 'danger',
+    });
+    if (reason?.trim()) await handleDiscontinue(rx, reason);
   };
 
   const handleRenew = async (rx: PrescriptionDoc) => {
@@ -245,7 +248,6 @@ export default function MedicationsSection({
       } else {
         showToast(t('msg.renewed', { medication: rx.medication }), 'success');
       }
-      setSelectedRx(null);
     } catch (err) {
       showToast(describeError(err, t('msg.medicationNotRenewedTryAgain')), 'error');
     } finally {
@@ -297,7 +299,7 @@ export default function MedicationsSection({
       ) : patientRx.length === 0 ? null : (
         <table className="tamam-table tamam-table--interactive tamam-table--medications">
           <colgroup>
-            <col /><col /><col /><col />
+            <col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
@@ -305,6 +307,7 @@ export default function MedicationsSection({
               <th>Dosage instructions</th>
               <th>Start date</th>
               <th>Status</th>
+              <th>{t('chart.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -312,12 +315,6 @@ export default function MedicationsSection({
               <tr
                 key={rx._id}
                 id={`rx-row-${rx._id}`}
-                {...clickable(() => {
-                  setSelectedRx(rx);
-                  setShowStopReason(false);
-                  setStopReason('');
-                }, { label: `Open medication — ${rx.medication}` })}
-                className="tamam-clickable-row"
                 style={{
                   ...(rx._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : {}),
                 }}
@@ -326,6 +323,28 @@ export default function MedicationsSection({
                 <td>{formatRxSig(rx)}</td>
                 <td>{formatDate(rx.createdAt)}</td>
                 <td><span className={STATUS_BADGE[rx.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{rxStatusLabel(rx, t)}</span></td>
+                <td>
+                  {/* Every action lives in the ⋮ — the row itself already
+                      shows what a detail dialog would. Discontinue asks only
+                      for its reason, which it requires. */}
+                  <RowActionsMenu
+                    ariaLabel={t('chart.medicationRowActions', { name: rx.medication })}
+                    actions={[
+                      ...(onSelect && rx.fulfilment !== 'external' ? [
+                        { key: 'workflow', label: t('chart.medicationOpenWorkflow'), onClick: () => onSelect(rx._id) },
+                      ] : []),
+                      // Only while the order is still a script: a stopped or
+                      // fully dispensed one would print as a second valid course.
+                      ...(canPrescribe && isScriptable(rx) ? [
+                        { key: 'copy', label: t('chart.medicationGiveToPatient'), disabled: busyId === rx._id, onClick: () => setCopyFor(rx) },
+                      ] : []),
+                      ...(canPrescribe ? [
+                        { key: 'renew', label: t('chart.medicationRenew'), disabled: busyId === rx._id, onClick: () => void handleRenew(rx) },
+                        { key: 'stop', label: t('chart.medicationDiscontinue'), tone: 'danger' as const, disabled: busyId === rx._id || rx.status === 'discontinued', onClick: () => void promptDiscontinue(rx) },
+                      ] : []),
+                    ]}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -344,74 +363,6 @@ export default function MedicationsSection({
         markInError={markInError}
       />
     </ChartSection>
-    {selectedRx && (
-      <Modal className="tamam-dialog" onClose={() => busyId !== selectedRx._id && setSelectedRx(null)} width={620} labelledBy="medication-row-title">
-        <div className="modal-panel p-6 space-y-5">
-          <PopupHeader
-            title={selectedRx.medication}
-            titleId="medication-row-title"
-            subtitle={`${formatRxSig(selectedRx)} · ${rxStatusLabel(selectedRx, t)}`}
-            onClose={() => setSelectedRx(null)}
-            surface="panel"
-          />
-          <div className="clinical-row-dialog__facts">
-            <div><span>Medication</span><strong>{selectedRx.medication}</strong></div>
-            <div><span>Dosage instructions</span><strong>{formatRxSig(selectedRx)}</strong></div>
-            <div><span>Status</span><strong>{rxStatusLabel(selectedRx, t)}</strong></div>
-            <div><span>Start date</span><strong>{formatDate(selectedRx.createdAt)}</strong></div>
-          </div>
-          {showStopReason && (
-            <label className="clinical-row-dialog__field" htmlFor="medication-stop-reason">
-              <span>Reason for discontinuing</span>
-              <textarea
-                id="medication-stop-reason"
-                value={stopReason}
-                onChange={event => setStopReason(event.target.value)}
-                rows={3}
-                placeholder="Document why this medication is being stopped"
-                autoFocus
-              />
-            </label>
-          )}
-          <div className="clinical-row-dialog__actions">
-            {onSelect && !showStopReason && selectedRx.fulfilment !== 'external' && (
-              <button className="btn btn-sm btn-primary" onClick={() => { const id = selectedRx._id; setSelectedRx(null); onSelect(id); }}>
-                Open medication workflow
-              </button>
-            )}
-            {/* Offered only while the order is still a script: a stopped or
-                fully dispensed one would print as a second valid course. */}
-            {canPrescribe && !showStopReason && isScriptable(selectedRx) && (
-              <button
-                className="btn btn-sm btn-secondary"
-                disabled={busyId === selectedRx._id}
-                onClick={() => { setCopyFor(selectedRx); setSelectedRx(null); }}
-              >
-                <Printer className="w-3.5 h-3.5" /> Give to patient
-              </button>
-            )}
-            {canPrescribe && !showStopReason && (
-              <>
-                <button className="btn btn-sm btn-secondary" disabled={busyId === selectedRx._id} onClick={() => void handleRenew(selectedRx)}>
-                  <RefreshCw className="w-3.5 h-3.5" /> Renew
-                </button>
-                <button className="btn btn-sm btn-secondary" disabled={busyId === selectedRx._id || selectedRx.status === 'discontinued'} onClick={() => setShowStopReason(true)}>
-                  <Ban className="w-3.5 h-3.5" /> Discontinue
-                </button>
-              </>
-            )}
-            {showStopReason && (
-              <>
-                <button className="btn btn-sm btn-secondary" disabled={busyId === selectedRx._id} onClick={() => { setShowStopReason(false); setStopReason(''); }}>Back</button>
-                <button className="btn btn-sm btn-primary" disabled={busyId === selectedRx._id || !stopReason.trim()} onClick={() => void handleDiscontinue(selectedRx, stopReason)}>
-                  {busyId === selectedRx._id ? 'Saving…' : 'Discontinue medication'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </Modal>
-    )}
     {copyFor && (
       <PrescriptionCopyDialog
         prescriptions={[copyFor]}

@@ -106,7 +106,7 @@ export default function BulkUserImportModal({
   const blockedCount = preview?.filter(r => r.problem).length ?? 0;
 
   return (
-    <Modal onClose={onClose} width={720} labelledBy="bulk-import-title">
+    <Modal variant="slider" onClose={onClose} width={720} labelledBy="bulk-import-title">
       <div className="sadb-modal bui">
         <div className="sadb-modal-copy">
           <h2 id="bulk-import-title" className="sadb-modal-title">{t('bui.title')}</h2>

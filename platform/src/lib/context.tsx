@@ -19,6 +19,7 @@ import { logAudit } from './services/audit-service';
 
 import { captureException } from './observability';
 import type { AppUser, AppState, AuthSlice, SyncSlice, UiSlice, PlatformClientPolicy, LoginFailure } from './context/types';
+import { setPrintIdentity } from './print-identity';
 import {
   auditContextFor, isChunkLoadError, impersonationAllowedFromPolicy,
   isOfflineImpersonationAllowed, hydrateAppUser, SYNC_PREFERENCE_KEY, LOGOUT_PENDING_KEY, NETWORK_UNREACHABLE,
@@ -55,6 +56,10 @@ const UiContext = createContext<UiSlice | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  // Every printout names who printed it (print-document's page footer).
+  useEffect(() => {
+    setPrintIdentity(currentUser ? { name: currentUser.name, username: currentUser.username, facilityName: currentUser.hospital?.name || currentUser.hospitalName || undefined } : null);
+  }, [currentUser]);
   const [sessionMode, setSessionMode] = useState<AppState['sessionMode']>(null);
   const [requiresOnlineReauth, setRequiresOnlineReauth] = useState(false);
   /**

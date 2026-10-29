@@ -17,7 +17,6 @@
 import { useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { Lock, X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
@@ -26,9 +25,9 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate, formatDateTime } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
-import type { DirectiveEntry, DirectiveType } from '@/data/mock';
+import type { DirectiveType } from '@/data/mock';
 import type { DirectiveSignatory } from '@/lib/types/patient-clinical';
-import { clickable } from '@/lib/a11y';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -82,7 +81,6 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
   const [revoking, setRevoking] = useState<{ id: string; type: DirectiveType } | null>(null);
   const [revokeReason, setRevokeReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [selectedDirective, setSelectedDirective] = useState<DirectiveEntry | null>(null);
   const [search, setSearch] = useState('');
 
   const entries = patient.directives ?? [];
@@ -119,7 +117,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       >
         <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--directives">
           <colgroup>
-            <col /><col /><col /><col />
+            <col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
@@ -127,12 +125,13 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <th>Detail</th>
               <th>Effective</th>
               <th>Status</th>
+              <th>{t('chart.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {active.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
+                <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState
                     itemLabel="directives"
                     actionLabel="Record consent"
@@ -143,11 +142,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               </tr>
             )}
             {visibleEntries.map(d => (
-              <tr
-                key={d.id}
-                {...clickable(() => setSelectedDirective(d), { label: `Open directive — ${typeLabel(d.type)}` })}
-                className="tamam-clickable-row"
-              >
+              <tr key={d.id}>
                 <td className="tamam-cell-strong">{typeLabel(d.type)}</td>
                 <td>{d.description || '—'}</td>
                 <td>{d.startDate ? formatDate(d.startDate) : '—'}</td>
@@ -170,46 +165,27 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                     </>
                   )}
                 </td>
+                <td>
+                  <RowActionsMenu
+                    ariaLabel={t('chart.directiveRowActions', { name: typeLabel(d.type) })}
+                    actions={canManage ? [
+                      ...(!d.signature ? [
+                        { key: 'sign', label: t('chart.directiveTakeSignature'), disabled: busy, onClick: () => { setSigning({ id: d.id, type: d.type, description: d.description }); setSignForm(EMPTY_SIGN); } },
+                        { key: 'edit', label: t('chart.directiveEdit'), disabled: busy, onClick: () => { setEditing({ id: d.id, type: d.type, description: d.description, startDate: d.startDate }); setEditForm({ type: d.type, description: d.description, startDate: d.startDate ?? '' }); } },
+                      ] : []),
+                      { key: 'revoke', label: t('chart.directiveRevoke'), tone: 'danger' as const, disabled: busy, onClick: () => { setRevoking({ id: d.id, type: d.type }); setRevokeReason(''); } },
+                    ] : []}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </ChartSection>
 
-      {selectedDirective && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setSelectedDirective(null)} width={620} labelledBy="directive-row-title">
-          <div className="modal-panel p-6 space-y-5">
-            <PopupHeader
-              title={typeLabel(selectedDirective.type)}
-              titleId="directive-row-title"
-              subtitle={selectedDirective.signature ? 'Signed directive' : 'Recorded, not yet attested'}
-              onClose={() => setSelectedDirective(null)}
-              surface="panel"
-            />
-            <div className="clinical-row-dialog__facts">
-              <div className="clinical-row-dialog__fact--wide"><span>Detail</span><strong>{selectedDirective.description || 'Not documented'}</strong></div>
-              <div><span>Effective</span><strong>{selectedDirective.startDate ? formatDate(selectedDirective.startDate) : 'Not documented'}</strong></div>
-              <div><span>Status</span><strong>{selectedDirective.signature ? 'Signed' : 'Unsigned'}</strong></div>
-              {selectedDirective.signature && <div className="clinical-row-dialog__fact--wide"><span>Signature</span><strong>{selectedDirective.signature.name} · {formatDateTime(selectedDirective.signature.signedAt)}</strong></div>}
-            </div>
-            {canManage && (
-              <div className="clinical-row-dialog__actions">
-                {!selectedDirective.signature && (
-                  <>
-                    <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => { const d = selectedDirective; setSelectedDirective(null); setSigning({ id: d.id, type: d.type, description: d.description }); setSignForm(EMPTY_SIGN); }}>Take signature</button>
-                    <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { const d = selectedDirective; setSelectedDirective(null); setEditing({ id: d.id, type: d.type, description: d.description, startDate: d.startDate }); setEditForm({ type: d.type, description: d.description, startDate: d.startDate ?? '' }); }}>Edit directive</button>
-                  </>
-                )}
-                <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { const d = selectedDirective; setSelectedDirective(null); setRevoking({ id: d.id, type: d.type }); setRevokeReason(''); }}>Revoke directive</button>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
       {/* ── Add ── */}
       {adding && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setAdding(false)} width={480} labelledBy="add-directive-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setAdding(false)} width={480} labelledBy="add-directive-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="add-directive-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Add directive / consent</h2>
@@ -248,7 +224,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Edit (unsigned only) ── */}
       {editing && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-directive-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-directive-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="edit-directive-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit directive</h2>
@@ -287,7 +263,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Signature ── */}
       {signing && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setSigning(null)} width={460} labelledBy="sign-dir-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setSigning(null)} width={460} labelledBy="sign-dir-title">
           <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
             <div className="flex items-center justify-between">
               <h2 id="sign-dir-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Take signature</h2>

@@ -23,7 +23,6 @@ import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
 import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
@@ -34,7 +33,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
-import { clickable } from '@/lib/a11y';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { statusWord } from '@/lib/i18n/status-word';
@@ -116,7 +115,6 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const [retireReason, setRetireReason] = useState('');
   const [retireStatus, setRetireStatus] = useState<'inactive' | 'resolved' | 'entered_in_error'>('inactive');
   const [busy, setBusy] = useState(false);
-  const [selectedAllergy, setSelectedAllergy] = useState<AllergyEntry | null>(null);
   const [tableSearch, setTableSearch] = useState('');
 
   useEffect(() => {
@@ -166,7 +164,6 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
   const rowsAreEditable = patient.structuredAllergies !== undefined;
 
   const openEdit = (a: AllergyEntry) => {
-    setSelectedAllergy(null);
     setEditing(a);
     setEditForm({
       substance: a.substance,
@@ -255,7 +252,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
         ) : (
           <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--allergies">
             <colgroup>
-              <col /><col /><col /><col /><col />
+              <col /><col /><col /><col /><col /><col />
             </colgroup>
             <thead>
               <tr>
@@ -264,12 +261,13 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                 <th>Reaction</th>
                 <th>Comments</th>
                 <th>Status</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
+                  <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
                     <OmrsEmptyState
                       itemLabel="allergies"
                       actionLabel="Record allergies"
@@ -285,8 +283,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                   <tr
                     key={a.id}
                     id={`allergy-row-${a.id}`}
-                    {...clickable(() => setSelectedAllergy(a), { label: `Open allergy — ${a.substance}` })}
-                    className={`tamam-clickable-row${a.status === 'active' ? ' is-alert' : ' is-retired'}`}
+                    className={a.status === 'active' ? 'is-alert' : 'is-retired'}
                     style={a.id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
                   >
                     <td className="tamam-cell-strong">{a.substance}</td>
@@ -309,6 +306,23 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                         {STATUS_LABEL[a.status] || a.status.replace(/_/g, ' ')}
                       </span>
                     </td>
+                    <td>
+                      {/* Every action lives in the ⋮; the row already shows
+                          what a detail dialog would. */}
+                      <RowActionsMenu
+                      ariaLabel={t('chart.allergyRowActions', { name: a.substance })}
+                      actions={[
+                        ...(canRecordAllergies && rowsAreEditable
+                          ? a.status === 'active'
+                            ? [
+                              { key: 'edit', label: t('chart.allergyEdit'), onClick: () => openEdit(a) },
+                              { key: 'retire', label: t('chart.allergyRetire'), tone: 'danger' as const, onClick: () => { setRetiring(a); setRetireReason(''); setRetireStatus('inactive'); } },
+                            ]
+                            : [{ key: 'reinstate', label: t('chart.allergyReinstate'), onClick: () => void reactivate(a) }]
+                          : []),
+                      ]}
+                    />
+                    </td>
                   </tr>
                 );
               })}
@@ -316,40 +330,6 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
           </table>
         )}
       </ChartSection>
-
-      {selectedAllergy && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setSelectedAllergy(null)} width={600} labelledBy="allergy-row-title">
-          <div className="modal-panel p-6 space-y-5">
-            <PopupHeader
-              title={selectedAllergy.substance}
-              titleId="allergy-row-title"
-              subtitle={`${SEVERITY_LABEL[selectedAllergy.criticality || 'unknown']} allergy · ${STATUS_LABEL[selectedAllergy.status] || selectedAllergy.status}`}
-              onClose={() => setSelectedAllergy(null)}
-              surface="panel"
-            />
-            <div className="clinical-row-dialog__facts">
-              <div><span>Allergen</span><strong>{selectedAllergy.substance}</strong></div>
-              <div><span>Severity</span><strong>{SEVERITY_LABEL[selectedAllergy.criticality || 'unknown']}</strong></div>
-              <div><span>Reaction</span><strong>{selectedAllergy.reaction || 'Not documented'}</strong></div>
-              <div><span>Classification</span><strong className="capitalize">{selectedAllergy.classification || 'Not documented'}</strong></div>
-              <div><span>Status</span><strong>{STATUS_LABEL[selectedAllergy.status] || selectedAllergy.status}</strong></div>
-              <div><span>Onset</span><strong>{selectedAllergy.onsetDate ? formatDate(selectedAllergy.onsetDate) : 'Not documented'}</strong></div>
-            </div>
-            {canRecordAllergies && rowsAreEditable && (
-              <div className="clinical-row-dialog__actions">
-                {selectedAllergy.status === 'active' ? (
-                  <>
-                    <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => openEdit(selectedAllergy)}>Edit allergy</button>
-                    <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { setRetiring(selectedAllergy); setSelectedAllergy(null); setRetireReason(''); setRetireStatus('inactive'); }}>Retire allergy</button>
-                  </>
-                ) : (
-                  <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => { const allergy = selectedAllergy; setSelectedAllergy(null); void reactivate(allergy); }}>Reinstate allergy</button>
-                )}
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
 
       {adding && (
         <AddAllergyModal
@@ -363,7 +343,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       )}
 
       {editing && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-allergy-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <h2 id="edit-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit allergy</h2>

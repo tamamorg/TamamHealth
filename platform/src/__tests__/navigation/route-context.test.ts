@@ -30,7 +30,7 @@ describe('route context navigation', () => {
 
     expect(result).toEqual({
       fallbackHref: '/patients',
-      showBack: false,
+      showBack: true,
       crumbs: [
         { href: '/patients', labelKey: 'breadcrumb.patients' },
         { labelKey: 'routeContext.patientRecord' },
@@ -55,6 +55,17 @@ describe('route context navigation', () => {
     const context = resolveRouteContext('/notes/note-1')!;
     expect(routeContextBackHref(context, '/notes/note-1?tab=history', '/notes/note-1'))
       .toBe('/notes');
+  });
+
+  it.each([
+    ['/admin/announcements', '/admin'],
+    ['/facility-management/queue', '/facility-management'],
+    ['/payments/claims', '/payments'],
+    ['/wards/mar', '/wards'],
+  ])('gives the second-level page %s a Back to %s', (pathname, parent) => {
+    const ctx = resolveRouteContext(pathname);
+    expect(ctx?.showBack).toBe(true);
+    expect(ctx?.fallbackHref).toBe(parent);
   });
 
   it('ignores unknown nested paths instead of guessing navigation', () => {

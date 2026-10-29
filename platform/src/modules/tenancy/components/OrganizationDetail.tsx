@@ -387,7 +387,7 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
       </SadbCard>
 
       {showOrgEditor && (
-        <Modal onClose={() => setShowOrgEditor(false)} width={920} labelledBy="organization-editor">
+        <Modal variant="slider" onClose={() => setShowOrgEditor(false)} width={920} labelledBy="organization-editor">
           <div className="sadb-modal mgmt-form-modal">
             <PopupHeader
               titleId="organization-editor"

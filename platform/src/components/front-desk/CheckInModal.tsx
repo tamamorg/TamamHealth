@@ -50,7 +50,7 @@ export default function CheckInModal({
   }, [appt.patientId]);
 
   return (
-    <Modal onClose={onClose} width={440}>
+    <Modal variant="slider" onClose={onClose} width={440}>
       <div className="modal-content card-elevated" style={{ width: '100%' }}>
         {/* Header */}
         <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border-light)' }}>

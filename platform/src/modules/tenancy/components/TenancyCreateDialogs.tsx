@@ -81,7 +81,7 @@ export default function TenancyCreateDialogs({ kind, onDone }: {
 
   if (step === 'organization') {
     return (
-      <Modal onClose={onDone} width={920} labelledBy="tenancy-create-organization">
+      <Modal variant="slider" onClose={onDone} width={920} labelledBy="tenancy-create-organization">
         <div className="sadb-modal mgmt-form-modal">
           <PopupHeader
             titleId="tenancy-create-organization"
