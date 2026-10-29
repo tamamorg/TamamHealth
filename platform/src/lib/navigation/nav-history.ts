@@ -10,57 +10,73 @@
  * is an in-app page to return to, and falls back to the parent link only
  * when there is not (a link opened in a new tab, a bookmark, a fresh load).
  *
- * To know whether there is an in-app page behind the current one, each
- * history entry is stamped with its index (`tmIdx`) the first time it is
- * seen. Next.js does not say whether a navigation pushed a new entry or
- * replaced the current one, so the stamp reads `history.length`: a push
- * grows it, a replace does not. When that reading is ambiguous the count can
- * only come out too low, which means Back uses the parent link — never that
- * it walks the user out of the app or to the wrong page.
+ * To know whether there is an in-app page behind the current one, every
+ * history entry carries its index (`tmIdx`). The History API is wrapped once:
+ * a pushState stamps the next index, a replaceState keeps the current one.
+ * Next.js's own navigations call `window.history.pushState/replaceState` at
+ * call time (app-router.js), so every push and replace is seen as it happens
+ * — no inference. (An earlier version guessed from `history.length`, which
+ * stops growing once an overlay's entries have been stepped back over, so
+ * after any slider had been opened and closed Back fell through to the
+ * parent page.)
  *
- * Overlay entries (history-layer.ts) copy the page entry's state, index
- * included, so a dialog's entry never counts as a page to go back to.
+ * Overlay entries (history-layer.ts) carry `tmLayer` on the same URL; they
+ * keep the page's index, so a dialog's entry never counts as a page to go
+ * back to. On a reload the entries keep their stamps, so Back still knows.
  */
 import { useCallback, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 let current = 0;
-let lastLength = 0;
-let observed = false;
-let listening = false;
+let installed = false;
 
-type Stamped = { tmIdx?: number } & Record<string, unknown>;
+type Stamped = { tmIdx?: number; tmLayer?: string } & Record<string, unknown>;
 
-function stamp(idx: number) {
-  try {
-    const state = (window.history.state || {}) as Stamped;
-    window.history.replaceState({ ...state, tmIdx: idx }, '');
-  } catch { /* history unavailable: Back falls back to the parent link */ }
+function asObject(data: unknown): Stamped {
+  return data && typeof data === 'object' ? { ...(data as Stamped) } : {};
 }
 
-/** Record the entry the browser is on now. Call after every URL change. */
-export function observeLocation(): void {
-  if (typeof window === 'undefined') return;
-  if (!listening) {
-    window.addEventListener('popstate', event => {
-      const idx = (event.state as Stamped | null)?.tmIdx;
-      if (typeof idx === 'number') current = idx;
-      lastLength = window.history.length;
-    });
-    listening = true;
-  }
-  const state = (window.history.state || {}) as Stamped;
-  if (typeof state.tmIdx === 'number') {
-    current = state.tmIdx;
-  } else {
-    // First entry this document has seen is the floor (index 0). After that a
-    // new, unstamped entry is a push when history grew, a replace when not.
-    const idx = !observed ? 0 : (window.history.length > lastLength ? current + 1 : current);
-    stamp(idx);
+/** Wrap the History API once so every push/replace is stamped. */
+function install(): void {
+  if (installed || typeof window === 'undefined') return;
+  installed = true;
+  const history = window.history;
+  const push = history.pushState;
+  const replace = history.replaceState;
+  history.pushState = function pushState(data: unknown, unused: string, url?: string | URL | null) {
+    const next = asObject(data);
+    // An overlay's entry sits on the same page: same index as the page.
+    const idx = next.tmLayer ? current : current + 1;
+    next.tmIdx = idx;
+    const result = push.call(this, next, unused, url);
     current = idx;
+    return result;
+  };
+  history.replaceState = function replaceState(data: unknown, unused: string, url?: string | URL | null) {
+    const next = asObject(data);
+    if (typeof next.tmIdx !== 'number') next.tmIdx = current;
+    return replace.call(this, next, unused, url);
+  };
+  window.addEventListener('popstate', event => {
+    const idx = (event.state as Stamped | null)?.tmIdx;
+    current = typeof idx === 'number' ? idx : 0;
+  });
+  // The entry this document opened on: keep a stamp a reload carried over,
+  // otherwise it is the floor — nothing in-app behind it.
+  const state = asObject(history.state);
+  current = typeof state.tmIdx === 'number' ? state.tmIdx : 0;
+  if (typeof state.tmIdx !== 'number') {
+    try { replace.call(history, { ...state, tmIdx: current }, ''); } catch { /* ignore */ }
   }
-  observed = true;
-  lastLength = window.history.length;
+}
+
+if (typeof window !== 'undefined') install();
+
+/** Record the entry the browser is on now (kept for the tracker; idempotent). */
+export function observeLocation(): void {
+  install();
+  const idx = (asObject(window.history.state)).tmIdx;
+  if (typeof idx === 'number') current = idx;
 }
 
 /** True when there is an in-app page behind the current one. */
@@ -91,6 +107,4 @@ export function useGoBack(fallbackHref: string): () => void {
 /** Test seam. */
 export function __resetNavHistory(): void {
   current = 0;
-  lastLength = 0;
-  observed = false;
 }
