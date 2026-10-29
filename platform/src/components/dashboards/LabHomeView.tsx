@@ -32,6 +32,7 @@ import type { DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useLabResults } from '@/lib/hooks/useLabResults';
+import { useNow } from '@/lib/hooks/useNow';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
@@ -261,6 +262,8 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
   const { patients } = usePatients();
   const { appointments } = useAppointments();
   const { results } = useLabResults();
+  // The turnaround card's "longest waiting" clock, refreshed each minute.
+  const nowMs = useNow(60_000);
 
   const labels: LabWorklistLabels = useMemo(() => ({
     collect: t('labHome.toCollect'),
@@ -315,7 +318,7 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
   };
 
   const oldest = worklist.oldestOpen;
-  const oldestMinutes = oldest ? Math.max(0, Math.round((Date.now() - Date.parse(oldest.orderedAt)) / 60000)) : null;
+  const oldestMinutes = oldest ? Math.max(0, Math.round((nowMs - Date.parse(oldest.orderedAt)) / 60000)) : null;
 
   return (
     <main className="page-container page-enter">
