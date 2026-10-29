@@ -647,7 +647,7 @@ export default function ReferralsPage() {
           {/* The registry's card grid (see patients/page.tsx) — identical
               head, row anatomy and trailing right-aligned Status column, so
               referrals read in the same list language as the registry. */}
-          <div className="appointment-card-surface patients-list-surface referrals-list-surface">
+          <div className={`appointment-card-surface patients-list-surface referrals-list-surface${canManageReferrals ? ' has-actions' : ''}`}>
             <div className="appointment-card-flow">
             {/* The column head is the list's frame, not a label for whichever
                 rows happen to be loaded — it stays put when nothing matches. */}
@@ -658,6 +658,7 @@ export default function ReferralsPage() {
               <span>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</span>
               <span>Context</span>
               <span>Status</span>
+              {canManageReferrals && <span>{t('chart.actions')}</span>}
             </div>
             {filteredReferrals.length === 0 ? (
               <div className="p-8">
@@ -774,23 +775,13 @@ export default function ReferralsPage() {
                       <strong>{ref.department || 'Department unassigned'}</strong>
                       <span>Referral service</span>
                     </div>
-                    {/* The registry's trailing stack: status pill with the
-                        urgency as the small operational cue beneath it. */}
+                    {/* Status reads: the pill with the urgency as the small
+                        operational cue beneath it. What can be done to the
+                        referral lives in its own Actions column after it. */}
                     <div className="appointment-card-status">
-                      {/* The pill is the status control: clicking it opens the
-                          Accept / Decline / Complete menu right where the
-                          status reads, instead of a popup from anywhere on
-                          the row. `--select` is the same caret + hover
-                          affordance the appointment board's status pill uses,
-                          so an updatable status looks updatable. */}
                       <span className={`appointment-status-pill ${STATUS_PILL_CLASS[ref.status] ?? ''}`}>
                         {getStatusLabel(ref.status)}
                       </span>
-                      {canUpdateStatus && (
-                        <span {...stopsClickPropagation}>
-                          <RowActionsMenu ariaLabel={t('referrals.updateStatus')} actions={rowActions} />
-                        </span>
-                      )}
                       <small style={{ color: ref.urgency === 'emergency' ? '#D92B20' : ref.urgency === 'urgent' ? '#B35900' : '#0B8557' }}>
                         {t(`referrals.urgency_${ref.urgency}`)}
                       </small>
@@ -800,6 +791,11 @@ export default function ReferralsPage() {
                         </span>
                       )}
                     </div>
+                    {canManageReferrals && (
+                      <div className="appointment-card-status appointment-card-actions" {...stopsClickPropagation}>
+                        {canUpdateStatus && <RowActionsMenu ariaLabel={t('referrals.updateStatus')} actions={rowActions} />}
+                      </div>
+                    )}
                   </div>
                 );
               })}

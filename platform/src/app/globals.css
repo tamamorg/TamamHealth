@@ -23236,6 +23236,11 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
    the facility, so there is no Date track to hold. Read by the shared
    header/row template (see "Worklist rows: one set of column lines"). */
 .referrals-list-surface { --list-cols: repeat(3, minmax(0, 1fr)) 176px; }
+/* Roles that work referrals get a trailing Actions track for the row's ⋮,
+   kept apart from Status so the status column only reads. Status is then the
+   second-last track, so its header label moves right over its pills. */
+.referrals-list-surface.has-actions { --list-cols: repeat(3, minmax(0, 1fr)) 176px 56px; }
+.referrals-list-surface.has-actions .appointment-card-head > :nth-last-child(2) { justify-self: end; text-align: end; }
 
 /* Laboratory and the pharmacy queue on the registry card grid: five data
    columns; the lab additionally grows a sixth Action track for the roles
