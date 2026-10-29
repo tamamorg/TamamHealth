@@ -10,8 +10,8 @@
 
 import { useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
-import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import FormField from '@/components/overlay/FormField';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { usePrograms } from '@/lib/hooks/usePrograms';
@@ -24,6 +24,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import { statusWord } from '@/lib/i18n/status-word';
 
+/** The stored programme name (English, as reported); the screen shows
+ *  `chartPrograms.program.<key>`. */
 const PROGRAM_LABELS: Record<ProgramKey, string> = {
   art_hiv_care: 'ART / HIV care',
   tb_ds: 'TB (drug-susceptible)',
@@ -37,13 +39,8 @@ const PROGRAM_LABELS: Record<ProgramKey, string> = {
   other: 'Other…',
 };
 
-const STATUS_LABELS: Record<ProgramEnrollmentStatus, string> = {
-  active: 'Active',
-  completed: 'Completed',
-  transferred_out: 'Transferred out',
-  lost_to_follow_up: 'Lost to follow-up',
-  discontinued: 'Discontinued',
-};
+/** Every status, in the order the row menu offers them. */
+const STATUSES: ProgramEnrollmentStatus[] = ['active', 'completed', 'transferred_out', 'lost_to_follow_up', 'discontinued'];
 
 const STATUS_BADGE: Record<ProgramEnrollmentStatus, string> = {
   active: 'tamam-panel-badge tamam-panel-badge--active',
@@ -134,14 +131,14 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
 
   return (
     <>
-      <ChartSection title="Programs" addLabel="Add" onAdd={canEnroll ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
+      <ChartSection title={t('chartPrograms.title')} addLabel={t('chartPrograms.add')} onAdd={canEnroll ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         <table className="tamam-table tamam-table--fixed">
             <colgroup><col /><col /><col /><col /></colgroup>
             <thead>
               <tr>
-                <th>Program</th>
-                <th>Enrolled</th>
-                <th>Status</th>
+                <th>{t('chartPrograms.colProgram')}</th>
+                <th>{t('chartPrograms.colEnrolled')}</th>
+                <th>{t('chartPrograms.colStatus')}</th>
                 <th>{t('chart.actions')}</th>
               </tr>
             </thead>
@@ -150,10 +147,10 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
                 <tr>
                   <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
                     <OmrsEmptyState
-                      itemLabel="program enrollments"
-                      actionLabel="Record program enrollment"
+                      itemLabel={t('chartPrograms.emptyItems')}
+                      actionLabel={t('chartPrograms.emptyAction')}
                       onAction={canEnroll ? () => setAdding(true) : undefined}
-                      disabledReason={canEnroll ? undefined : 'Requires clinical permission'}
+                      disabledReason={canEnroll ? undefined : t('chartPrograms.needsPermission')}
                     />
                   </td>
                 </tr>
@@ -166,17 +163,17 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
                   </td>
                   <td>
                     {formatDate(e.enrollmentDate)}
-                    {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>ended {formatDate(e.outcomeDate)}</div> : null}
+                    {e.outcomeDate ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>{t('chartPrograms.ended', { date: formatDate(e.outcomeDate) })}</div> : null}
                   </td>
-                  <td><span className={STATUS_BADGE[e.status]}>{STATUS_LABELS[e.status]}</span></td>
+                  <td><span className={STATUS_BADGE[e.status]}>{t(`chartPrograms.status.${e.status}`)}</span></td>
                   <td>
                     <RowActionsMenu
                       ariaLabel={t('chart.programRowActions', { name: e.programName })}
-                      actions={canEnroll ? (Object.keys(STATUS_LABELS) as ProgramEnrollmentStatus[])
+                      actions={canEnroll ? STATUSES
                         .filter(status => status !== e.status)
                         .map(status => ({
                           key: `status-${status}`,
-                          label: t('chart.markStatus', { status: STATUS_LABELS[status] }),
+                          label: t('chart.markStatus', { status: t(`chartPrograms.status.${status}`) }),
                           disabled: statusBusy === e._id,
                           onClick: () => void handleStatusChange(e._id, status),
                         })) : []}
@@ -189,70 +186,48 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
       </ChartSection>
 
       {adding && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={480} labelledBy="add-program-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="add-program-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Enroll in program</h2>
-              <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Program</label>
-              <Select
-                value={programKey}
-                onChange={e => setProgramKey(e.target.value as ProgramKey)}
-                className="w-full p-2.5 rounded-md text-[13px]"
-                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-              >
-                {(Object.keys(PROGRAM_LABELS) as ProgramKey[]).map(k => (
-                  <option key={k} value={k}>{PROGRAM_LABELS[k]}</option>
-                ))}
-              </Select>
-            </div>
+        <FormSlider
+          title={t('chartPrograms.enrollTitle')}
+          className="tamam-dialog"
+          onClose={resetForm}
+          busy={submitting}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={submitting} onClick={resetForm}>{t('action.cancel')}</button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={submitting || (programKey === 'other' && !otherName.trim())}
+              onClick={handleSubmit}
+            >
+              {submitting ? t('common.saving') : t('chartPrograms.enroll')}
+            </button>
+          </>}
+        >
+          <div className="space-y-4">
+            <FormField label={t('chartPrograms.fieldProgram')}>
+              {control => (
+                <Select {...control} value={programKey} onChange={e => setProgramKey(e.target.value as ProgramKey)}>
+                  {(Object.keys(PROGRAM_LABELS) as ProgramKey[]).map(k => (
+                    <option key={k} value={k}>{t(`chartPrograms.program.${k}`)}</option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
             {programKey === 'other' && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Program name</label>
-                <input
-                  type="text"
-                  value={otherName}
-                  onChange={e => setOtherName(e.target.value)}
-                  placeholder="e.g. Mental health outreach"
-                  className="w-full p-2.5 rounded-md text-[13px]"
-                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                />
-              </div>
+              <FormField label={t('chartPrograms.fieldProgramName')} required>
+                {control => (
+                  <input {...control} type="text" value={otherName} onChange={e => setOtherName(e.target.value)} placeholder={t('chartPrograms.programNamePlaceholder')} />
+                )}
+              </FormField>
             )}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Enrollment date</label>
-              <input
-                type="date"
-                value={enrollmentDate}
-                onChange={e => setEnrollmentDate(e.target.value)}
-                className="w-full p-2.5 rounded-md text-[13px]"
-                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Notes (optional)</label>
-              <textarea
-                rows={2}
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className="w-full p-2.5 rounded-md text-[13px]"
-                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
-              <button
-                className="btn btn-sm btn-primary"
-                disabled={submitting || (programKey === 'other' && !otherName.trim())}
-                onClick={handleSubmit}
-              >
-                {submitting ? 'Saving…' : 'Enroll'}
-              </button>
-            </div>
+            <FormField label={t('chartPrograms.fieldDate')}>
+              {control => <input {...control} type="date" value={enrollmentDate} onChange={e => setEnrollmentDate(e.target.value)} />}
+            </FormField>
+            <FormField label={t('chartPrograms.fieldNotes')} optional>
+              {control => <textarea {...control} rows={2} value={notes} onChange={e => setNotes(e.target.value)} />}
+            </FormField>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

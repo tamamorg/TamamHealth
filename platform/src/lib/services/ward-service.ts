@@ -401,11 +401,18 @@ async function admitPatientGuarded(
     }
   }
 
+  // An admission with no organisation is invisible: the scope filter fails
+  // closed on a missing orgId, so the ward page's admissions (which never
+  // passed one) vanished from every list the moment they were written.
+  const { inferOrgIdForFacility } = await import('./register-org');
+  const orgId = data.orgId || await inferOrgIdForFacility(data.facilityId);
+
   const admissionId = `adm-${uuidv4()}`;
   const doc: AdmissionDoc = withPendingOfflineSync({
     _id: admissionId,
     type: 'admission',
     ...data,
+    orgId,
     encounterId,
     admissionDate: now,
     isolationRequired: data.isolationRequired || false,

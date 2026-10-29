@@ -8,8 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -80,7 +79,7 @@ export default function RequestLeaveDialog({ onClose, onCreated, presentation = 
     }
   };
 
-  const body = (
+  const fields = (
     <>
       <div className="space-y-3">
         <div>
@@ -113,28 +112,36 @@ export default function RequestLeaveDialog({ onClose, onCreated, presentation = 
           <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder={t('hr.optional')} />
         </div>
       </div>
-      <hr className="section-divider" />
-      <div className="flex gap-2 mt-2">
+    </>
+  );
+  const actions = (
+    <>
         <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
         <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.submit')}</button>
-      </div>
     </>
   );
 
-  if (presentation === 'page') return body;
+  if (presentation === 'page') {
+    return (
+      <>
+        {fields}
+        <hr className="section-divider" />
+        <div className="flex gap-2 mt-2">{actions}</div>
+      </>
+    );
+  }
 
   return (
-    <Modal variant="slider" onClose={onClose} width={448} labelledBy="request-leave-title">
-      <div className="sadb-modal">
-        <PopupHeader
-          titleId="request-leave-title"
-          title={t('hr.requestLeave')}
-          subtitle={t('createPage.leaveNote')}
-          onExpand={() => { onClose(); router.push(expandHref('/hr/leave/new')); }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+    <FormSlider
+      title={t('hr.requestLeave')}
+      subtitle={t('createPage.leaveNote')}
+      onExpand={() => { onClose(); router.push(expandHref('/hr/leave/new')); }}
+      onClose={onClose}
+      width={448}
+      busy={saving}
+      footer={actions}
+    >
+      {fields}
+    </FormSlider>
   );
 }

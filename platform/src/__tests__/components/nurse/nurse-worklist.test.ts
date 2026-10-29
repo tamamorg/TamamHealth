@@ -404,7 +404,9 @@ describe('assembleNurseWorklist — outstanding: follow-ups due', () => {
 describe('assembleNurseWeekActivity', () => {
   test('counts admissions as series 0 and arrivals as series 1', () => {
     const admission = makeAdmission({ patientId: 'p-adm', admissionDate: '2026-08-04' });
-    const arrival = makeTriage({ patientId: 'p-walk', triagedAt: '2026-08-05T09:15:00.000Z' });
+    // 09:15 on the nurse's own clock, whatever zone the test runs in: the
+    // chart shows local time (a UTC slice read two hours early in Juba).
+    const arrival = makeTriage({ patientId: 'p-walk', triagedAt: new Date(2026, 7, 5, 9, 15).toISOString() });
 
     const items = assembleNurseWeekActivity([admission], [arrival]);
 

@@ -2,19 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import Modal from '@/components/Modal';
-import {
-  AlertTriangle,
-  Shield,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  FileText,
-  ChevronRight,
-  Download,
-  Plus,
-  X,
-} from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { AlertTriangle, Shield, TrendingUp, TrendingDown, Minus, FileText, ChevronRight, Download, Plus } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import { formatDate, isoWeek } from '@/lib/format-utils';
@@ -43,7 +32,6 @@ const TREND_WINDOWS: { weeks: TrendWindow; key: string }[] = [
 ];
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
 
 // recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
 // only when this chart renders — same pattern as
@@ -586,7 +574,6 @@ export default function SurveillancePage() {
                 })()}
               </div>
             </section>
-
           </div>
 
           {/* Right Column - 1/3 width */}
@@ -799,17 +786,17 @@ export default function SurveillancePage() {
 
         {/* Report Disease Alert Modal */}
         {showNewAlert && (
-          <Modal variant="slider" onClose={() => !alertSubmitting && setShowNewAlert(false)}>
-            <div className="modal-content p-6 max-w-lg w-full" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
-                  <h3 className="text-base font-semibold">{t('surveillance.modalTitle')}</h3>
-                </div>
-                <button onClick={() => setShowNewAlert(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
+          <FormSlider
+            title={t('surveillance.modalTitle')}
+            onClose={() => !alertSubmitting && setShowNewAlert(false)}
+            footer={<>
+                <button onClick={() => setShowNewAlert(false)} className="btn btn-secondary" disabled={alertSubmitting}>{t('action.cancel')}</button>
+                <button onClick={handleCreateAlert} className="btn btn-primary" disabled={alertSubmitting}>
+                  {alertSubmitting ? t('surveillance.submitting') : t('surveillance.submitAlert')}
                 </button>
-              </div>
+            </>}
+          >
+            <div className="space-y-4">
               <hr className="section-divider" />
               <div className="space-y-3">
                 <div>
@@ -867,14 +854,8 @@ export default function SurveillancePage() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-5">
-                <button onClick={() => setShowNewAlert(false)} className="btn btn-secondary flex-1" disabled={alertSubmitting}>{t('action.cancel')}</button>
-                <button onClick={handleCreateAlert} className="btn btn-primary flex-1" disabled={alertSubmitting}>
-                  {alertSubmitting ? t('surveillance.submitting') : t('surveillance.submitAlert')}
-                </button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
       </main>
     </>

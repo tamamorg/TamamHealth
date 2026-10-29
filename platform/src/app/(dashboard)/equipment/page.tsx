@@ -2,8 +2,8 @@
 import DepartmentInput from '@/components/DepartmentInput';
 
 import { useState, useMemo } from 'react';
-import Modal from '@/components/Modal';
-import { Plus, X, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { Plus, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { useAuth, useUi } from '@/lib/context';
@@ -13,7 +13,6 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AssetDoc, AssetCategory, AssetStatus } from '@/lib/db-types-asset';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
-import { stopsClickPropagation } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
 
 const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
@@ -238,14 +237,15 @@ export default function AssetsPage() {
 
         {/* Register modal */}
         {createOpen && (
-          <Modal variant="slider" onClose={() => setCreateOpen(false)}>
-            <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold">{t('equipment.registerModalTitle')}</h3>
-                <button onClick={() => setCreateOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <FormSlider
+            title={t('equipment.registerModalTitle')}
+            onClose={() => setCreateOpen(false)}
+            footer={<>
+                <button onClick={() => setCreateOpen(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleCreate} className="btn btn-primary">{t('equipment.register')}</button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelName')}</label>
@@ -308,28 +308,23 @@ export default function AssetsPage() {
                   <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
                 </div>
               </div>
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setCreateOpen(false)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleCreate} className="btn btn-primary flex-1">{t('equipment.register')}</button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* Maintenance modal */}
         {serviceFor && (
-          <Modal variant="slider" onClose={() => setServiceFor(null)} width={448}>
-            <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-semibold">{t('equipment.logServiceTitle')}</h3>
-                  <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{serviceFor.name} · {t('equipment.tagLabel')} {serviceFor.assetTag}</p>
-                </div>
-                <button onClick={() => setServiceFor(null)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <FormSlider
+            title={t('equipment.logServiceTitle')}
+            subtitle={<>{serviceFor.name} · {t('equipment.tagLabel')} {serviceFor.assetTag}</>}
+            width={448}
+            onClose={() => setServiceFor(null)}
+            footer={<>
+                <button onClick={() => setServiceFor(null)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleLogService} className="btn btn-primary">{t('equipment.saveLog')}</button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelType')}</label>
@@ -349,13 +344,8 @@ export default function AssetsPage() {
                   <textarea rows={3} value={serviceForm.notes} onChange={e => setServiceForm({ ...serviceForm, notes: e.target.value })} placeholder={t('equipment.placeholderServiceNotes')} />
                 </div>
               </div>
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setServiceFor(null)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleLogService} className="btn btn-primary flex-1">{t('equipment.saveLog')}</button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
       </main>
     </>

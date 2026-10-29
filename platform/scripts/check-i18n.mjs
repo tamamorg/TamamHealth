@@ -127,7 +127,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/appointments/AppointmentDetailFields.tsx': 4,
   'src/components/ehr/chart/panels/VisitNotePanel.tsx': 4,
   'src/components/ehr/chart/sections/AllergiesSection.tsx': 4,
-  'src/components/ehr/chart/sections/ProgramsSection.tsx': 4,
   'src/components/lab/order/LabRequisition.tsx': 4,
   'src/components/patients/AllergyList.tsx': 4,
   'src/components/patients/PhoneNotes.tsx': 4,

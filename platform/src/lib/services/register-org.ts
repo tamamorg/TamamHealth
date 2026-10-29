@@ -1,4 +1,4 @@
-import { hospitalsDB, birthsDB, deathsDB, ancDB, immunizationsDB, patientsDB } from '../db';
+import { hospitalsDB, birthsDB, deathsDB, ancDB, immunizationsDB, patientsDB, wardDB } from '../db';
 import { findByType } from './db-query';
 import type { HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
@@ -62,7 +62,7 @@ export interface RegisterOrgRepairResult {
 }
 
 /**
- * Stamp `orgId` on birth/death/ANC/immunization documents that were saved
+ * Stamp `orgId` on birth/death/ANC/immunization/admission documents that were saved
  * before the services refused org-less writes. The org is inferred from the
  * record's own facility; a record whose facility cannot be resolved is left
  * alone (never guessed). Idempotent: documents that already carry an orgId are
@@ -75,6 +75,10 @@ export async function repairRegisterOrgIds(): Promise<RegisterOrgRepairResult> {
     { db: deathsDB(), type: 'death' },
     { db: ancDB(), type: 'anc_visit' },
     { db: immunizationsDB(), type: 'immunization' },
+    // Ward admissions from the admit form carried no orgId until 2026-10-29;
+    // the tenant validator kept them on the device that made them, invisible
+    // even there. Same facilityId field, same repair.
+    { db: wardDB(), type: 'admission' },
   ] as const;
   const result: RegisterOrgRepairResult = { scanned: 0, stamped: 0, unresolved: 0 };
   const cache = new Map<string, string | undefined>();

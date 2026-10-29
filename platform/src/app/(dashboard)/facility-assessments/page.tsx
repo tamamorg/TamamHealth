@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import {
   SadbPage, SadbCard, SadbPanelHeader, SadbKpiTile, SadbKvRow, SadbChip,
   SadbGridList, SadbGridRow,
@@ -13,10 +13,9 @@ import { useAuth } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { Building2, ClipboardCheck, Wifi, Droplets, Users, Activity, TrendingUp, ChevronDown, ChevronUp, Plus, X } from '@/components/icons/lucide';
+import { Building2, ClipboardCheck, Wifi, Droplets, Users, Activity, TrendingUp, ChevronDown, ChevronUp, Plus } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
 import type { UserRole } from '@/lib/db-types';
 
 /**
@@ -314,17 +313,18 @@ export default function FacilityAssessmentsPage() {
 
       {/* Create Assessment Modal */}
       {showForm && (
-        <Modal variant="slider" onClose={() => !submitting && setShowForm(false)}>
-          <div className="modal-content card-elevated p-6 max-w-2xl w-full" {...stopsClickPropagation}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                <h3 className="text-base font-semibold">{t('facilityAssessments.modalTitle')}</h3>
-              </div>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                <X className="w-4 h-4" />
+        <FormSlider
+          title={t('facilityAssessments.modalTitle')}
+          onClose={() => !submitting && setShowForm(false)}
+          busy={submitting}
+          footer={<>
+              <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary" disabled={submitting}>{t('action.cancel')}</button>
+              <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={submitting}>
+                {submitting ? t('facilityAssessments.saving') : t('facilityAssessments.saveAssessment')}
               </button>
-            </div>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.formFacility')}</label>
@@ -403,15 +403,8 @@ export default function FacilityAssessmentsPage() {
               <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.recommendations')}</label>
               <textarea rows={3} value={form.recommendations} onChange={e => setForm({ ...form, recommendations: e.target.value })} placeholder={t('facilityAssessments.recommendationsPlaceholder')} />
             </div>
-
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary flex-1" disabled={submitting}>{t('action.cancel')}</button>
-              <button type="button" onClick={handleSubmit} className="btn btn-primary flex-1" disabled={submitting}>
-                {submitting ? t('facilityAssessments.saving') : t('facilityAssessments.saveAssessment')}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </SadbPage>
   );

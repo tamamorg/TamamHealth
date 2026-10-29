@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Camera, X, ScanLine } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 
 interface QRScannerProps {
   onScan: (data: { id: string; hospitalNumber?: string }) => void;
@@ -102,22 +103,14 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
 
   return (
     <Modal onClose={onClose} width={448} labelledBy="qr-scanner-title">
-      <div className="modal-panel relative w-full overflow-hidden" style={{ background: 'var(--card-bg)' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <ScanLine className="w-5 h-5" style={{ color: 'var(--tamamhealth-blue)' }} />
-            <h3 id="qr-scanner-title" className="text-sm font-semibold">{t('qrScanner.title')}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/10 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+      <DialogFrame>
+        <DialogHeader
+          titleId="qr-scanner-title"
+          title={t('qrScanner.title')}
+          icon={<ScanLine />}
+          onClose={onClose}
+        />
+        <DialogBody flush>
         {/* Scanner viewport */}
         <div className="relative" style={{ minHeight: 320 }}>
           <div id="qr-reader" ref={scannerRef} className="w-full" />
@@ -151,7 +144,8 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             {t('qrScanner.footerHint')}
           </p>
         </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

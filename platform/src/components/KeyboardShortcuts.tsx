@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Keyboard } from '@/components/icons/lucide';
+import { Keyboard } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMessagingDock } from '@/modules/communication/client';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 
 const SHORTCUTS = [
   { keys: ['Alt', 'N'], altKeys: ['Ctrl', 'N'], descriptionKey: 'keyboardShortcuts.newPatient', action: '/patients/new' },
@@ -99,35 +100,14 @@ export default function KeyboardShortcuts() {
 
   return (
     <Modal onClose={() => setShowHelp(false)} width={448} labelledBy="keyboard-shortcuts-title">
-      <div
-        className="modal-panel w-full overflow-hidden"
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-panel)',
-          borderRadius: 'var(--card-radius)',
-          boxShadow: 'var(--card-shadow-xl)',
-        }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--table-row-border)' }}
-        >
-          <div className="flex items-center gap-2">
-            <Keyboard className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-            <h2 id="keyboard-shortcuts-title" className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              {t('keyboardShortcuts.title')}
-            </h2>
-          </div>
-          <button
-            onClick={() => setShowHelp(false)}
-            className="p-1 rounded-lg transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+      <DialogFrame>
+        <DialogHeader
+          titleId="keyboard-shortcuts-title"
+          title={t('keyboardShortcuts.title')}
+          icon={<Keyboard />}
+          onClose={() => setShowHelp(false)}
+        />
+        <DialogBody flush>
         {/* Shortcuts list */}
         <div className="px-5 py-3">
           {SHORTCUTS.map((shortcut, i) => (
@@ -192,7 +172,8 @@ export default function KeyboardShortcuts() {
             {t('keyboardShortcuts.pressToToggle')} <kbd className="px-1.5 py-0.5 rounded text-xs font-mono" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)' }}>?</kbd> {t('keyboardShortcuts.toToggleDialog')}
           </p>
         </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Modal from '@/components/Modal';
-import { AlertTriangle, ShieldAlert, Phone, Users, BedDouble, Activity, Plus, X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { AlertTriangle, Phone, Users, BedDouble, Activity, Plus } from '@/components/icons/lucide';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -21,7 +21,6 @@ import type {
 import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
-import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -302,18 +301,18 @@ export default function EmergencyPreparednessPage() {
         )}
 
         {showForm && (
-          <Modal variant="slider" onClose={() => !submitting && setShowForm(false)}>
-            <div className="modal-content card-elevated p-6 max-w-2xl w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <h3 className="text-base font-semibold">New emergency plan</h3>
-                </div>
-                <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
+          <FormSlider
+            title="New emergency plan"
+            onClose={() => !submitting && setShowForm(false)}
+            busy={submitting}
+            footer={<>
+                <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary" disabled={submitting}>Cancel</button>
+                <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Saving…' : 'Create plan'}
                 </button>
-              </div>
-
+            </>}
+          >
+            <div className="space-y-4">
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Plan name</label>
@@ -376,16 +375,8 @@ export default function EmergencyPreparednessPage() {
                   </div>
                 </div>
               </div>
-
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary flex-1" disabled={submitting}>Cancel</button>
-                <button type="button" onClick={handleSubmit} className="btn btn-primary flex-1" disabled={submitting}>
-                  {submitting ? 'Saving…' : 'Create plan'}
-                </button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
       </main>
     </>

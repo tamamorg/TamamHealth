@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { Droplets, Plus, X, Search, UserCheck, FlaskConical, Syringe, Trash2, CheckCircle2, XCircle } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -506,19 +507,15 @@ export default function BloodBankPage() {
 
         {/* Add unit modal */}
         {open && (
-          <Modal variant="slider" onClose={() => setOpen(false)}>
-            <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="icon-box-sm">
-                    <Droplets className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  </div>
-                  <h3 className="text-base font-semibold">Add blood unit</h3>
-                </div>
-                <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <FormSlider
+            title="Add blood unit"
+            onClose={() => setOpen(false)}
+            footer={<>
+                <button onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button>
+                <button onClick={handleAdd} className="btn btn-primary">Stock unit</button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit ID</label>
@@ -578,13 +575,8 @@ export default function BloodBankPage() {
                   <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional" />
                 </div>
               </div>
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setOpen(false)} className="btn btn-secondary flex-1">Cancel</button>
-                <button onClick={handleAdd} className="btn btn-primary flex-1">Stock unit</button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* Reserve unit modal */}
@@ -593,19 +585,17 @@ export default function BloodBankPage() {
           if (!unit) return null;
           const isCompatible = reserveCompatibleGroups ? reserveCompatibleGroups.includes(unit.bloodGroup) : null;
           return (
-            <Modal variant="slider" onClose={closeReserve}>
-              <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="icon-box-sm">
-                      <UserCheck className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                    </div>
-                    <h3 className="text-base font-semibold">Reserve unit {unit.unitId}</h3>
-                  </div>
-                  <button onClick={closeReserve} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                    <X className="w-4 h-4" />
+            <FormSlider
+              title={<>Reserve unit {unit.unitId}</>}
+              onClose={closeReserve}
+              footer={<>
+                  <button onClick={closeReserve} className="btn btn-secondary">Cancel</button>
+                  <button onClick={handleReserve} disabled={!reservePatient || reserving} className="btn btn-primary">
+                    {reserving ? 'Reserving…' : 'Reserve unit'}
                   </button>
-                </div>
+              </>}
+            >
+              <div className="space-y-4">
                 <div className="space-y-3">
                   {reservePatient ? (
                     <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
@@ -657,15 +647,8 @@ export default function BloodBankPage() {
                     </p>
                   )}
                 </div>
-                <hr className="section-divider" />
-                <div className="flex gap-2 mt-2">
-                  <button onClick={closeReserve} className="btn btn-secondary flex-1">Cancel</button>
-                  <button onClick={handleReserve} disabled={!reservePatient || reserving} className="btn btn-primary flex-1">
-                    {reserving ? 'Reserving…' : 'Reserve unit'}
-                  </button>
-                </div>
               </div>
-            </Modal>
+            </FormSlider>
           );
         })()}
 
@@ -716,19 +699,17 @@ export default function BloodBankPage() {
           const unit = units.find(u => u._id === crossmatchUnitId);
           if (!unit) return null;
           return (
-            <Modal variant="slider" onClose={closeCrossmatch}>
-              <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="icon-box-sm">
-                      <FlaskConical className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                    </div>
-                    <h3 className="text-base font-semibold">Record crossmatch — {unit.unitId}</h3>
-                  </div>
-                  <button onClick={closeCrossmatch} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                    <X className="w-4 h-4" />
+            <FormSlider
+              title={<>Record crossmatch — {unit.unitId}</>}
+              onClose={closeCrossmatch}
+              footer={<>
+                  <button onClick={closeCrossmatch} className="btn btn-secondary">Cancel</button>
+                  <button onClick={handleCrossmatch} disabled={crossmatching} className="btn btn-primary">
+                    {crossmatching ? 'Saving…' : 'Save result'}
                   </button>
-                </div>
+              </>}
+            >
+              <div className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex gap-2">
                     <button
@@ -758,15 +739,8 @@ export default function BloodBankPage() {
                       : 'The unit will return to “available” inventory for a different patient.'}
                   </p>
                 </div>
-                <hr className="section-divider" />
-                <div className="flex gap-2 mt-2">
-                  <button onClick={closeCrossmatch} className="btn btn-secondary flex-1">Cancel</button>
-                  <button onClick={handleCrossmatch} disabled={crossmatching} className="btn btn-primary flex-1">
-                    {crossmatching ? 'Saving…' : 'Save result'}
-                  </button>
-                </div>
               </div>
-            </Modal>
+            </FormSlider>
           );
         })()}
 
@@ -776,19 +750,17 @@ export default function BloodBankPage() {
           if (!unit) return null;
           const patient = patients.find(p => p._id === unit.reservedForPatient);
           return (
-            <Modal variant="slider" onClose={closeTransfuse}>
-              <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="icon-box-sm">
-                      <Syringe className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                    </div>
-                    <h3 className="text-base font-semibold">Record transfusion — {unit.unitId}</h3>
-                  </div>
-                  <button onClick={closeTransfuse} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                    <X className="w-4 h-4" />
+            <FormSlider
+              title={<>Record transfusion — {unit.unitId}</>}
+              onClose={closeTransfuse}
+              footer={<>
+                  <button onClick={closeTransfuse} className="btn btn-secondary">Cancel</button>
+                  <button onClick={handleTransfuse} disabled={transfusing || !unit.reservedForPatient} className="btn btn-primary">
+                    {transfusing ? 'Recording…' : 'Confirm transfusion'}
                   </button>
-                </div>
+              </>}
+            >
+              <div className="space-y-4">
                 <div className="space-y-3">
                   {patient ? (
                     <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
@@ -807,15 +779,8 @@ export default function BloodBankPage() {
                     Recorded by {currentUser?.name || currentUser?.username || 'you'}.
                   </p>
                 </div>
-                <hr className="section-divider" />
-                <div className="flex gap-2 mt-2">
-                  <button onClick={closeTransfuse} className="btn btn-secondary flex-1">Cancel</button>
-                  <button onClick={handleTransfuse} disabled={transfusing || !unit.reservedForPatient} className="btn btn-primary flex-1">
-                    {transfusing ? 'Recording…' : 'Confirm transfusion'}
-                  </button>
-                </div>
               </div>
-            </Modal>
+            </FormSlider>
           );
         })()}
       </main>

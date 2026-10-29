@@ -1,7 +1,8 @@
 'use client';
 
-import { X } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import { patientFullName } from '@/lib/patient-utils';
 import TableCols from '@/components/TableCols';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
@@ -19,25 +20,17 @@ interface PatientMedHistoryModalProps {
 export default function PatientMedHistoryModal({ activePatient, activeRxs, onClose, onViewAll }: PatientMedHistoryModalProps) {
   const { t } = useTranslation();
   return (
-    <Modal onClose={onClose} width={720} labelledBy="pharmacy-patient-med-history-title">
-      <div className="modal-content card-elevated w-full overflow-hidden" style={{ maxHeight: 'calc(100vh - 48px)' }}>
-        <div className="flex items-start justify-between gap-4 p-5" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="min-w-0">
-            <h3 id="pharmacy-patient-med-history-title" className="text-base font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-              {[activePatient.firstName, activePatient.middleName, activePatient.surname].filter(Boolean).join(' ')}
-            </h3>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              {activePatient.hospitalNumber} · {t('pharmacy.prescriptionsOnRecord', { count: activeRxs.length })}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button className="btn btn-secondary btn-sm" onClick={onViewAll}>{t('pharmacy.viewAll')}</button>
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} aria-label={t('action.close')}>
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
+    <Modal onClose={onClose} size="lg" labelledBy="pharmacy-patient-med-history-title">
+      <DialogFrame>
+        <DialogHeader
+          titleId="pharmacy-patient-med-history-title"
+          title={patientFullName(activePatient)}
+          description={<>{activePatient.hospitalNumber} · {t('pharmacy.prescriptionsOnRecord', { count: activeRxs.length })}</>}
+          actions={<button type="button" className="btn btn-secondary btn-sm" onClick={onViewAll}>{t('pharmacy.viewAll')}</button>}
+          closeLabel={t('action.close')}
+          onClose={onClose}
+        />
+        <DialogBody flush>
         <div className="overflow-auto" style={{ maxHeight: 'min(62vh, 520px)' }}>
           <table className="data-table" style={{ minWidth: 640, tableLayout: 'fixed' }}>
             <TableCols widths={[1.9, 1.1, 1.3, 0.8, 0.9]} />
@@ -76,7 +69,8 @@ export default function PatientMedHistoryModal({ activePatient, activeRxs, onClo
             </tbody>
           </table>
         </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

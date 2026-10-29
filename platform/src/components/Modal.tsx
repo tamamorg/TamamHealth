@@ -282,7 +282,10 @@ export default function Modal({
         background: isSlider ? 'transparent' : 'rgba(15, 31, 29, 0.70)',
         // A slider leaves the page usable: only the panel takes pointer input.
         pointerEvents: isSlider ? 'none' : undefined,
-        top: isSlider ? 'var(--app-overlay-top-inset, 0px)' : undefined,
+        // Always set: an undefined `top` after `inset` clears inset's top, the
+        // backdrop falls back to `top: auto`, and on the chart page that left
+        // the patient banner undimmed above a centred dialog.
+        top: isSlider ? 'var(--app-slider-top)' : 0,
         overflowY: isDrawer ? 'hidden' : 'auto',
       }}
     >
@@ -314,11 +317,11 @@ export default function Modal({
           width: '100%',
           maxWidth: size ? SIZE_WIDTH[size] : width,
           maxHeight: isSlider
-            ? 'calc(100dvh - var(--app-overlay-top-inset, 0px))'
+            ? 'calc(100dvh - var(--app-slider-top))'
             : isDrawer
               ? '100dvh'
               : 'calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--app-overlay-top-inset, 0px))',
-          height: isSlider ? 'calc(100dvh - var(--app-overlay-top-inset, 0px))' : isDrawer ? '100dvh' : undefined,
+          height: isSlider ? 'calc(100dvh - var(--app-slider-top))' : isDrawer ? '100dvh' : undefined,
           pointerEvents: isSlider ? 'auto' : undefined,
           display: 'flex',
           flexDirection: 'column',

@@ -16,6 +16,8 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import {
   evaluateCritical,
   evaluateCriticalObservations,
+  flagLabResult,
+  getLabReferenceRange,
   type CriticalObservationHit,
 } from '@/lib/services/lab-critical-flag';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
@@ -167,11 +169,22 @@ export function useLabWorkflow(
     setResultDraft(prev => {
       const verdict = evaluateCritical(order.testName, value);
       const critical = prev.criticalManual ? prev.critical : verdict.isCriticalValue;
+      // A test the reference table knows (the same table the batch-entry
+      // screen flags from) gets its unit and range filled in and its abnormal
+      // flag derived from the value — "Positive" on a malaria RDT is abnormal,
+      // and changing it back to "Negative" clears the flag again. Tests with
+      // no reference entry keep the technician's own flag.
+      const reference = getLabReferenceRange(order.testName);
+      const flagged = reference ? flagLabResult(order.testName, value) : null;
       return {
         ...prev,
         result: value,
+        unit: prev.unit || reference?.unit || '',
+        referenceRange: prev.referenceRange || reference?.referenceStr || '',
         critical,
-        abnormal: prev.abnormal || (critical && !prev.criticalManual),
+        abnormal: flagged
+          ? flagged.abnormal || (critical && !prev.criticalManual)
+          : prev.abnormal || (critical && !prev.criticalManual),
       };
     });
   }, [order.testName]);

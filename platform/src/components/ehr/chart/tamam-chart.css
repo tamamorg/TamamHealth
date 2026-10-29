@@ -1699,7 +1699,9 @@
   align-self: flex-start;
   flex: 0 0 clamp(400px, 34vw, 560px);
   width: clamp(400px, 34vw, 560px);
-  height: calc(100svh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px)));
+  /* The space under the top rail and the Back bar (--app-route-bar-h, published
+     by RouteContextBar); without the bar the footer ran off the window. */
+  height: calc(100svh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px)) - var(--app-route-bar-h, 0px));
   max-height: 100%;
   background: var(--ehr-panel, #fff);
   border-left: 1px solid var(--ehr-border, var(--border-light));

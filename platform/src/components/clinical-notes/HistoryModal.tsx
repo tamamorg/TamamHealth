@@ -10,8 +10,7 @@
  * re-reads the chart into the note's history sections when this closes.
  */
 
-import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import HistorySection from '@/components/ehr/chart/sections/HistorySection';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 // The History tab is built from the chart's section and table styles, which
@@ -30,20 +29,18 @@ interface HistoryModalProps {
 export default function HistoryModal({ patientId, patientName, noteId, onClose }: HistoryModalProps) {
   const { t } = useTranslation();
   return (
-    <Modal variant="slider" onClose={onClose} width={880} labelledBy="cn-history-title">
-      <div className="cn-meds">
-        <div className="cn-meds-header modal-no-headband">
-          <h2 className="cn-meds-title" id="cn-history-title">{t('history.modalTitle')}</h2>
-          <button type="button" className="cn-meds-close" onClick={onClose} aria-label={t('history.close')}>
-            <X size={18} />
-          </button>
-        </div>
+    <FormSlider
+      title={t('history.modalTitle')}
+      width={880}
+      onClose={onClose}
+    >
+      <div className="space-y-4">
         {/* `tamam-root` scopes the chart's table rules; the embedded modifier
             drops the full-page shell layout that class also carries. */}
         <div className="tamam-root tamam-root--embedded cn-history-body">
           <HistorySection patientId={patientId} patientName={patientName} sourceNoteId={noteId} />
         </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

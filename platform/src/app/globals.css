@@ -1315,7 +1315,7 @@ svg.lucide:not([style*="color"]) {
   .ehr-finance-dialog__primary,
   .ehr-handoff-btn.primary,
   .ehr-queue-add,
-  .ehr-queue-move-footer button.primary,
+  .ehr-queue-move-footer .btn-primary,
   .ehr-set-section-head > .ehr-set-head-action,
   .gov-map-layers button.is-active,
   .triage-patient-photo-label,
@@ -3133,6 +3133,10 @@ thead th {
      layout offset reads this one variable. */
   --app-top-rail-height: 72px;
   --app-overlay-top-inset: 0px;
+  /* Where a slider docks: under the top rail AND the page's Back bar
+     (RouteContextBar publishes --app-route-bar-h), as the chart's own
+     workspace does. */
+  --app-slider-top: calc(var(--app-overlay-top-inset, 0px) + var(--app-route-bar-h, 0px));
 }
 
 html:has(.ehr-top-rail) {
@@ -18918,22 +18922,13 @@ textarea.ehr-handoff-input {
 
 /* Move dialog */
 
-.ehr-queue-move {
+/* Frame, head and footer come from the dialog kit (DialogFrame/Header/
+   Footer, shared with every other popup); the kit's classes are kept as
+   hooks. Only the body's own content is styled here. */
+.ehr-queue-move-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 20px;
-}
-
-.ehr-queue-move-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.ehr-queue-move-head h3 {
-  font-size: 18px;
-  font-weight: 700;
 }
 
 .ehr-queue-move fieldset {
@@ -18997,35 +18992,6 @@ textarea.ehr-handoff-input {
   font-size: 13px;
 }
 
-.ehr-queue-move-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 4px;
-}
-
-.ehr-queue-move-footer button {
-  height: 38px;
-  padding: 0 18px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 999px;
-  background: var(--ehr-panel);
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ehr-queue-move-footer button.primary {
-  border-color: var(--accent-primary);
-  background: var(--accent-primary);
-  color: #fff;
-}
-
-.ehr-queue-move-footer button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* The bare `label` rule in this file uppercases, tracks and bolds every
    <label>, which turned the dialog's choices into "ROOMING — WAITING AREA".
    These are sentences to read, not field captions — put them back. Scoped to
@@ -19086,7 +19052,7 @@ textarea.ehr-handoff-input {
 }
 
 /* The same band for an action that closes nothing (Return to front desk). */
-.ehr-queue-move > .ehr-queue-move-note {
+.ehr-queue-move-body > .ehr-queue-move-note {
   margin: 0;
   padding: 10px 12px;
   border-inline-start: 3px solid var(--accent-primary);
@@ -19094,17 +19060,6 @@ textarea.ehr-handoff-input {
   background: var(--accent-light);
   color: var(--ehr-text);
   line-height: 1.45;
-}
-
-.ehr-queue-move-footer button.primary.danger {
-  border-color: var(--color-danger-600);
-  background: var(--color-danger-600);
-  color: #fff;
-}
-
-.ehr-queue-move-footer button.primary.danger:hover:not(:disabled) {
-  border-color: var(--color-danger-700);
-  background: var(--color-danger-700);
 }
 
 /* ─── Visit panel: More menu ───
@@ -25190,6 +25145,17 @@ table.patient-data-table.patient-data-table {
   background: var(--bg-card-solid);
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+/* An icon button that also carries a word ("Open chart") sizes to it,
+   wherever it sits; the 30px square above is for a bare glyph. Inside the
+   action line the pill rules further down still take over. */
+.ehr-visit-pop-icon.ehr-visit-pop-labelled {
+  flex: none;
+  width: auto;
+  gap: 6px;
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
 .ehr-visit-pop-icon:hover {
@@ -35697,6 +35663,80 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   stroke: currentColor !important;
 }
 
+/* Inside a kit dialog, a plain <label> is a choice to read ("Latest
+   consultation"), not a field caption — the bare `label` rule uppercased and
+   tracked them. Captions come from FormField (.tm-field__label). */
+.tm-dialog label:not(.tm-field__label) {
+  text-transform: none;
+  letter-spacing: normal;
+}
+.tm-dialog label:not(.tm-field__label) :is(span, small) { text-transform: none; letter-spacing: normal; }
+
+/* A picked value shown in place of its search field ("Mary Akol · JTH-1 ·
+   Change"). Defined with the chart, where it started; forms outside the chart
+   (ward admission) use it too, so it lives here as well. */
+.tm-dialog .tamam-panel-picked-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--accent-light);
+  border: 1px solid var(--border-light);
+  font-size: 13px;
+}
+.tm-dialog .tamam-panel-picked-chip button {
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* The dialog kit's header (DialogHeader, FormSlider) in a slider: the same
+   O3 band the hand-rolled title rows above get, and the chart workspace
+   wears — grey, 48px, a 16px semibold title, square control cells. Every
+   tone reads as the band here; a slider is a workspace, not an alert. */
+.tm-slider .tm-dialog__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  align-items: stretch;
+  gap: 0;
+  min-height: 48px;
+  padding: 0 0 0 16px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--color-slate-100);
+  color: var(--text-primary);
+}
+.tm-slider .tm-dialog__copy { align-self: center; padding: 8px 0; }
+.tm-slider .tm-dialog__title {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--text-primary);
+}
+.tm-slider .tm-dialog__desc { margin-top: 2px; font-size: 12.5px; color: var(--text-muted); }
+.tm-slider .tm-dialog__controls { align-items: stretch; gap: 0; margin: 0; }
+.tm-slider .tm-dialog__ctl {
+  width: 48px;
+  height: auto;
+  min-height: 48px;
+  border: 0;
+  border-inline-start: 1px solid var(--border-light);
+  border-radius: 0;
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+}
+.tm-slider .tm-dialog__ctl:hover { background: var(--color-slate-150); color: var(--text-primary); }
+.tm-slider .tm-dialog__ctl:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.tm-slider .tm-dialog__ctl svg { width: 16px; height: 16px; }
+
 /* The form's Cancel / Save row: pinned to the foot of the panel as the
    workspace action bar — two equal square buttons, dark secondary on the
    left, blue primary on the right, 64px, label top-start (the ACTION BAR
@@ -35797,6 +35837,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 }
 
 .tm-slider textarea { padding: 12px 16px !important; min-height: 104px; resize: vertical; }
+/* A search box with its magnifier laid over the start of the field keeps
+   room for it; the flat padding above would put the text under the icon. */
+.tm-slider :has(> svg ~ input) > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) { padding-inline-start: 40px !important; }
 
 .tm-slider select {
   -webkit-appearance: none;
@@ -35956,3 +35999,34 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 }
 .tm-menu--row-actions .tm-menu__item[data-tone="danger"]:focus-visible { outline-color: var(--text-primary); }
 .tm-menu--row-actions .tm-menu__item:disabled { color: var(--text-muted); cursor: default; }
+
+/* A dialog footer that carries a note (`.tm-dialog__foot-start`, e.g. the
+   portal slip's "A lost slip can be replaced…") keeps it as a full-width strip
+   above the split buttons. The ACTION BAR grid placed the note in a narrow
+   column of its own, squeezing it to a word per line beside the buttons. */
+.tm-dialog__foot:has(> .tm-dialog__foot-start) {
+  display: flex;
+  flex-wrap: wrap;
+}
+.tm-dialog__foot:has(> .tm-dialog__foot-start) > :is(.btn, button) { flex: 1 1 0; }
+.tm-dialog__foot:has(> .tm-dialog__foot-start) > .tm-dialog__foot-start {
+  flex: 0 0 100%;
+  padding: 12px 24px;
+  margin: 0;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ── Worklist rows: one set of column lines for every row ───────────────
+   The status column was sized to each row's own pill (`max-content`), so a
+   long status ("AWAITING CLINIC ARRIVAL") took width from that row's other
+   columns and its care team and context slid out of line with the rows
+   around it. A fixed status track keeps every row on the header's tracks;
+   a pill longer than it wraps inside the track. */
+@media (min-width: 1101px) {
+  .appointment-card-head,
+  .appointment-card-row.ehr-appointment-row,
+  .appointment-card-flow .appointment-card-row.ehr-appointment-row {
+    grid-template-columns: repeat(4, minmax(140px, 1fr)) 176px;
+  }
+  .appointment-card-row.ehr-appointment-row > :last-child { min-width: 0; justify-self: end; text-align: end; }
+}

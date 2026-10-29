@@ -6,7 +6,7 @@ let uuidCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-ward-test` }));
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
-import { followUpsDB, medicationAdministrationsDB, prescriptionsDB, wardDB } from '@/lib/db';
+import { followUpsDB, hospitalsDB, medicationAdministrationsDB, prescriptionsDB, wardDB } from '@/lib/db';
 import { putDoc, teardownTestDBs } from '../helpers/test-db';
 import {
   admitPatient,
@@ -83,6 +83,18 @@ describe('admission and bed invariants', () => {
       .filter(doc => doc?.type === 'admission' && doc.status === 'admitted');
     expect(active).toHaveLength(1);
     expect(active[0]?.patientId).toBe(bed.currentPatientId);
+  });
+
+  it('stamps the organisation from the facility when the caller gives none', async () => {
+    // The ward page's admit form passed no orgId, and the scope filter fails
+    // closed on a missing org — every admission it made vanished from every
+    // list (found 2026-10-29: "admitted" toast, empty Current Admissions).
+    await seedWard();
+    await hospitalsDB().put({ _id: FACILITY, type: 'hospital', name: 'Tamam Hospital', orgId: ORG } as never);
+    const { orgId: _omit, ...withoutOrg } = admissionInput('patient-a', 'Patient A');
+    void _omit;
+    const admission = await admitPatient(withoutOrg);
+    expect(admission.orgId).toBe(ORG);
   });
 
   it('blocks a second active admission for the same patient', async () => {

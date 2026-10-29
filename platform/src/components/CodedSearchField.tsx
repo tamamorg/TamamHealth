@@ -13,7 +13,7 @@
  * or hidden behind another card's stacking context.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Search } from '@/components/icons/lucide';
 
@@ -60,6 +60,7 @@ export default function CodedSearchField({
   showCodeBadge?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const listId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -139,6 +140,13 @@ export default function CodedSearchField({
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
         <input
           type="search"
+          // A combobox to assistive tech (and to tests): the menu below is its
+          // listbox, each row an option.
+          role="combobox"
+          aria-expanded={listShown}
+          aria-controls={listShown ? listId : undefined}
+          aria-autocomplete="list"
+          aria-label={label || placeholder}
           value={value}
           onChange={e => { onChange(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -158,9 +166,10 @@ export default function CodedSearchField({
         />
       </div>
       {open && coords && (matches.length > 0 || customText) && createPortal(
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the only handler is the blur-suppressor described below; every option in this menu is a real button.
         <div
           ref={menuRef}
+          id={listId}
+          role="listbox"
           className="fixed rounded-lg border overflow-hidden overflow-y-auto"
           // Mousedown inside the menu (options, scrollbar) must not blur the
           // input — blur is what closes the dropdown, and the option's click
@@ -176,6 +185,8 @@ export default function CodedSearchField({
             <button
               key={`${option.code}-${option.name}`}
               type="button"
+              role="option"
+              aria-selected={false}
               onClick={() => { onSelect(option); setOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-white/5 transition-colors"
               style={{ borderBottom: '1px solid var(--border-light)' }}
@@ -192,6 +203,8 @@ export default function CodedSearchField({
           {customText && (
             <button
               type="button"
+              role="option"
+              aria-selected={false}
               onClick={() => { onAddCustom!(customText); setOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-white/5 transition-colors"
             >

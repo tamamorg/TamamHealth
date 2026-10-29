@@ -5,9 +5,11 @@ import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
 import type { AllergyEntry } from '@/data/mock';
-import { AlertTriangle, Plus, Edit3, Trash2, X } from '@/components/icons/lucide';
+import { AlertTriangle, Plus, Edit3, Trash2 } from '@/components/icons/lucide';
 import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
@@ -78,7 +80,6 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
 
   const inputCls = 'w-full p-2.5 rounded-md text-[13px]';
   const inputStyle = { background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' };
-  const modalCard = { background: 'var(--bg-card)', border: '1px solid var(--border-light)' };
 
   return (
     <div className="w-full flex flex-col h-full">
@@ -139,12 +140,16 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
 
       {/* Edit modal */}
       {editingEntry && (
-        <Modal variant="slider" onClose={() => setEditingEntry(null)} width={480} labelledBy="edit-allergy-title">
-          <div className="rounded-xl p-5 space-y-4" style={modalCard}>
-            <div className="flex items-center justify-between">
-              <h2 id="edit-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Allergy</h2>
-              <button className="p-1 rounded hover:bg-red-50 transition-colors" onClick={() => setEditingEntry(null)} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title="Edit Allergy"
+          width={480}
+          onClose={() => setEditingEntry(null)}
+          footer={<>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>Cancel</button>
+              <button className="btn btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, needScope(), editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
+          </>}
+        >
+          <div className="space-y-4">
             <input value={editForm.substance} onChange={(e) => setEditForm({ ...editForm, substance: e.target.value })} placeholder="Substance" className={inputCls} style={inputStyle} />
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
@@ -162,32 +167,27 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             </div>
             <input value={editForm.reaction} onChange={(e) => setEditForm({ ...editForm, reaction: e.target.value })} placeholder="Reaction" className={inputCls} style={inputStyle} />
             {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, needScope(), editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* Remove confirmation modal */}
       {removingEntry && (
         <Modal onClose={() => setRemovingEntry(null)} width={440} labelledBy="remove-allergy-title">
-          <div className="rounded-xl p-5 space-y-4" style={modalCard}>
-            <div className="flex items-center justify-between">
-              <h2 id="remove-allergy-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Remove Allergy</h2>
-              <button className="p-1 rounded hover:bg-red-50 transition-colors" onClick={() => setRemovingEntry(null)} style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
-            </div>
+          <DialogFrame>
+            <DialogHeader titleId="remove-allergy-title" title="Remove Allergy" onClose={() => setRemovingEntry(null)} />
+            <DialogBody className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
               Remove <strong>{removingEntry.substance}</strong> from the allergy list? A reason is required.
             </p>
             <input autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for removal" className={inputCls} style={inputStyle} />
             {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>
-              <button className="btn btn-sm" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm removal</button>
-            </div>
-          </div>
+            </DialogBody>
+            <DialogFooter>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>
+              <button className="btn" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm removal</button>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </div>
