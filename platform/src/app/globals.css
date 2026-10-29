@@ -23120,6 +23120,20 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
    second-last track, so its header label moves right over its pills. */
 .referrals-list-surface.has-actions { --list-cols: repeat(3, minmax(0, 1fr)) 176px 56px; }
 .referrals-list-surface.has-actions .appointment-card-head > :nth-last-child(2) { justify-self: end; text-align: end; }
+/* A referral's details open in place under its row (no popup): the row stays
+   tinted while open, and the panel spans the full list width beneath it. */
+.referrals-list-surface .appointment-card-row.is-open { background: var(--bg-app); }
+.referrals-list-surface .referral-row-details {
+  padding: 4px 24px 20px 78px;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  .referrals-list-surface .referral-row-details { padding-inline-start: 24px; }
+}
 
 /* Laboratory and the pharmacy queue on the registry card grid: five data
    columns; the lab additionally grows a sixth Action track for the roles
