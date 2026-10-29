@@ -27,13 +27,15 @@ import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
-import { apiFetch } from '@/lib/api-fetch';
-import type { AuditLogDoc, ConflictQueueDoc, RiskResolutionDoc, SyncEventDoc } from '@/lib/db-types';
+import type { AuditLogDoc, RiskResolutionDoc, SyncEventDoc } from '@/lib/db-types';
 import {
   SaTable, formatWhen,
   type SaSeverity,
 } from '@/components/admin/sa-ui';
-import { buildRiskRows, riskGuidance, type RiskRow, type RiskSource } from '@/components/admin/risk-signals';
+import {
+  buildRiskRows, riskGuidance, severityCounts, totalCount, type RiskRow, type RiskSource,
+} from '@/components/admin/risk-signals';
+import { useOpenConflicts } from '@/lib/hooks/useOpenConflicts';
 import {
   getRiskResolutions, indexResolutions, isRiskResolved, reopenRisk, resolveRisks,
   type ResolveRiskInput,
@@ -58,6 +60,18 @@ function rowHref(row: RiskRow): string {
   return SOURCE_HREF[row.source];
 }
 
+/** Rows rendered per page. A real backlog can be thousands of rows (a conflict
+ *  storm queues one per affected record); the table paginates rather than
+ *  mounting a <tr> per row, which otherwise renders as one janky, unscrollable
+ *  table the size of the backlog. */
+const PAGE_SIZE = 50;
+
+/** The most rows a single "Resolve all shown" click may clear. Resolving is a
+ *  bulk mutation of a safety queue that tells every other operator the signals
+ *  were handled; past this the operator must narrow the filter and review,
+ *  rather than one-click-resolving thousands of rows nobody has read. */
+const MAX_BULK_RESOLVE = 200;
+
 export default function RiskCenterPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -73,7 +87,11 @@ export default function RiskCenterPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
   const [syncFailed, setSyncFailed] = useState(0);
   const [pendingSyncEvents, setPendingSyncEvents] = useState<SyncEventDoc[]>([]);
-  const [conflicts, setConflicts] = useState<ConflictQueueDoc[]>([]);
+  /* The conflicts feed is fetched through the shared hook the dashboard also
+     uses, so a slow or failed load can no longer leave this page silently
+     reporting "clean" while /admin reports thousands — and `conflictStatus`
+     lets the queue say the count is degraded instead of hiding it. */
+  const { conflicts, status: conflictStatus, reload: reloadConflicts } = useOpenConflicts();
   const [resolutions, setResolutions] = useState<RiskResolutionDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -112,16 +130,6 @@ export default function RiskCenterPage() {
         if (stats.failed > 0) {
           const pending = await getPendingSyncEvents(200);
           if (mounted) setPendingSyncEvents(pending);
-        }
-        try {
-          const res = await apiFetch('/api/admin/conflicts?status=pending');
-          if (res.ok && mounted) {
-            const body = await res.json();
-            setConflicts(Array.isArray(body.conflicts) ? body.conflicts : []);
-          }
-        } catch {
-          // Conflicts feed is an additional signal; its absence shouldn't
-          // block the rest of the risk queue from rendering.
         }
       } catch (err) {
         console.error('Failed to load risk signals:', err);
@@ -185,11 +193,39 @@ export default function RiskCenterPage() {
     [resolvedDocs, matches],
   );
 
-  const counts = useMemo(() => {
-    const c: Record<SaSeverity, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    for (const r of openRows) c[r.severity]++;
-    return c;
-  }, [openRows]);
+  const counts = useMemo(() => severityCounts(openRows), [openRows]);
+  /* The Open tab badge is these four severities added back up, not a separate
+     `openRows.length`. They are the same number, but computing the badge from
+     the same tally the legend shows means the two cannot drift apart the way
+     the "8,237 open / High 6,236 · Low 1" report showed them doing. */
+  const openTotal = totalCount(counts);
+
+  /* Reset to the first page whenever the visible set changes underfoot — a new
+     tab or a new search (search is the only filter now). Done as a render-time reset keyed off
+     the view rather than an effect, so it lands before paint (no flash of a
+     stale page) and without a cascading extra render. */
+  const [page, setPage] = useState(0);
+  const viewKey = `${tab}|${search}`;
+  const [pagedView, setPagedView] = useState(viewKey);
+  if (pagedView !== viewKey) {
+    setPagedView(viewKey);
+    setPage(0);
+  }
+
+  const activeList = tab === 'open' ? filteredOpen : filteredResolved;
+  const pageCount = Math.max(1, Math.ceil(activeList.length / PAGE_SIZE));
+  // A data reload can shrink the list under the page the operator is on; clamp
+  // rather than show an empty page for a queue that still has rows.
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const pagedOpen = useMemo(
+    () => filteredOpen.slice(pageStart, pageStart + PAGE_SIZE),
+    [filteredOpen, pageStart],
+  );
+  const pagedResolved = useMemo(
+    () => filteredResolved.slice(pageStart, pageStart + PAGE_SIZE),
+    [filteredResolved, pageStart],
+  );
 
   const actor = { _id: currentUser?._id, username: currentUser?.username, name: currentUser?.name };
 
@@ -262,7 +298,7 @@ export default function RiskCenterPage() {
               active={tab}
               onChange={key => setTab(key as 'open' | 'resolved')}
               tabs={[
-                { key: 'open', label: 'Open', count: openRows.length },
+                { key: 'open', label: 'Open', count: openTotal },
                 { key: 'resolved', label: 'Resolved', count: resolvedDocs.length },
               ]}
             />
@@ -275,14 +311,44 @@ export default function RiskCenterPage() {
           </>
         }
       >
+        {/* The conflicts feed feeds the open count. When it fails to load the
+            count is understated, so the queue says so and offers a retry rather
+            than presenting a quietly-low number as a clean platform. */}
+        {conflictStatus === 'error' && (
+          <div
+            role="status"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '8px 12px', marginBottom: 12, borderRadius: 8,
+              background: 'var(--overlay-subtle)',
+              borderInlineStart: '3px solid var(--color-warning-600)',
+              fontSize: 13, color: 'var(--text-primary)',
+            }}
+          >
+            <span>{t('riskCenter.conflictsUnavailable')}</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={reloadConflicts}>
+              {t('riskCenter.retry')}
+            </button>
+          </div>
+        )}
+
         <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch value={search} onChange={setSearch} placeholder="Search signal or detail…" ariaLabel="Search risk signals" />
           {/* Deliberately "all shown", not "all": whatever the filters have
-              narrowed to is what an operator has actually just looked at. */}
+              narrowed to is what an operator has actually just looked at. Past
+              MAX_BULK_RESOLVE the one-click bulk is withheld — clearing a safety
+              queue thousands of rows at a time, sight unseen, is exactly what a
+              backlog of 6,000+ conflicts makes possible and dangerous. */}
           {tab === 'open' && filteredOpen.length > 0 && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => openResolveDialog(filteredOpen)}>
-              Resolve all shown ({filteredOpen.length})
-            </button>
+            filteredOpen.length > MAX_BULK_RESOLVE ? (
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
+                {t('riskCenter.bulkCapped', { max: MAX_BULK_RESOLVE })}
+              </span>
+            ) : (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => openResolveDialog(filteredOpen)}>
+                Resolve all shown ({filteredOpen.length})
+              </button>
+            )
           )}
         </div>
 
@@ -294,7 +360,7 @@ export default function RiskCenterPage() {
               ]}
               empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
             >
-              {filteredOpen.map(r => (
+              {pagedOpen.map(r => (
                 <tr
                   key={r.id}
                   tabIndex={0}
@@ -333,7 +399,7 @@ export default function RiskCenterPage() {
               ]}
               empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
             >
-              {filteredResolved.map(d => (
+              {pagedResolved.map(d => (
                 <tr
                   key={d._id}
                   tabIndex={0}
@@ -353,6 +419,41 @@ export default function RiskCenterPage() {
             </SaTable>
           )}
         </div>
+
+        {/* The queue is paginated so a genuine backlog of thousands of rows does
+            not mount as one table. */}
+        {pageCount > 1 && (
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+              gap: 12, padding: '10px 2px 2px', fontSize: 13, color: 'var(--text-muted)',
+            }}
+          >
+            <span>
+              {(pageStart + 1).toLocaleString()}–{Math.min(pageStart + PAGE_SIZE, activeList.length).toLocaleString()} of {activeList.length.toLocaleString()}
+            </span>
+            <span style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setPage(Math.max(0, safePage - 1))}
+                disabled={safePage <= 0}
+                aria-label="Previous page"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+                disabled={safePage >= pageCount - 1}
+                aria-label="Next page"
+              >
+                Next
+              </button>
+            </span>
+          </div>
+        )}
       </SadbCard>
 
       {/* The queue's only action surface. A row opens this; the signal is read

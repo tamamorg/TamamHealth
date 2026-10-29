@@ -74,6 +74,31 @@ export interface RiskInputs {
 
 export const SEVERITY_ORDER: Record<SaSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
+export type SeverityCounts = Record<SaSeverity, number>;
+
+/**
+ * Tally rows by severity.
+ *
+ * The Risk Center shows the open queue two ways at once: the Open tab badge is
+ * the total, and the legend beside it is the same total split by severity. They
+ * are one number looked at twice, so they must never disagree — a reader who
+ * sees "8,237 open" next to "High 6,236 · Low 1" is looking at a bug, not a
+ * busy platform. Deriving both from this single pass makes the badge equal the
+ * sum of the legend by construction, because every row has exactly one of the
+ * four severities. The page adds those four back up for the badge rather than
+ * taking a separate `.length`, so the two can only ever move together.
+ */
+export function severityCounts(rows: readonly Pick<RiskRow, 'severity'>[]): SeverityCounts {
+  const counts: SeverityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const row of rows) counts[row.severity]++;
+  return counts;
+}
+
+/** Total of a severity tally — the number the Open tab badge shows. */
+export function totalCount(counts: SeverityCounts): number {
+  return counts.critical + counts.high + counts.medium + counts.low;
+}
+
 /** Readiness cost of leaving one risk open, by severity. */
 export const SEVERITY_WEIGHT: Record<SaSeverity, number> = { critical: 12, high: 8, medium: 5, low: 2 };
 

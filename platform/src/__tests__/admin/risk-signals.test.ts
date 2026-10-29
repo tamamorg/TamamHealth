@@ -15,7 +15,7 @@
 
 import {
   buildRiskRows, readinessFromRisks, riskGuidance, READINESS_SOURCE_CAP, RISK_GUIDANCE,
-  SEVERITY_WEIGHT, type RiskInputs, type RiskKind,
+  SEVERITY_WEIGHT, severityCounts, totalCount, type RiskInputs, type RiskKind,
 } from '@/components/admin/risk-signals';
 import { indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
 import en from '@/lib/i18n/locales/en';
@@ -180,6 +180,46 @@ describe('resolutions', () => {
   test('an unrelated risk is untouched', () => {
     const index = indexResolutions([resolution('audit-a1', 'a1')]);
     expect(isRiskResolved(index, 'audit-a2', 'a2')).toBe(false);
+  });
+});
+
+describe('severityCounts — the Open badge and the legend are one number', () => {
+  // The reported bug showed "8,237 open" beside a legend summing to 6,237: the
+  // total and the per-severity split disagreeing within one render. The badge
+  // is derived from this tally rather than a separate `.length`, so the two are
+  // the same number by construction. These pin that: whatever the mix, the
+  // total equals the row count AND equals the parts added back up.
+  function pendingConflicts(n: number): RiskInputs['conflicts'] {
+    return Array.from({ length: n }, (_, i) => ({
+      _id: `conflict-${i}`, type: 'conflict_queue', status: 'pending',
+      resourceType: 'patient', risk: 'high', losingRevs: ['r1'],
+      createdAt: iso(HOUR), updatedAt: iso(HOUR),
+    })) as unknown as RiskInputs['conflicts'];
+  }
+
+  test('the total equals the row count and the sum of the legend, even at backlog scale', () => {
+    const rows = buildRiskRows({
+      ...emptyInputs(),
+      conflicts: pendingConflicts(6232),
+      auditLogs: [auditFailure('a1', 'login_failed', HOUR)],           // high
+      organizations: [org('o1', { subscriptionStatus: 'trial' })],     // low
+      backupRpoHours: 24, backupAgeHours: null,                        // high
+    });
+
+    const counts = severityCounts(rows);
+    expect(totalCount(counts)).toBe(rows.length);
+    expect(counts.critical + counts.high + counts.medium + counts.low).toBe(rows.length);
+    // The split is real, not everything dumped in one bucket.
+    expect(counts.high).toBe(6234);   // 6232 conflicts + the audit failure + the missing backup
+    expect(counts.low).toBe(1);       // the trial tenant
+    expect(counts.critical).toBe(0);
+    expect(counts.medium).toBe(0);
+  });
+
+  test('an empty queue is zero across the board', () => {
+    const counts = severityCounts([]);
+    expect(totalCount(counts)).toBe(0);
+    expect(counts).toEqual({ critical: 0, high: 0, medium: 0, low: 0 });
   });
 });
 
