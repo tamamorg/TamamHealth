@@ -22,6 +22,7 @@ import { Check, Loader2, Upload } from '@/components/icons/lucide';
 import { IMPORT_TEMPLATE_CSV, type ImportRow } from '@/modules/identity/provisioning/bulk-user-import';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeApiError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface ImportOutcome {
   line: number;
@@ -213,7 +214,7 @@ export default function BulkUserImportModal({
               </button>
             </div>
 
-            {error && <p className="bui-error" role="alert">{error}</p>}
+            {error && <FormError message={error} />}
 
             {preview && (
               <>

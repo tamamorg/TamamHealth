@@ -20,6 +20,7 @@ import {
   type PortalSlot, type ContactPreference,
 } from './booking-logic';
 import { describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface Reason { id: string; name: string; durationMinutes: number; description?: string }
 type Step = 'reason' | 'slots' | 'confirm' | 'done';
@@ -211,7 +212,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
       <input id="bk-call-date" className="pp-bk-field" type="date" min={today} value={callDate} onChange={e => setCallDate(e.target.value)} />
       <label className="pp-bk-label" htmlFor="bk-call-phone">{t('patientPortal.bk.phone')}</label>
       <input id="bk-call-phone" className="pp-bk-field" type="tel" inputMode="tel" value={phone} onChange={e => setPhone(e.target.value)} />
-      {error && <p role="alert" className="pp-bk-error">{error}</p>}
+      {error && <FormError message={error} />}
       <button type="button" className="pp-btn pp-btn-secondary pp-bk-wide" onClick={submitCallMe} disabled={submitting || !callDate}>
         {submitting ? t('status.loading') : t('patientPortal.bk.callMe')}
       </button>
@@ -333,7 +334,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
               <textarea id="bk-notes" className="pp-bk-field pp-bk-area" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('patientPortal.reasonPlaceholder')} />
             </div>
             <p className="pp-bk-hint">{t('patientPortal.bk.requestNote')}</p>
-            {error && <p role="alert" className="pp-bk-error">{error}</p>}
+            {error && <FormError message={error} />}
             <button type="button" className="pp-btn pp-btn-primary pp-bk-wide" onClick={submitSlot} disabled={submitting}>
               {submitting ? t('status.loading') : t('patientPortal.submitRequest')}
             </button>

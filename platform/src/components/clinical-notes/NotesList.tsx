@@ -3,7 +3,8 @@
 /**
  * Notes list — the chart's Notes view, wearing the same ChartSection chrome
  * as every other chart tab: title, search bar, and a right-aligned create
- * action that opens the note-type menu (the Orders tab's "Add" pattern).
+ * action. In the chart, Create note opens the Consultation form straight in
+ * the slider (`onCreate`); the form's own type picker changes the type.
  *
  * Sorting is fixed to date of service: a chart is read chronologically by
  * encounter, and "when did I see this patient" is the question the list
@@ -17,7 +18,6 @@ import { useRouter } from 'next/navigation';
 import { FileText } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
-import { noteTypeMenuOrder } from './CreateNoteButton';
 import { useToast } from '@/components/Toast';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useMedicalRecords } from '@/lib/hooks/useMedicalRecords';
@@ -25,7 +25,7 @@ import { clickable } from '@/lib/a11y';
 import { listClinicalNotes } from '@/lib/clinical-notes/note-service';
 import { noteTypeLabel } from '@/lib/clinical-notes/note-labels';
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
-import { NOTE_TYPES, type NoteTypeId } from '@/lib/clinical-notes/note-catalog';
+import type { NoteTypeId } from '@/lib/clinical-notes/note-catalog';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import { mergeNoteRows, filterNoteRows, type NoteRow } from './notes-list-model';
 import { describeError } from '@/lib/user-facing-error';
@@ -43,6 +43,9 @@ interface NotesListProps {
   currentUser: { _id: string; name?: string; username?: string; hospitalId?: string; hospitalName?: string; orgId?: string } | null;
   /** Hides the create controls where the caller has its own. */
   showCreate?: boolean;
+  /** Start a note in place (the chart's slider). Without it, Create note
+   *  starts a Consultation draft and opens it via `onOpenNote` or /notes. */
+  onCreate?: () => void;
   /** Open a note in place (the chart's drawer) instead of the /notes route.
    *  `kind` is 'record' for a read-only consultation record. */
   onOpenNote?: (noteId: string, kind: 'clinical' | 'record', status: NoteStatus) => void;
@@ -59,7 +62,7 @@ const STATUS_BADGE: Record<NoteStatus, { key: string; cls: string }> = {
 
 export default function NotesList({
   patientId, patientName, mrn, patientDob, currentUser, showCreate = true,
-  onOpenNote, refreshToken,
+  onCreate, onOpenNote, refreshToken,
 }: NotesListProps) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -70,10 +73,8 @@ export default function NotesList({
 
   const [notes, setNotes] = useState<ClinicalNoteDoc[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newType, setNewType] = useState<NoteTypeId>('soap');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,7 +93,8 @@ export default function NotesList({
 
   useEffect(() => { void load(); }, [load, refreshToken]);
 
-  const handleCreate = async (noteType: NoteTypeId = newType) => {
+  const handleCreate = async (noteType: NoteTypeId = 'soap') => {
+    if (onCreate) { onCreate(); return; }
     if (!patientId || !patientName) return;
     try {
       const note = await createNote(
@@ -136,37 +138,12 @@ export default function NotesList({
     <ChartSection
       title="Notes"
       addLabel="Create note"
-      onAdd={canCreate ? () => setAddMenuOpen(v => !v) : undefined}
+      onAdd={canCreate && !creating ? () => void handleCreate() : undefined}
       searchValue={search}
       searchPlaceholder="Search notes…"
       onSearchChange={value => { setSearch(value); setPage(1); }}
       pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
     >
-      {canCreate && addMenuOpen && (
-        <div style={{ position: 'relative' }}>
-          <div
-            style={{ position: 'absolute', right: 0, top: -6, zIndex: 20, maxHeight: 420, overflowY: 'auto' }}
-            className="tamam-actions-menu"
-            role="menu"
-          >
-            {/* Most recently used type first, rest alphabetical — the same
-                ordering the note editor's split button offers. */}
-            {noteTypeMenuOrder(newType).map(id => (
-              <button
-                key={id}
-                type="button"
-                role="menuitem"
-                disabled={creating}
-                title={NOTE_TYPES[id].description}
-                onClick={() => { setAddMenuOpen(false); setNewType(id); void handleCreate(id); }}
-              >
-                <FileText /> {NOTE_TYPES[id].label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {loading && <div className="cn-empty">Loading notes…</div>}
 
       {/* One column per fact, Status last like every other clinical table.
@@ -200,7 +177,7 @@ export default function NotesList({
                     <OmrsEmptyState
                       itemLabel="notes"
                       actionLabel="Create clinical note"
-                      onAction={canCreate ? () => setAddMenuOpen(true) : undefined}
+                      onAction={canCreate && !creating ? () => void handleCreate() : undefined}
                     />
                   )}
                 </td>

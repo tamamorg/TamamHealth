@@ -14,6 +14,7 @@ import type { PaymentDoc } from '@/lib/db-types-payments';
 import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { FormError } from '@/components/overlay/FormNotices';
 
 interface PaymentPanelProps {
   patientId: string;
@@ -607,7 +608,7 @@ export default function PaymentPanel({
             />
           </div>
 
-          {error && <div style={{ fontSize: 13, color: 'var(--error)', padding: '8px 12px', background: 'color-mix(in srgb, var(--error) 8%, transparent)', borderRadius: 8 }}>{error}</div>}
+          {error && <FormError message={error} />}
         </div>
 
         {/* Footer — flat bl-btn instead of the gradient-fill + drop-shadow

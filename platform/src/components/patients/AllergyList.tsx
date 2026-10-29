@@ -14,6 +14,7 @@ import AddAllergyModal from '@/components/patients/AddAllergyModal';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const CRIT_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
   severe:   { bg: 'var(--color-danger-bg, rgba(224, 49, 39,0.12))', fg: 'var(--color-danger-text)',  label: 'Severe'   },
@@ -166,7 +167,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
               </div>
             </div>
             <input value={editForm.reaction} onChange={(e) => setEditForm({ ...editForm, reaction: e.target.value })} placeholder="Reaction" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+            {error && <FormError message={error} />}
           </div>
         </FormSlider>
       )}
@@ -181,7 +182,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
               Remove <strong>{removingEntry.substance}</strong> from the allergy list? A reason is required.
             </p>
             <input autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for removal" className={inputCls} style={inputStyle} />
-            {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+            {error && <FormError message={error} />}
             </DialogBody>
             <DialogFooter>
               <button className="btn btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>

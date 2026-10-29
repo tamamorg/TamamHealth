@@ -17,6 +17,7 @@ import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const CHANNELS: { v: ReminderChannel; label: string }[] = [
   { v: 'sms', label: 'SMS' },
@@ -155,7 +156,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
           </tbody>
         </table>
 
-      {error && <p className="text-[11px] mt-1" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
     </ChartSection>
   );
 }

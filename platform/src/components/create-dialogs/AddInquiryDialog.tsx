@@ -20,6 +20,7 @@ import { createEnquiry } from '@/lib/services/enquiry-service';
 import type { MessageDoc } from '@/lib/db-types';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import { describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const EMPTY = { patientName: '', patientPhone: '', subject: '', body: '', assigneeId: '' };
 
@@ -107,7 +108,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
             {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
           </Select>
         </div>
-        {error && <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+        {error && <FormError message={error} />}
       </div>
     </>
   );

@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { Corners } from '@/components/login/login-chrome';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -96,7 +97,7 @@ export default function ForgotPasswordPage() {
                   <span className="lg-hint">{t('forgotPassword.usernameHint')}</span>
                 </div>
 
-                {error && <div role="alert" className="lg-error">{error}</div>}
+                {error && <FormError message={error} />}
 
                 <button type="submit" disabled={sending} className="lg-btn blueprint">
                   {sending ? t('forgotPassword.sending') : t('forgotPassword.submit')}

@@ -12,6 +12,7 @@ import { AlertTriangle, Plus, X } from '@/components/icons/lucide';
 import CareAlertFields, { CARE_ALERT_CATEGORY_LABELS } from '@/components/patients/CareAlertFields';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 /**
  * Chart-permanent care alerts (P1.2). Active alerts render as a prominent
@@ -132,7 +133,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
         </div>
       )}
 
-      {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
 
       {resolvingAlert && (
         <Modal

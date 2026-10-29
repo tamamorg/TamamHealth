@@ -9,6 +9,7 @@ import {
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import './clinical-image-viewer.css';
+import { FormError } from '@/components/overlay/FormNotices';
 
 export interface ClinicalImageItem {
   id: string;
@@ -285,7 +286,7 @@ export default function ClinicalImageViewer({
               </li>
             ))}
           </ol>
-          {error && <p className="civ-error" role="alert">{error}</p>}
+          {error && <FormError message={error} />}
         </aside>
       </div>
 

@@ -26,6 +26,7 @@ import type { UserRole } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Corners } from '@/components/login/login-chrome';
 import { portalFromParam, shotForPortal, DEFAULT_PORTAL, type LoginPortal } from '@/components/login/portal-imagery';
+import { FormError } from '@/components/overlay/FormNotices';
 
 // Role picker options — every role in the platform, labeled like the rest of
 // the UI. Everyone signs in as their assigned role; only the platform
@@ -503,7 +504,7 @@ export default function LoginPage() {
               {t('login.keepSignedIn')}
             </label>
 
-            {error && <div role="alert" className="lg-error">{error}</div>}
+            {error && <FormError message={error} />}
 
             <button type="submit" disabled={loading} className="lg-btn blueprint">
               {loading ? t('login.signingIn') : t('login.logIn')}

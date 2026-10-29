@@ -18,6 +18,7 @@ import type { AllergyEntry } from '@/data/mock';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const CLASSIFICATIONS: AllergenClassification[] = ['drug', 'food', 'environmental', 'biologic', 'other'];
 const CRITICALITIES: NonNullable<AllergyEntry['criticality']>[] = ['mild', 'moderate', 'severe', 'unknown'];
@@ -130,7 +131,7 @@ export default function AddAllergyModal({
         </div>
       </div>
 
-      {error && <p className="text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <button className="btn btn-sm btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>

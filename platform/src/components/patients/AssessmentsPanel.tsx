@@ -13,6 +13,7 @@ import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { FormError } from '@/components/overlay/FormNotices';
 
 const SEVERITY_COLOR: Record<string, string> = {
   minimal: 'var(--color-success)',
@@ -195,7 +196,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
           </tbody>
         </table>
 
-      {error && <p className="mt-2 text-[11px]" style={{ color: 'var(--color-danger-text)' }}>{error}</p>}
+      {error && <FormError message={error} />}
     </ChartSection>
   );
 }

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useCallback, useRef, createContext, useContext, useEffect, type ReactNode } from 'react';
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from '@/components/icons/lucide';
+import { X } from '@/components/icons/lucide';
+import StatusGlyph from '@/components/overlay/StatusGlyph';
+import { NoticeHostContext, RELATED_WINDOW_MS, splitNotice, type NoticeHost } from '@/components/overlay/notice-hosts';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** An inline action rendered as a button in the toast — e.g. Undo. */
@@ -29,7 +31,14 @@ export interface ToastOptions {
   title?: string;
   /** Stay until dismissed — for a failed clinical save the user must not miss. */
   sticky?: boolean;
+  /** `corner` keeps an error in the toast stack even when the user is in a
+   *  form — for a failure that is not about that form (sync, a background
+   *  job). By default an error or warning raised right after the user acted
+   *  inside a form surface is shown inline in that form (see FormNotices). */
+  placement?: 'auto' | 'corner';
 }
+
+export { splitNotice } from '@/components/overlay/notice-hosts';
 
 interface ToastContextType {
   showToast: (message: string, type?: ToastType, opts?: ToastOptions) => void;
@@ -43,13 +52,6 @@ let toastId = 0;
  *  `--motion-base`; reduced-motion zeroes the animation but the node still
  *  waits this long, which is imperceptible. */
 const LEAVE_MS = 180;
-
-const ICONS: Record<ToastType, typeof CheckCircle2> = {
-  success: CheckCircle2,
-  error: AlertTriangle,
-  warning: AlertCircle,
-  info: Info,
-};
 
 /**
  * Transient feedback: the receipt for something that just happened.
@@ -68,6 +70,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timers = useRef(new Map<number, number>());
+
+  // Form surfaces that take their own errors, and where the user last acted —
+  // together they say whether an error belongs to an open form.
+  const hosts = useRef(new Set<NoticeHost>());
+  const lastAct = useRef<{ target: Element | null; at: number }>({ target: null, at: 0 });
+  useEffect(() => {
+    const note = (event: Event) => {
+      lastAct.current = { target: event.target instanceof Element ? event.target : null, at: Date.now() };
+    };
+    document.addEventListener('pointerdown', note, true);
+    document.addEventListener('keydown', note, true);
+    return () => {
+      document.removeEventListener('pointerdown', note, true);
+      document.removeEventListener('keydown', note, true);
+    };
+  }, []);
+  const hostRegistry = useRef({
+    register: (host: NoticeHost) => {
+      hosts.current.add(host);
+      return () => { hosts.current.delete(host); };
+    },
+  }).current;
+
+  /** The innermost open form the user just acted in, if any. */
+  const relatedHost = useCallback((): NoticeHost | null => {
+    const { target, at } = lastAct.current;
+    if (!target || Date.now() - at > RELATED_WINDOW_MS) return null;
+    let best: NoticeHost | null = null;
+    for (const host of hosts.current) {
+      if (!host.el.isConnected || !host.el.contains(target)) continue;
+      if (!best || best.el.contains(host.el)) best = host;
+    }
+    return best;
+  }, []);
 
   const remove = useCallback((id: number) => {
     const held = timers.current.get(id);
@@ -93,16 +129,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const live = useRef<Toast[]>([]);
   useEffect(() => { live.current = toasts; }, [toasts]);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info', opts?: ToastOptions) => {
+  const showToast = useCallback((raw: string, type: ToastType = 'info', opts?: ToastOptions) => {
+    const { title, message } = splitNotice(raw, opts?.title);
+    if ((type === 'error' || type === 'warning') && opts?.placement !== 'corner' && !opts?.action) {
+      const host = relatedHost();
+      if (host) { host.push({ id: ++toastId, type, title, message }); return; }
+    }
     const ttl = opts?.sticky ? null
       : opts?.durationMs ?? (opts?.action ? 10000 : type === 'error' ? 10000 : type === 'warning' ? 8000 : 5000);
-    const same = live.current.find(toast => !toast.leaving && toast.message === message && toast.type === type && toast.title === opts?.title);
+    const same = live.current.find(toast => !toast.leaving && toast.message === message && toast.type === type && toast.title === title);
     const id = same ? same.id : ++toastId;
     setToasts(prev => (prev.some(toast => toast.id === id)
       ? prev.map(toast => (toast.id === id ? { ...toast, action: opts?.action, ttl } : toast))
-      : [...prev, { id, ttl, message, type, title: opts?.title, action: opts?.action }]));
+      : [...prev, { id, ttl, message, type, title, action: opts?.action }]));
     arm(id, ttl);
-  }, [arm]);
+  }, [arm, relatedHost]);
 
   useEffect(() => {
     const held = timers.current;
@@ -111,25 +152,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={{ showToast }}>
+      <NoticeHostContext.Provider value={hostRegistry}>
       {children}
+      </NoticeHostContext.Provider>
       {/* Toast container */}
       <div
         role="region"
         aria-label={t('common.notifications')}
         aria-live="polite"
         aria-atomic="false"
-        className="fixed flex flex-col gap-2 items-end"
-        // Below the top rail when one is in the document, the corner when not
-        // (login, mobile shell) — the inset variable tracks that for us.
-        style={{
-          top: 'calc(var(--app-overlay-top-inset, 0px) + 12px)',
-          right: 16,
-          zIndex: 'var(--z-toast)' as unknown as number,
-          maxWidth: 'min(420px, calc(100vw - 32px))',
-        }}
+        // Bottom-left, newest at the bottom, the O3 stack: clear of the
+        // rail's own menus at the top and of the help and chat docks on the
+        // right, and where the eye lands after a form's action bar.
+        className="ehr-toast-stack"
       >
         {toasts.map(toast => {
-          const Icon = ICONS[toast.type];
           const urgent = toast.type === 'error' || toast.type === 'warning';
           return (
             // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- hover and focus only pause the dismiss timer; the toast's own buttons carry every action.
@@ -142,7 +179,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               onBlur={() => arm(toast.id, toast.ttl)}
               className={`ehr-toast ehr-toast--${toast.type} tm-elevated tm-motion tm-motion--toast${toast.leaving ? ' is-leaving' : ''}`}
             >
-              <Icon className="ehr-toast-icon" aria-hidden="true" />
+              <StatusGlyph tone={toast.type} className="ehr-toast-icon" />
               <span className="sr-only">{t(`toast.${toast.type}`)}: </span>
               {toast.title ? (
                 <div className="ehr-toast-copy">
@@ -167,7 +204,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 aria-label={t('common.dismissNotification')}
                 className="ehr-toast-close"
               >
-                <X className="w-3.5 h-3.5" aria-hidden="true" />
+                <X aria-hidden="true" />
               </button>
             </div>
           );
