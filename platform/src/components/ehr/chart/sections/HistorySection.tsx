@@ -17,6 +17,7 @@
 
 import { useState } from 'react';
 import ChartSection from '../ChartSection';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import HistoryEntryForm from './HistoryEntryForm';
 import FormSlider from '@/components/overlay/FormSlider';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -105,28 +106,28 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
     </td>
   );
 
+  // Every correction lives in the row's ⋮, as on every other chart list.
   const actions = (entry: HistoryEntryDoc) => (
     <td>
-      {canRecordHistory ? (
-        <span className="inline-flex gap-1.5">
-          <button
-            type="button"
-            className="btn btn-xs btn-secondary"
-            onClick={() => setForm({ domain: entry.domain, entry })}
-          >
-            {t('history.edit')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-xs btn-secondary"
-            disabled={retiring === entry._id}
-            onClick={() => void handleMarkInError(entry)}
-            title={t('history.markErrorHint')}
-          >
-            {t('history.markError')}
-          </button>
-        </span>
-      ) : null}
+      <RowActionsMenu
+        ariaLabel={t('history.rowActions', { entry: formatHistoryEntry(entry) })}
+        actions={canRecordHistory ? [
+          { key: 'edit', label: t('history.edit'), onClick: () => setForm({ domain: entry.domain, entry }) },
+          { key: 'error', label: t('history.markError'), hint: t('history.markErrorHint'), tone: 'danger' as const, disabled: retiring === entry._id, onClick: () => void handleMarkInError(entry) },
+        ] : []}
+      />
+    </td>
+  );
+
+  /** A borrowed row is edited on its own list; its ⋮ is the way there. */
+  const borrowedActions = (tabId: string, label: string, name: string) => (
+    <td>
+      {onOpenTab && (
+        <RowActionsMenu
+          ariaLabel={t('history.rowActions', { entry: name })}
+          actions={[{ key: 'open', label: t('history.openSource', { list: label }), onClick: () => onOpenTab(tabId) }]}
+        />
+      )}
     </td>
   );
 
@@ -215,7 +216,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
           <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>
           <td>{humanizeStatus(p.status)}</td>
           <td>{borrowedTag('problems', t('history.fromProblemList'))}</td>
-          <td />
+          {borrowedActions('problems', t('history.fromProblemList'), p.name)}
         </tr>
       ));
     }
@@ -229,7 +230,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
           <td>{p.date ? formatDate(p.date) : '—'}</td>
           <td>{p.hospitalName || t('history.thisFacility')}</td>
           <td>{borrowedTag('procedures', t('history.fromProcedures'))}</td>
-          <td />
+          {borrowedActions('procedures', t('history.fromProcedures'), p.name)}
         </tr>
       ));
     }
@@ -255,9 +256,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
                 <tr>
                   {columns.map(column => (
                     <th key={column}>
-                      {column === 'actions'
-                        ? <span className="sr-only">{t('history.col.actions')}</span>
-                        : t(`history.col.${column}`)}
+                      {t(`history.col.${column}`)}
                     </th>
                   ))}
                 </tr>
