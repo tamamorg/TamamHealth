@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
-  ShoppingCart, Stethoscope, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
+  ShoppingCart, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
 import DrawerResizeHandle from './DrawerResizeHandle';
@@ -62,9 +62,9 @@ interface DrawerPanelDef {
 // resolved per-id in renderPanelBody() below.
 const DRAWER_PANELS: DrawerPanelDef[] = [
   { id: 'order-basket', title: 'Order basket', icon: ShoppingCart, clinical: true },
-  // Stethoscope, not a pencil: this panel's primary action starts a
-  // consultation, so it should read as clinical work rather than note-taking.
-  { id: 'visit-note', title: 'Visit note', icon: Stethoscope, clinical: true },
+  // A pencil, as O3 draws its visit note: the panel writes a note (it no
+  // longer starts a consultation).
+  { id: 'visit-note', title: 'Visit note', icon: Pencil, clinical: true },
   // Recall reminders, not clinical detail — the front desk works this queue
   // (ADMIN_TAB_IDS carries 'recall' for exactly that reason), so it stays.
   { id: 'task-list', title: 'Task list', icon: ClipboardCheck },
@@ -349,7 +349,6 @@ export default function TamamChartShell({
           <VisitNotePanel
             patient={patient}
             currentUser={currentUser}
-            router={router}
             canConsult={canConsult}
             onClose={closeDrawer}
             onSaved={onNoteSaved}

@@ -15,21 +15,23 @@
  * data layer made this panel's output invisible to the Notes list — a note
  * the author could not find again.
  *
- * The primary action starts a full consultation for this patient: this panel
- * captures a diagnosis and a paragraph, while the encounter itself (vitals,
- * orders, prescriptions, signing) lives in /consultation. Anything typed here
- * is saved as a note first, so opening the consultation never loses the draft.
+ * Laid out as O3's visit note (Diagnosis, Note, Image) over the O3 action bar:
+ * Discard | Save and close. (A third "Start consultation" button was taken
+ * out 2026-10-29 at the user's request; the full encounter is still reached
+ * from the chart header.)
  */
 
 import { useMemo, useRef, useState } from 'react';
-import { Image as ImageIcon, Stethoscope, X, Save } from '@/components/icons/lucide';
+import { Image as ImageIcon, Plus, X } from '@/components/icons/lucide';
+import FormNotices from '@/components/overlay/FormNotices';
+import './visit-note-panel.css';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useToast } from '@/components/Toast';
 import { toIsoDate } from '@/lib/date-utils';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc } from '@/lib/db-types';
-import type { ChartPanelRouter, ChartPanelUser } from './types';
+import type { ChartPanelUser } from './types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -38,13 +40,12 @@ interface PickedDx { code: string; title: string; chapter: string }
 interface VisitNotePanelProps {
   patient: PatientDoc;
   currentUser: ChartPanelUser | null | undefined;
-  router: ChartPanelRouter;
   canConsult: boolean;
   onClose: () => void;
   onSaved?: () => void;
 }
 
-export default function VisitNotePanel({ patient, currentUser, router, canConsult, onClose, onSaved }: VisitNotePanelProps) {
+export default function VisitNotePanel({ patient, currentUser, canConsult, onClose, onSaved }: VisitNotePanelProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const scope = useDataScope();
@@ -208,124 +209,98 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
     }
   };
 
-  /**
-   * Primary action: open a new consultation for this patient. Any draft in the
-   * panel is written first — losing a typed diagnosis because the clinician
-   * chose the fuller workspace would be the worst possible outcome here. A
-   * failed save aborts the navigation so the draft stays on screen.
-   */
-  const handleStartConsultation = async () => {
-    try {
-      setSubmitting(true);
-      if (canSave) {
-        const imageFailures = await persistNote();
-        showToast(
-          imageFailures > 0
-            ? t('msg.noteSavedImageSNot', { imageFailures })
-            : t('msg.noteSavedOpeningTheConsultation'),
-          imageFailures > 0 ? 'error' : 'success',
-        );
-        onSaved?.();
-      }
-      onClose();
-      router.push(`/consultation?patientId=${encodeURIComponent(patient._id)}`);
-    } catch (err) {
-      console.error(err);
-      showToast(describeError(err, t('msg.noteNotSavedSoThe')), 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <>
-      <div className="tamam-drawer-body">
+      <div className="tamam-drawer-body vn-body">
         {/* No "For <patient>" line: this drawer only ever opens over the chart
             of the patient it writes to, and the banner behind it already names
-            them. */}
-        <div className="tamam-panel-field">
-          <label className="tamam-panel-label">Primary diagnosis</label>
-          {primaryDx ? (
-            <div className="tamam-panel-picked-chip">
-              <span>{primaryDx.title} <span style={{ color: 'var(--ehr-muted)' }}>· {primaryDx.code}</span></span>
-              <button type="button" onClick={() => setPrimaryDx(null)}>Change</button>
-            </div>
-          ) : (
+            them. Laid out as O3's visit note: Diagnosis, Note, Image. */}
+        <section className="vn-section">
+          <h3 className="vn-heading" id="vn-dx-heading">Diagnosis</h3>
+          {/* One search, as O3 has it: the first diagnosis picked is the
+              primary, the second the secondary. */}
+          {!secondaryDx && (
             <CodedSearchField
               label=""
-              placeholder="Search ICD-11 diagnoses…"
+              placeholder="Search for a diagnosis"
               options={icdOptions}
-              value={primarySearch}
-              onChange={setPrimarySearch}
-              onSelect={c => { setPrimaryDx({ code: c.code, title: c.name, chapter: c.meta || '' }); setPrimarySearch(''); }}
-            />
-          )}
-        </div>
-
-        <div className="tamam-panel-field">
-          <label className="tamam-panel-label">Secondary diagnosis</label>
-          {secondaryDx ? (
-            <div className="tamam-panel-picked-chip">
-              <span>{secondaryDx.title} <span style={{ color: 'var(--ehr-muted)' }}>· {secondaryDx.code}</span></span>
-              <button type="button" onClick={() => setSecondaryDx(null)}>Change</button>
-            </div>
-          ) : (
-            <CodedSearchField
-              label=""
-              placeholder="Search ICD-11 diagnoses… (optional)"
-              options={icdOptions}
-              value={secondarySearch}
-              onChange={setSecondarySearch}
-              onSelect={c => { setSecondaryDx({ code: c.code, title: c.name, chapter: c.meta || '' }); setSecondarySearch(''); }}
+              value={primaryDx ? secondarySearch : primarySearch}
+              onChange={primaryDx ? setSecondarySearch : setPrimarySearch}
+              onSelect={c => {
+                const picked = { code: c.code, title: c.name, chapter: c.meta || '' };
+                if (primaryDx) { setSecondaryDx(picked); setSecondarySearch(''); } else { setPrimaryDx(picked); setPrimarySearch(''); }
+              }}
               excludeCodes={primaryDx ? [primaryDx.code] : undefined}
             />
           )}
-        </div>
+          {(primaryDx || secondaryDx) && (
+            <ul className="vn-tags" aria-labelledby="vn-dx-heading">
+              {[primaryDx, secondaryDx].map((dx, i) => dx && (
+                <li key={dx.code} className="vn-tag">
+                  <span className="vn-tag-rank">{i === 0 ? 'Primary' : 'Secondary'}</span>
+                  <span className="vn-tag-name">{dx.title} <span>· {dx.code}</span></span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${dx.title}`}
+                    onClick={() => {
+                      // Removing the primary promotes the secondary.
+                      if (i === 0) { setPrimaryDx(secondaryDx); setSecondaryDx(null); } else setSecondaryDx(null);
+                    }}
+                  >
+                    <X aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-        <div className="tamam-panel-field">
-          <label className="tamam-panel-label">Note</label>
+        <section className="vn-section">
+          <label htmlFor="vn-note" className="vn-heading">Note</label>
+          <p className="vn-help">Write your notes</p>
           <textarea
-            className="tamam-panel-textarea"
-            placeholder="Assessment, plan, follow-up instructions…"
+            id="vn-note"
+            className="vn-textarea"
+            placeholder="Write any notes here"
             value={note}
             onChange={e => setNote(e.target.value)}
           />
-        </div>
+        </section>
 
-        {images.length > 0 && (
-          <div className="tamam-panel-field">
-            <label className="tamam-panel-label">Images</label>
-            {images.map((file, i) => (
-              <div className="tamam-panel-picked-chip" key={`${file.name}-${i}`}>
-                <span>{file.name} <span style={{ color: 'var(--ehr-muted)' }}>· {(file.size / 1024).toFixed(0)} KB</span></span>
-                <button type="button" onClick={() => setImages(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${file.name}`}>
-                  <X size={12} /> Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleImagesChosen}
-        />
-        <button type="button" className="tamam-panel-add-btn" onClick={() => fileInputRef.current?.click()}>
-          <ImageIcon /> Add image
-        </button>
+        <section className="vn-section">
+          <h3 className="vn-heading">Image</h3>
+          <p className="vn-help">Upload an image or use this device&apos;s camera to capture an image</p>
+          {images.length > 0 && (
+            <ul className="vn-files">
+              {images.map((file, i) => (
+                <li key={`${file.name}-${i}`} className="vn-file">
+                  <ImageIcon aria-hidden />
+                  <span>{file.name} <span className="vn-file-size">· {(file.size / 1024).toFixed(0)} KB</span></span>
+                  <button type="button" onClick={() => setImages(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${file.name}`}>
+                    <X aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleImagesChosen}
+          />
+          <button type="button" className="vn-add-image" onClick={() => fileInputRef.current?.click()}>
+            Add image <Plus aria-hidden />
+          </button>
+        </section>
       </div>
-      <div className="tamam-drawer-footer">
-        <button type="button" className="tamam-btn-ghost" onClick={onClose} disabled={submitting}>Discard</button>
-        <button type="button" className="tamam-btn-ghost" onClick={handleSave} disabled={!canSave || submitting}>
-          <Save aria-hidden /> {submitting ? 'Saving…' : 'Save note'}
-        </button>
-        {/* Primary: the note above is the short form — the full encounter
-            (vitals, orders, prescriptions, signing) happens in /consultation. */}
-        <button type="button" className="tamam-btn-primary" onClick={handleStartConsultation} disabled={submitting}>
-          <Stethoscope className="w-3.5 h-3.5" /> Start consultation
+      <FormNotices />
+      <div className="tm-action-bar">
+        <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClose} disabled={submitting}>Discard</button>
+        <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleSave} disabled={!canSave || submitting}>
+          {submitting ? 'Saving…' : 'Save and close'}
         </button>
       </div>
     </>
