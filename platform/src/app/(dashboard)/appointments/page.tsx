@@ -46,6 +46,8 @@ import type { AppointmentType, AppointmentPriority, AppointmentStatus } from '@/
 import { appointmentBelongsToDepartment } from '@/modules/departments/client';
 import dynamic from 'next/dynamic';
 import PortalModal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { jubaDate } from '@/lib/time-juba';
 import Select from '@/components/Select';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
@@ -851,7 +853,19 @@ export default function AppointmentsPage() {
 
         {/* Walk-In */}
         {showWalkIn && canBookAppointments && (
-          <Modal variant="slider" onClose={closeWalkIn} title={t('appointments.registerWalkIn')} icon={<UserPlus size={34} style={{ color: 'var(--accent-primary)' }} />}>
+          <FormSlider
+            title={t('appointments.registerWalkIn')}
+            onClose={closeWalkIn}
+            busy={submitting}
+            footer={(
+              <>
+                <button type="button" className="btn btn-secondary" onClick={closeWalkIn}>{t('action.cancel')}</button>
+                <button type="button" className="btn btn-primary" onClick={handleWalkIn} disabled={submitting}>
+                  {submitting ? t('appointments.registering') : t('appointments.registerWalkIn')}
+                </button>
+              </>
+            )}
+          >
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               {t('appointments.walkInIntro')}
             </p>
@@ -869,9 +883,8 @@ export default function AppointmentsPage() {
               </div>
               <div><label className="field-required">{t('appointments.labelReasonForVisit')}</label><textarea value={wiReason} onChange={e => setWiReason(e.target.value)} rows={2} placeholder={t('appointments.reasonForVisitPlaceholder')} /></div>
               <div><label>{t('appointments.labelNotes')}</label><textarea value={wiNotes} onChange={e => setWiNotes(e.target.value)} rows={2} placeholder={t('appointments.walkInNotesPlaceholder')} /></div>
-              <ModalActions onCancel={closeWalkIn} onConfirm={handleWalkIn} confirmLabel={submitting ? t('appointments.registering') : t('appointments.registerWalkIn')} cancelLabel={t('action.cancel')} confirmColor="var(--accent-primary)" disabled={submitting} />
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* Appointment detail — opens when an event on the calendar is clicked.
@@ -884,101 +897,48 @@ export default function AppointmentsPage() {
           const hasPrev = idx > 0;
           const hasNext = idx < sorted.length - 1;
           return (
-            <Modal
-              onClose={() => setEventApt(null)}
-              title={eventApt.patientName}
-              size="md"
-              nav={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginInlineEnd: 4 }}>
-                    {idx + 1} / {sorted.length}
-                  </span>
-                  <button
-                    onClick={() => setEventApt(sorted[idx - 1])}
-                    disabled={!hasPrev}
-                    aria-label="Previous appointment"
-                    style={{
-                      width: 30, height: 30, borderRadius: 8, border: '1px solid var(--glass-border)',
-                      background: hasPrev ? 'var(--bg-card-solid)' : 'transparent',
-                      color: hasPrev ? 'var(--text-secondary)' : 'var(--text-muted)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: hasPrev ? 'pointer' : 'default', opacity: hasPrev ? 1 : 0.35,
-                    }}
-                  >
-                    <ChevronLeft size={15} />
-                  </button>
-                  <button
-                    onClick={() => setEventApt(sorted[idx + 1])}
-                    disabled={!hasNext}
-                    aria-label="Next appointment"
-                    style={{
-                      width: 30, height: 30, borderRadius: 8, border: '1px solid var(--glass-border)',
-                      background: hasNext ? 'var(--bg-card-solid)' : 'transparent',
-                      color: hasNext ? 'var(--text-secondary)' : 'var(--text-muted)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: hasNext ? 'pointer' : 'default', opacity: hasNext ? 1 : 0.35,
-                    }}
-                  >
-                    <ChevronRight size={15} />
-                  </button>
-                </div>
-              }
-            >
-              {/* Clinical calendars open care actions; scheduling calendars
-                  retain the booking editor. */}
-              <div className="ehr-row-detail ehr-row-detail--dialog">
-                {renderAppointmentDetail(eventApt, () => setEventApt(null))}
-              </div>
-            </Modal>
+            <PortalModal onClose={() => setEventApt(null)} size="md" labelledBy="apt-event-title">
+              <DialogFrame>
+                <DialogHeader
+                  titleId="apt-event-title"
+                  title={eventApt.patientName}
+                  onClose={() => setEventApt(null)}
+                  actions={(
+                    <>
+                      <span className="tm-dialog__count">{idx + 1} / {sorted.length}</span>
+                      <button
+                        type="button"
+                        className="tm-dialog__ctl"
+                        onClick={() => setEventApt(sorted[idx - 1])}
+                        disabled={!hasPrev}
+                        aria-label="Previous appointment"
+                      >
+                        <ChevronLeft aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="tm-dialog__ctl"
+                        onClick={() => setEventApt(sorted[idx + 1])}
+                        disabled={!hasNext}
+                        aria-label="Next appointment"
+                      >
+                        <ChevronRight aria-hidden="true" />
+                      </button>
+                    </>
+                  )}
+                />
+                <DialogBody>
+                  {/* Clinical calendars open care actions; scheduling calendars
+                      retain the booking editor. */}
+                  <div className="ehr-row-detail ehr-row-detail--dialog">
+                    {renderAppointmentDetail(eventApt, () => setEventApt(null))}
+                  </div>
+                </DialogBody>
+              </DialogFrame>
+            </PortalModal>
           );
         })()}
 
     </main>
-  );
-}
-
-/* ─── Reusable Components ─── */
-
-function Modal({ children, onClose, title, titleColor, icon, size = 'md', nav, variant = 'dialog' }: {
-  children: React.ReactNode; onClose: () => void; title: string; titleColor?: string;
-  icon?: React.ReactNode; size?: 'sm' | 'md' | 'lg'; nav?: React.ReactNode; variant?: 'dialog' | 'drawer' | 'slider';
-}) {
-  const sizeClass = size === 'sm' ? 'modal-panel--sm' : size === 'lg' ? 'modal-panel--lg' : 'modal-panel--md';
-  const width = size === 'sm' ? 400 : size === 'lg' ? 720 : 560;
-  return (
-    <PortalModal onClose={onClose} width={width} variant={variant}>
-      <div className={`modal-panel ${sizeClass}`} style={{ maxHeight: variant !== 'dialog' ? '100%' : 'calc(100vh - 32px)', height: variant !== 'dialog' ? '100%' : undefined, overflowY: 'auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            {icon}
-            <h2 className="truncate" style={{ fontSize: 18, fontWeight: 700, color: titleColor || 'var(--text-primary)' }}>{title}</h2>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {nav}
-            <button onClick={onClose} aria-label="Close" style={{
-              background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
-              width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--text-muted)', transition: 'background 0.15s',
-            }}><X size={16} /></button>
-          </div>
-        </div>
-        {children}
-      </div>
-    </PortalModal>
-  );
-}
-
-function ModalActions({ onCancel, onConfirm, confirmLabel, confirmColor, cancelLabel, disabled }: {
-  onCancel: () => void; onConfirm: () => void; confirmLabel: string;
-  confirmColor?: string; cancelLabel?: string; disabled?: boolean;
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-      <button onClick={onCancel} className="btn btn-secondary" style={{ flex: 1 }}>{cancelLabel || 'Cancel'}</button>
-      <button onClick={onConfirm} disabled={disabled} className="btn btn-primary" style={{
-        flex: 1, background: confirmColor || undefined,
-        opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
-      }}>{confirmLabel}</button>
-    </div>
   );
 }

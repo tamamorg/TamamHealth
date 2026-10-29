@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import type { AuditLogDoc, RiskResolutionDoc } from '@/lib/db-types';
 import { FilterSelect } from '@/components/filters';
 import { X } from '@/components/icons/lucide';
@@ -457,26 +458,13 @@ function AuditEntryDialog({
     : undefined;
   return (
     <Modal onClose={onClose} width={640} labelledBy="audit-entry-title">
-      {/* `.modal-panel` keeps this whole surface on the flat card background —
-          it's on the global dialog rule's exclusion list. The title row below
-          is deliberately left OUT of that exclusion: it's the rule's intended
-          trigger, auto-painting a blue header band (see the "Modal internals"
-          block in globals.css) so this read-only dialog gets the design's
-          navy title bar without hand-rolling one here. Everything else
-          (chips, fields, actions) lives outside that row, on the white panel,
-          styled with the sadb-* tokens. */}
-      <div className="modal-panel" {...stopsClickPropagation}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 id="audit-entry-title" className="sadb-modal-title">{log.action}</h2>
-            {when && <p className="sadb-modal-sub">{when}</p>}
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} aria-label="Close">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex items-center flex-wrap gap-2" style={{ margin: '16px 0' }}>
+      {/* Clicks inside a portal still bubble through React to the row that
+          opened it; stop them here so the row does not re-open the entry. */}
+      <div style={{ display: 'contents' }} {...stopsClickPropagation}>
+      <DialogFrame>
+        <DialogHeader titleId="audit-entry-title" title={log.action} description={when} onClose={onClose} />
+        <DialogBody>
+        <div className="flex items-center flex-wrap gap-2" style={{ margin: '0 0 16px' }}>
           {log.success ? <SadbChip tone="green">Success</SadbChip> : <SadbChip tone="red">Failure</SadbChip>}
           <SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()} RISK</SadbChip>
           {resolution && <SadbChip tone="green">RESOLVED</SadbChip>}
@@ -531,20 +519,30 @@ function AuditEntryDialog({
           </div>
         )}
 
-        {/* Next steps — where an investigation goes from one log line. */}
-        <div className="sadb-modal-actions" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', borderTop: '1px solid var(--border-light)', paddingTop: 14, marginTop: 0 }}>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onFilterUser}>Show this user&apos;s activity</button>
+        </DialogBody>
+        {/* Next steps — where an investigation goes from one log line. The
+            look-elsewhere links sit on the strip above; the decision itself
+            (resolve or reopen) takes the action bar. */}
+        <DialogFooter
+          start={(
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onFilterUser}>Show this user&apos;s activity</button>
+              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>View in User Management</button>}
+              {onOpenPatient && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPatient}>Open patient chart</button>}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onCopyJson}>Copy entry JSON</button>
+            </div>
+          )}
+        >
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
           {/* Only failures reach the Risk Center, so only failures can be
               resolved from here — offering it on a successful entry would
               imply a queue row that does not exist. */}
           {!log.success && (resolution
-            ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => onReopen()}>Reopen risk</button>
-            : <button type="button" className="btn btn-primary btn-sm" onClick={() => onResolve(noteDraft)}>Mark resolved</button>
+            ? <button type="button" className="btn btn-primary" onClick={() => onReopen()}>Reopen risk</button>
+            : <button type="button" className="btn btn-primary" onClick={() => onResolve(noteDraft)}>Mark resolved</button>
           )}
-          {onOpenUser && <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenUser}>View in User Management</button>}
-          {onOpenPatient && <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPatient}>Open patient chart</button>}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onCopyJson}>Copy entry JSON</button>
-        </div>
+        </DialogFooter>
+      </DialogFrame>
       </div>
     </Modal>
   );

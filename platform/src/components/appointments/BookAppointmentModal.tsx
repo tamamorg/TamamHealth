@@ -24,6 +24,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PortalModal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import AppointmentStatusSelect from '@/components/appointments/AppointmentStatusSelect';
 import WeekSlotGrid, { type GridProvider } from '@/components/booking/WeekSlotGrid';
 import BookingSummaryHeader, { BookingStepDots } from '@/components/booking/BookingSummaryHeader';
@@ -452,16 +453,31 @@ export default function BookAppointmentModal({
   };
 
   if (!canBookAppointments) {
-    const denied = (
-      <div className="modal-panel" role="alert" style={{ padding: 24, width: '100%' }}>
-        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>Booking not available for your role</h2>
-        <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>
-          Clinical and front desk staff book appointments; the front desk then edits and confirms them. Your role can view visits already assigned to you.
-        </p>
-      </div>
+    const deniedTitle = 'Booking not available for your role';
+    const deniedBody = 'Clinical and front desk staff book appointments; the front desk then edits and confirms them. Your role can view visits already assigned to you.';
+    if (presentation === 'page') {
+      return (
+        <div className="modal-panel" role="alert" style={{ padding: 24, width: '100%' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>{deniedTitle}</h2>
+          <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>{deniedBody}</p>
+        </div>
+      );
+    }
+    return (
+      <PortalModal onClose={onClose} size="sm" labelledBy="booking-denied-title" describedBy="booking-denied-desc">
+        <DialogFrame>
+          <DialogHeader titleId="booking-denied-title" title={deniedTitle} onClose={onClose} />
+          <DialogBody tight>
+            <p id="booking-denied-desc" role="alert">{deniedBody}</p>
+          </DialogBody>
+          <DialogFooter>
+            <button type="button" className="btn btn-secondary" onClick={onClose} data-modal-initial-focus>
+              {t('action.close')}
+            </button>
+          </DialogFooter>
+        </DialogFrame>
+      </PortalModal>
     );
-    if (presentation === 'page') return denied;
-    return <PortalModal onClose={onClose} width={560}>{denied}</PortalModal>;
   }
 
   const panel = (
