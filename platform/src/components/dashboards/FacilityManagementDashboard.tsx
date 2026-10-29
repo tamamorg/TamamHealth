@@ -45,7 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
-  Loader2, X, Maximize2,} from '@/components/icons/lucide';
+  Loader2,} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -55,6 +55,7 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { censusFor } from '@/lib/services/facility-census';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import {
   SadbPage, SadbCard, SadbKpiTile, SadbKvRow,
   SadbGridList, SadbGridRow, SadbHeadLink, SadbSearch, SadbChip,
@@ -173,31 +174,26 @@ function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
   const titleId = 'facility-metric-preview-title';
   return (
     <Modal onClose={onClose} width={460} labelledBy={titleId}>
-      <div className="sadb-modal">
-        <div className="flex items-start justify-between gap-4">
-          <div className="sadb-modal-copy" style={{ marginBottom: 0 }}>
-            <p className="sadb-card-meta">Facility overview</p>
-            <h2 id={titleId} className="sadb-modal-title mt-1">{metric.label}</h2>
-          </div>
-          {/* Expand and close, once each. This card used to offer both again in
-              a footer row, so two buttons at the bottom restated two buttons at
-              the top and the reader had to compare them to be sure. */}
-          <span className="flex items-center gap-1 flex-shrink-0">
-            <button type="button" className="p-2 rounded-lg" onClick={onOpen} aria-label="Open full page" title="Open full page" data-action="preview-expand">
-              <Maximize2 className="w-4 h-4" />
-            </button>
-            <button type="button" className="p-2 rounded-lg" onClick={onClose} aria-label="Close preview">
-              <X className="w-4 h-4" />
-            </button>
-          </span>
-        </div>
-        <div className="py-5">
+      <DialogFrame>
+        {/* Expand and close, once each, in the head. This card used to offer
+            both again in a footer row, so two buttons at the bottom restated
+            two buttons at the top and the reader had to compare them. */}
+        <DialogHeader
+          titleId={titleId}
+          title={metric.label}
+          description="Facility overview"
+          onClose={onClose}
+          closeLabel="Close preview"
+          onExpand={onOpen}
+          expandLabel="Open full page"
+        />
+        <DialogBody>
           <p className="sadb-kpi-value" style={{ fontSize: 30 }}>{metric.value}</p>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
             This is the current scope-visible total. Open the full page to review and manage the underlying records.
           </p>
-        </div>
-      </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

@@ -1280,7 +1280,6 @@ svg.lucide:not([style*="color"]) {
 :is(
   .cn-btn-primary,
   .cn-btn-save,
-  .cn-btn.cn-consent-yes,
   .cn-segmented button[aria-pressed='true'],
   .cn-dx-acuity button[aria-pressed='true'],
   .labord-btn--primary,
@@ -17947,64 +17946,16 @@ textarea.ehr-handoff-input {
   overflow: hidden;
 }
 
-.popup-select-head {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 32px;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.popup-select-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--accent-text);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.popup-select-title {
-  text-align: center;
-  min-width: 0;
-}
-
-.popup-select-title strong {
-  display: block;
-  color: var(--text-strong);
-  font-size: 14px;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.popup-select-title span {
-  display: block;
-  margin-top: 1px;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-weight: 600;
-}
-
-.popup-select-close {
-  justify-self: end;
-  display: inline-flex;
-  padding: 6px;
-  border-radius: 8px;
-  background: var(--overlay-subtle);
-  color: var(--text-muted);
-}
-
 .popup-select-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 10px 14px 0;
+  margin: 0 24px;
   padding: 0 10px;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border-strong, var(--border-light));
+  border-radius: 0;
+  background: var(--bg-card-solid);
   color: var(--text-muted);
 }
 
@@ -18021,7 +17972,7 @@ textarea.ehr-handoff-input {
   /* Exactly ten rows visible before scrolling. */
   max-height: calc(10 * 44px);
   overflow-y: auto;
-  padding: 10px 8px 12px;
+  padding: 8px 0 12px;
 }
 
 .popup-select-row {
@@ -18031,11 +17982,11 @@ textarea.ehr-handoff-input {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 0 12px;
-  border-radius: 10px;
+  padding: 0 24px;
+  border-radius: 0;
   color: var(--text-strong);
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
   text-align: start;
 }
 
@@ -35383,6 +35334,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 
 .tm-dialog__head--brand .tm-dialog__ctl,
 .tm-dialog__ctl { color: var(--text-primary); border-radius: 0; width: 44px; height: 44px; }
+.tm-dialog__ctl:disabled { color: var(--text-muted); opacity: 0.4; cursor: default; background: transparent; }
+/* A position readout beside the head controls ("3 / 12" while paging records). */
+.tm-dialog__count { align-self: center; padding-inline: 8px; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 .tm-dialog__body {
   padding: 4px 24px 40px;

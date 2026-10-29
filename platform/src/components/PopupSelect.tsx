@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Search, X } from '@/components/icons/lucide';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import { Check, ChevronDown, ChevronRight, Search } from '@/components/icons/lucide';
 
 export type PopupSelectOption = { value: string; label: string };
 export type PopupSelectGroup = { label: string; options: PopupSelectOption[] };
@@ -39,6 +40,7 @@ export default function PopupSelect({
   compact?: boolean;
   triggerStyle?: React.CSSProperties;
 }) {
+  const titleId = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeGroup, setActiveGroup] = useState<PopupSelectGroup | null>(null);
@@ -86,25 +88,18 @@ export default function PopupSelect({
       </button>
 
       {open && (
-        <Modal onClose={close} width={440}>
-          <div className="modal-content card-elevated popup-select-panel" style={{ width: '100%' }}>
-            <div className="popup-select-head modal-headband">
-              {activeGroup ? (
-                <button type="button" className="popup-select-back" onClick={() => { setActiveGroup(null); setQuery(''); }}>
-                  <ChevronLeft className="w-4 h-4" /> Back
-                </button>
-              ) : <span />}
-              <div className="popup-select-title">
-                <strong>{activeGroup ? activeGroup.label : label}</strong>
-                {stepCount > 1 && (
-                  <span>Step {stepIndex} of {stepCount} · {stepIndex === 1 ? 'Choose a category' : 'Choose an option'}</span>
-                )}
-              </div>
-              <button type="button" className="popup-select-close" onClick={close} aria-label="Close">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+        <Modal onClose={close} width={440} labelledBy={titleId}>
+          <DialogFrame className="popup-select-panel">
+            <DialogHeader
+              titleId={titleId}
+              title={activeGroup ? activeGroup.label : label}
+              description={stepCount > 1
+                ? <>Step {stepIndex} of {stepCount} · {stepIndex === 1 ? 'Choose a category' : 'Choose an option'}</>
+                : undefined}
+              onBack={activeGroup ? () => { setActiveGroup(null); setQuery(''); } : undefined}
+              onClose={close}
+            />
+            <DialogBody flush>
             {showSearch && (
               <div className="popup-select-search">
                 <Search className="w-4 h-4" aria-hidden />
@@ -144,7 +139,8 @@ export default function PopupSelect({
                 <p className="popup-select-empty">No matches.</p>
               )}
             </div>
-          </div>
+            </DialogBody>
+          </DialogFrame>
         </Modal>
       )}
     </>

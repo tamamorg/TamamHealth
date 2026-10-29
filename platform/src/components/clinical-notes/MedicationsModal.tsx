@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Info, Plus, X } from '@/components/icons/lucide';
 import PrescribeModal from './prescribe/PrescribeModal';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useToast } from '@/components/Toast';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -518,47 +519,47 @@ export default function MedicationsModal({
       {/* Consent question as its own dialog on top of the medications one.
           Yes/No answer directly — no radio-then-save two-step. */}
       {consentPromptOpen && (
-        <Modal onClose={() => setConsentPromptOpen(false)} width={520} labelledBy="cn-consent-title">
-          {/* `modal-panel` is load-bearing: it is one of the surface classes the
-              global auto-blue-header rule excludes — without it this dialog
-              (headings + buttons only) matches as one giant title bar and
-              paints blue end to end. */}
-          <div className="cn-consent-pop modal-panel" {...stopsClickPropagation}>
-            <div className="cn-meds-header modal-no-headband">
-              <h2 className="cn-meds-title" id="cn-consent-title">Obtain Consent from Patient</h2>
-              <button type="button" className="cn-meds-close" onClick={() => setConsentPromptOpen(false)} aria-label="Close consent">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="cn-consent-pop-body">
-              <p>
-                You can view medication history retrieved from the TamamHealth shared record for
-                this patient. You must obtain consent before viewing this information.
-              </p>
-              <p>
-                Disclaimer: Certain information may not be available or accurate in this report,
-                including medications the patient asked not to be disclosed, over-the-counter
-                medicines, or records from facilities outside the network. The provider should
-                independently verify medication history with the patient.
-              </p>
-              <p className="cn-consent-question">
-                Does the patient consent to viewing their medication history?
-              </p>
-              {consent && (
-                <p className="cn-consent-note">
-                  Last answer: consent {consent.granted ? 'granted' : 'declined'} — recorded by{' '}
-                  {consent.byName || 'staff'} on {shortDate(consent.at)}.
+        <Modal onClose={() => setConsentPromptOpen(false)} size="sm" labelledBy="cn-consent-title">
+          {/* Clicks still bubble through the portal to the medications dialog
+              underneath; keep them here. */}
+          <div style={{ display: 'contents' }} {...stopsClickPropagation}>
+            <DialogFrame busy={busy}>
+              <DialogHeader
+                titleId="cn-consent-title"
+                title="Obtain Consent from Patient"
+                onClose={() => setConsentPromptOpen(false)}
+                closeLabel="Close consent"
+              />
+              <DialogBody className="cn-consent-pop-body">
+                <p>
+                  You can view medication history retrieved from the TamamHealth shared record for
+                  this patient. You must obtain consent before viewing this information.
                 </p>
-              )}
-            </div>
-            <div className="cn-consent-pop-actions">
-              <button type="button" className="cn-btn" onClick={() => answerConsent(false)} disabled={busy}>
-                No — declined
-              </button>
-              <button type="button" className="cn-btn cn-consent-yes" onClick={() => answerConsent(true)} disabled={busy}>
-                <Check size={13} /> Yes — consent given
-              </button>
-            </div>
+                <p>
+                  Disclaimer: Certain information may not be available or accurate in this report,
+                  including medications the patient asked not to be disclosed, over-the-counter
+                  medicines, or records from facilities outside the network. The provider should
+                  independently verify medication history with the patient.
+                </p>
+                <p className="cn-consent-question">
+                  Does the patient consent to viewing their medication history?
+                </p>
+                {consent && (
+                  <p className="cn-consent-note">
+                    Last answer: consent {consent.granted ? 'granted' : 'declined'} — recorded by{' '}
+                    {consent.byName || 'staff'} on {shortDate(consent.at)}.
+                  </p>
+                )}
+              </DialogBody>
+              <DialogFooter>
+                <button type="button" className="btn btn-secondary" onClick={() => answerConsent(false)} disabled={busy}>
+                  No — declined
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => answerConsent(true)} disabled={busy}>
+                  Yes — consent given <Check aria-hidden="true" />
+                </button>
+              </DialogFooter>
+            </DialogFrame>
           </div>
         </Modal>
       )}
