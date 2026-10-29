@@ -147,12 +147,31 @@ export type EhrCareDashboardRow = {
   detailLabel?: string;
   detail?: ReactNode;
   popupDetail?: ReactNode;
+  /** Skip the default field panel. Every one of its fields repeats a column
+   *  the row already shows, so a row with nothing more to say opens straight
+   *  to its actions. */
+  hideDetailFields?: boolean;
   date?: string;
   /** Which "Day statistics" series this row belongs to — index into the
    *  dashboard's `chartSeriesNames`. Omit and the rail infers it from
    *  `statusTone` (done → second series, everything else → first). */
   chartSeries?: 0 | 1;
 };
+
+/** The status pill's tint class for a row tone. Exported so an order list
+ *  inside a row's panel tints its pills the same way the row does. */
+export function statusToneClass(tone: EhrCareDashboardRow['statusTone']): string {
+  return tone === 'done' ? 'status-completed'
+    : tone === 'active' ? 'status-checked-in'
+    : tone === 'ready' ? 'status-confirmed'
+    : tone === 'danger' ? 'status-no-show'
+    : tone === 'warning' ? 'status-attention'
+    // 'scheduled' used to fall through to no class, so a booked row was the
+    // one pill in the list with no tint — the Scheduled tab's picker looked
+    // unlike every other tab's.
+    : tone === 'scheduled' ? 'status-scheduled'
+    : '';
+}
 
 /** Rows from a handful of consumers (front desk, nurse) carry a real triage
  *  acuity code on `priority`; everyone else uses `priority` as a free-text
@@ -965,16 +984,7 @@ export default function EhrCareDashboard({
                     // a critical lab result could carry the ladder's "Checked
                     // In" text in the order's own red danger colour.
                     const effectiveStatusTone = ladderOwnsRow ? APPOINTMENT_STATUS_TONES[visit!.status] : row.statusTone;
-                    const statusPillClass = effectiveStatusTone === 'done' ? 'status-completed'
-                      : effectiveStatusTone === 'active' ? 'status-checked-in'
-                      : effectiveStatusTone === 'ready' ? 'status-confirmed'
-                      : effectiveStatusTone === 'danger' ? 'status-no-show'
-                      : effectiveStatusTone === 'warning' ? 'status-attention'
-                      // 'scheduled' used to fall through to no class, so a booked
-                      // row was the one pill in the list with no tint — the
-                      // Scheduled tab's picker looked unlike every other tab's.
-                      : effectiveStatusTone === 'scheduled' ? 'status-scheduled'
-                      : '';
+                    const statusPillClass = statusToneClass(effectiveStatusTone);
                     // Under-pill cue: acuity when known, else the countdown.
                     const cue = priorityCode
                       ? PRIORITY_META[priorityCode].label
@@ -1272,7 +1282,7 @@ export function EhrRowDetail({
         <RowCollapseContext.Provider value={onCollapse}>
           <div className="ehr-row-detail__custom">{row.popupDetail}</div>
         </RowCollapseContext.Provider>
-      ) : (
+      ) : row.hideDetailFields ? null : (
         <div className="ehr-row-detail__body">
           {fields.map(item => (
             <div className="appointment-detail-row" key={item.label}>

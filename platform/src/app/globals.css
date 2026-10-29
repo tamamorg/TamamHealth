@@ -25134,6 +25134,48 @@ table.patient-data-table.patient-data-table {
   border-bottom: 0;
 }
 
+/* A patient's orders inside their one queue row (EhrPatientOrderList): one
+   hairline-ruled line per order — what it is, its own status, its own action. */
+.ehr-order-list {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ehr-order-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.ehr-order-list__item:last-child { border-bottom: 0; }
+.ehr-order-list__main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.ehr-order-list__main > strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.ehr-order-list__main > span {
+  margin-inline-start: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ehr-order-list__main > p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ehr-order-list__status,
+.ehr-order-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* With the underline gone, the facts line needs no gap below it either. */
 .ehr-row-detail__custom > .ehr-row-detail__body {
   row-gap: 6px;
