@@ -105,3 +105,10 @@ body .tamam-root .tamam-table--documents th:nth-child(5) { width: 18%; }
    (an empty menu renders no ⋮, so the `:has(trigger)` rule above cannot see
    it) — otherwise a fixed table hands it a full equal share of empty space. */
 body .tamam-root table thead th.tamam-col-actions { width: 72px; text-align: center; }
+
+/* A wide docked workspace (the note editor, Lab orders, Dispense) squeezes the
+   chart column, and a fixed-layout table then broke its words a letter per
+   line (Results, Medications). Below a readable width the table keeps that width and its section
+   scrolls sideways instead. */
+.tamam-root .tamam-section-body > .tamam-table { min-width: 560px; }
+.tamam-root .tamam-section-body:has(> .tamam-table) { overflow-x: auto; }
