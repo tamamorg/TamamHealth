@@ -34,6 +34,11 @@ import {
   type PharmacyWorkflowStepKey,
 } from './pharmacy-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
+import { paymentHoldFor } from '@/lib/pharmacy-workflow';
+import { formatMoney } from '@/lib/format-utils';
+
+/** A stop the pharmacist can act on, shown as written (see describeError). */
+const dispenseStop = (message: string) => Object.assign(new Error(message), { name: 'DispenseError' });
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface ReviewDraft {
@@ -240,6 +245,21 @@ export function usePharmacyWorkflow(
     if (dispenseDraft.quantity <= 0) throw new Error('rxFlow.errQuantity');
     if (short && !dispenseDraft.allowPartial) throw new Error('rxFlow.errShortStock');
     if (needsWitness && !dispenseDraft.witnessId) throw new Error('rxFlow.errWitness');
+    // Payment before dispensing, as the pharmacy dashboard enforced it before
+    // the station rewrite dropped that page (rule: paymentHoldFor — Tier 1 is
+    // never held, an unread balance is never treated as paid).
+    let balance: number | null = null;
+    try {
+      if (scope) {
+        const { getPatientBalance } = await import('@/lib/services/ledger-service');
+        balance = await getPatientBalance(rx.patientId, scope);
+      }
+    } catch { balance = null; }
+    const hold = paymentHoldFor(rx, balance);
+    if (hold === 'unknown') throw dispenseStop(t('msg.sBalanceCouldNotBe', { patientName: rx.patientName }));
+    if (hold === 'due') {
+      throw dispenseStop(t('rxFlow.errBalanceDue', { medication: rx.medication, amount: formatMoney(balance ?? 0), patientName: rx.patientName }));
+    }
     // The transaction throws on a refused dispense (stock gate, missing
     // witness, unauthorised actor) — there is no failure return to inspect,
     // and `run` turns the throw into the panel's error line.
@@ -258,7 +278,7 @@ export function usePharmacyWorkflow(
       note: dispenseDraft.note.trim() || undefined,
     });
     setStep('counsel');
-  }), [currentUser, dispense, dispenseDraft, needsWitness, rx, run, short]);
+  }), [currentUser, dispense, dispenseDraft, needsWitness, rx, run, scope, short, t]);
 
   /** Record that the shelf could not cover it — the script stays active. */
   const recordStockOut = useCallback(() => run(async () => {

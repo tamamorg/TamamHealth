@@ -29,7 +29,6 @@ import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
-import { apiFetch } from '@/lib/api-fetch';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
@@ -41,10 +40,11 @@ import {
 } from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
+import { useOpenConflicts } from '@/lib/hooks/useOpenConflicts';
 import { Maximize2 } from '@/components/icons/lucide';
 import { useNow } from '@/lib/hooks/useNow';
 import type {
-  AuditLogDoc, ConflictQueueDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
+  AuditLogDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
@@ -111,8 +111,9 @@ export default function AdminDashboardPage() {
   const [syncStats, setSyncStats] = useState({ total: 0, pending: 0, synced: 0, failed: 0, oldestPending: undefined as string | undefined });
   /* The conflict documents, not just their count: the risk queue is derived
      from the same rows the Risk Center derives, and a count cannot be turned
-     back into rows. */
-  const [conflicts, setConflicts] = useState<ConflictQueueDoc[]>([]);
+     back into rows. Both screens read this through one shared hook, so a feed
+     hiccup can no longer make them disagree — see useOpenConflicts. */
+  const { conflicts, status: conflictStatus } = useOpenConflicts();
   const [pendingSyncEvents, setPendingSyncEvents] = useState<SyncEventDoc[]>([]);
   const [riskResolutions, setRiskResolutions] = useState<RiskResolutionDoc[]>([]);
   const [dhis2, setDhis2] = useState<{ configured: boolean; host: string; lastPush?: string }>({ configured: false, host: 'Not configured' });
@@ -165,17 +166,6 @@ export default function AdminDashboardPage() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
-
-    (async () => {
-      try {
-        const res = await apiFetch('/api/admin/conflicts?status=pending');
-        if (res.ok) {
-          const data = await res.json();
-          const list = Array.isArray(data.conflicts) ? data.conflicts : Array.isArray(data) ? data : [];
-          if (!cancelled) setConflicts(list as ConflictQueueDoc[]);
-        }
-      } catch { /* offline — conflicts stay empty */ }
     })();
 
     (async () => {
@@ -422,7 +412,12 @@ export default function AdminDashboardPage() {
               <div className="sadb-readiness-signals">
                 <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => router.push('/admin/risk')}>
                   <b>{openRisks.length ? `${openRisks.length} open risk${openRisks.length === 1 ? '' : 's'}` : 'No open risks'}</b>
-                  <span>{failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days</span>
+                  {/* When the conflict feed didn't load the count is understated,
+                      so say so rather than present it as a clean platform. */}
+                  <span>
+                    {failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days
+                    {conflictStatus === 'error' ? ' · conflict data unavailable' : ''}
+                  </span>
                 </button>
                 <div className={`sadb-signal ${TONE_SIGNAL[syncTone]}`}>
                   <b>Sync health {syncRate}%</b>

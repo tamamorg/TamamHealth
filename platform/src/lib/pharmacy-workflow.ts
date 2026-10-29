@@ -1,5 +1,6 @@
 import type { PrescriptionStatus } from './clinical-flow/order-lifecycles';
 import type { PrescriptionDoc } from './db-types';
+import { isTier1 } from './clinical-flow/medication-tiers';
 
 export function pharmacyStage(rx: Pick<PrescriptionDoc, 'orderStatus' | 'status'>): PrescriptionStatus {
   // Mirrors effectivePrescriptionStatus in prescription-service.ts: `status`
@@ -106,6 +107,23 @@ export function holdsVisitAtPharmacy(rx: Pick<PrescriptionDoc, 'status' | 'fulfi
 
 export function isFinanciallyCleared(balance?: number): boolean {
   return (balance ?? 0) <= 0;
+}
+
+/**
+ * Whether a dispense must wait for payment: `'due'` when money is owed,
+ * `'unknown'` when the balance could not be read (`null` — fail closed, an
+ * unread balance is never treated as paid), or `null` to go ahead.
+ *
+ * A life-sustaining (Tier 1) medicine is never held: the Tier-1 rule outranks
+ * payment status outright, and the balance still shows at checkout.
+ */
+export function paymentHoldFor(
+  rx: Pick<PrescriptionDoc, 'medication' | 'criticalityTier'>,
+  balance: number | null,
+): 'due' | 'unknown' | null {
+  if (isTier1(rx)) return null;
+  if (balance === null) return 'unknown';
+  return isFinanciallyCleared(balance) ? null : 'due';
 }
 
 export function isActivePharmacyStage(stage: PrescriptionStatus): boolean {

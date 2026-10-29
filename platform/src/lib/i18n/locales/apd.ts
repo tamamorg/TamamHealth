@@ -9078,6 +9078,10 @@ const apd: TranslationMap = {
   'pharmacyHome.criticalStock': 'مخزون حرج',
   'pharmacyHome.expired': 'منتهي',
   'pharmacyHome.inventory': 'المخزن',
+  'rxFlow.errBalanceDue': "{{medication}} ما اتصرف: في {{amount}} مطلوب. ودّي {{patientName}} للكاشير، وبعد يدفع اصرف الدوا. الأدوية المنقذة للحياة (الدرجة 1) ما بتتوقف عشان الدفع.",
+  'riskCenter.conflictsUnavailable': 'ما قدر يحمّل بيانات التعارضات، عشان كدا عدد المخاطر المفتوحة ممكن يكون أقل من الحقيقي.',
+  'riskCenter.retry': 'حاول تاني',
+  'riskCenter.bulkCapped': 'صفّي القائمة لـ {{max}} إشارة أو أقل عشان تحلّها مع بعض.',
 };
 
 export default apd;

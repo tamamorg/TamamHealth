@@ -9089,6 +9089,10 @@ const en: TranslationMap = {
   'pharmacyHome.criticalStock': 'Critical stock',
   'pharmacyHome.expired': 'Expired',
   'pharmacyHome.inventory': 'Inventory',
+  'rxFlow.errBalanceDue': "{{medication}} not dispensed: {{amount}} is due. Send {{patientName}} to the cashier, then dispense once it is paid. Life-sustaining (Tier 1) medicines are not held for payment.",
+  'riskCenter.conflictsUnavailable': 'Conflict data could not be loaded, so the open risk count may be understated.',
+  'riskCenter.retry': 'Retry',
+  'riskCenter.bulkCapped': 'Filter to {{max}} signals or fewer to resolve them together.',
 };
 
 export default en;
