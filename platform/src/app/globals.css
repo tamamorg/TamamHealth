@@ -23233,25 +23233,16 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 }
 
 /* Referrals on the registry card grid: four columns — the date rides under
-   the facility, so there is no Date track to hold. */
-.referrals-list-surface .appointment-card-head,
-.referrals-list-surface .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
+   the facility, so there is no Date track to hold. Read by the shared
+   header/row template (see "Worklist rows: one set of column lines"). */
+.referrals-list-surface { --list-cols: repeat(3, minmax(0, 1fr)) 176px; }
 
 /* Laboratory and the pharmacy queue on the registry card grid: five data
    columns; the lab additionally grows a sixth Action track for the roles
    that work the bench. */
-.lab-list-surface .appointment-card-head,
-.lab-list-surface .appointment-card-row.ehr-appointment-row,
-.pharm-list-surface .appointment-card-head,
-.pharm-list-surface .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-.lab-list-surface.has-actions .appointment-card-head,
-.lab-list-surface.has-actions .appointment-card-row.ehr-appointment-row {
-  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 0.7fr);
-}
+.lab-list-surface,
+.pharm-list-surface { --list-cols: repeat(4, minmax(0, 1fr)) 176px; }
+.lab-list-surface.has-actions { --list-cols: repeat(4, minmax(0, 1fr)) 176px minmax(72px, 0.5fr); }
 
 /* The technician's configured turnaround target is operational, not merely a
    preference stored by Settings. Mark overdue open orders on the worklist and
@@ -36023,10 +36014,18 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
    around it. A fixed status track keeps every row on the header's tracks;
    a pill longer than it wraps inside the track. */
 @media (min-width: 1101px) {
-  .appointment-card-head,
-  .appointment-card-row.ehr-appointment-row,
-  .appointment-card-flow .appointment-card-row.ehr-appointment-row {
-    grid-template-columns: repeat(4, minmax(140px, 1fr)) 176px;
+  /* The header and every row read ONE template at ONE specificity — the
+     :is() gives both the same weight, so no later or narrower rule can move
+     one without the other. (They used to diverge: this rule reached rows at
+     0,3,0 but the header at 0,1,0, so the header kept a content-sized last
+     track and every label drifted right of its column; it also overrode the
+     lab / pharmacy / referrals row templates by source order, leaving those
+     headers on 5 or 4 tracks over rows on another count.) Each list surface
+     sets its own column count through --list-cols. */
+  .appointment-card-flow :is(.appointment-card-head, .appointment-card-row.ehr-appointment-row) {
+    grid-template-columns: var(--list-cols, repeat(4, minmax(140px, 1fr)) 176px);
   }
   .appointment-card-row.ehr-appointment-row > :last-child { min-width: 0; justify-self: end; text-align: end; }
+  /* The status header sits over its right-aligned pills. */
+  .appointment-card-flow .appointment-card-head > :last-child { justify-self: end; text-align: end; }
 }
