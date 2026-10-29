@@ -1,6 +1,6 @@
 /* The chart's Visits tab (VisitsTable), O3 shape in Tamam ink: a grey head
-   band, one row per visit, diagnoses as pale-blue chips, edit and print as
-   quiet icon buttons at the row's end. `vt-` namespace. */
+   band, one row per visit, diagnoses as pale-blue chips, the row's actions in
+   its ⋮ like every other chart list. `vt-` namespace. */
 
 .vt-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-light); margin-bottom: 16px; }
 .vt-tabs button {
@@ -69,7 +69,7 @@
 .vt-row.is-open td { background: var(--bg-app); }
 
 .vt-col-toggle { width: 56px; padding-inline: 8px !important; }
-.vt-col-actions { width: 112px; }
+.vt-col-actions { width: 72px; text-align: center !important; }
 .vt-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .vt-toggle,
@@ -90,8 +90,6 @@
 .vt-icon svg { width: 18px; height: 18px; color: currentColor !important; stroke: currentColor !important; }
 .vt-toggle:hover, .vt-icon:hover { background: color-mix(in srgb, var(--color-slate-400) 14%, transparent); }
 .vt-toggle:focus-visible, .vt-icon:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
-
-.vt-actions { display: flex; justify-content: flex-end; gap: 4px; }
 
 .vt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .vt-chip {

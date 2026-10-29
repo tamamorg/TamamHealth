@@ -891,35 +891,9 @@ export default function FrontDeskDashboardPage() {
     }
   }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope, t]);
 
-  // ── Appointment check-in: mark the patient as arrived → joins the queue ──
-  // Also creates/joins the visit encounter (arrivalChannel: 'appointment',
-  // appointmentId threaded through, attendanceType captured) so this arrival
-  // door produces the same visit thread walk-ins get via checkInPatient —
-  // see docs/EMR-FIELD-AUDIT-2026-07.md §3. Best-effort: the appointment
-  // status flip is what actually gets the patient into the live queue, so an
-  // encounter-creation failure doesn't block check-in.
-  const handleCheckIn = useCallback(async (appt: AppointmentDoc, attendanceType: 'new' | 'repeat') => {
-    try {
-      const { checkInAppointment } = await import('@/lib/services/check-in-service');
-      await checkInAppointment({
-        appointmentId: appt._id,
-        patientId: appt.patientId,
-        patientName: appt.patientName,
-        facilityId: appt.facilityId || myHospitalId || '',
-        facilityName: appt.facilityName || currentUser?.hospitalName || '',
-        orgId: appt.orgId || currentUser?.orgId,
-        attendanceType,
-        actorId: currentUser?._id,
-        actorName: currentUser?.name,
-        actorRole: currentUser?.role,
-      });
-    } catch (error) {
-      showToast(describeError(error, t('frontDesk.patientCheckInFailed')), 'error');
-      return;
-    }
-    showToast(t('msg.checkedInAndAddedTo', { patientName: appt.patientName }), 'success');
-    setCheckInTarget(null);
-  }, [showToast, currentUser, myHospitalId, t]);
+  // ── Appointment check-in lives in CheckInModal: the shared Start a visit
+  //    form, with the booking pre-selected, which checks it in
+  //    (`checkInAppointment`) and stamps visit type, payer and punctuality. ──
 
   // ── Mark an appointment a no-show. Confirmed first: a mistaken no-show
   //    hides the patient from the arrivals list, so reception gets one beat to
@@ -1393,6 +1367,7 @@ export default function FrontDeskDashboardPage() {
             hospitalNumber: patient?.hospitalNumber,
             triageId: entry.id.startsWith('triage-') ? entry.sourceId : undefined,
             currentDoctorId: patient?.assignedDoctor,
+            stationAssignments: patient?.stationAssignments,
           }),
         });
       }
@@ -1583,6 +1558,7 @@ export default function FrontDeskDashboardPage() {
                   patientName: patientFullName(patient),
                   hospitalNumber: patient.hospitalNumber,
                   currentDoctorId: patient.assignedDoctor,
+                  stationAssignments: patient.stationAssignments,
                 }),
               },
             ]} />
@@ -2181,8 +2157,15 @@ export default function FrontDeskDashboardPage() {
         {checkInTarget && (
           <CheckInModal
             appt={checkInTarget}
+            currentUser={{
+              _id: currentUser?._id || '',
+              name: currentUser?.name || '',
+              role: currentUser?.role,
+              hospitalId: myHospitalId || checkInTarget.facilityId,
+              hospitalName: currentUser?.hospitalName || checkInTarget.facilityName,
+              orgId: currentUser?.orgId || checkInTarget.orgId,
+            }}
             onClose={() => setCheckInTarget(null)}
-            onCheckIn={handleCheckIn}
             onUndoCheckIn={handleUndoCheckIn}
             onViewPatient={(pid) => router.push(`/patients/${pid}`)}
           />

@@ -1,53 +1,59 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useId, useState } from 'react';
+import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
+import { DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import StartVisitPanel, { type StartVisitUser } from '@/components/ehr/chart/panels/StartVisitPanel';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Calendar, ClipboardList, MapPin, CheckCircle, ArrowRightLeft } from '@/components/icons/lucide';
 import { formatClockTime } from '@/lib/format-utils';
 import type { AppointmentDoc } from '@/lib/db-types';
 import { DetailRow } from '@/components/front-desk/DetailPanel';
 
-// ── Appointment check-in modal: confirm the patient has arrived; on check-in
-//    they're added to the live patient queue. ──
+// ── Appointment check-in. Not yet checked in: the shared Start a visit form
+//    with this booking chosen. Already in: the booking's detail, with Undo
+//    while it is still only checked in. ──
 export default function CheckInModal({
   appt,
+  currentUser,
   onClose,
-  onCheckIn,
   onUndoCheckIn,
   onViewPatient,
 }: {
   appt: AppointmentDoc;
+  currentUser: StartVisitUser;
   onClose: () => void;
-  onCheckIn: (appt: AppointmentDoc, attendanceType: 'new' | 'repeat') => Promise<void>;
   onUndoCheckIn: (appt: AppointmentDoc) => Promise<void>;
   onViewPatient: (patientId: string) => void;
 }) {
   const { t } = useTranslation();
-  const [checking, setChecking] = useState(false);
+  const titleId = useId();
   const [reversing, setReversing] = useState(false);
   const alreadyIn = appt.status === 'checked_in' || appt.status === 'in_progress' || appt.status === 'completed';
   // Only a plain check-in (not yet in consult / completed) can be cleanly
   // reversed back to scheduled without stepping over later workflow state.
   const canReverseCheckIn = appt.status === 'checked_in';
 
-  // Visit type (new vs re-attendance) — auto-derived from the patient's
-  // history when the modal opens; the clerk can override before confirming.
-  const [attendanceType, setAttendanceType] = useState<'new' | 'repeat'>('new');
-  const attendanceTouchedRef = useRef(false);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { deriveAttendanceType } = await import('@/lib/services/check-in-service');
-        const derived = await deriveAttendanceType(appt.patientId);
-        if (!cancelled && !attendanceTouchedRef.current) setAttendanceType(derived);
-      } catch {
-        if (!cancelled && !attendanceTouchedRef.current) setAttendanceType('new');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [appt.patientId]);
+  // Checking a booked patient in IS starting their visit: the same Start a
+  // visit form the chart uses, with this booking already chosen, so the desk
+  // answers visit type, billing and punctuality in one place.
+  if (!alreadyIn) {
+    return (
+      <Modal variant="slider" onClose={onClose} width={560} labelledBy={titleId}>
+        <DialogFrame>
+          <DialogHeader titleId={titleId} title={t('startVisit.title')} description={appt.patientName} onClose={onClose} />
+          <StartVisitPanel
+            patient={{ _id: appt.patientId, phone: appt.patientPhone }}
+            patientName={appt.patientName}
+            currentUser={currentUser}
+            appointmentId={appt._id}
+            onClose={onClose}
+          />
+        </DialogFrame>
+      </Modal>
+    );
+  }
 
   return (
     <FormSlider
@@ -76,17 +82,6 @@ export default function CheckInModal({
                 {reversing ? '…' : t('action.undo')}
               </button>
             )}
-            {!alreadyIn && (
-              <button
-                onClick={async () => { setChecking(true); try { await onCheckIn(appt, attendanceType); } finally { setChecking(false); } }}
-                disabled={checking}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--color-success)' }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                {checking ? t('frontDesk.checkingIn') : t('frontDesk.checkIn')}
-              </button>
-            )}
           </div>
       </>}
     >
@@ -98,37 +93,10 @@ export default function CheckInModal({
             <DetailRow icon={<ClipboardList className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />} label={t('frontDesk.colComplaint')} value={appt.reason || '—'} />
             <DetailRow icon={<MapPin className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />} label={t('frontDesk.department')} value={appt.department || '—'} />
           </div>
-          {!alreadyIn && (
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wider block mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                {t('frontDesk.visitType')}
-              </label>
-              <div className="flex gap-2">
-                {([['new', t('frontDesk.newVisit')], ['repeat', t('frontDesk.reAttendance')]] as const).map(([key, lbl]) => {
-                  const on = attendanceType === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => { attendanceTouchedRef.current = true; setAttendanceType(key); }}
-                      className="flex-1 py-2 rounded-lg text-[12px] font-semibold transition-all"
-                      style={on
-                        ? { background: 'var(--accent-light)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)' }
-                        : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
-                    >
-                      {lbl}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {alreadyIn && (
-            <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
-              <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-success)' }} />
-              <p className="text-[12px]" style={{ color: 'var(--text-primary)' }}>{t('frontDesk.alreadyInQueue')}</p>
-            </div>
-          )}
+          <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
+            <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-success)' }} />
+            <p className="text-[12px]" style={{ color: 'var(--text-primary)' }}>{t('frontDesk.alreadyInQueue')}</p>
+          </div>
         </div>
 
         {/* Footer */}

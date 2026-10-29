@@ -14,10 +14,10 @@ export const PHARMACY_STEPS: TourStep[] = [
   {
     id: 'queue',
     route: '/dashboard/pharmacy',
-    target: '[data-tour="station-queue"]',
+    target: '.ehr-appointment-list',
     placement: 'right',
-    title: 'The prescription queue',
-    body: 'Prescriptions arrive from consultations in priority order — life-sustaining tiers first, immediate-urgency floats up.',
+    title: 'Patients waiting for medicines',
+    body: 'One row per patient — their most pressing script, plus how many more. Scripts with a safety warning come first, then immediate ones, then life-sustaining tiers. Work opens the chart with the Dispense form up.',
   },
   {
     id: 'review-safety',
@@ -27,7 +27,7 @@ export const PHARMACY_STEPS: TourStep[] = [
     // that, so this stays narrative rather than pointing at an invented one.
     target: '',
     title: 'Dispensing safety gates',
-    body: 'Open an order in the queue and Dispense checks, in order: enough stock for the full course, drug interactions against the patient’s other active meds, and — for controlled drugs — a witness picker that writes the two-signature register entry before stock moves.',
+    body: 'In the chart’s Dispense form, the counter checks, in order: enough stock for the full course, drug interactions against the patient’s other active meds, and — for controlled drugs — a witness picker that writes the two-signature register entry before stock moves.',
   },
   {
     id: 'inventory',
@@ -54,11 +54,10 @@ export const PHARMACY_STEPS: TourStep[] = [
   {
     id: 'stock-alerts',
     route: '/dashboard/pharmacy',
-    target: '[data-tour="station-body"]',
-    preClickSelector: '[data-tour="pharmacy-stock-alerts-toggle"]',
-    placement: 'top',
-    title: 'Stock alerts at a glance',
-    body: 'Low, critical and expired lines surface here the moment they cross their reorder level — before a patient shows up needing the medicine that has already run out.',
+    target: '.ehr-right-rail',
+    placement: 'left',
+    title: 'Stock at a glance',
+    body: 'Low, critical and expired lines are counted in the Stock card on the right, the moment they cross their reorder level. Inventory in the header opens the full list.',
   },
   {
     id: 'controlled',
@@ -71,11 +70,10 @@ export const PHARMACY_STEPS: TourStep[] = [
   {
     id: 'analytics',
     route: '/dashboard/pharmacy',
-    target: '[data-tour="station-body"]',
-    preClickSelector: '[data-tour="pharmacy-analytics-toggle"]',
-    placement: 'top',
-    title: 'Dispensing & stock analytics',
-    body: 'Queue depth and average wait right now, the top movers dispensed over the last 14 days, and which items are on track to run out soonest.',
+    target: '.ehr-left-rail',
+    placement: 'right',
+    title: 'Your counter today',
+    body: 'The ring shows today’s scripts by lane — queued, in progress, dispensed — and the week chart prescribed against dispensed.',
   },
   searchStep('/dashboard/pharmacy'),
   messagingStep('/dashboard/pharmacy'),

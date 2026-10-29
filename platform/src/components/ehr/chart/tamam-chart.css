@@ -1285,19 +1285,20 @@
 /* Notes list column rhythm. Set on the header cells rather than a <col>,
    because the rule above forces every `col` to auto width. The note preview
    is the column that earns the slack; Status only needs its pill.
-   In the chart (5 columns): Type · Note · Author · Date · Status. */
-.tamam-root .tamam-table--notes th:nth-child(1) { width: 16%; }
-.tamam-root .tamam-table--notes th:nth-child(2) { width: 38%; }
-.tamam-root .tamam-table--notes th:nth-child(3) { width: 20%; }
+   In the chart: Type · Note · Author · Date · Status, then the fixed 72px
+   Actions column (chart-tables.css) — so these sum to 94%, not 100. */
+.tamam-root .tamam-table--notes th:nth-child(1) { width: 15%; }
+.tamam-root .tamam-table--notes th:nth-child(2) { width: 34%; }
+.tamam-root .tamam-table--notes th:nth-child(3) { width: 18%; }
 .tamam-root .tamam-table--notes th:nth-child(4) { width: 15%; }
-.tamam-root .tamam-table--notes th:nth-child(5) { width: 11%; }
+.tamam-root .tamam-table--notes th:nth-child(5) { width: 12%; }
 
-/* Cross-patient queue (6 columns) — the Patient column lands third, so the
-   rest shift one place along. */
-.tamam-root .tamam-table--notes-queue th:nth-child(1) { width: 13%; }
-.tamam-root .tamam-table--notes-queue th:nth-child(2) { width: 30%; }
-.tamam-root .tamam-table--notes-queue th:nth-child(3) { width: 16%; }
-.tamam-root .tamam-table--notes-queue th:nth-child(4) { width: 17%; }
+/* Cross-patient queue — the Patient column lands fourth, so Date and Status
+   shift one place along; Actions is again the fixed last column. */
+.tamam-root .tamam-table--notes-queue th:nth-child(1) { width: 12%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(2) { width: 28%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(3) { width: 15%; }
+.tamam-root .tamam-table--notes-queue th:nth-child(4) { width: 15%; }
 .tamam-root .tamam-table--notes-queue th:nth-child(5) { width: 13%; }
 .tamam-root .tamam-table--notes-queue th:nth-child(6) { width: 11%; }
 .tamam-root .tamam-table--fixed th,
@@ -2633,16 +2634,17 @@
    took a full seventh each while the reason — the only column with real prose
    — wrapped to four lines. Widths follow what each column actually holds. */
 .tamam-root .tamam-table--referrals { table-layout: fixed; }
+/* Seven data columns, then the fixed 72px Actions column — so 94%, not 100. */
 .tamam-root .tamam-table--referrals th:nth-child(1),
-.tamam-root .tamam-table--referrals td:nth-child(1) { width: 11%; }
+.tamam-root .tamam-table--referrals td:nth-child(1) { width: 10%; }
 .tamam-root .tamam-table--referrals th:nth-child(2),
-.tamam-root .tamam-table--referrals td:nth-child(2) { width: 19%; }
+.tamam-root .tamam-table--referrals td:nth-child(2) { width: 18%; }
 .tamam-root .tamam-table--referrals th:nth-child(3),
-.tamam-root .tamam-table--referrals td:nth-child(3) { width: 13%; }
+.tamam-root .tamam-table--referrals td:nth-child(3) { width: 12%; }
 .tamam-root .tamam-table--referrals th:nth-child(4),
-.tamam-root .tamam-table--referrals td:nth-child(4) { width: 26%; }
+.tamam-root .tamam-table--referrals td:nth-child(4) { width: 24%; }
 .tamam-root .tamam-table--referrals th:nth-child(5),
-.tamam-root .tamam-table--referrals td:nth-child(5) { width: 15%; }
+.tamam-root .tamam-table--referrals td:nth-child(5) { width: 14%; }
 .tamam-root .tamam-table--referrals th:nth-child(6),
 .tamam-root .tamam-table--referrals td:nth-child(6) { width: 8%; }
 .tamam-root .tamam-table--referrals th:nth-child(7),
@@ -2785,7 +2787,7 @@
    off at "Mother: diabetes, diagnosed in her…" has lost the part that matters.
    The last column holds the row's two buttons and is sized to fit them. */
 .tamam-root .tamam-table--history td { white-space: normal; vertical-align: top; }
-.tamam-root .tamam-table--history th:last-child { width: 132px; }
+.tamam-root .tamam-table--history th:last-child { width: 72px; }
 .tamam-root .tamam-table--history th:nth-last-child(2) { width: 20%; }
 .tamam-root .tamam-table--history-social th:first-child { width: 24%; }
 /* The "Problem list" / "Procedures" tag on a borrowed row doubles as the link

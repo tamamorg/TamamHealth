@@ -1172,7 +1172,7 @@ export default function RoleSettingsView() {
              credential hand-offs. Editing writes to the same draft the rest
              of Settings uses, so Save is the page's one save path. ── */}
       {acctOpen && (
-        <Modal variant="slider" onClose={closeAccountEditor} width={640} labelledBy="acct-modal-title">
+        <Modal onClose={closeAccountEditor} width={640} labelledBy="acct-modal-title">
           <div className="ehr-handoff-modal ehr-set-acct">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">
@@ -1258,7 +1258,7 @@ export default function RoleSettingsView() {
 
       {/* ── Change password popup ── */}
       {pwOpen && (
-        <Modal variant="slider" onClose={() => setPwOpen(false)} width={420} labelledBy="pw-modal-title">
+        <Modal onClose={() => setPwOpen(false)} width={420} labelledBy="pw-modal-title">
           <div className="ehr-handoff-modal">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">
@@ -1317,7 +1317,7 @@ export default function RoleSettingsView() {
 
       {/* ── Screen-lock PIN popup ── */}
       {pinOpen && (
-        <Modal variant="slider" onClose={() => setPinOpen(false)} width={420} labelledBy="pin-modal-title">
+        <Modal onClose={() => setPinOpen(false)} width={420} labelledBy="pin-modal-title">
           <div className="ehr-handoff-modal">
             <div className="ehr-handoff-head">
               <div className="ehr-handoff-head-title">

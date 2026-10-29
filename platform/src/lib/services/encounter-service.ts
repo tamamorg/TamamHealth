@@ -25,6 +25,7 @@ import { emitSyncEvent } from './sync-event-service';
 import type { DataScope } from './data-scope';
 import { filterByScope, orgOnlyScope } from './data-scope';
 import { appointmentStatusForEncounter, encounterVisitState, nonRegressingAppointmentStatus } from '../clinical-flow/visit-state';
+import type { VisitDetails } from '@/lib/visits/visit-details';
 
 /** Statuses where the clinician has handed off and is waiting on a parallel order. */
 export const RESUMABLE_STATUSES: EncounterStatus[] = [
@@ -443,6 +444,8 @@ export interface CreateArrivalEncounterInput {
   /** The scheduled appointment this arrival matched, when one existed. */
   appointmentId?: string;
   attendanceType?: 'new' | 'repeat';
+  /** Visit type, payer and punctuality from the check-in form. */
+  visit?: VisitDetails;
   /** Acting front-desk user, for the audit trail. */
   actorId?: string;
 }
@@ -494,6 +497,9 @@ export async function createArrivalEncounter(input: CreateArrivalEncounterInput)
     attendanceType: input.attendanceType,
     arrivalChannel: input.arrivalChannel,
     appointmentId: input.appointmentId,
+    ...(input.visit?.visitType ? { visitType: input.visit.visitType } : {}),
+    ...(input.visit?.visitBilling ? { visitBilling: input.visit.visitBilling } : {}),
+    ...(input.visit?.punctuality ? { punctuality: input.visit.punctuality } : {}),
   });
   const remainingHops: EncounterStatus[] = initialStatus === 'registered'
     ? ['arrived_at_facility', 'awaiting_next_station', 'awaiting_triage']

@@ -3,13 +3,14 @@
 /**
  * The chart's Visits tab, in the OpenMRS O3 shape: one row per visit (a day
  * the patient was seen) with its date, visit type and diagnoses — a "?" on a
- * provisional one — and, at the end of the row, edit (open that visit's note)
- * and print (the clinical Visit Summary). A row expands to what happened that
+ * provisional one — and, in the row's ⋮, open that visit's note, print the
+ * clinical Visit Summary, or show what happened that day. A row expands to what happened that
  * day. "All encounters" keeps the event-by-event timeline.
  */
 import { Fragment, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, Pencil, Printer } from '@/components/icons/lucide';
+import { ChevronDown } from '@/components/icons/lucide';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalVisitSummaryHtml, visitDiagnoses } from '@/lib/clinical-visit-summary';
@@ -96,7 +97,7 @@ export default function VisitsTable(props: VisitsTableProps) {
             <th>{t('visits.date')}</th>
             <th>{t('visits.visitType')}</th>
             <th>{t('visits.diagnoses')}</th>
-            <th className="vt-col-actions"><span className="sr-only">{t('chart.actions')}</span></th>
+            <th className="vt-col-actions tamam-col-actions">{t('chart.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -133,17 +134,16 @@ export default function VisitsTable(props: VisitsTableProps) {
                     </div>
                   </td>
                   <td className="vt-col-actions">
-                    <div className="vt-actions">
-                      {props.canViewClinical && note && (
-                        <button type="button" className="vt-icon" title={t('visits.editNote')} aria-label={t('visits.editNote')}
-                          onClick={() => router.push(`${pathname}?tab=history&note=${encodeURIComponent(note._id)}`)}>
-                          <Pencil aria-hidden />
-                        </button>
-                      )}
-                      <button type="button" className="vt-icon" title={t('visits.print')} aria-label={t('visits.print')} onClick={() => print(day)}>
-                        <Printer aria-hidden />
-                      </button>
-                    </div>
+                    <RowActionsMenu
+                      ariaLabel={t('visits.rowActions', { date: formatDate(day) })}
+                      actions={[
+                        ...(props.canViewClinical && note ? [
+                          { key: 'note', label: t('visits.editNote'), onClick: () => router.push(`${pathname}?tab=history&note=${encodeURIComponent(note._id)}`) },
+                        ] : []),
+                        { key: 'details', label: isOpen ? t('visits.collapse') : t('visits.expand'), onClick: () => toggle(day) },
+                        { key: 'print', label: t('visits.print'), onClick: () => print(day) },
+                      ]}
+                    />
                   </td>
                 </tr>
                 {isOpen && (

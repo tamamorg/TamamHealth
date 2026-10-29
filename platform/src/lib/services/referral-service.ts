@@ -150,8 +150,9 @@ async function notifySendingFacility(
       message = `Referral to ${referral.toHospital} (${referral.department}, ${referral.urgency}) has been completed`
         + ` — ${dispositionLabel}${outcome?.summary ? `: ${outcome.summary}` : ''}.`;
     } else {
-      const verb = status === 'received' ? 'received' : 'been seen at';
-      message = `Referral to ${referral.toHospital} (${referral.department}, ${referral.urgency}) has ${verb} the receiving facility.`;
+      // Same words as the status pills: Received, then Accepted.
+      const verb = status === 'received' ? 'received' : 'accepted';
+      message = `Referral to ${referral.toHospital} (${referral.department}, ${referral.urgency}) has been ${verb} by the receiving facility.`;
     }
     // The alert lands on the SENDING facility's patient record, which may be a
     // different org from the receiving staff member who triggered this, so the

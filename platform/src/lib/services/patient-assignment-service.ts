@@ -15,6 +15,8 @@
  * leaves the assignment standing rather than rolling it back.
  */
 import type { UserRole } from '../db-types';
+import type { StationAssignment, StationKey } from '@/data/mock';
+import { STATION_STAFF_ROLES } from './patient-assignment-roles';
 import { orgOnlyScope } from './data-scope';
 import { canAssignCareTeamRole, canAssignStaffAtFacility } from '../care-team-permissions';
 
@@ -269,6 +271,49 @@ export async function assignNurseToPatient(input: AssignNurseInput): Promise<voi
       throw error;
     }
   }
+}
+
+export interface AssignStationInput {
+  patientId: string;
+  station: StationKey;
+  /** Null clears the station's slot. */
+  staff: { id: string; name: string } | null;
+  actor?: AssignmentActor;
+  hospitalId?: string;
+  orgId?: string;
+  note?: string;
+}
+
+/**
+ * Route a patient to a named person at a service station — the lab tech,
+ * pharmacist, radiographer or nutritionist who will see them. The doctor and
+ * nurse slots are untouched: each station has its own entry under
+ * `stationAssignments`, and the station's dashboard lists the patients
+ * assigned to the signed-in staff member. Reception-only, same guards as a
+ * doctor assignment.
+ */
+export async function assignStationStaff(input: AssignStationInput): Promise<void> {
+  await assertCanAssign(input.actor, input.hospitalId, input.orgId);
+  if (input.staff) {
+    await assertAssignableStaff(input.staff.id, input.hospitalId, input.orgId, STATION_STAFF_ROLES[input.station]);
+  }
+  const { patient } = await resolveAndValidateTargets(input);
+  const next: Partial<Record<StationKey, StationAssignment>> = { ...(patient.stationAssignments || {}) };
+  if (input.staff) {
+    next[input.station] = {
+      staffId: input.staff.id,
+      staffName: input.staff.name,
+      assignedAt: new Date().toISOString(),
+      assignedBy: input.actor?.id,
+      assignedByName: input.actor?.name,
+      ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    };
+  } else {
+    delete next[input.station];
+  }
+  const { updatePatient } = await import('./patient-service');
+  const updated = await updatePatient(patient._id, { stationAssignments: next }, orgOnlyScope(input.orgId));
+  if (!updated) throw new Error('Patient record not updated. Try again.');
 }
 
 export interface ReconcileCareTeamInput {

@@ -21,6 +21,7 @@ import { toIsoDate } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './clinical-notes.css';
+import Select from '@/components/Select';
 
 export interface FollowUpModalResult {
   condition: string;
@@ -124,14 +125,14 @@ export default function FollowUpModal({
 
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
           <span className="cn-label" style={{ minWidth: 96 }}>Assigned to</span>
-          <select
+          <Select
             className="cn-input"
             style={{ flex: 1 }}
             value={assignedWorkerId}
             onChange={e => setAssignedWorkerId(e.target.value)}
           >
             {workers.filter(u => u.isActive).map(u => <option key={u._id} value={u._id}>{u.name || u.username}</option>)}
-          </select>
+          </Select>
         </label>
 
         <label className="cn-field" style={{ marginBottom: 4, width: '100%', alignItems: 'flex-start' }}>

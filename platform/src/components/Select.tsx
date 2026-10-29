@@ -377,11 +377,17 @@ export default function Select({
     setActiveIndex(i => (filtered.length === 0 ? 0 : Math.min(i, filtered.length - 1)));
   }, [filtered.length]);
 
+  // Keyed on `placed`, not just `open`: the menu mounts only once `place()` has
+  // set `pos`, in a layout effect that re-renders *after* this effect first
+  // runs. Keyed on `open` alone it fired with nothing mounted, focus stayed on
+  // whatever had it before, and typing, arrows and Enter never reached the
+  // popup — a searchable dropdown could only be worked with the mouse.
+  const placed = pos !== null;
   useEffect(() => {
-    if (!open) return;
+    if (!open || !placed) return;
     if (showSearch) searchRef.current?.focus();
     else menuRef.current?.focus();
-  }, [open, showSearch]);
+  }, [open, placed, showSearch]);
 
   useEffect(() => {
     if (!open) return;

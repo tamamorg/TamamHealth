@@ -457,7 +457,7 @@ export default function PrescribeModal({
   };
 
   const panel = (
-      <div className="cn-meds">
+      <div className={`cn-meds${presentation === 'page' ? ' cn-meds--page' : ''}`}>
         {/* The header belongs to the slider. On a page — the chart's workspace
             drawer or the /prescriptions/new route — the host already has a
             title and a close, and a second set read as two dialogs nested. */}
@@ -531,20 +531,6 @@ export default function PrescribeModal({
               <PatientCostSection patient={patient} balance={balance} />
             </CollapsibleSection>
 
-            <div className="cn-meds-footer">
-              <button type="button" className="cn-btn" onClick={requestClose}>Cancel</button>
-              <button type="button" className="cn-btn" onClick={handlePrintDraft}>Print draft</button>
-              <button type="button" className="cn-btn" onClick={handleAddRx} disabled={busy}>Add Rx</button>
-              {external ? (
-                <button type="button" className="cn-btn cn-btn-primary" onClick={handleIssue} disabled={busy}>
-                  Issue to patient
-                </button>
-              ) : (
-                <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={busy}>
-                  Send Medication
-                </button>
-              )}
-            </div>
           </div>
 
           <div className="cn-meds-right">
@@ -556,6 +542,24 @@ export default function PrescribeModal({
               currentMedications={activeRx.map(r => `${r.medication}${r.dose ? ` · ${r.dose}` : ''}`)}
             />
           </div>
+        </div>
+
+        {/* The shared action bar every chart slider ends on (Record vitals,
+            Book appointment, Order basket): pinned under both columns, the
+            dismissive choices dark, the one that sends blue. */}
+        <div className="tm-action-bar cn-meds-actions">
+          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={requestClose}>Cancel</button>
+          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handlePrintDraft}>Print draft</button>
+          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handleAddRx} disabled={busy}>Add Rx</button>
+          {external ? (
+            <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleIssue} disabled={busy}>
+              Issue to patient
+            </button>
+          ) : (
+            <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleSend} disabled={busy}>
+              Send Medication
+            </button>
+          )}
         </div>
       </div>
   );

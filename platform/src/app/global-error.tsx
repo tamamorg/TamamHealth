@@ -28,7 +28,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: colors.bg, color: colors.text, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+      <body style={{ margin: 0, background: colors.bg, color: colors.text, fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', boxSizing: 'border-box' }}>
           <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
             <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.dangerBg, border: `1px solid ${colors.dangerBorder}` }}>

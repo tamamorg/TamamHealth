@@ -19,6 +19,12 @@ import { formatDate , formatRxSig , humanizeStatus } from '@/lib/format-utils';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import Select from '@/components/Select';
 import { useColumnSort } from '@/components/table/useColumnSort';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
+import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 
 const PAGE_SIZE = 10;
 
@@ -81,6 +87,44 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const { currentUser } = useAuth();
+  const { showToast } = useToast();
+  const confirmPrompt = useConfirmPrompt();
+  const { t } = useTranslation();
+
+  // The same write the Medications tab's Discontinue makes, reason required.
+  const discontinue = async (row: UnifiedOrderRow) => {
+    const rx = (prescriptions || []).find(p => p._id === row.id);
+    if (!rx) return;
+    const reason = await confirmPrompt({
+      title: t('chart.medicationDiscontinueTitle', { medication: rx.medication }),
+      inputLabel: t('chart.medicationDiscontinueReason'),
+      inputRequired: true,
+      confirmLabel: t('chart.medicationDiscontinue'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    setBusyId(row.id);
+    try {
+      const { updatePrescription } = await import('@/lib/services/prescription-service');
+      const stopped = await updatePrescription(rx._id, {
+        status: 'discontinued',
+        stoppedAt: new Date().toISOString(),
+        stoppedBy: currentUser?._id,
+        stoppedByName: currentUser?.name || currentUser?.username,
+        stoppedSource: 'clinician',
+        stoppedReason: reason.trim(),
+      });
+      // updatePrescription returns null when the write fails.
+      if (!stopped) throw new Error('Change not saved. Try again.');
+      showToast(t('msg.discontinued', { medication: rx.medication }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('msg.medicationNotDiscontinuedTryAgain')), 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const rows = useMemo<UnifiedOrderRow[]>(() => {
     const drugRows: UnifiedOrderRow[] = (prescriptions || [])
@@ -177,9 +221,9 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         </div>
       )}
 
-      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive">
+      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--orders">
           <colgroup>
-            <col /><col /><col /><col /><col /><col /><col />
+            <col /><col /><col /><col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
@@ -190,12 +234,13 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
               <th {...columnSort.headerProps(4, r => r.priority)}>Priority</th>
               <th {...columnSort.headerProps(5, r => r.orderedBy)}>Ordered by</th>
               <th {...columnSort.headerProps(6, r => humanizeStatus(r.status))}>Status</th>
+              <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
+                <td colSpan={8} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState
                     itemLabel="orders"
                     actionLabel="Record orders"
@@ -213,7 +258,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
                 className="tamam-clickable-row"
                 style={r.id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
               >
-                <td className="font-mono" style={{ fontSize: 11 }}>{r.orderNumber}</td>
+                <td className="tamam-num">{r.orderNumber}</td>
                 <td>{formatDate(r.date)}</td>
                 <td>{r.orderType}</td>
                 <td>{r.description}</td>
@@ -224,6 +269,17 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
                 </td>
                 <td>{r.orderedBy}</td>
                 <td><span className={STATUS_BADGE[r.status] || 'tamam-panel-badge tamam-panel-badge--active'}>{humanizeStatus(r.status)}</span></td>
+                <td>
+                  <RowActionsMenu
+                    ariaLabel={t('chart.orderRowActions', { name: r.description })}
+                    actions={[
+                      { key: 'open', label: r.source === 'drug' ? t('chart.orderOpenPrescription') : t('chart.orderOpenResult'), onClick: () => router.push(orderRowHref(pathname, r)) },
+                      ...(r.source === 'drug' && canPrescribe ? [
+                        { key: 'stop', label: t('chart.medicationDiscontinue'), tone: 'danger' as const, disabled: busyId === r.id || r.status !== 'pending', onClick: () => void discontinue(r) },
+                      ] : []),
+                    ]}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

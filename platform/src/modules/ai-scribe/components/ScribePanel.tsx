@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { getSectionLabel } from '@/lib/clinical-notes/note-catalog';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { MAX_AUDIO, MAX_RECORDING_MS, MAX_SOURCE, isScribeSection, type ScribeSuggestion } from '../core/contracts';
+import Select from '@/components/Select';
 
 export default function ScribePanel({ note, onClose, onApply }: {
   note: ClinicalNoteDoc; onClose: () => void;
@@ -106,7 +107,7 @@ export default function ScribePanel({ note, onClose, onApply }: {
           <div className="scribe-controls"><button className="btn btn-secondary" type="button" disabled={!available || !consent || busy} onClick={() => recording ? recorder.current?.stop() : void startRecording()}>{recording ? <Square size={16}/> : <Mic size={16}/>} {t(recording ? 'scribe.stop' : 'scribe.record')}</button>
             {recording && <span role="status">{t('scribe.recording')}</span>}</div>
           <textarea value={source} maxLength={MAX_SOURCE} disabled={busy || recording} onChange={e => { setSource(e.target.value); setSuggestion(null); setReviewed(false); }} aria-label={t('scribe.source')} />
-          <label>{t('scribe.section')}<select value={section} disabled={busy || recording} onChange={e => { setSection(e.target.value as typeof section); setSuggestion(null); setReviewed(false); }}>{note.sections.filter(s => isScribeSection(s.sectionId)).map(s => <option key={s.sectionId} value={s.sectionId}>{getSectionLabel(s.sectionId)}</option>)}</select></label>
+          <label>{t('scribe.section')}<Select value={section} disabled={busy || recording} onChange={e => { setSection(e.target.value as typeof section); setSuggestion(null); setReviewed(false); }}>{note.sections.filter(s => isScribeSection(s.sectionId)).map(s => <option key={s.sectionId} value={s.sectionId}>{getSectionLabel(s.sectionId)}</option>)}</Select></label>
           <button type="button" className="btn btn-primary" disabled={!available || !consent || !source.trim() || busy || recording} onClick={() => void request('generate')}>{t(busy ? 'scribe.processing' : 'scribe.generate')}</button>
         </section>
         <section><h3>{t('scribe.review')}</h3><p>{t('scribe.reviewHelp')}</p>

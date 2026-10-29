@@ -644,13 +644,13 @@ export function SystemAdminSectionContent({ sectionId, data, filter, showLocalFi
 /** The inline editor popup — global property values and "configurable"
  *  app/extension notes with no dedicated settings page. Shared by both
  *  hosts; renders nothing when `data.editing` is null. Drawn in the same
- *  slider as Settings' Update account / Change password / PIN popups, so
+ *  centred popup as Settings' Update account / Change password / PIN popups, so
  *  every popup Settings opens has one look. */
 export function SystemAdminEditorModal({ data }: { data: SystemAdminConfigData }) {
   if (!data.editing) return null;
   const close = () => { if (!data.saving) data.closeEditor(); };
   return (
-    <PortalModal variant="slider" onClose={close} width={480} labelledBy="sysadm-edit-title" describedBy="sysadm-edit-desc">
+    <PortalModal onClose={close} width={480} labelledBy="sysadm-edit-title" describedBy="sysadm-edit-desc">
       <div className="ehr-handoff-modal ehr-set-acct">
         <div className="ehr-handoff-head">
           <div className="ehr-handoff-head-title">

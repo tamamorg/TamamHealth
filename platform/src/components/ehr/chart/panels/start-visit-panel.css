@@ -95,5 +95,126 @@
 
 .sv-empty { margin: 0; font-size: 14px; color: var(--text-secondary); }
 
+/* Sections — the O3 form's headed groups: appointments, location, visit
+   type, billing. */
+.sv-section { display: flex; flex-direction: column; gap: 8px; }
+.sv-section-title {
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.sv-hint { margin: 0; font-size: 13px; color: var(--text-secondary); }
+
+/* Upcoming appointments: Date · Appointment type · Action (a radio). */
+.sv-appts { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sv-appts th {
+  padding: 10px 12px;
+  text-align: start;
+  font-size: 14px;
+  font-weight: 600;
+  /* The app's table heads are uppercase and tracked; O3's form reads in
+     sentence case. */
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-medium, var(--border-light));
+}
+.sv-appts td {
+  padding: 14px 12px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+.sv-appts td label { cursor: pointer; }
+.sv-appts tr.is-later td { color: var(--text-secondary); }
+.sv-appts-note { display: block; margin-top: 2px; font-size: 12px; color: var(--text-muted); }
+.sv-appts .sv-appts-action { width: 72px; text-align: center; }
+.sv-appts input[type='radio'],
+.sv-choice input[type='radio'] { width: 20px; height: 20px; margin: 0; accent-color: var(--accent-primary); cursor: pointer; }
+.sv-appts input[type='radio']:disabled { cursor: not-allowed; opacity: 0.4; }
+
+/* A value the form shows but the user does not choose (the facility). */
+.sv-readonly {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-medium, var(--border-light));
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* Radio lists: the visit type sits in a grey well like O3's; billing's
+   short lists read inline. */
+.sv-choices {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  background: var(--bg-app);
+  border: 1px solid var(--border-light);
+}
+.sv-choices .sv-choice { padding: 10px 16px; }
+.sv-radios { display: flex; flex-direction: column; gap: 4px; }
+.sv-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.sv-field input[type='text'] { display: block; width: 100%; font-weight: 400; }
+
 /* Footer: the shared action bar (globals.css, ACTION BAR). */
 .sv-footer { flex: none; }
+
+/* ── Nutrition screening (NutritionScreeningPanel) — `nsp-`. Reuses the
+   sv- form furniture above; only the measurement grid and the follow-up
+   buttons are its own. ── */
+.nsp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.nsp-grid input { display: block; width: 100%; font-weight: 400; }
+.nsp-checks { display: flex; flex-wrap: wrap; gap: 20px; }
+.nsp-checks label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.nsp-preview { margin: 0; font-size: 14px; color: var(--text-secondary); }
+.nsp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nsp-actions button,
+.irp-actions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-card-solid);
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nsp-actions button:hover,
+.irp-actions button:hover:not(:disabled) { background: var(--bg-app); }
+.nsp-done { display: block; margin-top: 6px; font-size: 13px; color: var(--color-success-text); }
+
+/* ── Imaging report (ImagingReportPanel) — `irp-`. One block per ordered
+   study, open studies first. ── */
+.irp-study {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 6px);
+  background: var(--ehr-panel, var(--bg-card-solid));
+}
+.irp-study[data-status='completed'] { background: var(--bg-app); }
+.irp-study-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.irp-study-head strong { display: block; font-size: 15px; color: var(--text-primary); }
+.irp-study-head span { display: block; margin-top: 2px; font-size: 13px; color: var(--text-secondary); }
+.irp-status { flex: none; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: capitalize; }
+.irp-study[data-status='in_progress'] .irp-status { color: var(--color-warning-text, var(--color-warning)); }
+.irp-study[data-status='completed'] .irp-status { color: var(--color-success-text); }
+.irp-notes { margin: 0; font-size: 14px; color: var(--text-primary); white-space: pre-wrap; }
+.irp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.irp-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.irp-actions button.is-primary { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--color-white, #fff); }
+.irp-actions button.is-primary:hover:not(:disabled) { background: var(--accent-hover, var(--accent-primary)); }

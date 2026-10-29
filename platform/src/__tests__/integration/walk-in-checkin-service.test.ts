@@ -204,3 +204,51 @@ describe('checkInPatient — re-attendance while an old triage is still "active"
     expect(allForPatient).toHaveLength(1);
   });
 });
+
+describe('check-in — the Start a visit answers land on the visit', () => {
+  it('a walk-in check-in stamps visit type and payer on the arrival encounter', async () => {
+    const result = await checkInPatient({
+      patientId: 'pat-ayen', patientName: 'Ayen Garang',
+      facilityId: HOSP1, facilityName: 'Juba Teaching Hospital', orgId: ORG,
+      chiefComplaint: 'Cough', checkedInById: 'user-desk.amira', checkedInByName: 'Amira',
+      visit: {
+        visitType: 'opd',
+        visitBilling: { payment: 'non_paying', exemption: 'under_five' },
+      },
+    });
+    expect(result.encounter.visitType).toBe('opd');
+    expect(result.encounter.visitBilling).toEqual({ payment: 'non_paying', exemption: 'under_five' });
+    // No punctuality for a walk-in: there was no booked time to be late for.
+    expect(result.encounter.punctuality).toBeUndefined();
+  });
+
+  it('an appointment check-in stamps visit type, payer and punctuality on the visit it opens', async () => {
+    const { checkInAppointment } = await import('@/lib/services/check-in-service');
+    const { findOpenEncounterForPatient } = await import('@/lib/services/encounter-service');
+    const appt = await createAppointment({
+      patientId: 'pat-deng', patientName: 'Deng Mabior',
+      providerId: 'user-dr.wani', providerName: 'Dr. Wani',
+      facilityId: HOSP1, facilityName: 'Juba Teaching Hospital', facilityLevel: 'payam',
+      appointmentDate: today, appointmentTime: '09:00', duration: 30,
+      appointmentType: 'general', status: 'scheduled', reason: 'Review',
+      bookedBy: 'user-desk.amira', bookedByName: 'Amira', orgId: ORG,
+    } as unknown as Parameters<typeof createAppointment>[0]);
+
+    await checkInAppointment({
+      appointmentId: appt._id, patientId: 'pat-deng', patientName: 'Deng Mabior',
+      facilityId: HOSP1, facilityName: 'Juba Teaching Hospital', orgId: ORG,
+      actorId: 'user-desk.amira', actorName: 'Amira', actorRole: 'front_desk',
+      visit: {
+        visitType: 'facility',
+        visitBilling: { payment: 'paying', method: 'insurance', insuranceScheme: 'CBHI', policyNumber: 'P-77' },
+        punctuality: 'late',
+      },
+    });
+
+    const encounter = await findOpenEncounterForPatient('pat-deng', HOSP1);
+    expect(encounter?.appointmentId).toBe(appt._id);
+    expect(encounter?.visitType).toBe('facility');
+    expect(encounter?.visitBilling).toEqual({ payment: 'paying', method: 'insurance', insuranceScheme: 'CBHI', policyNumber: 'P-77' });
+    expect(encounter?.punctuality).toBe('late');
+  });
+});

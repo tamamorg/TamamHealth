@@ -136,6 +136,7 @@ export default function EhrVisitPopup({
   onReturnToDesk,
   onCreateNote,
   nurseActions,
+  stationBody,
   creatingNote = false,
   inline = false,
 }: {
@@ -204,6 +205,12 @@ export default function EhrVisitPopup({
   onCreateNote?: (noteType: import('@/lib/clinical-notes/note-catalog').NoteTypeId) => void;
   /** Role-specific actions that belong beside the visit tabs. */
   nurseActions?: React.ReactNode;
+  /**
+   * A station's own section at the top of the current visit: the lab's open
+   * tests, the pharmacy's scripts. It is the part of the visit that station
+   * works, so it leads, and the visit and vitals follow as context.
+   */
+  stationBody?: React.ReactNode;
   creatingNote?: boolean;
   /** Render the panel in the flow of the list, under the row it belongs to,
    *  rather than as an overlay. The content is identical — only the frame
@@ -414,6 +421,7 @@ export default function EhrVisitPopup({
 
         {tab === 'current' ? (
           <div className="ehr-visit-pop-body">
+            {stationBody}
             {/* No Status row here: the queue row this panel drops out of already
                 carries the status, the queue and where the patient came from. */}
             <div className="ehr-visit-pop-row">

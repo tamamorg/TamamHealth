@@ -17,6 +17,8 @@ import { ROLE_LABEL } from '@/lib/role-display';
 import type { UserRole } from '@/lib/db-types';
 import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { StationKey } from '@/data/mock';
+import { STATION_STAFF_ROLES } from '@/lib/services/patient-assignment-roles';
 
 export interface AssignDoctorTarget {
   patientId: string;
@@ -28,7 +30,24 @@ export interface AssignDoctorTarget {
   encounterId?: string;
   /** Currently assigned doctor id, to pre-select / show as current. */
   currentDoctorId?: string;
+  /** The patient's station routing, to pre-select a station's current staff. */
+  stationAssignments?: Partial<Record<StationKey, { staffId: string }>>;
 }
+
+// Where the desk can send a patient besides their doctor: one slot per
+// station, so routing to the lab never replaces the doctor.
+const STATION_TABS: { key: StationKey; label: string }[] = [
+  { key: 'lab', label: 'Lab' },
+  { key: 'pharmacy', label: 'Pharmacy' },
+  { key: 'radiology', label: 'Radiology' },
+  { key: 'nutrition', label: 'Nutrition' },
+];
+const STATION_ROLE_NAME: Record<StationKey, string> = {
+  lab: 'lab technician',
+  pharmacy: 'pharmacist',
+  radiology: 'radiographer',
+  nutrition: 'nutritionist',
+};
 
 // The responsible-provider role differs by facility tier. Hospitals are
 // doctor-led; primary-care facilities (PHCC / PHCU / primary) are nurse and
@@ -51,7 +70,13 @@ export default function AssignDoctorModal({
   const { users, loading } = useUsers();
   const { showToast } = useToast();
 
+  const [station, setStation] = useState<'care' | StationKey>('care');
   const [selectedId, setSelectedId] = useState<string>(target.currentDoctorId ?? '');
+  const switchTo = (next: 'care' | StationKey) => {
+    setStation(next);
+    setSearch('');
+    setSelectedId(next === 'care' ? (target.currentDoctorId ?? '') : (target.stationAssignments?.[next]?.staffId ?? ''));
+  };
   const [note, setNote] = useState('');
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -60,9 +85,10 @@ export default function AssignDoctorModal({
   // the facility type is unknown so hospitals always offer doctors.
   const facilityType = currentUser?.hospital?.facilityType as string | undefined;
   const isHospital = !facilityType || HOSPITAL_FACILITY_TYPES.includes(facilityType);
-  const assignableRoles = isHospital ? DOCTOR_ROLES : NURSE_ROLES;
-  const providerLabel = isHospital ? 'doctor' : 'nurse';
-  const providerLabelCap = isHospital ? 'Doctor' : 'Nurse';
+  const careLabelCap = isHospital ? 'Doctor' : 'Nurse';
+  const assignableRoles = station === 'care' ? (isHospital ? DOCTOR_ROLES : NURSE_ROLES) : STATION_STAFF_ROLES[station];
+  const providerLabel = station === 'care' ? (isHospital ? 'doctor' : 'nurse') : STATION_ROLE_NAME[station];
+  const providerLabelCap = providerLabel.charAt(0).toUpperCase() + providerLabel.slice(1);
 
   // Providers at the assigner's facility. Missing facility assignment fails
   // closed instead of exposing every clinician in the tenant.
@@ -92,6 +118,27 @@ export default function AssignDoctorModal({
       return;
     }
     setSaving(true);
+    if (station !== 'care') {
+      try {
+        const { assignStationStaff } = await import('@/lib/services/patient-assignment-service');
+        await assignStationStaff({
+          patientId: target.patientId,
+          station,
+          staff: { id: doctor._id, name: doctor.name },
+          actor: { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role },
+          hospitalId: myHospitalId,
+          orgId: currentUser?.orgId,
+          note,
+        });
+        showToast(t('msg.assignedTo', { patientName: target.patientName, name: doctor.name }), 'success');
+        onClose();
+      } catch {
+        showToast(t('msg.patientNotAssignedTryAgain'), 'error');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     try {
       // One shared assignment path (patient fields → progress tracker → triage
       // handoff), so this modal and the front desk's inline picker cannot drift.
@@ -134,6 +181,22 @@ export default function AssignDoctorModal({
 
         {/* Body */}
         <DialogBody className="space-y-3">
+          {/* Who the patient is being sent to: their doctor (or nurse, at a
+              nurse-led facility), or a named person at a service station. */}
+          <div className="assign-doctor-stations" role="tablist" aria-label="Assign to">
+            {([{ key: 'care' as const, label: careLabelCap }, ...STATION_TABS]).map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={station === tab.key}
+                className={`btn btn-sm ${station === tab.key ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => switchTo(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           {/* Search */}
           <div className="relative assign-doctor-search">
             <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />

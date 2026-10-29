@@ -22,6 +22,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { clickable } from '@/lib/a11y';
 import type { LabResultDoc } from '@/lib/db-types';
 import { useColumnSort } from '@/components/table/useColumnSort';
+import RowActionsMenu from '@/components/RowActionsMenu';
 
 const PAGE_SIZE = 8;
 
@@ -126,7 +127,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
       )}
       <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
-            <col /><col /><col /><col /><col /><col />
+            <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
@@ -136,12 +137,13 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
               <th {...columnSort.headerProps(3, l => t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))]))}>Next step</th>
               <th {...columnSort.headerProps(4, l => l.completedAt || l.orderedAt || l.createdAt || '')}>Date</th>
               <th {...columnSort.headerProps(5, l => humanizeStatus(effectiveOrderStatus(l)))}>Status</th>
+              <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {patientLabs.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
+                <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState itemLabel="results" actionLabel="Record results" onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
                 </td>
               </tr>
@@ -166,6 +168,17 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 <td>{t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))])}</td>
                 <td>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
                 <td><span className={STATUS_BADGE[lifecycleStatus] || STATUS_BADGE[l.status] || 'tamam-panel-badge tamam-panel-badge--pending'}>{humanizeStatus(lifecycleStatus)}</span></td>
+                <td>
+                  {/* Every step on a result — collect, file, review, close
+                      out — is taken in the bench workflow, which gates each
+                      one by role; the ⋮ opens it rather than repeating it. */}
+                  <RowActionsMenu
+                    ariaLabel={t('chart.resultRowActions', { name: l.testName })}
+                    actions={[
+                      ...(onSelect ? [{ key: 'open', label: t('chart.resultOpenWorkflow'), onClick: () => onSelect(l._id) }] : []),
+                    ]}
+                  />
+                </td>
               </tr>
               );
             })}

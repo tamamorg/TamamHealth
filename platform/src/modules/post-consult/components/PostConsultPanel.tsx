@@ -14,6 +14,7 @@ import { currentPlanRevision } from '../services/plan-service';
 import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import './post-consult.css';
 import { FormError } from '@/components/overlay/FormNotices';
+import Select from '@/components/Select';
 
 export default function PostConsultPanel({ encounterId, patientId, embedded = false }: { encounterId?: string; patientId?: string; embedded?: boolean }) {
   const scope = useDataScope();
@@ -93,10 +94,10 @@ function HandoffCard({ encounter, onChanged }: { encounter: EncounterDoc; onChan
       {canManage && <details className="ehr-post-consult-transfer">
         <summary>{t('postConsult.transfer')}</summary>
         <p>{t('postConsult.transferHelp')}</p>
-        <label>{t('postConsult.selectOwner')}<select value={recipient} onChange={e => setRecipient(e.target.value)} disabled={busy}>
+        <label>{t('postConsult.selectOwner')}<Select value={recipient} onChange={e => setRecipient(e.target.value)} disabled={busy}>
           <option value="">{t('postConsult.selectOwner')}</option>
           {staff.filter(u => u._id !== h.ownerId && NURSING_AND_CLINICIANS.includes(u.role)).map(u => <option key={u._id} value={u._id}>{u.name || u.username}</option>)}
-        </select></label>
+        </Select></label>
         <label>{t('postConsult.reason')}<textarea value={reason} maxLength={2000} onChange={e => setReason(e.target.value)} disabled={busy} /></label>
         <button type="button" className="bl-btn bl-btn--outline" disabled={busy || !recipient || !reason.trim()} onClick={() => void save({ type: 'transfer', ownerId: recipient, reason })}>{t('postConsult.transfer')}</button>
       </details>}
@@ -133,10 +134,10 @@ function TaskEditor({ task, disabled, save }: { task: PostConsultTask; disabled:
       <label>{t('postConsult.evidence')}<textarea value={note} maxLength={2000} onChange={e => setNote(e.target.value)} /></label>
       <label><input type="checkbox" checked={defer} onChange={e => setDefer(e.target.checked)} /> {t('postConsult.defer')}</label>
       {defer && <>
-        <label>{t('postConsult.owner')}<select value={owner} onChange={e => setOwner(e.target.value)}>
+        <label>{t('postConsult.owner')}<Select value={owner} onChange={e => setOwner(e.target.value)}>
           <option value="">{t('postConsult.selectOwner')}</option>
           {staff.filter(u => u.isActive && NURSING_AND_CLINICIANS.includes(u.role)).map(u => <option key={u._id} value={u._id}>{u.name || u.username}</option>)}
-        </select></label>
+        </Select></label>
         <label>{t('postConsult.due')}<input type="datetime-local" value={due} onChange={e => setDue(e.target.value)} /></label>
       </>}
       <button type="button" className="bl-btn bl-btn--outline" disabled={!note.trim() || (defer && (!owner || !due || !Number.isFinite(Date.parse(due))))}

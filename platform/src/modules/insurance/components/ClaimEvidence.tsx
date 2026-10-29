@@ -4,6 +4,7 @@ import type { ClaimDoc } from '@/lib/db-types-payments';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { recordClaimReceipt, recordClaimSettlement } from '../services/insurance-workflow-service';
+import Select from '@/components/Select';
 
 export default function ClaimEvidence({ claim, onChanged }: { claim: ClaimDoc; onChanged: () => void | Promise<void> }) {
   const { t } = useTranslation();
@@ -31,9 +32,9 @@ export default function ClaimEvidence({ claim, onChanged }: { claim: ClaimDoc; o
     {claim.settlement && <p>{t('insuranceFlow.settlementRecorded', { reference: claim.settlement.reference })}</p>}
     {(receipt || settlement) && <>
       <label>{t('insuranceFlow.reference')}<input value={reference} maxLength={160} onChange={e => setReference(e.target.value)} disabled={busy} /></label>
-      {receipt && <label>{t('insuranceFlow.method')}<select value={method} onChange={e => setMethod(e.target.value as 'portal' | 'written')} disabled={busy}>
+      {receipt && <label>{t('insuranceFlow.method')}<Select value={method} onChange={e => setMethod(e.target.value as 'portal' | 'written')} disabled={busy}>
         <option value="portal">{t('insuranceFlow.portal')}</option><option value="written">{t('insuranceFlow.written')}</option>
-      </select></label>}
+      </Select></label>}
       <p>{t(receipt ? 'insuranceFlow.receiptHelp' : 'insuranceFlow.settlementHelp')}</p>
       <button className="bl-btn bl-btn--outline" disabled={busy || !reference.trim()} onClick={() => void save()}>{t(receipt ? 'insuranceFlow.recordReceipt' : 'insuranceFlow.recordSettlement')}</button>
     </>}

@@ -9,6 +9,7 @@ import type { PaymentRecord } from '@/lib/db-types-billing';
 import type { PaymentMethodType } from '@/lib/db-types-payments';
 import { describeError } from '@/lib/user-facing-error';
 import { FormError } from '@/components/overlay/FormNotices';
+import Select from '@/components/Select';
 
 export default function AdmissionDepositControls({ admissionId }: { admissionId: string }) {
   const { currentUser } = useAuth();
@@ -54,9 +55,9 @@ export default function AdmissionDepositControls({ admissionId }: { admissionId:
     <p>{t(`ward.depositStatus.${admission.admissionDepositStatus || 'due'}`)} · {admission.admissionDepositPaid ?? 0} / {admission.admissionDepositRequired} {admission.tariffCurrency}</p>
     <label>{t('deposit.reason')}<input className="form-input" value={reason} onChange={event => setReason(event.target.value)} /></label>
     <label>{t('deposit.amount')}<input className="form-input" type="number" min="0" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} /></label>
-    <label>{t('deposit.payment')}<select className="form-input" value={paymentId} onChange={event => setPaymentId(event.target.value)}><option value="">{t('deposit.select')}</option>{payments.map(payment => <option key={payment.id} value={payment.id}>{payment.reference || payment.id} · {payment.amount} {admission.tariffCurrency}</option>)}</select></label>
+    <label>{t('deposit.payment')}<Select className="form-input" value={paymentId} onChange={event => setPaymentId(event.target.value)}><option value="">{t('deposit.select')}</option>{payments.map(payment => <option key={payment.id} value={payment.id}>{payment.reference || payment.id} · {payment.amount} {admission.tariffCurrency}</option>)}</Select></label>
     <div className="flex flex-wrap gap-2">
-      <label>{t('deposit.method')}<select className="form-input" value={method} onChange={event => setMethod(event.target.value as PaymentMethodType)}>{(['cash', 'mobile_money', 'bank_transfer'] as const).map(value => <option key={value} value={value}>{t(`deposit.method.${value}`)}</option>)}</select></label>
+      <label>{t('deposit.method')}<Select className="form-input" value={method} onChange={event => setMethod(event.target.value as PaymentMethodType)}>{(['cash', 'mobile_money', 'bank_transfer'] as const).map(value => <option key={value} value={value}>{t(`deposit.method.${value}`)}</option>)}</Select></label>
       <button className="btn btn-secondary" disabled={busy} onClick={() => void run('refresh')}>{t('deposit.refresh')}</button>
       {(['refund', 'forfeit', 'waive'] as const).map(action => <button key={action} className="btn btn-secondary" disabled={busy || !reason.trim() || !!admission.admissionDepositPendingRefund} onClick={() => void run(action)}>{t(`deposit.${action}`)}</button>)}
       {admission.admissionDepositStatus === 'refund_due' && <button className="btn btn-primary" disabled={busy || (!admission.admissionDepositPendingRefund && (!paymentId || !reason.trim() || Number(amount) <= 0))} onClick={() => void run('issue')}>{t('deposit.issue')}</button>}

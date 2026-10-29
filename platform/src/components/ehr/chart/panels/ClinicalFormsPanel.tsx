@@ -7,7 +7,9 @@
  * Every note type is a form here (SOAP, H&P, progress, …). Opening one reuses
  * today's draft of that type or starts one, and the note opens in this same
  * workspace as a form, with "Back to clinical forms". The other rows are the
- * app's other clinical record flows (triage, ANC, nutrition, ward admission).
+ * app's other clinical record flows (triage, ANC, nutrition, imaging, ward
+ * admission). Nutrition screening and the imaging report open here, in the
+ * workspace, like a note; the rest still leave for their module's route.
  *
  * "Last completed" reads the same records the chart's own sections read —
  * signed notes, triage, ANC visits, screenings, admissions — so the date here
@@ -29,6 +31,8 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import { useANC } from '@/lib/hooks/useANC';
 import { useNutritionScreenings } from '@/lib/hooks/useNutritionScreenings';
 import { useWards } from '@/lib/hooks/useWards';
+import { useLabResults } from '@/lib/hooks/useLabResults';
+import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { formatDate } from '@/lib/format-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import type { PatientDoc } from '@/lib/db-types';
@@ -38,7 +42,10 @@ interface ClinicalFormItem {
   id: string;
   name: string;
   lastCompleted: string;
-  href: string;
+  /** Module route the form lives on, or… */
+  href?: string;
+  /** …the chart workspace form it opens in place (see ROLE_FORM_PANELS). */
+  panel?: string;
   enabled: boolean;
   /** Shown as the row's tooltip when `enabled` is false. */
   disabledReason?: string;
@@ -52,9 +59,11 @@ interface ClinicalFormsPanelProps {
   onClose: () => void;
   /** Open a note in this workspace as a form (the shell swaps the panel). */
   onOpenNote: (noteId: string, title: string) => void;
+  /** Open a role form (nutrition screening, imaging report) in this workspace. */
+  onOpenForm: (panelId: string) => void;
 }
 
-export default function ClinicalFormsPanel({ patient, router, canConsult, currentUser, onClose, onOpenNote }: ClinicalFormsPanelProps) {
+export default function ClinicalFormsPanel({ patient, router, canConsult, currentUser, onClose, onOpenNote, onOpenForm }: ClinicalFormsPanelProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const scope = useDataScope();
@@ -94,10 +103,12 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
   const { visits: ancVisits } = useANC();
   const { screenings } = useNutritionScreenings();
   const { admissions } = useWards();
+  const { results: labResults } = useLabResults(patient._id);
 
   const patientANC = (ancVisits || []).filter(a => a.patientId === patient._id);
   const patientScreenings = (screenings || []).filter(s => s.patientId === patient._id);
   const patientAdmissions = (admissions || []).filter(a => a.patientId === patient._id);
+  const patientImaging = (labResults || []).filter(r => isImagingStudy(r));
 
   // The triage form lives on the nursing route, which reception cannot open —
   // gate the row rather than letting the click land on "Access Restricted".
@@ -106,13 +117,12 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
   // one and were marked `enabled: true` for everybody who can open a chart:
   // a radiologist, lab technician or pharmacist reading a chart was offered
   // "ANC Visit" and "Ward Admission", and clicking either landed them on
-  // "Access Restricted". The nutrition row is the same shape and additionally
-  // pointed at another role's whole station console — the hand-off
-  // PatientDispenseModal was built to stop the pharmacy version of.
+  // "Access Restricted". Rows that open a workspace form in the chart
+  // (nutrition screening, imaging report) gate on who may write that record.
   const role = currentUser?.role || '';
   const canTriage = isPathAllowed(role, '/triage');
   const canOpenAnc = isPathAllowed(role, '/anc');
-  const canOpenNutrition = isPathAllowed(role, '/dashboard/nutrition');
+  const canReportImaging = isPathAllowed(role, '/dashboard/radiology');
   const canAdmit = isPathAllowed(role, '/wards');
 
   // The Ward Admission row deep-links into /wards so admitting from the chart
@@ -141,6 +151,11 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
     const lastTriage = triages[0];
     const lastANC = [...patientANC].sort((a, b) => (b.visitDate || '').localeCompare(a.visitDate || ''))[0];
     const lastScreening = [...patientScreenings].sort((a, b) => (b.screeningDate || '').localeCompare(a.screeningDate || ''))[0];
+    const lastReport = patientImaging
+      .map(r => r.reportedAt || (r.status === 'completed' ? r.completedAt : ''))
+      .filter(Boolean)
+      .sort()
+      .pop();
     const lastAdmission = [...patientAdmissions].sort((a, b) => (b.admissionDate || '').localeCompare(a.admissionDate || ''))[0];
 
     return [
@@ -166,9 +181,19 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
         id: 'nutrition',
         name: 'Nutrition Screening',
         lastCompleted: lastScreening ? formatDate(lastScreening.screeningDate) : 'Never',
-        href: `/dashboard/nutrition?patientId=${patient._id}`,
-        enabled: canOpenNutrition,
-        disabledReason: 'Requires the nutrition module',
+        // Taken in the chart now, not on the nutrition station. This list
+        // only renders for clinical viewers, and every one of them may write
+        // a screening (the nutrition_screening sync grant).
+        panel: 'nutrition-screening',
+        enabled: true,
+      },
+      {
+        id: 'imaging-report',
+        name: 'Imaging Report',
+        lastCompleted: lastReport ? formatDate(lastReport) : 'Never',
+        panel: 'imaging-report',
+        enabled: canReportImaging,
+        disabledReason: 'Requires the radiology module',
       },
       {
         id: 'ward-admission',
@@ -182,8 +207,8 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
         disabledReason: 'Requires ward access',
       },
     ];
-  }, [triages, patientANC, patientScreenings, patientAdmissions, patient._id,
-      canTriage, canOpenAnc, canOpenNutrition, canAdmit, openEncounterId]);
+  }, [triages, patientANC, patientScreenings, patientAdmissions, patientImaging, patient._id,
+      canTriage, canOpenAnc, canReportImaging, canAdmit, openEncounterId]);
 
   type Row = { id: string; name: string; lastCompleted: string; enabled: boolean; disabledReason?: string; open: () => void };
   const lastSigned = (type: NoteTypeId) => {
@@ -209,7 +234,10 @@ export default function ClinicalFormsPanel({ patient, router, canConsult, curren
       lastCompleted: f.lastCompleted,
       enabled: f.enabled,
       disabledReason: f.disabledReason,
-      open: () => { router.push(f.href); onClose(); },
+      open: () => {
+        if (f.panel) { onOpenForm(f.panel); return; }
+        if (f.href) { router.push(f.href); onClose(); }
+      },
     })),
   ].sort((a, b) => a.name.localeCompare(b.name));
   const query = search.trim().toLowerCase();

@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { statusToneClass, type EhrCareDashboardRow } from './EhrCareDashboard';
+import Select from '@/components/Select';
 
 /** Items grouped by key, in the order each key first appears — so a queue
  *  already sorted by priority stays sorted by each patient's first order. */
@@ -72,7 +73,7 @@ export function EhrOrderStatus({ row, label }: { row: EhrCareDashboardRow; label
   return (
     <span className={`appointment-status-pill appointment-status-pill--select ${pillClass}`.trim()}>
       {text}
-      <select
+      <Select
         value={row.statusValue ?? ''}
         aria-label={`Status for ${label}`}
         onChange={event => row.onStatusChange?.(event.target.value)}
@@ -80,7 +81,7 @@ export function EhrOrderStatus({ row, label }: { row: EhrCareDashboardRow; label
         {row.statusOptions.map(option => (
           <option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>
         ))}
-      </select>
+      </Select>
     </span>
   );
 }

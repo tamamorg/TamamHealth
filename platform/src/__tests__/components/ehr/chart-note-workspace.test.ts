@@ -12,7 +12,7 @@ describe('patient chart note workspace', () => {
 
   it('opens wide; the header arrow closes every panel, the ✕ steps back one', () => {
     expect(chartShell).toContain('onClick={closeAllWorkspaces}');
-    expect(chartShell).toContain("activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) ? 'is-note-editor' : ''");
+    expect(chartShell).toContain("activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) || isWideRoleForm(activePanel.id) ? 'is-note-editor' : ''");
     // Docked beside the chart (it narrows the chart rather than covering it),
     // so the note gets a wide column, not the viewport.
     expect(chartCss).toMatch(/\.tamam-drawer\.is-note-editor\s*{[\s\S]*?width:\s*clamp\(480px, 50vw, 860px\)/);

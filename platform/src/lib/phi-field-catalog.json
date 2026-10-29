@@ -60,7 +60,7 @@
     "program_enrollment": { "fields": ["patientName", "programName", "outcomeReason", "notes"] },
     "procedure": { "fields": ["patientName", "name", "bodySite", "outcome", "notes", "abortedReason", "amendmentReason", "statusReason"] },
     "clinical_note": { "fields": ["patientName", "mrn", "patientDob", "sections.**", "addenda.**", "planActions.**"] },
-    "clinical_encounter": { "fields": ["patientName", "snapshot.**"] },
+    "clinical_encounter": { "fields": ["patientName", "snapshot.**", "visitBilling.policyNumber", "visitBilling.exemptionReason"] },
     "consultation_progress": { "fields": ["patientName", "nextAction", "blockedReason", "milestones.**", "tasks.**", "events.**"] },
     "triage": {
       "fields": [

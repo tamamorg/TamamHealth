@@ -91,7 +91,10 @@ export function usePermissions() {
   // clinician, super_admin, and the nurse family) were all outside the new
   // list, so `canBookAppointments && …` could never be true there. If this is
   // ever narrowed again, remove that button in the same change.
-  const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
+  // Nutritionists and radiologists book too: their homes are the same
+  // clinical workspace (NutritionHomeView / RadiologyHomeView), whose primary
+  // action is Book appointment — a MAM review, a follow-up scan.
+  const canBookAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || role === 'nutritionist' || role === 'radiologist' || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;
   const canConfirmAppointments = isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isOrgAdmin || isSuperAdmin;
   const canManageAppointmentSchedule = canConfirmAppointments;
   const canCheckInAppointments = role === 'doctor' || role === 'clinical_officer' || role === 'nurse' || isMidwife || isClinician || isTriageNurse || isRoomingNurse || isRegistrationClerk || isClinicClerk || role === 'front_desk' || isMedSupt || isSuperAdmin;

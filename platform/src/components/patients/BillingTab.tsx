@@ -28,21 +28,23 @@ import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { VisitFinancialReview } from '@/modules/financial-clearance/client';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
+import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
 
 /**
- * Maps ChargeStatus onto the billing module's chip colors (bl-chip--unpaid/
- * partial/paid/waived/cancelled) so the Charges table reads with the same
- * "what's owed" vocabulary as the bill detail page's line items.
+ * Maps a charge or payment status onto the chart's badge tones (done /
+ * pending / muted), so the account's lines read like every other chart list.
  */
-const CHARGE_CHIP_CLASS: Record<string, string> = {
-  pending: 'bl-chip--unpaid', submitted: 'bl-chip--partial', approved: 'bl-chip--paid',
-  denied: 'bl-chip--unpaid', appealed: 'bl-chip--partial', voided: 'bl-chip--cancelled',
+const ACTIVITY_BADGE: Record<string, string> = {
+  posted: 'tamam-panel-badge--done', approved: 'tamam-panel-badge--done', paid: 'tamam-panel-badge--done', processed: 'tamam-panel-badge--done',
+  pending: 'tamam-panel-badge--pending', submitted: 'tamam-panel-badge--pending', appealed: 'tamam-panel-badge--pending',
+  denied: 'tamam-panel-badge--muted', voided: 'tamam-panel-badge--muted', refunded: 'tamam-panel-badge--muted', cancelled: 'tamam-panel-badge--muted',
 };
-function statusChipClass(status: string): string {
-  return `bl-chip ${CHARGE_CHIP_CLASS[status] || 'bl-chip--waived'}`;
+/** The chart's badge for a ledger line's status, the same family every chart table wears. */
+function activityBadge(status: string): string {
+  return `tamam-panel-badge ${ACTIVITY_BADGE[status] || 'tamam-panel-badge--active'}`;
 }
 
 interface BillingTabProps {
@@ -213,8 +215,8 @@ export default function BillingTab({
     p.method !== 'insurance' && p.method !== 'waiver' && p.status === 'posted' && refundableAmount(p) > 0);
   const selectedRefundPayment = refundablePayments.find(p => p._id === refundPaymentId);
 
-  const openRefund = () => {
-    const first = refundablePayments[0];
+  const openRefund = (paymentId?: string) => {
+    const first = refundablePayments.find(p => p._id === paymentId) || refundablePayments[0];
     setRefundPaymentId(first?._id ?? '');
     setRefundAmount(first ? refundableAmount(first) : 0);
     setRefundReason('');
@@ -524,15 +526,17 @@ export default function BillingTab({
         reference: payment?.reference || e.referenceId || e._id,
         status: charge?.status || payment?.status || 'posted',
         amount: Math.abs(Number(e.amount) || 0), currency: e.currency || 'SSP',
+        paymentId: payment?._id, chargeId: charge?._id,
       };
     })
     : [
       ...d.charges.map(c => ({ id: `charge-${c._id}`, kind: 'charge', date: c.serviceDate,
         description: c.description, detail: c.category, reference: c._id, status: c.status,
-        amount: c.billedAmount, currency: 'SSP' })),
+        amount: c.billedAmount, currency: 'SSP', paymentId: undefined as string | undefined, chargeId: c._id as string | undefined })),
       ...d.payments.map(p => ({ id: `payment-${p._id}`, kind: 'payment', date: p.processedAt,
         description: getMethodConfig(p.method).label, detail: p.processedByName,
-        reference: p.reference || p._id, status: p.status, amount: p.amount, currency: p.currency })),
+        reference: p.reference || p._id, status: p.status, amount: p.amount, currency: p.currency,
+        paymentId: p._id as string | undefined, chargeId: undefined as string | undefined })),
     ];
   const activity = sourceRows.filter(row => !chargeQuery || [row.description, row.detail, row.reference, row.status].some(value => value.toLowerCase().includes(chargeQuery)))
     .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) || a.id.localeCompare(b.id));
@@ -540,6 +544,24 @@ export default function BillingTab({
   const currentPage = Math.min(activityPage, pageCount);
   const visibleActivity = activity.slice((currentPage - 1) * 10, currentPage * 10);
   const addInsuranceLabel = t('insuranceSnapshot.addInsurance') || 'Add insurance';
+
+  // What can be done to one line of the account, from its own ⋮. A payment
+  // prints its receipt or is refunded; a charge is paid or adjusted. Refund
+  // and adjustment stay with the billing roles, as in Billing actions.
+  const activityActions = (row: (typeof activity)[number]): RowAction[] => {
+    const payment = row.paymentId ? paymentById.get(row.paymentId) : undefined;
+    const refundable = !!payment && refundablePayments.some(p => p._id === payment._id);
+    return [
+      ...(payment ? [{ key: 'receipt', label: t('billing.rowPrintReceipt'), onClick: async () => {
+        const { buildReceiptData, printReceipt } = await import('@/lib/services/receipt-service');
+        printReceipt(buildReceiptData(payment, currentUser?.hospitalName || currentUser?.hospital?.name, patient.hospitalNumber));
+      } }] : []),
+      ...(payment && canManageBilling ? [{ key: 'refund', label: t('billing.issueRefund'), disabled: !refundable, onClick: () => openRefund(payment._id) }] : []),
+      // A voided charge is owed by nobody: nothing to collect or adjust.
+      ...(row.kind === 'charge' && row.status !== 'voided' ? [{ key: 'pay', label: t('billing.collectPayment'), onClick: () => setShowPaymentPanel(true) }] : []),
+      ...(row.kind === 'charge' && row.status !== 'voided' && canManageBilling ? [{ key: 'adjust', label: t('billing.adjustmentWriteOff'), onClick: () => setShowAdjustment(true) }] : []),
+    ];
+  };
 
   return (
     <div className="bl-root">
@@ -625,20 +647,24 @@ export default function BillingTab({
           </div>
           <button type="button" className="bl-btn bl-btn--primary" onClick={() => setShowBillingActions(true)}><Wallet size={18} />{t('billing.actionsTitle')}</button>
         </div>
+        {/* The chart's table, not the billing module's: same head band, row
+            rhythm, badges and ⋮ as every other tab of this chart. */}
         <div className="bl-table-wrap">
-          <table className="bl-table">
+          <table className="tamam-table tamam-table--fixed tamam-table--activity">
             <thead><tr>
-              {['date', 'type', 'description', 'reference', 'status', 'amount'].map(column => <th key={column} className={column === 'amount' ? 'bl-right' : undefined}>{t(`billing.activityColumn.${column}`)}</th>)}
+              {['date', 'type', 'description', 'reference', 'status', 'amount'].map(column => <th key={column} className={column === 'amount' ? 'tamam-cell-amount' : undefined}>{t(`billing.activityColumn.${column}`)}</th>)}
+              <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr></thead>
             <tbody>
-              {!visibleActivity.length ? <tr><td colSpan={6}><div className="bl-empty"><Receipt size={28} /><p>{t('billing.activityEmpty')}</p></div></td></tr> :
+              {!visibleActivity.length ? <tr><td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}><div className="bl-empty"><Receipt size={28} /><p>{t('billing.activityEmpty')}</p></div></td></tr> :
                 visibleActivity.map(row => <tr key={row.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                  <td><span className="bl-chip">{t(`billing.activityKind.${row.kind}`)}</span></td>
-                  <td>{row.description}<div className="bl-muted">{row.detail}</div></td>
-                  <td className="bl-activity-reference">{row.reference}</td>
-                  <td><span className={row.kind === 'charge' ? statusChipClass(row.status) : 'bl-chip'}>{humanizeStatus(row.status)}</span></td>
-                  <td className="bl-num bl-right">{formatMoney(row.amount, { currency: row.currency })}</td>
+                  <td className="tamam-num">{formatDate(row.date)}</td>
+                  <td>{t(`billing.activityKind.${row.kind}`)}</td>
+                  <td>{row.description}{row.detail && <div className="tamam-cell-sub">{row.detail}</div>}</td>
+                  <td className="tamam-num bl-activity-reference" title={row.reference}>{row.reference}</td>
+                  <td><span className={activityBadge(row.status)}>{humanizeStatus(row.status)}</span></td>
+                  <td className="tamam-num tamam-cell-amount">{formatMoney(row.amount, { currency: row.currency })}</td>
+                  <td><RowActionsMenu ariaLabel={t('billing.rowActions', { description: row.description })} actions={activityActions(row)} /></td>
                 </tr>)}
             </tbody>
           </table>
@@ -676,7 +702,7 @@ export default function BillingTab({
               { label: t('billing.sendPaymentLink'), icon: Send, run: openPaymentLink },
               { label: t('billing.printStatement'), icon: Printer, run: handlePrintStatement },
               ...(canManageBilling ? [
-                { label: t('billing.issueRefund'), icon: RotateCcw, run: openRefund },
+                { label: t('billing.issueRefund'), icon: RotateCcw, run: () => openRefund() },
                 { label: t('billing.adjustmentWriteOff'), icon: RefreshCw, run: () => setShowAdjustment(true) },
               ] : []),
             ].map(action => <button key={action.label} type="button" onClick={() => { setShowBillingActions(false); action.run(); }}><action.icon size={22} /><span>{action.label}</span></button>)}

@@ -15,7 +15,8 @@ import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus, B
 import { jubaDate, jubaTime } from '../time-juba';
 import { orgOnlyScope } from './data-scope';
 import { APPOINTMENT_PENDING_STATUSES } from '../appointment-status';
-import { createArrivalEncounter, findOpenEncounterForPatient, hasClosedEncounterForPatient, PRE_CLINICIAN_STATUSES } from './encounter-service';
+import { createArrivalEncounter, findOpenEncounterForPatient, hasClosedEncounterForPatient, PRE_CLINICIAN_STATUSES, updateEncounter } from './encounter-service';
+import type { VisitDetails } from '../visits/visit-details';
 import { getRecordsByPatient } from './medical-record-service';
 import { resolveWorkflowRepair, upsertWorkflowRepair } from './workflow-repair-service';
 
@@ -69,6 +70,8 @@ export async function checkInAppointment(input: {
   orgId?: string;
   /** New case vs re-attendance; auto-derived when omitted. */
   attendanceType?: AttendanceType;
+  /** Visit type, payer and punctuality from the Start a visit form. */
+  visit?: VisitDetails;
   actorId?: string;
   actorName?: string;
   actorRole?: string;
@@ -103,8 +106,13 @@ export async function checkInAppointment(input: {
         arrivalChannel: 'appointment',
         appointmentId: input.appointmentId,
         attendanceType,
+        visit: input.visit,
         actorId: input.actorId,
       });
+    } else if (hasVisitDetails(input.visit)) {
+      // A visit already open (a retried check-in, a walk-in who turned out to
+      // be booked): the desk's answers still belong on it.
+      await updateEncounter(existing._id, input.visit!);
     }
     // Check-in is reception's touchpoint on every booked visit, so it is also
     // where the booking's care team is promoted onto the patient document — a
@@ -130,6 +138,9 @@ export async function checkInAppointment(input: {
     );
   }
 }
+
+const hasVisitDetails = (visit?: VisitDetails): boolean =>
+  Boolean(visit && (visit.visitType || visit.visitBilling || visit.punctuality));
 
 export type CheckInAcuity = 'routine' | 'priority' | 'emergency';
 
@@ -176,6 +187,8 @@ export interface CheckInInput {
    * `deriveAttendanceType` from the patient's history.
    */
   attendanceType?: AttendanceType;
+  /** Visit type, payer and punctuality from the Start a visit form. */
+  visit?: VisitDetails;
   /** Acting front-desk user. */
   checkedInById: string;
   checkedInByName: string;
@@ -340,8 +353,11 @@ export async function checkInPatient(input: CheckInInput): Promise<CheckInResult
       arrivalChannel,
       appointmentId: linkedAppointmentId,
       attendanceType,
+      visit: input.visit,
       actorId: input.checkedInById,
     });
+  } else if (hasVisitDetails(input.visit)) {
+    await updateEncounter(encounter._id, input.visit!);
   }
 
   await upsertWorkflowRepair(repairId, {

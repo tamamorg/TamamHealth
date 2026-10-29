@@ -30,6 +30,8 @@ import type { NoteTypeId } from '@/lib/clinical-notes/note-catalog';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import { mergeNoteRows, filterNoteRows, type NoteRow } from './notes-list-model';
 import { describeError } from '@/lib/user-facing-error';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { useConfirm } from '@/components/ConfirmDialog';
 import './clinical-notes.css';
 import './note-viewer.css';
 
@@ -71,6 +73,8 @@ export default function NotesList({
   const scope = useDataScope();
   const { createNote, creating } = useCreateNote(currentUser);
   const { records } = useMedicalRecords(patientId);
+  const confirm = useConfirm();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [notes, setNotes] = useState<ClinicalNoteDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,6 +141,35 @@ export default function NotesList({
     else if (row.kind === 'clinical') router.push(`/notes/${row.id}`);
   };
 
+  // Only an unsigned draft can go, and only by its author: a signed note is
+  // part of the record (the service refuses it too) and is amended instead.
+  const ownDraft = (row: NoteRow) => {
+    if (row.kind !== 'clinical' || row.status !== 'draft') return false;
+    const note = notes.find(n => n._id === row.id);
+    return !!note && !!currentUser && note.authorId === currentUser._id;
+  };
+
+  const deleteDraft = async (row: NoteRow, label: string) => {
+    const ok = await confirm({
+      title: t('notesList.deleteDraftTitle'),
+      message: t('notesList.deleteDraftBody', { type: label, date: row.date }),
+      confirmLabel: t('notesList.deleteDraft'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setDeletingId(row.id);
+    try {
+      const { deleteClinicalNote } = await import('@/lib/clinical-notes/note-service');
+      if (!(await deleteClinicalNote(row.id, currentUser?.name || currentUser?.username))) throw new Error('Change not saved. Try again.');
+      showToast(t('notesList.draftDeleted'), 'success');
+      void load();
+    } catch (err) {
+      showToast(describeError(err, t('notesList.draftDeleteFailed')), 'error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <ChartSection
       title="Notes"
@@ -149,9 +182,8 @@ export default function NotesList({
     >
       {loading && <div className="cn-empty">Loading notes…</div>}
 
-      {/* One column per fact, Status last like every other clinical table.
-          There is no Actions column: the row itself opens the note, which is
-          what the buttons in it did. Column widths live in the stylesheet
+      {/* One column per fact, Status then the row's ⋮ like every other
+          clinical table. The row itself still opens the note. Column widths live in the stylesheet
           (`.tamam-table--notes`), not a colgroup: the chart CSS forces
           `col { width: auto !important }`, so colgroup widths are silently
           dropped and every column comes out the same size. */}
@@ -165,12 +197,13 @@ export default function NotesList({
               {!patientId && <th {...columnSort.headerProps(3, r => r.patientName)}>{t('notesList.colPatient')}</th>}
               <th {...columnSort.headerProps(4, r => `${r.date}${r.time ? ` ${r.time}` : ''}`)}>{t('notesList.colDateOfService')}</th>
               <th {...columnSort.headerProps(5, r => statusLabelOf(r.status))}>{t('notesList.colStatus')}</th>
+              <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={patientId ? 5 : 6} style={{ cursor: 'default', background: 'transparent' }}>
+                <td colSpan={patientId ? 6 : 7} style={{ cursor: 'default', background: 'transparent' }}>
                   {filtering && allRows.length > 0 ? (
                     <div className="cn-empty">
                       <FileText size={22} style={{ opacity: 0.4, display: 'block', margin: '0 auto 8px' }} />
@@ -208,6 +241,15 @@ export default function NotesList({
                       : `${row.date}${row.time ? ` ${row.time}` : ''}`}
                   </td>
                   <td><span className={`cn-badge ${status.cls}`}>{t(status.key)}</span></td>
+                  <td>
+                    <RowActionsMenu
+                      ariaLabel={t('notesList.rowActions', { type: label, date: row.date })}
+                      actions={[
+                        ...(openable ? [{ key: 'open', label: t('notesList.open'), onClick: () => openRow(row) }] : []),
+                        ...(ownDraft(row) ? [{ key: 'delete', label: t('notesList.deleteDraft'), tone: 'danger' as const, disabled: deletingId === row.id, onClick: () => void deleteDraft(row, label) }] : []),
+                      ]}
+                    />
+                  </td>
                 </tr>
               );
             })}

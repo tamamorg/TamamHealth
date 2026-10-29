@@ -26,6 +26,11 @@ export const LabWorkspace = dynamic(() => import('@/components/lab/workflow/LabW
 export const PharmacyWorkspace = dynamic(() => import('@/components/pharmacy/workflow/PharmacyWorkspace'), { loading: ChartPanelLoading });
 export const AllergiesSection = dynamic(() => import('@/components/ehr/chart/sections/AllergiesSection'), { loading: ChartPanelLoading });
 export const ConditionsSection = dynamic(() => import('@/components/ehr/chart/sections/ConditionsSection'), { loading: ChartPanelLoading });
+// Sliders a chart button opens over whatever tab is showing — no loading
+// placeholder, which would flash into the page under the slider.
+export const ConditionAddSlider = dynamic(() => import('@/components/ehr/chart/sections/ConditionsSection'));
+export const RecordMedicationSlider = dynamic(() => import('@/components/ehr/chart/sections/ReportedMedications').then(m => m.RecordMedicationSlider));
+export const ChartPaymentPanel = dynamic(() => import('@/components/payments/PaymentPanel'));
 export const OrdersSection = dynamic(() => import('@/components/ehr/chart/sections/OrdersSection'), { loading: ChartPanelLoading });
 export const PatientMessagesSection = dynamic(() => import('@/components/ehr/chart/sections/PatientMessagesSection'), { loading: ChartPanelLoading });
 export const HistorySection = dynamic(() => import('@/components/ehr/chart/sections/HistorySection'), { loading: ChartPanelLoading });
