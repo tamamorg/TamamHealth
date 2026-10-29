@@ -1,55 +1,34 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Barlow, Barlow_Condensed, JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import './print-typography.css';
 import "./tablet-desktop.css";
 import { AppProvider } from "@/lib/context";
 
-// Platform typeface. `--font-barlow` / `--font-barlow-condensed` /
-// `--font-jetbrains-mono` are consumed by `--font-platform` /
-// `--font-condensed` / `--font-platform-mono` in globals.css. Self-hosted by
+// One typeface for the whole platform: IBM Plex, the face OpenMRS O3 (Carbon)
+// is set in. The chart already spoke Plex while every other surface spoke
+// Barlow, so crossing from a dashboard into a patient chart changed the
+// letterforms under the user's eyes. `--font-ibm-plex-sans` /
+// `--font-ibm-plex-mono` feed `--font-platform`, `--font-condensed`,
+// `--font-omrs` and `--font-platform-mono` in globals.css. Self-hosted by
 // next/font at build time, so they work offline (offline-first requirement).
 //
-// Barlow replaced DM Sans with the Clinical App design: the app and
-// tamamhealth.org now share one voice, and the condensed cut is what carries
-// the design's headings and its letterspaced uppercase micro-labels — DM Sans
-// has no condensed face, so those labels had to fake it with tracking alone.
-// 800 is loaded because the stylesheet asks for it in ~180 places — every
-// section title, KPI and uppercase micro-label sits on `--type-weight-bold`.
-// Without the face, all of those fell back to 700 and rendered identically to
-// the 700 rung below them, which is what flattened the type: the top two steps
-// of the scale were the same pixel weight.
-const barlow = Barlow({
+// Plex stops at 700. The stylesheet's 800 rung (`--type-weight-bold` page
+// titles) resolves to the 700 face, which is Carbon's heaviest step too.
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-barlow",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-ibm-plex-sans",
   display: "swap",
 });
-const barlowCondensed = Barlow_Condensed({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-barlow-condensed",
-  display: "swap",
-});
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
+  weight: ["400", "500", "600"],
+  variable: "--font-ibm-plex-mono",
   display: "swap",
   // Used by identifiers/code-like values, not the initial shell. Let the
   // browser fetch it only on a surface that actually paints mono text.
-  preload: false,
-});
-// Carbon's typeface, used only by the Tamam-styled surfaces (`--font-omrs`
-// in globals.css). Scoped rather than global: the rest of the platform is DM
-// Sans, and Tamam in anything but Plex reads as an imitation of it.
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-ibm-plex-sans",
-  display: "swap",
-  // Tamam chart-only face. Preloading both weights on login and every
-  // dashboard wasted requests before a patient chart was opened.
   preload: false,
 });
 import { ToastProvider } from "@/components/Toast";
@@ -86,7 +65,7 @@ export default async function RootLayout({
 }>) {
   const nonce = (await headers()).get('x-nonce') || undefined;
   return (
-    <html lang="en" dir="ltr" className={`${barlow.variable} ${barlowCondensed.variable} ${jetBrainsMono.variable} ${ibmPlexSans.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="en" dir="ltr" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         {/* Direction and theme, before first paint. useTranslation sets
             dir/lang and PreferenceEffects applies the theme once hydrated,

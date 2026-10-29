@@ -45,20 +45,16 @@
   --input-radius: 10px;
   --sidebar-width: 220px;
   --sidebar-collapsed: 72px;
-  /* Barlow, per the Clinical App design — the same voice tamamhealth.org
-     speaks, so a user crossing from the site into the app never changes
-     typeface. */
-  --font-platform: var(--font-barlow), 'Barlow', system-ui, sans-serif;
-  /* The condensed cut carries the design's headings and its letterspaced
-     uppercase micro-labels ("TODAY BY ACUITY", "AUGUST 2026"). Those set the
-     app's tone as much as the palette does, and no amount of tracking on a
-     normal-width face reproduces them. */
-  --font-condensed: var(--font-barlow-condensed), 'Barlow Condensed', var(--font-platform);
-  --font-platform-mono: var(--font-jetbrains-mono), 'JetBrains Mono', system-ui, sans-serif;
+  /* IBM Plex Sans everywhere — the OpenMRS O3 / Carbon face. One typeface
+     across dashboards, chart, dialogs, login and portal; the older names
+     below stay as aliases so the ~200 rules that use them need no edit. */
+  --font-platform: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  /* Headings and uppercase micro-labels used to sit on a condensed cut.
+     O3 sets them in the same Plex as the body, so this is now an alias. */
+  --font-condensed: var(--font-platform);
+  --font-platform-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-mono: var(--font-platform-mono);
-  /* Carbon's typeface, for the Tamam-styled surfaces only (`.tamam-reg`).
-     Never set this on body — the platform is Barlow. */
-  --font-omrs: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  --font-omrs: var(--font-platform);
 
   /* ============ Typography tokens ============
      Keep the app uniform by naming roles, not one-off pixel values. */
@@ -11285,38 +11281,59 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   background: var(--ehr-ledger-soft) !important;
 }
 
+/* Chart sub-tabs wear the appointments lane control (.ehr-day-tabs): one
+   joined segmented bar, shared inner hairlines, 8px outer corners, condensed
+   small-caps labels, the active tab filled brand blue. */
 .ehr-chart-subtabs {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border: 1.5px solid var(--ehr-ledger-border);
-  border-radius: 5px;
-  background: var(--bg-card-solid);
+  gap: 0;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .ehr-chart-subtabs button {
-  min-width: 92px;
-  height: 30px;
-  border: 0;
-  border-radius: var(--radius-control);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--ehr-border);
+  border-inline-start-width: 0;
+  border-radius: 0;
   background: transparent;
-  color: var(--ehr-muted);
-  font-size: var(--type-size-caption);
-  font-weight: var(--type-weight-semibold);
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  font-family: var(--font-condensed);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.ehr-chart-subtabs button:hover,
-.ehr-chart-subtabs button:focus-visible {
-  background: var(--ehr-ledger-softer);
-  color: var(--accent-text);
+.ehr-chart-subtabs button:first-child {
+  border-inline-start-width: 1px;
+  border-radius: 8px 0 0 8px;
+}
+
+.ehr-chart-subtabs button:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.ehr-chart-subtabs button:hover:not(.is-active),
+.ehr-chart-subtabs button:focus-visible:not(.is-active) {
+  background: var(--color-info-bg);
+  color: var(--tb-blue-800, #113055);
   outline: none;
 }
 
 .ehr-chart-subtabs button.is-active {
+  border-color: var(--ehr-blue);
   background: var(--ehr-blue);
-  color: #ffffff;
+  color: #fff;
 }
 
 @media (max-width: 1180px) {
@@ -35645,7 +35662,15 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   color: var(--text-primary) !important;
 }
 
-.tm-slider :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]), select, textarea) {
+/* Three selectors, not one `:is()`: an `:is()` takes the specificity of its
+   most specific argument, so `select` and `textarea` were scored as the
+   four-`:not()` input (0,5,1) and this padding shorthand beat the select's own
+   chevron gutter below — every select in every slider drew its text under
+   the arrow. The `:not()`s keep select and textarea above (0,2,1) module
+   rules such as `.tamam-ehr-app select.ehr-set-select`. */
+.tm-slider input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+.tm-slider select:not([multiple]),
+.tm-slider textarea:not([hidden]) {
   width: 100%;
   min-height: 48px;
   padding: 0 16px !important;
@@ -35659,12 +35684,12 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   font-weight: 400;
 }
 
-.tm-slider textarea { padding: 12px 16px !important; min-height: 104px; resize: vertical; }
+.tm-slider textarea:not([hidden]) { padding: 12px 16px !important; min-height: 104px; resize: vertical; }
 /* A search box with its magnifier laid over the start of the field keeps
    room for it; the flat padding above would put the text under the icon. */
 .tm-slider :has(> svg ~ input) > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) { padding-inline-start: 40px !important; }
 
-.tm-slider select {
+.tm-slider select:not([multiple]) {
   -webkit-appearance: none;
   appearance: none;
   padding-inline-end: 48px !important;
@@ -35674,7 +35699,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   background-size: 16px 16px !important;
 }
 
-[dir="rtl"] .tm-slider select { background-position: left 16px center !important; }
+[dir="rtl"] .tm-slider select:not([multiple]) { background-position: left 16px center !important; }
 
 /* On a tinted box inside the form (a "link to existing patient" panel),
    the field turns white so it still reads as a field. */

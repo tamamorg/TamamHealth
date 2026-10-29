@@ -62,7 +62,7 @@
 .pslip-card dt { color: var(--text-muted); font-weight: 600; }
 .pslip-card dd { margin: 0; color: var(--text-primary); overflow-wrap: anywhere; }
 .pslip-card dd.pslip-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-platform-mono);
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.08em;

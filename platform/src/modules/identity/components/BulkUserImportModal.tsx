@@ -276,7 +276,7 @@ export default function BulkUserImportModal({
             width: 100%; padding: 10px 12px; border-radius: 6px;
             border: 1px solid var(--border-light); background: var(--overlay-subtle);
             color: var(--text-primary); outline: none; resize: vertical;
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+            font-family: var(--font-platform-mono); font-size: 12.5px;
           }
           .bui-filerow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
           .bui-filebtn { position: relative; overflow: hidden; cursor: pointer; }
