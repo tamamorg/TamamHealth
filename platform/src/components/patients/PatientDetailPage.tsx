@@ -382,6 +382,17 @@ export default function PatientDetailPage() {
     [patientTriages],
   );
   const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients, canEnrollPrograms, canRecordMedicationHistory, canCheckInAppointments } = usePermissions();
+  // Prescribe and Order labs open the chart's order basket (O3): build the
+  // orders there, sign them together. The basket is a clinical workspace
+  // panel, so a role outside the clinical panels keeps the stand-alone forms.
+  const openDrugOrder = () => {
+    if (canViewClinical) setChartPanelRequest('order-basket:drug');
+    else openPrescribe();
+  };
+  const openLabOrder = () => {
+    if (canViewClinical) setChartPanelRequest('order-basket:lab');
+    else setShowOrderLabModal(true);
+  };
   const canAssignPatients = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
 
   // Which tabs this viewer may open at all: clinicians get the chart, lab
@@ -567,7 +578,7 @@ export default function PatientDetailPage() {
     // Nursing roles cannot order, but record what the patient already takes on
     // the Medications tab, whose Add opens that form for them.
     ...(canPrescribe
-      ? { medications: { label: 'Prescribe', onClick: openPrescribe } }
+      ? { medications: { label: 'Prescribe', onClick: openDrugOrder } }
       : canRecordMedicationHistory ? { medications: { label: 'Record', onClick: () => selectTab('prescriptions') } } : {}),
     ...(canConsult ? { problems: { label: 'Add', onClick: () => openSectionAdd('problems') } } : {}),
     // Vitals entry is always the nurse-vitals form now, for doctors and nurses
@@ -819,8 +830,6 @@ export default function PatientDetailPage() {
             // or it becomes a second way in to the same clinical detail.
             canViewClinical={canViewClinical}
             router={router}
-            onOpenPrescribeModal={openPrescribe}
-            onOpenOrderLabModal={() => setShowOrderLabModal(true)}
             onNoteSaved={() => setNotesRefreshToken(t => t + 1)}
             panelRequest={chartPanelRequest}
             onPanelRequestHandled={() => setChartPanelRequest(null)}
@@ -916,8 +925,8 @@ export default function PatientDetailPage() {
                 }}
                 onVisitSummary={() => setShowVisitSummary(true)}
                 onNote={() => (canConsult ? void openClinicalNoteDrawer() : selectTab('notes'))}
-                onScripts={() => (canPrescribe ? openPrescribe() : selectTab('prescriptions'))}
-                onOrders={() => (canOrderLabs ? setShowOrderLabModal(true) : selectTab('labs'))}
+                onScripts={() => (canPrescribe ? openDrugOrder() : selectTab('prescriptions'))}
+                onOrders={() => (canOrderLabs ? openLabOrder() : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onEdit={openEditModal}
                 onStartVisit={canCheckInAppointments ? () => { setShowStartVisit(true); bringPageWorkspace('startVisit'); } : undefined}
@@ -1017,14 +1026,14 @@ export default function PatientDetailPage() {
               patientId={patient._id}
               canOrderLabs={canOrderLabs}
               canWork={canEnterLabResults}
-              onAdd={() => setShowOrderLabModal(true)}
+              onAdd={openLabOrder}
               focusId={focusId}
               seedResult={seedResult}
             />
           )}
 
           {/* Prescriptions Tab */}
-          {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} setShowPrescribeModal={setShowPrescribeModal} currentUser={currentUser} focusId={focusId} />}
+          {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} onPrescribe={openDrugOrder} currentUser={currentUser} focusId={focusId} />}
 
           {/* Vitals Tab */}
           {activeTab === 'vitals' && <PatientVitalsTab patientAgeYears={patientAgeYearsExact(patient) ?? undefined} isPregnant={isPregnant} vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) bringPageWorkspace('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} onVitalsChanged={() => reloadRecords()} />}
@@ -1053,8 +1062,8 @@ export default function PatientDetailPage() {
               patientId={patient._id}
               canPrescribe={canPrescribe}
               canOrderLabs={canOrderLabs}
-              onAddDrug={openPrescribe}
-              onAddLab={() => setShowOrderLabModal(true)}
+              onAddDrug={openDrugOrder}
+              onAddLab={openLabOrder}
               focusId={focusId}
             />
           )}

@@ -32,7 +32,7 @@ interface UnifiedOrderRow {
   date: string;
   orderType: 'Drug order' | 'Lab order' | 'Imaging order';
   description: string;
-  priority: 'STAT' | 'Routine';
+  priority: 'STAT' | 'Urgent' | 'Routine';
   orderedBy: string;
   status: string;
 }
@@ -105,7 +105,8 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         // specimen/testName heuristic for legacy docs written before it existed.
         orderType: l.orderKind === 'imaging' || (!l.orderKind && isImagingStudy(l)) ? 'Imaging order' : 'Lab order',
         description: l.testName,
-        priority: 'Routine',
+        // The order's own priority; it used to read Routine for every test.
+        priority: l.priority === 'stat' ? 'STAT' : l.priority === 'urgent' ? 'Urgent' : 'Routine',
         orderedBy: l.orderedBy || '—',
         status: l.status,
       }));
@@ -217,7 +218,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
                 <td>{r.orderType}</td>
                 <td>{r.description}</td>
                 <td>
-                  <span className={r.priority === 'STAT' ? 'tamam-panel-badge tamam-panel-badge--pending' : 'tamam-panel-badge tamam-panel-badge--muted'}>
+                  <span className={r.priority === 'Routine' ? 'tamam-panel-badge tamam-panel-badge--muted' : 'tamam-panel-badge tamam-panel-badge--pending'}>
                     {r.priority}
                   </span>
                 </td>
