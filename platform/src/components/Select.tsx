@@ -72,6 +72,10 @@ const LIST_PADDING = 12;
  * hides the part that distinguishes one clinician from the next.
  */
 const MENU_MAX_WIDTH = 520;
+/** `.tsel-menu`'s CSS `min-width`. The edge clamp has to know it: clamping
+ *  with the narrower trigger width let a short select near the window's
+ *  right edge open a menu that ran off-screen. */
+const MENU_MIN_WIDTH = 180;
 
 /**
  * Where the popup sits. `top` and `bottom` are exclusive: whichever edge is
@@ -240,7 +244,7 @@ export default function Select({
     // Once measured, the popup keeps its widened size; the left edge is
     // re-derived from the trigger on every call so it still tracks the box
     // when the page behind it scrolls.
-    const width = Math.max(r.width, grownWidthRef.current ?? 0);
+    const width = Math.max(r.width, MENU_MIN_WIDTH, grownWidthRef.current ?? 0);
     const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - width - 8));
     // Flip up only when below genuinely cannot hold the list — matching
     // AssignPicker, where an unnecessary jump upward reads as a glitch.

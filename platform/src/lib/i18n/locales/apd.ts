@@ -8845,6 +8845,7 @@ const apd: TranslationMap = {
   'chartPrograms.status.discontinued': 'موقوف',
   'labFlow.chooseResult': 'أختار النتيجة',
   'ward.changePatient': 'غيّر',
+  'history.rowActions': 'إجراءات لـ {{entry}}',
 };
 
 export default apd;

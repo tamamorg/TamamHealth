@@ -8856,6 +8856,7 @@ const en: TranslationMap = {
   'chartPrograms.status.discontinued': 'Discontinued',
   'labFlow.chooseResult': 'Choose a result',
   'ward.changePatient': 'Change',
+  'history.rowActions': 'Actions for {{entry}}',
 };
 
 export default en;
