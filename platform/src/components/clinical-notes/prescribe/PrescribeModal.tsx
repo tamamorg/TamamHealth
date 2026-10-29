@@ -563,7 +563,7 @@ export default function PrescribeModal({
 
   return (
     <>
-      <Modal onClose={requestClose} width={1140} labelledBy="cn-rx-title">
+      <Modal variant="slider" onClose={requestClose} width={1140} labelledBy="cn-rx-title">
         {panel}
       </Modal>
       {handover}

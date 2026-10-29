@@ -28,8 +28,7 @@ import { useProblems } from '@/lib/hooks/useProblems';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { formatDate , humanizeStatus } from '@/lib/format-utils';
 import type { ProblemStatus } from '@/lib/db-types';
-import Select from '@/components/Select';
-import { FOCUSED_ROW_STYLE, rowActivation } from './rowFocus';
+import { FOCUSED_ROW_STYLE } from './rowFocus';
 import type { ProblemDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { statusWord } from '@/lib/i18n/status-word';
@@ -71,11 +70,11 @@ export default function ConditionsSection({
   const { canEditClinical } = usePermissions();
   const { problems, create, update, setStatus } = useProblems(patientId);
   const confirmPrompt = useConfirmPrompt();
-  /** The detail dialog's onset-date correction, while it is open. */
+  /** The condition whose onset date is being corrected, and the new date. */
+  const [onsetTarget, setOnsetTarget] = useState<ProblemDoc | null>(null);
   const [onsetEdit, setOnsetEdit] = useState<string | null>(null);
   const [correcting, setCorrecting] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [detail, setDetail] = useState<ProblemDoc | null>(null);
   /** The row mid-save, so a slow write can't be fired twice. */
   const [savingStatus, setSavingStatus] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -120,11 +119,13 @@ export default function ConditionsSection({
       showToast(t('msg.conditionMarked', { value: statusWord(t, status) }), 'success');
     } catch (err) {
       console.error(err);
-      showToast(t('msg.conditionNotUpdatedTryAgain'), 'error');
+      showToast(describeError(err, t('msg.conditionNotUpdatedTryAgain')), 'error');
     } finally {
       setSavingStatus(null);
     }
   };
+
+  const closeOnset = () => { setOnsetTarget(null); setOnsetEdit(null); };
 
   // Corrections write over the entry with a reason, never a delete: a wrong
   // onset date is fixed in place, a wrong entry is kept and hidden.
@@ -134,8 +135,7 @@ export default function ConditionsSection({
     try {
       if (!(await update(problem._id, { onsetDate: onsetEdit }))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.conditionOnsetCorrected'), 'success');
-      setOnsetEdit(null);
-      setDetail(null);
+      closeOnset();
     } catch (err) {
       showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally {
@@ -156,7 +156,6 @@ export default function ConditionsSection({
     try {
       if (!(await update(problem._id, { recordStatus: 'entered_in_error', correctionReason: reason.trim() }))) throw new Error('Change not saved. Try again.');
       showToast(t('msg.conditionMarkedInError', { name: problem.name }), 'success');
-      setDetail(null);
     } catch (err) {
       showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
     } finally {
@@ -192,7 +191,7 @@ export default function ConditionsSection({
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast(t('msg.conditionNotAddedTryAgain'), 'error');
+      showToast(describeError(err, t('msg.conditionNotAddedTryAgain')), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -238,40 +237,29 @@ export default function ConditionsSection({
                 <tr
                   key={p._id}
                   id={`condition-row-${p._id}`}
-                  {...rowActivation(() => setDetail(p), `Open condition — ${p.name}`)}
-                  className="tamam-clickable-row"
                   style={p._id === focusId ? FOCUSED_ROW_STYLE : undefined}
                 >
                   <td style={{ fontWeight: 600 }}>{p.name}{p.icd11Code ? <span style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 }}> · {p.icd11Code}</span> : null}</td>
                   <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>
                   <td>
-                    {/* The badge IS the control: a condition is retired from the
-                        row that records it, not from a separate edit screen. */}
-                    <span className={`tamam-status-picker ${STATUS_BADGE[p.status]}`}>
-                      {humanizeStatus(p.status)}
-                      <Select
-                        aria-label={`Status for ${p.name}`}
-                        value={p.status}
-                        // Retiring a condition is the same clinical write as
-                        // adding one — a viewer reads the badge, not edits it.
-                        disabled={savingStatus === p._id || !canEditClinical}
-                        onChange={e => handleStatusChange(p._id, e.target.value as ProblemStatus)}
-                      >
-                        {STATUS_OPTIONS.map(option => (
-                          <option key={option} value={option}>{humanizeStatus(option)}</option>
-                        ))}
-                      </Select>
-                    </span>
+                    <span className={STATUS_BADGE[p.status]}>{humanizeStatus(p.status)}</span>
                   </td>
                   <td>
-                    {/* The row's ⋮: the same corrections the detail dialog
-                        offers, one step closer. */}
+                    {/* The row's ⋮ carries every correction; there is no
+                        separate detail dialog — the row already shows it. */}
                     <RowActionsMenu
                       ariaLabel={t('chart.conditionRowActions', { name: p.name })}
                       actions={[
-                        { key: 'open', label: t('chart.openDetails'), onClick: () => setDetail(p) },
+                        // Status changes live here, not on the badge: the
+                        // Status column reads, the Actions column writes.
+                        ...(canEditClinical ? STATUS_OPTIONS.filter(option => option !== p.status).map(option => ({
+                          key: `status-${option}`,
+                          label: t('chart.markStatus', { status: statusWord(t, option) }),
+                          disabled: savingStatus === p._id,
+                          onClick: () => void handleStatusChange(p._id, option),
+                        })) : []),
                         ...(canEditClinical ? [
-                          { key: 'onset', label: t('chart.conditionCorrectOnset'), onClick: () => { setDetail(p); setOnsetEdit(p.onsetDate || ''); } },
+                          { key: 'onset', label: t('chart.conditionCorrectOnset'), onClick: () => { setOnsetTarget(p); setOnsetEdit(p.onsetDate || ''); } },
                           { key: 'error', label: t('chart.conditionErrorConfirm'), tone: 'danger' as const, onClick: () => void markEnteredInError(p) },
                         ] : []),
                       ]}
@@ -284,48 +272,17 @@ export default function ConditionsSection({
         )}
       </ChartSection>
 
-      {detail && (
-        <Modal className="tamam-dialog" onClose={() => { setOnsetEdit(null); setDetail(null); }} width={480} labelledBy="condition-detail-title">
+      {onsetTarget && (
+        <Modal className="tamam-dialog" onClose={() => !correcting && closeOnset()} width={420} labelledBy="condition-onset-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <div className="flex items-center justify-between">
-              <h2 id="condition-detail-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{detail.name}</h2>
-              <button className="p-1 rounded" onClick={() => setDetail(null)} aria-label="Close" style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
+              <h2 id="condition-onset-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.conditionCorrectOnset')} · {onsetTarget.name}</h2>
+              <button className="p-1 rounded" onClick={() => !correcting && closeOnset()} aria-label="Close" style={{ color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
             </div>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
-              {([
-                ['Status', humanizeStatus(detail.status)],
-                ['ICD-11 code', detail.icd11Code || detail.icd10Code || '—'],
-                ['Date of onset', detail.onsetDate ? formatDate(detail.onsetDate) : '—'],
-                ['Resolved', detail.resolvedDate ? formatDate(detail.resolvedDate) : '—'],
-                ['Severity', detail.severity ? humanizeStatus(detail.severity) : '—'],
-                ['Recorded by', detail.recordedByName || '—'],
-                ['Recorded', detail.createdAt ? formatDate(detail.createdAt) : '—'],
-                ['Last updated', detail.updatedAt ? formatDate(detail.updatedAt) : '—'],
-              ] as const).map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</dt>
-                  <dd style={{ color: 'var(--text-primary)' }}>{value}</dd>
-                </div>
-              ))}
-            </dl>
-            {detail.notes && <p className="text-[13px]" style={{ color: 'var(--text-primary)' }}>{detail.notes}</p>}
-            {canEditClinical && onsetEdit !== null && (
-              <label className="block text-[13px]">
-                <span className="block mb-1 font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.conditionCorrectOnset')}</span>
-                <input type="date" className="w-full" value={onsetEdit} max={todayIso()} onChange={e => setOnsetEdit(e.target.value)} />
-              </label>
-            )}
+            <input type="date" className="w-full" aria-label={t('chart.conditionCorrectOnset')} value={onsetEdit ?? ''} max={todayIso()} onChange={e => setOnsetEdit(e.target.value)} autoFocus />
             <div className="flex flex-wrap justify-end gap-2">
-              {canEditClinical && onsetEdit === null && (
-                <>
-                  <button className="btn btn-sm btn-secondary" disabled={correcting} onClick={() => void markEnteredInError(detail)}>{t('chart.conditionErrorConfirm')}</button>
-                  <button className="btn btn-sm btn-secondary" disabled={correcting} onClick={() => setOnsetEdit(detail.onsetDate || '')}>{t('chart.conditionCorrectOnset')}</button>
-                </>
-              )}
-              {onsetEdit !== null && (
-                <button className="btn btn-sm btn-primary" disabled={correcting || !onsetEdit} onClick={() => void saveOnset(detail)}>{correcting ? t('noteEditor.saving') : t('chart.conditionSaveOnset')}</button>
-              )}
-              <button className="btn btn-sm btn-secondary" onClick={() => { setOnsetEdit(null); setDetail(null); }}>{t('action.close')}</button>
+              <button className="btn btn-sm btn-secondary" disabled={correcting} onClick={closeOnset}>{t('action.cancel')}</button>
+              <button className="btn btn-sm btn-primary" disabled={correcting || !onsetEdit} onClick={() => void saveOnset(onsetTarget)}>{correcting ? t('noteEditor.saving') : t('chart.conditionSaveOnset')}</button>
             </div>
           </div>
         </Modal>

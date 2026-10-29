@@ -491,7 +491,7 @@ export default function LabDashboardPage() {
       {/* Batch result entry — a whole run of one test in a single pass. Single
           results are entered in the chart's bench workflow instead. */}
       {showResultModal && (
-        <Modal
+        <Modal variant="slider"
           onClose={() => { setShowResultModal(false); setBatchTestType(''); }}
           width={672}
         >

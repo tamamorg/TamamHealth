@@ -14,12 +14,14 @@
  * section keeps one Add button whichever list it lands on.
  */
 
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import { formatDate } from '@/lib/format-utils';
 import type { HistoryEntryDoc } from '@/lib/db-types';
 import { MEDICATION_HISTORY_DOMAIN, formatHistoryEntry } from '@/lib/clinical/patient-history';
@@ -65,11 +67,12 @@ export default function ReportedMedications({
     if (!ok) return;
     setRetiring(entry._id);
     try {
-      await markInError(entry._id, { userId: currentUser?._id || currentUser?.username, userName: currentUser?.name });
+      // null: not found, or not in this user's scope. Not a success.
+      if (!(await markInError(entry._id, { userId: currentUser?._id || currentUser?.username, userName: currentUser?.name }))) throw new Error('Change not saved. Try again.');
       showToast(t('history.markedError'), 'success');
     } catch (err) {
       console.error(err);
-      showToast(t('history.updateFailed'), 'error');
+      showToast(describeError(err, t('history.updateFailed')), 'error');
     } finally {
       setRetiring(null);
     }
@@ -105,19 +108,13 @@ export default function ReportedMedications({
                   </td>
                   {canRecord && (
                     <td>
-                      <span className="inline-flex gap-1.5">
-                        <button type="button" className="btn btn-xs btn-secondary" onClick={() => setEditing(entry)}>
-                          {t('history.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-xs btn-secondary"
-                          disabled={retiring === entry._id}
-                          onClick={() => void handleMarkInError(entry)}
-                        >
-                          {t('history.confirmErrorAction')}
-                        </button>
-                      </span>
+                      <RowActionsMenu
+                        ariaLabel={t('chart.medicationRowActions', { name: entry.title })}
+                        actions={[
+                          { key: 'edit', label: t('history.edit'), onClick: () => setEditing(entry) },
+                          { key: 'error', label: t('history.confirmErrorAction'), tone: 'danger', disabled: retiring === entry._id, onClick: () => void handleMarkInError(entry) },
+                        ]}
+                      />
                     </td>
                   )}
                 </tr>

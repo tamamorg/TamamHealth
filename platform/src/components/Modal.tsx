@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useHistoryLayer } from '@/lib/navigation/history-layer';
 
 /**
  * Named widths, so two dialogs holding the same kind of content are the same
@@ -65,6 +66,8 @@ interface ModalProps {
 let modalSequence = 0;
 const openModals = new Set<number>();
 /** How many open modals hold the body scroll lock, and what it replaces. */
+/** Sliders open right now, oldest first: the newest sets the page's squeeze. */
+let openSliders: number[] = [];
 let scrollLocks = 0;
 let overflowBeforeLock = '';
 /** True while any modal is open — lets a docked workspace underneath leave
@@ -102,6 +105,10 @@ export default function Modal({
   className,
 }: ModalProps) {
   const isSlider = variant === 'slider';
+  // Back (phone, tablet, browser) closes this dialog or slider: it holds one
+  // history entry while open, removed again when it closes by its own
+  // controls (lib/navigation/history-layer.ts).
+  useHistoryLayer(true, onClose);
   const isDrawer = variant === 'drawer' || isSlider;
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -135,6 +142,37 @@ export default function Modal({
       if (scrollLocks === 0) document.body.style.overflow = overflowBeforeLock;
     };
   }, [isSlider]);
+
+  // A slider docks beside the page and the page makes room for it — the
+  // squeeze the patient chart's Record vitals workspace does — instead of
+  // covering the right-hand part of the page. The open slider's width is
+  // published on <html> (`--slider-open-w` + `tm-slider-open`), and
+  // globals.css narrows #main-content by it. Measured live, so a slider that
+  // widens (the lab wizard's second step) pushes the page with it. With
+  // sliders stacked, the newest one sets the width.
+  useEffect(() => {
+    if (!isSlider || !mounted) return;
+    const el = dialogRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () => {
+      if (openSliders[openSliders.length - 1] !== sequence) return;
+      root.style.setProperty('--slider-open-w', `${Math.round(el.getBoundingClientRect().width)}px`);
+    };
+    openSliders.push(sequence);
+    root.classList.add('tm-slider-open');
+    publish();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      openSliders = openSliders.filter(id => id !== sequence);
+      if (openSliders.length === 0) {
+        root.classList.remove('tm-slider-open');
+        root.style.removeProperty('--slider-open-w');
+      }
+    };
+  }, [isSlider, mounted, sequence]);
 
   // Esc closes and Tab stays inside the active dialog.
   useEffect(() => {
@@ -270,6 +308,9 @@ export default function Modal({
         aria-describedby={describedBy}
         tabIndex={-1}
         style={{
+          // A slider is as wide as the form asked for (a wide booking grid or
+          // the lab wizard needs it); globals.css caps it at the screen.
+          ...(isSlider && (size || width) ? { ['--slider-w' as string]: size ? SIZE_WIDTH[size] : `${width}px` } : {}),
           width: '100%',
           maxWidth: size ? SIZE_WIDTH[size] : width,
           maxHeight: isSlider

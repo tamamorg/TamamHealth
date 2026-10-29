@@ -119,6 +119,7 @@ export default function Menu({
   emptyMessage,
   groupLabels,
   triggerClassName,
+  menuClassName,
   onOpenChange,
 }: {
   items: MenuItem[];
@@ -136,6 +137,8 @@ export default function Menu({
   /** Heading text per `group` key, shown above the group. */
   groupLabels?: Record<string, string>;
   triggerClassName?: string;
+  /** Extra class on the menu panel (e.g. the O3 row-actions look). */
+  menuClassName?: string;
   onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -255,7 +258,7 @@ export default function Menu({
       role="menu"
       aria-label={label}
       tabIndex={-1}
-      className={`tm-menu tm-elevated tm-motion tm-motion--menu${pos.flipped ? ' is-flipped' : ''}${inDialog ? ' tm-menu--in-dialog' : ''}`}
+      className={`tm-menu tm-elevated tm-motion tm-motion--menu${pos.flipped ? ' is-flipped' : ''}${inDialog ? ' tm-menu--in-dialog' : ''}${menuClassName ? ` ${menuClassName}` : ''}`}
       style={{ top: pos.top, left: pos.left, width: Math.min(width, window.innerWidth - 16) }}
       onKeyDown={onKeyDown}
     >

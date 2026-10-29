@@ -1673,6 +1673,13 @@ export interface PatientDocumentDoc extends BaseDoc {
   uploadedByName?: string;
   hospitalId?: string;
   orgId?: string;
+  /** Set when a document is removed from the chart. The document is kept
+   *  for the record history and left out of every list. */
+  recordStatus?: 'active' | 'entered_in_error';
+  removalReason?: string;
+  removedById?: string;
+  removedByName?: string;
+  removedAt?: string;
 }
 
 /** WHO-aligned malnutrition classification from MUAC + edema. */

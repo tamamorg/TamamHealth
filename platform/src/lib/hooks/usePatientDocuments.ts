@@ -34,12 +34,13 @@ export function usePatientDocuments(patientId?: string) {
     return doc;
   }, [load]);
 
-  const remove = useCallback(async (id: string, by?: string) => {
+  const remove = useCallback(async (id: string, reason: string, actor?: { id?: string; name?: string }) => {
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { deletePatientDocument } = await import('../services/patient-document-service');
-    const ok = await deletePatientDocument(id, by);
+    const ok = await deletePatientDocument(id, scope, reason, actor);
     await load();
     return ok;
-  }, [load]);
+  }, [load, scope]);
 
   const addAnnotation = useCallback(async (documentId: string, input: AddImageAnnotationInput, actor?: ImageAnnotationActor) => {
     if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');

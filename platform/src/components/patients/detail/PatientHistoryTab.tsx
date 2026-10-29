@@ -4,7 +4,7 @@ import RecordSignatureBar from '@/components/patients/RecordSignatureBar';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import type { AppointmentDoc, ImmunizationDoc, LabResultDoc, MedicalRecordDoc, PrescriptionDoc, TriageDoc } from '@/lib/db-types';
 import { PatientTimeline } from './lazy-panels';
-import { useState } from 'react';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 import VisitsTable from './VisitsTable';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PatientDoc, ProblemDoc } from '@/lib/db-types';
@@ -30,7 +30,7 @@ export default function PatientHistoryTab({ patient, patientProblems, vitalsTime
   const { t } = useTranslation();
   // Visits (one row per visit, O3) by default; a deep link to one event
   // (?focus=) lands on All encounters, the view that can highlight it.
-  const [view, setView] = useState<'visits' | 'all'>(focusId ? 'all' : 'visits');
+  const [view, setView] = useUrlView(['visits', 'all'] as const, focusId ? 'all' : 'visits');
   return (
     <div>
       <div className="vt-tabs" role="tablist" aria-label={t('visits.views')}>

@@ -84,6 +84,12 @@ export default function CodedSearchField({
     ? value.trim()
     : null;
 
+  // Whether a list is actually on screen. Escape is kept only then: in Chrome
+  // Escape inside a search input also clears it, the clear counts as typing
+  // and reopens an EMPTY list, and a listener that swallowed every Escape left
+  // the form hosting this field impossible to close from the keyboard.
+  const listShown = open && (matches.length > 0 || !!customText);
+
   useEffect(() => {
     if (!open || !anchorRef.current) return;
     const measure = () => {
@@ -110,7 +116,7 @@ export default function CodedSearchField({
     // same keypress reached the dialog hosting this field and closed it —
     // discarding, for one, a half-written lab order.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape' || !listShown) return;
       e.stopPropagation();
       setOpen(false);
     };
@@ -122,7 +128,7 @@ export default function CodedSearchField({
       window.removeEventListener('resize', onScroll);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, listShown]);
 
   return (
     <div className="relative">
@@ -141,6 +147,10 @@ export default function CodedSearchField({
           // a dead search box until the user typed or clicked away first.
           onClick={() => setOpen(true)}
           onBlur={() => setOpen(false)}
+          // Escape with a list showing closes the list and nothing else: the
+          // browser's own Escape-clears-the-search would count as typing and
+          // reopen it, so the form around this field never got its Escape.
+          onKeyDown={e => { if (e.key === 'Escape' && listShown) e.preventDefault(); }}
           placeholder={placeholder}
           className="ps-9 search-icon-input w-full"
           style={{ background: 'var(--overlay-subtle)' }}

@@ -14,7 +14,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { FOCUSED_ROW_STYLE, rowActivation } from './rowFocus';
+import { FOCUSED_ROW_STYLE } from './rowFocus';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
 import Select from '@/components/Select';
@@ -157,7 +158,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       resetForm();
     } catch (err) {
       console.error(err);
-      showToast(t('msg.immunizationNotRecordedTryAgain'), 'error');
+      showToast(describeError(err, t('msg.immunizationNotRecordedTryAgain')), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -194,8 +195,8 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                   {['Vaccine', 'Dose', 'Date given', 'Next due', 'Site', 'Batch'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
-                  <th>{t('chart.actions')}</th>
                   <th>Status</th>
+                  <th>{t('chart.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,10 +218,6 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                     <tr
                       key={im._id}
                       id={`immunization-row-${im._id}`}
-                      // A dose is opened for correction from its row; the same
-                      // gate as the Correct button (recorders, not voided doses).
-                      {...(canRecord && im.recordStatus !== 'entered_in_error' ? rowActivation(() => startEdit(im), `${t('chart.correct')} — ${im.vaccine}`) : {})}
-                      className={canRecord && im.recordStatus !== 'entered_in_error' ? 'tamam-clickable-row' : undefined}
                       style={{
                         ...(im.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : {}),
                         ...(im._id === focusId ? FOCUSED_ROW_STYLE : {}),
@@ -241,18 +238,21 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                       <td className="font-mono">{im.batchNumber || '—'}</td>
                       <td>
                         {im.recordStatus === 'entered_in_error' ? (
-                          <span title={im.statusReason}>{t('chart.enteredInError')}</span>
-                        ) : canRecord ? (
-                          <div className="flex gap-1">
-                            <button type="button" className="btn btn-xs btn-secondary" onClick={() => startEdit(im)}>{t('chart.correct')}</button>
-                            <button type="button" className="btn btn-xs btn-secondary" onClick={() => setErrorTarget(im)}>{t('chart.markError')}</button>
-                          </div>
-                        ) : '—'}
+                          <span className="tamam-panel-badge tamam-panel-badge--muted" title={im.statusReason}>{t('chart.enteredInError')}</span>
+                        ) : (
+                          <span className="clinical-status-pill" style={{ background: s.bg, color: s.color }}>
+                            {humanizeStatus(im.status)}
+                          </span>
+                        )}
                       </td>
                       <td>
-                        <span className="clinical-status-pill" style={{ background: s.bg, color: s.color }}>
-                          {humanizeStatus(im.status)}
-                        </span>
+                        <RowActionsMenu
+                          ariaLabel={t('chart.immunizationRowActions', { name: im.vaccine })}
+                          actions={canRecord && im.recordStatus !== 'entered_in_error' ? [
+                            { key: 'correct', label: t('chart.correct'), onClick: () => startEdit(im) },
+                            { key: 'error', label: t('chart.markError'), tone: 'danger' as const, onClick: () => setErrorTarget(im) },
+                          ] : []}
+                        />
                       </td>
                     </tr>
                   );

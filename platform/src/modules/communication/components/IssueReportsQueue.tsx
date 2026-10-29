@@ -241,7 +241,7 @@ export default function IssueReportsQueue({
       </div>
 
       {responding && (
-        <Modal className="tamam-dialog" onClose={() => !saving && setResponding(null)} width={520} labelledBy="issue-response-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !saving && setResponding(null)} width={520} labelledBy="issue-response-title">
           <div className="modal-panel p-6 space-y-4">
             <h2 id="issue-response-title" className="text-[16px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('issues.responseTitle')}</h2>
             <p className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{responding.subject}</p>

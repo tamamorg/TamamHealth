@@ -11,12 +11,12 @@ import { useAuth } from '@/lib/context';
 import type { PatientDoc, ReminderChannel } from '@/lib/db-types';
 import { usePatientReminders } from '@/lib/hooks/usePatientReminders';
 import { patientFullName } from '@/lib/patient-utils';
-import { Check, X } from '@/components/icons/lucide';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import RowActionsMenu from '@/components/RowActionsMenu';
 
 const CHANNELS: { v: ReminderChannel; label: string }[] = [
   { v: 'sms', label: 'SMS' },
@@ -109,8 +109,8 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
               <th>Message</th>
               <th>Channel</th>
               <th>Send date</th>
-              <th>Actions</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -130,14 +130,6 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
                   <td>{CHANNELS.find(c => c.v === r.channel)?.label || r.channel}</td>
                   <td>{r.sendDate}</td>
                   <td>
-                    {r.status === 'queued' && (
-                      <div className="flex items-center gap-1.5">
-                        <button className="btn btn-xs btn-primary" onClick={() => markSent(r._id)} title="Mark sent"><Check className="w-3 h-3" /> Sent</button>
-                        <button className="btn btn-xs btn-secondary" onClick={() => cancel(r._id)} title="Cancel" aria-label="Cancel reminder"><X className="w-3 h-3" /></button>
-                      </div>
-                    )}
-                  </td>
-                  <td>
                     <span className={overdue
                       ? 'tamam-panel-badge tamam-panel-badge--pending'
                       : r.status === 'queued'
@@ -147,6 +139,15 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
                           : 'tamam-panel-badge tamam-panel-badge--muted'}>
                       {overdue ? 'Overdue' : r.status.charAt(0).toUpperCase() + r.status.slice(1)}
                     </span>
+                  </td>
+                  <td>
+                    <RowActionsMenu
+                      ariaLabel="Reminder actions"
+                      actions={r.status === 'queued' ? [
+                        { key: 'sent', label: 'Mark sent', onClick: () => markSent(r._id) },
+                        { key: 'cancel', label: 'Cancel reminder', tone: 'danger', onClick: () => cancel(r._id) },
+                      ] : []}
+                    />
                   </td>
                 </tr>
               );

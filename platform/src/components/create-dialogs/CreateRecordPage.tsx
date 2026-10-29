@@ -16,8 +16,8 @@
  */
 
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft } from '@/components/icons/lucide';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 export default function CreateRecordPage({
   title,
@@ -43,14 +43,15 @@ export default function CreateRecordPage({
   layout?: 'rail' | 'full';
   children: ReactNode;
 }) {
-  const router = useRouter();
+  // Back is the screen the form was opened from; `returnTo` when there is none.
+  const goBack = useGoBack(returnTo);
 
   return (
     <main className="page-container page-enter sadb-scope">
       <div className="sadb-page">
         <div className="sadb-regpage-shell">
           <div className="patient-registration-toolbar">
-            <button type="button" onClick={() => router.push(returnTo)} className="patient-registration-back">
+            <button type="button" onClick={goBack} className="patient-registration-back">
               <ArrowLeft className="w-4 h-4" /> {backLabel}
             </button>
           </div>

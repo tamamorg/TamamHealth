@@ -31,6 +31,7 @@ import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelRouter, ChartPanelUser } from './types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 
 interface PickedDx { code: string; title: string; chapter: string }
 
@@ -201,7 +202,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
       onClose();
     } catch (err) {
       console.error(err);
-      showToast(t('noteEditor.saveFailed'), 'error');
+      showToast(describeError(err, t('noteEditor.saveFailed')), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +231,7 @@ export default function VisitNotePanel({ patient, currentUser, router, canConsul
       router.push(`/consultation?patientId=${encodeURIComponent(patient._id)}`);
     } catch (err) {
       console.error(err);
-      showToast(t('msg.noteNotSavedSoThe'), 'error');
+      showToast(describeError(err, t('msg.noteNotSavedSoThe')), 'error');
     } finally {
       setSubmitting(false);
     }

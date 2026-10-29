@@ -12,13 +12,15 @@ import {
 } from '@/components/icons/lucide';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
 import { clickable } from '@/lib/a11y';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 type TabView = 'overview' | 'anc' | 'births' | 'mortality' | 'immunization' | 'high-risk';
 
 export default function MCHAnalyticsPage() {
   const { t } = useTranslation();
   const { data, loading } = useMCHAnalytics();
-  const [activeTab, setActiveTab] = useState<TabView>('overview');
+  // In the URL (?view=) so Back returns to the tab the user was on.
+  const [activeTab, setActiveTab] = useUrlView<TabView>(['overview', 'anc', 'births', 'mortality', 'immunization', 'high-risk'], 'overview');
   const [expandedMother, setExpandedMother] = useState<string | null>(null);
 
   if (loading || !data) {

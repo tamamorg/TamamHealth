@@ -72,6 +72,7 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { formatPhoneShared } from '@/lib/field-formats';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { describeError } from '@/lib/user-facing-error';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 /**
  * How many greeting-row actions are written out before the rest go behind
@@ -752,7 +753,8 @@ export default function EhrClinicalDashboard({
   const openAppointment = previewAppointmentId
     ? appointments.find(appointment => appointment._id === previewAppointmentId) ?? null
     : null;
-  const [view, setView] = useState<'dashboard' | 'calendar'>('dashboard');
+  // In the URL so Back returns to the tab the user was on.
+  const [view, setView] = useUrlView(['dashboard', 'calendar'] as const, 'dashboard');
   const [railOpen, setRailOpen] = useState(false);
   const previewHistoryIdRef = useRef<string | null>(null);
 
@@ -955,7 +957,7 @@ export default function EhrClinicalDashboard({
   useEffect(() => {
     // Calendar view was removed — the dashboard is the only view for all users.
     setView('dashboard');
-  }, [searchParams]);
+  }, [searchParams, setView]);
 
   const appointmentCounts = useMemo(() => {
     return appointments.reduce<Map<string, number>>((counts, appointment) => {
@@ -2393,7 +2395,7 @@ export default function EhrClinicalDashboard({
           )}
 
           {followUpToComplete && (
-            <Modal onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }} width={480} labelledBy="complete-follow-up-title">
+            <Modal variant="slider" onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }} width={480} labelledBy="complete-follow-up-title">
               <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
                 <div className="modal-headband">
                   <h3 id="complete-follow-up-title" className="text-base font-semibold mb-1">Complete follow-up</h3>

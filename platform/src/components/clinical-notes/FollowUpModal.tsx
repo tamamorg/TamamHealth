@@ -88,7 +88,7 @@ export default function FollowUpModal({
   };
 
   return (
-    <Modal onClose={onClose} width={480} labelledBy="cn-followup-title">
+    <Modal variant="slider" onClose={onClose} width={480} labelledBy="cn-followup-title">
       <div style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <CalendarClock size={17} aria-hidden />

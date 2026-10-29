@@ -14,6 +14,7 @@ import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import '@/components/clinical-notes/note-viewer.css';
+import RowActionsMenu from '@/components/RowActionsMenu';
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   open: { cls: 'tamam-panel-badge tamam-panel-badge--pending', label: 'Open' },
@@ -124,8 +125,8 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
               <th>Message</th>
               <th>Caller</th>
               <th>Received</th>
-              <th>Actions</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -153,17 +154,16 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
                       )}
                     </td>
                     <td>{formatDateTime(n.createdAt)}</td>
-                    <td>
-                      {n.status === 'open' && !responding && (
-                        <div className="flex items-center gap-1.5">
-                          {isProvider && (
-                            <button className="btn btn-xs btn-primary" disabled={busy} onClick={() => setRespondingId(n._id)}>Respond</button>
-                          )}
-                          <button className="btn btn-xs btn-secondary" disabled={busy} onClick={() => run(() => doClose(n._id))}>Close</button>
-                        </div>
-                      )}
-                    </td>
                     <td><span className={badge.cls}>{badge.label}</span></td>
+                    <td>
+                      <RowActionsMenu
+                        ariaLabel={`Actions for ${n.subject}`}
+                        actions={n.status === 'open' && !responding ? [
+                          ...(isProvider ? [{ key: 'respond', label: 'Respond', disabled: busy, onClick: () => setRespondingId(n._id) }] : []),
+                          { key: 'close', label: 'Close', disabled: busy, onClick: () => run(() => doClose(n._id)) },
+                        ] : []}
+                      />
+                    </td>
                   </tr>
                   {/* The exchange itself — a full-width row under the call it
                       belongs to, so the table stays one row per call. */}

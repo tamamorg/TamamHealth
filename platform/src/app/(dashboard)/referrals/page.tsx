@@ -34,6 +34,7 @@ import { formatAppointmentTimeUntil } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 const isImage = (mimeType: string) => mimeType.startsWith('image/');
 
@@ -381,9 +382,8 @@ export default function ReferralsPage() {
   const searchParams = useSearchParams();
   // Deep link from consultation (?tab=outgoing) after a referral is created,
   // so the clinician lands on the tab that actually shows what they just sent.
-  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing'>(() => (
-    searchParams?.get('tab') === 'outgoing' ? 'outgoing' : 'incoming'
-  ));
+  // In the URL so Back returns to the tab the user was on.
+  const [activeTab, setActiveTab] = useUrlView(['incoming', 'outgoing'] as const, 'incoming', 'tab');
   const [showNewReferral, setShowNewReferral] = useState(false);
   const [expandedReferral, setExpandedReferral] = useState<string | null>(null);
   // One popup for the table; the clicked row supplies its actions and position.
@@ -923,7 +923,7 @@ export default function ReferralsPage() {
 
         {/* Add Note Modal */}
         {noteModalId && (
-          <Modal onClose={() => setNoteModalId(null)}>
+          <Modal variant="slider" onClose={() => setNoteModalId(null)}>
             <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('action.addNote')}</h3>
@@ -985,7 +985,7 @@ export default function ReferralsPage() {
 
         {/* Complete Modal */}
         {completeModalId && (
-          <Modal onClose={() => setCompleteModalId(null)}>
+          <Modal variant="slider" onClose={() => setCompleteModalId(null)}>
             <div className="modal-panel modal-panel--sm" {...stopsClickPropagation}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('referrals.completeReferral')}</h3>

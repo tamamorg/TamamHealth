@@ -38,6 +38,7 @@ import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@
 import Modal from '@/components/Modal';
 import { printElementById } from '@/lib/safe-html';
 import { describeError } from '@/lib/user-facing-error';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 function todayISO(): string {
   return todayIso();
@@ -133,6 +134,8 @@ export default function MARPage() {
   const params = useParams();
   const admissionId = params?.admissionId as string;
   const router = useRouter();
+  // Back is the screen the user came from; ?returnTo= or the wards when there is none.
+  const goBack = useGoBack(typeof window !== 'undefined' ? returnToFromSearch(window.location.search, '/wards') : '/wards');
   const { currentUser } = useAuth();
   const { activeAdmissions } = useWards();
   const { patients } = usePatients();
@@ -249,7 +252,7 @@ export default function MARPage() {
         <div className="card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
             <button
-              onClick={() => router.push(returnToFromSearch(window.location.search, '/wards'))}
+              onClick={goBack}
               aria-label={t('action.back')}
               className="mt-0.5 p-1.5 rounded hover:bg-gray-100 shrink-0"
             >

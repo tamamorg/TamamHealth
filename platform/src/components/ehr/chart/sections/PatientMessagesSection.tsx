@@ -23,6 +23,7 @@ import { messagesDB } from '@/lib/db';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { describeError } from '@/lib/user-facing-error';
 import { formatDateTime } from '@/lib/format-utils';
 import type { MessageDoc, PatientDoc } from '@/lib/db-types';
 import { isFromPatient } from '@/modules/communication/services/patient-thread-service';
@@ -105,7 +106,7 @@ export default function PatientMessagesSection({ patient, patientName, facilityN
       await load();
     } catch (err) {
       console.error(err);
-      showToast(t('chartMessages.sendFailed'), 'error');
+      showToast(describeError(err, t('chartMessages.sendFailed')), 'error');
     } finally {
       setSending(false);
     }

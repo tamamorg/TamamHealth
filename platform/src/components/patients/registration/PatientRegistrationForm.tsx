@@ -46,6 +46,7 @@ import {
   DEMOGRAPHICS_SECTION, CONTACT_SECTION, NEXTOFKIN_SECTION,
   scrollParentOf, sectionRequirementProgress,
 } from './registration-progress';
+import { useGoBack } from '@/lib/navigation/nav-history';
 
 interface PatientRegistrationFormProps {
   embedded?: boolean;
@@ -88,6 +89,8 @@ export function PatientRegistrationForm({
   ], [t]);
 
   const router = useRouter();
+  // Cancel / Back returns to the screen registration was opened from.
+  const goBack = useGoBack(safeReturnTo(returnTo, '/patients'));
   const { patients, create: createPatient } = usePatients();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
@@ -447,7 +450,7 @@ export function PatientRegistrationForm({
       onCancel();
       return;
     }
-    router.push(safeReturnTo(returnTo, '/patients'));
+    goBack();
   };
 
   const handleSubmit = async (nextAction: 'profile' | 'check-in' = 'profile') => {

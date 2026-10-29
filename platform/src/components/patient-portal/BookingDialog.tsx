@@ -221,7 +221,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
   const stepNo = step === 'reason' ? 1 : step === 'slots' ? 2 : step === 'confirm' ? 3 : 3;
 
   return (
-    <Modal onClose={onClose}>
+    <Modal variant="slider" onClose={onClose}>
       <div className="modal-panel modal-panel--md pp-bk">
         <div className="pp-bk-head">
           <div className="pp-bk-title">

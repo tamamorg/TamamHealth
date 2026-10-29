@@ -76,6 +76,7 @@ import {
 } from '@/lib/patient-registration-draft';
 import { findActiveAppointmentForPatient } from '@/lib/appointment-workflow';
 import { describeError } from '@/lib/user-facing-error';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 /**
  * The one appointment a patient's queue row is threaded onto today — never a
@@ -139,7 +140,8 @@ export default function FrontDeskDashboardPage() {
   // queue, Finished = visits at/after checkout. Same lanes as every other
   // role dashboard and the mobile shell.
   const [queueFilter, setQueueFilter] = useState<AppointmentStatusGroup>('scheduled');
-  const [panelView, setPanelView] = useState<'all' | 'appointments' | 'pending' | 'queue' | 'registered'>('all');
+  // In the URL so Back returns to the tab the user was on.
+  const [panelView, setPanelView] = useUrlView(['all', 'appointments', 'pending', 'queue', 'registered'] as const, 'all');
   const searchParams = useSearchParams();
   const queueSort: 'priority' | 'name' | 'time' | 'status' = 'priority';
   const [queueSearch, setQueueSearch] = useState('');
@@ -237,7 +239,7 @@ export default function FrontDeskDashboardPage() {
     // on the page, so a malformed value would empty the whole board.
     const date = searchParams?.get('date');
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setBoardDate(date);
-  }, [searchParams]);
+  }, [searchParams, setPanelView]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -1146,7 +1148,7 @@ export default function FrontDeskDashboardPage() {
     setQueueFilter(tab as AppointmentStatusGroup);
     // Leave any tile-opened special view: the lane tabs drive the main list.
     setPanelView('all');
-  }, []);
+  }, [setPanelView]);
 
   const captureRegistrationDraft = useCallback((draft: PatientRegistrationDraft) => {
     registrationDraftRef.current = draft;
@@ -2068,7 +2070,7 @@ export default function FrontDeskDashboardPage() {
         )}
 
         {registerOpen && (
-          <Modal onClose={() => setRegisterOpen(false)} width={1180} disableBackdropClose labelledBy="patient-registration-dialog-title">
+          <Modal variant="slider" onClose={() => setRegisterOpen(false)} width={1180} disableBackdropClose labelledBy="patient-registration-dialog-title">
             <div className="ehr-checkin-dialog ehr-registration-dialog">
               {/* No header band. The form states its own title in the rail
                   ("Register New Patient"), so the bar above it repeated that

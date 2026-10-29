@@ -51,7 +51,7 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
   canRecordVitalEvents: boolean;
   setCorrectingVitalsRecord: Dispatch<SetStateAction<MedicalRecordDoc | undefined>>;
   setShowNurseVitals: Dispatch<SetStateAction<boolean>>;
-  setVitalsView: Dispatch<SetStateAction<"table" | "flowsheet">>;
+  setVitalsView: (view: "table" | "flowsheet") => void;
   recordsWithTriageVitals: MedicalRecordDoc[];
   t: (key: string, vars?: Record<string, string | number> | undefined) => string;
   vitalsTimeline: VitalsTimelineEntry[];

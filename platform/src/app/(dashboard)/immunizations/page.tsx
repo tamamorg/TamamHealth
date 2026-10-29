@@ -10,7 +10,6 @@ import { useToast } from '@/components/Toast';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientAge } from '@/lib/patient-utils';
-import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useAuth, useUi } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -29,6 +28,7 @@ import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
 const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'oral'> = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
@@ -69,7 +69,8 @@ export default function ImmunizationsPage() {
   // The record/edit forms are sliders beside the list; the page stays scrollable.
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [patientLookup, setPatientLookup] = useState('');
-  const [activeTab, setActiveTab] = useState<'records' | 'by_vaccine' | 'defaulters'>('records');
+  // In the URL (?view=) so Back returns to the tab the user was on.
+  const [activeTab, setActiveTab] = useUrlView(['records', 'by_vaccine', 'defaulters'] as const, 'records');
   const [vaccineExpanded, setVaccineExpanded] = useState<Record<string, boolean>>({});
   const [defaulters, setDefaulters] = useState<ImmunizationDefaulter[]>([]);
   const [defaulterStats, setDefaulterStats] = useState<{ totalDefaulters: number; uniqueChildren: number; critical: number; high: number; medium: number; byVaccine: Record<string, number> } | null>(null);

@@ -39,6 +39,7 @@ import {
 } from '@/lib/services/risk-resolution-service';
 import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { humanizeStatus } from '@/lib/format-utils';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 const SOURCE_HREF: Record<RiskSource, string> = {
   Audit: '/admin/audit',
@@ -75,7 +76,8 @@ export default function RiskCenterPage() {
   const [resolutions, setResolutions] = useState<RiskResolutionDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState<'open' | 'resolved'>('open');
+  // In the URL (?view=) so Back returns to the tab the user was on.
+  const [tab, setTab] = useUrlView(['open', 'resolved'] as const, 'open');
   const [search, setSearch] = useState('');
   /** Rows queued for the resolve dialog — one row, or everything shown. */
   const [resolving, setResolving] = useState<RiskRow[] | null>(null);

@@ -32,7 +32,7 @@ export async function getPatientDocuments(patientId: string, scope?: DataScope):
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
-  rows = filterByScope(rows, scope);
+  rows = filterByScope(rows, scope).filter(doc => doc.recordStatus !== 'entered_in_error');
   return rows.sort(byNewest);
 }
 
@@ -94,17 +94,42 @@ export async function addPatientDocument(input: AddPatientDocumentInput): Promis
 }
 
 /** Delete a document. Returns true if it existed. */
-export async function deletePatientDocument(id: string, by?: string): Promise<boolean> {
+/**
+ * Remove a document from the patient's chart. It was erased outright, with no
+ * reason and no facility check; a filed clinical document is kept for the
+ * record history instead, marked entered in error with who removed it and why,
+ * and every list leaves it out.
+ */
+export async function deletePatientDocument(
+  id: string,
+  scope: DataScope,
+  reason: string,
+  actor?: { id?: string; name?: string },
+): Promise<boolean> {
+  const cleanReason = reason?.trim() ?? '';
+  if (cleanReason.length < 3) throw new Error('Enter the reason for removing this document.');
   const db = patientDocumentsDB();
+  let doc: PatientDocumentDoc;
   try {
-    const doc = (await db.get(id)) as PatientDocumentDoc;
-    await db.remove({ _id: doc._id, _rev: doc._rev! });
-    await logAuditSafe('DELETE_PATIENT_DOCUMENT', by, undefined, `Deleted document ${id} (${doc.title}) from patient ${doc.patientId}`);
-    emitSyncEvent({ resourceType: 'patient_document', resourceId: id, operation: 'delete', hospitalId: doc.hospitalId, orgId: doc.orgId });
-    return true;
+    doc = (await db.get(id)) as PatientDocumentDoc;
   } catch {
     return false;
   }
+  if (filterByScope([doc], scope).length !== 1) throw new Error('You do not have access to this record. It belongs to another facility or organization.');
+  const now = new Date().toISOString();
+  const updated: PatientDocumentDoc = {
+    ...doc,
+    recordStatus: 'entered_in_error',
+    removalReason: cleanReason,
+    removedById: actor?.id,
+    removedByName: actor?.name,
+    removedAt: now,
+    updatedAt: now,
+  };
+  const resp = await db.put(updated);
+  await logAuditSafe('DELETE_PATIENT_DOCUMENT', actor?.id, actor?.name, `Removed document ${id} from patient ${doc.patientId}: ${cleanReason}`);
+  emitSyncEvent({ resourceType: 'patient_document', resourceId: id, operation: 'update', resourceVersion: resp.rev, hospitalId: doc.hospitalId, orgId: doc.orgId });
+  return true;
 }
 
 export interface ImageAnnotationActor {

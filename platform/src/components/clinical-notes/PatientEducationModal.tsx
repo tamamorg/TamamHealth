@@ -57,7 +57,7 @@ export default function PatientEducationModal({
   };
 
   return (
-    <Modal onClose={onClose} width={520} labelledBy="cn-patied-title">
+    <Modal variant="slider" onClose={onClose} width={520} labelledBy="cn-patied-title">
       <div style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <h2 id="cn-patied-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, flex: 1 }}>

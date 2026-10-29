@@ -43,6 +43,7 @@ export default function RowActionsMenu({ actions, ariaLabel = 'Actions' }: { act
       label={ariaLabel}
       icon={<MoreVertical aria-hidden="true" />}
       triggerClassName="tm-menu__trigger tm-row-actions-trigger"
+      menuClassName="tm-menu--row-actions"
       align="end"
       width={220}
     />

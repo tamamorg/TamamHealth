@@ -121,7 +121,7 @@ export default function AssignDoctorModal({
   };
 
   return (
-    <Modal onClose={onClose} size="md" labelledBy="assign-doctor-title" describedBy="assign-doctor-desc">
+    <Modal variant="slider" onClose={onClose} size="md" labelledBy="assign-doctor-title" describedBy="assign-doctor-desc">
       <DialogFrame className="assign-doctor-modal" busy={saving}>
         <DialogHeader
           titleId="assign-doctor-title"

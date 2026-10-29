@@ -52,6 +52,7 @@ import { formatMoney, humanizeStatus } from '@/lib/format-utils';
 import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 import { useNow } from '@/lib/hooks/useNow';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 const ClaimsPanel = dynamic(() => import('@/components/payments/ClaimsPanel'));
 const PaymentPanel = dynamic(() => import('@/components/payments/PaymentPanel'));
@@ -154,7 +155,8 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   // Claims are an explicit grant, not something inherited from /payments.
   const canSeeClaims = !!currentUser && isPathAllowed(currentUser.role, '/payments/claims');
 
-  const [tab, setTab] = useState<WorkspaceTab>(initialTab);
+  // In the URL so Back returns to the tab the user was on.
+  const [tab, setTab] = useUrlView<WorkspaceTab>(['accounts', 'claims'], initialTab, 'tab');
   const [balanceFilter, setBalanceFilter] = useState('all');
   const [activityFilter, setActivityFilter] = useState('any');
   const [claimStatusFilter, setClaimStatusFilter] = useState('all');
@@ -227,7 +229,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
   // the claims tab, whichever route mounted this.
   useEffect(() => {
     if (!canSeeClaims && tab === 'claims') setTab('accounts');
-  }, [canSeeClaims, tab]);
+  }, [canSeeClaims, tab, setTab]);
 
   // Keep ?tab= in the URL so a refresh, a bookmark or a back button returns to
   // the queue the user was working.
@@ -239,7 +241,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     else params.set('tab', next);
     const qs = params.toString();
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
-  }, []);
+  }, [setTab]);
 
   // ── Pending verification queue ─────────────────────────────────────
   // Pay-by-link (cash/bank) and patient-portal payments are written with
@@ -466,7 +468,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
     if (requestedStatus && ['draft', 'submitted', 'accepted', 'partial', 'paid', 'denied', 'appealed'].includes(requestedStatus)) {
       setClaimStatusFilter(requestedStatus);
     }
-  }, []);
+  }, [setTab]);
 
   // Export whatever the toolbar is currently showing — the rows on screen, not
   // the whole store, so a filtered view exports as filtered.
@@ -1007,7 +1009,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
 
       {/* Collect-payment patient picker (opened from the header button) */}
       {collectPickerOpen && (
-        <Modal onClose={() => setCollectPickerOpen(false)} width={460}>
+        <Modal variant="slider" onClose={() => setCollectPickerOpen(false)} width={460}>
           <div className="bl-root" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
               <div className="flex items-center gap-2">
@@ -1078,7 +1080,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
 
       {/* Record an installment against a payment plan */}
       {recordPlanFor && (
-        <Modal onClose={() => setRecordPlanFor(null)} width={440}>
+        <Modal variant="slider" onClose={() => setRecordPlanFor(null)} width={440}>
           <div className="bl-root bl-modal-body">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">

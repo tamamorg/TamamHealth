@@ -1154,7 +1154,7 @@ export default function ClinicalNoteEditor({
     <>
       {/* Add optional section */}
       {showAddOptional && (
-        <Modal onClose={() => setShowAddOptional(false)} width={420}>
+        <Modal variant="slider" onClose={() => setShowAddOptional(false)} width={420}>
           <div style={{ padding: 18 }}>
             <div className="modal-headband">
               <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addSectionTitle')}</h2>
@@ -1249,7 +1249,7 @@ export default function ClinicalNoteEditor({
 
       {/* Addendum */}
       {showAddendum && (
-        <Modal onClose={() => setShowAddendum(false)} width={520}>
+        <Modal variant="slider" onClose={() => setShowAddendum(false)} width={520}>
           <div style={{ padding: 20 }}>
             <div className="modal-headband">
               <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addendumTitle')}</h2>

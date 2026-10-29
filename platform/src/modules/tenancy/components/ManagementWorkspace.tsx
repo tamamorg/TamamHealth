@@ -228,7 +228,7 @@ function OrganizationRegistry() {
       </div>
 
       {showOrgEditor && (
-        <Modal onClose={() => setShowOrgEditor(false)} width={920} labelledBy="management-org-editor">
+        <Modal variant="slider" onClose={() => setShowOrgEditor(false)} width={920} labelledBy="management-org-editor">
           <div className="sadb-modal mgmt-form-modal">
             <PopupHeader
               titleId="management-org-editor"

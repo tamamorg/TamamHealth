@@ -3,12 +3,11 @@ import { patientFullName } from '@/lib/patient-utils';
 import type { AppointmentDoc, PatientDoc } from '@/lib/db-types';
 import { PortalAccessCard } from './lazy-panels';
 import { PatientDemographicsView } from './FacesheetViews';
-import type { Dispatch, SetStateAction } from 'react';
 import type { HospitalDoc } from '@/lib/db-types';
 export default function PatientDemographicsTab({ patient, demographicsTab, setDemographicsTab, openEditModal, canRegisterPatients, patientAppointments, regHospital }: {
   patient: PatientDoc;
   demographicsTab: string;
-  setDemographicsTab: Dispatch<SetStateAction<string>>;
+  setDemographicsTab: (tab: string) => void;
   openEditModal: () => void;
   canRegisterPatients: boolean;
   patientAppointments: AppointmentDoc[];

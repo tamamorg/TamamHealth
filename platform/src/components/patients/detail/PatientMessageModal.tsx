@@ -29,7 +29,7 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
   sendPatientMessage: () => Promise<void>;
 }) {
   return (
-        <Modal className="tamam-dialog" onClose={() => !messageSending && setShowMessageModal(false)} width={500} labelledBy="patient-message-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !messageSending && setShowMessageModal(false)} width={500} labelledBy="patient-message-title">
           <div className="modal-content card-elevated p-5 w-full" {...stopsClickPropagation}>
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>

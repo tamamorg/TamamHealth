@@ -88,6 +88,7 @@ import NotePrescribeForm from '@/components/clinical-notes/prescribe/PrescribeMo
 import BookAppointmentPanel from '@/components/ehr/chart/panels/BookAppointmentPanel';
 import { apptBucket, appointmentsInView, type ApptView } from './detail/appointment-buckets';
 import { jubaDate } from '@/lib/time-juba';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 
 export default function PatientDetailPage() {
@@ -164,8 +165,10 @@ export default function PatientDetailPage() {
   // from — arriving from the dashboard's "documents to sign" list bounced
   // straight back to the dashboard.
   useEffect(() => { stripArrivalParams(); }, []);
-  const [demographicsTab, setDemographicsTab] = useState('profile');
-  const [vitalsView, setVitalsView] = useState<'table' | 'flowsheet'>('table');
+  // Sub-views of the Demographics and Vitals tabs, in the URL (?view=) so Back
+  // returns to the one the user was on. The chart's tab switch drops ?view=.
+  const [demographicsTab, setDemographicsTab] = useUrlView<string>(['profile', 'additional', 'contacts', 'upcoming', 'past', 'portal'], 'profile');
+  const [vitalsView, setVitalsView] = useUrlView(['table', 'flowsheet'] as const, 'table');
   const [showCustomizeView, setShowCustomizeView] = useState(false);
   const [facesheetPanels, setFacesheetPanels] = useState<Set<FacesheetPanelId>>(() => new Set(DEFAULT_FACESHEET_PANELS));
   // Keep the content area pinned to the top when switching tabs, so cards don't
@@ -335,7 +338,8 @@ export default function PatientDetailPage() {
   const showAncTab = patientANC.length > 0 || patient?.gender === 'Female';
   const { appointments: patientAppointments } = usePatientAppointments(patient?._id);
   // Upcoming / Today / Past on the Appointments tab.
-  const [apptView, setApptView] = useState<ApptView>('upcoming');
+  // In the URL (?view=) so Back returns to the view the user was on.
+  const [apptView, setApptView] = useUrlView(['upcoming', 'today', 'past'] as const, 'upcoming' as ApptView);
   // Deep-linked appointment: open the view it falls in, page to its slice of
   // that view, then scroll it into view (same pattern as the other
   // focus-capable sections).
@@ -353,7 +357,7 @@ export default function PatientDetailPage() {
       document.getElementById(`appointment-row-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
     return () => cancelAnimationFrame(frame);
-  }, [activeTab, focusId, patientAppointments]);
+  }, [activeTab, focusId, patientAppointments, setApptView]);
   const { prescriptions: allPrescriptions } = usePrescriptions(patient?._id);
   const { triages: patientTriages, loading: triageLoading } = useTriage(patient?._id);
   const latestShiftHandoff = usePatientHandoff(patient?._id);
@@ -573,7 +577,7 @@ export default function PatientDetailPage() {
     ...(canConsult ? { recommendations: { label: 'Review', onClick: () => selectTab('careChecklist'), icon: ClipboardList } } : {}),
   };
 
-  const handleEditSubmit = buildHandleEditSubmit({ patient, editForm, setEditErrors, t, setEditSubmitting, updatePatient, setShowEditModal });
+  const handleEditSubmit = buildHandleEditSubmit({ patient, editForm, setEditErrors, t, setEditSubmitting, updatePatient, setShowEditModal, showToast });
 
   // Still "loading" while the scoped list loads OR while the out-of-facility
   // fallback lookup is in flight — only declare "not found" once both are done.

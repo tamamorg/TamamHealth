@@ -24,6 +24,7 @@ import {
 import type { PatientDoc } from '@/lib/db-types';
 import DrawerResizeHandle from './DrawerResizeHandle';
 import RailResizeHandle from './RailResizeHandle';
+import { useHistoryLayer } from '@/lib/navigation/history-layer';
 // One dropdown look for every workspace form (O3 select).
 import './workspace-fields.css';
 import ClinicalNoteEditor from '@/components/clinical-notes/ClinicalNoteEditor';
@@ -412,6 +413,14 @@ export default function TamamChartShell({
 
   return (
     <div className="tamam-root">
+      {/* One Back entry per open workspace: the phone / tablet / browser Back
+          closes the top one and shows the one beneath, like its ✕. */}
+      {stack.map((entry, index) => (
+        <WorkspaceBackLayer
+          key={`${index}-${entry.kind === 'rail' ? `${entry.id}-${entry.noteId ?? ''}` : 'page'}`}
+          onBack={() => closeDrawerRef.current()}
+        />
+      ))}
       {/* ══ Left vertical nav rail ══
           The column and the nav are separate elements on purpose: the column
           stretches to the shell's full height so the rail's surface and its
@@ -525,4 +534,10 @@ export default function TamamChartShell({
 
     </div>
   );
+}
+
+/** Holds one history entry while its workspace is open (history-layer.ts). */
+function WorkspaceBackLayer({ onBack }: { onBack: () => void }) {
+  useHistoryLayer(true, onBack);
+  return null;
 }

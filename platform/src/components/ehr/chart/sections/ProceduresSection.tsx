@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { rowActivation } from './rowFocus';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
 import { X } from '@/components/icons/lucide';
@@ -165,6 +165,26 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
     }
   };
 
+  /** The ⋮ path to the same write: asks only for the reason. */
+  const promptEnteredInError = async (procedure: ProcedureDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chart.markError'),
+      message: procedure.name,
+      inputLabel: t('chart.vitalsDeleteReason'),
+      inputRequired: true,
+      confirmLabel: t('chart.markError'),
+      tone: 'danger',
+    });
+    if (!reason) return;
+    if (reason.trim().length < 3) { showToast(t('chart.correctionReasonRequired'), 'error'); return; }
+    try {
+      if (!(await remove(procedure._id, reason, { id: currentUser?._id, name: currentUser?.name }))) throw new Error(t('chart.procedureUpdateFailed'));
+      showToast(t('chart.procedureMarkedError'), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('chart.procedureUpdateFailed')), 'error');
+    }
+  };
+
   return (
     <>
       <ChartSection title="Procedures" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
@@ -178,8 +198,8 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 <th>Date</th>
                 <th>Performed by</th>
                 <th>Outcome</th>
-                <th>{t('chart.actions')}</th>
                 <th>Status</th>
+                <th>{t('chart.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -198,9 +218,6 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
               {visibleProcedures.map(p => (
                 <tr
                   key={p._id}
-                  // Opens the correction dialog, behind the same gate as the Correct button.
-                  {...(canConsult && p.recordStatus !== 'entered_in_error' ? rowActivation(() => startCorrection(p), `${t('chart.correct')} — ${p.name}`) : {})}
-                  className={canConsult && p.recordStatus !== 'entered_in_error' ? 'tamam-clickable-row' : undefined}
                   style={p.recordStatus === 'entered_in_error' ? { opacity: 0.62 } : undefined}
                 >
                   <td style={{ fontWeight: 600 }}>
@@ -215,31 +232,29 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                     {p.notes ? <div style={{ color: 'var(--ehr-muted, #5D728B)', fontSize: 12 }}>{p.notes}</div> : null}
                   </td>
                   <td>
-                    {p.recordStatus === 'entered_in_error' ? (
-                      <span title={p.statusReason}>{t('chart.enteredInError')}</span>
-                    ) : canConsult ? <button type="button" className="btn btn-xs btn-secondary" onClick={() => startCorrection(p)}>{t('chart.correct')}</button> : '—'}
-                  </td>
-                  <td>
-                    <span className="clinical-status-pill">
+                    <span className="clinical-status-pill" title={p.recordStatus === 'entered_in_error' ? p.statusReason : undefined}>
                       {p.recordStatus === 'entered_in_error' ? t('chart.enteredInError') : p.status ? PROCEDURE_STATUS_LABELS[p.status] : 'Recorded'}
                     </span>
                     {p.status === 'aborted' && p.abortedReason ? (
                       <div style={{ color: 'var(--ehr-muted, #5D728B)', fontWeight: 400, fontSize: 12 }}>{p.abortedReason}</div>
                     ) : null}
-                    {canConsult && p.recordStatus !== 'entered_in_error' && procedureLifecycle.next(p.status || 'ordered').length > 0 && (
-                      <select
-                        aria-label={`Advance ${p.name}`}
-                        value=""
-                        disabled={advancing === p._id}
-                        onChange={e => { if (e.target.value) advanceTo(p._id, e.target.value as ProcedureStatus); }}
-                        className="clinical-table-control"
-                      >
-                        <option value="">{advancing === p._id ? 'Saving…' : 'Advance to…'}</option>
-                        {procedureLifecycle.next(p.status || 'ordered').map(next => (
-                          <option key={next} value={next}>{PROCEDURE_STATUS_LABELS[next]}</option>
-                        ))}
-                      </select>
-                    )}
+                  </td>
+                  <td>
+                    {/* Status reads; this column writes — advancing the
+                        lifecycle included. */}
+                    <RowActionsMenu
+                      ariaLabel={t('chart.procedureRowActions', { name: p.name })}
+                      actions={canConsult && p.recordStatus !== 'entered_in_error' ? [
+                        ...procedureLifecycle.next(p.status || 'ordered').map(next => ({
+                          key: `status-${next}`,
+                          label: t('chart.markStatus', { status: PROCEDURE_STATUS_LABELS[next] }),
+                          disabled: advancing === p._id,
+                          onClick: () => void advanceTo(p._id, next),
+                        })),
+                        { key: 'correct', label: t('chart.correct'), onClick: () => startCorrection(p) },
+                        { key: 'error', label: t('chart.markError'), tone: 'danger' as const, onClick: () => void promptEnteredInError(p) },
+                      ] : []}
+                    />
                   </td>
                 </tr>
               ))}

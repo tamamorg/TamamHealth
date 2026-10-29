@@ -488,7 +488,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
       {/* Adjudication modal */}
       {editingId && adjForm && (
-        <Modal onClose={handleCancel} width={480} labelledBy="adj-claim-title">
+        <Modal variant="slider" onClose={handleCancel} width={480} labelledBy="adj-claim-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="adj-claim-title">{t('claims.modalTitle')}</h3>
@@ -569,7 +569,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
       {/* Appeal modal — denied claim → appealed, with a note for the payer. */}
       {appealFor && (
-        <Modal onClose={() => !lifecycleBusy && setAppealFor(null)} width={440} labelledBy="appeal-claim-title">
+        <Modal variant="slider" onClose={() => !lifecycleBusy && setAppealFor(null)} width={440} labelledBy="appeal-claim-title">
           <div className="bl-root bl-modal-body">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 className="bl-modal-title" id="appeal-claim-title">Appeal claim {appealFor.claimNumber}</h3>

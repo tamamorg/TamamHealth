@@ -18,7 +18,9 @@
  */
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/context';
-import { useConfirm } from '@/components/ConfirmDialog';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
+import { describeError } from '@/lib/user-facing-error';
 import FileUpload from '@/components/FileUpload';
 import { usePatientDocuments } from '@/lib/hooks/usePatientDocuments';
 import ClinicalImageViewer, { type ClinicalImageItem } from '@/components/clinical-images/ClinicalImageViewer';
@@ -33,6 +35,7 @@ import Select from '@/components/Select';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 const CATEGORY_LABELS: Record<PatientDocumentCategory, string> = {
   radiology: 'Radiology',
@@ -127,9 +130,11 @@ export default function DocumentsPanel({
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
-  const confirm = useConfirm();
+  const confirmPrompt = useConfirmPrompt();
+  const { showToast } = useToast();
   const { documents, add, remove, addAnnotation, updateAnnotation, deleteAnnotation } = usePatientDocuments(patient._id);
-  const [view, setView] = useState<DocView>('documents');
+  // In the URL so Back returns to the tab the user was on.
+  const [view, setView] = useUrlView<DocView>(['documents', 'referrals', 'education'], 'documents');
   const [category, setCategory] = useState<PatientDocumentCategory>('radiology');
   const [note, setNote] = useState('');
   const [filter, setFilter] = useState<PatientDocumentCategory | 'all'>('all');
@@ -263,7 +268,7 @@ export default function DocumentsPanel({
     if (generalDocs.some(d => d._id === focusId)) setView('documents');
     else if (referralDocs.some(d => d._id === focusId)) setView('referrals');
     else if (educationDocs.some(d => d._id === focusId)) setView('education');
-  }, [focusId, generalDocs, referralDocs, educationDocs]);
+  }, [focusId, generalDocs, referralDocs, educationDocs, setView]);
 
   useEffect(() => {
     if (!focusId) return;
@@ -320,16 +325,22 @@ export default function DocumentsPanel({
             the file so the answer is about a document rather than a dialog. */}
         <button
           onClick={async () => {
-            const ok = await confirm({
+            // Removed with a reason and kept in the record history, like
+            // every other clinical entry: never erased.
+            const reason = await confirmPrompt({
               title: t('msg.deleteThisDocument'),
-              message: <>
-                <strong>{d.title || d.fileName}</strong> will be removed from this
-                patient&apos;s record. This cannot be undone.
-              </>,
+              message: t('chart.documentRemoveMessage', { name: d.title || d.fileName }),
+              inputLabel: t('chart.vitalsDeleteReason'),
               confirmLabel: t('action.delete'),
               tone: 'danger',
             });
-            if (ok) await remove(d._id, currentUser?._id);
+            if (!reason?.trim()) return;
+            try {
+              if (!(await remove(d._id, reason, { id: currentUser?._id, name: currentUser?.name }))) throw new Error('Change not saved. Try again.');
+              showToast(t('chart.documentRemoved', { name: d.title || d.fileName }), 'success');
+            } catch (err) {
+              showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
+            }
           }}
           className="p-1.5 rounded flex-shrink-0"
           style={{ background: 'rgba(224, 49, 39,0.12)' }}

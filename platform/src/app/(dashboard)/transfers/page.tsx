@@ -31,6 +31,7 @@ import { ArrowRightLeft, ArrowRight, Check, Clock } from '@/components/icons/luc
 import { stopsClickPropagation } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 type Tab = 'incoming' | 'outgoing';
 
@@ -62,7 +63,8 @@ export default function TransfersPage() {
   const { currentUser } = useAuth();
   const { incoming, outgoing, loading, reload } = useTransferQueue();
   const { accept: acceptLocal } = usePatientTransfers();
-  const [tab, setTab] = useState<Tab>('incoming');
+  // In the URL (?view=) so Back returns to the tab the user was on.
+  const [tab, setTab] = useUrlView<Tab>(['incoming', 'outgoing'], 'incoming');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

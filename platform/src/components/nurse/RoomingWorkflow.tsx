@@ -338,7 +338,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
       )}
 
       {vitalsEntry && (
-        <Modal onClose={() => { if (!vitalsSaving) setVitalsEntry(null); }} width={620} labelledBy="rooming-vitals-title">
+        <Modal variant="slider" onClose={() => { if (!vitalsSaving) setVitalsEntry(null); }} width={620} labelledBy="rooming-vitals-title">
           <div className="p-5" style={{ background: 'var(--bg-card-solid, var(--bg-card))' }}>
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>

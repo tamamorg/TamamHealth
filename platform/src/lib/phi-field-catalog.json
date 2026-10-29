@@ -89,7 +89,7 @@
     "patient_note": { "fields": ["body"] },
     "phone_note": { "fields": ["patientName", "callerName", "callerPhone", "subject", "message", "response"] },
     "assessment": { "fields": ["patientName", "answers.**", "interpretation"] },
-    "patient_document": { "fields": ["title", "fileName", "base64Data", "note", "imageAnnotations.**"] },
+    "patient_document": { "fields": ["title", "fileName", "base64Data", "note", "imageAnnotations.**", "removalReason"] },
     "patient_reminder": { "fields": ["patientName", "message"] },
     "clinician_task": { "fields": ["title", "description", "patientName"] },
     "nutrition_screening": { "fields": ["patientName", "notes"] },

@@ -53,6 +53,9 @@ export default function LabOrderModal({
   return (
     <Modal
       onClose={requestClose}
+      // An O3 workspace on the right, like every add/record form: the page
+      // behind it stays readable while the order is written.
+      variant="slider"
       // The dialog is a centred sheet; the wizard is a workspace. The wizard is
       // wide enough for the rail plus a full requisition column, but not the
       // whole screen — stretched to 1560 the two-field cards read as bands of

@@ -14,12 +14,12 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useEpidemicIntelligence } from '@/lib/hooks/useEpidemicIntelligence';
 import { Activity, MapPin, ChevronDown, ChevronRight } from '@/components/icons/lucide';
 import { CHART_SERIES, DISEASE_COLOR } from '@/lib/chart-colors';
 import { ChartLoadingState } from '@/components/ChartCard';
+import { useUrlView } from '@/lib/navigation/use-url-view';
 
 // recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
 // only when this chart renders — same pattern as
@@ -117,18 +117,10 @@ const OVERVIEW_ALERT_LIMIT = 8;
 
 export default function EpidemicIntelligencePage() {
   const { t } = useTranslation();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialTabParam = searchParams?.get('tab');
-  const initialTab: TabView = VALID_TABS.includes(initialTabParam as TabView) ? (initialTabParam as TabView) : 'overview';
   const { data, loading } = useEpidemicIntelligence();
-  const [activeTab, setActiveTab] = useState<TabView>(initialTab);
-  const setActiveTabAndUrl = (next: TabView) => {
-    setActiveTab(next);
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('tab', next);
-    router.replace(`/epidemic-intelligence?${params.toString()}`, { scroll: false });
-  };
+  // ?tab= pushes (not replaces), so Back returns to the previous tab.
+  const [activeTab, setActiveTabAndUrl] = useUrlView<TabView>(VALID_TABS, 'overview', 'tab');
+
   const [selectedDisease, setSelectedDisease] = useState<string | null>(null);
   const [expandedAlert, setExpandedAlert] = useState<number | null>(null);
 

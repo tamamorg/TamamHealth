@@ -662,7 +662,7 @@ export default function BillingTab({
           <div className="bl-modal-actions"><button type="button" className="bl-btn bl-btn--outline" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button></div>
         </div>
       </Modal>}
-      {showServices && <Modal onClose={() => { if (!superbill.busy) setShowServices(false); }} width={760} disableBackdropClose={superbill.busy} labelledBy="billing-services-title">
+      {showServices && <Modal variant="slider" onClose={() => { if (!superbill.busy) setShowServices(false); }} width={760} disableBackdropClose={superbill.busy} labelledBy="billing-services-title">
         <div className="bl-root bl-modal-body bl-services-dialog">
           <div className="bl-modal-head"><h3 id="billing-services-title" className="bl-modal-title">{t('billing.servicesPopup')}</h3></div>
           <ol className="bl-dialog-steps">
@@ -704,7 +704,7 @@ export default function BillingTab({
 
       {/* ─── Issue Refund Modal ─── */}
       {showRefund && (
-        <Modal onClose={() => setShowRefund(false)} width={460} labelledBy="bl-refund-title">
+        <Modal variant="slider" onClose={() => setShowRefund(false)} width={460} labelledBy="bl-refund-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="bl-refund-title">{t('billing.issueRefund')}</h3>
@@ -759,7 +759,7 @@ export default function BillingTab({
 
       {/* ─── Adjustment / Write-off Modal ─── */}
       {showAdjustment && (
-        <Modal onClose={() => setShowAdjustment(false)} width={460} labelledBy="bl-adj-title">
+        <Modal variant="slider" onClose={() => setShowAdjustment(false)} width={460} labelledBy="bl-adj-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="bl-adj-title">{t('billing.adjustmentWriteOff')}</h3>
@@ -813,7 +813,7 @@ export default function BillingTab({
           Key added to en.ts; the whole modal restyled to the bl- language
           while fixing it. */}
       {showPaymentLink && (
-        <Modal onClose={() => setShowPaymentLink(false)} width={440} labelledBy="bl-link-title">
+        <Modal variant="slider" onClose={() => setShowPaymentLink(false)} width={440} labelledBy="bl-link-title">
           <div className="bl-root bl-modal-body">
             <div className="bl-modal-head">
               <h3 className="bl-modal-title" id="bl-link-title">{t('billing.sendPaymentLink')}</h3>
