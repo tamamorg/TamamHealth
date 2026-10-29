@@ -16,9 +16,9 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 
-import { Plus, Search, X, FileText, ChevronDown, ChevronUp, UserCheck, ExternalLink } from '@/components/icons/lucide';
+import { Plus, Search, ChevronDown, ChevronUp, UserCheck, ExternalLink } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 
 /**
@@ -381,12 +381,16 @@ export default function DeathsPage() {
 
         {/* Death Registration Form Modal */}
         {showForm && (
-          <Modal variant="slider" onClose={() => setShowForm(false)} width={768} labelledBy="death-registration-title">
-            <div className="modal-panel w-full overflow-y-auto" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <div className="flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: 'var(--color-danger)' }} /><h2 id="death-registration-title" className="font-semibold">{t('deaths.modalTitle')}</h2></div>
-                <button onClick={() => setShowForm(false)}><X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} /></button>
-              </div>
+          <FormSlider
+            title={t('deaths.modalTitle')}
+            width={768}
+            onClose={() => setShowForm(false)}
+            footer={<>
+                <button onClick={() => setShowForm(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim() ? 0.5 : 1 }}>{t('deaths.registerDeath')}</button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="p-4 space-y-4">
                 {/* Link to existing patient (optional) */}
                 <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.2))' }}>
@@ -485,12 +489,8 @@ export default function DeathsPage() {
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.deathRegistered} onChange={e => setForm({ ...form, deathRegistered: e.target.checked })} /> {t('deaths.deathRegistered')}</label>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 p-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
-                <button onClick={() => setShowForm(false)} className="btn btn-secondary btn-sm">{t('action.cancel')}</button>
-                <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim() ? 0.5 : 1 }}>{t('deaths.registerDeath')}</button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
     </main>
   );

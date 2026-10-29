@@ -17,8 +17,10 @@
 import { useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import Select from '@/components/Select';
-import { Lock, X } from '@/components/icons/lucide';
+import { Lock } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -56,7 +58,6 @@ const fieldCls = 'w-full p-2.5 rounded-md text-[13px]';
 const fieldStyle = {
   background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)',
 } as const;
-const cardStyle = { background: 'var(--bg-card)', border: '1px solid var(--border-light)' } as const;
 
 export default function DirectivesSection({ patient }: { patient: PatientDoc }) {
   const { t } = useTranslation();
@@ -185,12 +186,27 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Add ── */}
       {adding && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setAdding(false)} width={480} labelledBy="add-directive-title">
-          <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
-            <div className="flex items-center justify-between">
-              <h2 id="add-directive-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Add directive / consent</h2>
-              <button className="p-1 rounded" disabled={busy} onClick={() => setAdding(false)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title="Add directive / consent"
+          className="tamam-dialog"
+          width={480}
+          onClose={() => !busy && setAdding(false)}
+          busy={busy}
+          footer={<>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setAdding(false)}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                disabled={busy || !addForm.description.trim()}
+                onClick={() => run(async () => {
+                  const svc = await import('@/lib/services/directive-service');
+                  await svc.addDirective(patient._id, needScope(), { ...addForm, description: addForm.description.trim(), ...author });
+                }, () => setAdding(false), 'Directive recorded')}
+              >
+                {busy ? 'Saving…' : 'Save'}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="dir-type" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
               <Select id="dir-type" value={addForm.type} onChange={e => setAddForm({ ...addForm, type: e.target.value as DirectiveType })}>
@@ -205,45 +221,22 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <label htmlFor="dir-start" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Effective from</label>
               <input id="dir-start" type="date" value={addForm.startDate} onChange={e => setAddForm({ ...addForm, startDate: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setAdding(false)}>Cancel</button>
-              <button
-                className="btn btn-sm btn-primary"
-                disabled={busy || !addForm.description.trim()}
-                onClick={() => run(async () => {
-                  const svc = await import('@/lib/services/directive-service');
-                  await svc.addDirective(patient._id, needScope(), { ...addForm, description: addForm.description.trim(), ...author });
-                }, () => setAdding(false), 'Directive recorded')}
-              >
-                {busy ? 'Saving…' : 'Save'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ── Edit (unsigned only) ── */}
       {editing && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setEditing(null)} width={480} labelledBy="edit-directive-title">
-          <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
-            <div className="flex items-center justify-between">
-              <h2 id="edit-directive-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Edit directive</h2>
-              <button className="p-1 rounded" disabled={busy} onClick={() => setEditing(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-etype" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
-              <Select id="dir-etype" value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value as DirectiveType })}>
-                {TYPE_OPTIONS.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-edesc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
-              <input id="dir-edesc" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className={fieldCls} style={fieldStyle} />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
+        <FormSlider
+          title="Edit directive"
+          className="tamam-dialog"
+          width={480}
+          onClose={() => !busy && setEditing(null)}
+          busy={busy}
+          footer={<>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
               <button
-                className="btn btn-sm btn-primary"
+                className="btn btn-primary"
                 disabled={busy || !editForm.description.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
@@ -256,19 +249,52 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               >
                 {busy ? 'Saving…' : 'Save changes'}
               </button>
+          </>}
+        >
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="dir-etype" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
+              <Select id="dir-etype" value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value as DirectiveType })}>
+                {TYPE_OPTIONS.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="dir-edesc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
+              <input id="dir-edesc" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ── Signature ── */}
       {signing && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setSigning(null)} width={460} labelledBy="sign-dir-title">
-          <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
-            <div className="flex items-center justify-between">
-              <h2 id="sign-dir-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Take signature</h2>
-              <button className="p-1 rounded" disabled={busy} onClick={() => setSigning(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
+        <FormSlider
+          title="Take signature"
+          className="tamam-dialog"
+          width={460}
+          onClose={() => !busy && setSigning(null)}
+          busy={busy}
+          footer={<>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setSigning(null)}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                disabled={busy || !signForm.name.trim() || (signForm.signedBy !== 'patient' && !signForm.relationship.trim())}
+                onClick={() => run(async () => {
+                  const svc = await import('@/lib/services/directive-service');
+                  return svc.signDirective(patient._id, needScope(), signing.id, {
+                    name: signForm.name,
+                    signedBy: signForm.signedBy,
+                    relationship: signForm.relationship,
+                    witnessId: currentUser?._id,
+                    witnessName: author.recordedByName,
+                  });
+                }, () => setSigning(null), 'Signature recorded')}
+              >
+                <Lock className="w-3.5 h-3.5" /> Record signature
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
               <strong>{typeLabel(signing.type)}</strong> — {signing.description}
             </p>
@@ -292,37 +318,16 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               Witnessed by {author.recordedByName || 'the signed-in user'}. A signature cannot be edited afterwards —
               a consent taken in error is revoked and taken again.
             </p>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setSigning(null)}>Cancel</button>
-              <button
-                className="btn btn-sm btn-primary"
-                disabled={busy || !signForm.name.trim() || (signForm.signedBy !== 'patient' && !signForm.relationship.trim())}
-                onClick={() => run(async () => {
-                  const svc = await import('@/lib/services/directive-service');
-                  return svc.signDirective(patient._id, needScope(), signing.id, {
-                    name: signForm.name,
-                    signedBy: signForm.signedBy,
-                    relationship: signForm.relationship,
-                    witnessId: currentUser?._id,
-                    witnessName: author.recordedByName,
-                  });
-                }, () => setSigning(null), 'Signature recorded')}
-              >
-                <Lock className="w-3.5 h-3.5" /> Record signature
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* ── Revoke ── */}
       {revoking && (
         <Modal className="tamam-dialog" onClose={() => !busy && setRevoking(null)} width={440} labelledBy="revoke-dir-title">
-          <div className="rounded-xl p-5 space-y-4" style={cardStyle}>
-            <div className="flex items-center justify-between">
-              <h2 id="revoke-dir-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Revoke directive</h2>
-              <button className="p-1 rounded" disabled={busy} onClick={() => setRevoking(null)} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
+          <DialogFrame busy={busy}>
+            <DialogHeader titleId="revoke-dir-title" title="Revoke directive" onClose={() => !busy && setRevoking(null)} />
+            <DialogBody className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
               Revoke <strong>{typeLabel(revoking.type)}</strong>? The entry is kept with its reason — consent history
               is never deleted.
@@ -331,10 +336,11 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <label htmlFor="dir-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
               <input id="dir-reason" autoFocus value={revokeReason} onChange={e => setRevokeReason(e.target.value)} className={fieldCls} style={fieldStyle} />
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setRevoking(null)}>Cancel</button>
+            </DialogBody>
+            <DialogFooter>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setRevoking(null)}>Cancel</button>
               <button
-                className="btn btn-sm btn-primary"
+                className="btn btn-primary"
                 disabled={busy || !revokeReason.trim()}
                 onClick={() => run(async () => {
                   const svc = await import('@/lib/services/directive-service');
@@ -343,8 +349,8 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               >
                 {busy ? 'Saving…' : 'Revoke'}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </>

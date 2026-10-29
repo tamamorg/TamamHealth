@@ -3,11 +3,14 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import PatientName from '@/components/PatientName';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { Plus, X, CheckCircle2, Pill, ArrowRightLeft, ClipboardList } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { patientFullName } from '@/lib/patient-utils';
+import CodedSearchField from '@/components/CodedSearchField';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
@@ -17,7 +20,6 @@ import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader'
 import Select from '@/components/Select';
 import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
-import { stopsClickPropagation } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { describeError } from '@/lib/user-facing-error';
@@ -74,6 +76,13 @@ export default function WardsPage() {
   const activeFilterCount = filterWard ? 1 : 0;
   const clearFilters = () => { setFilterWard(''); };
 
+  const [admitPatientQuery, setAdmitPatientQuery] = useState('');
+  const admitPatientOptions = useMemo(() => patients.map(p => ({
+    code: p._id,
+    name: `${patientFullName(p)} · ${p.hospitalNumber}`,
+    meta: [p.gender, p.dateOfBirth].filter(Boolean).join(' · '),
+    keywords: [p.hospitalNumber, p.phone].filter(Boolean) as string[],
+  })), [patients]);
   const [admitForm, setAdmitForm] = useState({
     patientId: '',
     admittingDiagnosis: '',
@@ -83,6 +92,7 @@ export default function WardsPage() {
     isolationRequired: false,
     encounterId: '',
   });
+  const admitPatient = admitForm.patientId ? patients.find(p => p._id === admitForm.patientId) : undefined;
 
   const [dischargeForm, setDischargeForm] = useState({
     dischargeType: 'normal' as NonNullable<AdmissionDoc['dischargeType']>,
@@ -208,6 +218,7 @@ export default function WardsPage() {
         facilityId: ward.facilityId,
         facilityName: ward.facilityName,
         facilityLevel: ward.facilityLevel,
+        orgId: ward.orgId || currentUser.orgId,
         attendingPhysician: currentUser._id || currentUser.username || 'unknown',
         attendingPhysicianName: currentUser.name,
         isolationRequired: admitForm.isolationRequired,
@@ -416,7 +427,10 @@ export default function WardsPage() {
                           {/* The name still opens the chart — `PatientName`
                               renders its own link when given an id; the rest
                               of the row opens the actions. */}
-                          <PatientName patientId={a.patientId} name={a.patientName} nameClassName="" />
+                          {/* `ehr-row-name` takes the name out of the cell's span-as-pill
+                              rule (written for status badges), which floated it right
+                              and over the avatar. */}
+                          <PatientName patientId={a.patientId} name={a.patientName} nameClassName="" className="ehr-row-name" />
                           <p>{a.hospitalNumber || t('ward.noHospitalNumber')}</p>
                         </div>
                       </div>
@@ -452,25 +466,40 @@ export default function WardsPage() {
 
         {/* Admit modal */}
         {admitOpen && (
-          <Modal variant="slider" onClose={() => setAdmitOpen(false)}>
-            <div className="modal-content card-elevated p-6 max-w-lg w-full" style={{ maxHeight: '90vh', overflowY: 'auto' }} {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold">{t('ward.admitPatient')}</h3>
-                <button onClick={() => setAdmitOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <FormSlider
+            title={t('ward.admitPatient')}
+            onClose={() => setAdmitOpen(false)}
+            footer={<>
+                <button onClick={() => setAdmitOpen(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleAdmit} className="btn btn-primary">{t('ward.admit')}</button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="space-y-3">
                 <div>
                   <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.patientRequired')}</label>
                   {/* Changing the patient drops the deep-linked visit — an
                       encounterId belongs to the patient it arrived with. */}
-                  <Select value={admitForm.patientId} onChange={e => setAdmitForm({ ...admitForm, patientId: e.target.value, encounterId: '' })}>
-                    <option value="">{t('ward.selectPatient')}</option>
-                    {patients.slice(0, 200).map(p => (
-                      <option key={p._id} value={p._id}>{p.firstName} {p.surname} · {p.hospitalNumber}</option>
-                    ))}
-                  </Select>
+                  {/* Search, not a list: the dropdown held the first 200 patients,
+                      so at a facility with more, most could not be admitted
+                      from here. Changing the patient drops the deep-linked
+                      visit — an encounterId belongs to the patient it came with. */}
+                  {admitPatient ? (
+                    <div className="tamam-panel-picked-chip">
+                      <span>{patientFullName(admitPatient)} <span style={{ color: 'var(--text-muted)' }}>· {admitPatient.hospitalNumber}</span></span>
+                      <button type="button" onClick={() => setAdmitForm({ ...admitForm, patientId: '', encounterId: '' })}>{t('ward.changePatient')}</button>
+                    </div>
+                  ) : (
+                    <CodedSearchField
+                      label=""
+                      placeholder={t('ward.selectPatient')}
+                      options={admitPatientOptions}
+                      value={admitPatientQuery}
+                      onChange={setAdmitPatientQuery}
+                      onSelect={option => { setAdmitForm({ ...admitForm, patientId: option.code, encounterId: '' }); setAdmitPatientQuery(''); }}
+                      showCodeBadge={false}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.admittingDiagnosisRequired')}</label>
@@ -515,13 +544,8 @@ export default function WardsPage() {
                   </label>
                 </div>
               </div>
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setAdmitOpen(false)} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
-                <button onClick={handleAdmit} className="btn btn-primary flex-1">{t('ward.admit')}</button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
 
         {/* ═══ The patient's dialog — opened by the row, not by a button ═══

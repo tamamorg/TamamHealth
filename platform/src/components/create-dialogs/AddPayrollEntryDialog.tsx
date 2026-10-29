@@ -8,8 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -79,7 +78,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
     }
   };
 
-  const body = (
+  const fields = (
     <>
       <div className="space-y-3">
         <div>
@@ -124,28 +123,36 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
           <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
         </div>
       </div>
-      <hr className="section-divider" />
-      <div className="flex gap-2 mt-2">
+    </>
+  );
+  const actions = (
+    <>
         <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('hr.cancel')}</button>
         <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>{t('hr.addEntry')}</button>
-      </div>
     </>
   );
 
-  if (presentation === 'page') return body;
+  if (presentation === 'page') {
+    return (
+      <>
+        {fields}
+        <hr className="section-divider" />
+        <div className="flex gap-2 mt-2">{actions}</div>
+      </>
+    );
+  }
 
   return (
-    <Modal variant="slider" onClose={onClose} width={448} labelledBy="add-payroll-title">
-      <div className="sadb-modal">
-        <PopupHeader
-          titleId="add-payroll-title"
-          title={t('hr.addPayrollEntryPeriod', { period: entryPeriod })}
-          subtitle={t('createPage.payrollNote')}
-          onExpand={() => { onClose(); router.push(expandHref(`/hr/payroll/new?period=${encodeURIComponent(entryPeriod)}`)); }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+    <FormSlider
+      title={t('hr.addPayrollEntryPeriod', { period: entryPeriod })}
+      subtitle={t('createPage.payrollNote')}
+      onExpand={() => { onClose(); router.push(expandHref(`/hr/payroll/new?period=${encodeURIComponent(entryPeriod)}`)); }}
+      onClose={onClose}
+      width={448}
+      busy={saving}
+      footer={actions}
+    >
+      {fields}
+    </FormSlider>
   );
 }

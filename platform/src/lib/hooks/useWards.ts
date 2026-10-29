@@ -85,10 +85,38 @@ export function useWards() {
   // The bed documents are the live operational truth. Ward counters are a
   // reporting cache and can lag after an offline conflict or interrupted
   // update, so they must not drive the board a nurse uses to place a patient.
-  const configuredCapacity = wards.reduce((s, w) => s + (w.totalBeds || 0), 0);
-  const totalBeds = beds.length > 0 ? beds.length : configuredCapacity;
-  const occupiedBeds = beds.filter(bed => bed.status === 'occupied').length;
-  const availableBeds = beds.filter(bed => bed.status === 'available').length;
+  //
+  // Counted per ward: a ward with bed documents is counted from them; a ward
+  // that has none (capacity configured, beds never itemised) from its own
+  // tallies. Counting the documents alone for the whole facility left those
+  // wards out — the census read "8 beds, 1 available" beside an admit form
+  // offering a ward with 9 free (the same two-model rule the form follows).
+  const census = { total: 0, occupied: 0, available: 0 };
+  const wardIds = new Set(wards.map(w => w._id));
+  for (const ward of wards) {
+    const wardBeds = beds.filter(bed => bed.wardId === ward._id);
+    if (wardBeds.length > 0) {
+      census.total += wardBeds.length;
+      census.occupied += wardBeds.filter(bed => bed.status === 'occupied').length;
+      census.available += wardBeds.filter(bed => bed.status === 'available').length;
+    } else {
+      const total = ward.totalBeds || 0;
+      const occupied = Math.min(total, ward.occupiedBeds || 0);
+      census.total += total;
+      census.occupied += occupied;
+      census.available += Math.max(0, ward.availableBeds ?? total - occupied);
+    }
+  }
+  // Beds whose ward is not in this list still exist; count them as they are.
+  for (const bed of beds) {
+    if (wardIds.has(bed.wardId)) continue;
+    census.total += 1;
+    if (bed.status === 'occupied') census.occupied += 1;
+    if (bed.status === 'available') census.available += 1;
+  }
+  const totalBeds = census.total;
+  const occupiedBeds = census.occupied;
+  const availableBeds = census.available;
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
   return {

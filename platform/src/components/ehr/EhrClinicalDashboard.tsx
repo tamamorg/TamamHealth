@@ -41,6 +41,8 @@ import { useEncounters } from '@/lib/hooks/useEncounters';
 import { resolveOperationalVisitState, type VisitLane } from '@/lib/clinical-flow/visit-state';
 import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import FormSlider from '@/components/overlay/FormSlider';
 import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
@@ -67,7 +69,6 @@ import { withReturnTo } from '@/lib/navigation/return-to';
 import { useRoleChoice, useRoleFlag, useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
-import { stopsClickPropagation } from '@/lib/a11y';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { formatPhoneShared } from '@/lib/field-formats';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
@@ -500,9 +501,11 @@ export function computeRowQueueColumns(
    */
   waitHighlight: { enabled: boolean; targetMinutes: number } = { enabled: true, targetMinutes: 30 },
   encounter?: Pick<EncounterDoc, 'status'> | null,
+  /** The encounter still has post-consultation nursing open (see resolveOperationalVisitState). */
+  nursingReviewOpen = false,
 ): RowQueueColumns {
   const operationalState = encounter
-    ? resolveOperationalVisitState(row.appointment ?? { status: row.status }, encounter)
+    ? resolveOperationalVisitState(row.appointment ?? { status: row.status }, encounter, { nursingReviewOpen })
     : null;
   const inService = triage?.handoffStatus === 'in_consultation' || Boolean(triage?.handoffTo) || row.status === 'in_progress';
   const appointmentAt = row.appointment?.appointmentTime
@@ -1055,6 +1058,21 @@ export default function EhrClinicalDashboard({
     }
     return map;
   }, [encounters]);
+  // Encounters with post-consultation nursing still open — the same handoff
+  // queue the front desk reads, so both boards name the visit's stage alike.
+  const [nursingReviewIds, setNursingReviewIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!currentUser?.orgId) return;
+    let cancelled = false;
+    void import('@/modules/post-consult/services/handoff-service')
+      .then(m => m.getHandoffQueue({
+        orgId: currentUser.orgId, hospitalId: currentUser.hospitalId || currentUser.hospital?._id,
+        role: currentUser.role, userId: currentUser._id,
+      }))
+      .then(pending => { if (!cancelled) setNursingReviewIds(new Set(pending.map(enc => enc._id))); })
+      .catch(() => { if (!cancelled) setNursingReviewIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [currentUser?.orgId, currentUser?.hospitalId, currentUser?.hospital?._id, currentUser?.role, currentUser?._id, encounters]);
   const encounterForRow = (row: UnifiedPatientRow) => row.appointment
     ? encounterByAppointment.get(row.appointment._id) ?? null
     : row.patientId ? encounterByPatient.get(row.patientId) ?? null : null;
@@ -1209,6 +1227,7 @@ export default function EhrClinicalDashboard({
     queueNowMs,
     { enabled: queueOverTarget, targetMinutes: facilitySettings.clinicalPolicy.doorToClinicianMinutes },
     encounterForRow(row),
+    (() => { const enc = encounterForRow(row); return !!enc && nursingReviewIds.has(enc._id); })(),
   );
 
   // Daybar filter pills — the shared three-lane vocabulary every role
@@ -2331,10 +2350,9 @@ export default function EhrClinicalDashboard({
               mid-session — can't render the search itself for a non-pharmacist. */}
           {canDispense && findPatientOpen && (
             <Modal onClose={() => setFindPatientOpen(false)} width={480} labelledBy="find-patient-title">
-              <div className="ehr-find-patient">
-                <div className="modal-headband">
-                  <h3 id="find-patient-title">Dispense to patient</h3>
-                </div>
+              <DialogFrame>
+                <DialogHeader titleId="find-patient-title" title="Dispense to patient" onClose={() => setFindPatientOpen(false)} />
+                <DialogBody className="space-y-4">
                 <div className="ehr-find-patient-input">
                   <Search className="w-4 h-4" />
                   <input
@@ -2373,7 +2391,8 @@ export default function EhrClinicalDashboard({
                     })}
                   </ul>
                 )}
-              </div>
+                </DialogBody>
+              </DialogFrame>
             </Modal>
           )}
 
@@ -2395,14 +2414,19 @@ export default function EhrClinicalDashboard({
           )}
 
           {followUpToComplete && (
-            <Modal variant="slider" onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }} width={480} labelledBy="complete-follow-up-title">
-              <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
-                <div className="modal-headband">
-                  <h3 id="complete-follow-up-title" className="text-base font-semibold mb-1">Complete follow-up</h3>
-                  <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                    {followUpToComplete.title} · {followUpToComplete.subtitle || 'Scheduled follow-up'}
-                  </p>
-                </div>
+            <FormSlider
+              title="Complete follow-up"
+              subtitle={<>{followUpToComplete.title} · {followUpToComplete.subtitle || 'Scheduled follow-up'}</>}
+              width={480}
+              onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }}
+              footer={<>
+                  <button type="button" className="btn btn-secondary" disabled={followUpSaving} onClick={() => setFollowUpToComplete(null)}>Cancel</button>
+                  <button type="button" className="btn btn-primary" disabled={followUpSaving} onClick={() => void completeFollowUp()}>
+                    {followUpSaving ? 'Saving…' : 'Complete follow-up'}
+                  </button>
+              </>}
+            >
+              <div className="space-y-4">
                 <div className="space-y-3">
                   <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     Outcome
@@ -2424,14 +2448,8 @@ export default function EhrClinicalDashboard({
                     />
                   </label>
                 </div>
-                <div className="flex gap-2 mt-5">
-                  <button type="button" className="btn btn-secondary flex-1" disabled={followUpSaving} onClick={() => setFollowUpToComplete(null)}>Cancel</button>
-                  <button type="button" className="btn btn-primary flex-1" disabled={followUpSaving} onClick={() => void completeFollowUp()}>
-                    {followUpSaving ? 'Saving…' : 'Complete follow-up'}
-                  </button>
-                </div>
               </div>
-            </Modal>
+            </FormSlider>
           )}
 
           {printOpen && (
@@ -2489,7 +2507,6 @@ export default function EhrClinicalDashboard({
         </aside>
         )}
       </section>
-
     </div>
   );
 }

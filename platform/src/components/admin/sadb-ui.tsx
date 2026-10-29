@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Pencil, Search } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
 import { FilterDisclosure } from '@/components/ehr/EhrListHeader';
@@ -643,29 +644,30 @@ export function SadbEditorModal({ title, sub, value, onChange, onCancel, onApply
   title: string; sub?: ReactNode; value: string; onChange: (v: string) => void;
   onCancel: () => void; onApply: () => void; applyLabel?: string; multiline?: boolean; busy?: boolean;
 }) {
+  // Built on the shared dialog kit, so the console's prompts read like every
+  // other popup in the platform.
   return (
-    <Modal onClose={onCancel} width={440} labelledBy="sadb-editor-title">
-      <div className="sadb-modal">
-        <div className="sadb-modal-copy">
-          <h2 id="sadb-editor-title" className="sadb-modal-title">{title}</h2>
-          {sub && <p className="sadb-modal-sub">{sub}</p>}
-        </div>
-        {multiline ? (
-          <textarea className="sadb-modal-input" rows={3} value={value} onChange={e => onChange(e.target.value)} autoFocus />
-        ) : (
-          <input
-            className="sadb-modal-input"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') onApply(); }}
-            autoFocus
-          />
-        )}
-        <div className="sadb-modal-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={onApply} disabled={busy}>{applyLabel}</button>
-        </div>
-      </div>
+    <Modal onClose={onCancel} size="sm" labelledBy="sadb-editor-title" describedBy={sub ? 'sadb-editor-sub' : undefined}>
+      <DialogFrame busy={busy}>
+        <DialogHeader titleId="sadb-editor-title" title={title} description={sub} descriptionId="sadb-editor-sub" onClose={onCancel} />
+        <DialogBody tight>
+          {multiline ? (
+            <textarea aria-labelledby="sadb-editor-title" rows={3} value={value} onChange={e => onChange(e.target.value)} autoFocus />
+          ) : (
+            <input
+              aria-labelledby="sadb-editor-title"
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') onApply(); }}
+              autoFocus
+            />
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn btn-primary" onClick={onApply} disabled={busy}>{applyLabel}</button>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }
@@ -690,30 +692,36 @@ export function SadbConfirmModal({ title, body, confirmLabel = 'Confirm', cancel
   extra?: ReactNode;
 }) {
   return (
-    <Modal onClose={onCancel} width={440} labelledBy="sadb-confirm-title">
-      <div className="sadb-modal sadb-modal--danger">
-        <div className="sadb-modal-copy">
-          <h2 id="sadb-confirm-title" className="sadb-modal-title sadb-modal-title--danger">{title}</h2>
-          <p className="sadb-modal-sub">
-            {body}{auditNote && ' This action is written to the audit log with your identity.'}
-          </p>
-        </div>
-        {extra}
-        {onNoteChange && (
-          <textarea
-            className="sadb-modal-input"
-            rows={2}
-            value={noteValue ?? ''}
-            onChange={e => onNoteChange(e.target.value)}
-            placeholder={notePlaceholder ?? 'Optional note'}
-            aria-label={notePlaceholder ?? 'Optional note'}
-          />
+    <Modal onClose={onCancel} size="sm" labelledBy="sadb-confirm-title" describedBy="sadb-confirm-body">
+      <DialogFrame busy={busy}>
+        <DialogHeader
+          titleId="sadb-confirm-title"
+          title={title}
+          descriptionId="sadb-confirm-body"
+          description={<>{body}{auditNote && ' This action is written to the audit log with your identity.'}</>}
+          icon={<AlertTriangle />}
+          tone="danger"
+          onClose={onCancel}
+        />
+        {(extra || onNoteChange) && (
+          <DialogBody tight>
+            {extra}
+            {onNoteChange && (
+              <textarea
+                rows={2}
+                value={noteValue ?? ''}
+                onChange={e => onNoteChange(e.target.value)}
+                placeholder={notePlaceholder ?? 'Optional note'}
+                aria-label={notePlaceholder ?? 'Optional note'}
+              />
+            )}
+          </DialogBody>
         )}
-        <div className="sadb-modal-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>{cancelLabel}</button>
-          <button type="button" className="btn btn-sm sadb-btn-danger" onClick={onConfirm} disabled={busy || confirmDisabled}>{confirmLabel}</button>
-        </div>
-      </div>
+        <DialogFooter>
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>{cancelLabel}</button>
+          <button type="button" className="btn btn-danger-solid" onClick={onConfirm} disabled={busy || confirmDisabled}>{confirmLabel}</button>
+        </DialogFooter>
+      </DialogFrame>
     </Modal>
   );
 }

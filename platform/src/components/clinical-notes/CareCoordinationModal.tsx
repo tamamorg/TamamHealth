@@ -17,9 +17,9 @@
  */
 
 import { useMemo, useState } from 'react';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useToast } from '@/components/Toast';
-import { Printer, Download, Send, X } from '@/components/icons/lucide';
+import { Printer, Download, Send } from '@/components/icons/lucide';
 import { getSectionLabel } from '@/lib/clinical-notes/note-catalog';
 import { sectionBody } from '@/lib/clinical-notes/note-service';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
@@ -181,17 +181,30 @@ export default function CareCoordinationModal({
   };
 
   return (
-    <Modal variant="slider" onClose={onClose} width={780}>
-      <div style={{ padding: '18px 20px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, flex: 1 }}>
-            Send Referral for {note.patientName}
-          </h2>
-          <button type="button" className="cn-tool" onClick={onClose} aria-label="Close">
-            <X size={14} />
+    <FormSlider
+      title={<>Send Referral for {note.patientName}</>}
+      width={780}
+      onClose={onClose}
+      footer={<>
+          <button type="button" className="cn-btn" onClick={handlePrint}>
+            <Printer size={14} /> Preview/Print
           </button>
-        </div>
-
+          <button type="button" className="cn-btn" onClick={handleDownload}>
+            <Download size={14} /> Download
+          </button>
+          <div className="cn-footer-spacer" />
+          <button type="button" className="cn-btn" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="cn-btn cn-btn-primary"
+            onClick={handleSend}
+            disabled={sending}
+          >
+            <Send size={14} /> {sending ? 'Sending…' : channel === 'efax' ? 'Send Fax' : 'Send Message'}
+          </button>
+      </>}
+    >
+      <div className="space-y-4">
         <div className="cn-field" style={{ marginBottom: 16 }}>
           <span className="cn-label">Send via</span>
           <div className="cn-segmented">
@@ -332,26 +345,7 @@ export default function CareCoordinationModal({
           here with your chosen channel recorded on it, so the receiving provider sees it in their
           referral queue.
         </p>
-
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" className="cn-btn" onClick={handlePrint}>
-            <Printer size={14} /> Preview/Print
-          </button>
-          <button type="button" className="cn-btn" onClick={handleDownload}>
-            <Download size={14} /> Download
-          </button>
-          <div className="cn-footer-spacer" />
-          <button type="button" className="cn-btn" onClick={onClose}>Close</button>
-          <button
-            type="button"
-            className="cn-btn cn-btn-primary"
-            onClick={handleSend}
-            disabled={sending}
-          >
-            <Send size={14} /> {sending ? 'Sending…' : channel === 'efax' ? 'Send Fax' : 'Send Message'}
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

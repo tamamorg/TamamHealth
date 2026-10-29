@@ -1,6 +1,8 @@
 'use client';
 import Modal from '@/components/Modal';
-import { X, Printer } from '@/components/icons/lucide';
+import { Printer } from '@/components/icons/lucide';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import FormField from '@/components/overlay/FormField';
 import { PrintSectionId, PRINT_SECTION_OPTIONS, DEFAULT_PRINT_SECTIONS } from './chart-constants';
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -13,18 +15,23 @@ export default function PatientPrintModal({ setShowPrintModal, setPrintSections,
   setPrintSigned: Dispatch<SetStateAction<boolean>>;
 }) {
   const { t } = useTranslation();
+  const close = () => setShowPrintModal(false);
+  const canSign = !!printSignature.trim() && printSections.size > 0;
+  const sign = () => {
+    setShowPrintModal(false);
+    setPrintSigned(true);
+  };
   return (
-            <Modal className="tamam-dialog" onClose={() => setShowPrintModal(false)} width={560} labelledBy="print-sign-title">
-              <div className="rounded-xl p-6 space-y-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                <div className="flex items-center justify-between">
-                  <h2 id="print-sign-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ptDetail.printRecord')}</h2>
-                  <button className="p-1 rounded" onClick={() => setShowPrintModal(false)} style={{ color: 'var(--text-muted)' }}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                  Patient identity is always included. Select the sections needed for this printout, then sign the document.
-                </p>
+    <Modal className="tamam-dialog" onClose={close} size="lg" labelledBy="print-sign-title" describedBy="print-sign-desc">
+      <DialogFrame>
+        <DialogHeader
+          titleId="print-sign-title"
+          title={t('ptDetail.printRecord')}
+          descriptionId="print-sign-desc"
+          description="Patient identity is always included. Select the sections needed for this printout, then sign the document."
+          onClose={close}
+        />
+        <DialogBody className="space-y-5">
                 <div className="rounded-lg p-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <span className="text-[11px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ptDetail.printSections')}</span>
@@ -58,37 +65,26 @@ export default function PatientPrintModal({ setShowPrintModal, setPrintSections,
                     ))}
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Clinician name &amp; title</label>
-                  <input
-                    autoFocus
-                    value={printSignature}
-                    onChange={e => setPrintSignature(e.target.value)}
-                    placeholder="e.g. Dr. James Wani Igga, MD"
-                    className="w-full p-2.5 rounded-md text-[13px]"
-                    style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && printSignature.trim() && printSections.size > 0) {
-                        setShowPrintModal(false);
-                        setPrintSigned(true);
-                      }
-                    }}
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button className="btn btn-sm btn-secondary" onClick={() => setShowPrintModal(false)}>Cancel</button>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    disabled={!printSignature.trim() || printSections.size === 0}
-                    onClick={() => {
-                      setShowPrintModal(false);
-                      setPrintSigned(true);
-                    }}
-                  >
-                    <Printer className="w-3.5 h-3.5" /> Sign &amp; Print selected
-                  </button>
-                </div>
-              </div>
-            </Modal>
+                <FormField label="Clinician name & title" required>
+                  {control => (
+                    <input
+                      {...control}
+                      autoFocus
+                      value={printSignature}
+                      onChange={e => setPrintSignature(e.target.value)}
+                      placeholder="e.g. Dr. James Wani Igga, MD"
+                      onKeyDown={e => { if (e.key === 'Enter' && canSign) sign(); }}
+                    />
+                  )}
+                </FormField>
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" className="btn btn-secondary" onClick={close}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={!canSign} onClick={sign}>
+            <Printer className="w-3.5 h-3.5" /> Sign &amp; Print selected
+          </button>
+        </DialogFooter>
+      </DialogFrame>
+    </Modal>
   );
 }

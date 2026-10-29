@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { ClipboardCheck, X, Calendar, ClipboardList, MapPin, CheckCircle, ArrowRightLeft } from '@/components/icons/lucide';
+import { Calendar, ClipboardList, MapPin, CheckCircle, ArrowRightLeft } from '@/components/icons/lucide';
 import { formatClockTime } from '@/lib/format-utils';
 import type { AppointmentDoc } from '@/lib/db-types';
 import { DetailRow } from '@/components/front-desk/DetailPanel';
@@ -50,22 +50,47 @@ export default function CheckInModal({
   }, [appt.patientId]);
 
   return (
-    <Modal variant="slider" onClose={onClose} width={440}>
-      <div className="modal-content card-elevated" style={{ width: '100%' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-            <div>
-              <h2 className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>{t('frontDesk.checkInTitle')}</h2>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{appt.patientName}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-black/5" aria-label="Close">
-            <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+    <FormSlider
+      title={t('frontDesk.checkInTitle')}
+      subtitle={appt.patientName}
+      width={440}
+      onClose={onClose}
+      footer={<>
+          <button onClick={() => onViewPatient(appt.patientId)} className="rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--accent-primary)' }}>
+            {t('frontDesk.viewProfile')}
           </button>
-        </div>
-
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
+              {t('action.cancel')}
+            </button>
+            {/* Reverse a mistaken check-in — sends the appointment back to
+                scheduled and drops it from the live queue. */}
+            {canReverseCheckIn && (
+              <button
+                onClick={async () => { setReversing(true); try { await onUndoCheckIn(appt); } finally { setReversing(false); } }}
+                disabled={reversing}
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5 disabled:opacity-50"
+                style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                {reversing ? '…' : t('action.undo')}
+              </button>
+            )}
+            {!alreadyIn && (
+              <button
+                onClick={async () => { setChecking(true); try { await onCheckIn(appt, attendanceType); } finally { setChecking(false); } }}
+                disabled={checking}
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                style={{ background: 'var(--color-success)' }}
+              >
+                <CheckCircle className="w-4 h-4" />
+                {checking ? t('frontDesk.checkingIn') : t('frontDesk.checkIn')}
+              </button>
+            )}
+          </div>
+      </>}
+    >
+      <div className="space-y-4">
         {/* Body — appointment detail */}
         <div className="p-4 space-y-2.5">
           <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
@@ -107,41 +132,7 @@ export default function CheckInModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 p-4" style={{ borderTop: '1px solid var(--border-light)' }}>
-          <button onClick={() => onViewPatient(appt.patientId)} className="rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--accent-primary)' }}>
-            {t('frontDesk.viewProfile')}
-          </button>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
-              {t('action.cancel')}
-            </button>
-            {/* Reverse a mistaken check-in — sends the appointment back to
-                scheduled and drops it from the live queue. */}
-            {canReverseCheckIn && (
-              <button
-                onClick={async () => { setReversing(true); try { await onUndoCheckIn(appt); } finally { setReversing(false); } }}
-                disabled={reversing}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5 disabled:opacity-50"
-                style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
-              >
-                <ArrowRightLeft className="w-4 h-4" />
-                {reversing ? '…' : t('action.undo')}
-              </button>
-            )}
-            {!alreadyIn && (
-              <button
-                onClick={async () => { setChecking(true); try { await onCheckIn(appt, attendanceType); } finally { setChecking(false); } }}
-                disabled={checking}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--color-success)' }}
-              >
-                <CheckCircle className="w-4 h-4" />
-                {checking ? t('frontDesk.checkingIn') : t('frontDesk.checkIn')}
-              </button>
-            )}
-          </div>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

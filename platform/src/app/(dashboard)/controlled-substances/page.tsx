@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
-import { Pill, Plus, X, UserCheck } from '@/components/icons/lucide';
+import { Pill, Plus, UserCheck } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import {
@@ -16,7 +16,6 @@ import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDateTime } from '@/lib/format-utils';
 import Select from '@/components/Select';
-import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -236,15 +235,27 @@ export default function ControlledSubstancesPage() {
         </div>
 
         {open && (
-          <Modal variant="slider" onClose={() => setOpen(false)}>
-            <div className="modal-panel modal-panel--md" {...stopsClickPropagation}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Record controlled-substance movement</h3>
-                <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                  <X className="w-4 h-4" />
+          <FormSlider
+            title="Record controlled-substance movement"
+            onClose={() => setOpen(false)}
+            footer={<>
+                <button onClick={() => setOpen(false)} className="btn btn-secondary" disabled={saving}>Cancel</button>
+                {/* Correct a mis-typed draft before it is committed. The committed
+                    log itself is append-only for regulatory compliance and is
+                    never editable or deletable from here. */}
+                <button
+                  onClick={() => setForm({ ...blankForm, operatorName: currentUser?.name || '' })}
+                  className="btn btn-secondary"
+                  disabled={saving}
+                >
+                  Clear
                 </button>
-              </div>
-
+                <button onClick={handleSubmit} className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Recording…' : 'Record movement'}
+                </button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="space-y-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Medication</label>
@@ -312,26 +323,8 @@ export default function ControlledSubstancesPage() {
                   <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Reason / notes for this movement" />
                 </div>
               </div>
-
-              <hr className="section-divider" />
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => setOpen(false)} className="btn btn-secondary flex-1" disabled={saving}>Cancel</button>
-                {/* Correct a mis-typed draft before it is committed. The committed
-                    log itself is append-only for regulatory compliance and is
-                    never editable or deletable from here. */}
-                <button
-                  onClick={() => setForm({ ...blankForm, operatorName: currentUser?.name || '' })}
-                  className="btn btn-secondary flex-1"
-                  disabled={saving}
-                >
-                  Clear
-                </button>
-                <button onClick={handleSubmit} className="btn btn-primary flex-1" disabled={saving}>
-                  {saving ? 'Recording…' : 'Record movement'}
-                </button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
     </main>
   );

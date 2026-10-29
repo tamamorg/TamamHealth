@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
-import { X, CheckCircle2, ArrowRight, Loader2 } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { CheckCircle2, ArrowRight, Loader2 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 
 interface PaymentPlanWizardProps {
@@ -103,19 +103,13 @@ export default function PaymentPlanWizard({
   }
 
   return (
-    <Modal variant="slider" onClose={() => { if (!processing) onCancel(); }} width={560} disableBackdropClose={processing}>
-      <div className="modal-content ehr-finance-dialog" {...stopsClickPropagation}>
-        {/* Header */}
-        <div className="ehr-finance-dialog__header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-medium)' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t('payments.paymentPlan')}</h3>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('payments.patientStep', { name: patientName, step })}</p>
-          </div>
-          <button className="ehr-finance-dialog__close" onClick={onCancel} disabled={processing} aria-label={t('action.close')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-            <X size={20} style={{ color: 'inherit', stroke: 'currentColor' }} />
-          </button>
-        </div>
-
+    <FormSlider
+      title={t('payments.paymentPlan')}
+      subtitle={t('payments.patientStep', { name: patientName, step })}
+      width={560}
+      onClose={() => { if (!processing) onCancel(); }}
+    >
+      <div className="space-y-4">
         {/* Balance */}
         <div style={{ padding: '16px 20px', background: 'var(--bg-secondary)', textAlign: 'center' }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('payments.totalBalance')}</div>
@@ -194,6 +188,6 @@ export default function PaymentPlanWizard({
           )}
         </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

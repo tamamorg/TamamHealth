@@ -16,8 +16,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { useUsers } from '@/lib/hooks/useUsers';
-import Modal from '@/components/Modal';
-import { CalendarClock, X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import { toIsoDate } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -88,18 +87,18 @@ export default function FollowUpModal({
   };
 
   return (
-    <Modal variant="slider" onClose={onClose} width={480} labelledBy="cn-followup-title">
-      <div style={{ padding: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <CalendarClock size={17} aria-hidden />
-          <h2 id="cn-followup-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, flex: 1 }}>
-            Schedule Follow-up for {patientName}
-          </h2>
-          <button type="button" className="cn-tool" onClick={onClose} aria-label="Close">
-            <X size={14} />
+    <FormSlider
+      title={<>Schedule Follow-up for {patientName}</>}
+      width={480}
+      onClose={onClose}
+      footer={<>
+          <button type="button" className="cn-btn" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="button" className="cn-btn cn-btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Scheduling…' : 'Schedule follow-up'}
           </button>
-        </div>
-
+      </>}
+    >
+      <div className="space-y-4">
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
           <span className="cn-label" style={{ minWidth: 96 }}>Condition</span>
           <input
@@ -149,14 +148,7 @@ export default function FollowUpModal({
         {error && (
           <p style={{ color: 'var(--color-danger, #d92b20)', fontSize: 12.5, margin: '8px 0 0' }}>{error}</p>
         )}
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button type="button" className="cn-btn" onClick={onClose} disabled={saving}>Cancel</button>
-          <button type="button" className="cn-btn cn-btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Scheduling…' : 'Schedule follow-up'}
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

@@ -681,6 +681,16 @@ export async function updatePrescription(id: string, data: Partial<PrescriptionD
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('PRESCRIPTION_UPDATED', undefined, undefined, `Prescription ${id} status: ${updated.status}`);
+    // Discontinued before anything was handed over: the patient will never
+    // receive it, so its charge goes the way an outside-pharmacy re-route's
+    // does — the invoice is cancelled (or reversed to a credit if paid) and
+    // the visit is released from the pharmacy. A discontinue used to leave
+    // the full charge on the bill and the patient blocked at checkout.
+    if (existing.status !== 'discontinued' && updated.status === 'discontinued' && !existing.dispensedAt) {
+      const actor = { id: updated.stoppedBy, name: updated.stoppedByName || 'Prescriber' };
+      await cancelPrescriptionCharge(updated, actor, 'Prescription discontinued before dispensing');
+      await releaseVisitFromPharmacy(updated, actor.id);
+    }
     emitSyncEvent({
       resourceType: 'prescription',
       resourceId: updated._id,
@@ -777,7 +787,11 @@ export async function rerouteToOutsidePharmacy(
  * the cashier to refund (`reversePaidBillCharge`).
  * Best-effort: the re-route is the clinical fact and stands regardless.
  */
-async function cancelPrescriptionCharge(rx: PrescriptionDoc, actor: { id?: string; name: string }): Promise<void> {
+async function cancelPrescriptionCharge(
+  rx: PrescriptionDoc,
+  actor: { id?: string; name: string },
+  reason = 'Prescription sent to an outside pharmacy',
+): Promise<void> {
   try {
     const { getBillsByPatient, cancelBill, reversePaidBillCharge } = await import('./billing-service');
     const bills = await getBillsByPatient(rx.patientId, orgOnlyScope(rx.orgId));
@@ -785,7 +799,6 @@ async function cancelPrescriptionCharge(rx: PrescriptionDoc, actor: { id?: strin
       const isThisOrder = bill.items.length > 0 && bill.items.every(
         item => item.referenceType === 'prescription' && item.referenceId === rx._id);
       if (!isThisOrder) continue;
-      const reason = 'Prescription sent to an outside pharmacy';
       const cancelled = await cancelBill(bill._id, actor.id || actor.name, actor.name, reason);
       if (!cancelled) await reversePaidBillCharge(bill._id, actor.id || actor.name, actor.name, reason);
     }

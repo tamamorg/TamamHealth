@@ -18,8 +18,8 @@ import { FOCUSED_ROW_STYLE } from './rowFocus';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
-import { X } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
@@ -263,15 +263,20 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       </ChartSection>
 
       {adding && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && resetForm()} width={520} labelledBy="add-immunization-title">
-          <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center justify-between">
-              <h2 id="add-immunization-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {editing ? t('chart.correctImmunization') : 'Record immunization'}
-              </h2>
-              <button className="p-1 rounded" onClick={() => !submitting && resetForm()} style={{ color: 'var(--text-muted)' }} aria-label="Close"><X className="w-4 h-4" /></button>
-            </div>
-
+        <FormSlider
+          title={editing ? t('chart.correctImmunization') : 'Record immunization'}
+          className="tamam-dialog"
+          width={520}
+          onClose={() => !submitting && resetForm()}
+          busy={submitting}
+          footer={<>
+              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
+              <button className="btn btn-primary" disabled={submitting || !batchNumber.trim()} onClick={handleSubmit}>
+                {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save immunization'}
+              </button>
+          </>}
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="imm-vaccine" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Vaccine</label>
@@ -357,15 +362,8 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />
             )}
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
-              <button className="btn btn-sm btn-primary" disabled={submitting || !batchNumber.trim()} onClick={handleSubmit}>
-                {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save immunization'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {errorTarget && (

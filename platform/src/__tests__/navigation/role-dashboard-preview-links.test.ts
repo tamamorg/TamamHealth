@@ -19,8 +19,9 @@ describe('role dashboard preview links', () => {
       // The action, not the wording: it moved into the card head as an icon
       // (the footer used to repeat the head's expand and close). What must
       // not change is that a preview offers an explicit way to open the page
-      // instead of navigating the moment you click a card.
-      expect(source(dashboard)).toContain('data-action="preview-expand"');
+      // instead of navigating the moment you click a card. The dialog kit's
+      // head renders that control from `onExpand`.
+      expect(source(dashboard)).toMatch(/<DialogHeader[\s\S]*?onExpand=\{onOpen\}/);
     }
   });
 

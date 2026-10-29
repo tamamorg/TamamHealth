@@ -26,6 +26,7 @@ import { buildQueueFromTriage, STAGE_LABELS, deriveAppointmentWait, type QueueSt
 import { waitLabel } from '@/components/ehr/EhrVisitPopup';
 import AssignDoctorModal, { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import AppointmentEditModal from '@/components/appointments/AppointmentEditModal';
 import { PatientRegistrationForm } from '@/components/patients/registration/PatientRegistrationForm';
 import { useToast } from '@/components/Toast';
@@ -525,12 +526,10 @@ export default function FrontDeskDashboardPage() {
         stage: entry.stage,
         stageLabel: isCheckout ? 'Ready for checkout' : STAGE_LABELS[entry.stage],
         ...(() => {
+          const nursingReviewOpen = !!activeEncounter && nursingReviewIds.has(activeEncounter._id);
           const state = linkedAppointment
-            ? resolveOperationalVisitState(linkedAppointment, activeEncounter)
-            : activeEncounter ? resolveOperationalVisitState({ status: triageVisitStatus }, activeEncounter) : null;
-          if (isCheckout && activeEncounter && nursingReviewIds.has(activeEncounter._id)) {
-            return { operationalLabel: 'Post-consultation nursing', operationalI18nKey: 'postConsult.title' };
-          }
+            ? resolveOperationalVisitState(linkedAppointment, activeEncounter, { nursingReviewOpen })
+            : activeEncounter ? resolveOperationalVisitState({ status: triageVisitStatus }, activeEncounter, { nursingReviewOpen }) : null;
           return state ? { operationalLabel: state.label, operationalI18nKey: state.i18nKey } : {};
         })(),
         waitMinutes: entry.minutesWaiting,
@@ -1893,14 +1892,9 @@ export default function FrontDeskDashboardPage() {
 
         {closeoutOpen && (
           <Modal onClose={() => setCloseoutOpen(false)} width={560} labelledBy="fd-closeout-title">
-            <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <h3 id="fd-closeout-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Needs close-out</h3>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
-                  Open visits from a previous day. Close the ones whose patient left without being seen;
-                  a visit that reached the clinician needs a proper checkout from the patient&apos;s row instead.
-                </p>
-              </div>
+            <DialogFrame>
+              <DialogHeader titleId="fd-closeout-title" title="Needs close-out" description="Open visits from a previous day. Close the ones whose patient left without being seen; a visit that reached the clinician needs a proper checkout from the patient&apos;s row instead." onClose={() => setCloseoutOpen(false)} />
+              <DialogBody className="space-y-4">
               {staleVisits.length === 0 && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing waiting — every open visit moved today.</p>
               )}
@@ -1934,7 +1928,8 @@ export default function FrontDeskDashboardPage() {
                   </button>
                 </div>
               ))}
-            </div>
+              </DialogBody>
+            </DialogFrame>
           </Modal>
         )}
 
@@ -1951,11 +1946,9 @@ export default function FrontDeskDashboardPage() {
 
         {unbookedOpen && (
           <Modal onClose={() => setUnbookedOpen(false)} width={560} labelledBy="fd-unbooked-title">
-            <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <h3 id="fd-unbooked-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{t('frontDesk.assignedUnbooked')}</h3>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('frontDesk.assignedUnbookedBody')}</p>
-              </div>
+            <DialogFrame>
+              <DialogHeader titleId="fd-unbooked-title" title={t('frontDesk.assignedUnbooked')} description={t('frontDesk.assignedUnbookedBody')} onClose={() => setUnbookedOpen(false)} />
+              <DialogBody className="space-y-4">
               {assignedUnbooked.length === 0 && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('frontDesk.assignedUnbookedEmpty')}</p>
               )}
@@ -1983,17 +1976,16 @@ export default function FrontDeskDashboardPage() {
                   </button>
                 </div>
               ))}
-            </div>
+              </DialogBody>
+            </DialogFrame>
           </Modal>
         )}
 
         {pendingSyncOpen && (
           <Modal onClose={() => setPendingSyncOpen(false)} width={600} labelledBy="fd-pending-sync-title">
-            <div className="modal-content card-elevated" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <h3 id="fd-pending-sync-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{t('sync.docPendingLabel')}</h3>
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{t('frontDesk.pendingSyncBody')}</p>
-              </div>
+            <DialogFrame>
+              <DialogHeader titleId="fd-pending-sync-title" title={t('sync.docPendingLabel')} description={t('frontDesk.pendingSyncBody')} onClose={() => setPendingSyncOpen(false)} />
+              <DialogBody className="space-y-4">
               {pendingSyncDocs.length === 0 && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('frontDesk.pendingSyncEmpty')}</p>
               )}
@@ -2026,7 +2018,8 @@ export default function FrontDeskDashboardPage() {
                   </div>
                 );
               })}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              </DialogBody>
+              <DialogFooter>
                 <button
                   type="button"
                   onClick={() => { void runSyncNow(); }}
@@ -2036,8 +2029,8 @@ export default function FrontDeskDashboardPage() {
                 >
                   {syncNowBusy ? t('frontDesk.syncNowRunning') : t('frontDesk.syncNow')}
                 </button>
-              </div>
-            </div>
+              </DialogFooter>
+            </DialogFrame>
           </Modal>
         )}
 
@@ -2117,15 +2110,9 @@ export default function FrontDeskDashboardPage() {
 
         {rescheduleTarget && (
           <Modal onClose={() => !reschedSaving && setRescheduleTarget(null)} width={420} labelledBy="reschedule-dialog-title">
-            <div className="card-elevated" style={{ padding: 24, borderRadius: 16, background: 'var(--bg-card)' }}>
-              <div className="modal-headband">
-                <h2 id="reschedule-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
-                  Reschedule appointment
-                </h2>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {rescheduleTarget.patientName} · currently {formatDayMonthYear(rescheduleTarget.appointmentDate)} {formatClockTime(rescheduleTarget.appointmentTime)}
-                </p>
-              </div>
+            <DialogFrame>
+              <DialogHeader titleId="reschedule-dialog-title" title="Reschedule appointment" description={<>{rescheduleTarget.patientName} · currently {formatDayMonthYear(rescheduleTarget.appointmentDate)} {formatClockTime(rescheduleTarget.appointmentTime)}</>} onClose={() => !reschedSaving && setRescheduleTarget(null)} />
+              <DialogBody className="space-y-4">
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--text-muted)' }}>New date</label>
@@ -2138,45 +2125,37 @@ export default function FrontDeskDashboardPage() {
                   </Select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-5">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRescheduleTarget(null)} disabled={reschedSaving}>
+              </DialogBody>
+              <DialogFooter>
+                <button type="button" className="btn btn-secondary" onClick={() => setRescheduleTarget(null)} disabled={reschedSaving}>
                   {t('action.cancel')}
                 </button>
-                <button type="button" className="btn btn-primary btn-sm" onClick={submitReschedule} disabled={reschedSaving || !rescheduleDate || !rescheduleTime}>
+                <button type="button" className="btn btn-primary" onClick={submitReschedule} disabled={reschedSaving || !rescheduleDate || !rescheduleTime}>
                   {reschedSaving ? 'Saving…' : 'Reschedule'}
                 </button>
-              </div>
-            </div>
+              </DialogFooter>
+            </DialogFrame>
           </Modal>
         )}
 
         {noShowTarget && (
           <Modal onClose={() => setNoShowTarget(null)} width={380} labelledBy="no-show-dialog-title">
-            <div className="card-elevated" style={{ padding: 24, borderRadius: 16, background: 'var(--bg-card)' }}>
-              <div className="modal-headband">
-                <h2 id="no-show-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Mark as no-show?</h2>
-                <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                  {noShowTarget.patientName} — {formatClockTime(noShowTarget.appointmentTime)}. Check the waiting room first; this removes them from today&apos;s arrivals.
-                </p>
-              </div>
-              <div className="flex justify-end gap-2 mt-5">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setNoShowTarget(null)}>{t('action.cancel')}</button>
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => handleNoShow(noShowTarget)}>Mark no-show</button>
-              </div>
-            </div>
+            <DialogFrame>
+              <DialogHeader titleId="no-show-dialog-title" title="Mark as no-show?" description={<>{noShowTarget.patientName} — {formatClockTime(noShowTarget.appointmentTime)}. Check the waiting room first; this removes them from today&apos;s arrivals.</>} onClose={() => setNoShowTarget(null)} />
+              <DialogFooter>
+                <button type="button" className="btn btn-secondary" onClick={() => setNoShowTarget(null)}>{t('action.cancel')}</button>
+                <button type="button" className="btn btn-primary" onClick={() => handleNoShow(noShowTarget)}>Mark no-show</button>
+              </DialogFooter>
+            </DialogFrame>
           </Modal>
         )}
 
         {cancelTarget && (
           <Modal onClose={() => setCancelTarget(null)} width={420} labelledBy="cancel-dialog-title">
-            <div className="card-elevated" style={{ padding: 24, borderRadius: 16, background: 'var(--bg-card)' }}>
-              <div className="modal-headband">
-                <h2 id="cancel-dialog-title" className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>Cancel this appointment?</h2>
-                <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-                  {cancelTarget.appt.patientName} — {formatClockTime(cancelTarget.appt.appointmentTime)}.
-                  The booking stays on record under Finished; you can undo from the notification or reopen it later.
-                </p>
-              </div>
+            <DialogFrame>
+              <DialogHeader titleId="cancel-dialog-title" title="Cancel this appointment?" description={<>{cancelTarget.appt.patientName} — {formatClockTime(cancelTarget.appt.appointmentTime)}.
+                  The booking stays on record under Finished; you can undo from the notification or reopen it later.</>} onClose={() => setCancelTarget(null)} />
+              <DialogBody className="space-y-4">
               <label className="block text-xs font-semibold mt-4 mb-1" style={{ color: 'var(--text-secondary)' }} htmlFor="front-desk-cancel-reason">
                 Reason (optional)
               </label>
@@ -2188,13 +2167,14 @@ export default function FrontDeskDashboardPage() {
                 placeholder="e.g. patient called to cancel"
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />
-              <div className="flex justify-end gap-2 mt-5">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setCancelTarget(null)}>{t('appointments.goBack')}</button>
-                <button type="button" className="btn btn-primary btn-sm" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => void handleCancelAppointment()}>
+              </DialogBody>
+              <DialogFooter>
+                <button type="button" className="btn btn-secondary" onClick={() => setCancelTarget(null)}>{t('appointments.goBack')}</button>
+                <button type="button" className="btn btn-primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => void handleCancelAppointment()}>
                   Cancel appointment
                 </button>
-              </div>
-            </div>
+              </DialogFooter>
+            </DialogFrame>
           </Modal>
         )}
 

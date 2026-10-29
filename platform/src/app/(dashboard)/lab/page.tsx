@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import TableCols from '@/components/TableCols';
 import { useSearchParams } from 'next/navigation';
 import { formatCompactDateTime } from '@/lib/format-utils';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
@@ -476,17 +476,11 @@ export default function LabPage() {
 
           {/* Import from Analyzer Modal */}
           {showImportModal && (
-            <Modal variant="slider" onClose={resetImport}>
-              <div className="modal-content card-elevated p-6 max-w-2xl w-full" {...stopsClickPropagation}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Radio className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                    <h3 className="text-base font-semibold">Import from analyzer</h3>
-                  </div>
-                  <button onClick={resetImport} aria-label="Close" className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+            <FormSlider
+              title="Import from analyzer"
+              onClose={resetImport}
+            >
+              <div className="space-y-4">
                 <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
                   Paste a raw instrument result message (LIS-2A / ASTM or HL7 ORU^R01). Parsed results are shown for review — nothing is saved automatically.
                 </p>
@@ -573,7 +567,7 @@ export default function LabPage() {
                   <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>No results found in the payload.</p>
                 )}
               </div>
-            </Modal>
+            </FormSlider>
           )}
 
           {/* Create Lab Order — compact dialog → five-step requisition wizard. */}

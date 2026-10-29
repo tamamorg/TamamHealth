@@ -13,12 +13,10 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import PopupSelect from '@/components/PopupSelect';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
-import {
-  Baby, Plus, X, ChevronDown,
-} from '@/components/icons/lucide';
+import { Plus, ChevronDown } from '@/components/icons/lucide';
 
 export default function BirthsPage() {
   const { births, loading, register } = useBirths();
@@ -265,12 +263,16 @@ export default function BirthsPage() {
 
         {/* Registration Form Modal */}
         {showForm && (
-          <Modal variant="slider" onClose={() => setShowForm(false)} width={672} labelledBy="birth-registration-title">
-            <div className="modal-panel w-full overflow-y-auto" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <div className="flex items-center gap-2"><Baby className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} /><h2 id="birth-registration-title" className="font-semibold">Register New Birth</h2></div>
-                <button onClick={() => setShowForm(false)}><X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} /></button>
-              </div>
+          <FormSlider
+            title="Register New Birth"
+            width={672}
+            onClose={() => setShowForm(false)}
+            footer={<>
+                <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
+                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>Register Birth</button>
+            </>}
+          >
+            <div className="space-y-4">
               <div className="p-4 space-y-4">
                 {/* Child Information */}
                 <div className="grid grid-cols-2 gap-3">
@@ -345,12 +347,8 @@ export default function BirthsPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 p-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
-                <button onClick={() => setShowForm(false)} className="btn btn-secondary btn-sm">Cancel</button>
-                <button onClick={handleSubmit} className="btn btn-primary btn-sm" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>Register Birth</button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
     </main>
   );

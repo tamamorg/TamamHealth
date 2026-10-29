@@ -39,6 +39,7 @@ import Modal from '@/components/Modal';
 import { printElementById } from '@/lib/safe-html';
 import { describeError } from '@/lib/user-facing-error';
 import { useGoBack } from '@/lib/navigation/nav-history';
+import { expandHref } from '@/lib/navigation/expand-to-page';
 
 function todayISO(): string {
   return todayIso();
@@ -402,7 +403,13 @@ export default function MARPage() {
                           <button
                             type="button"
                             className="btn btn-primary mt-4 inline-flex items-center gap-1.5"
-                            onClick={() => router.push(`/consultation?patientId=${encodeURIComponent(admission.patientId)}`)}
+                            // Straight to the prescribe form, filed under this
+                            // admission's visit, and back to this MAR after.
+                            // /consultation opened a clinical note instead, and
+                            // the order had to be found inside it.
+                            onClick={() => router.push(expandHref(
+                              `/patients/${encodeURIComponent(admission.patientId)}/prescriptions/new${admission.encounterId ? `?encounter=${encodeURIComponent(admission.encounterId)}` : ''}`,
+                            ))}
                           >
                             <Plus className="w-4 h-4" /> {t('mar.orderMedication')}
                           </button>

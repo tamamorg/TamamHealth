@@ -35,6 +35,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import Select from '@/components/Select';
 import {
   SadbPage, SadbCard, SadbShell, useSadbTab, SadbSearch, SadbKpiTile, SadbKvRow,
@@ -498,11 +499,15 @@ export default function FacilityWorkQueuePage() {
       {/* ═══ Detail dialogs — a row's quick actions ═══ */}
       {detailInquiry && (
         <Modal onClose={() => setDetail(null)} width={440} labelledBy="fmq-inquiry-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fmq-inquiry-title" className="sadb-modal-title">{detailInquiry.name}</h2>
-              <p className="sadb-modal-sub">{humanizeStatus(detailInquiry.type)} · {humanizeStatus(detailInquiry.channel)}</p>
-            </div>
+          <DialogFrame>
+            <DialogHeader
+              titleId="fmq-inquiry-title"
+              title={detailInquiry.name}
+              descriptionId="fmq-inquiry-title-desc"
+              description={<>{humanizeStatus(detailInquiry.type)} · {humanizeStatus(detailInquiry.channel)}</>}
+              onClose={() => setDetail(null)}
+            />
+            <DialogBody tight>
             <div className="rounded-lg overflow-hidden mb-3" style={{ border: '1px solid var(--border-light)' }}>
               <SadbKvRow label={t('facilityQueue.detailStatus')} chip={detailInquiry.statusLabel} chipTone={enquiryChipTone(detailInquiry.status)} />
               <SadbKvRow label={t('facilityQueue.detailAssignee')} value={detailInquiry.assignee || t('facilityQueue.unassigned')} />
@@ -520,70 +525,80 @@ export default function FacilityWorkQueuePage() {
                 <option key={value} value={value}>{ENQUIRY_STATUS_LABELS[value]}</option>
               ))}
             </Select>
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>{t('action.close')}</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(`/inquiries?inquiry=${encodeURIComponent(detailInquiry.id)}`)}>
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" onClick={() => setDetail(null)}>{t('action.close')}</button>
+              <button type="button" className="btn btn-primary" onClick={() => router.push(`/inquiries?inquiry=${encodeURIComponent(detailInquiry.id)}`)}>
                 {t('facilityQueue.openFullPage')}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
       {detailLeave && (
         <Modal onClose={() => setDetail(null)} width={440} labelledBy="fmq-leave-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fmq-leave-title" className="sadb-modal-title">{detailLeave.requesterName}</h2>
-              <p className="sadb-modal-sub">
-                {titleCase(detailLeave.leaveType)} · {t(detailLeave.days === 1 ? 'facilityQueue.dayCount' : 'facilityQueue.dayCountPlural', { count: detailLeave.days })}
-              </p>
-            </div>
+          <DialogFrame>
+            <DialogHeader
+              titleId="fmq-leave-title"
+              title={detailLeave.requesterName}
+              descriptionId="fmq-leave-title-desc"
+              description={<>{titleCase(detailLeave.leaveType)} · {t(detailLeave.days === 1 ? 'facilityQueue.dayCount' : 'facilityQueue.dayCountPlural', { count: detailLeave.days })}</>}
+              onClose={() => setDetail(null)}
+            />
+            <DialogBody tight>
             <div className="rounded-lg overflow-hidden mb-3" style={{ border: '1px solid var(--border-light)' }}>
               <SadbKvRow label={t('facilityQueue.detailDates')} value={`${detailLeave.startDate} → ${detailLeave.endDate}`} />
               <SadbKvRow label={t('facilityQueue.detailRole')} value={detailLeave.role ? titleCase(detailLeave.role) : '—'} />
               <SadbKvRow label={t('common.facility')} value={detailLeave.facility} />
               <SadbKvRow label={t('facilityQueue.detailReason')} value={detailLeave.reason || t('facilityQueue.noReason')} />
             </div>
-            <div className="sadb-modal-actions" style={isLeaveApprover && detailLeave.status === 'pending' ? { justifyContent: 'space-between' } : undefined}>
-              {isLeaveApprover && detailLeave.status === 'pending' && (
-                <span className="flex gap-2">
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => decideLeaveAction(detailLeave.id, 'approved')}>
-                    {t('hr.approve')}
-                  </button>
-                  <button type="button" className="sadb-action-btn is-danger" onClick={() => decideLeaveAction(detailLeave.id, 'rejected')}>
-                    {t('hr.reject')}
-                  </button>
-                </span>
-              )}
-              <span className="flex gap-2">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>{t('action.close')}</button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push(`/hr/leave?request=${encodeURIComponent(detailLeave.id)}`)}>
+            </DialogBody>
+            <DialogFooter
+              start={(
+                <button type="button" className="btn btn-ghost" onClick={() => router.push(`/hr/leave?request=${encodeURIComponent(detailLeave.id)}`)}>
                   {t('facilityQueue.openFullPage')}
                 </button>
-              </span>
-            </div>
-          </div>
+              )}
+            >
+              <button type="button" className="btn btn-secondary" onClick={() => setDetail(null)}>{t('action.close')}</button>
+              {isLeaveApprover && detailLeave.status === 'pending' && (
+                <>
+                  <button type="button" className="btn btn-danger-solid" onClick={() => decideLeaveAction(detailLeave.id, 'rejected')}>
+                    {t('hr.reject')}
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={() => decideLeaveAction(detailLeave.id, 'approved')}>
+                    {t('hr.approve')}
+                  </button>
+                </>
+              )}
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 
       {detailStaff && (
         <Modal onClose={() => setDetail(null)} width={420} labelledBy="fmq-staff-title">
-          <div className="sadb-modal">
-            <div className="sadb-modal-copy">
-              <h2 id="fmq-staff-title" className="sadb-modal-title">{detailStaff.name}</h2>
-              <p className="sadb-modal-sub">{roleLabel(detailStaff.role)} · {detailStaff.department}</p>
-            </div>
+          <DialogFrame>
+            <DialogHeader
+              titleId="fmq-staff-title"
+              title={detailStaff.name}
+              descriptionId="fmq-staff-title-desc"
+              description={<>{roleLabel(detailStaff.role)} · {detailStaff.department}</>}
+              onClose={() => setDetail(null)}
+            />
+            <DialogBody tight>
             <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
               <SadbKvRow label={t('facilityQueue.detailAvailability')} value={detailStaff.shift || t('facilityQueue.availableNoShift')} />
             </div>
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDetail(null)}>{t('action.close')}</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => router.push(withFocus(staffListHref, 'user', detailStaff.id))}>
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" onClick={() => setDetail(null)}>{t('action.close')}</button>
+              <button type="button" className="btn btn-primary" onClick={() => router.push(withFocus(staffListHref, 'user', detailStaff.id))}>
                 {t('facilityQueue.openFullPage')}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
     </SadbPage>

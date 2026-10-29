@@ -7,9 +7,8 @@
  * preserved; a visit is corrected, never hard-deleted from the UI).
  */
 import { useState } from 'react';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
-import { X } from '@/components/icons/lucide';
 import { useANC } from '@/lib/hooks/useANC';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -52,15 +51,12 @@ export default function AncVisitEditor({ visit, onClose, onSaved }: {
   };
 
   return (
-    <Modal variant="slider" onClose={onClose} width={560} labelledBy="anc-edit-title">
-      <div className="modal-panel p-6 w-full overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
-          <h3 id="anc-edit-title" className="text-lg font-semibold">{t('ancChart.editTitle', { n: draft.visitNumber, name: draft.motherName })}</h3>
-          <button type="button" onClick={onClose} aria-label={t('action.close')}>
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
+    <FormSlider
+      title={t('ancChart.editTitle', { n: draft.visitNumber, name: draft.motherName })}
+      width={560}
+      onClose={onClose}
+    >
+      <div className="space-y-4">
         <form onSubmit={save} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -114,6 +110,6 @@ export default function AncVisitEditor({ visit, onClose, onSaved }: {
           </div>
         </form>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

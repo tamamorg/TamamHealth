@@ -21,6 +21,7 @@ import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { clickable } from '@/lib/a11y';
 import type { LabResultDoc } from '@/lib/db-types';
+import { useColumnSort } from '@/components/table/useColumnSort';
 
 const PAGE_SIZE = 8;
 
@@ -75,6 +76,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
     const query = search.trim().toLowerCase();
     return query ? patientLabs.filter(l => `${l.testName} ${l.result || ''} ${l.referenceRange || ''} ${l.status}`.toLowerCase().includes(query)) : patientLabs;
   }, [patientLabs, search]);
+  const columnSort = useColumnSort<LabResultDoc>();
   const awaitingReview = useMemo(() => unreviewedAbnormalResults(patientLabs), [patientLabs]);
 
   // Deep-link focus: jump to the page holding the focused result once the data
@@ -92,7 +94,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [focusId, page]);
 
-  const pageRows = filteredLabs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageRows = columnSort.sort(filteredLabs).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <ChartSection
@@ -122,18 +124,18 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
           <span className="block mt-1">{t('results.openToCloseLoop')}</span>
         </div>
       )}
-      <table className="tamam-table tamam-table--fixed tamam-table--interactive">
+      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive">
           <colgroup>
             <col /><col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
-              <th>Test</th>
-              <th>Result</th>
-              <th>Reference range</th>
-              <th>Next step</th>
-              <th>Date</th>
-              <th>Status</th>
+              <th {...columnSort.headerProps(0, l => l.testName)}>Test</th>
+              <th {...columnSort.headerProps(1, l => l.result || '')}>Result</th>
+              <th {...columnSort.headerProps(2, l => l.referenceRange || '')}>Reference range</th>
+              <th {...columnSort.headerProps(3, l => t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))]))}>Next step</th>
+              <th {...columnSort.headerProps(4, l => l.completedAt || l.orderedAt || l.createdAt || '')}>Date</th>
+              <th {...columnSort.headerProps(5, l => humanizeStatus(effectiveOrderStatus(l)))}>Status</th>
             </tr>
           </thead>
           <tbody>

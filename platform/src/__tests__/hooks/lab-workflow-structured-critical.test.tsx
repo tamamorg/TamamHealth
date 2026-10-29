@@ -174,3 +174,20 @@ it('a manual override to NOT critical survives further structured edits', async 
   // reports the truth so the UI can show it alongside the overridden checkbox.
   expect(harness.controller!.criticalVerdict.isCriticalValue).toBe(true);
 });
+
+it('a qualitative result takes its reference from the table and flags itself', async () => {
+  // Malaria RDT is a choice (Positive / Negative) in the reference table the
+  // batch-entry screen already flags from; the workflow used to leave unit,
+  // range and the abnormal flag to whatever the technician typed.
+  const order = await createLabResult(baseFbcOrder({ testName: 'Malaria RDT' }) as never);
+  act(() => { root.render(<Harness order={order} />); });
+  await act(async () => { await flush(); });
+
+  act(() => { harness.controller!.setResultValue('Positive'); });
+  expect(harness.controller!.resultDraft.abnormal).toBe(true);
+  expect(harness.controller!.resultDraft.referenceRange).toBe('Negative');
+
+  // Corrected to Negative before filing: the derived flag clears again.
+  act(() => { harness.controller!.setResultValue('Negative'); });
+  expect(harness.controller!.resultDraft.abnormal).toBe(false);
+});

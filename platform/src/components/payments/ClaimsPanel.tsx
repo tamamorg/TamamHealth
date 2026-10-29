@@ -17,8 +17,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, X } from '@/components/icons/lucide';
+import { AlertTriangle } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -488,12 +489,16 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
       {/* Adjudication modal */}
       {editingId && adjForm && (
-        <Modal variant="slider" onClose={handleCancel} width={480} labelledBy="adj-claim-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="adj-claim-title">{t('claims.modalTitle')}</h3>
-            </div>
-
+        <FormSlider
+          title={t('claims.modalTitle')}
+          width={480}
+          onClose={handleCancel}
+          footer={<>
+              <button type="button" className="btn btn-secondary" onClick={handleCancel}>{t('action.cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={handleSaveAdjudication}>{t('claims.saveAdjudication')}</button>
+          </>}
+        >
+          <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="adj-status-preview">{t('claims.colStatus')}</label>
               {/* Derived, not chosen: the same amount rule the service persists.
@@ -558,23 +563,24 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 placeholder={t('claims.notesPlaceholder')}
               />
             </div>
-
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" onClick={handleCancel}>{t('action.cancel')}</button>
-              <button type="button" className="bl-btn bl-btn--primary" onClick={handleSaveAdjudication}>{t('claims.saveAdjudication')}</button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* Appeal modal — denied claim → appealed, with a note for the payer. */}
       {appealFor && (
-        <Modal variant="slider" onClose={() => !lifecycleBusy && setAppealFor(null)} width={440} labelledBy="appeal-claim-title">
-          <div className="bl-root bl-modal-body">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 className="bl-modal-title" id="appeal-claim-title">Appeal claim {appealFor.claimNumber}</h3>
-              <button type="button" className="bl-row-menu-btn" onClick={() => !lifecycleBusy && setAppealFor(null)} aria-label="Close"><X size={16} /></button>
-            </div>
+        <FormSlider
+          title={<>Appeal claim {appealFor.claimNumber}</>}
+          width={440}
+          onClose={() => !lifecycleBusy && setAppealFor(null)}
+          footer={<>
+              <button type="button" className="btn btn-secondary" disabled={lifecycleBusy} onClick={() => setAppealFor(null)}>Cancel</button>
+              <button type="button" className="btn btn-primary" disabled={lifecycleBusy || !appealNote.trim()} onClick={handleAppeal}>
+                {lifecycleBusy ? 'Submitting…' : 'Submit appeal'}
+              </button>
+          </>}
+        >
+          <div className="bl-root">
             <p className="bl-modal-sub">
               Denied by {appealFor.payerName} · billed {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || 'SSP', decimals: 2 })}
               {appealFor.denialReasons?.length ? ` · reason: ${appealFor.denialReasons.join(', ')}` : ''}
@@ -590,26 +596,31 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 autoFocus
               />
             </div>
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" disabled={lifecycleBusy} onClick={() => setAppealFor(null)}>Cancel</button>
-              <button type="button" className="bl-btn bl-btn--primary" disabled={lifecycleBusy || !appealNote.trim()} onClick={handleAppeal}>
-                {lifecycleBusy ? 'Submitting…' : 'Submit appeal'}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
 
       {/* New claim modal — pick an insured patient, the policy, and the bill
           (or a manual amount), then submit through the real claims service. */}
       {newClaimOpen && (
-        <Modal variant="slider" onClose={() => !submittingClaim && resetNewClaim()} width={480} labelledBy="new-claim-title">
-          <div className="bl-root bl-modal-body">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 className="bl-modal-title" id="new-claim-title">New insurance claim</h3>
-              <button type="button" className="bl-row-menu-btn" onClick={() => !submittingClaim && resetNewClaim()} aria-label="Close"><X size={16} /></button>
-            </div>
-
+        <FormSlider
+          title="New insurance claim"
+          width={480}
+          onClose={() => !submittingClaim && resetNewClaim()}
+          busy={submittingClaim}
+          footer={<>
+              <button type="button" className="btn btn-secondary" disabled={submittingClaim} onClick={resetNewClaim}>Cancel</button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={submittingClaim || !newClaim.patientId || !newClaim.policyId || (!newClaim.billingId && !newClaim.amount)}
+                onClick={handleSubmitNewClaim}
+              >
+                {submittingClaim ? t('common.loading') : t('insuranceFlow.queueClaim')}
+              </button>
+          </>}
+        >
+          <div className="bl-root">
             {/* Patient picker */}
             {newClaim.patientId ? (
               <div className="bl-id-tag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 12px' }}>
@@ -710,20 +721,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 )}
               </>
             )}
-
-            <div className="bl-modal-actions">
-              <button type="button" className="bl-btn bl-btn--ghost" disabled={submittingClaim} onClick={resetNewClaim}>Cancel</button>
-              <button
-                type="button"
-                className="bl-btn bl-btn--primary"
-                disabled={submittingClaim || !newClaim.patientId || !newClaim.policyId || (!newClaim.billingId && !newClaim.amount)}
-                onClick={handleSubmitNewClaim}
-              >
-                {submittingClaim ? t('common.loading') : t('insuranceFlow.queueClaim')}
-              </button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </>
   );

@@ -17,6 +17,7 @@ import Select from '@/components/Select';
 import { printElementById } from '@/lib/safe-html';
 import StructuredResultForm from '../StructuredResultForm';
 import { resolveLabResultProfile } from '../lab-result-catalog';
+import { getLabReferenceRange } from '@/lib/services/lab-critical-flag';
 
 const SPECIMEN_CONDITIONS: { value: NonNullable<LabResultDoc['specimenCondition']>; label: string }[] = [
   { value: 'acceptable', label: 'Acceptable' },
@@ -153,7 +154,7 @@ export function OrderStep({ order }: { order: LabResultDoc }) {
             <Field label={t('labFlow.test')} value={order.testName} />
             <Field label={t('labFlow.specimen')} value={order.specimen} />
             <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy} />
-            <Field label={t('labFlow.orderedAt')} value={order.orderedAt} />
+            <Field label={t('labFlow.orderedAt')} value={order.orderedAt ? formatDateTime(order.orderedAt) : undefined} />
             <Field
               label={t('labOrder.priority')}
               value={order.priority === 'stat' ? t('lab.priorityStat') : order.priority === 'urgent' ? t('appointments.priorityUrgent') : t('appointments.priorityRoutine')}
@@ -368,6 +369,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
   const filed = ctrl.doneThrough >= 4;
   const draft = ctrl.resultDraft;
   const structuredProfile = resolveLabResultProfile(order.testName, order.specimen);
+  const qualitative = getLabReferenceRange(order.testName)?.qualitative;
 
   return (
     <div>
@@ -391,14 +393,28 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             <div className="labord-grid-2">
               <div>
                 <label htmlFor="labflow-value">{t('labFlow.value')}</label>
-                <input
-                  id="labflow-value"
-                  type="text"
-                  value={draft.result}
-                  onChange={e => ctrl.setResultValue(e.target.value)}
-                  placeholder={t('lab.enterValue')}
-                  autoFocus={!filed}
-                />
+                {qualitative ? (
+                  // A qualitative test is a choice, not free text: "pos", "+ve"
+                  // and "P.f seen" all meant Positive and none of them flagged.
+                  <Select
+                    id="labflow-value"
+                    value={draft.result}
+                    onChange={e => ctrl.setResultValue(e.target.value)}
+                    autoFocus={!filed}
+                  >
+                    <option value="">{t('labFlow.chooseResult')}</option>
+                    {qualitative.map(option => <option key={option} value={option}>{option}</option>)}
+                  </Select>
+                ) : (
+                  <input
+                    id="labflow-value"
+                    type="text"
+                    value={draft.result}
+                    onChange={e => ctrl.setResultValue(e.target.value)}
+                    placeholder={t('lab.enterValue')}
+                    autoFocus={!filed}
+                  />
+                )}
               </div>
               <div>
                 <label htmlFor="labflow-unit">{t('lab.unit')}</label>
@@ -558,7 +574,7 @@ export function ReportStep({
               <div className="labord-grid-2 lab-result-report-meta">
                 <Field label={t('labFlow.test')} value={order.testName} />
                 <Field label={t('labFlow.accession')} value={order.accessionNumber} />
-                <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
+                <Field label={t('labFlow.reportedAt')} value={order.completedAt ? formatDateTime(order.completedAt) : undefined} />
                 <Field label={t('lab.specimen')} value={order.specimen || '—'} />
                 <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy || '—'} />
                 <Field
@@ -580,7 +596,7 @@ export function ReportStep({
               }
             />
             <Field label={t('lab.referenceRange')} value={order.referenceRange} />
-            <Field label={t('labFlow.reportedAt')} value={order.completedAt} />
+            <Field label={t('labFlow.reportedAt')} value={order.completedAt ? formatDateTime(order.completedAt) : undefined} />
             <Field label={t('lab.specimen')} value={order.specimen || '—'} />
             <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy || '—'} />
             <Field

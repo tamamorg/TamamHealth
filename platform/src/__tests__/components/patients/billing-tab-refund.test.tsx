@@ -72,7 +72,7 @@ async function openRefundDialog() {
   });
 }
 
-const confirmButton = () => qa<HTMLButtonElement>(mounted!.container, '.bl-modal-actions button.bl-btn--primary').pop()!;
+const confirmButton = () => qa<HTMLButtonElement>(mounted!.container, '.tm-dialog__foot button.btn-primary').pop()!;
 
 describe('BillingTab refund dialog', () => {
   it('posts one refund with one idempotency key when confirm is double clicked', async () => {
