@@ -7,6 +7,7 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
+import { groupRowsByPatient, type GroupRowsOptions } from '@/components/ehr/EhrPatientOrders';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { toIsoDate } from '@/lib/date-utils';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -173,6 +174,17 @@ export default function LabDashboardPage() {
     (status: LabResultDoc['status']) => benchStatusOptions.find(option => option.value === status)?.label ?? status,
     [benchStatusOptions],
   );
+
+  const labGroupOptions = useMemo((): GroupRowsOptions => ({
+    listLabel: t('visits.labs'),
+    openLabel: t('dashboard.open'),
+    // The grouped row's full-page link opens the patient's labs, not one test.
+    groupRow: rows => ({
+      detailHref: rows[0].patientId
+        ? `/patients/${encodeURIComponent(rows[0].patientId)}?tab=labs&returnTo=${encodeURIComponent('/dashboard/lab')}`
+        : rows[0].detailHref,
+    }),
+  }), [t]);
 
   const handleBenchStatusChange = useCallback(async (order: LabResultDoc, next: string) => {
     if (next === order.status) return;
@@ -402,7 +414,10 @@ export default function LabDashboardPage() {
           // default (which would otherwise misfile a flagged result as "awaiting").
           chartSeriesNames={['Awaiting', 'Resulted']}
           chartItems={chartItems}
-          rows={queueFilter === 'finished' ? visibleCompletedDiseaseRows.map((row): EhrCareDashboardRow => {
+          // One row per patient: a patient with three tests is one row reading
+          // "HIV Rapid Test +2", and its panel lists each test with its own
+          // status and bench link.
+          rows={groupRowsByPatient(queueFilter === 'finished' ? visibleCompletedDiseaseRows.map((row): EhrCareDashboardRow => {
             const lab = row.lab;
             const time = lab.completedAt ? formatClockTime(lab.completedAt) : undefined;
             return {
@@ -478,7 +493,7 @@ export default function LabDashboardPage() {
               // the line under the pill.
               lockStatus: true,
             };
-          })}
+          }), labGroupOptions)}
           metrics={[
             { label: t('lab.abnormalBadge'), value: completedDiseaseRows.filter(row => row.severity === 'abnormal').length, tone: 'warning' },
             { label: t('lab.critical'), value: completedDiseaseRows.filter(row => row.severity === 'critical').length, tone: 'danger' },

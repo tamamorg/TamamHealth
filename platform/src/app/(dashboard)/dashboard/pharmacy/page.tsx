@@ -21,6 +21,7 @@ import { isActivePharmacyStage, isFinanciallyCleared, isOutsidePharmacyOrder, ph
 import { comparePharmacyPriority, isTier1 } from '@/lib/clinical-flow/medication-tiers';
 import type { PrescriptionDoc, PharmacyInventoryDoc, UserDoc } from '@/lib/db-types';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
+import { EhrOrderStatus, EhrPatientOrderList, groupRowsByPatient, type EhrPatientOrder } from '@/components/ehr/EhrPatientOrders';
 import EhrCareDashboard, {
   type EhrCareDashboardRow,
   type EhrCareDashboardAction,
@@ -570,6 +571,15 @@ export default function PharmacyDashboardPage() {
     return (activeRx || visibleQueue[0])?._id || null;
   }, [deepLinkPatientId, deepLinkPatientName, deepLinkRxId, visibleQueue]);
 
+  // Rows are one per patient, keyed by that patient's first order; a deep
+  // link to any of their prescriptions opens their row.
+  const autoOpenRowId = useMemo(() => {
+    const target = autoOpenRxId ? visibleQueue.find(rx => rx._id === autoOpenRxId) : undefined;
+    if (!target) return null;
+    const key = target.patientId || target.patientName;
+    return visibleQueue.find(rx => (rx.patientId || rx.patientName) === key)?._id ?? null;
+  }, [autoOpenRxId, visibleQueue]);
+
   // Drug interaction check for the dispense modal — compare against the
   // patient's other active (non-discontinued) prescriptions in the real queue.
   const getInteractionsForRx = (rx: PrescriptionDoc): DrugInteraction[] => {
@@ -785,7 +795,8 @@ export default function PharmacyDashboardPage() {
     }
   };
 
-  const renderWorkflowPopup = (rx: PrescriptionDoc) => {
+  // One prescription's line in its patient's row panel.
+  const rxOrderLine = (rx: PrescriptionDoc): EhrPatientOrder => {
     const stage = pharmacyStage(rx);
     const balance = patientBalanceFor(rx);
     const balanceKnown = isBalanceKnownFor(rx);
@@ -826,60 +837,40 @@ export default function PharmacyDashboardPage() {
     };
     const current = currentKey ? stepCopy[currentKey] : null;
 
-    return (
-      <div className="space-y-3">
-        {/* First line: the prescription itself, with the one action this
-            pharmacist can actually take right now as an icon button. */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <span className="block font-semibold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>Prescription</span>
-            <strong className="text-sm" style={{ color: 'var(--text-primary)' }}>{rx.medication}</strong>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatRxSig(rx)} · {qty} {inv?.unit || t('statusWord.units')}</p>
-          </div>
+    // The panel used to open with a "Prescription" block repeating the
+    // medication and sig the row already shows. What is left is what the row
+    // does not say: stock, the next dispensing step, and that step's action.
+    const stockLine = inv
+      ? `${inv.stockLevel} ${inv.unit} available${inv.batchNumber ? ` · batch ${inv.batchNumber}` : ''}${inv.expiryDate ? ` · exp ${inv.expiryDate}` : ''}${controlled ? ' · Controlled substance' : ''}`
+      : `No matching inventory found for ${rx.medication}.`;
+    return {
+      id: rx._id,
+      title: rx.medication,
+      detail: `${formatRxSig(rx)} · ${qty} ${inv?.unit || t('statusWord.units')}`,
+      note: (
+        <>
+          <span style={{ color: stockOk ? undefined : 'var(--color-danger-text)' }}>{stockLine}</span>
+          {' · '}
+          {current ? current.note : 'Pharmacy workflow complete.'}
+        </>
+      ),
+      actions: (
+        <>
           <button
             type="button"
-            className="ehr-visit-pop-icon ehr-visit-pop-labelled"
+            className="btn btn-secondary btn-sm"
             onClick={() => router.push(`/patients/${encodeURIComponent(rx.patientId)}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`)}
-            title="Open chart"
-            aria-label="Open chart"
           >
-            <FileText className="w-4 h-4" aria-hidden /> Open chart
+            <FileText className="w-4 h-4" aria-hidden /> {t('appointments.openChart')}
           </button>
           {current && (
-            <div className="ehr-visit-pop-actions">
-              <button
-                type="button"
-                className="ehr-visit-pop-icon is-primary"
-                onClick={current.action.onClick}
-                aria-label={current.action.label}
-                title={current.action.label}
-              >
-                <current.icon className="w-4 h-4" aria-hidden />
-              </button>
-            </div>
+            <button type="button" className="btn btn-primary btn-sm" onClick={current.action.onClick}>
+              <current.icon className="w-4 h-4" aria-hidden /> {current.action.label}
+            </button>
           )}
-        </div>
-
-        <div className="rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-          <span className="block font-semibold uppercase tracking-wider text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>Stock &amp; batch</span>
-          {inv ? (
-            <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
-              <strong style={{ color: stockOk ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>{inv.stockLevel} {inv.unit}</strong> available
-              {inv.batchNumber ? ` · batch ${inv.batchNumber}` : ''}
-              {inv.expiryDate ? ` · exp ${inv.expiryDate}` : ''}
-              {controlled ? ' · Controlled substance' : ''}
-            </p>
-          ) : (
-            <p className="text-xs" style={{ color: 'var(--color-danger-text)' }}>No matching inventory found for {rx.medication}.</p>
-          )}
-        </div>
-
-        <div className="rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-          <span className="block font-semibold uppercase tracking-wider text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>Dispensing state</span>
-          <p className="text-xs" style={{ color: 'var(--text-primary)' }}>{current ? current.note : 'Pharmacy workflow complete.'}</p>
-        </div>
-      </div>
-    );
+        </>
+      ),
+    };
   };
 
   const headerActions: EhrCareDashboardAction[] = [];
@@ -923,7 +914,9 @@ export default function PharmacyDashboardPage() {
           hideRowList={centerPanel !== null}
           chartSeriesNames={['Pending', 'Dispensed']}
           chartItems={chartItems}
-          rows={visibleQueue.map((rx): EhrCareDashboardRow => {
+          // One row per patient: the first medication plus "+N", and the
+          // panel lists each prescription with its own stage and action.
+          rows={groupRowsByPatient(visibleQueue.map((rx): EhrCareDashboardRow => {
             const stage = pharmacyStage(rx);
             const balance = patientBalanceFor(rx);
             const balanceKnown = isBalanceKnownFor(rx);
@@ -971,15 +964,27 @@ export default function PharmacyDashboardPage() {
               location: location || rx.medication,
               locationSecondary: location ? (controlled && !paymentDue ? 'Substance' : 'Payment') : 'Medication',
               locationLabel: location ? (controlled && !paymentDue ? 'Substance' : 'Payment') : undefined,
-              popupDetail: renderWorkflowPopup(rx),
+              // A patient's only prescription: the row already names the
+              // medication and sig, so its panel line leads with stock.
+              popupDetail: <EhrPatientOrderList label={t('tab.prescriptions')} orders={[{ ...rxOrderLine(rx), title: '', detail: undefined }]} />,
               // New order/Ready/Dispensed (plus payment-due/discontinued) IS
               // this screen's whole point — a same-day visit must not paint
               // over the dispense-pipeline stage. The shared shell still
               // surfaces the visit status on the line under the pill.
               lockStatus: true,
             };
+          }), {
+            listLabel: t('tab.prescriptions'),
+            openLabel: t('appointments.openChart'),
+            orderLine: row => {
+              const rx = visibleQueue.find(item => item._id === row.id)!;
+              return { ...rxOrderLine(rx), status: <EhrOrderStatus row={row} label={rx.medication} /> };
+            },
+            // The medication is in the context column now; a sig under the
+            // name would describe only the first of them.
+            groupRow: () => ({ subtitle: '' }),
           })}
-          autoOpenRowId={autoOpenRxId}
+          autoOpenRowId={autoOpenRowId}
           metrics={[
             { label: 'Payment due', value: paymentDueCount, tone: paymentDueCount > 0 ? 'warning' : 'neutral' },
             { label: 'Ready', value: readyCount, tone: 'success' },
