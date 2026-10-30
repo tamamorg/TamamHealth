@@ -209,6 +209,34 @@ async function main() {
     return res.json();
   };
 
+  // A document the app saves while this runs is refused as a conflict: re-read
+  // its newest revision and remap that, so the count is only what landed.
+  let refused = 0;
+  const writeWithRetry = async (db, docs) => {
+    let written = 0;
+    for (let attempt = 0; docs.length; attempt++) {
+      const result = await couch(`/${encodeURIComponent(db)}/_bulk_docs`, { method: 'POST', body: JSON.stringify({ docs }) });
+      written += result.filter(r => r.ok).length;
+      const failed = result.filter(r => r.error);
+      const conflicts = failed.filter(r => r.error === 'conflict').map(r => r.id);
+      for (const r of failed) {
+        if (r.error !== 'conflict' || attempt === 2) {
+          refused += 1;
+          console.log(`  ! ${db}/${r.id}: ${r.error} ${r.reason || ''}`);
+        }
+      }
+      if (attempt === 2 || conflicts.length === 0) break;
+      const { rows } = await couch(`/${encodeURIComponent(db)}/_all_docs?include_docs=true`, { method: 'POST', body: JSON.stringify({ keys: conflicts }) });
+      docs = [];
+      for (const row of rows) {
+        if (!row.doc) continue;
+        const { changed } = await remapDocument(row.doc, { open, seal, onUnmatched: () => {} });
+        if (changed) docs.push(row.doc);
+      }
+    }
+    return written;
+  };
+
   const dbs = (await couch('/_all_dbs')).filter(name => name.startsWith('tamamhealth_'));
   let totalChanged = 0;
   let totalDocs = 0;
@@ -232,14 +260,10 @@ async function main() {
           unreadable += 1;
         }
       }
-      totalDocs += updates.length;
       if (updates.length) {
         console.log(`${db}: ${updates.length} document(s) to correct`);
-        if (!DRY_RUN) {
-          const result = await couch(`/${encodeURIComponent(db)}/_bulk_docs`, { method: 'POST', body: JSON.stringify({ docs: updates }) });
-          const failed = result.filter(r => r.error);
-          if (failed.length) console.log(`  ${failed.length} write(s) refused (conflict); re-run to retry them.`);
-        }
+        if (DRY_RUN) totalDocs += updates.length;
+        else totalDocs += await writeWithRetry(db, updates);
       }
       startkey = page.rows[page.rows.length - 1].id;
       if (page.rows.length < 500) break;
@@ -248,6 +272,7 @@ async function main() {
   console.log(`${DRY_RUN ? 'Would correct' : 'Corrected'} ${totalChanged} code(s) in ${totalDocs} document(s).`);
   console.log(`${totalUnmatched} old-list code(s) left because the saved name is not the old title: review by hand.`);
   if (listUnmatched) for (const [key, n] of [...unmatchedPairs].sort()) console.log(`  ${n}× ${key}`);
+  if (refused) console.log(`${refused} document(s) still refused: re-run to retry them.`);
   if (unreadable) console.log(`${unreadable} document(s) could not be opened with this ORG_DATA_KEY_SECRET.`);
   if (DRY_RUN) console.log('Dry run: nothing was written. Set DRY_RUN=false to apply.');
 }
