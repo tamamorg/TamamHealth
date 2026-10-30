@@ -47,7 +47,8 @@ export default function InlineBanner({
       <span className="tm-banner__icon" aria-hidden="true">{icon ?? <StatusGlyph tone={tone === 'danger' ? 'error' : tone} />}</span>
       <div className="tm-banner__body">
         {title && <span className="tm-banner__title">{title}</span>}
-        {children && <span className="tm-banner__text">{children}</span>}
+        {/* A div, not a span: callers pass block content (a list of links). */}
+        {children && <div className="tm-banner__text">{children}</div>}
       </div>
       {action && (
         <button type="button" className="tm-banner__action" onClick={action.onClick}>{action.label}</button>

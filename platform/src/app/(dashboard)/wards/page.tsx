@@ -1,27 +1,24 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
-import FormSlider from '@/components/overlay/FormSlider';
 import PatientName from '@/components/PatientName';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { Plus, X, CheckCircle2, Pill, ArrowRightLeft, ClipboardList } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { patientFullName } from '@/lib/patient-utils';
-import CodedSearchField from '@/components/CodedSearchField';
+import WardAdmitForm from '@/components/wards/WardAdmitForm';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useWards } from '@/lib/hooks/useWards';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import type { AdmissionDoc, WardDoc } from '@/lib/db-types-ward';
+import type { AdmissionDoc } from '@/lib/db-types-ward';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
 import { useNow } from '@/lib/hooks/useNow';
-import { useSettings } from '@/lib/settings/SettingsProvider';
 import { describeError } from '@/lib/user-facing-error';
 
 /* The admissions list is the shared appointment/worklist card row — the same
@@ -61,12 +58,9 @@ export default function WardsPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
-  const facilitySettings = useSettings();
   const { patients } = usePatients();
-  const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, admit, discharge, reassignBed, markBedReady } = useWards();
+  const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, discharge, reassignBed, markBedReady } = useWards();
   const { showToast } = useToast();
-  const searchParams = useSearchParams();
-  const admitFromQueryRef = useRef(false);
 
   const [admitOpen, setAdmitOpen] = useState(false);
   const [dischargeFor, setDischargeFor] = useState<AdmissionDoc | null>(null);
@@ -76,23 +70,6 @@ export default function WardsPage() {
   const activeFilterCount = filterWard ? 1 : 0;
   const clearFilters = () => { setFilterWard(''); };
 
-  const [admitPatientQuery, setAdmitPatientQuery] = useState('');
-  const admitPatientOptions = useMemo(() => patients.map(p => ({
-    code: p._id,
-    name: `${patientFullName(p)} · ${p.hospitalNumber}`,
-    meta: [p.gender, p.dateOfBirth].filter(Boolean).join(' · '),
-    keywords: [p.hospitalNumber, p.phone].filter(Boolean) as string[],
-  })), [patients]);
-  const [admitForm, setAdmitForm] = useState({
-    patientId: '',
-    admittingDiagnosis: '',
-    severity: 'moderate' as AdmissionDoc['severity'],
-    wardId: '',
-    bedId: '',
-    isolationRequired: false,
-    encounterId: '',
-  });
-  const admitPatient = admitForm.patientId ? patients.find(p => p._id === admitForm.patientId) : undefined;
 
   const [dischargeForm, setDischargeForm] = useState({
     dischargeType: 'normal' as NonNullable<AdmissionDoc['dischargeType']>,
@@ -110,22 +87,6 @@ export default function WardsPage() {
     setPlacementWardId(dischargeFor?.wardId || '');
     setPlacementBedId('');
   }, [dischargeFor]);
-
-  // Deep link from consultation (?admitPatientId=&diagnosis=&encounterId=): open
-  // the admit modal pre-filled with the patient, diagnosis, and the open visit
-  // just captured there, instead of leaving the clinician to reselect both
-  // from scratch — and losing the encounterId means the admission never closes
-  // the OPD visit it grew out of.
-  useEffect(() => {
-    const admitPatientId = searchParams?.get('admitPatientId');
-    if (!admitPatientId || admitFromQueryRef.current) return;
-    if (!patients.some(p => p._id === admitPatientId)) return;
-    admitFromQueryRef.current = true;
-    const diagnosis = searchParams?.get('diagnosis') || '';
-    const encounterId = searchParams?.get('encounterId') || '';
-    setAdmitForm(prev => ({ ...prev, patientId: admitPatientId, admittingDiagnosis: diagnosis, encounterId }));
-    setAdmitOpen(true);
-  }, [searchParams, patients]);
 
   const facilityId = currentUser?.hospitalId || currentUser?.hospital?._id;
   const canAdmit = roleCan(currentUser?.role, WARD_ADMIT_ROLES);
@@ -148,30 +109,6 @@ export default function WardsPage() {
     [activeAdmissions, filterWard, admissionSearch],
   );
 
-  // Beds actually free in the chosen ward — without this the admit modal's
-  // bed field was free text, `bedId` never got set, `updateBedStatus` never
-  // ran, and ward occupancy sat at 0% no matter how many patients were admitted.
-  const availableBedsForWard = useMemo(
-    () => admitForm.wardId ? beds.filter(b => b.wardId === admitForm.wardId && b.status === 'available') : [],
-    [beds, admitForm.wardId],
-  );
-  // Free beds for a ward, resilient to two data models: a facility that tracks
-  // individual bed documents (count the available ones) and one that keeps only
-  // a denormalised `availableBeds` tally on the ward. Relying on the tally alone
-  // hid every ward whose count had drifted to 0 while beds were in fact free —
-  // which is what left the admit modal's ward list empty and "ward assignment"
-  // looking broken.
-  const wardFreeBeds = useCallback((w: WardDoc) => {
-    const hasBedDocs = beds.some(b => b.wardId === w._id);
-    return hasBedDocs
-      ? beds.filter(b => b.wardId === w._id && b.status === 'available').length
-      : (w.availableBeds ?? 0);
-  }, [beds]);
-  // Wards a patient can actually be admitted to right now.
-  const admittableWards = useMemo(
-    () => facilityWards.filter(w => w.isActive !== false && wardFreeBeds(w) > 0),
-    [facilityWards, wardFreeBeds],
-  );
   const availablePlacementBeds = useMemo(
     () => placementWardId
       ? beds.filter(bed => bed.wardId === placementWardId && bed.status === 'available')
@@ -183,65 +120,6 @@ export default function WardsPage() {
     [beds, facilityId],
   );
 
-  const handleAdmit = async () => {
-    const patient = patients.find(p => p._id === admitForm.patientId);
-    const ward = facilityWards.find(w => w._id === admitForm.wardId);
-    if (!patient || !ward) {
-      showToast(t('ward.selectPatientAndWard'), 'error');
-      return;
-    }
-    if (!admitForm.admittingDiagnosis.trim()) {
-      showToast(t('ward.diagnosisRequiredToast'), 'error');
-      return;
-    }
-    if (!currentUser) return;
-    const bed = admitForm.bedId ? beds.find(b => b._id === admitForm.bedId) : undefined;
-    const roomClassCode = bed?.roomClass ?? ward.roomClass ?? 'standard';
-    const configuredClass = facilitySettings.roomClasses.find(item => item.code === roomClassCode && item.active);
-    try {
-      await admit({
-        patientId: patient._id,
-        patientName: `${patient.firstName} ${patient.surname}`.trim(),
-        hospitalNumber: patient.hospitalNumber,
-        admittingDiagnosis: admitForm.admittingDiagnosis.trim(),
-        severity: admitForm.severity,
-        admittedBy: currentUser._id || currentUser.username || 'unknown',
-        admittedByName: currentUser.name,
-        wardId: ward._id,
-        wardName: ward.name,
-        bedId: bed?._id,
-        bedNumber: bed?.bedNumber,
-        roomClass: roomClassCode,
-        nightlyTariff: bed?.nightlyTariff ?? ward.nightlyTariff ?? configuredClass?.nightlyTariff,
-        tariffCurrency: bed?.tariffCurrency ?? ward.tariffCurrency ?? configuredClass?.currency,
-        admissionDepositRequired: bed?.admissionDeposit ?? ward.admissionDeposit ?? configuredClass?.admissionDeposit,
-        facilityId: ward.facilityId,
-        facilityName: ward.facilityName,
-        facilityLevel: ward.facilityLevel,
-        orgId: ward.orgId || currentUser.orgId,
-        attendingPhysician: currentUser._id || currentUser.username || 'unknown',
-        attendingPhysicianName: currentUser.name,
-        isolationRequired: admitForm.isolationRequired,
-        // Prefer patient's geographic state; fall back to the admitting
-        // facility's state. Previously this fell back to `ward.facilityName`,
-        // which would write the hospital's name into the geographic state
-        // field — corrupting downstream surveillance/analytics joins that
-        // expect a state code (e.g. "Central Equatoria"), not a hospital
-        // ("Juba Teaching Hospital").
-        state: patient.state || currentUser.hospital?.state || '',
-        // Closes the OPD visit this admission grew out of, when the admit
-        // modal was opened from one (deep-linked ?encounterId=). Best-effort
-        // on the service side — an admission never fails because of this.
-        encounterId: admitForm.encounterId || undefined,
-      });
-      showToast(t('ward.admittedToast', { name: `${patient.firstName} ${patient.surname}`, ward: ward.name }), 'success');
-      setAdmitOpen(false);
-      setAdmitForm({ patientId: '', admittingDiagnosis: '', severity: 'moderate', wardId: '', bedId: '', isolationRequired: false, encounterId: '' });
-    } catch (err) {
-      console.error(err);
-      showToast(describeError(err, t('ward.admitFailedToast')), 'error');
-    }
-  };
 
   const handleDischarge = async () => {
     if (!dischargeFor || !currentUser) return;
@@ -464,88 +342,12 @@ export default function WardsPage() {
           </div>
         </div>
 
-        {/* Admit modal */}
+        {/* Admit form — shared with the patient chart's workspace. */}
         {admitOpen && (
-          <FormSlider
-            title={t('ward.admitPatient')}
+          <WardAdmitForm
+            layout="slider"
             onClose={() => setAdmitOpen(false)}
-            footer={<>
-                <button onClick={() => setAdmitOpen(false)} className="btn btn-secondary">{t('action.cancel')}</button>
-                <button onClick={handleAdmit} className="btn btn-primary">{t('ward.admit')}</button>
-            </>}
-          >
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.patientRequired')}</label>
-                  {/* Changing the patient drops the deep-linked visit — an
-                      encounterId belongs to the patient it arrived with. */}
-                  {/* Search, not a list: the dropdown held the first 200 patients,
-                      so at a facility with more, most could not be admitted
-                      from here. Changing the patient drops the deep-linked
-                      visit — an encounterId belongs to the patient it came with. */}
-                  {admitPatient ? (
-                    <div className="tamam-panel-picked-chip">
-                      <span>{patientFullName(admitPatient)} <span style={{ color: 'var(--text-muted)' }}>· {admitPatient.hospitalNumber}</span></span>
-                      <button type="button" onClick={() => setAdmitForm({ ...admitForm, patientId: '', encounterId: '' })}>{t('ward.changePatient')}</button>
-                    </div>
-                  ) : (
-                    <CodedSearchField
-                      label=""
-                      placeholder={t('ward.selectPatient')}
-                      options={admitPatientOptions}
-                      value={admitPatientQuery}
-                      onChange={setAdmitPatientQuery}
-                      onSelect={option => { setAdmitForm({ ...admitForm, patientId: option.code, encounterId: '' }); setAdmitPatientQuery(''); }}
-                      showCodeBadge={false}
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.admittingDiagnosisRequired')}</label>
-                  <input type="text" value={admitForm.admittingDiagnosis} onChange={e => setAdmitForm({ ...admitForm, admittingDiagnosis: e.target.value })} placeholder={t('ward.admittingDiagnosisPlaceholder')} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.severity')}</label>
-                    <Select value={admitForm.severity} onChange={e => setAdmitForm({ ...admitForm, severity: e.target.value as AdmissionDoc['severity'] })}>
-                      <option value="mild">{t('ward.severityMild')}</option>
-                      <option value="moderate">{t('ward.severityModerate')}</option>
-                      <option value="severe">{t('ward.severitySevere')}</option>
-                      <option value="critical">{t('ward.severityCritical')}</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.wardRequired')}</label>
-                    <Select value={admitForm.wardId} onChange={e => setAdmitForm({ ...admitForm, wardId: e.target.value, bedId: '' })}>
-                      <option value="">{t('ward.selectWard')}</option>
-                      {admittableWards.length === 0 && (
-                        <option value="" disabled>{t('ward.noWardsAvailable')}</option>
-                      )}
-                      {admittableWards.map(w => (
-                        <option key={w._id} value={w._id}>{t('ward.wardFree', { name: w.name, count: wardFreeBeds(w) })}</option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 items-end">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ward.bedNumber')}</label>
-                    <Select value={admitForm.bedId} onChange={e => setAdmitForm({ ...admitForm, bedId: e.target.value })} disabled={!admitForm.wardId}>
-                      <option value="">{admitForm.wardId ? t('ward.optional') : t('ward.selectWardFirst')}</option>
-                      {availableBedsForWard.map(b => (
-                        <option key={b._id} value={b._id}>{b.bedNumber} · {t(`facilitySettings.roomClass.${b.roomClass ?? 'standard'}`)}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <label className="flex items-center gap-2 h-10 text-sm" style={{ color: 'var(--text-primary)' }}>
-                    <input type="checkbox" checked={admitForm.isolationRequired} onChange={e => setAdmitForm({ ...admitForm, isolationRequired: e.target.checked })} />
-                    {t('ward.isolationRequired')}
-                  </label>
-                </div>
-              </div>
-            </div>
-          </FormSlider>
+          />
         )}
 
         {/* ═══ The patient's dialog — opened by the row, not by a button ═══

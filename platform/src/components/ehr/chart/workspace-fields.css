@@ -39,6 +39,17 @@
   background-position: left 16px center !important;
 }
 
+/* The triage form brings its page padding (`.triage-reg-form .tamam-reg-fields
+   select`, 10px 12px) into the workspace; on a 48px line it pushed the value
+   below the field. In the drawer it takes the drawer's field like every other
+   form here. */
+.tamam-drawer .triage-reg-form .tamam-reg-fields select {
+  padding: 0 48px 0 16px !important;
+}
+[dir="rtl"] .tamam-drawer .triage-reg-form .tamam-reg-fields select {
+  padding: 0 16px 0 48px !important;
+}
+
 /* On a grey section body the field turns white, as in O3. */
 .tamam-drawer :is(.omf-group-body, .omf-fields, .nv-section) :is(select, .cn-assign-trigger) {
   background-color: var(--bg-card-solid) !important;
@@ -71,4 +82,26 @@
 }
 :root[data-theme="dark"] .tamam-drawer :is(select, .cn-assign-trigger) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c6c6c6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+}
+
+/* The ANC visit and ward admission forms come from their module pages, where
+   text boxes are 40px outlined fields. In the workspace they take the drawer's
+   field — 48px, filled, one bottom rule — so a text box and the dropdown
+   beside it share a row line (Hemoglobin | Urine protein). */
+.tamam-drawer .ws-module-form :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-slate-400, #8d8d8d) !important;
+  border-radius: 0 !important;
+  background-color: var(--bg-app) !important;
+  box-shadow: none !important;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.tamam-drawer .ws-module-form textarea { padding: 12px 16px !important; }
+.tamam-drawer .ws-module-form :is(input, textarea):focus {
+  outline: 2px solid var(--focus-ring, var(--accent-primary));
+  outline-offset: -2px;
 }

@@ -11,8 +11,8 @@
  *
  * Two sections also show rows that belong to another list — the problem list
  * under Medical, procedures done here under Surgical. They are read in place,
- * never copied: a diagnosis is still added and retired on Conditions, so the
- * two can never disagree about what the patient has.
+ * never copied: a diagnosis is still added on Conditions, and a status change
+ * made here writes the same problem, so the two can never disagree.
  */
 
 import { useState } from 'react';
@@ -20,7 +20,9 @@ import ChartSection from '../ChartSection';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import HistoryEntryForm from './HistoryEntryForm';
 import FormSlider from '@/components/overlay/FormSlider';
-import { useConfirm } from '@/components/ConfirmDialog';
+import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -30,10 +32,15 @@ import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
 import { useProblems } from '@/lib/hooks/useProblems';
 import { useProcedures } from '@/lib/hooks/useProcedures';
 import { formatDate, humanizeStatus } from '@/lib/format-utils';
-import type { HistoryDomain, HistoryEntryDoc } from '@/lib/db-types';
+import { todayIso } from '@/lib/date-utils';
+import { statusWord } from '@/lib/i18n/status-word';
+import type { HistoryDomain, HistoryEntryDoc, ProblemDoc, ProblemStatus, ProcedureDoc } from '@/lib/db-types';
 import {
   HISTORY_DOMAINS, OTHER_SOCIAL_FACTOR, formatHistoryEntry, getSocialFactor, historyForDomain, performedProcedures,
 } from '@/lib/clinical/patient-history';
+
+/** Same status set as Conditions; 'inactive' takes the row off this list. */
+const PROBLEM_STATUSES: ProblemStatus[] = ['active', 'chronic', 'inactive', 'resolved'];
 
 const MUTED = { color: 'var(--ehr-muted, #5D728B)', fontWeight: 400 } as const;
 const SUB = { ...MUTED, fontSize: 12 } as const;
@@ -62,16 +69,20 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
+  const confirmPrompt = useConfirmPrompt();
   // Everyone who cares for the patient can record history — nurses included.
-  // (The borrowed problem-list rows stay read-only here; diagnoses are still a
-  // clinician's write, made on Conditions.)
-  const { canRecordHistory } = usePermissions();
+  // (A borrowed problem-list row's status is a clinician's write, as on
+  // Conditions, so it rides `canEditClinical`.)
+  const { canRecordHistory, canEditClinical, canConsult } = usePermissions();
   const { entries, loading, error, markInError } = useHistoryEntries(patientId);
-  const { problems } = useProblems(patientId);
-  const { procedures } = useProcedures(patientId);
+  const { problems, update: updateProblem, setStatus: setProblemStatus } = useProblems(patientId);
+  const { procedures, remove: removeProcedure } = useProcedures(patientId);
 
   const [form, setForm] = useState<{ domain: HistoryDomain; entry: HistoryEntryDoc | null } | null>(null);
   const [retiring, setRetiring] = useState<string | null>(null);
+  const [savingProblem, setSavingProblem] = useState<string | null>(null);
+  const [onsetTarget, setOnsetTarget] = useState<ProblemDoc | null>(null);
+  const [onsetEdit, setOnsetEdit] = useState('');
 
   const listedProblems = problems.filter(p => p.status !== 'inactive');
   const doneProcedures = performedProcedures(procedures);
@@ -97,6 +108,76 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
     }
   };
 
+  const handleProblemStatus = async (problem: ProblemDoc, status: ProblemStatus) => {
+    setSavingProblem(problem._id);
+    try {
+      // The service returns null when the write fails — not a success.
+      if (!(await setProblemStatus(problem._id, status))) throw new Error('Change not saved. Try again.');
+      showToast(t('msg.conditionMarked', { value: statusWord(t, status) }), 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('msg.conditionNotUpdatedTryAgain')), 'error');
+    } finally {
+      setSavingProblem(null);
+    }
+  };
+
+  // The same corrections Conditions makes, written over the problem with a
+  // reason, never a delete: a wrong onset is fixed in place, a wrong entry is
+  // kept and hidden.
+  const saveOnset = async () => {
+    if (!onsetTarget || !onsetEdit) return;
+    setSavingProblem(onsetTarget._id);
+    try {
+      if (!(await updateProblem(onsetTarget._id, { onsetDate: onsetEdit }))) throw new Error('Change not saved. Try again.');
+      showToast(t('msg.conditionOnsetCorrected'), 'success');
+      setOnsetTarget(null);
+    } catch (err) {
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
+    } finally {
+      setSavingProblem(null);
+    }
+  };
+
+  const markProblemInError = async (problem: ProblemDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chart.conditionErrorTitle'),
+      message: t('chart.conditionErrorMessage', { name: problem.name }),
+      inputLabel: t('chart.vitalsDeleteReason'),
+      confirmLabel: t('chart.conditionErrorConfirm'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    setSavingProblem(problem._id);
+    try {
+      if (!(await updateProblem(problem._id, { recordStatus: 'entered_in_error', correctionReason: reason.trim() }))) throw new Error('Change not saved. Try again.');
+      showToast(t('msg.conditionMarkedInError', { name: problem.name }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
+    } finally {
+      setSavingProblem(null);
+    }
+  };
+
+  const markProcedureInError = async (procedure: ProcedureDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chart.markError'),
+      message: procedure.name,
+      inputLabel: t('chart.vitalsDeleteReason'),
+      inputRequired: true,
+      confirmLabel: t('chart.markError'),
+      tone: 'danger',
+    });
+    if (!reason) return;
+    if (reason.trim().length < 3) { showToast(t('chart.correctionReasonRequired'), 'error'); return; }
+    try {
+      if (!(await removeProcedure(procedure._id, reason, { id: currentUser?._id, name: currentUser?.name }))) throw new Error(t('chart.procedureUpdateFailed'));
+      showToast(t('chart.procedureMarkedError'), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('chart.procedureUpdateFailed')), 'error');
+    }
+  };
+
   const recorded = (entry: HistoryEntryDoc) => (
     <td>
       {/* An edited entry names whoever last changed it, beside that date —
@@ -119,15 +200,56 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
     </td>
   );
 
-  /** A borrowed row is edited on its own list; its ⋮ is the way there. */
-  const borrowedActions = (tabId: string, label: string, name: string) => (
+  /**
+   * A problem-list row takes the same actions as Conditions — status, onset
+   * correction, entered in error — and every write lands on the problem, so
+   * the two lists cannot disagree.
+   */
+  const problemActions = (problem: ProblemDoc) => (
     <td>
-      {onOpenTab && (
-        <RowActionsMenu
-          ariaLabel={t('history.rowActions', { entry: name })}
-          actions={[{ key: 'open', label: t('history.openSource', { list: label }), onClick: () => onOpenTab(tabId) }]}
-        />
-      )}
+      <RowActionsMenu
+        ariaLabel={t('history.rowActions', { entry: problem.name })}
+        actions={[
+          ...(canEditClinical ? PROBLEM_STATUSES.filter(status => status !== problem.status).map(status => ({
+            key: `status-${status}`,
+            label: t('chart.markStatus', { status: statusWord(t, status) }),
+            group: 'status',
+            disabled: savingProblem === problem._id,
+            onClick: () => void handleProblemStatus(problem, status),
+          })) : []),
+          ...(canEditClinical ? [
+            { key: 'onset', label: t('chart.conditionCorrectOnset'), group: 'correct', onClick: () => { setOnsetTarget(problem); setOnsetEdit(problem.onsetDate || ''); } },
+            { key: 'error', label: t('chart.conditionErrorConfirm'), group: 'correct', tone: 'danger' as const, disabled: savingProblem === problem._id, onClick: () => void markProblemInError(problem) },
+          ] : []),
+          ...(onOpenTab ? [{
+            key: 'open',
+            label: t('history.openSource', { list: t('history.fromProblemList') }),
+            group: 'open',
+            onClick: () => onOpenTab('problems'),
+          }] : []),
+        ]}
+      />
+    </td>
+  );
+
+  /** A procedure is withdrawn here; a full correction is the Procedures form. */
+  const procedureActions = (procedure: ProcedureDoc) => (
+    <td>
+      <RowActionsMenu
+        ariaLabel={t('history.rowActions', { entry: procedure.name })}
+        actions={[
+          ...(onOpenTab ? [{
+            key: 'open',
+            label: t('history.openSource', { list: t('history.fromProcedures') }),
+            group: 'open',
+            onClick: () => onOpenTab('procedures'),
+          }] : []),
+          ...(canConsult ? [{
+            key: 'error', label: t('chart.markError'), group: 'correct', tone: 'danger' as const,
+            onClick: () => void markProcedureInError(procedure),
+          }] : []),
+        ]}
+      />
     </td>
   );
 
@@ -216,7 +338,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
           <td>{p.onsetDate ? formatDate(p.onsetDate) : '—'}</td>
           <td>{humanizeStatus(p.status)}</td>
           <td>{borrowedTag('problems', t('history.fromProblemList'))}</td>
-          {borrowedActions('problems', t('history.fromProblemList'), p.name)}
+          {problemActions(p)}
         </tr>
       ));
     }
@@ -230,7 +352,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
           <td>{p.date ? formatDate(p.date) : '—'}</td>
           <td>{p.hospitalName || t('history.thisFacility')}</td>
           <td>{borrowedTag('procedures', t('history.fromProcedures'))}</td>
-          {borrowedActions('procedures', t('history.fromProcedures'), p.name)}
+          {procedureActions(p)}
         </tr>
       ));
     }
@@ -278,6 +400,21 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
           </ChartSection>
         );
       })}
+
+      {onsetTarget && (
+        <Modal className="tamam-dialog" onClose={() => !savingProblem && setOnsetTarget(null)} width={420} labelledBy="history-onset-title">
+          <DialogFrame>
+            <DialogHeader titleId="history-onset-title" title={<>{t('chart.conditionCorrectOnset')} · {onsetTarget.name}</>} onClose={() => !savingProblem && setOnsetTarget(null)} />
+            <DialogBody className="space-y-4">
+              <input type="date" className="w-full" aria-label={t('chart.conditionCorrectOnset')} value={onsetEdit} max={todayIso()} onChange={e => setOnsetEdit(e.target.value)} autoFocus />
+            </DialogBody>
+            <DialogFooter>
+              <button className="btn btn-secondary" disabled={!!savingProblem} onClick={() => setOnsetTarget(null)}>{t('action.cancel')}</button>
+              <button className="btn btn-primary" disabled={!!savingProblem || !onsetEdit} onClick={() => void saveOnset()}>{savingProblem ? t('noteEditor.saving') : t('chart.conditionSaveOnset')}</button>
+            </DialogFooter>
+          </DialogFrame>
+        </Modal>
+      )}
 
       {form && (
         <FormSlider

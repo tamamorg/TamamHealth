@@ -26728,6 +26728,14 @@ table.patient-data-table.patient-data-table {
   text-decoration: underline;
 }
 
+/* Embedded triage (a slider, the chart workspace): no rail, one column the
+   width of its container. */
+.tamam-reg.triage-reg--embedded {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+}
+
 .triage-reg-form .tamam-reg-fields input:not([type="checkbox"]):not([type="radio"]),
 .triage-reg-form .tamam-reg-fields select,
 .triage-reg-form .tamam-reg-fields textarea {

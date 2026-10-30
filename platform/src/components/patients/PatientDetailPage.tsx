@@ -89,6 +89,7 @@ import BookAppointmentPanel from '@/components/ehr/chart/panels/BookAppointmentP
 import { apptBucket, appointmentsInView, type ApptView } from './detail/appointment-buckets';
 import { jubaDate } from '@/lib/time-juba';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import { roleFormAllowed } from '@/components/ehr/chart/panels/role-form-access';
 
 
 /** Role forms that work one named order (`&focus=`) in the chart workspace. */
@@ -1157,7 +1158,9 @@ export default function PatientDetailPage() {
             <PatientAncTab
               visits={patientANC}
               canEdit={canRecordVitalEvents}
-              onRegister={canRecordVitalEvents ? () => router.push(`/anc?patientId=${encodeURIComponent(patient._id)}`) : undefined}
+              // Registers in the chart workspace (the ANC visit form), not on
+              // the ANC register's page. Gated as the shell gates the form.
+              onRegister={canRecordVitalEvents && roleFormAllowed('anc-visit', currentUser?.role, canViewClinical) ? () => setChartPanelRequest('anc-visit') : undefined}
               focusId={focusId}
               onChanged={() => { void reloadANC(); }}
             />

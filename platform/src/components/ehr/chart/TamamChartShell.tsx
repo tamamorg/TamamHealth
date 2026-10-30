@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   ShoppingCart, Stethoscope, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
-  Utensils, ScanLine, FlaskConical, Pill,
+  Utensils, ScanLine, FlaskConical, Pill, Activity, HeartPulse, BedDouble,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
 import DrawerResizeHandle from './DrawerResizeHandle';
@@ -39,7 +39,11 @@ import PatientListsPanel from './panels/PatientListsPanel';
 import NutritionScreeningPanel from './panels/NutritionScreeningPanel';
 import ImagingReportPanel from './panels/ImagingReportPanel';
 import { DispensePanel, LabOrdersPanel } from './panels/StationOrdersPanel';
-import { getDefaultDashboard, isPathAllowed } from '@/lib/role-routes';
+import WardAdmissionPanel from './panels/WardAdmissionPanel';
+import TriageWorkflow from '@/components/nurse/TriageWorkflow';
+import AncVisitForm from '@/components/anc/AncVisitForm';
+import { ROLE_FORM_RULES, roleFormAllowed } from './panels/role-form-access';
+import { getDefaultDashboard } from '@/lib/role-routes';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './tamam-chart.css';
 import { isAnyModalOpen } from '@/components/Modal';
@@ -110,16 +114,21 @@ const CLINICAL_NOTE_PANEL: DrawerPanelDef = { id: 'clinical-note', title: 'Clini
  * are exactly their work. A nutrition screening may also be taken by the
  * clinical and nursing roles (the `nutrition_screening` sync grant is
  * NURSING_AND_CLINICIANS + nutritionist); an imaging report only by whoever
- * holds the radiology station.
+ * holds the radiology station. The rules live in `panels/role-form-access`,
+ * which the Clinical forms list reads too.
  */
-const ROLE_FORM_PANELS: (DrawerPanelDef & { station: string; clinicalMayOpen: boolean; wide?: boolean })[] = [
-  { id: 'nutrition-screening', title: 'Nutrition screening', icon: Utensils, station: '/dashboard/nutrition', clinicalMayOpen: true },
-  { id: 'imaging-report', title: 'Imaging report', icon: ScanLine, station: '/dashboard/radiology', clinicalMayOpen: false },
+const ROLE_FORM_PANELS: (DrawerPanelDef & { wide?: boolean })[] = [
+  { id: 'nutrition-screening', title: 'Nutrition screening', icon: Utensils },
+  { id: 'imaging-report', title: 'Imaging report', icon: ScanLine },
   // The bench and the counter: the lab's and the pharmacy's six-step
   // workflows, worked beside the record. Wide, as the note editor is — the
   // step chevrons need the room.
-  { id: 'lab-orders', title: 'Lab orders', icon: FlaskConical, station: '/dashboard/lab', clinicalMayOpen: false, wide: true },
-  { id: 'dispense', title: 'Dispense', icon: Pill, station: '/dashboard/pharmacy', clinicalMayOpen: false, wide: true },
+  { id: 'lab-orders', title: 'Lab orders', icon: FlaskConical, wide: true },
+  { id: 'dispense', title: 'Dispense', icon: Pill, wide: true },
+  // Clinical forms that used to leave the chart for their module's page.
+  { id: 'triage-form', title: 'Triage / ETAT assessment', icon: Activity, wide: true },
+  { id: 'anc-visit', title: 'ANC visit', icon: HeartPulse, wide: true },
+  { id: 'ward-admission', title: 'Ward admission', icon: BedDouble },
 ];
 
 function isWideRoleForm(id: string): boolean {
@@ -129,7 +138,7 @@ function isWideRoleForm(id: string): boolean {
 /** The role forms `role` may open in the chart. Exported for tests. */
 export function allowedRoleFormPanels(role: string | undefined, canViewClinical: boolean): DrawerPanelDef[] {
   if (!role) return [];
-  return ROLE_FORM_PANELS.filter(panel => isPathAllowed(role, panel.station) || (panel.clinicalMayOpen && canViewClinical));
+  return ROLE_FORM_PANELS.filter(panel => roleFormAllowed(panel.id, role, canViewClinical));
 }
 
 /** Role forms that get their own rail button: the form IS the role's work,
@@ -137,7 +146,7 @@ export function allowedRoleFormPanels(role: string | undefined, canViewClinical:
 export function railRoleFormPanels(role: string | undefined): DrawerPanelDef[] {
   if (!role) return [];
   const home = getDefaultDashboard(role);
-  return ROLE_FORM_PANELS.filter(panel => panel.station === home);
+  return ROLE_FORM_PANELS.filter(panel => ROLE_FORM_RULES[panel.id]?.station === home);
 }
 
 interface TamamChartShellProps {
@@ -471,10 +480,8 @@ export default function TamamChartShell({
         return (
           <ClinicalFormsPanel
             patient={patient}
-            router={router}
             canConsult={canConsult}
             currentUser={currentUser}
-            onClose={closeDrawer}
             onOpenNote={(noteId, title) => pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId, noteTitle: title })}
             onOpenForm={id => pushRail({ id })}
           />
@@ -483,6 +490,16 @@ export default function TamamChartShell({
         return <NutritionScreeningPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
       case 'imaging-report':
         return <ImagingReportPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
+      case 'triage-form':
+        return (
+          <div className="tamam-drawer-body">
+            <TriageWorkflow lockedPatientId={patient._id} lockedPatient={patient} onSaved={closeDrawer} embedded />
+          </div>
+        );
+      case 'anc-visit':
+        return <AncVisitForm layout="workspace" lockedPatient={patient} onClose={closeDrawer} />;
+      case 'ward-admission':
+        return <WardAdmissionPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
       case 'lab-orders':
         return <LabOrdersPanel patient={patient} focusId={formFocusId} />;
       case 'dispense':

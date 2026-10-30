@@ -2370,3 +2370,32 @@ select.cn-select {
   border-radius: 6px;
   color: var(--cn-accent-deep);
 }
+
+/* Sign dialog: the sections still to complete, inside the danger banner.
+   Each is a full-width link row — a target, not a bullet — so the list
+   reads as the way to each section rather than a sentence to parse. */
+.cn-sign-missing {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid color-mix(in srgb, var(--ntf-tone) 25%, transparent);
+}
+.cn-sign-missing li { border-bottom: 1px solid color-mix(in srgb, var(--ntf-tone) 25%, transparent); }
+.cn-sign-missing__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.cn-sign-missing__link:hover { text-decoration: underline; }
+.cn-sign-missing__link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.cn-sign-missing__link svg.lucide { color: currentColor !important; stroke: currentColor !important; opacity: 1; }

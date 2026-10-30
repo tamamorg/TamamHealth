@@ -1,35 +1,17 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import { useANC } from '@/lib/hooks/useANC';
-import { usePatients } from '@/lib/hooks/usePatients';
-import { patientAge } from '@/lib/patient-utils';
 import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useToast } from '@/components/Toast';
-import type { ANCVisitDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
-import FormSlider from '@/components/overlay/FormSlider';
-import { HeartPulse, Plus, Users, ChevronRight } from '@/components/icons/lucide';
-import Select from '@/components/Select';
+import AncVisitForm from '@/components/anc/AncVisitForm';
+import { HeartPulse, Plus, ChevronRight } from '@/components/icons/lucide';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
-import {
-  createAncRegistrationForm,
-  deriveAncPatientPrefill,
-  missingAncRequiredFields,
-  type AncRiskLevel,
-} from '@/lib/forms/anc-form-policy';
-import { describeError } from '@/lib/user-facing-error';
-
-const RISK_FACTOR_OPTIONS = [
-  'hypertension', 'anemia', 'previous_csection', 'multiple_pregnancy',
-  'hiv_positive', 'rh_negative', 'primigravida', 'diabetes',
-  'preeclampsia', 'bleeding', 'malaria_in_pregnancy', 'proteinuria',
-];
 
 const riskColors: Record<'low' | 'moderate' | 'high', { tone: BadgeTone; label: string }> = {
   low: { tone: 'info', label: 'Low Risk' },
@@ -42,10 +24,8 @@ export default function ANCPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { globalSearch } = useUi();
-  const { visits, stats, loading, register } = useANC();
-  const { patients } = usePatients();
+  const { visits, stats, loading } = useANC();
   const { canRecordVitalEvents } = usePermissions();
-  const { showToast } = useToast();
   // Programme analytics (summary cards + ANC continuum funnel) are a population
   // view for facility management and the Ministry of Health. Clinical roles keep
   // the data recordings, workflow, and the mother/visit data.
@@ -55,78 +35,10 @@ export default function ANCPage() {
   const [tableSearch, setTableSearch] = useState('');
   const search = `${tableSearch} ${globalSearch}`.trim();
   const [showModal, setShowModal] = useState(false);
+  const closeRegistrationForm = () => setShowModal(false);
   // Correcting a saved visit happens in the mother's chart (Antenatal care,
   // AncVisitEditor); this page is the register of mothers. The form is a
   // slider beside the list, so the page behind it is not scroll-locked.
-  const [patientLookup, setPatientLookup] = useState('');
-
-  const [form, setForm] = useState(() => createAncRegistrationForm(todayIso()));
-  const [linkedPatientId, setLinkedPatientId] = useState<string | undefined>(undefined);
-
-  const resetRegistrationForm = () => {
-    setForm(createAncRegistrationForm(todayIso()));
-    setLinkedPatientId(undefined);
-    setPatientLookup('');
-  };
-
-  const closeRegistrationForm = () => {
-    setShowModal(false);
-    resetRegistrationForm();
-  };
-
-  // Filter to female patients of childbearing age (10-55) for the lookup
-  const patientMatches = useMemo(() => {
-    if (!patientLookup || patientLookup.length < 2) return [];
-    const q = patientLookup.toLowerCase();
-    return (patients || [])
-      .filter(p => {
-        if (p.gender !== 'Female') return false;
-        const age = patientAge(p) ?? 0;
-        if (age < 10 || age > 55) return false;
-        return (
-          `${p.firstName} ${p.surname}`.toLowerCase().includes(q) ||
-          (p.hospitalNumber || '').toLowerCase().includes(q)
-        );
-      })
-      .slice(0, 6);
-  }, [patientLookup, patients]);
-
-  const selectAncPatient = (id: string) => {
-    const p = patients.find(x => x._id === id);
-    if (!p) return;
-    const age = patientAge(p);
-    setLinkedPatientId(p._id);
-    setForm(current => deriveAncPatientPrefill(current, {
-      patientId: p._id,
-      patientName: `${p.firstName || ''} ${p.surname || ''}`.trim(),
-      age: age ?? undefined,
-    }, visits));
-    setPatientLookup('');
-  };
-
-  // Deep link: the patient chart's "Clinical forms" drawer opens the ANC visit
-  // form for a specific mother via ?patientId=. The link existed but nothing
-  // read the param, so it landed on the bare ANC list and the clinician had to
-  // find the patient again. Waits for `patients` to load (retries via the dep
-  // array) and fires once.
-  const ancPatientParamRef = useRef(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || ancPatientParamRef.current || !patients.length) return;
-    const params = new URLSearchParams(window.location.search);
-    const patientId = params.get('patientId');
-    if (!patientId) return;
-    const match = patients.find(p => p._id === patientId);
-    if (!match) return;
-    ancPatientParamRef.current = true;
-    selectAncPatient(patientId);
-    if (canRecordVitalEvents) setShowModal(true);
-    params.delete('patientId');
-    const qs = params.toString();
-    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
-    // selectAncPatient is recreated each render; `patients` arriving is the
-    // signal this effect actually waits on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patients, canRecordVitalEvents]);
 
   // Group visits by mother — get latest visit for each
   const motherSummaries = useMemo(() => {
@@ -165,56 +77,6 @@ export default function ANCPage() {
     const in7Str = toIsoDate(in7);
     return motherSummaries.filter(m => m.latest.nextVisitDate && m.latest.nextVisitDate >= today && m.latest.nextVisitDate <= in7Str).length;
   }, [motherSummaries, today]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (missingAncRequiredFields(form).length > 0) {
-      showToast(t('patientNew.toastFillRequired'), 'error');
-      return;
-    }
-    try {
-    await register({
-      motherId: form.motherId || `mother-new-${Date.now()}`,
-      motherName: form.motherName,
-      motherAge: Number(form.motherAge),
-      gravida: Number(form.gravida),
-      parity: Number(form.parity),
-      visitNumber: form.visitNumber,
-      visitDate: form.visitDate,
-      gestationalAge: Number(form.gestationalAge),
-      facilityId: currentUser?.hospitalId || '',
-      facilityName: currentUser?.hospitalName || '',
-      state: currentUser?.hospital?.state || '',
-      bloodPressure: form.bloodPressure,
-      weight: Number(form.weight),
-      fundalHeight: Number(form.fundalHeight),
-      fetalHeartRate: Number(form.fetalHeartRate),
-      hemoglobin: Number(form.hemoglobin),
-      urineProtein: form.urineProtein,
-      bloodGroup: form.bloodGroup,
-      rhFactor: form.rhFactor,
-      hivStatus: form.hivStatus,
-      malariaTest: form.malariaTest,
-      syphilisTest: form.syphilisTest,
-      ironFolateGiven: form.ironFolateGiven === true,
-      tetanusVaccine: form.tetanusVaccine === true,
-      iptpDose: Number(form.iptpDose),
-      riskFactors: form.riskFactors,
-      riskLevel: form.riskLevel as ANCVisitDoc['riskLevel'],
-      birthPlan: { facility: form.birthPlanFacility, transport: form.birthPlanTransport, bloodDonor: form.birthPlanBloodDonor },
-      nextVisitDate: form.nextVisitDate,
-      notes: form.notes,
-      attendedBy: currentUser?.name || '',
-      attendedByRole: currentUser?.role || 'doctor',
-      patientId: linkedPatientId,
-    });
-    setShowModal(false);
-    resetRegistrationForm();
-    } catch (err) {
-      // Keep the form open: a refused save (e.g. no facility/organisation) must not look saved.
-      showToast(describeError(err, t('msg.ancVisitNotSavedTry')), 'error');
-    }
-  };
 
   if (loading) {
     return (
@@ -355,265 +217,9 @@ export default function ANCPage() {
           </div>
         </div>
 
-        {/* Registration Modal */}
+        {/* Registration form — shared with the patient chart's workspace. */}
         {showModal && (
-          <FormSlider
-            title="Register ANC Visit"
-            width={672}
-            onClose={closeRegistrationForm}
-          >
-            <div className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Link to existing patient (recommended) */}
-                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33, 145, 208,0.25))' }}>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-                    <Users className="w-3 h-3" />
-                    Link to existing mother (recommended)
-                  </label>
-                  {linkedPatientId ? (
-                    (() => {
-                      const lp = patients.find(p => p._id === linkedPatientId);
-                      return (
-                        <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                          <div className="text-xs">
-                            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{lp?.firstName} {lp?.surname}</p>
-                            <p style={{ color: 'var(--text-muted)' }}>{lp?.hospitalNumber}{lp?.estimatedAge ? ` · ${lp.estimatedAge}y` : ''}</p>
-                          </div>
-                          <button type="button" onClick={resetRegistrationForm} className="text-[10px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Unlink</button>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={patientLookup}
-                          onChange={e => setPatientLookup(e.target.value)}
-                          placeholder="Search female patient by name or hospital number…"
-                          className="w-full text-xs p-2 rounded-lg outline-none"
-                          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                        />
-                      </div>
-                      {patientMatches.length > 0 && (
-                        <div className="mt-1.5 rounded-lg overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                          {patientMatches.map(p => (
-                            <button
-                              key={p._id}
-                              type="button"
-                              onClick={() => selectAncPatient(p._id)}
-                              className="w-full px-2.5 py-2 text-start text-xs hover:bg-[var(--overlay-subtle)] transition-colors"
-                              style={{ borderBottom: '1px solid var(--border-light)' }}
-                            >
-                              <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{p.firstName} {p.surname}</p>
-                              <p style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber}{p.estimatedAge ? ` · ${p.estimatedAge}y` : ''}</p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                        Linking lets the system flag the mother as &ldquo;Delivered&rdquo; once a birth is registered for her.
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                {/* Mother Info */}
-                <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                  <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>Mother Information</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="sm:col-span-2">
-                      <label className="field-required">Mother Name</label>
-                      <input type="text" required value={form.motherName} onChange={e => setForm({ ...form, motherName: e.target.value })} placeholder="Full name" />
-                    </div>
-                    <div>
-                      <label>Age</label>
-                      <input type="number" step="1" required min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-                    <div>
-                      <label>Gravida</label>
-                      <input type="number" step="1" required min={1} max={20} value={form.gravida} onChange={e => setForm({ ...form, gravida: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                    <div>
-                      <label>Parity</label>
-                      <input type="number" step="1" required min={0} max={20} value={form.parity} onChange={e => setForm({ ...form, parity: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                    <div>
-                      <label>Visit #</label>
-                      <input type="number" step="1" min={1} max={20} value={form.visitNumber} onChange={e => setForm({ ...form, visitNumber: parseInt(e.target.value, 10) || 0 })} />
-                    </div>
-                    <div>
-                      <label>GA (weeks)</label>
-                      <input type="number" step="1" required min={4} max={44} value={form.gestationalAge} onChange={e => setForm({ ...form, gestationalAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Clinical Assessment */}
-                <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                  <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>Clinical Assessment</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div>
-                      <label>BP (mmHg)</label>
-                      <input type="text" value={form.bloodPressure} onChange={e => setForm({ ...form, bloodPressure: e.target.value })} placeholder="120/80" />
-                    </div>
-                    <div>
-                      <label>Weight (kg)</label>
-                      <input type="number" step="0.1" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
-                    </div>
-                    <div>
-                      <label>Fundal Height</label>
-                      <input type="number" step="any" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                    <div>
-                      <label>Fetal HR (bpm)</label>
-                      <input type="number" step="1" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-                    <div>
-                      <label>Hemoglobin</label>
-                      <input type="number" step="0.1" value={form.hemoglobin} onChange={e => setForm({ ...form, hemoglobin: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
-                    </div>
-                    <div>
-                      <label>Urine Protein</label>
-                      <Select required value={form.urineProtein} onChange={e => setForm({ ...form, urineProtein: e.target.value })}>
-                        <option value="" disabled>{t('common.select')}</option><option value="Not tested">{t('anc.optNotTested')}</option><option value="Negative">{t('anc.optNegative')}</option><option value="Trace">{t('anc.optTrace')}</option><option>+</option><option>++</option><option>+++</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label>Blood Group</label>
-                      <Select required value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value })}>
-                        <option value="" disabled>{t('common.select')}</option><option value="Unknown">{t('anc.optUnknown')}</option><option>O</option><option>A</option><option>B</option><option>AB</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label>Rh Factor</label>
-                      <Select required value={form.rhFactor} onChange={e => setForm({ ...form, rhFactor: e.target.value })}>
-                        <option value="" disabled>{t('common.select')}</option><option value="Unknown">{t('anc.optUnknown')}</option><option>+</option><option>-</option>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lab & Interventions */}
-                <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                  <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>Lab & Interventions</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label>HIV Status</label>
-                      <Select value={form.hivStatus} onChange={e => setForm({ ...form, hivStatus: e.target.value })}>
-                        <option>Not tested</option><option>Negative</option><option>Positive</option><option>Positive (on ART)</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label>Malaria Test</label>
-                      <Select value={form.malariaTest} onChange={e => setForm({ ...form, malariaTest: e.target.value })}>
-                        <option>Negative</option><option>Positive</option><option>Not tested</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label>Syphilis Test</label>
-                      <Select value={form.syphilisTest} onChange={e => setForm({ ...form, syphilisTest: e.target.value })}>
-                        <option>Non-reactive</option><option>Reactive</option><option>Not tested</option>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-                    <div>
-                      <label>{t('anc.ironFolate')}</label>
-                      <Select required value={form.ironFolateGiven === null ? '' : String(form.ironFolateGiven)} onChange={e => setForm({ ...form, ironFolateGiven: e.target.value === '' ? null : e.target.value === 'true' })}>
-                        <option value="" disabled>{t('common.select')}</option><option value="true">{t('anc.optGiven')}</option><option value="false">{t('anc.optNotGiven')}</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label>{t('anc.tetanusVaccine')}</label>
-                      <Select required value={form.tetanusVaccine === null ? '' : String(form.tetanusVaccine)} onChange={e => setForm({ ...form, tetanusVaccine: e.target.value === '' ? null : e.target.value === 'true' })}>
-                        <option value="" disabled>{t('common.select')}</option><option value="true">{t('anc.optGiven')}</option><option value="false">{t('anc.optNotGiven')}</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label>{t('anc.iptpDose')}</label>
-                      <input type="number" step="1" required min={0} max={5} value={form.iptpDose} onChange={e => setForm({ ...form, iptpDose: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Risk Assessment */}
-                <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-                  <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>Risk Assessment</p>
-                  <div className="mb-3">
-                    <label>Risk Level</label>
-                    <Select required value={form.riskLevel} onChange={e => setForm({ ...form, riskLevel: e.target.value as AncRiskLevel })}>
-                      <option value="" disabled>{t('common.select')}</option>
-                      <option value="low">Low</option>
-                      <option value="moderate">Moderate</option>
-                      <option value="high">High</option>
-                    </Select>
-                  </div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label style={{ marginBottom: 0 }}>Risk Factors</label>
-                    {form.riskFactors.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, riskFactors: [] })}
-                        className="text-[10px] font-semibold"
-                        style={{ color: 'var(--accent-primary)' }}
-                      >
-                        {t('action.clear')}
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {RISK_FACTOR_OPTIONS.map(rf => (
-                      <button
-                        key={rf}
-                        type="button"
-                        onClick={() => {
-                          const has = form.riskFactors.includes(rf);
-                          setForm({ ...form, riskFactors: has ? form.riskFactors.filter(r => r !== rf) : [...form.riskFactors, rf] });
-                        }}
-                        className="text-xs px-2 py-1 rounded-full border transition-colors"
-                        style={{
-                          borderColor: form.riskFactors.includes(rf) ? 'var(--color-danger)' : 'var(--border-light)',
-                          background: form.riskFactors.includes(rf) ? 'rgba(224, 49, 39,0.12)' : 'transparent',
-                          color: form.riskFactors.includes(rf) ? 'var(--color-danger-text)' : 'var(--text-muted)',
-                        }}
-                      >
-                        {rf.replace(/_/g, ' ')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Dates & Notes */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="field-required">Visit Date</label>
-                    <input type="date" required value={form.visitDate} onChange={e => setForm({ ...form, visitDate: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>Next Visit Date</label>
-                    <input type="date" value={form.nextVisitDate} onChange={e => setForm({ ...form, nextVisitDate: e.target.value })} />
-                  </div>
-                </div>
-
-                <div>
-                  <label>Notes</label>
-                  <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Clinical notes..." />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">Cancel</button>
-                  <button type="submit" className="btn btn-primary flex-1">
-                    <HeartPulse className="w-4 h-4" /> Register Visit
-                  </button>
-                </div>
-              </form>
-            </div>
-          </FormSlider>
+          <AncVisitForm layout="slider" onClose={closeRegistrationForm} />
         )}
 
     </main>

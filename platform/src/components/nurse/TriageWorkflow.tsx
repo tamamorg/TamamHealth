@@ -17,10 +17,11 @@ export { mayAutoResume } from './triage/triage-helpers';
 export default function TriageWorkflow(props: TriageWorkflowProps) {
   const f = useTriageForm(props);
   const { t, triageHistory, draftRestoredNotice, setDraftRestoredNotice, clearForm, lockedPatientId } = f;
+  const embedded = !!props.embedded;
 
   return (
-    <div className={lockedPatientId ? 'tamam-reg triage-reg' : 'flex flex-col lg:flex-row gap-4'} style={{ flex: 1, minHeight: 0 }}>
-      <TriageRail f={f} />
+    <div className={lockedPatientId ? `tamam-reg triage-reg${embedded ? ' triage-reg--embedded' : ''}` : 'flex flex-col lg:flex-row gap-4'} style={{ flex: 1, minHeight: 0 }}>
+      {!embedded && <TriageRail f={f} />}
 
       <div data-tour="triage-form" className={lockedPatientId ? 'tamam-reg-form patient-registration-shell triage-reg-form' : 'lg:flex-[2] dash-card overflow-hidden flex flex-col'} style={{ padding: lockedPatientId ? 0 : undefined, minHeight: 0 }}>
         {!lockedPatientId && (
@@ -94,7 +95,7 @@ export default function TriageWorkflow(props: TriageWorkflowProps) {
 
           <TriageNotesSection f={f} />
 
-          <TriageFormActions f={f} />
+          <TriageFormActions f={f} showActions={!lockedPatientId || embedded} />
           </div>
           </div>
         </div>

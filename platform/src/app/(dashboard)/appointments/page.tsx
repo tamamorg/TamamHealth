@@ -55,6 +55,7 @@ import { isPendingApproval } from '@/lib/appointment-workflow';
 import { appointmentCalendarClinicalAction } from '@/lib/appointment-calendar-role';
 import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import TriageSlider from '@/components/nurse/TriageSlider';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -178,6 +179,7 @@ export default function AppointmentsPage() {
   // Appointment opened in the click-to-view detail dialog — from a calendar
   // event, or from a ?appointment= deep link.
   const [eventApt, setEventApt] = useState<typeof appointments[0] | null>(null);
+  const [triageFor, setTriageFor] = useState<{ patientId: string; name: string } | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const router = useRouter();
   const [showWalkIn, setShowWalkIn] = useState(false);
@@ -577,9 +579,7 @@ export default function AppointmentsPage() {
         ? t('appointments.startConsultation')
         : t('appointments.startTriage');
       const PrimaryIcon = calendarClinicalAction === 'consult' ? Stethoscope : HeartPulse;
-      const primaryRoute = calendarClinicalAction === 'consult'
-        ? `/consultation?patientId=${encodeURIComponent(apt.patientId)}`
-        : `/triage/${encodeURIComponent(apt.patientId)}`;
+      const primaryRoute = `/consultation?patientId=${encodeURIComponent(apt.patientId)}`;
       const typeConfig = appointmentTypes.find(option => option.value === apt.appointmentType);
       const typeLabel = typeConfig ? t(typeConfig.labelKey) : apt.appointmentType;
 
@@ -603,7 +603,16 @@ export default function AppointmentsPage() {
             <p>{apt.reason || '—'}</p>
           </div>
           <div className="appointment-calendar-clinical-card__actions">
-            <button type="button" className="btn btn-primary" onClick={() => navigate(primaryRoute)}>
+            {/* Triage opens over the calendar; a consultation is its own page. */}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                if (calendarClinicalAction === 'consult') { navigate(primaryRoute); return; }
+                onDone();
+                setTriageFor({ patientId: apt.patientId, name: apt.patientName });
+              }}
+            >
               <PrimaryIcon className="w-4 h-4" aria-hidden /> {primaryLabel}
             </button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate(`/patients/${encodeURIComponent(apt.patientId)}`)}>
@@ -939,6 +948,9 @@ export default function AppointmentsPage() {
           );
         })()}
 
+      {triageFor && (
+        <TriageSlider patientId={triageFor.patientId} patientName={triageFor.name} onClose={() => setTriageFor(null)} />
+      )}
     </main>
   );
 }

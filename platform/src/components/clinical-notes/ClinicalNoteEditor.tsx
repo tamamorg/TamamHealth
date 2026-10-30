@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, AlertTriangle, Minus, ArrowLeft, ChevronDown } from '@/components/icons/lucide';
+import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, Minus, ArrowLeft, ChevronDown, ChevronRight } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -69,6 +69,7 @@ import type {
 import './clinical-notes.css';
 import './note-workspace.css';
 import Select from '@/components/Select';
+import InlineBanner from '@/components/overlay/InlineBanner';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -1206,19 +1207,18 @@ export default function ClinicalNoteEditor({
       {showSignConfirm && (
         <Modal labelledBy="clinicalnoteeditor-tsx-dlg-1185" onClose={() => setShowSignConfirm(false)} width={480}>
           <DialogFrame>
-            <DialogHeader titleId="clinicalnoteeditor-tsx-dlg-1185" title={<><AlertTriangle size={16} /> {t('noteEditor.signTitle')}</>} description={t('noteEditor.signBody')} onClose={() => setShowSignConfirm(false)} />
+            <DialogHeader titleId="clinicalnoteeditor-tsx-dlg-1185" title={t('noteEditor.signTitle')} description={t('noteEditor.signBody')} onClose={() => setShowSignConfirm(false)} />
             <DialogBody className="space-y-4">
             {missingSections.length > 0 && (
-              <div role="alert" style={{ margin: '0 0 14px', fontSize: 13.5 }}>
-                <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--color-danger-text, var(--color-danger))' }}>
-                  {t('noteEditor.missingTitle')}
-                </p>
-                <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>
+              <InlineBanner tone="danger" title={t('noteEditor.missingTitle')}>
+                {/* Each missing section is the way to it: pressing one closes
+                    this dialog and scrolls the note to that section. */}
+                <ul className="cn-sign-missing">
                   {missingSections.map(id => (
                     <li key={id}>
                       <button
                         type="button"
-                        className="cn-ident-name-link"
+                        className="cn-sign-missing__link"
                         onClick={() => {
                           setShowSignConfirm(false);
                           setActiveSection(id);
@@ -1226,11 +1226,12 @@ export default function ClinicalNoteEditor({
                         }}
                       >
                         {sectionLabel(t, id)}
+                        <ChevronRight size={16} aria-hidden="true" />
                       </button>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </InlineBanner>
             )}
             {missingSections.length === 0 && cosignCandidates.length > 0 && (
               <label className="cn-field" style={{ margin: '0 0 14px', display: 'block' }}>

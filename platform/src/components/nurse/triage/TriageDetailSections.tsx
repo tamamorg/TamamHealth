@@ -227,8 +227,8 @@ export function TriageNotesSection({ f }: { f: TriageFormState }) {
   );
 }
 
-export function TriageFormActions({ f }: { f: TriageFormState }) {
-  const { t, editingTriageId, triageData, triageSubmitting, selectedTriagePatient, clearForm, handleSubmitTriage, lockedPatientId } = f;
+export function TriageFormActions({ f, showActions }: { f: TriageFormState; showActions: boolean }) {
+  const { t, editingTriageId, triageData, triageSubmitting, selectedTriagePatient, clearForm, handleSubmitTriage } = f;
   return (
     <>
           {/* Editing-an-existing-record banner — makes it clear the next save
@@ -246,9 +246,9 @@ export function TriageFormActions({ f }: { f: TriageFormState }) {
             </div>
           )}
 
-          {/* Actions remain at the bottom of the station form. The focused
-              patient flow places them in the registration-style rail. */}
-          {!lockedPatientId && <div className="flex gap-2">
+          {/* Actions sit at the bottom of the station form and of an embedded
+              one. The focused patient page places them in its rail. */}
+          {showActions && <div className="flex gap-2">
             <button
               onClick={() => clearForm({ discardDraft: true })}
               className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"

@@ -175,9 +175,18 @@ describe('chart role forms', () => {
   });
 
   it('lets clinical roles screen but never report imaging', () => {
-    expect(allowedRoleFormPanels('doctor', true).map(p => p.id)).toEqual(['nutrition-screening']);
-    expect(allowedRoleFormPanels('nurse', true).map(p => p.id)).toEqual(['nutrition-screening']);
+    // Plus the Clinical forms that used to leave the chart (triage, ANC,
+    // ward admission) — opened in the workspace, never on the rail.
+    const chartForms = ['nutrition-screening', 'triage-form', 'anc-visit', 'ward-admission'];
+    expect(allowedRoleFormPanels('doctor', true).map(p => p.id)).toEqual(chartForms);
+    expect(allowedRoleFormPanels('nurse', true).map(p => p.id)).toEqual(chartForms);
     expect(railRoleFormPanels('doctor')).toEqual([]);
+  });
+
+  it('opens ward admission only for roles that may admit', () => {
+    // Pharmacists and lab staff read charts but do not admit.
+    expect(allowedRoleFormPanels('pharmacist', true).map(p => p.id)).not.toContain('ward-admission');
+    expect(allowedRoleFormPanels('lab_tech', true).map(p => p.id)).not.toContain('ward-admission');
   });
 
   it('gives the lab its bench and the pharmacy its counter, and nobody else either', () => {

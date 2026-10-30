@@ -115,13 +115,8 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     }
   }
 
-  // Patients a nurse has assigned to this clinician for care.
-  const myAssigned = patients
-    .filter(p => p.assignedDoctor === currentUser._id && p.assignmentStatus !== 'completed')
-    .sort((a, b) => (b.assignedAt ?? '').localeCompare(a.assignedAt ?? ''));
-
   // Active (pending/seen), unclaimed triage records at this clinician's own
-  // facility. `myAssigned` above only ever surfaces patients a nurse (or a
+  // facility. `myAssigned` below only ever surfaces patients a nurse (or a
   // prior claim) already stamped with THIS doctor's id — a triaged walk-in
   // nobody has assigned yet gets no `assignedDoctor` at all, so it existed on
   // no doctor's worklist. `triages` (useTriage()) is already org/hospital-
@@ -139,6 +134,25 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       if (!latestActiveTriageByPatient.has(tr.patientId)) latestActiveTriageByPatient.set(tr.patientId, tr);
     }
   }
+
+  // Patients this clinician is booked to see today. A standing assignment
+  // alone is not a reason to be on the board: an assigned patient with no
+  // appointment with THIS clinician today read as "Assigned patient · No
+  // booking today" on every doctor's worklist, indefinitely.
+  const bookedTodayWithMe = new Set(
+    (appointments || [])
+      .filter(a => a.providerId === currentUser._id
+        && a.appointmentDate === todayIso
+        && a.status !== 'cancelled' && a.status !== 'no_show' && a.status !== 'rescheduled')
+      .map(a => a.patientId),
+  );
+
+  // Patients assigned to this clinician for care — only those booked with
+  // them today, or a claimed walk-in still in the building (an active triage).
+  const myAssigned = patients
+    .filter(p => p.assignedDoctor === currentUser._id && p.assignmentStatus !== 'completed'
+      && (bookedTodayWithMe.has(p._id) || latestActiveTriageByPatient.has(p._id)))
+    .sort((a, b) => (b.assignedAt ?? '').localeCompare(a.assignedAt ?? ''));
 
   // The triage handoff names its provider on the TRIAGE record
   // (`assignedProviderId`) — the patient document's `assignedDoctor` is

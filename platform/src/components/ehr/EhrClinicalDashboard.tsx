@@ -44,6 +44,7 @@ import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import FormSlider from '@/components/overlay/FormSlider';
+import TriageSlider from '@/components/nurse/TriageSlider';
 import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
@@ -1369,6 +1370,8 @@ export default function EhrClinicalDashboard({
   }, [selectWorklistLane, visitRow, visitRowGroup]);
 
   const [moveEntry, setMoveEntry] = useState<QueueEntry | null>(null);
+  // Triage opens as a slider over the worklist, not on its own page.
+  const [triageFor, setTriageFor] = useState<{ patientId: string; name: string } | null>(null);
   const [moveSaving, setMoveSaving] = useState(false);
   // The triage behind the open Move dialog — what decides whether the dialog
   // may offer Emergency care as a destination.
@@ -2348,7 +2351,7 @@ export default function EhrClinicalDashboard({
                             onOpenChart={row.patientId ? () => router.push(row.patient?.station?.chartHref || `/patients/${row.patientId}`) : undefined}
                             stationBody={row.patientId ? stationDetail?.(row.patientId) : undefined}
                             onStartTriage={row.patientId && canTriage && (!columns.triage || columns.triage.status === 'pending' || columns.triage.status === 'seen')
-                              ? () => router.push(`/triage/${row.patientId}`)
+                              ? () => { setVisitRow(null); setTriageFor({ patientId: row.patientId!, name: row.name }); }
                               : undefined}
                             onEscalate={canWriteTriage && canEscalateVisit(columns.triage)
                               ? () => setVisitAction({ kind: 'escalate', triage: columns.triage! })
@@ -2391,6 +2394,9 @@ export default function EhrClinicalDashboard({
             </Modal>
           )}
 
+          {triageFor && (
+            <TriageSlider patientId={triageFor.patientId} patientName={triageFor.name} onClose={() => setTriageFor(null)} />
+          )}
           {moveEntry && (
             <EhrQueueMoveDialog
               entry={moveEntry}

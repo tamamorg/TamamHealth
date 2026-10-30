@@ -81,12 +81,19 @@ beforeEach(() => {
 });
 
 describe('assembleDoctorWorklist — assigned patients', () => {
+  // An assigned patient is on the board only when booked with this doctor today.
+  const bookedToday = (...patientIds: string[]) => patientIds.map(patientId => makeAppointment({
+    patientId, providerId: 'doctor-1', appointmentDate: '2026-08-04', status: 'scheduled',
+  }));
+
   test('only patients assigned to currentUser appear as assigned rows; other doctors excluded', () => {
     const mine = makePatient({ _id: 'p-mine', assignedDoctor: 'doctor-1', assignedAt: '2026-08-04T09:00:00.000Z' });
     const others = makePatient({ _id: 'p-others', assignedDoctor: 'doctor-2', assignedAt: '2026-08-04T11:00:00.000Z' });
     const unassigned = makePatient({ _id: 'p-none' });
 
-    const result = assembleDoctorWorklist(baseInput({ patients: [mine, others, unassigned] }));
+    const result = assembleDoctorWorklist(baseInput({
+      patients: [mine, others, unassigned], appointments: bookedToday('p-mine', 'p-others', 'p-none'),
+    }));
 
     const ids = result.patients.map(p => p._id);
     expect(ids).toContain('p-mine');
@@ -99,7 +106,9 @@ describe('assembleDoctorWorklist — assigned patients', () => {
     const newer = makePatient({ _id: 'p-newer', assignedDoctor: 'doctor-1', assignedAt: '2026-08-04T09:00:00.000Z' });
     const newest = makePatient({ _id: 'p-newest', assignedDoctor: 'doctor-1', assignedAt: '2026-08-04T11:30:00.000Z' });
 
-    const result = assembleDoctorWorklist(baseInput({ patients: [older, newer, newest] }));
+    const result = assembleDoctorWorklist(baseInput({
+      patients: [older, newer, newest], appointments: bookedToday('p-older', 'p-newer', 'p-newest'),
+    }));
 
     expect(result.patients.map(p => p._id)).toEqual(['p-newest', 'p-newer', 'p-older']);
   });
@@ -109,6 +118,24 @@ describe('assembleDoctorWorklist — assigned patients', () => {
       _id: 'p-completed', assignedDoctor: 'doctor-1', assignmentStatus: 'completed',
     });
     expect(assembleDoctorWorklist(baseInput({ patients: [completed] })).patients).toHaveLength(0);
+  });
+
+  test('an assigned patient with no booking with this doctor today is not on the board', () => {
+    const assigned = makePatient({ _id: 'p-unbooked', assignedDoctor: 'doctor-1' });
+    const elsewhere = makeAppointment({ patientId: 'p-unbooked', providerId: 'doctor-2', appointmentDate: '2026-08-04' });
+    const otherDay = makeAppointment({ patientId: 'p-unbooked', providerId: 'doctor-1', appointmentDate: '2026-08-05' });
+    const cancelled = makeAppointment({
+      patientId: 'p-unbooked', providerId: 'doctor-1', appointmentDate: '2026-08-04', status: 'cancelled',
+    });
+    const result = assembleDoctorWorklist(baseInput({ patients: [assigned], appointments: [elsewhere, otherDay, cancelled] }));
+    expect(result.patients.map(p => p._id)).not.toContain('p-unbooked');
+  });
+
+  test('a claimed walk-in still in triage stays on the board without a booking', () => {
+    const walkIn = makePatient({ _id: 'p-claimed', assignedDoctor: 'doctor-1' });
+    const triage = makeTriage({ patientId: 'p-claimed', status: 'seen', triagedAt: '2026-08-04T08:00:00.000Z' });
+    const result = assembleDoctorWorklist(baseInput({ patients: [walkIn], triages: [triage] }));
+    expect(result.patients.map(p => p._id)).toContain('p-claimed');
   });
 });
 

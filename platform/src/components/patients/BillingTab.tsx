@@ -9,7 +9,6 @@ import InsurancePolicyModal from '@/components/payments/InsurancePolicyModal';
 import { PolicyEligibility } from '@/modules/insurance/client';
 import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
-import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -645,7 +644,7 @@ export default function BillingTab({
               aria-label={t('billing.activitySearch')}
             />
           </div>
-          <button type="button" className="bl-btn bl-btn--primary" onClick={() => setShowBillingActions(true)}><Wallet size={18} />{t('billing.actionsTitle')}</button>
+          <button type="button" className="tamam-btn-primary" onClick={() => setShowBillingActions(true)}><Wallet size={16} aria-hidden="true" />{t('billing.actionsTitle')}</button>
         </div>
         {/* The chart's table, not the billing module's: same head band, row
             rhythm, badges and ⋮ as every other tab of this chart. */}
@@ -687,10 +686,16 @@ export default function BillingTab({
       </Modal>}
 
       {/* ─── Payment Panel Modal ─── */}
-      {showBillingActions && <Modal onClose={() => setShowBillingActions(false)} width={600} labelledBy="billing-actions-title">
-        <DialogFrame>
-          <DialogHeader titleId="billing-actions-title" title={t('billing.actionsTitle')} onClose={() => setShowBillingActions(false)} />
-          <DialogBody className="bl-root">
+      {/* The account's actions open in the side slider, like every other
+          chart form, so the chart stays in view beside them. */}
+      {showBillingActions && <FormSlider
+        title={t('billing.actionsTitle')}
+        className="tamam-dialog"
+        width={480}
+        onClose={() => setShowBillingActions(false)}
+        footer={<button type="button" className="btn btn-secondary" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button>}
+      >
+        <div className="bl-root">
           <p>{t('billing.actionsHelp')}</p>
           <div className="bl-action-choices">
             {[
@@ -707,12 +712,8 @@ export default function BillingTab({
               ] : []),
             ].map(action => <button key={action.label} type="button" onClick={() => { setShowBillingActions(false); action.run(); }}><action.icon size={22} /><span>{action.label}</span></button>)}
           </div>
-          </DialogBody>
-          <DialogFooter>
-<button type="button" className="btn btn-secondary" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button>
-          </DialogFooter>
-        </DialogFrame>
-      </Modal>}
+        </div>
+      </FormSlider>}
       {showServices && <FormSlider
         title={t('billing.servicesPopup')}
         width={760}

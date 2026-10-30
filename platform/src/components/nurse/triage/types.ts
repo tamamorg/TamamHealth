@@ -14,4 +14,10 @@ export interface TriageWorkflowProps {
   lockedPatient?: PatientDoc | null;
   /** Focused pages close after a successful save; embedded stations may reset. */
   onSaved?: () => void;
+  /**
+   * Inside a slider or the chart workspace: no left rail (the patient card
+   * and section list belong to the full page — the chart header already names
+   * the patient), one column, and Save / Reset at the foot of the form.
+   */
+  embedded?: boolean;
 }

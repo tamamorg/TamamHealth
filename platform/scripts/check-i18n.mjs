@@ -81,7 +81,6 @@ const SCAN_ROOTS = ['src/app', 'src/components'];
  *  `useTranslation`; never add one to silence a new violation. */
 const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/app/(dashboard)/billing/[id]/page.tsx': 34,
-  'src/app/(dashboard)/anc/page.tsx': 31,
   'src/components/ehr/EhrClinicalDashboard.tsx': 20,
   'src/app/(dashboard)/births/page.tsx': 18,
   'src/components/patients/TransferHistoryPanel.tsx': 17,
