@@ -49,12 +49,12 @@ function transferAuth(user: CurrentUser) {
 
 /**
  * Ask the server to apply an accepted transfer now rather than at the next sweep.
- * The acceptance has to replicate there first, hence the second try; offline, or
- * after both, the hourly sweep finishes it.
+ * The acceptance has to replicate there first, hence the retries; offline, or
+ * after the last of them, the hourly sweep finishes it.
  */
 async function finishOnServer(id: string): Promise<boolean> {
   const { apiFetch } = await import('@/lib/api-fetch');
-  for (const wait of [2000, 8000]) {
+  for (const wait of [3000, 7000, 15000, 30000, 45000]) {
     await new Promise(resolve => setTimeout(resolve, wait));
     try {
       const response = await apiFetch('/api/patient-transfers', {
