@@ -277,29 +277,31 @@ export function buildVisitSummaryHtml(summary: VisitSummary, options: VisitSumma
   const e = escapeHtml;
   const advice = adviceParagraphs(summary, options);
   const medications = summary.medications.length
-    ? `<table><thead><tr><th>Medicine</th><th>How to take it</th><th>For</th><th class="num">Qty</th><th>Collect from</th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>Medicine</th><th>How to Take It</th><th>For</th><th class="num">Qty</th><th>Collect From</th></tr></thead><tbody>${
       summary.medications.map(m => `<tr><td><strong>${e(m.name)}</strong></td><td>${e(m.directions)}</td><td>${e(m.duration || '—')}</td><td class="num">${m.quantity}</td><td>${m.outsidePharmacy ? 'Outside pharmacy' : `${e(summary.facilityName)} pharmacy`}</td></tr>`).join('')
     }</tbody></table>`
     : '<p class="muted">No medicines were prescribed at this visit.</p>';
 
   const body = `
-    ${summary.reason ? `<section class="section keep"><h2 class="section-title">Why you came</h2><p>${e(summary.reason)}</p></section>` : ''}
-    ${summary.diagnoses.length ? `<section class="section keep"><h2 class="section-title">What we found</h2><ul>${summary.diagnoses.map(d => `<li>${e(d)}</li>`).join('')}</ul></section>` : ''}
-    <section class="section"><h2 class="section-title">Your medicines</h2>${medications}</section>
-    ${summary.tests.length ? `<section class="section keep"><h2 class="section-title">Tests ordered</h2><ul>${summary.tests.map(t => `<li>${e(t)}</li>`).join('')}</ul><p class="muted">Ask the clinic for your results.</p></section>` : ''}
+    ${summary.reason ? `<section class="section keep"><h2 class="section-title">Why You Came</h2><p>${e(summary.reason)}</p></section>` : ''}
+    ${summary.diagnoses.length ? `<section class="section keep"><h2 class="section-title">What We Found</h2><ul>${summary.diagnoses.map(d => `<li>${e(d)}</li>`).join('')}</ul></section>` : ''}
+    <section class="section"><h2 class="section-title">Your Medicines</h2>${medications}</section>
+    ${summary.tests.length ? `<section class="section keep"><h2 class="section-title">Tests Ordered</h2><ul>${summary.tests.map(t => `<li>${e(t)}</li>`).join('')}</ul><p class="muted">Ask the clinic for your results.</p></section>` : ''}
     ${advice.length ? `<section class="section keep"><h2 class="section-title">Advice</h2>${advice.map(a => `<p>${e(a).replace(/\n/g, '<br>')}</p>`).join('')}</section>` : ''}
-    <section class="section keep"><h2 class="section-title">Next visit</h2>
+    <section class="section keep"><h2 class="section-title">Next Visit</h2>
       <p class="notice">${summary.followUp ? `<strong>${e(followUpLine(summary.followUp))}</strong>` : 'No follow-up visit is booked.'} Come back sooner if you get worse.</p>
     </section>`;
 
   return buildClinicalPrintDocument({
     title: summary.patient.name,
-    documentLabel: 'Visit summary',
+    documentLabel: 'Visit Summary',
+    date: summary.visitDate,
     facilityName: summary.facilityName,
+    metaTitle: 'Patient Information',
     meta: [
+      { label: 'Patient Name', value: summary.patient.name },
       { label: 'Patient ID', value: summary.patient.hospitalNumber },
-      { label: 'Visit date', value: scriptDate(summary.visitDate) },
-      { label: 'Seen by', value: summary.clinicianName },
+      { label: 'Seen By', value: summary.clinicianName },
     ],
     safeBodyHtml: body,
     footer: 'Visit summary for the patient. It does not replace the clinical record.',

@@ -14,18 +14,21 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft } from '@/components/icons/lucide';
+import { ArrowLeft, Plus } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
-import { isOutsidePharmacyOrder, pharmacyStage, pharmacyStageGroup, pharmacyStageLabel, pharmacyStageTone } from '@/lib/pharmacy-workflow';
+import { isOutsidePharmacyOrder, pharmacyStage, pharmacyStageGroup } from '@/lib/pharmacy-workflow';
 import { formatRxSig } from '@/lib/format-utils';
 import { EhrPatientOrderList } from '@/components/ehr/EhrPatientOrders';
-import { statusToneClass } from '@/components/ehr/EhrCareDashboard';
 import LabWorkflowPanel from '@/components/lab/workflow/LabWorkflowPanel';
+import LabIntakeSlider from '@/components/lab/order/LabIntakeSlider';
+import { benchActionLabel } from '@/components/lab/workflow/lab-workflow-types';
+import { effectiveOrderStatus } from '@/lib/services/lab-service';
 import PharmacyWorkflowPanel from '@/components/pharmacy/workflow/PharmacyWorkflowPanel';
+import { counterActions } from '@/components/pharmacy/workflow/pharmacy-workflow-types';
 import { hasSafetyWarning } from '@/lib/pharmacy/rx-safety';
 import type { PatientDoc } from '@/lib/db-types';
 
@@ -58,6 +61,7 @@ export function LabOrdersPanel({ patient, focusId }: StationOrdersPanelProps) {
   );
   const open = tests.filter(r => r.status !== 'completed');
   const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   // Until the technician picks (or goes back to the list), the panel opens on
   // the order the link named, or the patient's only open test.
   const selectedId = picked !== undefined ? picked : (focusId || (open.length === 1 ? open[0]._id : null));
@@ -77,33 +81,38 @@ export function LabOrdersPanel({ patient, focusId }: StationOrdersPanelProps) {
   return (
     <div className="tamam-drawer-workspace station-orders">
       <div className="station-orders__body">
+        {canEnterLabResults && (
+          <button type="button" className="labord-btn" style={{ marginBottom: 10 }} onClick={() => setIntakeOpen(true)}>
+            <Plus className="w-4 h-4" aria-hidden /> {t('labIntake.title')}
+          </button>
+        )}
         {tests.length === 0 ? (
           <p className="station-orders__empty">{t('basket.noLabOrders')}</p>
         ) : (
           <EhrPatientOrderList
             label={t('visits.labs')}
-            orders={tests.map(r => {
-              const tone = r.critical ? 'danger' : r.abnormal ? 'warning' : r.status === 'completed' ? 'done' : r.status === 'in_progress' ? 'active' : 'scheduled';
-              return {
-                id: r._id,
-                title: r.testName,
-                detail: [r.specimen, r.accessionNumber].filter(Boolean).join(' · '),
-                note: r.status === 'completed' ? `${r.result}${r.unit ? ` ${r.unit}` : ''}` : r.clinicalNotes,
-                status: (
-                  <span className={`appointment-status-pill ${statusToneClass(tone)}`}>
-                    {r.status === 'completed' ? t('labHome.resulted') : r.status === 'in_progress' ? t('labHome.onBench') : t('labHome.toCollect')}
-                  </span>
-                ),
-                actions: (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPicked(r._id)}>
-                    {r.status === 'completed' ? t('dashboard.open') : t('labHome.work')}
-                  </button>
-                ),
-              };
-            })}
+            orders={tests.map(r => ({
+              id: r._id,
+              title: r.testName,
+              detail: [r.specimen, r.accessionNumber].filter(Boolean).join(' · '),
+              note: r.status === 'completed' ? `${r.result}${r.unit ? ` ${r.unit}` : ''}` : r.clinicalNotes,
+              // Named for the next step, as on the dashboard.
+              actions: (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => setPicked(r._id)}>
+                  {t(benchActionLabel(effectiveOrderStatus(r)))}
+                </button>
+              ),
+            }))}
           />
         )}
       </div>
+      {intakeOpen && (
+        <LabIntakeSlider
+          presetPatientId={patient._id}
+          onClose={() => setIntakeOpen(false)}
+          onPlaced={orderId => { setIntakeOpen(false); setPicked(orderId); }}
+        />
+      )}
     </div>
   );
 }
@@ -150,22 +159,16 @@ export function DispensePanel({ patient, focusId }: StationOrdersPanelProps) {
           <EhrPatientOrderList
             label={t('tab.prescriptions')}
             orders={scripts.map(rx => {
-              const stage = pharmacyStage(rx);
               const warned = hasSafetyWarning(rx);
-              const done = pharmacyStageGroup(stage) === 'finished';
               return {
                 id: rx._id,
                 title: rx.medication,
                 detail: formatRxSig(rx),
                 note: warned ? t('pharmacyHome.safetyReview') : (rx.pharmacyInstructions || rx.indication),
-                status: (
-                  <span className={`appointment-status-pill ${statusToneClass(warned ? 'danger' : pharmacyStageTone(stage))}`}>
-                    {pharmacyStageLabel(stage)}
-                  </span>
-                ),
+                // Named for the next step, as on the dashboard.
                 actions: (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPicked(rx._id)}>
-                    {done ? t('dashboard.open') : t('labHome.work')}
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setPicked(rx._id)}>
+                    {counterActions(rx.orderStatus || 'prescribed', t)[0]?.label ?? t('dashboard.open')}
                   </button>
                 ),
               };

@@ -14,6 +14,7 @@
  * form is its own presentational component.
  */
 
+import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Maximize2, X } from '@/components/icons/lucide';
 import { useRouter } from 'next/navigation';
@@ -35,7 +36,7 @@ import DrugMonographPanel, { type MonographWarning } from './DrugMonographPanel'
 import { doseFrom, draftQuantity, emptyDraft, type RxDraft } from './types';
 import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc, ProblemDoc } from '@/lib/db-types';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
-import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { buildClinicalPrintDocument, printFields } from '@/lib/print-document';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
@@ -265,13 +266,19 @@ export default function PrescribeModal({
     if (!drug) { showToast(t('msg.selectTheDrug'), 'error'); return null; }
     if (!draft.instructions.trim()) { showToast(t('msg.enterThePatientInstructions'), 'error'); return null; }
     let medicationSafetyAcknowledgement: { reviewedBy: string; reason: string } | undefined;
-    if (severeAllergyWarnings.length) {
+    // The chart's allergy list is checked here too, so a conflict is stopped
+    // even when the save-time assessment cannot see the chart.
+    let stops: Parameters<typeof hasSafetyStop>[0] = { allergyWarnings: severeAllergyWarnings };
+    if (scope) {
+      try {
+        const { assessPrescriptionSafety } = await import('@/lib/services/prescription-service');
+        const safety = await assessPrescriptionSafety(patientId, drug.name, scope);
+        stops = { allergyWarnings: [...severeAllergyWarnings, ...(safety.allergyWarnings || [])], interactionWarnings: safety.interactionWarnings };
+      } catch { /* the save re-runs the assessment */ }
+    }
+    if (hasSafetyStop(stops)) {
       const reason = await confirmPrompt({
-        title: t('prescribe.overrideTitle'),
-        message: t('prescribe.overrideMessage', {
-          medication: drug.name,
-          allergy: severeAllergyWarnings.map(alert => alert.allergy).join(', '),
-        }),
+        ...safetyStopPrompt(t, drug.name, stops),
         inputLabel: t('prescribe.overrideReason'),
         confirmLabel: t('prescribe.overrideConfirm'),
         tone: 'danger',
@@ -421,31 +428,33 @@ export default function PrescribeModal({
       : '<li>No interaction or formulary warning was surfaced by the current check.</li>';
     const body = `
       <p class="notice status-alert"><strong>DRAFT — NOT YET ISSUED.</strong> This paper does not replace the saved and signed medication order.</p>
-      <section class="section keep"><h2 class="section-title">Medication order</h2>
-        <table><tbody>
-          <tr><td class="muted">Medication</td><td><strong>${e(draft.drug.name)}</strong></td></tr>
-          <tr><td class="muted">Dose / form</td><td>${e(doseFrom(draft.drug.name))}${draft.drug.form ? ` · ${e(draft.drug.form)}` : ''}</td></tr>
-          <tr><td class="muted">Directions for patient</td><td><strong>${e(draft.instructions.trim())}</strong></td></tr>
-          <tr><td class="muted">Quantity</td><td>${e(quantity || '1')}</td></tr>
-          <tr><td class="muted">Days supply</td><td>${e(draft.daysSupply ? `${draft.daysSupply} days` : 'Not specified')}</td></tr>
-          <tr><td class="muted">Refills</td><td>${e(draft.refills || '0')}</td></tr>
-          <tr><td class="muted">Effective date</td><td>${e(draft.effectiveOn || '—')}</td></tr>
-          <tr><td class="muted">Substitution</td><td>${draft.allowSubstitution ? 'Permitted' : 'Do not substitute'}</td></tr>
-          ${draft.reason ? `<tr><td class="muted">Indication</td><td>${e(draft.reason)}</td></tr>` : ''}
-          ${draft.pharmacyNote.trim() ? `<tr><td class="muted">Pharmacy instructions</td><td>${e(draft.pharmacyNote.trim())}</td></tr>` : ''}
-        </tbody></table>
+      <section class="section keep"><h2 class="section-title">Medication Order</h2>
+        ${printFields([
+          { label: 'Medication', value: draft.drug.name },
+          { label: 'Dose / Form', value: `${doseFrom(draft.drug.name)}${draft.drug.form ? ` · ${draft.drug.form}` : ''}` },
+          { label: 'Directions for Patient', value: draft.instructions.trim() },
+          { label: 'Quantity', value: quantity || '1' },
+          { label: 'Days Supply', value: draft.daysSupply ? `${draft.daysSupply} days` : 'Not specified' },
+          { label: 'Refills', value: draft.refills || '0' },
+          { label: 'Effective Date', value: draft.effectiveOn || '—' },
+          { label: 'Substitution', value: draft.allowSubstitution ? 'Permitted' : 'Do not substitute' },
+          { label: 'Indication', value: draft.reason },
+          { label: 'Pharmacy Instructions', value: draft.pharmacyNote.trim() },
+        ])}
       </section>
-      <section class="section"><h2 class="section-title">Safety context</h2>
+      <section class="section"><h2 class="section-title">Safety Context</h2>
         <p><strong>Recorded allergies:</strong> ${e(allergyNames.join(', ') || 'None recorded')}</p><ul>${safetyRows}</ul>
       </section>
       <div class="signatures"><div><div class="signature"></div><div class="signature-label">Prescriber signature · ${e(userName)}</div></div><div><div class="signature"></div><div class="signature-label">Date and time issued</div></div></div>`;
     const html = buildClinicalPrintDocument({
       title: patientName,
-      documentLabel: 'Prescription draft',
+      documentLabel: 'Prescription Draft',
       facilityName: facility,
+      metaTitle: 'Patient Information',
       meta: [
+        { label: 'Patient Name', value: patientName },
         { label: 'Patient ID', value: patient?.hospitalNumber || patientId },
-        { label: 'Date of birth', value: patient?.dateOfBirth || '—' },
+        { label: 'Date of Birth', value: patient?.dateOfBirth },
         { label: 'Prescriber', value: userName },
         { label: 'Pharmacy', value: pharmacy },
         { label: 'Encounter', value: encounterId || 'Not linked' },

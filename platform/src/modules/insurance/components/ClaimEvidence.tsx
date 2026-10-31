@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { ClaimDoc } from '@/lib/db-types-payments';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { recordClaimReceipt, recordClaimSettlement } from '../services/insurance-workflow-service';
 import Select from '@/components/Select';
@@ -12,18 +13,18 @@ export default function ClaimEvidence({ claim, onChanged }: { claim: ClaimDoc; o
   const [reference, setReference] = useState(claim.settlement?.reference || '');
   const [method, setMethod] = useState<'portal' | 'written'>('portal');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const { showToast } = useToast();
   const receipt = ['queued', 'submitted'].includes(claim.status);
   const settlement = ['approved', 'partial'].includes(claim.status) && (claim.totalApproved || 0) > 0
     && Boolean(claim.adjudicationKey && claim.payerReceipt);
   async function save() {
-    setBusy(true); setMessage('');
+    setBusy(true);
     try {
       if (!scope) throw new Error('INSURANCE_FORBIDDEN');
       if (receipt) await recordClaimReceipt(claim._id, reference, method, scope);
       else await recordClaimSettlement(claim._id, reference, scope);
       await onChanged(); setReference('');
-    } catch { setMessage(t('insuranceFlow.failed')); }
+    } catch { showToast(t('insuranceFlow.failed'), 'error'); }
     finally { setBusy(false); }
   }
   return <section className="px-5 py-4 space-y-3">
@@ -38,6 +39,5 @@ export default function ClaimEvidence({ claim, onChanged }: { claim: ClaimDoc; o
       <p>{t(receipt ? 'insuranceFlow.receiptHelp' : 'insuranceFlow.settlementHelp')}</p>
       <button className="bl-btn bl-btn--outline" disabled={busy || !reference.trim()} onClick={() => void save()}>{t(receipt ? 'insuranceFlow.recordReceipt' : 'insuranceFlow.recordSettlement')}</button>
     </>}
-    {message && <p role="alert">{message}</p>}
   </section>;
 }

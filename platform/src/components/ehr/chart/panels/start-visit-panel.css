@@ -218,3 +218,18 @@
 .irp-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .irp-actions button.is-primary { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--color-white, #fff); }
 .irp-actions button.is-primary:hover:not(:disabled) { background: var(--accent-hover, var(--accent-primary)); }
+
+
+/* Check-in slider (CheckInSlider): the sv- fields in a dialog body, which
+   already scrolls and pads. */
+.sv-root--slider { flex: none; gap: 20px; padding-top: 12px; }
+.sv-root--slider .sv-section { display: flex; flex-direction: column; gap: 14px; }
+
+/* Status change slider (StatusChangeSlider). */
+.status-slider-change { display: grid; gap: 8px; margin: 8px 0 16px; }
+.status-slider-change > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+.status-slider-change dt { color: var(--text-muted); font-size: 13px; }
+.status-slider-change dd { margin: 0; font-weight: 600; color: var(--text-primary); }
+.status-slider-body { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.status-slider-reason { display: block; margin-top: 16px; }
+.status-slider-reason textarea { display: block; width: 100%; }

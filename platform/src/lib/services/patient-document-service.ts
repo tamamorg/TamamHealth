@@ -7,6 +7,7 @@
  * payloads never bloat patient reads. Facility-operational PHI; synced
  * org-scoped but excluded from national analytics — see the coverage matrix.
  */
+import { canRetractDocument } from '@/lib/clinical/document-retraction';
 import { v4 as uuidv4 } from 'uuid';
 import { patientDocumentsDB } from '../db';
 import type { ClinicalImageAnnotation, PatientDocumentDoc, PatientDocumentCategory } from '../db-types';
@@ -34,6 +35,23 @@ export async function getPatientDocuments(patientId: string, scope?: DataScope):
   );
   rows = filterByScope(rows, scope).filter(doc => doc.recordStatus !== 'entered_in_error');
   return rows.sort(byNewest);
+}
+
+/**
+ * Documents retracted from this chart, newest first: who, when and why. A
+ * retraction hides a document from normal views but stays visible to clinical
+ * staff as a note, so they know something was there and can ask for it.
+ */
+export async function getRetractedPatientDocuments(patientId: string, scope: DataScope): Promise<PatientDocumentDoc[]> {
+  const rows = await findByType<PatientDocumentDoc>(
+    patientDocumentsDB(),
+    'patient_document',
+    { patientId },
+    { indexFields: ['type', 'patientId'] },
+  );
+  return filterByScope(rows, scope)
+    .filter(doc => doc.recordStatus === 'entered_in_error')
+    .sort((a, b) => (b.removedAt || '').localeCompare(a.removedAt || ''));
 }
 
 export interface AddPatientDocumentInput {
@@ -104,7 +122,7 @@ export async function deletePatientDocument(
   id: string,
   scope: DataScope,
   reason: string,
-  actor?: { id?: string; name?: string },
+  actor?: { id?: string; name?: string; role?: string },
 ): Promise<boolean> {
   const cleanReason = reason?.trim() ?? '';
   if (cleanReason.length < 3) throw new Error('Enter the reason for removing this document.');
@@ -115,6 +133,7 @@ export async function deletePatientDocument(
   } catch {
     return false;
   }
+  if (!canRetractDocument(actor, doc)) throw new Error('Document not removed. Only the person who filed it, a clinician or the records office can remove it.');
   if (filterByScope([doc], scope).length !== 1) throw new Error('You do not have access to this record. It belongs to another facility or organization.');
   const now = new Date().toISOString();
   const updated: PatientDocumentDoc = {

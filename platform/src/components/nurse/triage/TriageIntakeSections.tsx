@@ -1,5 +1,7 @@
 'use client';
 
+import Select from '@/components/Select';
+import { O3TextField } from '@/components/forms/O3Form';
 import { patientFullName, patientGenderAge } from '@/lib/patient-utils';
 import { X, AlertTriangle } from '@/components/icons/lucide';
 import type { TriageFormState } from './useTriageForm';
@@ -68,25 +70,15 @@ export function TriagePatientPicker({ f }: { f: TriageFormState }) {
 export function TriageChiefComplaint({ f }: { f: TriageFormState }) {
   const { t, triageComplaint, setTriageComplaint, lockedPatientId } = f;
   return (
-    <>
-          {/* Chief complaint */}
-          <div id={lockedPatientId ? 'triage-section-patient' : undefined} className="scroll-mt-3">
-            <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--text-muted)' }}>{t('nurse.chiefComplaint')}</label>
-            <input
-              type="text"
-              value={triageComplaint}
-              onChange={e => setTriageComplaint(e.target.value)}
-              placeholder={t('nurse.chiefComplaintPlaceholder')}
-              className="w-full px-3 py-2 rounded-xl text-sm"
-              style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-            />
-          </div>
-    </>
+    <div id={lockedPatientId ? 'triage-section-patient' : undefined} className="o3f-fields scroll-mt-3">
+      <O3TextField id="triage-chief-complaint" label={t('nurse.chiefComplaint')} value={triageComplaint} wide
+        placeholder={t('nurse.chiefComplaintPlaceholder')} onChange={setTriageComplaint} />
+    </div>
   );
 }
 
 export function TriageVitalSafetySummary({ f }: { f: TriageFormState }) {
-  const { triageData, overrideVitalUrgency, setOverrideVitalUrgency, vitalUrgencyOverrideReason, setVitalUrgencyOverrideReason, vitalErrors, vitalWarnings, recommendedPriority, recommendationRaisesPriority } = f;
+  const { t, triageData, overrideVitalUrgency, setOverrideVitalUrgency, vitalUrgencyOverrideReason, setVitalUrgencyOverrideReason, vitalErrors, vitalWarnings, recommendedPriority, recommendationRaisesPriority } = f;
   return (
     <>
           {(Object.keys(vitalErrors).length > 0 || vitalWarnings.length > 0) && (
@@ -129,15 +121,17 @@ export function TriageVitalSafetySummary({ f }: { f: TriageFormState }) {
                   )}
                   {recommendationRaisesPriority && (
                     <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-light)' }}>
-                      <label className="flex items-start gap-2 text-[10px] font-semibold cursor-pointer" style={{ color: 'var(--text-primary)' }}>
-                        <input
-                          type="checkbox"
-                          checked={overrideVitalUrgency}
-                          onChange={event => setOverrideVitalUrgency(event.target.checked)}
-                          className="mt-0.5"
-                        />
-                        Override and save at the ABCC-only {triageData.priority} priority
-                      </label>
+                      {/* Which priority Save files — a choice, so a dropdown. */}
+                      <label htmlFor="triage-vital-override" className="o3f-label">{t('triageO3.saveAt')}</label>
+                      <Select
+                        id="triage-vital-override"
+                        className="o3f-input"
+                        value={overrideVitalUrgency ? 'override' : 'recommended'}
+                        onChange={event => setOverrideVitalUrgency(event.target.value === 'override')}
+                      >
+                        <option value="recommended">{t('triageO3.saveRecommended', { priority: recommendedPriority || '' })}</option>
+                        <option value="override">{t('triageO3.saveAbccOnly', { priority: triageData.priority || '' })}</option>
+                      </Select>
                       {overrideVitalUrgency && (
                         <div className="mt-2">
                           <label htmlFor="triage-vital-override-reason" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--color-danger)' }}>

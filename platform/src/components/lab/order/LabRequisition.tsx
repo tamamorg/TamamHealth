@@ -57,7 +57,7 @@ export default function LabRequisition({
         <div>
           <div className="labord-req-facility">{facilityName || 'TamamHealth'}</div>
           <div className="labord-req-meta">
-            {imaging ? 'Imaging requisition' : 'Laboratory requisition'}<br />
+            <span className="no-print">{imaging ? 'Imaging requisition' : 'Laboratory requisition'}<br /></span>
             {draft.processing === 'send_out'
               ? (imaging ? 'Referred out — external imaging' : 'Send-out — reference laboratory')
               : (imaging ? 'In-house imaging unit' : 'In-house laboratory')}<br />

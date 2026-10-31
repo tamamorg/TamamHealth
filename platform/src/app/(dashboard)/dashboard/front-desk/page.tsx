@@ -68,6 +68,10 @@ import { StaffAssignmentControl, RoomAssignmentControl } from '@/components/fron
 import { encounterVisitState, resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import CheckoutModal from '@/components/front-desk/CheckoutModal';
 import CheckInModal from '@/components/front-desk/CheckInModal';
+import CheckInSlider from '@/components/appointments/CheckInSlider';
+import FormSlider from '@/components/overlay/FormSlider';
+import '@/components/ehr/chart/panels/start-visit-panel.css';
+import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
 import AppointmentRequestsPanel from '@/components/front-desk/AppointmentRequestsPanel';
 import { pendingRequests } from '@/lib/appointment-requests';
 import {
@@ -152,6 +156,13 @@ export default function FrontDeskDashboardPage() {
   const [editAppointment, setEditAppointment] = useState<AppointmentDoc | null>(null);
   const [checkoutTarget, setCheckoutTarget] = useState<CheckoutTarget | null>(null);
   const [checkInTarget, setCheckInTarget] = useState<AppointmentDoc | null>(null);
+  // A booking not yet in checks in through CheckInSlider; one already in opens
+  // CheckInModal, which holds only its detail and Undo.
+  const checkInNew = !!checkInTarget && !['checked_in', 'in_progress', 'completed'].includes(checkInTarget.status);
+  // Every other pick from a status pill confirms in StatusChangeSlider first.
+  const [statusTarget, setStatusTarget] = useState<
+    { appt?: AppointmentDoc; triage?: TriageDoc; status: AppointmentStatus } | null
+  >(null);
   // Reception can move an appointment to a new slot or mark it a no-show from
   // the row itself — both are front-desk calls that shouldn't need the
   // full appointments page.
@@ -948,6 +959,15 @@ export default function FrontDeskDashboardPage() {
     if (status === 'checked_in') { setCheckInTarget(appt); return; }
     if (status === 'no_show') { setNoShowTarget(appt); return; }
     if (status === 'cancelled') { setCancelReason(''); setCancelTarget({ appt, triage: mirrorTriage }); return; }
+    setStatusTarget({ appt, triage: mirrorTriage, status });
+  }, [encounters]);
+
+  // ── A plain rung, after StatusChangeSlider confirms it. ──
+  const applyAppointmentStatus = useCallback(async (
+    appt: AppointmentDoc,
+    status: AppointmentStatus,
+    mirrorTriage?: TriageDoc,
+  ) => {
     // 'rescheduled' is set directly, and means "not happening at this time, to
     // be rebooked" — the Reschedule action beside it moves a booking to a known
     // new slot in place, which leaves it scheduled, not rescheduled.
@@ -987,7 +1007,7 @@ export default function FrontDeskDashboardPage() {
     } catch (err) {
       showToast(describeError(err, t('msg.appointmentStatusNotChangedTry')), 'error');
     }
-  }, [encounters, updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t]);
+  }, [updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t]);
 
   // ── Cancel, after the dialog confirms it. Mirrors handleNoShow, and leaves
   //    an Undo on the toast that restores the pre-cancel rung (the cancel
@@ -1413,7 +1433,7 @@ export default function FrontDeskDashboardPage() {
           ? async (value: string) => {
               const next = value as AppointmentStatus;
               if (queueAppointment) await handleAppointmentStatusChange(queueAppointment, next, queueTriage);
-              else if (queueTriage) await handleWalkInStatusChange(queueTriage, next);
+              else if (queueTriage) setStatusTarget({ triage: queueTriage, status: next });
             }
           : undefined,
         priority: acuity,
@@ -2115,23 +2135,34 @@ export default function FrontDeskDashboardPage() {
         )}
 
         {noShowTarget && (
-          <Modal onClose={() => setNoShowTarget(null)} width={380} labelledBy="no-show-dialog-title">
-            <DialogFrame>
-              <DialogHeader titleId="no-show-dialog-title" title="Mark as no-show?" description={<>{noShowTarget.patientName} — {formatClockTime(noShowTarget.appointmentTime)}. Check the waiting room first; this removes them from today&apos;s arrivals.</>} onClose={() => setNoShowTarget(null)} />
-              <DialogFooter>
-                <button type="button" className="btn btn-secondary" onClick={() => setNoShowTarget(null)}>{t('action.cancel')}</button>
-                <button type="button" className="btn btn-primary" onClick={() => handleNoShow(noShowTarget)}>Mark no-show</button>
-              </DialogFooter>
-            </DialogFrame>
-          </Modal>
+          <FormSlider
+            title="Mark as no-show?"
+            subtitle={`${noShowTarget.patientName} · ${formatClockTime(noShowTarget.appointmentTime)}`}
+            width={440}
+            onClose={() => setNoShowTarget(null)}
+            footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setNoShowTarget(null)}>{t('action.cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={() => handleNoShow(noShowTarget)}>Mark no-show</button>
+            </>}
+          >
+            <p className="status-slider-body">Check the waiting room first; this removes them from today&apos;s arrivals.</p>
+          </FormSlider>
         )}
 
         {cancelTarget && (
-          <Modal onClose={() => setCancelTarget(null)} width={420} labelledBy="cancel-dialog-title">
-            <DialogFrame>
-              <DialogHeader titleId="cancel-dialog-title" title="Cancel this appointment?" description={<>{cancelTarget.appt.patientName} — {formatClockTime(cancelTarget.appt.appointmentTime)}.
-                  The booking stays on record under Finished; you can undo from the notification or reopen it later.</>} onClose={() => setCancelTarget(null)} />
-              <DialogBody className="space-y-4">
+          <FormSlider
+            title="Cancel this appointment?"
+            subtitle={`${cancelTarget.appt.patientName} · ${formatClockTime(cancelTarget.appt.appointmentTime)}`}
+            width={440}
+            onClose={() => setCancelTarget(null)}
+            footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setCancelTarget(null)}>{t('appointments.goBack')}</button>
+              <button type="button" className="btn btn-danger-solid" onClick={() => void handleCancelAppointment()}>
+                Cancel appointment
+              </button>
+            </>}
+          >
+              <p className="status-slider-body">The booking stays on record under Finished; you can undo from the notification or reopen it later.</p>
               <label className="block text-xs font-semibold mt-4 mb-1" style={{ color: 'var(--text-secondary)' }} htmlFor="front-desk-cancel-reason">
                 Reason (optional)
               </label>
@@ -2143,28 +2174,33 @@ export default function FrontDeskDashboardPage() {
                 placeholder="e.g. patient called to cancel"
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />
-              </DialogBody>
-              <DialogFooter>
-                <button type="button" className="btn btn-secondary" onClick={() => setCancelTarget(null)}>{t('appointments.goBack')}</button>
-                <button type="button" className="btn btn-primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => void handleCancelAppointment()}>
-                  Cancel appointment
-                </button>
-              </DialogFooter>
-            </DialogFrame>
-          </Modal>
+          </FormSlider>
         )}
 
-        {checkInTarget && (
+        {checkInTarget && checkInNew && (
+          <CheckInSlider
+            appointment={checkInTarget}
+            hospitalNumber={patients.find(p => p._id === checkInTarget.patientId)?.hospitalNumber}
+            onClose={() => setCheckInTarget(null)}
+          />
+        )}
+
+        {statusTarget && (
+          <StatusChangeSlider
+            patientName={statusTarget.appt?.patientName || statusTarget.triage?.patientName || ''}
+            appointmentTime={statusTarget.appt?.appointmentTime}
+            from={statusTarget.appt?.status ?? statusTarget.triage?.visitStatus}
+            to={statusTarget.status}
+            onClose={() => setStatusTarget(null)}
+            onConfirm={() => (statusTarget.appt
+              ? applyAppointmentStatus(statusTarget.appt, statusTarget.status, statusTarget.triage)
+              : statusTarget.triage ? handleWalkInStatusChange(statusTarget.triage, statusTarget.status) : undefined)}
+          />
+        )}
+
+        {checkInTarget && !checkInNew && (
           <CheckInModal
             appt={checkInTarget}
-            currentUser={{
-              _id: currentUser?._id || '',
-              name: currentUser?.name || '',
-              role: currentUser?.role,
-              hospitalId: myHospitalId || checkInTarget.facilityId,
-              hospitalName: currentUser?.hospitalName || checkInTarget.facilityName,
-              orgId: currentUser?.orgId || checkInTarget.orgId,
-            }}
             onClose={() => setCheckInTarget(null)}
             onUndoCheckIn={handleUndoCheckIn}
             onViewPatient={(pid) => router.push(`/patients/${pid}`)}

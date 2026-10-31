@@ -53,7 +53,7 @@
   height: 48px;
   background: var(--color-slate-100) !important;
   color: var(--text-primary) !important;
-  font-size: 14px !important;
+  font-size: 13px !important; /* the chart tables' head size */
   font-weight: 600 !important;
   letter-spacing: normal !important;
   text-transform: none !important;

@@ -16,6 +16,7 @@
  * ordering clinician.
  */
 
+import { O3Layout } from '@/components/forms/O3Form';
 import { useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -34,6 +35,8 @@ interface ImagingReportPanelProps {
   patient: PatientDoc;
   currentUser: ChartPanelUser | null | undefined;
   onClose: () => void;
+  /** Picked from a dashboard row: this study alone, under Cancel and Save. */
+  focusId?: string;
 }
 
 /** 5MB per file — the PouchDB document budget the station enforced. */
@@ -53,16 +56,16 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export default function ImagingReportPanel({ patient, currentUser, onClose }: ImagingReportPanelProps) {
+export default function ImagingReportPanel({ patient, currentUser, onClose, focusId }: ImagingReportPanelProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { results, update } = useLabResults(patient._id);
   const studies = useMemo(
     () => results
-      .filter(r => isImagingStudy(r))
+      .filter(r => isImagingStudy(r) && (!focusId || r._id === focusId))
       .sort((a, b) => (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3)
         || (b.orderedAt || '').localeCompare(a.orderedAt || '')),
-    [results],
+    [results, focusId],
   );
   const [findings, setFindings] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -142,7 +145,7 @@ export default function ImagingReportPanel({ patient, currentUser, onClose }: Im
     } catch (err) {
       showToast(describeError(err, t('radiology.updateFailed')), 'error');
       setBusyId(null);
-      return;
+      return false;
     }
     // A report otherwise surfaces only when someone reopens the chart, so
     // page the ordering clinician. Best-effort: the report is already saved.
@@ -169,73 +172,93 @@ export default function ImagingReportPanel({ patient, currentUser, onClose }: Im
     setFindings(prev => ({ ...prev, [study._id]: '' }));
     setBusyId(null);
     showToast(t('imagingForm.reported', { study: study.testName }), 'success');
+    return true;
   };
 
   const statusLabel = (status: string) => t(`radiology.status_${status}`);
 
+  // The O3 frame every clinical form shares: one page, a section per study.
+  // In the chart each study files on its own (Submit report), so the foot is
+  // Close only. Focused on one, Save does its next step: start it, then file it.
+  const focused = focusId ? studies[0] : undefined;
+  const focusedOpen = focused && focused.status !== 'completed';
+  const focusedFindings = focused ? (findings[focused._id] || '').trim() : '';
+  const saveFocused = async () => {
+    if (!focused) return;
+    if (!focusedFindings) await startStudy(focused);
+    else if (await submitReport(focused)) onClose();
+  };
   return (
-    <div className="sv-root">
-      <div className="sv-body">
-        <input ref={fileInputRef} type="file" accept="image/*,.dcm,application/dicom" multiple hidden onChange={e => void attachFiles(e)} />
-        {studies.length === 0 && <p className="sv-empty">{t('imagingForm.none')}</p>}
-        {studies.map(study => {
-          const done = study.status === 'completed';
-          const busy = busyId === study._id;
-          return (
-            <section key={study._id} className="irp-study" data-status={study.status}>
-              <header className="irp-study-head">
-                <div>
-                  <strong>{study.testName}</strong>
-                  <span>
-                    {t('radiology.orderedBy')}: {study.orderedBy || '—'}
-                    {study.orderedAt ? ` · ${formatDate(study.orderedAt)}` : ''}
-                    {study.critical ? ` · ${t('radiology.priority_urgent')}` : ''}
-                  </span>
-                </div>
-                <b className="irp-status">{statusLabel(study.status)}</b>
-              </header>
-              {study.clinicalNotes && (
-                <p className="irp-notes"><span className="sv-label">{t('radiology.clinicalNotes')}</span>{study.clinicalNotes}</p>
-              )}
-              {done ? (
-                <p className="irp-notes"><span className="sv-label">{t('radiology.findings')}</span>{study.findings || study.result}</p>
-              ) : (
-                <>
-                  <div className="irp-actions">
-                    {study.status === 'pending' && (
-                      <button type="button" onClick={() => void startStudy(study)} disabled={busy}>{t('imagingForm.start')}</button>
+    <>
+      <input ref={fileInputRef} type="file" accept="image/*,.dcm,application/dicom" multiple hidden onChange={e => void attachFiles(e)} />
+      <O3Layout
+        pages={[{
+          id: 'imaging',
+          label: t('imagingForm.title'),
+          sections: studies.length === 0
+            ? [{ id: 'none', label: t('imagingForm.studies'), body: <p className="sv-empty">{t('imagingForm.none')}</p> }]
+            : studies.map(study => {
+              const done = study.status === 'completed';
+              const busy = busyId === study._id;
+              return {
+                id: study._id,
+                label: study.testName,
+                body: (
+                  <div className="irp-study" data-status={study.status}>
+                    <header className="irp-study-head">
+                      <span>
+                        {t('radiology.orderedBy')}: {study.orderedBy || '—'}
+                        {study.orderedAt ? ` · ${formatDate(study.orderedAt)}` : ''}
+                        {study.critical ? ` · ${t('radiology.priority_urgent')}` : ''}
+                      </span>
+                      <b className="irp-status">{statusLabel(study.status)}</b>
+                    </header>
+                    {study.clinicalNotes && (
+                      <p className="irp-notes"><span className="sv-label">{t('radiology.clinicalNotes')}</span>{study.clinicalNotes}</p>
                     )}
-                    <button type="button" onClick={() => chooseFiles(study)} disabled={busy}>
-                      {t('radiology.attachImage')}{study.imageCount ? ` (${study.imageCount})` : ''}
-                    </button>
+                    {done ? (
+                      <p className="irp-notes"><span className="sv-label">{t('radiology.findings')}</span>{study.findings || study.result}</p>
+                    ) : (
+                      <>
+                        <div className="irp-actions">
+                          {study.status === 'pending' && !focusId && (
+                            <button type="button" onClick={() => void startStudy(study)} disabled={busy}>{t('imagingForm.start')}</button>
+                          )}
+                          <button type="button" onClick={() => chooseFiles(study)} disabled={busy}>
+                            {t('radiology.attachImage')}{study.imageCount ? ` (${study.imageCount})` : ''}
+                          </button>
+                        </div>
+                        <label className="sv-field">
+                          <span className="sv-label">{t('radiology.enterFindings')}</span>
+                          <textarea
+                            rows={4}
+                            value={findings[study._id] || ''}
+                            placeholder={t('radiology.findingsPlaceholder')}
+                            onChange={e => setFindings(prev => ({ ...prev, [study._id]: e.target.value }))}
+                          />
+                        </label>
+                        {!focusId && (
+                          <div className="irp-actions">
+                            <button type="button" className="is-primary" onClick={() => void submitReport(study)}
+                              disabled={busy || !(findings[study._id] || '').trim()}>
+                              {t('radiology.submitReport')}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <label className="sv-field">
-                    <span className="sv-label">{t('radiology.enterFindings')}</span>
-                    <textarea
-                      rows={4}
-                      value={findings[study._id] || ''}
-                      placeholder={t('radiology.findingsPlaceholder')}
-                      onChange={e => setFindings(prev => ({ ...prev, [study._id]: e.target.value }))}
-                    />
-                  </label>
-                  <div className="irp-actions">
-                    <button type="button" className="is-primary" onClick={() => void submitReport(study)}
-                      disabled={busy || !(findings[study._id] || '').trim()}>
-                      {t('radiology.submitReport')}
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
-          );
-        })}
-      </div>
-      <FormNotices />
-      <div className="sv-footer">
-        <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose}>
-          {t('imagingForm.close')}
-        </button>
-      </div>
-    </div>
+                ),
+              };
+            }),
+        }]}
+        notice={<FormNotices />}
+        onCancel={onClose}
+        cancelLabel={focusedOpen ? t('action.cancel') : t('imagingForm.close')}
+        onSave={focusedOpen ? () => void saveFocused() : undefined}
+        saveDisabled={!!focused && focused.status === 'in_progress' && !focusedFindings}
+        saving={!!busyId}
+      />
+    </>
   );
 }

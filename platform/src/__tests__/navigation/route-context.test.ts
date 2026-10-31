@@ -68,6 +68,12 @@ describe('route context navigation', () => {
     expect(ctx?.fallbackHref).toBe(parent);
   });
 
+  it('gives the ANC register a Back to the viewer\'s own home', () => {
+    const ctx = resolveRouteContext('/anc', '/dashboard/data-entry');
+    expect(ctx?.showBack).toBe(true);
+    expect(ctx?.fallbackHref).toBe('/dashboard/data-entry');
+  });
+
   it('ignores unknown nested paths instead of guessing navigation', () => {
     expect(resolveRouteContext('/admin/not-a-real-page')).toBeNull();
     expect(resolveRouteContext('/patients/patient-1/unknown')).toBeNull();

@@ -6,16 +6,20 @@
  * workspace (Clinical forms → Ward Admission) with the patient fixed, so
  * admitting from the chart no longer leaves the chart.
  *
+ * In the chart it is the O3 "Ward Request" (O3Form, one page): a Ward
+ * Details section — the inpatient disposition, the ward, then the bed,
+ * diagnosis, severity and isolation the admission needs — over Cancel | Save.
+ *
  * `encounterId` is the open visit the admission grew out of: admission closes
  * it. It belongs to the patient it arrived with, so changing the patient
  * drops it.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
-import FormNotices from '@/components/overlay/FormNotices';
+import O3Form, { o3MissingRequired, type O3Page } from '@/components/forms/O3Form';
+import InlineBanner from '@/components/overlay/InlineBanner';
 import CodedSearchField from '@/components/CodedSearchField';
-import Select from '@/components/Select';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -150,106 +154,156 @@ export default function WardAdmitForm({
     }
   };
 
-  const labelClass = 'text-xs font-semibold uppercase tracking-wider mb-1 block';
-  const labelStyle = { color: 'var(--text-muted)' };
-  const fields = (
-    <div className="space-y-3">
-      <div>
-        <label className={`field-required ${labelClass}`} style={labelStyle}>{t('ward.patientRequired')}</label>
-        {/* Search, not a list: a dropdown of the first 200 patients left most
-            of a large facility unadmittable from here. */}
-        {patient ? (
-          <div className="tamam-panel-picked-chip">
-            <span>{patientFullName(patient)} <span style={{ color: 'var(--text-muted)' }}>· {patient.hospitalNumber}</span></span>
-            {!lockedPatient && (
-              <button type="button" onClick={() => setForm({ ...form, patientId: '', encounterId: '' })}>{t('ward.changePatient')}</button>
-            )}
-          </div>
-        ) : (
-          <CodedSearchField
-            label=""
-            placeholder={t('ward.selectPatient')}
-            options={patientOptions}
-            value={patientQuery}
-            onChange={setPatientQuery}
-            onSelect={option => { setForm({ ...form, patientId: option.code, encounterId: '' }); setPatientQuery(''); }}
-            showCodeBadge={false}
-          />
-        )}
-      </div>
-      <div>
-        <label className={`field-required ${labelClass}`} style={labelStyle}>{t('ward.admittingDiagnosisRequired')}</label>
-        <input type="text" value={form.admittingDiagnosis} onChange={e => setForm({ ...form, admittingDiagnosis: e.target.value })} placeholder={t('ward.admittingDiagnosisPlaceholder')} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelClass} style={labelStyle}>{t('ward.severity')}</label>
-          <Select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value as AdmissionDoc['severity'] })}>
-            <option value="mild">{t('ward.severityMild')}</option>
-            <option value="moderate">{t('ward.severityModerate')}</option>
-            <option value="severe">{t('ward.severitySevere')}</option>
-            <option value="critical">{t('ward.severityCritical')}</option>
-          </Select>
+  // The patient: fixed in the chart; on the Wards page a search (not a list:
+  // a dropdown of the first 200 patients left most of a large facility
+  // unadmittable from here).
+  const patientPicker = !lockedPatient && (
+    <div className="o3f-notice o3f-field o3f-field--wide">
+      <span className="o3f-label">{t('ward.patientRequired')}<span className="o3f-required" aria-hidden>*</span></span>
+      {patient ? (
+        <div className="tamam-panel-picked-chip">
+          <span>{patientFullName(patient)} <span style={{ color: 'var(--text-muted)' }}>· {patient.hospitalNumber}</span></span>
+          <button type="button" onClick={() => setForm({ ...form, patientId: '', encounterId: '' })}>{t('ward.changePatient')}</button>
         </div>
-        <div>
-          <label className={`field-required ${labelClass}`} style={labelStyle}>{t('ward.wardRequired')}</label>
-          <Select value={form.wardId} onChange={e => setForm({ ...form, wardId: e.target.value, bedId: '' })}>
-            <option value="">{t('ward.selectWard')}</option>
-            {admittableWards.length === 0 && (
-              <option value="" disabled>{t('ward.noWardsAvailable')}</option>
-            )}
-            {admittableWards.map(w => (
-              <option key={w._id} value={w._id}>{t('ward.wardFree', { name: w.name, count: wardFreeBeds(w) })}</option>
-            ))}
-          </Select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 items-end">
-        <div>
-          <label className={labelClass} style={labelStyle}>{t('ward.bedNumber')}</label>
-          <Select value={form.bedId} onChange={e => setForm({ ...form, bedId: e.target.value })} disabled={!form.wardId}>
-            <option value="">{form.wardId ? t('ward.optional') : t('ward.selectWardFirst')}</option>
-            {availableBedsForWard.map(b => (
-              <option key={b._id} value={b._id}>{b.bedNumber} · {t(`facilitySettings.roomClass.${b.roomClass ?? 'standard'}`)}</option>
-            ))}
-          </Select>
-        </div>
-        <label className="flex items-center gap-2 h-10 text-sm" style={{ color: 'var(--text-primary)' }}>
-          <input type="checkbox" checked={form.isolationRequired} onChange={e => setForm({ ...form, isolationRequired: e.target.checked })} />
-          {t('ward.isolationRequired')}
-        </label>
-      </div>
+      ) : (
+        <CodedSearchField
+          label=""
+          placeholder={t('ward.selectPatient')}
+          options={patientOptions}
+          value={patientQuery}
+          onChange={setPatientQuery}
+          onSelect={option => { setForm({ ...form, patientId: option.code, encounterId: '' }); setPatientQuery(''); }}
+          showCodeBadge={false}
+        />
+      )}
     </div>
   );
 
-  if (layout === 'workspace') {
-    return (
-      <div className="sv-root">
-        <div className="sv-body ws-module-form">{fields}</div>
-        <FormNotices />
-        <div className="sv-footer">
-          <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose} disabled={saving}>
-            {t('action.cancel')}
-          </button>
-          <button type="button" className="sv-footer-btn sv-footer-btn--primary" onClick={() => void handleAdmit()} disabled={saving}>
-            {t('ward.admit')}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // One form in both homes: the O3 "Ward Request".
+  const request = (
+    <WardRequestForm
+      form={form}
+      setForm={setForm}
+      wards={admittableWards}
+      wardLabel={w => t('ward.wardFree', { name: w.name, count: wardFreeBeds(w) })}
+      beds={availableBedsForWard}
+      saving={saving}
+      onSave={() => void handleAdmit()}
+      onCancel={onClose}
+      lead={patientPicker || undefined}
+    />
+  );
+
+  if (layout === 'workspace') return request;
+  return (
+    <FormSlider title={t('ward.admitPatient')} onClose={onClose} busy={saving} width={640} flush>
+      {request}
+    </FormSlider>
+  );
+}
+
+type AdmitFormState = {
+  patientId: string;
+  admittingDiagnosis: string;
+  severity: AdmissionDoc['severity'];
+  wardId: string;
+  bedId: string;
+  isolationRequired: boolean;
+  encounterId: string;
+};
+
+const SEVERITIES: AdmissionDoc['severity'][] = ['mild', 'moderate', 'severe', 'critical'];
+const SEVERITY_KEY: Record<AdmissionDoc['severity'], string> = {
+  mild: 'ward.severityMild', moderate: 'ward.severityModerate', severe: 'ward.severitySevere', critical: 'ward.severityCritical',
+};
+
+/** The chart's Ward Request: the admit form's state drawn as one O3 page.
+ *  O3 choices are their labels, so wards, beds and severities map back to ids. */
+function WardRequestForm({ form, setForm, wards, wardLabel, beds, saving, onSave, onCancel, lead }: {
+  form: AdmitFormState;
+  setForm: (next: AdmitFormState) => void;
+  wards: WardDoc[];
+  wardLabel: (ward: WardDoc) => string;
+  beds: { _id: string; bedNumber: string; roomClass?: string }[];
+  saving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+  /** Above the questions — the patient search on the Wards page. */
+  lead?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const [disposition, setDisposition] = useState('');
+  const [notice, setNotice] = useState('');
+  const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
+  const admitOption = t('o3form.ward.admitToHospital');
+  const yes = t('action.yes');
+  const no = t('action.no');
+  const bedLabel = (b: { bedNumber: string; roomClass?: string }) => `${b.bedNumber} · ${t(`facilitySettings.roomClass.${b.roomClass ?? 'standard'}`)}`;
+
+  const pages: O3Page[] = [{
+    id: 'ward-request',
+    label: t('o3form.ward.title'),
+    sections: [{
+      id: 'ward-details',
+      label: t('o3form.ward.details'),
+      caption: t('o3form.ward.disposition'),
+      fields: [
+        { id: 'disposition', label: t('o3form.ward.dispositionQuestion'), kind: 'radio', options: [admitOption], required: true },
+        { id: 'ward', label: t('ward.wardRequired'), kind: 'select', options: wards.map(wardLabel), required: true },
+        { id: 'bed', label: t('ward.bedNumber'), kind: 'select', options: beds.map(bedLabel) },
+        { id: 'diagnosis', label: t('ward.admittingDiagnosisRequired'), kind: 'text', required: true },
+        { id: 'severity', label: t('ward.severity'), kind: 'radio', options: SEVERITIES.map(sv => t(SEVERITY_KEY[sv])) },
+        { id: 'isolation', label: t('ward.isolationRequired'), kind: 'select', options: [no, yes] },
+      ],
+    }],
+  }];
+
+  const ward = wards.find(w => w._id === form.wardId);
+  const bed = beds.find(b => b._id === form.bedId);
+  const values: Record<string, string> = {
+    disposition,
+    ward: ward ? wardLabel(ward) : '',
+    bed: bed ? bedLabel(bed) : '',
+    diagnosis: form.admittingDiagnosis,
+    severity: t(SEVERITY_KEY[form.severity]),
+    isolation: form.isolationRequired ? yes : no,
+  };
+  const change = (id: string, value: string) => {
+    setNotice('');
+    switch (id) {
+      case 'disposition': setDisposition(value); break;
+      case 'ward': setForm({ ...form, wardId: wards.find(w => wardLabel(w) === value)?._id ?? '', bedId: '' }); break;
+      case 'bed': setForm({ ...form, bedId: beds.find(b => bedLabel(b) === value)?._id ?? '' }); break;
+      case 'diagnosis': setForm({ ...form, admittingDiagnosis: value }); break;
+      case 'severity': setForm({ ...form, severity: SEVERITIES.find(sv => t(SEVERITY_KEY[sv]) === value) ?? 'moderate' }); break;
+      case 'isolation': setForm({ ...form, isolationRequired: value === yes }); break;
+    }
+  };
+  const save = () => {
+    const missing = o3MissingRequired(pages, values);
+    if (missing.length) {
+      setInvalid(new Set(missing.map(f => f.id)));
+      setNotice(t('o3form.missingRequired', { count: missing.length }));
+      return;
+    }
+    onSave();
+  };
 
   return (
-    <FormSlider
-      title={t('ward.admitPatient')}
-      onClose={onClose}
-      busy={saving}
-      footer={<>
-        <button onClick={onClose} className="btn btn-secondary" disabled={saving}>{t('action.cancel')}</button>
-        <button onClick={() => void handleAdmit()} className="btn btn-primary" disabled={saving}>{t('ward.admit')}</button>
+    <O3Form
+      pages={pages}
+      values={values}
+      onChange={change}
+      onSave={save}
+      onCancel={onCancel}
+      saving={saving}
+      invalid={invalid}
+      notice={<>
+        {lead}
+        {(notice || wards.length === 0) && (
+          <div className="o3f-notice"><InlineBanner tone={notice ? 'danger' : 'warning'}>{notice || t('ward.noWardsAvailable')}</InlineBanner></div>
+        )}
       </>}
-    >
-      <div className="space-y-4">{fields}</div>
-    </FormSlider>
+    />
   );
 }

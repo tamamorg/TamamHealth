@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * ConnectivityNotice — animated slide-down banner that announces transitions
- * in the sync/online state. Mounted once in the dashboard layout.
+ * ConnectivityNotice — announces transitions in the sync/online state as
+ * ordinary toasts. Mounted once in the dashboard layout; renders nothing.
  *
  * Triggers:
  *  - isOnline flips (going online / going offline)
@@ -10,72 +10,23 @@
  *  - the server refuses a pushed record (named, with the validator's reason)
  *  - User-initiated pause/resume (via the toggleOnline preference flipping)
  *
- * UX:
- *  - position: fixed at the top, slides in from above (220ms ease-out),
- *    slides out (180ms ease-in), and auto-dismisses after ~4s.
- *  - role="status" with aria-live="polite" so screen readers announce
- *    the change without stealing focus.
- *  - Pure CSS keyframes (no framer-motion).
- *
- * Implementation note: we keep one Notice at a time. New transitions replace
- * the previous notice rather than stacking, so the user isn't bombarded
- * during a flapping connection.
+ * A repeat of the same notice restarts the existing toast, so a flapping
+ * connection doesn't bombard the user.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useToast, type ToastType } from '@/components/Toast';
 import { useAuth, useSync } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { DANGER, DANGER_STRONG, SUCCESS, SUCCESS_STRONG, WARNING, WARNING_STRONG, WHITE } from '@/lib/theme-colors';
-import {
-  DuotoneCheck as Check,
-  DuotoneAlert as AlertTriangle,
-  DuotoneWifiOff as WifiOff,
-  DuotonePause as Pause,
-  DuotoneClose as X,
-} from '@/components/icons';
 import { denialMessageKey } from '@/lib/sync/denial-text';
 
-type Tone = 'success' | 'warning' | 'danger';
-
-interface Notice {
-  id: number;
-  tone: Tone;
-  title: string;
-  body?: string;
-  /** ms before auto-dismiss; null = sticky */
-  ttl: number | null;
-}
-
 const NOTICE_TTL_MS = 4_000;
-let nextId = 1;
-
-function toneColors(tone: Tone): { bg: string; border: string; icon: string; text: string } {
-  switch (tone) {
-    case 'success':
-      return { bg: SUCCESS, border: SUCCESS_STRONG, icon: WHITE, text: WHITE };
-    case 'warning':
-      return { bg: WARNING, border: WARNING_STRONG, icon: WHITE, text: WHITE };
-    case 'danger':
-      return { bg: DANGER, border: DANGER_STRONG, icon: WHITE, text: WHITE };
-  }
-}
-
-function ToneIcon({ tone }: { tone: Tone }) {
-  const cls = 'w-5 h-5 flex-shrink-0';
-  // Icons sit on a solid tone background, so they take the tone's icon color
-  // (white) rather than their own semantic hue — keeps contrast clean.
-  const color = toneColors(tone).icon;
-  if (tone === 'success') return <Check className={cls} color={color} />;
-  if (tone === 'warning') return <WifiOff className={cls} color={color} />;
-  return <AlertTriangle className={cls} color={color} />;
-}
 
 export default function ConnectivityNotice() {
   const { isAuthenticated } = useAuth();
   const { isOnline, isNetworkUp, syncPaused, syncStatus } = useSync();
   const { t } = useTranslation();
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const [exiting, setExiting] = useState(false);
+  const { showToast } = useToast();
 
   // Track previous values across renders so we can fire on transitions only.
   const prevOnline = useRef<boolean | null>(null);
@@ -84,26 +35,12 @@ export default function ConnectivityNotice() {
   // Refusals already announced, by database + document id — so one refused
   // record is announced once, not on every poll cycle that re-pauses push.
   const announcedDenials = useRef<Set<string>>(new Set());
-  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Helper: show a notice, replacing any current one. Auto-dismisses after ttl.
-  const show = (tone: Tone, title: string, body?: string) => {
-    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
-    if (removeTimerRef.current) clearTimeout(removeTimerRef.current);
-    const id = nextId++;
-    setExiting(false);
-    setNotice({ id, tone, title, body, ttl: NOTICE_TTL_MS });
-    exitTimerRef.current = setTimeout(() => setExiting(true), NOTICE_TTL_MS);
-    removeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_TTL_MS + 200);
-  };
-
-  const dismiss = () => {
-    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
-    if (removeTimerRef.current) clearTimeout(removeTimerRef.current);
-    setExiting(true);
-    removeTimerRef.current = setTimeout(() => setNotice(null), 200);
-  };
+  // Never routed into a form: a sync failure is not about what the user is
+  // filling in. A failure stays up for the toast's longer error time.
+  const show = useCallback((tone: ToastType, title: string, body: string) => {
+    showToast(body, tone, { title, placement: 'corner', ...(tone === 'error' ? {} : { durationMs: NOTICE_TTL_MS }) });
+  }, [showToast]);
 
   // Initial mount — record current values without firing a notice.
   useEffect(() => {
@@ -146,7 +83,7 @@ export default function ConnectivityNotice() {
 
     prevOnline.current = isOnline;
     prevPaused.current = syncPaused;
-  }, [isOnline, isNetworkUp, syncPaused, isAuthenticated, syncStatus?.state, t]);
+  }, [isOnline, isNetworkUp, syncPaused, isAuthenticated, syncStatus?.state, t, show]);
 
   // A record the server refused. This is NOT an authentication failure (the
   // session is fine and every other change keeps syncing): CouchDB's
@@ -165,14 +102,14 @@ export default function ConnectivityNotice() {
         const reasonKey = denialMessageKey(denial.reason);
         const reason = reasonKey ? t(reasonKey) : denial.reason.replace(/\.?$/, '.');
         show(
-          'danger',
+          'error',
           t('connectivity.changeRejected'),
           t('connectivity.changeRejectedBody', { record, reason }),
         );
         return;
       }
     }
-  }, [syncStatus, isAuthenticated, t]);
+  }, [syncStatus, isAuthenticated, t, show]);
 
   // Sync errors: notify on entering the 'error' state with a real replication
   // error (network, session, server). Refusals are announced above instead.
@@ -193,60 +130,14 @@ export default function ConnectivityNotice() {
       }
       if (!onlyRefusals) {
         show(
-          'danger',
+          'error',
           msg ? t('connectivity.syncErrorDetail', { msg }) : t('connectivity.syncError'),
           t('connectivity.retrying'),
         );
       }
     }
     prevSyncErrState.current = state;
-  }, [syncStatus, isAuthenticated, t]);
+  }, [syncStatus, isAuthenticated, t, show]);
 
-  // Cleanup timers on unmount
-  useEffect(() => () => {
-    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
-    if (removeTimerRef.current) clearTimeout(removeTimerRef.current);
-  }, []);
-
-  if (!notice) return null;
-
-  const colors = toneColors(notice.tone);
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="connectivity-notice-wrap fixed start-0 end-0 z-[60] flex justify-center pointer-events-none px-3"
-    >
-      <div
-        className={`pointer-events-auto flex items-center gap-3 px-4 py-2.5 shadow-lg max-w-md w-full sm:w-auto ${exiting ? 'connectivity-notice-exit' : 'connectivity-notice-enter'}`}
-        style={{
-          background: colors.bg,
-          color: colors.text,
-          borderRadius: 'var(--card-radius)',
-          border: `1px solid ${colors.border}`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-        }}
-      >
-        {notice.tone === 'warning' && syncPaused && isNetworkUp ? (
-          <Pause className="w-5 h-5 flex-shrink-0" color={colors.icon} />
-        ) : (
-          <ToneIcon tone={notice.tone} />
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{notice.title}</p>
-          {notice.body && <p className="text-xs opacity-90 truncate">{notice.body}</p>}
-        </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label={t('common.dismissNotification')}
-          className="p-1.5 rounded hover:bg-white/20 transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-        >
-          <X className="w-3.5 h-3.5" color={colors.icon} />
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 }

@@ -458,6 +458,11 @@ export interface SettleOpenBillsInput {
    * (`unsettleBillsForPayment`) can find exactly what to undo.
    */
   paymentId: string;
+  /**
+   * The visit or bill the payment was taken against, settled before the
+   * others so the bill agrees with the billing line the cashier chose.
+   */
+  aimedAt?: { encounterId?: string; billId?: string };
   reference?: string;
   notes?: string;
   /**
@@ -477,7 +482,8 @@ export interface SettleOpenBillsInput {
 /**
  * Settle a patient-level payment (e.g. from PaymentPanel's `collectPayment`,
  * which collects against the patient's aggregate ledger balance rather than
- * one specific bill) against that patient's open bills, oldest first.
+ * one specific bill) against that patient's open bills: the one it was aimed
+ * at, if any, then oldest first.
  *
  * Without this, a payment collected through the ledger never touches the
  * BillingDoc(s) it was actually paying down: the ledger balance reads paid
@@ -507,7 +513,7 @@ export interface SettleOpenBillsInput {
  * partial settlement; already-settled bills before the throw are not undone.
  */
 export async function settleOpenBillsWithPayment(input: SettleOpenBillsInput): Promise<{ settledBills: BillingDoc[]; unapplied: number }> {
-  const { patientId, amount, currency, method, receivedBy, receivedByName, paymentId, reference, notes, scope } = input;
+  const { patientId, amount, currency, method, receivedBy, receivedByName, paymentId, reference, notes, aimedAt, scope } = input;
   if (!(amount > 0)) return { settledBills: [], unapplied: amount };
 
   const db = billingDB();
@@ -523,10 +529,13 @@ export async function settleOpenBillsWithPayment(input: SettleOpenBillsInput): P
     return sum + (rec ? rec.amount : 0);
   }, 0);
 
+  const isAimedAt = (bill: BillingDoc) => !!aimedAt && (
+    bill._id === aimedAt.billId || (!!aimedAt.encounterId && bill.encounterId === aimedAt.encounterId)
+  );
   const openBills = allBills
     .filter(b => (b.status === 'pending' || b.status === 'partial') && b.currency === currency)
     .filter(b => !b.payments.some(p => p.sourcePaymentId === paymentId))
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    .sort((a, b) => Number(isAimedAt(b)) - Number(isAimedAt(a)) || (a.createdAt || '').localeCompare(b.createdAt || ''));
 
   let remaining = Math.round((amount - alreadyApplied) * 100) / 100;
   const settledBills: BillingDoc[] = [];

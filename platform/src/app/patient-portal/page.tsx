@@ -14,6 +14,7 @@ import {
 } from '@/components/icons/lucide';
 import type { PatientDoc, AppointmentDoc, MedicalRecordDoc, PrescriptionDoc, ImmunizationDoc } from '@/lib/db-types';
 import type { PortalLabResult } from '@/lib/patient-portal-labs';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatClockTime , formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import Select from '@/components/Select';
@@ -88,14 +89,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   const [showBooking, setShowBooking] = useState(false);
   const [sessionToken, setSessionToken] = useState('');
 
-  // Transient confirmation toast (bottom-center, per the design). Only fired
-  // after an action actually persisted — never to fake a success.
-  const [toast, setToast] = useState<string | null>(null);
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3200);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  const { showToast } = useToast();
 
   // Load patient-specific data
   useEffect(() => {
@@ -1064,7 +1058,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           onClose={() => setShowBooking(false)}
           onBooked={appointment => {
             setAppointments(prev => [...prev, appointment]);
-            setToast(t('patientPortal.bk.toastSent'));
+            showToast(t('patientPortal.bk.toastSent'), 'success');
           }}
         />
       )}
@@ -1072,13 +1066,6 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           </div>
         </main>
       </div>
-
-      {/* Confirmation toast — only after an action actually persisted. */}
-      {toast && (
-        <div className="pp-toast" role="status">
-          <CheckCircle2 size={14} strokeWidth={2.2} />{toast}
-        </div>
-      )}
     </div>
   );
 }

@@ -35,6 +35,8 @@ export function usePortalSlipLabels(): PortalSlipLabels {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     return {
       documentLabel: t('pslip.documentLabel'),
+      patientInformation: t('print.patientInformation'),
+      patientName: t('print.patientName'),
       hospitalNumber: t('pslip.hospitalNumber'),
       username: t('pac.username'),
       activationCode: t('pac.activationCode'),

@@ -220,7 +220,12 @@ export type NoteTypeId =
   | 'phone'
   | 'memo_to_record'
   | 'office_form'
-  | 'amendment';
+  | 'amendment'
+  // Structured clinical forms (lib/forms/o3-form-definitions): filled in an
+  // O3Form, the answers kept on the note's `formData`.
+  | 'covid19'
+  | 'mental_health'
+  | 'surgical_operation';
 
 export interface NoteTypeDef {
   id: NoteTypeId;
@@ -368,6 +373,27 @@ export const NOTE_TYPES: Readonly<Record<NoteTypeId, NoteTypeDef>> = {
     sections: ['memo'],
     optionalSections: ['patient_education', 'follow_up'],
   },
+  covid19: {
+    id: 'covid19',
+    label: 'Covid 19',
+    description: 'Covid 19 signs, symptoms and test, from the Covid 19 form.',
+    sections: ['memo'],
+    optionalSections: [],
+  },
+  mental_health: {
+    id: 'mental_health',
+    label: 'Mental Health Assessment',
+    description: 'PHQ-2 / PHQ-9 depression screening, scored.',
+    sections: ['memo'],
+    optionalSections: [],
+  },
+  surgical_operation: {
+    id: 'surgical_operation',
+    label: 'Surgical Operation',
+    description: 'Operation record: diagnoses, procedure, anaesthesia, findings and instructions.',
+    sections: ['memo'],
+    optionalSections: [],
+  },
   amendment: {
     id: 'amendment',
     label: 'Amendment',
@@ -488,6 +514,9 @@ export const REQUIRED_SECTIONS: Readonly<Record<NoteTypeId, readonly NoteSection
   memo_to_record: ['memo'],
   office_form: ['memo'],
   amendment: ['memo'],
+  covid19: ['memo'],
+  mental_health: ['memo'],
+  surgical_operation: ['memo'],
 };
 
 export function requiredSectionsFor(typeId: NoteTypeId | string): readonly NoteSectionId[] {

@@ -16,6 +16,9 @@ import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { formatDate, formatMoney, humanizeStatus } from '@/lib/format-utils';
 import { summariseLedger, type LedgerSummary } from '@/lib/ledger-summary';
+import { buildAccountLines, type AccountLine } from '@/lib/billing-account-lines';
+import BillingLinePanel, { accountLineTitle } from '@/components/patients/BillingLinePanel';
+import type { BillingDoc } from '@/lib/db-types-billing';
 import type { PatientDoc } from '@/lib/db-types';
 import type {
   PaymentDoc, ChargeDoc, PaymentPlanDoc, InsurancePolicyDoc, RefundDoc, LedgerEntryDoc,
@@ -24,6 +27,7 @@ import type {
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { printDate } from '@/lib/print-identity';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { VisitFinancialReview } from '@/modules/financial-clearance/client';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
@@ -33,17 +37,18 @@ const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 
 const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
 
 /**
- * Maps a charge or payment status onto the chart's badge tones (done /
+ * Maps a billing line's status onto the chart's badge tones (done /
  * pending / muted), so the account's lines read like every other chart list.
  */
-const ACTIVITY_BADGE: Record<string, string> = {
-  posted: 'tamam-panel-badge--done', approved: 'tamam-panel-badge--done', paid: 'tamam-panel-badge--done', processed: 'tamam-panel-badge--done',
-  pending: 'tamam-panel-badge--pending', submitted: 'tamam-panel-badge--pending', appealed: 'tamam-panel-badge--pending',
-  denied: 'tamam-panel-badge--muted', voided: 'tamam-panel-badge--muted', refunded: 'tamam-panel-badge--muted', cancelled: 'tamam-panel-badge--muted',
+const ACTIVITY_BADGE: Record<AccountLine['status'], string> = {
+  paid: 'tamam-panel-badge--done',
+  unpaid: 'tamam-panel-badge--pending', partial: 'tamam-panel-badge--pending',
+  voided: 'tamam-panel-badge--muted', refunded: 'tamam-panel-badge--muted',
+  credit: 'tamam-panel-badge--active',
 };
-/** The chart's badge for a ledger line's status, the same family every chart table wears. */
-function activityBadge(status: string): string {
-  return `tamam-panel-badge ${ACTIVITY_BADGE[status] || 'tamam-panel-badge--active'}`;
+/** The chart's badge for a billing line's status, the same family every chart table wears. */
+function activityBadge(status: AccountLine['status']): string {
+  return `tamam-panel-badge ${ACTIVITY_BADGE[status]}`;
 }
 
 interface BillingTabProps {
@@ -67,7 +72,12 @@ interface FinancialOverview {
   totalRefunds: number;
   insurancePaid: number;
   selfPaid: number;
+  /** Posted payments, newest first. */
   payments: PaymentDoc[];
+  /** Every payment, so a reversed or refunded one still reads on its line. */
+  allPayments: PaymentDoc[];
+  refunds: RefundDoc[];
+  bills: BillingDoc[];
   charges: ChargeDoc[];
   plans: PaymentPlanDoc[];
   policies: InsurancePolicyDoc[];
@@ -110,10 +120,6 @@ function buildStatementHTML(opts: {
   const currency = overview.payments[0]?.currency || 'SSP';
   const generatedAt = new Date();
   const fmt = (n: number) => `${n.toLocaleString()} ${currency}`;
-  // The shared formatter reads a date-only value ("1988-03-15") as that
-  // calendar day. `new Date()` reads it as UTC midnight, which printed the
-  // patient's date of birth a day early on any device west of Greenwich.
-  const fmtDate = (d: string) => formatDate(d);
   const e = escapeHtml;
 
   const KIND_LABEL: Record<string, string> = {
@@ -132,7 +138,7 @@ function buildStatementHTML(opts: {
     ? `<tr><td colspan="5" class="empty">No account activity on file</td></tr>`
     : ledger.rows.map(row => `
       <tr>
-        <td>${e(fmtDate(row.date))}</td>
+        <td>${e(printDate(row.date))}</td>
         <td>${e(row.description)}</td>
         <td><span class="status">${e(KIND_LABEL[row.kind] || row.kind)}</span></td>
         <td class="num">${e(signed(row.amount))}</td>
@@ -142,29 +148,31 @@ function buildStatementHTML(opts: {
   const totalRow = (label: string, value: string) => `<div class="total-row"><span>${e(label)}</span><strong>${e(value)}</strong></div>`;
   const body = `
     <section class="section">
-      <h2 class="section-title">Account activity</h2>
+      <h2 class="section-title">Account Activity</h2>
       <table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead><tbody>${activityRows}</tbody></table>
     </section>
     <div class="totals">
-      ${totalRow('Total charged', fmt(ledger.charged))}
-      ${ledger.insurancePaid ? totalRow('Insurance paid', `− ${fmt(ledger.insurancePaid)}`) : ''}
-      ${totalRow('Patient paid', `− ${fmt(ledger.patientPaid)}`)}
-      ${ledger.adjustments ? totalRow('Adjustments and write-offs', signed(ledger.adjustments)) : ''}
-      ${ledger.refunded ? totalRow('Refunds paid out', fmt(ledger.refunded)) : ''}
-      <div class="total-row grand"><strong>${balance < 0 ? 'Credit balance' : 'Balance due'}</strong><strong>${e(fmt(Math.abs(balance)))}</strong></div>
+      ${totalRow('Total Charged', fmt(ledger.charged))}
+      ${ledger.insurancePaid ? totalRow('Insurance Paid', `− ${fmt(ledger.insurancePaid)}`) : ''}
+      ${totalRow('Patient Paid', `− ${fmt(ledger.patientPaid)}`)}
+      ${ledger.adjustments ? totalRow('Adjustments and Write-offs', signed(ledger.adjustments)) : ''}
+      ${ledger.refunded ? totalRow('Refunds Paid Out', fmt(ledger.refunded)) : ''}
+      <div class="total-row grand"><strong>${balance < 0 ? 'Credit Balance' : 'Balance Due'}</strong><strong>${e(fmt(Math.abs(balance)))}</strong></div>
     </div>`;
 
   return buildClinicalPrintDocument({
     title: patientName,
-    documentLabel: 'Account statement',
+    documentLabel: 'Account Statement',
+    date: generatedAt,
     facilityName,
+    metaTitle: 'Patient Information',
     meta: [
-      { label: 'Hospital number', value: hospitalNumber || '—' },
-      { label: 'Date of birth', value: dateOfBirth ? fmtDate(dateOfBirth) : '—' },
-      { label: 'Gender', value: gender || '—' },
-      { label: 'Phone', value: phone || '—' },
-      { label: 'Prepared by', value: preparedBy || '—' },
-      { label: 'Statement date', value: generatedAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+      { label: 'Patient Name', value: patientName },
+      { label: 'Patient ID', value: hospitalNumber },
+      { label: 'Date of Birth', value: printDate(dateOfBirth) },
+      { label: 'Gender', value: gender },
+      { label: 'Phone', value: phone },
+      { label: 'Prepared By', value: preparedBy },
     ],
     safeBodyHtml: body,
     footer: 'This statement reflects the account at the generated time. For questions, contact the billing desk.',
@@ -187,6 +195,10 @@ export default function BillingTab({
   const [showServices, setShowServices] = useState(false);
   const [showBillingActions, setShowBillingActions] = useState(false);
   const [showFinancialReview, setShowFinancialReview] = useState(false);
+  // The billing line open in the slider, by id so it redraws as the line updates.
+  const [openLineId, setOpenLineId] = useState<string | null>(null);
+  // The line a payment or adjustment is being taken against, as it stood.
+  const [lineInHand, setLineInHand] = useState<AccountLine | null>(null);
 
   const patientName = `${patient.firstName} ${patient.surname}`;
   const canManageBilling = BILLING_ROLES.includes(currentUser?.role ?? '');
@@ -285,6 +297,7 @@ export default function BillingTab({
       await svc.createAdjustment({
         patientId: patient._id,
         adjustmentType: adjForm.adjustmentType,
+        encounterId: lineInHand?.encounterId,
         amount: adjForm.amount,
         reason: adjForm.reason.trim(),
         reasonCode: adjForm.reasonCode.trim() || undefined,
@@ -296,6 +309,7 @@ export default function BillingTab({
       showToast(t('billing.adjustmentCreated') || t('billing.adjustmentCreated'), 'success');
       setShowAdjustment(false);
       setAdjForm({ adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '' });
+      setLineInHand(null);
       reloadPayments();
       loadAll();
     } catch (err) {
@@ -390,7 +404,7 @@ export default function BillingTab({
       overview: data,
       balance: patientBalance,
     });
-    openIsolatedHtmlWindow(html, 'width=480,height=720', true);
+    openIsolatedHtmlWindow(html, '', true);
   };
 
   const loadAll = useCallback(async () => {
@@ -400,18 +414,20 @@ export default function BillingTab({
       return;
     }
     try {
-      const [paymentSvc, ledgerSvc] = await Promise.all([
+      const [paymentSvc, ledgerSvc, billingSvc] = await Promise.all([
         import('@/lib/services/payment-service'),
         import('@/lib/services/ledger-service'),
+        import('@/lib/services/billing-service'),
       ]);
 
-      const [payments, charges, plans, policies, refunds, ledgerEntries] = await Promise.all([
+      const [payments, charges, plans, policies, refunds, ledgerEntries, bills] = await Promise.all([
         paymentSvc.getPaymentsByPatient(patient._id, scope),
         paymentSvc.getChargesByPatient(patient._id, scope).catch(() => [] as ChargeDoc[]),
         paymentSvc.getPaymentPlansByPatient(patient._id, scope),
         paymentSvc.getPatientInsurancePolicies(patient._id, scope),
         paymentSvc.getRefundsByPatient(patient._id, scope).catch(() => [] as RefundDoc[]),
         ledgerSvc.getPatientLedger(patient._id, undefined, scope).catch(() => [] as LedgerEntryDoc[]),
+        billingSvc.getBillsByPatient(patient._id, scope).catch(() => [] as BillingDoc[]),
       ]);
 
       // Totals come from the ledger whenever it has entries: it is what the
@@ -451,6 +467,9 @@ export default function BillingTab({
         payments: postedPayments.sort((a: PaymentDoc, b: PaymentDoc) =>
           new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime()
         ),
+        allPayments: payments,
+        refunds,
+        bills,
         charges,
         plans,
         policies,
@@ -461,7 +480,7 @@ export default function BillingTab({
       console.error('Failed to load billing data:', err);
       setData({
         totalCharged: 0, totalPaid: 0, totalDiscount: 0, totalRefunds: 0, insurancePaid: 0, selfPaid: 0,
-        payments: [], charges: [], plans: [], policies: [], ledger: summariseLedger([]), ledgerEntries: [],
+        payments: [], allPayments: [], refunds: [], bills: [], charges: [], plans: [], policies: [], ledger: summariseLedger([]), ledgerEntries: [],
       });
     }
     setLoading(false);
@@ -507,60 +526,43 @@ export default function BillingTab({
   // "Search this table" — same client-side filter the bill detail page uses
   // for its line items, scoped to description/category.
   const chargeQuery = chargeSearch.trim().toLowerCase();
-  // The table lists what the totals above are summed from. With a ledger that
-  // is its entries — orders and prescriptions post there without a charge
-  // document, so a charge/payment-only list showed "SSP 3,500 billed" over an
-  // empty history. Each entry is filled in from the charge or payment it
-  // points at, when there is one. An account that predates the ledger falls
-  // back to its charge and payment documents, as the totals do.
-  const chargeById = new Map(d.charges.map(c => [c._id, c]));
-  const paymentById = new Map(d.payments.map(p => [p._id, p]));
-  const sourceRows = d.ledgerEntries.length > 0
-    ? d.ledgerEntries.map(e => {
-      const charge = e.referenceId ? chargeById.get(e.referenceId) : undefined;
-      const payment = e.referenceId ? paymentById.get(e.referenceId) : undefined;
-      return {
-        id: `ledger-${e._id}`, kind: e.entryType as string, date: e.createdAt,
-        description: e.description, detail: charge?.category || payment?.processedByName || '',
-        reference: payment?.reference || e.referenceId || e._id,
-        status: charge?.status || payment?.status || 'posted',
-        amount: Math.abs(Number(e.amount) || 0), currency: e.currency || 'SSP',
-        paymentId: payment?._id, chargeId: charge?._id,
-      };
-    })
-    : [
-      ...d.charges.map(c => ({ id: `charge-${c._id}`, kind: 'charge', date: c.serviceDate,
-        description: c.description, detail: c.category, reference: c._id, status: c.status,
-        amount: c.billedAmount, currency: 'SSP', paymentId: undefined as string | undefined, chargeId: c._id as string | undefined })),
-      ...d.payments.map(p => ({ id: `payment-${p._id}`, kind: 'payment', date: p.processedAt,
-        description: getMethodConfig(p.method).label, detail: p.processedByName,
-        reference: p.reference || p._id, status: p.status, amount: p.amount, currency: p.currency,
-        paymentId: p._id as string | undefined, chargeId: undefined as string | undefined })),
-    ];
-  const activity = sourceRows.filter(row => !chargeQuery || [row.description, row.detail, row.reference, row.status].some(value => value.toLowerCase().includes(chargeQuery)))
-    .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) || a.id.localeCompare(b.id));
+  // The table lists what the totals above are summed from, one line per visit:
+  // a payment or adjustment updates its visit's line instead of adding a row.
+  const lines = buildAccountLines({
+    entries: d.ledgerEntries, charges: d.charges, payments: d.allPayments, refunds: d.refunds, bills: d.bills,
+  });
+  const activity = lines.filter(line => !chargeQuery || line.searchText.includes(chargeQuery));
+  const openLine = lines.find(line => line.id === openLineId);
   const pageCount = Math.max(1, Math.ceil(activity.length / 10));
   const currentPage = Math.min(activityPage, pageCount);
   const visibleActivity = activity.slice((currentPage - 1) * 10, currentPage * 10);
   const addInsuranceLabel = t('insuranceSnapshot.addInsurance') || 'Add insurance';
 
-  // What can be done to one line of the account, from its own ⋮. A payment
-  // prints its receipt or is refunded; a charge is paid or adjusted. Refund
-  // and adjustment stay with the billing roles, as in Billing actions.
-  const activityActions = (row: (typeof activity)[number]): RowAction[] => {
-    const payment = row.paymentId ? paymentById.get(row.paymentId) : undefined;
-    const refundable = !!payment && refundablePayments.some(p => p._id === payment._id);
-    return [
-      ...(payment ? [{ key: 'receipt', label: t('billing.rowPrintReceipt'), onClick: async () => {
-        const { buildReceiptData, printReceipt } = await import('@/lib/services/receipt-service');
-        printReceipt(buildReceiptData(payment, currentUser?.hospitalName || currentUser?.hospital?.name, patient.hospitalNumber));
-      } }] : []),
-      ...(payment && canManageBilling ? [{ key: 'refund', label: t('billing.issueRefund'), disabled: !refundable, onClick: () => openRefund(payment._id) }] : []),
-      // A voided charge is owed by nobody: nothing to collect or adjust.
-      ...(row.kind === 'charge' && row.status !== 'voided' ? [{ key: 'pay', label: t('billing.collectPayment'), onClick: () => setShowPaymentPanel(true) }] : []),
-      ...(row.kind === 'charge' && row.status !== 'voided' && canManageBilling ? [{ key: 'adjust', label: t('billing.adjustmentWriteOff'), onClick: () => setShowAdjustment(true) }] : []),
-    ];
+  const paymentById = new Map(d.allPayments.map(p => [p._id, p]));
+  const printPaymentReceipt = async (paymentId: string) => {
+    const payment = paymentById.get(paymentId);
+    if (!payment) return;
+    const { buildReceiptData, printReceipt } = await import('@/lib/services/receipt-service');
+    printReceipt(buildReceiptData(payment, currentUser?.hospitalName || currentUser?.hospital?.name, patient.hospitalNumber));
   };
+  const collectFor = (line: AccountLine) => { setOpenLineId(null); setLineInHand(line); setShowPaymentPanel(true); };
+  const adjustFor = (line: AccountLine) => {
+    setOpenLineId(null);
+    setLineInHand(line);
+    setAdjForm(form => ({ ...form, amount: Math.max(0, line.balance) }));
+    setShowAdjustment(true);
+  };
+  // Nothing is owed on a voided line, and nothing on one already settled.
+  const canCollect = (line: AccountLine) => line.balance > 0 && line.status !== 'voided';
+
+  // What can be done to one line of the account, from its own ⋮. Reading it
+  // opens the slider; refunds are made from the payment inside it. Adjustments
+  // stay with the billing roles, as in Billing actions.
+  const lineActions = (line: AccountLine): RowAction[] => [
+    { key: 'view', label: t('billing.lineView'), onClick: () => setOpenLineId(line.id) },
+    ...(canCollect(line) ? [{ key: 'pay', label: t('billing.collectPayment'), onClick: () => collectFor(line) }] : []),
+    ...(canCollect(line) && canManageBilling ? [{ key: 'adjust', label: t('billing.adjustmentWriteOff'), onClick: () => adjustFor(line) }] : []),
+  ];
 
   return (
     <div className="bl-root">
@@ -651,19 +653,22 @@ export default function BillingTab({
         <div className="bl-table-wrap">
           <table className="tamam-table tamam-table--fixed tamam-table--activity">
             <thead><tr>
-              {['date', 'type', 'description', 'reference', 'status', 'amount'].map(column => <th key={column} className={column === 'amount' ? 'tamam-cell-amount' : undefined}>{t(`billing.activityColumn.${column}`)}</th>)}
+              {['date', 'description', 'status', 'billed', 'paid', 'balance'].map(column => <th key={column} className={['billed', 'paid', 'balance'].includes(column) ? 'tamam-cell-amount' : undefined}>{t(`billing.activityColumn.${column}`)}</th>)}
               <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr></thead>
             <tbody>
               {!visibleActivity.length ? <tr><td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}><div className="bl-empty"><Receipt size={28} /><p>{t('billing.activityEmpty')}</p></div></td></tr> :
-                visibleActivity.map(row => <tr key={row.id}>
-                  <td className="tamam-num">{formatDate(row.date)}</td>
-                  <td>{t(`billing.activityKind.${row.kind}`)}</td>
-                  <td>{row.description}{row.detail && <div className="tamam-cell-sub">{row.detail}</div>}</td>
-                  <td className="tamam-num bl-activity-reference" title={row.reference}>{row.reference}</td>
-                  <td><span className={activityBadge(row.status)}>{humanizeStatus(row.status)}</span></td>
-                  <td className="tamam-num tamam-cell-amount">{formatMoney(row.amount, { currency: row.currency })}</td>
-                  <td><RowActionsMenu ariaLabel={t('billing.rowActions', { description: row.description })} actions={activityActions(row)} /></td>
+                visibleActivity.map(line => <tr key={line.id} className="bl-line-row" onClick={() => setOpenLineId(line.id)}>
+                  <td className="tamam-num">{formatDate(line.date)}</td>
+                  <td>
+                    <button type="button" className="bl-line-open" onClick={event => { event.stopPropagation(); setOpenLineId(line.id); }}>{accountLineTitle(line, t)}</button>
+                    <div className="tamam-cell-sub">{[...line.categories, ...(formatDate(line.updatedAt) !== formatDate(line.date) ? [t('billing.lineUpdated', { date: formatDate(line.updatedAt) })] : [])].join(' · ')}</div>
+                  </td>
+                  <td><span className={activityBadge(line.status)}>{t(`billing.lineStatus.${line.status}`)}</span></td>
+                  <td className="tamam-num tamam-cell-amount">{formatMoney(line.charged, { currency: line.currency })}</td>
+                  <td className="tamam-num tamam-cell-amount">{formatMoney(line.paid - line.refunded, { currency: line.currency })}</td>
+                  <td className="tamam-num tamam-cell-amount">{formatMoney(line.balance, { currency: line.currency })}</td>
+                  <td><RowActionsMenu ariaLabel={t('billing.rowActions', { description: accountLineTitle(line, t) })} actions={lineActions(line)} /></td>
                 </tr>)}
             </tbody>
           </table>
@@ -734,15 +739,31 @@ export default function BillingTab({
           <SuperbillDraft sb={superbill} />
         </div>
       </FormSlider>}
+      {openLine && (
+        <BillingLinePanel
+          line={openLine}
+          patientName={patientName}
+          payments={paymentById}
+          refundableIds={new Set(canManageBilling ? refundablePayments.map(p => p._id) : [])}
+          onClose={() => setOpenLineId(null)}
+          onCollect={canCollect(openLine) ? () => collectFor(openLine) : undefined}
+          onAdjust={canCollect(openLine) && canManageBilling ? () => adjustFor(openLine) : undefined}
+          onPrintReceipt={printPaymentReceipt}
+          onRefund={paymentId => { setOpenLineId(null); openRefund(paymentId); }}
+        />
+      )}
       {showPaymentPanel && (
         <PaymentPanel
           patientId={patient._id}
           patientName={`${patient.firstName} ${patient.surname}`}
           hospitalNumber={patient.hospitalNumber}
-          amountDue={patientBalance}
-          encounterId={superbillEncounterId}
-          onSuccess={() => { setShowPaymentPanel(false); reloadPayments(); loadAll(); }}
-          onCancel={() => setShowPaymentPanel(false)}
+          amountDue={lineInHand?.balance ?? patientBalance}
+          encounterId={lineInHand ? undefined : superbillEncounterId}
+          allocation={lineInHand ? { encounterId: lineInHand.encounterId, chargeId: lineInHand.chargeRef } : undefined}
+          // The payment lands on the line it was taken against: back to that
+          // line, updated, with its receipt in the updates.
+          onSuccess={() => { setShowPaymentPanel(false); if (lineInHand) setOpenLineId(lineInHand.id); setLineInHand(null); reloadPayments(); loadAll(); }}
+          onCancel={() => { setShowPaymentPanel(false); setLineInHand(null); }}
         />
       )}
 
@@ -818,10 +839,11 @@ export default function BillingTab({
       {showAdjustment && (
         <FormSlider
           title={t('billing.adjustmentWriteOff')}
+          subtitle={lineInHand ? accountLineTitle(lineInHand, t) : undefined}
           width={460}
-          onClose={() => setShowAdjustment(false)}
+          onClose={() => { setShowAdjustment(false); setLineInHand(null); }}
           footer={<>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAdjustment(false)}>{t('common.cancel')}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowAdjustment(false); setLineInHand(null); }}>{t('common.cancel')}</button>
               <button type="button" className="btn btn-primary" onClick={handleCreateAdjustment} disabled={processingAdj}>
                 {processingAdj ? t('common.processing') : t('common.save')}
               </button>

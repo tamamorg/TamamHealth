@@ -24,21 +24,10 @@ import type { VisitReasonDoc } from '@/lib/db-types-booking';
 import type { AppointmentType } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { APPOINTMENT_TYPE_OPTIONS } from '@/lib/visits/visit-details';
 
 const DURATIONS = [10, 15, 20, 30, 40, 45, 60, 90];
 
-
-const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
-  { value: 'general', label: 'General consultation' },
-  { value: 'follow_up', label: 'Follow-up' },
-  { value: 'specialist', label: 'Specialist' },
-  { value: 'anc', label: 'Antenatal' },
-  { value: 'immunization', label: 'Immunization' },
-  { value: 'lab', label: 'Laboratory' },
-  { value: 'surgical', label: 'Surgical' },
-  { value: 'dental', label: 'Dental' },
-  { value: 'mental_health', label: 'Mental health' },
-];
 
 export default function VisitTypesSection({ facilityId: facilityIdProp }: { facilityId?: string }) {
   const { t } = useTranslation();
@@ -209,7 +198,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 onChange={e => patch(reason._id, { appointmentType: e.target.value as AppointmentType })}
                 style={{ width: 'auto', minWidth: 150 }}
               >
-                {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {APPOINTMENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
               </Select>
 
               <button

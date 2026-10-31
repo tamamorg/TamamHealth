@@ -1,5 +1,6 @@
 'use client';
 
+import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
 import { Clock, Eye, ClipboardList, CheckCircle2, LogIn, Send, LogOut, AlertTriangle, X } from '@/components/icons/lucide';
 import { ACCENT } from '../shared';
 import ListSearch from '../ListSearch';
@@ -89,7 +90,7 @@ export function TriageRecentList({ f }: { f: TriageFormState }) {
                         {lockedPatientId ? (
                           <span className="ehr-queue-name">{shortenPersonName(ti.patientName)}</span>
                         ) : (
-                          <button type="button" className="ehr-queue-name" onClick={() => router.push(`/triage/${ti.patientId}`)} title={`Triage ${ti.patientName}`}>
+                          <button type="button" className="ehr-queue-name" onClick={() => router.push(chartFormHref(ti.patientId, 'triage-form'))} title={`Triage ${ti.patientName}`}>
                             {shortenPersonName(ti.patientName)}
                           </button>
                         )}

@@ -28,8 +28,10 @@ describe('appointment calendar role actions', () => {
     expect(page).toContain("t('appointments.startTriage')");
     expect(page).toContain("t('appointments.openChart')");
     expect(page).toContain('`/consultation?patientId=${encodeURIComponent(apt.patientId)}`');
-    // Triage opens over the calendar (TriageSlider), not on the triage page.
-    expect(page).toContain('<TriageSlider');
+    // Triage opens in the patient's chart with the triage form on the right —
+    // not a slider over the calendar, not the standalone triage page.
+    expect(page).toContain("chartFormHref(apt.patientId, 'triage-form')");
+    expect(page).not.toContain('<TriageSlider');
     expect(page).not.toContain('`/triage/${encodeURIComponent(apt.patientId)}`');
     expect(page).toContain('`/patients/${encodeURIComponent(apt.patientId)}`');
     expect(page.indexOf('if (calendarClinicalAction)')).toBeLessThan(page.indexOf('<AppointmentEditModal'));

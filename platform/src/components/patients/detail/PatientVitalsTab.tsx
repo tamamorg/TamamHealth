@@ -7,6 +7,7 @@ import type { MedicalRecordDoc } from '@/lib/db-types';
 import ChartSection from '@/components/ehr/chart/ChartSection';
 import { List, LineChart } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { clickable } from '@/lib/a11y';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
@@ -41,7 +42,7 @@ function Reading({ value, flag }: { value: ReactNode; flag?: VitalDisplayFlag })
     </span>
   );
 }
-export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsView, canConsult, canRecordVitalEvents, setCorrectingVitalsRecord, setShowNurseVitals, setVitalsView, recordsWithTriageVitals, t, vitalsTimeline, records, onVitalsChanged }: {
+export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsView, canConsult, canRecordVitalEvents, setCorrectingVitalsRecord, onViewReading, setShowNurseVitals, setVitalsView, recordsWithTriageVitals, t, vitalsTimeline, records, onVitalsChanged }: {
   /** FRACTIONAL years, for the paediatric bands; omitted → adult ranges. */
   patientAgeYears?: number;
   /** Active pregnancy: IITT's blood-pressure rule is a pregnancy rule. */
@@ -49,7 +50,9 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
   vitalsView: "table" | "flowsheet";
   canConsult: boolean;
   canRecordVitalEvents: boolean;
-  setCorrectingVitalsRecord: Dispatch<SetStateAction<MedicalRecordDoc | undefined>>;
+  setCorrectingVitalsRecord: (record: MedicalRecordDoc | undefined) => void;
+  /** A saved reading opens locked. */
+  onViewReading: (record: MedicalRecordDoc) => void;
   setShowNurseVitals: Dispatch<SetStateAction<boolean>>;
   setVitalsView: (view: "table" | "flowsheet") => void;
   recordsWithTriageVitals: MedicalRecordDoc[];
@@ -168,10 +171,12 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
                         : entry.source === 'Nursing'
                           ? { background: 'rgba(166, 83, 0,0.12)', color: 'var(--accent-purple)' }
                           : { background: 'rgba(15, 160, 106,0.14)', color: 'var(--color-success)' };
+                      const openSource = () => router.push(`${pathname}?tab=history&focus=${encodeURIComponent(entry.id)}`);
+                      const openRow = () => (nursingRecord ? onViewReading(nursingRecord) : openSource());
                       return (
-                        <tr key={entry.id}>
+                        <tr key={entry.id} className="tamam-clickable-row" {...clickable(openRow, { label: t('chart.vitalsOpenRow', { date: formatDate(entry.at) }) })}>
                           <td>{formatDate(entry.at)}</td>
-                          <td><span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full" style={sourceStyle}>{entry.source}</span></td>
+                          <td><span className="tamam-panel-badge tamam-panel-badge--muted" style={sourceStyle}>{entry.source}</span></td>
                           <td className="tamam-num"><Reading value={entry.temperature ?? '—'} flag={flags.temperature} /></td>
                           <td className="tamam-num"><Reading value={hasBp ? `${entry.systolic}/${entry.diastolic}` : '—'} flag={worst(flags.systolic, flags.diastolic)} /></td>
                           <td className="tamam-num"><Reading value={entry.pulse ?? '—'} flag={flags.pulse} /></td>
@@ -181,18 +186,21 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
                           <td className="tamam-num">{entry.bmi ?? '—'}</td>
                           <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{(entry.facility || '').replace(' Hospital', '').replace(' Teaching', '') || '—'}</td>
                           <td>
-                            {/* Edit opens the correction form; Delete marks the
-                                reading entered in error (a correction with no
+                            {/* View is the locked reading. Edit opens the correction
+                                form; Delete marks the reading entered in error (a correction with no
                                 values — it supersedes the original, which is
                                 kept for the audit trail, never destroyed).
                                 Only nursing readings: consult and triage vitals
                                 belong to their own notes and forms. */}
-                            {nursingRecord && (canConsult || canRecordVitalEvents) ? (
+                            {nursingRecord ? (
                               <RowActionsMenu
                                 ariaLabel={t('chart.vitalsRowActions')}
                                 actions={[
-                                  { key: 'edit', label: t('chart.vitalsEdit'), onClick: () => { setCorrectingVitalsRecord(nursingRecord); setShowNurseVitals(true); } },
-                                  { key: 'delete', label: t('chart.vitalsDelete'), tone: 'danger', onClick: () => { void removeReading(nursingRecord); } },
+                                  { key: 'view', label: t('chart.vitalsViewRow'), onClick: () => onViewReading(nursingRecord) },
+                                  ...(canConsult || canRecordVitalEvents ? [
+                                    { key: 'edit', label: t('chart.vitalsEdit'), onClick: () => { setCorrectingVitalsRecord(nursingRecord); setShowNurseVitals(true); } },
+                                    { key: 'delete', label: t('chart.vitalsDelete'), tone: 'danger' as const, onClick: () => { void removeReading(nursingRecord); } },
+                                  ] : []),
                                 ]}
                               />
                             ) : (
@@ -202,7 +210,7 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
                               <RowActionsMenu
                                 ariaLabel={t('chart.vitalsRowActions')}
                                 actions={[
-                                  { key: 'open', label: t('chart.vitalsOpenSource'), onClick: () => router.push(`${pathname}?tab=history&focus=${encodeURIComponent(entry.id)}`) },
+                                  { key: 'open', label: t('chart.vitalsOpenSource'), onClick: openSource },
                                 ]}
                               />
                             )}

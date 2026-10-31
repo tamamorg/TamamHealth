@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDashboardRailDock } from '@/lib/hooks/useDashboardRailDock';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc } from '@/lib/db-types';
 import {
@@ -25,6 +25,7 @@ import EhrMissionCard from './EhrMissionCard';
 import EhrPanelTitle from './EhrPanelTitle';
 import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import StationActionPill, { type StationAction } from '@/components/ehr/StationActionPill';
 import { initials, stateTint, AVATAR_TINT_NEUTRAL, abbreviateProviderName, shortenPersonName } from '@/lib/patient-utils';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
 import EhrStageDonut from '@/components/ehr/EhrStageDonut';
@@ -44,14 +45,16 @@ import { isTerminal } from '@/lib/clinical-flow/encounter-journey';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import FormSlider from '@/components/overlay/FormSlider';
-import TriageSlider from '@/components/nurse/TriageSlider';
+import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
+import CheckInSlider from '@/components/appointments/CheckInSlider';
+import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
+import { useVisitStatusChange } from '@/lib/hooks/useVisitStatusChange';
 import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import EhrVisitPopup, { EhrQueueMoveDialog, waitLabel } from '@/components/ehr/EhrVisitPopup';
 import EhrVisitActionDialog, { type VisitActionKind } from '@/components/ehr/EhrVisitActionDialog';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
-import PatientDispenseModal from '@/components/pharmacy/PatientDispenseModal';
 import AppointmentStatusPillSelect from '@/components/appointments/AppointmentStatusPillSelect';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import Select from '@/components/Select';
@@ -64,7 +67,6 @@ import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useAuth } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { isPathAllowed } from '@/lib/role-routes';
-import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import { buildQueueFromTriage, STAGE_LABELS, type QueueEntry } from '@/lib/services/patient-queue-service';
 import type { TriageDoc } from '@/lib/db-types';
 import { withReturnTo } from '@/lib/navigation/return-to';
@@ -73,16 +75,10 @@ import { useSettings } from '@/lib/settings/SettingsProvider';
 import { exceedsTargetWait } from '@/lib/clinical-flow/payment-model';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { formatPhoneShared } from '@/lib/field-formats';
-import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { buildClinicalPrintDocument, printFields } from '@/lib/print-document';
 import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
-/**
- * How many greeting-row actions are written out before the rest go behind
- * "More". The row is a fixed ~195px column in the header grid, which is two
- * labelled buttons wide.
- */
-const INLINE_HEADER_ACTIONS = 2;
 
 export type WorklistPatient = {
   _id: string;
@@ -126,6 +122,12 @@ export type WorklistPatient = {
     lane: AppointmentStatusGroup;
     /** Where Open chart lands: the chart with the station's form up. */
     chartHref?: string;
+    /** The row's own key, when a patient has a row in two lanes (to fill and dispensed). */
+    rowKey?: string;
+    /** The order the row's pill works, when the station uses a slider. */
+    openId?: string;
+    /** What the pill's dropdown offers next. None: the pill only opens. */
+    actions?: StationAction[];
   };
 };
 
@@ -162,6 +164,8 @@ export type OutstandingEntry = {
   actionLabel?: string;
   actionHref?: string;
   actionKind?: 'navigate' | 'complete-follow-up';
+  /** The order this opens, when the station works it in a slider. */
+  openId?: string;
 };
 
 export type OutstandingItem = {
@@ -335,11 +339,13 @@ export function buildUnifiedPatientRows({
   }
 
   const rows: UnifiedPatientRow[] = patients.map(patient => {
-    const appointment = appointmentByPatient.get(patient._id) || appointmentByName.get(patient.name.toLowerCase()) || null;
+    // A station row reports the station's work: a booking today moves the visit
+    // (the row's panel carries that), never which lane the work sits in.
+    const appointment = patient.station ? null : (appointmentByPatient.get(patient._id) || appointmentByName.get(patient.name.toLowerCase()) || null);
     const status = appointment?.status || (patient.triagePriority === 'RED' ? 'checked_in' : 'scheduled');
     const department = patient.division || patient.ward?.split('-')[0] || appointment?.department || 'OPD';
     return {
-      id: patient._id,
+      id: patient.station?.rowKey ?? patient._id,
       photoUrl: patient.photoUrl,
       patient,
       appointment,
@@ -712,6 +718,8 @@ export default function EhrClinicalDashboard({
   acuityDonut,
   railCards,
   stationDetail,
+  onStationOpen,
+  railAction,
   canWriteNotes = true,
 }: {
   clinicianName: string;
@@ -750,10 +758,17 @@ export default function EhrClinicalDashboard({
   railCards?: ReactNode;
   /** The station's section at the top of a row's expanded panel. */
   stationDetail?: (patientId: string) => ReactNode;
+  /** The station's main action, in the left column where Book appointment sits. */
+  railAction?: { label: string; icon: typeof Plus; run: () => void };
+  /** Opens one order in the station's slider; rows without it stay read-only pills. */
+  onStationOpen?: (orderId: string, action?: string) => void;
   /** False for roles that do not write clinical notes (lab, pharmacy, radiology). */
   canWriteNotes?: boolean;
 }) {
   const router = useRouter();
+  // Sliders dock over the right panel on a dashboard (see the hook).
+  const rightRailRef = useRef<HTMLElement>(null);
+  useDashboardRailDock(rightRailRef);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
@@ -802,13 +817,27 @@ export default function EhrClinicalDashboard({
   // Overlay the live docs onto the prop list (matched by _id) so status and
   // timestamps are always current, while which appointments belong on the
   // board stays the parent's decision.
-  const { appointments: liveAppointments, updateStatus: updateAppointmentStatus } = useAppointments();
+  const { appointments: liveAppointments } = useAppointments();
   const appointments = useMemo(() => {
     if (liveAppointments.length === 0) return propAppointments;
     const liveById = new Map(liveAppointments.map(a => [a._id, a]));
     return propAppointments.map(a => liveById.get(a._id) || a);
   }, [propAppointments, liveAppointments]);
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  // A station row (lab, pharmacy, radiology, nutrition) is the station's work
+  // item, not the visit — but the patient's visit today still moves from it,
+  // within the station's rungs (In progress, Completed). The newest live
+  // booking of the day per patient is the visit the station's pill moves.
+  const todaysVisitByPatient = useMemo(() => {
+    const map = new Map<string, AppointmentDoc>();
+    for (const appointment of liveAppointments) {
+      if (appointment.appointmentDate !== todayIso || !appointment.patientId) continue;
+      if (['cancelled', 'no_show', 'rescheduled'].includes(appointment.status)) continue;
+      const held = map.get(appointment.patientId);
+      if (!held || (appointment.appointmentTime || '') > (held.appointmentTime || '')) map.set(appointment.patientId, appointment);
+    }
+    return map;
+  }, [liveAppointments, todayIso]);
   const selectedDate = clinicalDashboardDay(search, todayIso);
   const worklistFilter = clinicalDashboardLane(search);
   const outstandingView = searchParams.get('outstanding');
@@ -897,7 +926,6 @@ export default function EhrClinicalDashboard({
   // steps in a dialog over this page.
   const [findPatientOpen, setFindPatientOpen] = useState(false);
   const [findPatientQuery, setFindPatientQuery] = useState('');
-  const [dispensePatient, setDispensePatient] = useState<{ id: string; name: string } | null>(null);
   // "Book appointment" — the booking form as a dialog; it used to route to
   // /appointments?new=1 and leave the clinician on the schedule module.
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -933,11 +961,10 @@ export default function EhrClinicalDashboard({
 
   const openFoundPatient = (patient: (typeof findPatientResults)[number]) => {
     setFindPatientOpen(false);
-    // Their prescriptions and the dispensing steps open here, over the
-    // worklist — the pharmacy workbench was a whole role dashboard loaded to
-    // answer one question about one patient.
-    const name = [patient.firstName, patient.middleName, patient.surname].filter(Boolean).join(' ');
-    setDispensePatient({ id: patient._id, name });
+    // Their prescriptions and the dispensing steps open in the patient's
+    // chart, in its dispensing form — the chart is where one patient's work
+    // happens, not a modal over the worklist.
+    router.push(chartFormHref(patient._id, 'dispense'));
   };
 
   const activeOutstanding = outstandingView
@@ -973,6 +1000,7 @@ export default function EhrClinicalDashboard({
 
   const openOutstandingEntry = (entry: OutstandingEntry) => {
     const appointment = appointments.find(a => a._id === entry.id);
+    if (entry.openId && onStationOpen) { onStationOpen(entry.openId); return; }
     if (entry.href) { router.push(entry.href); return; }
     // No href — never let the click dead-end: open the matching appointment,
     // else the patient's chart (resolved by name), else say so out loud.
@@ -1148,29 +1176,15 @@ export default function EhrClinicalDashboard({
   const isNurseFamily = currentUser?.role === 'nurse' || currentUser?.role === 'midwife'
     || currentUser?.role === 'triage_nurse' || currentUser?.role === 'rooming_nurse';
 
-  // Quick links in the header strip.
-  // Deliberately the destinations the top rail does NOT already carry: the rail
-  // keeps four shortcuts, so repeating them here would spend the widest row on
-  // the page on buttons that already exist two centimetres above it. These are
-  // the next ones down the same priority order, which for a clinician is where
-  // Referrals/Wards land and for a nurse the ward-side pages.
-  const quickNavItems = useMemo(() => {
-    const roleConfig = currentUser ? getRoleConfig(currentUser.role) : null;
-    if (!roleConfig) return [];
-    const navItems = uniqueAllowedNavItems(roleConfig.navItems || [], roleConfig.allowedRoutes || []);
-    return getPageHeaderNavItems(navItems, currentUser?.role, roleConfig.defaultDashboard || '/dashboard');
-  }, [currentUser]);
   /**
-   * The greeting row's actions, in priority order.
-   *
-   * Dispense and Print are the two this dashboard is opened to press; the
-   * role's nav shortcuts sit behind them. Assembled here rather than inline so
-   * the count is knowable — the row shows the first two and hands the rest to
-   * a More menu, and it cannot do that while the buttons are three separate
-   * JSX branches.
+   * The greeting row's actions: what this dashboard is opened to press —
+   * Dispense, Print, and the station's own (Supplies, Batch entry, Inventory).
+   * The role's menu destinations are not repeated here; they are one press
+   * away in the menu, and repeating them is what pushed the row into a More.
    */
   const headerActions = useMemo(() => [
-    ...(canDispense ? [{
+    // A pharmacist presses it from the left column, where Book appointment sits.
+    ...(canDispense && canBookAppointments ? [{
       key: 'dispense',
       label: 'Dispense',
       icon: Pill,
@@ -1183,68 +1197,14 @@ export default function EhrClinicalDashboard({
       run: () => setPrintOpen(true),
     },
     ...(extraHeaderActions ?? []),
-    ...quickNavItems.map(item => ({
-      key: item.href,
-      label: item.label,
-      icon: item.icon,
-      run: () => router.push(item.href),
-    })),
-  ], [canDispense, extraHeaderActions, quickNavItems, router, setFindPatientQuery, setFindPatientOpen, setPrintOpen]);
+  ], [canBookAppointments, canDispense, extraHeaderActions, setFindPatientQuery, setFindPatientOpen, setPrintOpen]);
 
-  /* The More menu's open state, and the outside-click that closes it. */
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [moreMenuPosition, setMoreMenuPosition] = useState<{
-    top: number;
-    left: number;
-    maxHeight: number;
-  } | null>(null);
-  const moreRef = useRef<HTMLDivElement>(null);
-  const headerMoreMenuRef = useRef<HTMLDivElement>(null);
-  const placeMoreMenu = useCallback(() => {
-    const rect = moreRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const viewportMargin = 8;
-    const menuWidth = window.matchMedia('(min-width: 640px) and (max-width: 1279px)').matches
-      ? 176
-      : 190;
-    setMoreMenuPosition({
-      top: rect.bottom + 6,
-      left: Math.max(
-        viewportMargin,
-        Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportMargin),
-      ),
-      maxHeight: Math.max(120, window.innerHeight - rect.bottom - 14),
-    });
-  }, []);
+  // The left column's one button: the station's own main action, else Dispense
+  // for a role that cannot book.
+  const columnAction = railAction ?? (canDispense && !canBookAppointments
+    ? { label: 'Dispense', icon: Pill, run: () => { setFindPatientQuery(''); setFindPatientOpen(true); } }
+    : undefined);
 
-  // The schedule shell must clip its three scrolling panels on tablet. Measure
-  // the trigger and portal the menu to <body>, so that necessary clipping can
-  // never cut the menu off behind the Outstanding Items rail.
-  useLayoutEffect(() => {
-    if (!moreOpen) return;
-    placeMoreMenu();
-  }, [moreOpen, placeMoreMenu]);
-
-  useEffect(() => {
-    if (!moreOpen) return;
-    const onDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (moreRef.current?.contains(target) || headerMoreMenuRef.current?.contains(target)) return;
-      setMoreOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false); };
-    const onViewportChange = () => placeMoreMenu();
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    window.addEventListener('resize', onViewportChange);
-    window.addEventListener('scroll', onViewportChange, true);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('resize', onViewportChange);
-      window.removeEventListener('scroll', onViewportChange, true);
-    };
-  }, [moreOpen, placeMoreMenu]);
 
   // "Create clinical note" on a visit card — the appointment already carries
   // the patient, provider and date the note header needs.
@@ -1371,7 +1331,9 @@ export default function EhrClinicalDashboard({
 
   const [moveEntry, setMoveEntry] = useState<QueueEntry | null>(null);
   // Triage opens as a slider over the worklist, not on its own page.
-  const [triageFor, setTriageFor] = useState<{ patientId: string; name: string } | null>(null);
+  // A status pill pick, waiting in its slider (CheckInSlider / StatusChangeSlider).
+  const [statusPick, setStatusPick] = useState<{ appointment: AppointmentDoc; next: AppointmentStatus } | null>(null);
+  const visitStatusChange = useVisitStatusChange();
   const [moveSaving, setMoveSaving] = useState(false);
   // The triage behind the open Move dialog — what decides whether the dialog
   // may offer Emergency care as a destination.
@@ -1643,30 +1605,32 @@ export default function EhrClinicalDashboard({
     const appointment = openAppointment;
     const body = `
       <section class="section keep">
-        <h2 class="section-title">Visit details</h2>
-        <table><tbody>
-          <tr><td class="muted">Reason for visit</td><td><strong>${escapeHtml(appointment.reason || typeLabel(appointment.appointmentType))}</strong></td></tr>
-          <tr><td class="muted">Visit type</td><td>${escapeHtml(typeLabel(appointment.appointmentType))}</td></tr>
-          <tr><td class="muted">Priority</td><td><span class="status">${escapeHtml(typeLabel(appointment.priority))}</span></td></tr>
-          <tr><td class="muted">Department / room</td><td>${escapeHtml([appointment.department || 'OPD', appointment.room].filter(Boolean).join(' · '))}</td></tr>
-          <tr><td class="muted">Provider</td><td>${escapeHtml(appointment.providerName || clinicianName || 'Unassigned')}</td></tr>
-          ${appointment.staffName ? `<tr><td class="muted">Supporting staff</td><td>${escapeHtml(appointment.staffName)}</td></tr>` : ''}
-          ${appointment.patientPhone ? `<tr><td class="muted">Patient phone</td><td>${escapeHtml(formatPhoneShared(appointment.patientPhone))}</td></tr>` : ''}
-        </tbody></table>
+        <h2 class="section-title">Visit Details</h2>
+        ${printFields([
+          { label: 'Reason for Visit', value: appointment.reason || typeLabel(appointment.appointmentType) },
+          { label: 'Visit Type', value: typeLabel(appointment.appointmentType) },
+          { label: 'Priority', value: typeLabel(appointment.priority) },
+          { label: 'Department / Room', value: [appointment.department || 'OPD', appointment.room].filter(Boolean).join(' · ') },
+          { label: 'Provider', value: appointment.providerName || clinicianName || 'Unassigned' },
+          { label: 'Supporting Staff', value: appointment.staffName },
+          { label: 'Time', value: appointmentTimeRange(appointment) },
+          { label: 'Status', value: statusLabel(appointment.status) },
+          { label: 'Booked By', value: appointment.bookedByName },
+          { label: 'Source', value: appointment.source ? typeLabel(appointment.source) : 'Staff booking' },
+          { label: 'Appointment ID', value: appointment._id },
+        ])}
       </section>
-      ${appointment.notes ? `<section class="section"><h2 class="section-title">Booking notes</h2><p class="notice">${escapeHtml(appointment.notes).replace(/\n/g, '<br>')}</p></section>` : ''}
+      ${appointment.notes ? `<section class="section"><h2 class="section-title">Booking Notes</h2><p class="notice">${escapeHtml(appointment.notes).replace(/\n/g, '<br>')}</p></section>` : ''}
       ${appointment.cancelledReason ? `<section class="section"><h2 class="section-title">Cancellation</h2><p class="notice"><strong>Reason:</strong> ${escapeHtml(appointment.cancelledReason)}${appointment.cancelledByName ? `<br><strong>Recorded by:</strong> ${escapeHtml(appointment.cancelledByName)}` : ''}</p></section>` : ''}`;
     const html = buildClinicalPrintDocument({
       title: appointment.patientName,
-      documentLabel: 'Appointment record',
+      documentLabel: 'Appointment Record',
+      date: appointment.appointmentDate,
       facilityName: appointment.facilityName || currentUser?.hospitalName,
+      metaTitle: 'Patient Information',
       meta: [
-        { label: 'Appointment ID', value: appointment._id },
-        { label: 'Date', value: formatAppointmentDate(appointment.appointmentDate) },
-        { label: 'Time', value: appointmentTimeRange(appointment) },
-        { label: 'Status', value: statusLabel(appointment.status) },
-        { label: 'Booked by', value: appointment.bookedByName || '—' },
-        { label: 'Source', value: appointment.source ? typeLabel(appointment.source) : 'Staff booking' },
+        { label: 'Patient Name', value: appointment.patientName },
+        { label: 'Patient Phone', value: appointment.patientPhone ? formatPhoneShared(appointment.patientPhone) : '' },
       ],
       safeBodyHtml: body,
       footer: 'Appointment record for scheduling and care coordination. This is not a clinical encounter note.',
@@ -1805,6 +1769,14 @@ export default function EhrClinicalDashboard({
     <div className="ehr-schedule-shell">
       <section className="ehr-schedule-header ehr-clinical-dashboard-header">
         <div className="ehr-clinical-dashboard-tabs">
+          {columnAction && !canBookAppointments && (
+            <div className="ehr-segmented ehr-segmented-single">
+              <button type="button" className="active" aria-label={columnAction.label} onClick={columnAction.run}>
+                <columnAction.icon className="w-4 h-4" />
+                <span>{columnAction.label}</span>
+              </button>
+            </div>
+          )}
           {canBookAppointments && (
             <div className="ehr-segmented ehr-segmented-single">
               {/* "Book appointment" at desktop, "Appointment" once the first
@@ -1836,17 +1808,9 @@ export default function EhrClinicalDashboard({
             </div>
           </div>
         </div>
-        {/* Two actions written out, the rest behind More.
-
-            The row is a fixed ~195px column in this header's grid, and its
-            contents are role-derived: `quickNavItems` adds however many
-            shortcuts the signed-in role's nav yields on top of Dispense and
-            Print, so a doctor could put five labelled buttons in a column
-            sized for two. They compressed into each other rather than
-            wrapping (the row is nowrap, which is what keeps it on the
-            greeting's line). Two is what the column actually fits. */}
+        {/* The dashboard's own actions — no More, no menu shortcuts. */}
         <div className="ehr-schedule-actions">
-          {headerActions.slice(0, INLINE_HEADER_ACTIONS).map(action => {
+          {headerActions.map(action => {
             const ActionIcon = action.icon;
             return (
               <button key={action.key} type="button" aria-label={action.label} onClick={action.run}>
@@ -1854,43 +1818,6 @@ export default function EhrClinicalDashboard({
               </button>
             );
           })}
-          {headerActions.length > INLINE_HEADER_ACTIONS && (
-            <div className="ehr-header-more" ref={moreRef}>
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={moreOpen}
-                aria-label={`More actions (${headerActions.length - INLINE_HEADER_ACTIONS})`}
-                onClick={() => setMoreOpen(open => !open)}
-                data-action="header-more"
-              >
-                <MoreVertical className="w-4 h-4" /> More
-              </button>
-              {moreOpen && moreMenuPosition && typeof document !== 'undefined' && createPortal(
-                <div
-                  ref={headerMoreMenuRef}
-                  className="ehr-header-more-menu"
-                  role="menu"
-                  style={moreMenuPosition}
-                >
-                  {headerActions.slice(INLINE_HEADER_ACTIONS).map(action => {
-                    const ActionIcon = action.icon;
-                    return (
-                      <button
-                        key={action.key}
-                        type="button"
-                        role="menuitem"
-                        onClick={() => { setMoreOpen(false); action.run(); }}
-                      >
-                        <ActionIcon className="w-4 h-4" /> {action.label}
-                      </button>
-                    );
-                  })}
-                </div>,
-                document.body,
-              )}
-            </div>
-          )}
         </div>
       </section>
 
@@ -2312,18 +2239,28 @@ export default function EhrClinicalDashboard({
                                 className={pillClass}
                                 ariaLabel={`Status for ${row.name}`}
                                 role={currentUser?.role}
-                                onChange={async next => {
-                                  try {
-                                    await updateAppointmentStatus(row.appointment!._id, next);
-                                  } catch (error) {
-                                    showToast(describeError(error, t('msg.visitStatusNotChanged')), 'error');
-                                  }
-                                }}
+                                // Every pick opens a slider: check-in asks the
+                                // visit questions, any other rung confirms.
+                                onChange={next => setStatusPick({ appointment: row.appointment!, next })}
                               />
                             );
-                          })() : (
-                            <span className={`appointment-status-pill ${stationPillClass(row.patient?.station?.statusTone)}`}>{columns.statusText}</span>
-                          )}
+                          })() : (<>
+                            {/* One pill: the station's. It opens the order in the
+                                slider; the visit's own status sits in the row's
+                                panel, not stacked under this one. */}
+                            <StationActionPill
+                              label={columns.statusText}
+                              className={stationPillClass(row.patient?.station?.statusTone)}
+                              actions={row.patient?.station?.actions}
+                              ariaLabel={`Next step for ${row.name}`}
+                              onPick={row.patient?.station?.openId && onStationOpen
+                                ? action => onStationOpen(row.patient!.station!.openId!, action)
+                                : undefined}
+                              onOpen={row.patient?.station?.openId && onStationOpen
+                                ? () => onStationOpen(row.patient!.station!.openId!)
+                                : undefined}
+                            />
+                          </>)}
                           <small>{columns.statusSubtext}</small>
                         </div>
                       </div>
@@ -2349,9 +2286,27 @@ export default function EhrClinicalDashboard({
                               : undefined}
                             onMove={columns.entry && canWriteTriage ? () => { setVisitRow(null); setMoveEntry(columns.entry); } : undefined}
                             onOpenChart={row.patientId ? () => router.push(row.patient?.station?.chartHref || `/patients/${row.patientId}`) : undefined}
-                            stationBody={row.patientId ? stationDetail?.(row.patientId) : undefined}
+                            stationBody={row.patientId ? (<>
+                              {stationDetail?.(row.patientId)}
+                              {/* Finished work carries no visit progress. */}
+                              {row.patient?.station && row.patient.station.lane !== 'finished' && todaysVisitByPatient.has(row.patientId) && (() => {
+                                const visit = todaysVisitByPatient.get(row.patientId!)!;
+                                return (
+                                  <div className="ehr-visit-pop-row">
+                                    <span className="ehr-visit-pop-label">{t('dashboard.visitStatus')}</span>
+                                    <AppointmentStatusPillSelect
+                                      status={visit.status}
+                                      className="status-scheduled"
+                                      ariaLabel={`Visit status for ${row.name}`}
+                                      role={currentUser?.role}
+                                      onChange={next => setStatusPick({ appointment: visit, next })}
+                                    />
+                                  </div>
+                                );
+                              })()}
+                            </>) : undefined}
                             onStartTriage={row.patientId && canTriage && (!columns.triage || columns.triage.status === 'pending' || columns.triage.status === 'seen')
-                              ? () => { setVisitRow(null); setTriageFor({ patientId: row.patientId!, name: row.name }); }
+                              ? () => { setVisitRow(null); router.push(chartFormHref(row.patientId!, 'triage-form')); }
                               : undefined}
                             onEscalate={canWriteTriage && canEscalateVisit(columns.triage)
                               ? () => setVisitAction({ kind: 'escalate', triage: columns.triage! })
@@ -2394,8 +2349,26 @@ export default function EhrClinicalDashboard({
             </Modal>
           )}
 
-          {triageFor && (
-            <TriageSlider patientId={triageFor.patientId} patientName={triageFor.name} onClose={() => setTriageFor(null)} />
+          {statusPick && statusPick.next === 'checked_in'
+            && !['checked_in', 'in_progress', 'completed'].includes(statusPick.appointment.status) && (
+            <CheckInSlider appointment={statusPick.appointment} onClose={() => setStatusPick(null)} />
+          )}
+          {statusPick && !(statusPick.next === 'checked_in'
+            && !['checked_in', 'in_progress', 'completed'].includes(statusPick.appointment.status)) && (
+            <StatusChangeSlider
+              patientName={statusPick.appointment.patientName}
+              appointmentTime={statusPick.appointment.appointmentTime}
+              from={statusPick.appointment.status}
+              to={statusPick.next}
+              onClose={() => setStatusPick(null)}
+              // The one visit-status write path (useVisitStatusChange): the
+              // same role rules, open-visit check and messages as every other
+              // dashboard's pill.
+              onConfirm={() => visitStatusChange.change(
+                { appointmentId: statusPick.appointment._id, patientName: statusPick.appointment.patientName, status: statusPick.appointment.status },
+                statusPick.next,
+              )}
+            />
           )}
           {moveEntry && (
             <EhrQueueMoveDialog
@@ -2470,16 +2443,6 @@ export default function EhrClinicalDashboard({
             </Modal>
           )}
 
-          {/* Same reasoning as the search modal above: gate the dialog itself,
-              not just its trigger, so leftover state can't render it. */}
-          {canDispense && dispensePatient && (
-            <PatientDispenseModal
-              patientId={dispensePatient.id}
-              patientName={dispensePatient.name}
-              onClose={() => setDispensePatient(null)}
-            />
-          )}
-
           {bookingOpen && (
             <BookAppointmentModal
               defaultDate={selectedDate}
@@ -2542,7 +2505,7 @@ export default function EhrClinicalDashboard({
           <button type="button" className="ehr-rail-backdrop" aria-label="Close outstanding items panel" onClick={() => setRailOpen(false)} />
         )}
         {view === 'dashboard' && (
-        <aside className={`ehr-right-rail ${railOpen ? 'is-open' : ''}`}>
+        <aside ref={rightRailRef} className={`ehr-right-rail ${railOpen ? 'is-open' : ''}`}>
           <button type="button" className="ehr-rail-close" aria-label="Close panel" onClick={() => setRailOpen(false)}>
             <X className="w-4 h-4" />
           </button>

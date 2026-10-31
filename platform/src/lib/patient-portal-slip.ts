@@ -23,6 +23,8 @@ export interface PortalSlip {
 
 export interface PortalSlipLabels {
   documentLabel: string;
+  patientInformation: string;
+  patientName: string;
   hospitalNumber: string;
   username: string;
   activationCode: string;
@@ -56,7 +58,9 @@ export function printPortalSlip(slip: PortalSlip, labels: PortalSlipLabels): voi
     title: slip.patientName,
     documentLabel: labels.documentLabel,
     facilityName: slip.facilityName,
+    metaTitle: labels.patientInformation,
     meta: [
+      { label: labels.patientName, value: slip.patientName },
       { label: labels.hospitalNumber, value: slip.hospitalNumber },
       { label: labels.username, value: slip.username },
       { label: labels.validUntil, value: portalSlipDate(slip.expiresAt) },
@@ -66,8 +70,7 @@ export function printPortalSlip(slip: PortalSlip, labels: PortalSlipLabels): voi
         <div class="field-label">${escapeHtml(labels.activationCode)}</div>
         <div style="font:700 20pt/1.3 'Courier New',Courier,monospace;letter-spacing:.08em">${escapeHtml(slip.activationCode)}</div>
       </div>
-      <h3>${escapeHtml(labels.stepsTitle)}</h3>
-      <ol>${steps}</ol>`,
+      <section class="section"><h2 class="section-title">${escapeHtml(labels.stepsTitle)}</h2><ol>${steps}</ol></section>`,
     footer: labels.footer,
   });
 }

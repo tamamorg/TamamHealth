@@ -1,17 +1,15 @@
 'use client';
 
 /**
- * The counter workflow's state and its side effects: advancing one prescription
- * through the dispensing lifecycle, with every write going through `advance`
- * (or the guarded `dispense` transaction) so an illegal transition throws
- * rather than quietly corrupting the queue.
+ * The fill form's state and its side effects: every write goes through `advance`
+ * or the guarded `dispense` transaction, so an illegal move throws rather than
+ * quietly corrupting the queue.
  *
- * Lives apart from the panel so the steps stay presentational, and so the same
- * actions can be driven from the chart, the queue, or a test — the same split
- * the lab bench uses in `useLabWorkflow`.
+ * Lives apart from the panel so the same actions can be driven from the chart,
+ * the queue, or a test.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -24,15 +22,7 @@ import {
 } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import type { FefoPlan } from '@/lib/services/dispensing-service';
-import {
-  completedThrough,
-  courseQuantity,
-  isParked,
-  PHARMACY_WORKFLOW_STEPS,
-  stepForStage,
-  type CounsellingPointKey,
-  type PharmacyWorkflowStepKey,
-} from './pharmacy-workflow-types';
+import { courseQuantity } from './pharmacy-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
 import { paymentHoldFor } from '@/lib/pharmacy-workflow';
 import { formatMoney } from '@/lib/format-utils';
@@ -55,11 +45,7 @@ export interface DispenseDraft {
   allowPartial: boolean;
   note: string;
   unfilledReason: string;
-}
-
-export interface CounselDraft {
-  points: Record<CounsellingPointKey, boolean>;
-  note: string;
+  allergyReview: string;
 }
 
 /** What the safety panel found. Empty arrays mean "checked, nothing to say". */
@@ -72,28 +58,31 @@ export interface SafetyReport {
 }
 
 export function usePharmacyWorkflow(
-  rx: PrescriptionDoc,
+  rxFromList: PrescriptionDoc,
   /** The patient's other active medicines, for interaction and duplicate checks. */
   activeMedications: string[] = [],
 ) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
-  const { advance, dispense, markUnfilled } = usePrescriptions(rx.patientId);
+  const { prescriptions, advance, dispense, markUnfilled } = usePrescriptions(rxFromList.patientId);
+  // The script as this workflow last saved it: a step must not wait for the
+  // list behind the slider to catch up.
+  const rx = prescriptions?.find(other => other._id === rxFromList._id) ?? rxFromList;
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  // The panel reads this right after an action resolves, before React has
+  // re-rendered with the new `error`.
+  const lastError = useRef<string | null>(null);
+  const setError = useCallback((message: string | null) => {
+    lastError.current = message;
+    setErrorState(message);
+  }, []);
 
   const stage = rx.orderStatus || 'prescribed';
-  const activeStep = stepForStage(stage);
-  const doneThrough = completedThrough(stage);
-  const parked = isParked(stage);
-
-  // Which step the panel is showing. Defaults to where the script actually is;
-  // finished steps stay openable so the pharmacist can check what was recorded.
-  const [step, setStep] = useState<PharmacyWorkflowStepKey>(activeStep);
 
   const [reviewDraft, setReviewDraft] = useState<ReviewDraft>({
-    checksAcknowledged: doneThrough >= 2,
+    checksAcknowledged: false,
     clarificationReason: '',
     clarificationNote: rx.dispenseNote || '',
   });
@@ -105,11 +94,7 @@ export function usePharmacyWorkflow(
     allowPartial: false,
     note: '',
     unfilledReason: '',
-  });
-
-  const [counselDraft, setCounselDraft] = useState<CounselDraft>({
-    points: { howToTake: false, duration: false, sideEffects: false, storage: false, adherence: false },
-    note: '',
+    allergyReview: '',
   });
 
   // ── Safety review ─────────────────────────────────────────────────────────
@@ -205,29 +190,11 @@ export function usePharmacyWorkflow(
     }
   }, [t]);
 
-  /** Take the script onto the pharmacy queue. */
-  const receive = useCallback(() => run(async () => {
-    await advance(rx._id, 'received_in_pharmacy_queue');
-    setStep('review');
-  }), [advance, rx._id, run]);
-
-  /**
-   * Clear for dispensing. Two hops, because `under_review` is a real state a
-   * script can sit in while the pharmacist reads the safety panel — going
-   * straight from the queue to cleared would skip the transition the lifecycle
-   * guard enforces.
-   */
-  const clear = useCallback(() => run(async () => {
-    if (!reviewDraft.checksAcknowledged) throw new Error('rxFlow.errChecksUnread');
-    if (stage === 'received_in_pharmacy_queue') await advance(rx._id, 'under_review');
-    await advance(rx._id, 'cleared_for_dispensing');
-    setStep('dispense');
-  }), [advance, reviewDraft.checksAcknowledged, rx._id, run, stage]);
-
   /** Send it back to the prescriber with a stated question. */
   const hold = useCallback(() => run(async () => {
     if (!reviewDraft.clarificationReason) throw new Error('rxFlow.errHoldReason');
-    if (stage === 'received_in_pharmacy_queue') await advance(rx._id, 'under_review');
+    if (stage === 'prescribed') await advance(rx._id, 'received_in_pharmacy_queue');
+    if (stage === 'prescribed' || stage === 'received_in_pharmacy_queue') await advance(rx._id, 'under_review');
     await markUnfilled(
       rx,
       'clarification_requested',
@@ -237,11 +204,15 @@ export function usePharmacyWorkflow(
   }), [advance, currentUser, markUnfilled, reviewDraft, rx, run, stage]);
 
   /**
-   * Hand the medicine over. Goes through the guarded transaction — stock gate,
-   * FEFO decrement, controlled register, prescription update — so a dispense
-   * that cannot legally complete fails before any stock moves.
+   * Fill it and give it out, in one press. Everything that can stop the dispense
+   * is checked first, so a refused fill leaves the script where it was; then the
+   * lifecycle's own hops (queue, cleared) are made here, and the medicine goes
+   * through the guarded transaction — stock gate, FEFO decrement, controlled
+   * register, prescription update — which fails before any stock moves. A fill
+   * ends at `dispensed`: nothing here claims counselling that was not recorded.
    */
-  const dispenseNow = useCallback(() => run(async () => {
+  const fill = useCallback(() => run(async () => {
+    if (hasSafetySignal && !reviewDraft.checksAcknowledged) throw new Error('rxFlow.errChecksUnread');
     if (dispenseDraft.quantity <= 0) throw new Error('rxFlow.errQuantity');
     if (short && !dispenseDraft.allowPartial) throw new Error('rxFlow.errShortStock');
     if (needsWitness && !dispenseDraft.witnessId) throw new Error('rxFlow.errWitness');
@@ -260,11 +231,16 @@ export function usePharmacyWorkflow(
     if (hold === 'due') {
       throw dispenseStop(t('rxFlow.errBalanceDue', { medication: rx.medication, amount: formatMoney(balance ?? 0), patientName: rx.patientName }));
     }
+    // The dispense is checked against the script it is handed, so it gets the
+    // record these hops just wrote, not the copy this form opened with.
+    let current: PrescriptionDoc = rx;
+    if (stage === 'prescribed' || stage === 'dispensing_error_recalled') current = await advance(rx._id, 'received_in_pharmacy_queue') ?? current;
+    if (stage !== 'cleared_for_dispensing') current = await advance(rx._id, 'cleared_for_dispensing') ?? current;
     // The transaction throws on a refused dispense (stock gate, missing
     // witness, unauthorised actor) — there is no failure return to inspect,
     // and `run` turns the throw into the panel's error line.
     await dispense({
-      prescription: rx,
+      prescription: current,
       quantity: dispenseDraft.quantity,
       dispenserId: currentUser?._id || 'pharmacy',
       dispenserName: currentUser?.name || 'Pharmacy',
@@ -276,9 +252,9 @@ export function usePharmacyWorkflow(
       witnessName: dispenseDraft.witnessName || undefined,
       allowPartial: dispenseDraft.allowPartial,
       note: dispenseDraft.note.trim() || undefined,
+      allergyReview: dispenseDraft.allergyReview.trim() || undefined,
     });
-    setStep('counsel');
-  }), [currentUser, dispense, dispenseDraft, needsWitness, rx, run, scope, short, t]);
+  }), [advance, currentUser, dispense, dispenseDraft, hasSafetySignal, needsWitness, reviewDraft.checksAcknowledged, rx, run, scope, short, stage, t]);
 
   /** Record that the shelf could not cover it — the script stays active. */
   const recordStockOut = useCallback(() => run(async () => {
@@ -291,55 +267,25 @@ export function usePharmacyWorkflow(
     );
   }), [currentUser, dispenseDraft, markUnfilled, rx, run]);
 
-  /** Counselling given. */
-  const counsel = useCallback(() => run(async () => {
-    const covered = Object.values(counselDraft.points).filter(Boolean).length;
-    if (!covered) throw new Error('rxFlow.errCounselPoints');
-    await advance(rx._id, 'counseled', {
-      counselledAt: new Date().toISOString(),
-      counselledBy: currentUser?.name || 'Pharmacy',
-      counselledPoints: Object.entries(counselDraft.points).filter(([, on]) => on).map(([key]) => key),
-      counsellingNote: counselDraft.note.trim(),
-    });
-    setStep('close');
-  }), [advance, counselDraft, currentUser, rx._id, run]);
-
-  /** Close the script out. */
-  const complete = useCallback(() => run(async () => {
-    await advance(rx._id, 'complete');
-  }), [advance, rx._id, run]);
-
   /** Put a dispensed medicine back under review — a recall, not a deletion. */
   const recall = useCallback(() => run(async () => {
     if (!dispenseDraft.note.trim()) throw new Error('rxFlow.errRecallReason');
     await advance(rx._id, 'dispensing_error_recalled', {
       dispenseNote: dispenseDraft.note.trim(),
     });
-    setStep('review');
   }), [advance, dispenseDraft.note, rx._id, run]);
 
-  /** Bring a parked script back onto the queue. */
-  const resume = useCallback(() => run(async () => {
-    await advance(rx._id, 'received_in_pharmacy_queue');
-    setStep('review');
-  }), [advance, rx._id, run]);
-
   return {
+    rx,
     stage,
-    parked,
-    step,
-    setStep,
-    activeStep,
-    doneThrough,
-    steps: PHARMACY_WORKFLOW_STEPS,
     busy,
     error,
+    lastError,
     safety, hasSafetySignal,
     stock, short, needsWitness,
     reviewDraft, setReviewDraft,
     dispenseDraft, setDispenseDraft,
-    counselDraft, setCounselDraft,
-    receive, clear, hold, dispenseNow, recordStockOut, counsel, complete, recall, resume,
+    fill, hold, recordStockOut, recall,
   };
 }
 

@@ -1,0 +1,64 @@
+/* The lab and pharmacy forms in the doctor's order-form look (`obf-*` from
+   order-basket.css), on the dashboard's slider and in the chart. */
+.lwf-title,
+.tamam-root .lwf-title { margin: 0; font-family: inherit; font-size: 16px; font-weight: 600; letter-spacing: normal; text-transform: none; color: var(--text-primary); }
+.lwf-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.lwf-stat { font-size: 13px; font-weight: 600; color: var(--color-danger-text); }
+.lwf-fields { display: flex; flex-direction: column; gap: 20px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.obk-root.lwf .obf-section-head.lwf-section-head { align-items: center; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.lwf-section-body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.obk-root.lwf .obf-section { min-width: 0; }
+.obk-root.lwf .obf-value { font-size: 14px; overflow-wrap: anywhere; }
+.obf-required { color: var(--color-danger-text); }
+.obk-root.lwf .labord-help { margin: 0; font-size: 14px; color: var(--text-secondary); }
+.obk-root.lwf .labord-required { margin: 0; }
+.obk-root.lwf .labord-check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text-primary); }
+.obk-root.lwf .labord-btn { align-self: flex-start; }
+/* The result's panels: the same O3 questions, on this form's white. */
+.obk-root.lwf .labord-o3 .o3f-section-body { margin: 0; padding: 12px 0; background: transparent; }
+.obk-root.lwf .labord-o3 .o3f-page-head { display: none; }
+.rx-line { display: flex; align-items: flex-start; gap: 6px; }
+.rx-line svg { flex: none; margin-top: 2px; }
+
+/* The intake form's picked tests. */
+.lab-intake-tests { margin: 0; padding: 0; list-style: none; flex: 1 1 100%; }
+.lab-intake-tests li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-light); font-size: 14px; color: var(--text-primary); }
+.lab-intake-tests small { display: block; font-size: 12px; color: var(--text-muted); }
+.lab-intake-tests button { display: inline-flex; padding: 4px; border: 0; background: none; color: var(--text-secondary); cursor: pointer; }
+.lab-intake-tests svg { width: 14px; height: 14px; }
+.lab-intake-matches { flex: 1 1 100%; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-light); }
+.lab-intake-matches button { display: block; width: 100%; padding: 8px 12px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--text-primary); text-align: start; cursor: pointer; }
+.lab-intake-matches button:hover { background: var(--bg-secondary); }
+.lab-intake-switch { flex: 1 1 100%; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--accent-text); text-align: start; cursor: pointer; }
+
+/* A form in a slider fills it, with the footer pinned. */
+.tm-dialog__body:has(> .station-form-slider) { padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; }
+.station-form-slider { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.station-form-slider > .o3f { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.station-form-slider > .o3f > .o3f-grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.station-form-slider > .o3f .o3f-page-head { display: none; }
+
+/* Docked on a dashboard the slider IS the right panel (~260px): one column, one
+   gutter. Off a dashboard none of this applies. */
+@media (min-width: 900px) {
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) {
+    & .tm-dialog__body:has(> .station-form-slider) { overflow-x: hidden; }
+    & .obk-root .obf-pad { padding: 12px; gap: 16px; }
+    & .obk-root .obf-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    & .obk-root .obf-field--half { max-width: none; }
+    & .obk-root .obf-field :is(input, textarea) { min-width: 0; max-width: 100%; box-sizing: border-box; padding-inline: 10px; }
+    & .obk-root .obf-section-head { flex-wrap: wrap; gap: 6px 12px; }
+    & .obk-root .obk-footer-btn { min-width: 0; padding-inline: 12px; }
+    & :is(.station-form-slider) .o3f-section-head { padding-inline: 12px; }
+    & :is(.station-form-slider) .o3f-section-body { margin: 0; padding: 12px; gap: 12px; }
+    & .o3f-section-body { min-width: 0; overflow-wrap: anywhere; }
+    & .o3f-field { flex: 1 1 100%; max-width: 100%; }
+    & .o3f-input { width: 100%; min-width: 0; box-sizing: border-box; }
+    & .irp-study { padding: 12px; }
+    & .lab-result-report-table { width: 100%; table-layout: fixed; font-size: 12px; }
+    & .lab-result-report-table :is(th, td) { padding: 6px 4px; overflow-wrap: anywhere; }
+    & .labord-numbered-row { flex-wrap: wrap; }
+    & .labord-chip-row { flex-wrap: wrap; min-width: 0; }
+    & .labord-chip { white-space: normal; max-width: 100%; }
+  }
+}

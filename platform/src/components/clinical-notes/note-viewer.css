@@ -91,3 +91,21 @@
   background: var(--paper-bg);
 }
 .tamam-note-viewer--slider { min-height: 100%; }
+
+/* On screen the slider reads like every other chart form: the O3 grey field
+   bodies under plain sentence-case section heads. Print keeps the paper layout
+   above. */
+@media screen {
+  .tamam-note-viewer--slider .tamam-nv-doc { padding: 0; }
+  .tamam-note-viewer--slider .tamam-nv-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 24px; border: 0; border-radius: 0; background: var(--paper-band); }
+  .tamam-note-viewer--slider .tamam-nv-meta dt,
+  .tamam-note-viewer--slider .tamam-nv-section h4 { font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-primary); }
+  .tamam-note-viewer--slider .tamam-nv-meta dt { font-weight: 400; color: var(--text-secondary); }
+  .tamam-note-viewer--slider .tamam-nv-meta dd { margin-top: 6px; font-size: 14px; font-weight: 400; }
+  .tamam-note-viewer--slider .tamam-nv-section { display: block; padding: 0; border: 0; }
+  .tamam-note-viewer--slider .tamam-nv-section h4 { padding: 14px 24px; border-top: 1px solid var(--border-light); font-size: 14px !important; }
+  .tamam-note-viewer--slider .tamam-nv-body { padding: 20px 24px; background: var(--paper-band); }
+  .tamam-note-viewer--slider .tamam-nv-doc > .tamam-nv-muted { margin: 0; padding: 12px 24px; }
+  .tamam-note-viewer--slider .tamam-nv-sign { margin: 0; padding: 16px 24px 24px; border-top: 1px solid var(--border-light); font-size: 14px; }
+  .tamam-note-viewer--slider .tamam-nv-addendum-form { padding: 16px 24px; }
+}

@@ -16,12 +16,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api-fetch';
-import { Check, Copy, Loader2, Printer, Smartphone, UserX } from '@/components/icons/lucide';
+import { Check, Copy, Loader2, Printer, UserX } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePortalSlipLabels } from '@/components/patients/PortalSlipDialog';
 import { buildPortalSlipText, printPortalSlip, type PortalSlip } from '@/lib/patient-portal-slip';
 import { describeApiError } from '@/lib/user-facing-error';
 import { FormError } from '@/components/overlay/FormNotices';
+import { useAuth } from '@/lib/context';
+import { PORTAL_ENROL_ROLES } from '@/lib/sync/portal-credential-authority';
 
 interface PortalAccess {
   enrolled: boolean;
@@ -55,23 +57,38 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  // 403 means this role may not issue portal access. Hide the card rather than
-  // offering buttons that always fail.
+  // Only the roles the API admits (PORTAL_ENROL_ROLES, the route's own list)
+  // see the card — checked before asking, so a doctor or nurse opening
+  // Demographics never sends a request the server refuses. A 403 still hides
+  // it, should the two ever disagree.
+  const { currentUser } = useAuth();
+  const roleMayEnrol = !!currentUser && (PORTAL_ENROL_ROLES as readonly string[]).includes(currentUser.role);
   const [permitted, setPermitted] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
+    if (!roleMayEnrol) return;
     try {
       const res = await apiFetch(`/api/patients/portal-access?patientId=${encodeURIComponent(patientId)}`);
       if (res.status === 403) { setPermitted(false); return; }
-      if (!res.ok) return;
+      // Any other refusal (a patient the server does not hold yet, say) is
+      // said, not left spinning: the card used to read "Loading…" forever.
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        // 404: the record is on this device but not on the server yet — the
+        // patient exists, so "not found" would mislead.
+        setLoadError(res.status === 404 ? t('pac.errNotSynced') : describeApiError(body, t('pac.errFailed')));
+        return;
+      }
+      setLoadError('');
       const body = await res.json();
       setAccess(body.access);
       setSuggested(body.suggestedUsername || '');
       setUsername(prev => prev || body.access?.username || body.suggestedUsername || '');
     } catch {
-      setError(t('pac.errUnreachable'));
+      setLoadError(t('pac.errUnreachable'));
     }
-  }, [patientId, t]);
+  }, [patientId, t, roleMayEnrol]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -108,7 +125,7 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
     if (body?.ok) { setIssued(null); await load(); }
   };
 
-  if (!permitted) return null;
+  if (!permitted || !roleMayEnrol) return null;
 
   // The same slip registration hands over, so a re-issue reads identically.
   const slip: PortalSlip | null = issued
@@ -117,12 +134,15 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
 
   return (
     <section className="pac">
-      <header className="pac-head">
-        <Smartphone className="w-4 h-4" />
-        <h3>{t('pac.title')}</h3>
+      {/* Titled like every chart section: no icon, the blue underline. */}
+      <header className="pac-head tamam-section-title-wrap">
+        <h3 className="tamam-section-title">{t('pac.title')}</h3>
+        <span className="tamam-section-underline" aria-hidden />
       </header>
 
-      {!access ? (
+      {!access && loadError ? (
+        <FormError message={loadError} />
+      ) : !access ? (
         <p className="pac-muted"><Loader2 className="w-4 h-4 animate-spin" /> {t('pac.loading')}</p>
       ) : issued ? (
         <div className="pac-issued" role="status">

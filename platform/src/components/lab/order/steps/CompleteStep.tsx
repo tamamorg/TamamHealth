@@ -35,7 +35,7 @@ export default function CompleteStep({ controller }: { controller: LabOrderContr
             </span>
           </span>
         </span>
-        <button type="button" className="labord-btn" onClick={() => printElementById('lab-requisition-print')}>
+        <button type="button" className="labord-btn" onClick={() => printElementById('lab-requisition-print', { label: draft.kind === 'imaging' ? 'Imaging Requisition' : 'Laboratory Requisition', date: receipt.placedAt })}>
           <Printer className="w-4 h-4" aria-hidden /> {t('labOrder.print')}
         </button>
       </div>

@@ -181,14 +181,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <StatusGlyph tone={toast.type} className="ehr-toast-icon" />
               <span className="sr-only">{t(`toast.${toast.type}`)}: </span>
-              {toast.title ? (
-                <div className="ehr-toast-copy">
-                  <p className="ehr-toast-title">{toast.title}</p>
-                  <p className="ehr-toast-text">{toast.message}</p>
-                </div>
-              ) : (
-                <p className="ehr-toast-text">{toast.message}</p>
-              )}
+              {/* A one-sentence message is its own title, so every notification
+                  leads the same way whichever module raised it. */}
+              <div className="ehr-toast-copy">
+                <p className="ehr-toast-title">{toast.title ?? toast.message}</p>
+                {toast.title && <p className="ehr-toast-text">{toast.message}</p>}
+              </div>
               {toast.action && (
                 <button
                   type="button"

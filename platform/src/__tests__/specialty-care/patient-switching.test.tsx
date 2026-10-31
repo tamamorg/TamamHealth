@@ -5,6 +5,8 @@ Object.assign(globalThis, { Headers: require('node-fetch').Headers });
 
 const mockScope = { orgId: 'org', hospitalId: 'facility', role: 'doctor' };
 const mockEpisodes = ['A', 'B'].map(name => ({ _id: name, patientId: name, patientName: `Patient ${name}`, pathway: 'mental_health', status: 'planned', hospitalId: 'facility', orgId: 'org', values: {} }));
+const mockShowToast = jest.fn();
+jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: mockShowToast }) }));
 jest.mock('@/lib/context', () => ({ useAuth: () => ({ currentUser: { _id: 'doctor', name: 'Doctor', role: 'doctor', specialtyCode: 'psychiatry' } }) }));
 jest.mock('@/lib/hooks/useDataScope', () => ({ useDataScope: () => mockScope }));
 jest.mock('@/lib/hooks/usePatients', () => ({ usePatients: () => ({ patients: [] }) }));
@@ -62,7 +64,7 @@ test('saving a restricted note sends the CSRF header', async () => {
   fireEvent.change(screen.getByPlaceholderText('specialtyCare.restrictedPlaceholder'), { target: { value: 'Private note' } });
   fireEvent.click(screen.getByRole('button', { name: 'specialtyCare.saveRestricted' }));
   await act(async () => { await Promise.resolve(); });
-  expect(container.textContent).toContain('msg.restrictedNoteSaved');
+  expect(mockShowToast).toHaveBeenCalledWith('msg.restrictedNoteSaved', 'success');
   const call = (global.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
   expect(new Headers(call[1].headers).get('x-csrf-token')).toBe('test-token');
 });

@@ -450,6 +450,7 @@ export default function InquiriesPage() {
                       label={ENQUIRY_STATUS_LABELS[status]}
                       value={status}
                       ariaLabel={`Triage ${m.patientName || 'this inquiry'}`}
+                      subject={m.patientName}
                       style={{ borderColor: tok.border, background: tok.bg, color: tok.color }}
                       options={rowOptions(m)}
                       onSelect={value => applyRowAction(m._id, value)}

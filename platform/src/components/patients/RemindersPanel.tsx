@@ -18,6 +18,8 @@ import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { FormError } from '@/components/overlay/FormNotices';
+import FormField from '@/components/overlay/FormField';
+import FormSlider from '@/components/overlay/FormSlider';
 
 const CHANNELS: { v: ReminderChannel; label: string }[] = [
   { v: 'sms', label: 'SMS' },
@@ -42,6 +44,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
   );
 
   const today = todayISO();
+  const closeForm = () => { setAdding(false); setError(null); };
 
   const submit = async () => {
     setBusy(true);
@@ -69,38 +72,6 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
 
   return (
     <ChartSection title={queued.length > 0 ? `Reminders (${queued.length} queued)` : 'Reminders'} addLabel="Add" onAdd={() => setAdding(true)}>
-      {adding && (
-        <div className="space-y-2 mb-3">
-          <textarea
-            value={form.message}
-            onChange={e => setForm({ ...form, message: e.target.value })}
-            rows={2}
-            placeholder="e.g. Come fasted in 3 weeks for your path tests"
-            className="w-full p-2 rounded-md text-[12px]"
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Send date
-              <input type="date" value={form.sendDate} min={today} onChange={e => setForm({ ...form, sendDate: e.target.value })}
-                className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-            </label>
-            <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Channel
-              <Select value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value as ReminderChannel })}
-                className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
-                {CHANNELS.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
-              </Select>
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="btn btn-sm btn-primary" disabled={busy || form.message.trim().length === 0} onClick={submit}>Queue reminder</button>
-            <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { setAdding(false); setError(null); }}>Cancel</button>
-          </div>
-          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>No SMS gateway is connected — this queues a reminder for staff to send and mark done.</p>
-        </div>
-      )}
-
       <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col />
@@ -115,7 +86,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
             </tr>
           </thead>
           <tbody>
-            {reminders.length === 0 && !adding && (
+            {reminders.length === 0 && (
               <tr>
                 <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState itemLabel="reminders" actionLabel="Queue reminder" onAction={() => setAdding(true)} />
@@ -156,7 +127,39 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
           </tbody>
         </table>
 
-      {error && <FormError message={error} />}
+      {error && !adding && <FormError message={error} />}
+
+      {adding && (
+        <FormSlider
+          title={t('reminders.addTitle')}
+          subtitle={patientFullName(patient)}
+          className="tamam-dialog"
+          onClose={closeForm}
+          busy={busy}
+          footerNote={t('reminders.noGateway')}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeForm}>{t('action.cancel')}</button>
+            <button type="button" className="btn btn-primary" disabled={busy || !form.message.trim()} onClick={submit}>{t('reminders.queue')}</button>
+          </>}
+        >
+          <div className="space-y-4">
+            <FormField label={t('reminders.message')} required>
+              {control => <textarea {...control} rows={4} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder={t('reminders.messagePlaceholder')} />}
+            </FormField>
+            <FormField label={t('reminders.sendDate')}>
+              {control => <input {...control} type="date" value={form.sendDate} min={today} onChange={e => setForm({ ...form, sendDate: e.target.value })} />}
+            </FormField>
+            <FormField label={t('reminders.channel')}>
+              {control => (
+                <Select {...control} value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value as ReminderChannel })}>
+                  {CHANNELS.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
+                </Select>
+              )}
+            </FormField>
+            {error && <FormError message={error} />}
+          </div>
+        </FormSlider>
+      )}
     </ChartSection>
   );
 }

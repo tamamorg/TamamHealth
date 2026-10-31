@@ -63,9 +63,25 @@ describe('ClinicalNoteViewer', () => {
     m.unmount();
   });
 
+  it('shows a draft locked, with no Edit for someone who may not write notes', async () => {
+    getById.mockResolvedValue({ ...base, status: 'draft' });
+    const m = await mountAndFlush(<ClinicalNoteViewer noteId="n1" kind="clinical" onClose={jest.fn()} />);
+    expect(m.container.querySelector('.tm-banner')).not.toBeNull();
+    expect(btn(m.container, 'Edit')).toBeUndefined();
+    expect(m.container.querySelector('textarea, input')).toBeNull();
+    m.unmount();
+  });
+
+  it('keeps a colleague\'s draft locked even with Edit wired up', async () => {
+    getById.mockResolvedValue({ ...base, status: 'draft', authorId: 'someone-else' });
+    const m = await mountAndFlush(<ClinicalNoteViewer noteId="n1" kind="clinical" onClose={jest.fn()} onEdit={jest.fn()} />);
+    expect(btn(m.container, 'Edit')).toBeUndefined();
+    m.unmount();
+  });
+
   it('offers Edit only on drafts', async () => {
     const onEdit = jest.fn();
-    getById.mockResolvedValue({ ...base, status: 'draft' });
+    getById.mockResolvedValue({ ...base, status: 'draft', authorId: 'u1' });
     const m = await mountAndFlush(<ClinicalNoteViewer noteId="n1" kind="clinical" onClose={jest.fn()} onEdit={onEdit} />);
     await actFlush(() => btn(m.container, 'Edit')!.click());
     expect(onEdit).toHaveBeenCalledWith('n1');

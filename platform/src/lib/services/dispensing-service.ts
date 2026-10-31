@@ -38,6 +38,8 @@ import { holdsVisitAtPharmacy } from '../pharmacy-workflow';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaDate } from '../time-juba';
+import { orgOnlyScope } from './data-scope';
+import { SAFETY_REASON_MIN_LENGTH, unreviewedAllergyConflicts } from '../pharmacy/rx-safety';
 import { getUserById } from '@/modules/identity/services/user-service';
 import { v4 as uuidv4 } from 'uuid';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
@@ -53,6 +55,7 @@ export type DispenseErrorCode =
   | 'PARTIAL_NOT_ALLOWED'
   | 'REGISTER_FAILED'
   | 'WRITE_FAILED'
+  | 'ALLERGY_REVIEW_REQUIRED'
   | 'NOT_AUTHORISED';
 
 export class DispenseError extends Error {
@@ -91,6 +94,8 @@ export interface DispenseInput {
   note?: string;
   /** Counselling is captured in the same handover action, not a later queue step. */
   counsellingConfirmed?: boolean;
+  /** The pharmacist's written reason for dispensing past an unanswered allergy conflict. */
+  allergyReview?: string;
 }
 
 export interface DispenseResult {
@@ -738,6 +743,31 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     );
   }
 
+  // The allergy list may have changed since the order was written. Refuses
+  // only until the pharmacist writes a reason, so urgent care is never stopped;
+  // an unreadable chart proceeds and leaves a reviewable audit entry.
+  let allergyReview: PrescriptionDoc['dispenseAllergyReview'];
+  try {
+    const { getActiveAllergies } = await import('./allergy-service');
+    const conflicts = unreviewedAllergyConflicts(rx, await getActiveAllergies(rx.patientId, orgOnlyScope(input.orgId || rx.orgId)));
+    if (conflicts.length) {
+      const reason = input.allergyReview?.trim() || '';
+      const allergies = conflicts.map(c => c.allergy);
+      if (reason.length < SAFETY_REASON_MIN_LENGTH) {
+        throw new DispenseError(
+          `${rx.medication} conflicts with the recorded ${allergies.join(', ')} allergy. `
+          + 'Contact the prescriber, then record why it is safe to dispense.',
+          'ALLERGY_REVIEW_REQUIRED',
+        );
+      }
+      allergyReview = { allergies, reviewedBy: input.dispenserName, reviewedAt: new Date().toISOString(), reason };
+    }
+  } catch (err) {
+    if (err instanceof DispenseError) throw err;
+    await logAuditSafe('DRUG_ALLERGY_CHECK_UNAVAILABLE', input.dispenserId, input.dispenserName,
+      `Allergy recheck could not run at dispensing for patient ${rx.patientId}; ${rx.medication} dispensed without it`);
+  }
+
   // Atomically reserve the prescription itself. Inventory revision conflicts
   // prevent negative stock, but without this claim two workstations could both
   // decrement different/ample batches and then write the same stale
@@ -864,6 +894,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
       } : {}),
       dispenseOutcome: claimedOutcome,
       ...(input.note ? { dispenseNote: input.note } : {}),
+      ...(allergyReview ? { dispenseAllergyReview: allergyReview } : {}),
       ...(controlledLogId ? { controlledLogId } : {}),
     });
   } catch {

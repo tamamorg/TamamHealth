@@ -40,6 +40,7 @@ export const ImmunizationsSection = dynamic(() => import('@/components/ehr/chart
 export const DirectivesSection = dynamic(() => import('@/components/ehr/chart/sections/DirectivesSection'), { loading: ChartPanelLoading });
 export const AssignDoctorModal = dynamic(() => import('@/components/AssignDoctorModal'));
 export const NurseVitalsModal = dynamic(() => import('@/components/nurse/NurseVitalsModal'));
+export const RecordSignPanel = dynamic(() => import('./RecordSignPanel'), { loading: ChartPanelLoading });
 export const PrescribeModal = dynamic(() => import('@/components/patients/PatientActionModals').then(mod => mod.PrescribeModal));
 export const ReferModal = dynamic(() => import('@/components/patients/PatientActionModals').then(mod => mod.ReferModal));
 export const VisitSummaryDialog = dynamic(() => import('@/components/patient-handover/VisitSummaryDialog'));

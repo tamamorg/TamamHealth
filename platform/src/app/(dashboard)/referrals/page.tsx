@@ -30,11 +30,11 @@ import { isRowActivationKey } from '@/components/RowActionsPopup';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/referrals/RowActionsMenu';
 import ReferralFormModal from '@/components/referrals/ReferralFormModal';
-import type { Attachment, TransferPackage, ReferralDisposition } from '@/data/mock';
+import type { Attachment, TransferPackage, ReferralOutcome } from '@/data/mock';
+import ReferralCompleteSlider from '@/components/referrals/ReferralCompleteSlider';
 import { formatPhoneShared, formatLocationShared } from '@/lib/field-formats';
 import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import { formatAppointmentTimeUntil } from '@/lib/format-utils';
-import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useUrlView } from '@/lib/navigation/use-url-view';
@@ -63,10 +63,6 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-const DISPOSITION_OPTIONS: ReferralDisposition[] = [
-  'treated_discharged', 'admitted', 'referred_onward', 'did_not_arrive', 'deceased',
-];
 
 /* The registry/appointments pill vocabulary, mapped onto the referral ladder:
    sent = booked-and-waiting blue, received = active, seen = in progress,
@@ -403,9 +399,6 @@ export default function ReferralsPage() {
   const [declineModalId, setDeclineModalId] = useState<string | null>(null);
   const [declineReason, setDeclineReason] = useState('');
   const [completeModalId, setCompleteModalId] = useState<string | null>(null);
-  const [completeOutcome, setCompleteOutcome] = useState('');
-  const [completeDisposition, setCompleteDisposition] = useState<ReferralDisposition>('treated_discharged');
-  const [completeFollowUp, setCompleteFollowUp] = useState('');
   const [noteModalId, setNoteModalId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -585,26 +578,14 @@ export default function ReferralsPage() {
     }
   };
 
-  const handleComplete = async () => {
-    if (!completeModalId || !completeOutcome.trim()) return;
+  const handleComplete = async (outcome: ReferralOutcome) => {
+    if (!completeModalId) return;
     try {
-      setActionSubmitting(true);
-      await completeWithOutcome(completeModalId, {
-        disposition: completeDisposition,
-        summary: completeOutcome.trim(),
-        followUp: completeFollowUp.trim() || undefined,
-        recordedBy: currentUser?.name || 'Unknown',
-        recordedAt: new Date().toISOString(),
-      });
+      await completeWithOutcome(completeModalId, outcome);
       showToast(t('referrals.toastCompleted'), 'success');
       setCompleteModalId(null);
-      setCompleteOutcome('');
-      setCompleteDisposition('treated_discharged');
-      setCompleteFollowUp('');
     } catch {
       showToast(t('referrals.toastCompleteFailed'), 'error');
-    } finally {
-      setActionSubmitting(false);
     }
   };
 
@@ -734,7 +715,7 @@ export default function ReferralsPage() {
                     { key: 'decline', label: t('referrals.decline'), tone: 'danger' as const, icon: <XCircle className="w-4 h-4" />, onClick: () => { setDeclineModalId(ref._id); setDeclineReason(''); } },
                   ] : []),
                   ...(canManageReferrals && activeTab === 'incoming' && ref.status === 'seen' ? [
-                    { key: 'complete', label: t('referrals.markComplete'), tone: 'success' as const, icon: <ClipboardCheck className="w-4 h-4" />, onClick: () => { setCompleteModalId(ref._id); setCompleteOutcome(''); } },
+                    { key: 'complete', label: t('referrals.markComplete'), tone: 'success' as const, icon: <ClipboardCheck className="w-4 h-4" />, onClick: () => { setCompleteModalId(ref._id); } },
                     { key: 'undo', label: t('action.undo'), tone: 'default' as const, icon: <RotateCcw className="w-4 h-4" />, onClick: () => setReverseModal({ id: ref._id, to: 'received', name: ref.patientName }) },
                   ] : []),
                   ...(canManageReferrals && activeTab === 'incoming' && ref.status === 'cancelled' ? [
@@ -902,79 +883,39 @@ export default function ReferralsPage() {
 
         {/* Decline Modal */}
         {declineModalId && (
-          <Modal labelledBy="page-tsx-dlg-946" onClose={() => setDeclineModalId(null)}>
-            <DialogFrame>
-              <DialogHeader titleId="page-tsx-dlg-946" title={t('referrals.declineReferral')} onClose={() => setDeclineModalId(null)} />
-              <DialogBody className="space-y-4">
-              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                {t('referrals.declineHint')}
-              </p>
+          <FormSlider
+            title={t('referrals.declineReferral')}
+            onClose={() => setDeclineModalId(null)}
+            busy={actionSubmitting}
+            footer={<>
+              <button onClick={() => setDeclineModalId(null)} className="btn btn-secondary">{t('action.cancel')}</button>
+              <button onClick={handleDecline} disabled={!declineReason.trim() || actionSubmitting} className="btn btn-primary">
+                {actionSubmitting ? t('referrals.declining') : t('referrals.confirmDecline')}
+              </button>
+            </>}
+          >
+            <div className="space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('referrals.declineHint')}</p>
               <textarea
                 value={declineReason}
                 onChange={e => setDeclineReason(e.target.value)}
                 rows={3}
+                aria-label={t('referrals.declinePlaceholder')}
                 placeholder={t('referrals.declinePlaceholder')}
-                className="w-full mb-4"
-                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
-              />
-              </DialogBody>
-              <DialogFooter>
-                <button onClick={() => setDeclineModalId(null)} className="btn btn-secondary">{t('action.cancel')}</button>
-                <button onClick={handleDecline} disabled={!declineReason.trim() || actionSubmitting} className="btn btn-primary" style={{ opacity: !declineReason.trim() ? 0.5 : 1, background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}>
-                  {actionSubmitting ? t('referrals.declining') : t('referrals.confirmDecline')}
-                </button>
-              </DialogFooter>
-            </DialogFrame>
-          </Modal>
-        )}
-
-        {/* Complete Modal */}
-        {completeModalId && (
-          <FormSlider
-            title={t('referrals.completeReferral')}
-            onClose={() => setCompleteModalId(null)}
-            footer={<>
-                <button onClick={() => setCompleteModalId(null)} className="btn btn-secondary">{t('action.cancel')}</button>
-                <button onClick={handleComplete} disabled={!completeOutcome.trim() || actionSubmitting} className="btn btn-primary" style={{ opacity: !completeOutcome.trim() ? 0.5 : 1, background: 'var(--color-success)', borderColor: 'var(--color-success)' }}>
-                  {actionSubmitting ? t('referrals.completing') : t('referrals.markComplete')}
-                </button>
-            </>}
-          >
-            <div className="space-y-4">
-              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                {t('referrals.completeHint')}
-              </p>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('referrals.outcomeDisposition')}</label>
-              <Select
-                value={completeDisposition}
-                onChange={e => setCompleteDisposition(e.target.value as ReferralDisposition)}
-                className="w-full mb-3"
-                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
-              >
-                {DISPOSITION_OPTIONS.map(d => (
-                  <option key={d} value={d}>{t(`referrals.disposition_${d}`)}</option>
-                ))}
-              </Select>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('referrals.outcomeSummary')}</label>
-              <textarea
-                value={completeOutcome}
-                onChange={e => setCompleteOutcome(e.target.value)}
-                rows={3}
-                placeholder={t('referrals.completePlaceholder')}
-                className="w-full mb-3"
-                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
-              />
-              <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('referrals.outcomeFollowUp')}</label>
-              <textarea
-                value={completeFollowUp}
-                onChange={e => setCompleteFollowUp(e.target.value)}
-                rows={2}
-                placeholder={t('referrals.outcomeFollowUpPlaceholder')}
-                className="w-full mb-4"
+                className="w-full"
                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
               />
             </div>
           </FormSlider>
+        )}
+
+        {/* Complete: the outcome form the chart's referrals list also opens. */}
+        {completeModalId && (
+          <ReferralCompleteSlider
+            recordedBy={currentUser?.name || 'Unknown'}
+            onClose={() => setCompleteModalId(null)}
+            onComplete={handleComplete}
+          />
         )}
 
         {/* Preview Modal for attachments */}

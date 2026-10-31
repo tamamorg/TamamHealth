@@ -109,6 +109,10 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
       paymentId: doc._id,
       reference: doc.reference,
       notes: input.notes,
+      aimedAt: input.allocations?.[0] && {
+        encounterId: input.allocations[0].encounterId || undefined,
+        billId: input.allocations[0].chargeId,
+      },
       // 'org_admin' is synthetic — never a real user role here — chosen only
       // because filterByScope treats it as org-scoped without the further
       // per-facility narrowing it applies to ordinary staff roles: a payment

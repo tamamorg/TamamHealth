@@ -107,6 +107,15 @@ const EXACT_ROUTES: Record<string, RouteContext> = {
   '/settings/manage': context('/settings', 'breadcrumb.settings', 'routeContext.manageSettings'),
 };
 
+/**
+ * Module pages opened from the menu that still need a way back: their parent
+ * is the viewer's own home dashboard, which differs by role, so they resolve
+ * against `homeHref` rather than a fixed route.
+ */
+const HOME_CHILD_ROUTES: Record<string, string> = {
+  '/anc': 'nav.anc',
+};
+
 type DynamicRoute = {
   matches: (segments: string[]) => boolean;
   context: RouteContext;
@@ -142,6 +151,8 @@ export function resolveRouteContext(
   const normalizedPath = normalizePath(pathname);
   const exact = EXACT_ROUTES[normalizedPath];
   if (exact) return exact;
+  const homeChild = HOME_CHILD_ROUTES[normalizedPath];
+  if (homeChild) return context(homeHref, 'breadcrumb.dashboard', homeChild, true);
 
   const segments = normalizedPath.split('/').filter(Boolean);
   const dynamicRoute = DYNAMIC_ROUTES.find(route => route.matches(segments));

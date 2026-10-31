@@ -12,7 +12,7 @@ import { BedDouble, Clock, CheckCircle2, ArrowRightLeft, LogIn, Activity, Save }
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
 import { getVitalFlags, isVitalInRange, type VitalsInput } from '@/lib/clinical/vitals';
 import FormSlider from '@/components/overlay/FormSlider';
-import TriageSlider from '@/components/nurse/TriageSlider';
+import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
 import { describeError } from '@/lib/user-facing-error';
 
 /**
@@ -79,7 +79,6 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
   const [roomDraft, setRoomDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [vitalsEntry, setVitalsEntry] = useState<RoomingWorklistEntry | null>(null);
-  const [triageFor, setTriageFor] = useState<{ patientId: string; name: string } | null>(null);
   const [vitalsDraft, setVitalsDraft] = useState<RoomingVitals>(emptyVitals);
   const [vitalsSaving, setVitalsSaving] = useState(false);
   const [vitalsRecorded, setVitalsRecorded] = useState<Record<string, string>>({});
@@ -234,7 +233,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                   {step === 'awaiting_triage' && (
                     <button
                       type="button"
-                      onClick={() => setTriageFor({ patientId: encounter.patientId, name: encounter.patientName })}
+                      onClick={() => router.push(chartFormHref(encounter.patientId, 'triage-form'))}
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded"
                       style={{ background: 'var(--accent-primary)', color: '#fff' }}
                     >
@@ -381,9 +380,6 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
             </label>
           </div>
         </FormSlider>
-      )}
-      {triageFor && (
-        <TriageSlider patientId={triageFor.patientId} patientName={triageFor.name} onClose={() => setTriageFor(null)} />
       )}
     </div>
   );

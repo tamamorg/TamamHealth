@@ -350,6 +350,10 @@ export interface RecordAddendum {
 
 export interface MedicalRecordDoc extends BaseDoc, Omit<MedicalRecord, 'id'> {
   type: 'medical_record';
+  /** The session user who wrote the record, stamped by the API. Absent on seeded
+   *  records and on referral intakes the system writes. */
+  consultedBy?: string;
+  consultedByName?: string;
   orgId?: string;
   /** Referential links to the documents created during this visit, so the
    *  record can be traced to the actual orders rather than only a snapshot. */
@@ -505,6 +509,21 @@ export interface LabResultDoc extends BaseDoc {
   specimenRejectionNotes?: string;
   specimenRejectedAt?: string;
   specimenRejectedBy?: string;
+  /** The collector's remark about the draw (difficult draw, patient fasted…). */
+  specimenCollectionNote?: string;
+  /** Who asked for this test. Absent = a clinician at this facility. */
+  requestSource?: 'facility' | 'external_facility' | 'walk_in';
+  /** The hospital or clinic that sent the request. */
+  externalFacility?: string;
+  /** The clinician who signed the outside request. */
+  externalRequester?: string;
+  /** The sender's own number for this request. */
+  externalReference?: string;
+  /** The specimen arrived already drawn, so the bench starts at Receive. */
+  specimenCollectedOutside?: boolean;
+  /** When the lab handed the report back to an outside requester or the patient. */
+  reportReleasedAt?: string;
+  reportReleasedBy?: string;
   /** 'basic' = routine panel (CBC, urinalysis); 'special' = doctor-selected
    *  targeted investigation (cultures, ANA, vitamin D, etc.). */
   tier?: 'basic' | 'special';
@@ -679,6 +698,14 @@ export interface PrescriptionDoc extends BaseDoc {
       reviewedAt: string;
       reason: string;
     };
+  };
+  /** The pharmacist's written review of an allergy conflict that was not
+   *  answered at prescribing, usually one recorded after the order. */
+  dispenseAllergyReview?: {
+    allergies: string[];
+    reviewedBy: string;
+    reviewedAt: string;
+    reason: string;
   };
   /** Coarse status kept for backward compatibility + queue filters. Derived
    *  from the granular `orderStatus` below. */
@@ -1880,6 +1907,7 @@ export interface EncounterDoc extends BaseDoc {
   /** Asked when the visit starts (lib/visits/visit-details.ts): the kind of
    *  visit, who pays for it, and — for a booked arrival — whether the patient
    *  came on time. */
+  appointmentType?: AppointmentType;
   visitType?: import('./visits/visit-details').VisitType;
   visitBilling?: import('./visits/visit-details').VisitBilling;
   punctuality?: import('./visits/visit-details').VisitPunctuality;

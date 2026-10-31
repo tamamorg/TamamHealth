@@ -9,7 +9,7 @@
  * actions can be driven from the chart, the queue, or a test.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -25,9 +25,6 @@ import type { LabResultDoc } from '@/lib/db-types';
 import {
   completedThrough,
   fallbackAccessionNumber,
-  LAB_WORKFLOW_STEPS,
-  stepForStage,
-  type LabWorkflowStepKey,
 } from './lab-workflow-types';
 import {
   buildLabObservations,
@@ -41,6 +38,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 export interface CollectDraft {
   container: string;
   collectedBy: string;
+  /** Local datetime-local value; empty means now. */
+  collectedAt: string;
   note: string;
 }
 
@@ -73,7 +72,7 @@ export interface WorkflowCriticalVerdict {
 }
 
 export function useLabWorkflow(
-  order: LabResultDoc,
+  orderFromList: LabResultDoc,
   /** A reading imported from an analyzer, offered for review rather than saved. */
   seedResult?: { value: string; unit: string; referenceRange: string },
   canWork = true,
@@ -84,24 +83,30 @@ export function useLabWorkflow(
   // clinician's half of the loop — the roles that order tests. The bench files
   // the result; it does not review it on the clinician's behalf.
   const { canOrderLabs: canCloseOut } = usePermissions();
-  const { advance, update } = useLabResults(order.patientId);
+  const { results, advance, update } = useLabResults(orderFromList.patientId);
+  // The record as this workflow last saved it. The list behind the slider
+  // catches up a moment later; a step must not wait for it to move on.
+  const order = results?.find(r => r._id === orderFromList._id) ?? orderFromList;
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  // The panel reads this right after an action resolves, before React has
+  // re-rendered with the new `error`.
+  const lastError = useRef<string | null>(null);
+  const setError = useCallback((message: string | null) => {
+    lastError.current = message;
+    setErrorState(message);
+  }, []);
   /** Why a already-reported value is being corrected. Required to amend. */
   const [amendReason, setAmendReason] = useState('');
 
   const stage = effectiveOrderStatus(order);
-  const activeStep = stepForStage(stage);
   const doneThrough = completedThrough(stage);
-
-  // Which step the panel is showing. Defaults to where the order actually is;
-  // finished steps stay openable so the tech can check what was recorded.
-  const [step, setStep] = useState<LabWorkflowStepKey>(activeStep);
 
   const [collectDraft, setCollectDraft] = useState<CollectDraft>({
     container: order.specimenContainer || '',
     collectedBy: order.specimenCollectedBy || currentUser?.name || '',
-    note: '',
+    collectedAt: '',
+    note: order.specimenCollectionNote || '',
   });
 
   const [receiveDraft, setReceiveDraft] = useState<ReceiveDraft>({
@@ -248,29 +253,20 @@ export function useLabWorkflow(
     return execute(fn);
   }, [canCloseOut, execute]);
 
+  /** The specimen is in hand. The form then asks for the result. */
   const collect = useCallback(() => run(async () => {
     await advance(order._id, 'specimen_collected', {
-      specimenCollectedAt: new Date().toISOString(),
+      specimenCollectedAt: (collectDraft.collectedAt ? new Date(collectDraft.collectedAt) : new Date()).toISOString(),
       specimenCollectedBy: collectDraft.collectedBy || currentUser?.name || 'Lab',
       specimenContainer: collectDraft.container,
+      specimenCollectionNote: collectDraft.note.trim() || undefined,
       accessionNumber: order.accessionNumber || fallbackAccessionNumber(order),
       // Re-collection clears the previous rejection so the row stops reading as
       // rejected once a fresh specimen is in hand.
       specimenRejectionReason: '',
       specimenRejectionNotes: '',
     });
-    setStep('receive');
   }), [advance, collectDraft, currentUser, order, run]);
-
-  const receive = useCallback(() => run(async () => {
-    await advance(order._id, 'received_at_lab', {
-      accessionNumber: receiveDraft.accessionNumber.trim(),
-      specimenCondition: receiveDraft.condition,
-      specimenReceivedAt: new Date().toISOString(),
-      specimenReceivedBy: currentUser?.name || 'Lab',
-    });
-    setStep('process');
-  }), [advance, currentUser, order._id, receiveDraft, run]);
 
   const reject = useCallback(() => run(async () => {
     if (!receiveDraft.rejectionReason) throw new Error('labFlow.errRejectReason');
@@ -281,24 +277,34 @@ export function useLabWorkflow(
       specimenRejectedAt: new Date().toISOString(),
       specimenRejectedBy: currentUser?.name || 'Lab',
     });
-    setStep('collect');
   }), [advance, currentUser, order._id, receiveDraft, run]);
 
-  const startProcessing = useCallback(() => run(async () => {
-    await advance(order._id, 'in_process');
-    setStep('result');
-  }), [advance, order._id, run]);
+  /** Anything to file yet: the plain value, or one analyte of a panel. */
+  const hasResultEntry = resultProfile
+    ? Object.values(resultDraft.observations).some(value => value?.trim())
+    : !!resultDraft.result.trim();
 
   /**
-   * File the result. Critical values also page the ordering clinician —
-   * best-effort, because a saved result the lab can phone through beats a
-   * blocked save.
+   * File the result, in one press. The specimen's receipt and the bench's own
+   * hops happen here, stamped as they always were, so the lifecycle and the
+   * chain of custody read the same without a technician walking them. Critical
+   * values also page the ordering clinician — best-effort, because a saved
+   * result the lab can phone through beats a blocked save.
    */
   const fileResult = useCallback(() => run(async () => {
     const profile = resultProfile;
     const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
     const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
     if (!result) throw new Error('labFlow.errResultValue');
+    if (stage === 'specimen_collected') {
+      await advance(order._id, 'received_at_lab', {
+        accessionNumber: receiveDraft.accessionNumber.trim(),
+        specimenCondition: receiveDraft.condition,
+        specimenReceivedAt: new Date().toISOString(),
+        specimenReceivedBy: currentUser?.name || 'Lab',
+      });
+    }
+    if (stage === 'specimen_collected' || stage === 'received_at_lab') await advance(order._id, 'in_process');
     await update(order._id, {
       status: 'completed',
       orderStatus: 'resulted',
@@ -332,8 +338,7 @@ export function useLabWorkflow(
         console.error('[lab-workflow] critical-result alert failed; phone the clinician', err);
       }
     }
-    setStep('report');
-  }), [currentUser, order, resultDraft, resultProfile, run, update]);
+  }), [advance, currentUser, order, receiveDraft, resultDraft, resultProfile, run, stage, update]);
 
   /**
    * Correct a filed value without moving the order backwards in its lifecycle.
@@ -396,6 +401,12 @@ export function useLabWorkflow(
     () => advance(order._id, 'communicated_to_patient', { communicatedBy: currentUser?.name, communicatedAt: new Date().toISOString() }),
   ), [advance, currentUser, order._id, runCloseout]);
 
+  /** The report left the lab: handed to the patient or sent to the requester. */
+  const releaseReport = useCallback(() => run(() => update(order._id, {
+    reportReleasedAt: new Date().toISOString(),
+    reportReleasedBy: currentUser?.name || 'Lab',
+  })), [currentUser, order._id, run, update]);
+
   /** Send the report to the ordering clinician's inbox. */
   const notifyClinician = useCallback(() => run(async () => {
     const { createMessage } = await import('@/modules/communication/services/message-service');
@@ -416,19 +427,17 @@ export function useLabWorkflow(
   }), [currentUser, order, resultDraft.result, run]);
 
   return {
+    order,
     stage,
-    step,
-    setStep,
-    activeStep,
     doneThrough,
-    steps: LAB_WORKFLOW_STEPS,
     busy,
     error,
+    lastError,
     collectDraft, setCollectDraft,
     receiveDraft, setReceiveDraft,
     resultDraft, setResultDraft, setResultValue, setObservationValue, criticalVerdict,
     amendReason, setAmendReason,
-    collect, receive, reject, startProcessing, fileResult, amendResult, notifyClinician,
+    collect, reject, fileResult, hasResultEntry, amendResult, notifyClinician, releaseReport,
     markReviewed, markActedUpon, markCommunicated,
     canCloseOut,
   };

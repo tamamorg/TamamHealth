@@ -57,7 +57,9 @@ describe('status pill selects release focus after a pick', () => {
     expect(document.activeElement).toBe(select);
 
     setSelect(select, 'approved');
-    expect(onSelect).toHaveBeenCalledWith('approved');
+    // A pick opens the confirm slider; it acts only on confirm
+    // (row-status-select-confirm.test.tsx covers that).
+    expect(onSelect).not.toHaveBeenCalled();
     expect(document.activeElement).not.toBe(select);
     m.unmount();
   });

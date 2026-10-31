@@ -14,8 +14,7 @@
  * are on the list even before a script reaches the counter.
  */
 
-import Link from 'next/link';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -38,10 +37,13 @@ import { isOutsidePharmacyOrder, pharmacyStage, pharmacyStageGroup, pharmacyStag
 import { comparePharmacyPriority } from '@/lib/clinical-flow/medication-tiers';
 import { formatRxSig } from '@/lib/format-utils';
 import { hasSafetyWarning } from '@/lib/pharmacy/rx-safety';
-import { agoLabel } from '@/lib/station-time';
+import { agoLabel, shortDayLabel } from '@/lib/station-time';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { counterActions, counterPillLabel, isParked } from '@/components/pharmacy/workflow/pharmacy-workflow-types';
+import DispenseSlider from '@/components/pharmacy/workflow/DispenseSlider';
+import type { RxIntent } from '@/components/pharmacy/workflow/PharmacyWorkflowPanel';
 import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc } from '@/lib/db-types';
 
 /** Opens the chart with the dispensing form up, on one script when `rxId` is given. */
@@ -60,6 +62,8 @@ export interface PharmacyWorklistLabels {
   assigned: string;
   immediate: string;
   scripts: (count: number) => string;
+  /** Translates a row's next-step labels. */
+  t?: (key: string) => string;
 }
 
 export interface PharmacyWorklistInput {
@@ -91,7 +95,7 @@ export function assemblePharmacyWorklist({
       || comparePharmacyPriority(a, b));
   const dispensedToday = scripts.filter(rx => pharmacyStageGroup(pharmacyStage(rx)) === 'finished'
     && rx.status !== 'discontinued' && localDayOf(rx.dispensedAt || rx.updatedAt) === today);
-  const clock = (iso?: string) => (iso && localDayOf(iso) === today ? localClockOf(iso) : localDayOf(iso));
+  const clock = (iso?: string) => (iso && localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
 
   const rows: WorklistPatient[] = [];
   const seen = new Set<string>();
@@ -121,7 +125,8 @@ export function assemblePharmacyWorklist({
     const mine = open.filter(r => r.patientId === rx.patientId);
     const stage = pharmacyStage(rx);
     const warned = mine.some(hasSafetyWarning);
-    const lane = pharmacyStageGroup(stage);
+    // No progress to report: a script is to fill, or parked waiting on an answer.
+    const lane = isParked(rx.orderStatus || 'prescribed') ? 'in_office' as const : 'scheduled' as const;
     push(rx.patientId, rx.patientName, {
       ward: withOthers(rx.medication, mine.length - 1),
       division: withOthers(rx.medication, mine.length - 1),
@@ -133,18 +138,24 @@ export function assemblePharmacyWorklist({
         timeSubtext: agoLabel(rx.createdAt, now),
         context: withOthers(rx.medication, mine.length - 1),
         contextSubtext: mine.length > 1 ? mine.slice(1).map(r => r.medication).join(', ') : formatRxSig(rx),
-        status: pharmacyStageLabel(stage),
+        status: labels.t ? counterPillLabel(rx.orderStatus || 'prescribed', labels.t) : pharmacyStageLabel(stage),
         statusTone: warned ? 'danger' : pharmacyStageTone(stage),
         statusSubtext: warned ? labels.safety
           : mine.some(r => r.urgency === 'immediate') ? labels.immediate
           : mine.length > 1 ? labels.scripts(mine.length) : '',
         lane,
         chartHref: dispenseFormHref(rx.patientId, rx._id),
+        openId: rx._id,
+        actions: labels.t ? counterActions(rx.orderStatus || 'prescribed', labels.t) : undefined,
       },
     });
   }
+  // Everything given out today is under Dispensed, even for a patient who still
+  // has scripts to fill: that patient has a row in each lane.
+  const dispensedRows = new Set<string>();
   for (const rx of dispensedToday) {
-    if (!rx.patientId || seen.has(rx.patientId)) continue;
+    if (!rx.patientId || dispensedRows.has(rx.patientId)) continue;
+    dispensedRows.add(rx.patientId);
     const mine = dispensedToday.filter(r => r.patientId === rx.patientId);
     push(rx.patientId, rx.patientName, {
       ward: withOthers(rx.medication, mine.length - 1),
@@ -157,11 +168,13 @@ export function assemblePharmacyWorklist({
         timeSubtext: agoLabel(rx.dispensedAt || rx.updatedAt, now),
         context: withOthers(rx.medication, mine.length - 1),
         contextSubtext: mine.length > 1 ? mine.slice(1).map(r => r.medication).join(', ') : formatRxSig(rx),
-        status: pharmacyStageLabel(pharmacyStage(rx)),
+        status: labels.t ? counterPillLabel(rx.orderStatus || 'prescribed', labels.t) : pharmacyStageLabel(pharmacyStage(rx)),
         statusTone: 'done',
         statusSubtext: mine.length > 1 ? labels.scripts(mine.length) : '',
         lane: 'finished',
+        rowKey: `${rx.patientId}:dispensed`,
         chartHref: dispenseFormHref(rx.patientId, rx._id),
+        openId: rx._id,
       },
     });
   }
@@ -196,6 +209,7 @@ export function assemblePharmacyWorklist({
     meta: clock(rx.createdAt),
     tone: hasSafetyWarning(rx) ? 'danger' : 'warning',
     href: dispenseFormHref(rx.patientId, rx._id),
+    openId: rx._id,
   });
   const safety = open.filter(hasSafetyWarning);
   const toReceive = open.filter(rx => ['prescribed', 'received_in_pharmacy_queue'].includes(pharmacyStage(rx)));
@@ -236,8 +250,8 @@ export function assemblePharmacyWorklist({
     outstanding,
     activity,
     counts: {
-      queued: open.filter(rx => pharmacyStageGroup(pharmacyStage(rx)) === 'scheduled').length,
-      working: open.filter(rx => pharmacyStageGroup(pharmacyStage(rx)) === 'in_office').length,
+      queued: open.filter(rx => !isParked(rx.orderStatus || 'prescribed')).length,
+      working: open.filter(rx => isParked(rx.orderStatus || 'prescribed')).length,
       dispensed: dispensedToday.length,
     },
   };
@@ -250,6 +264,8 @@ export default function PharmacyHomeView() {
   const { patients } = usePatients();
   const { appointments } = useAppointments();
   const { prescriptions } = usePrescriptions();
+  // The script open in the slider, by id so it follows the record step to step.
+  const [counter, setCounter] = useState<{ id: string; intent?: RxIntent } | null>(null);
   const { items: rawInventory } = usePharmacyInventory();
 
   const labels: PharmacyWorklistLabels = useMemo(() => ({
@@ -261,6 +277,7 @@ export default function PharmacyHomeView() {
     assigned: t('labHome.assignedToMe'),
     immediate: t('pharmacyHome.immediate'),
     scripts: (count: number) => t('pharmacyHome.scriptCount', { count }),
+    t,
   }), [t]);
 
   const worklist = useMemo(
@@ -283,6 +300,7 @@ export default function PharmacyHomeView() {
 
   if (!currentUser || !worklist) return null;
 
+  const counterRx = counter ? prescriptions.find(rx => rx._id === counter.id) : undefined;
   const today = toIsoDate(new Date());
   const stationDetail = (patientId: string): ReactNode => {
     const mine = prescriptions.filter(rx => rx.patientId === patientId && !isOutsidePharmacyOrder(rx)
@@ -302,15 +320,11 @@ export default function PharmacyHomeView() {
               title: rx.medication,
               detail: formatRxSig(rx),
               note: warned ? labels.safety : (rx.pharmacyInstructions || rx.indication),
-              status: (
-                <span className={`appointment-status-pill ${statusToneClass(warned ? 'danger' : pharmacyStageTone(stage))}`}>
-                  {pharmacyStageLabel(stage)}
-                </span>
-              ),
+              // Named for the next step, so no pill says it a second time.
               actions: (
-                <Link href={dispenseFormHref(patientId, rx._id)} className="btn btn-secondary btn-sm">
-                  {pharmacyStageGroup(stage) === 'finished' ? t('dashboard.open') : t('labHome.work')}
-                </Link>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => setCounter({ id: rx._id })}>
+                  {counterActions(rx.orderStatus || 'prescribed', t)[0]?.label ?? t('dashboard.open')}
+                </button>
               ),
             };
           })}
@@ -328,13 +342,13 @@ export default function PharmacyHomeView() {
         outstanding={worklist.outstanding}
         activityItems={worklist.activity}
         activitySeriesNames={[t('pharmacyHome.prescribed'), t('pharmacyHome.dispensed')]}
-        laneLabels={{ scheduled: t('workQueue.queued'), in_office: t('workQueue.inProgress'), finished: t('pharmacyHome.dispensed') }}
+        laneLabels={{ scheduled: t('rxFlow.pillToFill'), in_office: t('rxFlow.pillOnHold'), finished: t('pharmacyHome.dispensed') }}
         acuityDonut={{
           title: t('pharmacyHome.counterToday'),
           centerLabel: t('pharmacyHome.scripts'),
           segments: [
-            { name: t('workQueue.queued'), value: worklist.counts.queued, color: '#B35900' },
-            { name: t('workQueue.inProgress'), value: worklist.counts.working, color: '#015697' },
+            { name: t('rxFlow.pillToFill'), value: worklist.counts.queued, color: '#B35900' },
+            { name: t('rxFlow.pillOnHold'), value: worklist.counts.working, color: '#015697' },
             { name: t('pharmacyHome.dispensed'), value: worklist.counts.dispensed, color: '#0A6E4A' },
           ],
         }}
@@ -352,6 +366,7 @@ export default function PharmacyHomeView() {
           </section>
         )}
         stationDetail={stationDetail}
+        onStationOpen={(id, action) => setCounter({ id, intent: action === 'hold' || action === 'stockout' ? action : undefined })}
         canWriteNotes={false}
         extraHeaderActions={[
           { key: 'stock', label: t('pharmacyHome.inventory'), icon: Package, run: () => router.push('/pharmacy?tab=inventory') },
@@ -361,6 +376,15 @@ export default function PharmacyHomeView() {
         missionDescription={t('mission.pharmacy.body')}
         missionIcon={Pill}
       />
+      {counterRx && (
+        <DispenseSlider
+          rx={counterRx}
+          patientName={shortenPersonName(counterRx.patientName)}
+          activeMedications={prescriptions.filter(rx => rx.patientId === counterRx.patientId && rx._id !== counterRx._id && rx.status !== 'discontinued').map(rx => rx.medication).filter(Boolean)}
+          intent={counter?.intent}
+          onClose={() => setCounter(null)}
+        />
+      )}
     </main>
   );
 }

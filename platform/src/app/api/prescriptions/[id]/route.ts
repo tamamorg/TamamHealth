@@ -100,6 +100,7 @@ async function patchHandler(
           allowPartial: body.allowPartial === true,
           note: typeof body.note === 'string' ? body.note : undefined,
           counsellingConfirmed: body.counsellingConfirmed === true,
+          allergyReview: typeof body.allergyReview === 'string' ? body.allergyReview : undefined,
         });
         return NextResponse.json({
           prescription: result.prescription,
@@ -120,7 +121,8 @@ async function patchHandler(
           // The client shows the message either way, but the codes stay
           // meaningful.
           const status = err.code === 'STOCK_OUT' || err.code === 'INSUFFICIENT_STOCK'
-            || err.code === 'NOT_CLEARED' || err.code === 'AMBIGUOUS_MEDICATION' ? 409
+            || err.code === 'NOT_CLEARED' || err.code === 'AMBIGUOUS_MEDICATION'
+            || err.code === 'ALLERGY_REVIEW_REQUIRED' ? 409
             : err.code === 'NOT_AUTHORISED' ? 403
             : 400;
           return NextResponse.json(

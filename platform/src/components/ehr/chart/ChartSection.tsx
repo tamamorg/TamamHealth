@@ -25,6 +25,9 @@ export interface ChartSectionPagination {
 
 interface ChartSectionProps {
   title: string;
+  /** One light line under the title saying what the section holds or why it
+   *  is empty for this viewer (the Billing activity header's shape). */
+  subtitle?: React.ReactNode;
   addLabel?: string;
   /** Glyph for the action button. Defaults to a plus; pass the domain's own
    *  icon (a flask for lab orders, say) when the action is a specific verb
@@ -42,7 +45,7 @@ interface ChartSectionProps {
 }
 
 export default function ChartSection({
-  title, addLabel = 'Add', addIcon, onAdd, filterSlot, toggleSlot,
+  title, subtitle, addLabel = 'Add', addIcon, onAdd, filterSlot, toggleSlot,
   searchValue = '', searchPlaceholder, onSearchChange, pagination, className, children,
 }: ChartSectionProps) {
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize)) : 1;
@@ -55,6 +58,7 @@ export default function ChartSection({
       <header className="tamam-section-head">
         <div className="tamam-section-title-wrap">
           <h3 className="tamam-section-title">{title}</h3>
+          {subtitle && <p className="tamam-section-sub">{subtitle}</p>}
           <span className="tamam-section-underline" aria-hidden />
         </div>
         <div className="tamam-section-controls">

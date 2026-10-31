@@ -18,10 +18,11 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Hospital, AlertCircle, ChevronDown, Check } from '@/components/icons/lucide';
+import { Hospital, ChevronDown, Check } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import PopupHeader from '@/components/PopupHeader';
 import Select from '@/components/Select';
+import { FormError } from '@/components/overlay/FormNotices';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { locationLabel, states as SOUTH_SUDAN_STATES } from '@/lib/data/south-sudan-reference';
 import { FACILITY_TYPES, type FacilityType } from '@/lib/facility-types';
@@ -199,13 +200,7 @@ export default function FacilityFormModal({
         )}
 
         {error && (
-          <div
-            className="mb-3 p-3 rounded-lg text-sm flex items-start gap-2" role="alert"
-            style={{ background: 'rgba(224, 49, 39,0.1)', color: 'var(--color-danger-text)', border: '1px solid rgba(224, 49, 39,0.2)' }}
-          >
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
+          <FormError message={error} className="mb-3" />
         )}
 
         <div className="space-y-3">

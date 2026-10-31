@@ -33,6 +33,7 @@ import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { formatPrintedAt, printDate } from '@/lib/print-identity';
 import { formatDobOmrs } from '@/lib/date-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useGoBack } from '@/lib/navigation/nav-history';
@@ -311,38 +312,40 @@ export default function BillDetailPage() {
         <td class="num">${escapeHtml(i.quantity)}</td><td class="num">${escapeHtml(money(i.unitPrice))}</td><td class="num">${escapeHtml(money(i.totalPrice))}</td>
       </tr>`).join('');
     const payRows = bill.payments.map(p => `
-      <tr><td>${escapeHtml(new Date(p.receivedAt).toLocaleString())}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
+      <tr><td>${escapeHtml(formatPrintedAt(new Date(p.receivedAt)))}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
       <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="num">${escapeHtml(money(p.amount))}</td></tr>`).join('');
     const reversal = bill.chargeReversedAt
-      ? `<p class="notice"><strong>Charge reversed</strong> on ${escapeHtml(formatBillDate(bill.chargeReversedAt))}: ${escapeHtml(bill.chargeReversalReason || '')}. ${escapeHtml(money(bill.amountPaid))} collected against this invoice is a credit on the patient's account until refunded.</p>`
+      ? `<p class="notice"><strong>Charge reversed</strong> on ${escapeHtml(printDate(bill.chargeReversedAt))}: ${escapeHtml(bill.chargeReversalReason || '')}. ${escapeHtml(money(bill.amountPaid))} collected against this invoice is a credit on the patient's account until refunded.</p>`
       : '';
     const body = `${reversal}
-      <section class="section"><h2 class="section-title">Line items</h2>
-        <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
+      <section class="section"><h2 class="section-title">Line Items</h2>
+        <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
       </section>
-      ${bill.payments.length ? `<section class="section"><h2 class="section-title">Payments</h2><table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th class="num">Amount</th></tr></thead><tbody>${payRows}</tbody></table></section>` : '<p class="notice">No payments have been recorded against this invoice.</p>'}
+      ${bill.payments.length ? `<section class="section"><h2 class="section-title">Payments</h2><table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Received By</th><th class="num">Amount</th></tr></thead><tbody>${payRows}</tbody></table></section>` : '<p class="notice">No payments have been recorded against this invoice.</p>'}
       <div class="totals">
         <div class="total-row"><span>Subtotal</span><strong>${escapeHtml(money(bill.subtotal))}</strong></div>
         <div class="total-row"><span>Discount</span><strong>− ${escapeHtml(money(bill.discount))}</strong></div>
         ${bill.taxAmount ? `<div class="total-row"><span>Tax (${escapeHtml(bill.taxRate)}%)</span><strong>${escapeHtml(money(bill.taxAmount))}</strong></div>` : ''}
-        <div class="total-row"><span>Invoice total</span><strong>${escapeHtml(money(bill.totalAmount))}</strong></div>
+        <div class="total-row"><span>Invoice Total</span><strong>${escapeHtml(money(bill.totalAmount))}</strong></div>
         <div class="total-row"><span>Paid</span><strong>− ${escapeHtml(money(bill.amountPaid))}</strong></div>
-        <div class="total-row grand"><strong>Amount due</strong><strong>${escapeHtml(money(bill.balanceDue))}</strong></div>
+        <div class="total-row grand"><strong>Amount Due</strong><strong>${escapeHtml(money(bill.balanceDue))}</strong></div>
       </div>`;
     const html = buildClinicalPrintDocument({
       title: bill.invoiceNumber,
-      documentLabel: 'Patient invoice',
+      documentLabel: 'Patient Invoice',
+      date: bill.createdAt,
       facilityName: bill.facilityName,
+      metaTitle: 'Patient Information',
       meta: [
-        { label: 'Patient', value: bill.patientName },
-        { label: 'Hospital number', value: bill.hospitalNumber || bill.patientId },
-        { label: 'Issued', value: formatBillDate(bill.createdAt) },
-        { label: 'Invoice status', value: invoiceStatusLabel(bill) },
+        { label: 'Patient Name', value: bill.patientName },
+        { label: 'Patient ID', value: bill.hospitalNumber || bill.patientId },
+        { label: 'Invoice Number', value: bill.invoiceNumber },
+        { label: 'Invoice Status', value: invoiceStatusLabel(bill) },
       ],
       safeBodyHtml: body,
       footer: 'Patient invoice generated from the billing ledger. Retain with the payment record.',
     });
-    openIsolatedHtmlWindow(html, 'width=800,height=900', true);
+    openIsolatedHtmlWindow(html, '', true);
   };
 
   // ── Render ─────────────────────────────────────────────────────────

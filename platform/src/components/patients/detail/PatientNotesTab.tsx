@@ -5,7 +5,7 @@ import type { PatientDoc } from '@/lib/db-types';
 import { NotesList, PhoneNotes } from './lazy-panels';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppUser } from '@/lib/context/types';
-export default function PatientNotesTab({ patient, currentUser, canConsult, setNoteViewer, notesRefreshToken, noteViewer, setNotesRefreshToken, setChartPanelRequest, onCreateNote }: {
+export default function PatientNotesTab({ patient, currentUser, canConsult, setNoteViewer, notesRefreshToken, noteViewer, setNotesRefreshToken, setChartPanelRequest, onCreateNote, onOpenRecord }: {
   patient: PatientDoc;
   currentUser: AppUser | null;
   canConsult: boolean;
@@ -17,6 +17,8 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
   /** The header's "+ Note": today's unsigned draft or a new Consultation,
    *  opened in the chart's slider. */
   onCreateNote: () => void;
+  /** A consultation record opens in the chart sidebar, where it is signed. */
+  onOpenRecord: (recordId: string) => void;
 }) {
   return (
             <div className="space-y-4">
@@ -36,13 +38,11 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
                 // form's own type picker changes it if a different note is
                 // wanted.
                 onCreate={onCreateNote}
-                // Reading a note no longer leaves the chart: a signed note
-                // opens over it, read-only, with addendum and print. An
-                // unsigned draft is still being written, so tapping it goes
-                // straight to the note drawer instead of a viewer whose only
-                // useful button is Edit.
-                onOpenNote={(id, kind, status) => {
-                  if (kind === 'clinical' && status === 'draft' && canConsult) setChartPanelRequest(`clinical-note:${id}`);
+                // Reading a note no longer leaves the chart, and a saved note
+                // always opens locked: a signed one with addendum and print, a
+                // draft with Edit for those who may write notes.
+                onOpenNote={(id, kind) => {
+                  if (kind === 'record') onOpenRecord(id);
                   else setNoteViewer({ id, kind });
                 }}
                 refreshToken={notesRefreshToken}
@@ -59,7 +59,7 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
                   noteId={noteViewer.id}
                   kind={noteViewer.kind}
                   onClose={() => { setNoteViewer(null); setNotesRefreshToken(n => n + 1); }}
-                  onEdit={id => { setNoteViewer(null); setChartPanelRequest(`clinical-note:${id}`); }}
+                  onEdit={canConsult ? id => { setNoteViewer(null); setChartPanelRequest(`clinical-note:${id}:edit`); } : undefined}
                 />
               )}
             </div>

@@ -205,6 +205,7 @@ export default function HrLeavePage() {
                       label={t(`hr.leaveStatus_${r.status}`)}
                       value={r.status}
                       ariaLabel={`Leave status for ${r.userName}`}
+                      subject={r.userName}
                       style={statusPillStyle(tok)}
                       options={isApprover && r.status === 'pending' ? [
                         { value: 'approved', label: t('hr.approve') },

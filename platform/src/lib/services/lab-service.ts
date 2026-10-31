@@ -330,6 +330,9 @@ export async function getOverdueUnreviewedResults(scope?: DataScope): Promise<La
   const now = Date.now();
   return all.filter(r => {
     if (effectiveOrderStatus(r) !== 'resulted') return false;
+    // An outside or walk-in request has no clinician here to review it; its
+    // report goes back with the lab, so it must not escalate as unreviewed.
+    if (r.requestSource === 'external_facility' || r.requestSource === 'walk_in') return false;
     // The SLA runs from when the result landed. `updatedAt` moves on every
     // later write (review notes, a status touch), which kept resetting the clock.
     const resultedAt = new Date(r.completedAt || r.updatedAt || r.createdAt || '').getTime();

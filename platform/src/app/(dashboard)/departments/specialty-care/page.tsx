@@ -19,6 +19,7 @@ import { useSpecialtyPathwayConfigs } from '@/lib/hooks/useSpecialtyPathwayConfi
 import { SPECIALTY_PATHWAYS, getSpecialtyPathway, validateSpecialtyEpisode } from '@/modules/specialty-care';
 import type { SpecialtyCareEpisodeDoc, SpecialtyEpisodeStatus, SpecialtyFieldDefinition, SpecialtyFieldValue, SpecialtyPathwayCode, SpecialtyPathwayConfigDoc } from '@/modules/specialty-care';
 import type { RestrictedMentalHealthNote, RestrictedMentalHealthNoteCategory } from '@/modules/specialty-care';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -86,7 +87,7 @@ export default function SpecialtyCarePage() {
   const [patientId, setPatientId] = useState('');
   const [patientName, setPatientName] = useState('');
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [restrictedNotes, setRestrictedNotes] = useState<RestrictedMentalHealthNote[]>([]);
   const [restrictedNarrative, setRestrictedNarrative] = useState('');
   const [restrictedCategory, setRestrictedCategory] = useState<RestrictedMentalHealthNoteCategory>('assessment');
@@ -110,62 +111,62 @@ export default function SpecialtyCarePage() {
         if (!response.ok) throw new Error(body.error || 'Restricted notes not loaded. Reload the page to try again.');
         if (!controller.signal.aborted && selectedEpisodeId.current === episodeId) setRestrictedNotes(body.notes ?? []);
       })
-      .catch((cause) => { if (!controller.signal.aborted && selectedEpisodeId.current === episodeId) setMessage(describeError(cause, t('msg.restrictedNotesNotLoadedReload'))); });
+      .catch((cause) => { if (!controller.signal.aborted && selectedEpisodeId.current === episodeId) showToast(describeError(cause, t('msg.restrictedNotesNotLoadedReload')), 'error'); });
     return () => controller.abort();
   }, [active, canAuthorRestrictedNote, pathwayCode, t]);
 
   const choosePathway = (code: SpecialtyPathwayCode) => {
     selectedEpisodeId.current = null; setRestrictedNarrative(''); setRestrictedCategory('assessment'); setPatientId(''); setPatientName(''); setAppointmentId('');
-    setPathwayCode(code); setActive(null); setValues({}); setRestrictedNotes([]); setMessage(null);
+    setPathwayCode(code); setActive(null); setValues({}); setRestrictedNotes([]);
   };
   const openEpisode = (episode: SpecialtyCareEpisodeDoc) => {
     selectedEpisodeId.current = episode._id; setRestrictedNarrative(''); setRestrictedCategory('assessment');
-    setActive(episode); setValues(episode.values); setPatientId(episode.patientId); setPatientName(episode.patientName); setRestrictedNotes([]); setMessage(null);
+    setActive(episode); setValues(episode.values); setPatientId(episode.patientId); setPatientName(episode.patientName); setRestrictedNotes([]);
   };
   const create = async () => {
-    if (!scope?.orgId || !scope.hospitalId || !currentUser) { setMessage(t('equipment.toastNoFacility')); return; }
-    setSaving(true); setMessage(null);
+    if (!scope?.orgId || !scope.hospitalId || !currentUser) { showToast(t('equipment.toastNoFacility'), 'error'); return; }
+    setSaving(true);
     try {
       const { createSpecialtyEpisode } = await import('@/modules/specialty-care/services/specialty-care-service');
       const appointment = appointments.find(item => item._id === appointmentId && item.patientId === patientId);
       const department = departments.find(item => item.isActive && pathway.departmentCodes.includes(item.code));
       const created = await createSpecialtyEpisode({ pathway: pathwayCode, patientId, patientName, departmentId: department?._id, appointmentId: appointment?._id, hospitalId: scope.hospitalId, facilityName: currentUser.hospitalName, orgId: scope.orgId, responsibleClinicianId: currentUser._id, responsibleClinicianName: currentUser.name, scope, actor: { id: currentUser._id, name: currentUser.name } });
       selectedEpisodeId.current = created._id;
-      setActive(created); setValues(created.values); await reload(); setMessage(t('msg.episodeCreated'));
-    } catch (cause) { setMessage(describeError(cause, t('msg.episodeNotCreatedTryAgain'))); }
+      setActive(created); setValues(created.values); await reload(); showToast(t('msg.episodeCreated'), 'success');
+    } catch (cause) { showToast(describeError(cause, t('msg.episodeNotCreatedTryAgain')), 'error'); }
     finally { setSaving(false); }
   };
   const save = async (status?: SpecialtyEpisodeStatus) => {
     if (!active || !scope || !currentUser) return;
-    setSaving(true); setMessage(null);
+    setSaving(true);
     try {
       const { updateSpecialtyEpisode } = await import('@/modules/specialty-care/services/specialty-care-service');
       const updated = await updateSpecialtyEpisode({ id: active._id, scope, values, status, actor: { id: currentUser._id, name: currentUser.name } });
-      setActive(updated); setValues(updated.values); await reload(); setMessage(status === 'completed' ? t('msg.episodeCompleted') : t('myFacility.savedSuccessfully'));
-    } catch (cause) { setMessage(describeError(cause, t('myFacility.saveFailed'))); }
+      setActive(updated); setValues(updated.values); await reload(); showToast(status === 'completed' ? t('msg.episodeCompleted') : t('myFacility.savedSuccessfully'), 'success');
+    } catch (cause) { showToast(describeError(cause, t('myFacility.saveFailed')), 'error'); }
     finally { setSaving(false); }
   };
   const addRestrictedNote = async () => {
     if (!active || !restrictedNarrative.trim()) return;
     const episodeId = active._id;
-    setSaving(true); setMessage(null);
+    setSaving(true);
     try {
       const response = await apiFetch('/api/restricted-mental-health-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientId: active.patientId, patientName: active.patientName, episodeId: active._id, category: restrictedCategory, narrative: restrictedNarrative }) });
       const body = await response.json() as { note?: RestrictedMentalHealthNote; error?: string };
       if (!response.ok || !body.note) throw new Error(body.error || 'Restricted note not saved. Try again.');
-      if (selectedEpisodeId.current === episodeId) { setRestrictedNotes((current) => [body.note!, ...current]); setRestrictedNarrative(''); setMessage(t('msg.restrictedNoteSaved')); }
-    } catch (cause) { setMessage(describeError(cause, t('msg.restrictedNoteNotSavedTry'))); }
+      if (selectedEpisodeId.current === episodeId) { setRestrictedNotes((current) => [body.note!, ...current]); setRestrictedNarrative(''); showToast(t('msg.restrictedNoteSaved'), 'success'); }
+    } catch (cause) { showToast(describeError(cause, t('msg.restrictedNoteNotSavedTry')), 'error'); }
     finally { setSaving(false); }
   };
   const setConfigField = <K extends keyof ConfigDraft>(key: K, value: ConfigDraft[K]) => setConfigDrafts((current) => ({ ...current, [pathwayCode]: { ...configDraft, [key]: value } }));
   const saveConfig = async () => {
     if (!scope?.orgId || !scope.hospitalId || !currentUser) return;
-    setSaving(true); setMessage(null);
+    setSaving(true);
     try {
       const { configureSpecialtyPathway } = await import('@/modules/specialty-care/services/specialty-care-service');
       await configureSpecialtyPathway({ pathway: pathwayCode, hospitalId: scope.hospitalId, facilityName: currentUser.hospitalName, orgId: scope.orgId, ...configDraft, scope, actor: { id: currentUser._id, name: currentUser.name } });
-      await reloadConfigs(); setMessage(t('specialtyCare.configSaved'));
-    } catch (cause) { setMessage(describeError(cause, t('specialtyCare.configError'))); }
+      await reloadConfigs(); showToast(t('specialtyCare.configSaved'), 'success');
+    } catch (cause) { showToast(describeError(cause, t('specialtyCare.configError')), 'error'); }
     finally { setSaving(false); }
   };
   const validation = active ? validateSpecialtyEpisode({ ...active, values, status: 'completed' }) : null;
@@ -192,7 +193,6 @@ export default function SpecialtyCarePage() {
           {pathwayCode === 'mental_health' && canAuthorRestrictedNote && <section className="rounded-xl border p-4 space-y-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}><div><h3 className="font-semibold">{t('specialtyCare.restrictedTitle')}</h3><p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('specialtyCare.restrictedHelp')}</p></div><div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]"><Select className="form-input" value={restrictedCategory} onChange={(event) => setRestrictedCategory(event.target.value as RestrictedMentalHealthNoteCategory)}><option value="assessment">{t('specialtyCare.category.assessment')}</option><option value="therapy">{t('specialtyCare.category.therapy')}</option><option value="safeguarding">{t('specialtyCare.category.safeguarding')}</option><option value="risk">{t('specialtyCare.category.risk')}</option><option value="follow_up">{t('specialtyCare.category.followUp')}</option></Select><textarea className="form-input min-h-24" value={restrictedNarrative} onChange={(event) => setRestrictedNarrative(event.target.value)} placeholder={t('specialtyCare.restrictedPlaceholder')} /></div><button className="btn btn-secondary btn-sm" disabled={saving || !restrictedNarrative.trim()} onClick={() => void addRestrictedNote()}><Save className="w-4 h-4" /> {t('specialtyCare.saveRestricted')}</button>{restrictedNotes.length > 0 && <div className="space-y-2">{restrictedNotes.map((note) => <article key={note.id} className="rounded-lg border p-3" style={{ borderColor: 'var(--border-color)' }}><div className="text-xs font-semibold capitalize">{note.category.replaceAll('_', ' ')} · {note.authoredByName}</div><p className="mt-2 whitespace-pre-wrap text-sm">{note.narrative}</p><time className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(note.authoredAt).toLocaleString()}</time></article>)}</div>}</section>}
           {validation && !validation.valid && <section className="rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--color-warning-border)' }}><h3 className="text-sm font-semibold flex items-center gap-2"><ClipboardList className="w-4 h-4" /> {t('specialtyCare.required')}</h3><ul className="mt-2 list-disc pl-5 text-xs space-y-1">{validation.errors.map((item) => <li key={item}>{item}</li>)}</ul></section>}
         </>}
-        {message && <p role="status" className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>{message}</p>}
       </main>
     </div>
   </div>;

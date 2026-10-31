@@ -453,7 +453,7 @@ export default function HandoffWorkflow({
         </div>
       </div>
       <div className="ehr-handoff-head-actions">
-        <button type="button" onClick={() => printElementById('shift-handoff-print')} className="ehr-handoff-btn sm">
+        <button type="button" onClick={() => printElementById('shift-handoff-print', { label: t('nurse.shiftHandoffReport') })} className="ehr-handoff-btn sm">
           <Printer /> {t('action.print')}
         </button>
         {variant === 'modal' && (

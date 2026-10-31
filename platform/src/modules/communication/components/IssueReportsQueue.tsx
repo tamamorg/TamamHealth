@@ -228,6 +228,7 @@ export default function IssueReportsQueue({
                       label={t(`issues.status.${status}`)}
                       value={status}
                       ariaLabel={t('issues.triageAria', { summary: m.subject || '' })}
+                      subject={m.subject}
                       style={{ borderColor: tok.border, background: tok.bg, color: tok.color }}
                       options={issueRowActions(m, currentUser?._id, t)}
                       onSelect={value => onRowAction(m, value)}

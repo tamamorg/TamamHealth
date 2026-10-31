@@ -13,6 +13,7 @@
  * basket, the rest are written.
  */
 
+import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import type { PatientDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
@@ -63,15 +64,10 @@ export async function signOrders({
       try {
         const safety = await assessPrescriptionSafety(patient._id, order.drug.name, scope);
         if (safety.allergyCheckUnavailable) outcome.warnings.push(t('prescribe.allergyCheckUnavailable'));
-        const severe = safety.allergyWarnings?.filter(w => w.requiresOverride) || [];
         let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
-        if (severe.length) {
+        if (hasSafetyStop(safety)) {
           const reason = await confirmPrompt({
-            title: t('prescribe.overrideTitle'),
-            message: t('prescribe.overrideMessage', {
-              medication: order.drug.name,
-              allergy: severe.map(w => w.allergy).join(', '),
-            }),
+            ...safetyStopPrompt(t, order.drug.name, safety),
             inputLabel: t('prescribe.overrideReason'),
             confirmLabel: t('prescribe.overrideConfirm'),
             inputRequired: true,

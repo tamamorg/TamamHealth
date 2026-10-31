@@ -31,6 +31,7 @@ import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
 import { mergeVitalsTimeline } from '@/lib/clinical/vitals';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import type { PatientShiftHandoff } from '@/lib/hooks/usePatientHandoff';
+import { printDate } from '@/lib/print-identity';
 import { printElementById } from '@/lib/safe-html';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
 import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
@@ -277,7 +278,16 @@ export default function PatientSBAR({
     [labs],
   );
 
-  const handlePrint = () => { printElementById('patient-sbar-print'); };
+  const handlePrint = () => { printElementById('patient-sbar-print', {
+    label: t('print.sbar'),
+    fieldsTitle: t('print.patientInformation'),
+    fields: [
+      { label: t('print.patientName'), value: patientFullName(patient) },
+      { label: t('print.patientId'), value: patient.hospitalNumber },
+      { label: t('births.dateOfBirth'), value: printDate(patient.dateOfBirth) },
+      { label: t('labOrder.fieldAgeSex'), value: genderAge },
+    ],
+  }); };
 
   const genderAge = [patient.gender, age != null ? `${age}y` : null].filter(Boolean).join(' · ');
   const dangerCount = (latestTriage?.redCriteria?.length || 0) + (latestTriage?.yellowCriteria?.length || 0);

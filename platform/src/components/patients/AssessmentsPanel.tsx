@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
-import type { PatientDoc } from '@/lib/db-types';
+import type { AssessmentDoc, PatientDoc } from '@/lib/db-types';
 import { useAssessments } from '@/lib/hooks/useAssessments';
 import { ASSESSMENT_INSTRUMENTS, getInstrument, scoreAssessment } from '@/lib/clinical/assessment-instruments';
 import { isClinicalAuthorRole } from '@/lib/clinical-roles';
@@ -14,6 +14,8 @@ import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { FormError } from '@/components/overlay/FormNotices';
+import FormField from '@/components/overlay/FormField';
+import FormSlider from '@/components/overlay/FormSlider';
 
 const SEVERITY_COLOR: Record<string, string> = {
   minimal: 'var(--color-success)',
@@ -42,6 +44,8 @@ export default function AssessmentsPanel({ patient, focusId }: {
   const [adding, setAdding] = useState(false);
   const [instrumentId, setInstrumentId] = useState(ASSESSMENT_INSTRUMENTS[0].id);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  // The held assessment open in the slider for the provider to review and sign.
+  const [reviewing, setReviewing] = useState<AssessmentDoc | null>(null);
 
   const isProvider = isClinicalAuthorRole(currentUser?.role);
 
@@ -55,6 +59,8 @@ export default function AssessmentsPanel({ patient, focusId }: {
   }, [focusId, assessments]);
 
   const instrument = getInstrument(instrumentId)!;
+  const reviewInstrument = reviewing ? getInstrument(reviewing.instrumentId) : undefined;
+  const closeForm = () => { setAdding(false); setReviewing(null); setError(null); };
   const liveScore = useMemo(() => scoreAssessment(instrument, answers), [instrument, answers]);
 
   async function run(fn: () => Promise<unknown>) {
@@ -63,6 +69,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
     try {
       await fn();
       setAdding(false);
+      setReviewing(null);
       setAnswers({});
     } catch (e) {
       setError(describeError(e, t('msg.changeNotSavedTryAgain')));
@@ -90,49 +97,6 @@ export default function AssessmentsPanel({ patient, focusId }: {
 
   return (
     <ChartSection title="Outcome measures" addLabel="New assessment" onAdd={() => { setAdding(true); setAnswers({}); }}>
-      {adding && (
-        <div className="rounded-lg p-3 mb-3 space-y-3" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}>
-          <Select value={instrumentId} onChange={(e) => { setInstrumentId(e.target.value); setAnswers({}); }}
-            className="w-full p-2 rounded-md text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
-            {ASSESSMENT_INSTRUMENTS.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-          </Select>
-          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{instrument.description}</p>
-          <ol className="space-y-2">
-            {instrument.questions.map((q, idx) => (
-              <li key={q.id}>
-                <p className="text-[12px] mb-1" style={{ color: 'var(--text-primary)' }}>{idx + 1}. {q.text}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {instrument.options.map((opt) => {
-                    const selected = answers[q.id] === opt.value;
-                    return (
-                      <button key={opt.value} type="button"
-                        onClick={() => setAnswers((a) => ({ ...a, [q.id]: opt.value }))}
-                        className="text-[11px] px-2 py-1 rounded-md"
-                        style={selected
-                          ? { background: 'var(--accent-primary)', color: '#fff' }
-                          : { background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
-                        {opt.label} ({opt.value})
-                      </button>
-                    );
-                  })}
-                </div>
-              </li>
-            ))}
-          </ol>
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Score: {liveScore.total}
-              {liveScore.band && <span style={{ color: SEVERITY_COLOR[liveScore.band.severity] }}> · {liveScore.band.label}</span>}
-              <span className="font-normal" style={{ color: 'var(--text-muted)' }}> ({liveScore.answered}/{liveScore.questionCount} answered)</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="btn btn-sm btn-primary" disabled={busy || liveScore.answered === 0} onClick={() => run(doCreate)}>Save (hold for provider)</button>
-            <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setAdding(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
-
       <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
@@ -149,7 +113,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
             </tr>
           </thead>
           <tbody>
-            {assessments.length === 0 && !adding && (
+            {assessments.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState itemLabel="assessments" actionLabel="New assessment" onAction={() => { setAdding(true); setAnswers({}); }} />
@@ -185,9 +149,11 @@ export default function AssessmentsPanel({ patient, focusId }: {
                   <td>
                     <RowActionsMenu
                       ariaLabel={`Actions for ${a.instrumentName}`}
-                      actions={!signed && isProvider ? [
-                        { key: 'sign', label: 'Review & sign', disabled: busy, onClick: () => run(() => doSign(a._id)) },
-                      ] : []}
+                      actions={[
+                        !signed && isProvider
+                          ? { key: 'sign', label: t('assessments.reviewSign'), onClick: () => setReviewing(a) }
+                          : { key: 'view', label: t('assessments.view'), onClick: () => setReviewing(a) },
+                      ]}
                     />
                   </td>
                 </tr>
@@ -196,7 +162,96 @@ export default function AssessmentsPanel({ patient, focusId }: {
           </tbody>
         </table>
 
-      {error && <FormError message={error} />}
+      {error && !adding && !reviewing && <FormError message={error} />}
+
+      {adding && (
+        <FormSlider
+          title={t('assessments.newTitle')}
+          subtitle={patientFullName(patient)}
+          className="tamam-dialog"
+          size="lg"
+          onClose={closeForm}
+          busy={busy}
+          footerNote={(
+            <>
+              {t('assessments.score', { score: liveScore.total })}
+              {liveScore.band && <span style={{ color: SEVERITY_COLOR[liveScore.band.severity] }}> · {liveScore.band.label}</span>}
+              {` (${t('assessments.answered', { answered: liveScore.answered, total: liveScore.questionCount })})`}
+            </>
+          )}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeForm}>{t('action.cancel')}</button>
+            <button type="button" className="btn btn-primary" disabled={busy || liveScore.answered === 0} onClick={() => run(doCreate)}>{t('assessments.save')}</button>
+          </>}
+        >
+          <div className="space-y-4">
+            <FormField label={t('assessments.instrument')} hint={instrument.description}>
+              {control => (
+                <Select {...control} value={instrumentId} onChange={e => { setInstrumentId(e.target.value); setAnswers({}); }}>
+                  {ASSESSMENT_INSTRUMENTS.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </Select>
+              )}
+            </FormField>
+            {instrument.questions.map((q, idx) => (
+              <FormField key={q.id} label={`${idx + 1}. ${q.text}`}>
+                {control => (
+                  <Select
+                    {...control}
+                    value={answers[q.id] === undefined ? '' : String(answers[q.id])}
+                    onChange={e => setAnswers(a => {
+                      const next = { ...a };
+                      if (e.target.value === '') delete next[q.id]; else next[q.id] = Number(e.target.value);
+                      return next;
+                    })}
+                  >
+                    <option value="">{t('o3form.chooseOption')}</option>
+                    {instrument.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label} ({opt.value})</option>)}
+                  </Select>
+                )}
+              </FormField>
+            ))}
+            {error && <FormError message={error} />}
+          </div>
+        </FormSlider>
+      )}
+
+      {reviewing && (
+        <FormSlider
+          title={reviewing.instrumentName}
+          subtitle={patientFullName(patient)}
+          className="tamam-dialog"
+          size="lg"
+          onClose={closeForm}
+          busy={busy}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeForm}>{t(reviewing.documentStatus === 'signed' ? 'action.close' : 'action.cancel')}</button>
+            {reviewing.documentStatus !== 'signed' && isProvider && (
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => doSign(reviewing._id))}>{t('assessments.sign')}</button>
+            )}
+          </>}
+        >
+          <div className="space-y-4">
+            <FormField label={t('assessments.scoreLabel')}>
+              <p className="tamam-slider-value">
+                {reviewing.totalScore}{reviewing.interpretation ? ` · ${reviewing.interpretation}` : ''}
+                {` (${t('assessments.answered', { answered: reviewing.answeredCount, total: reviewing.questionCount })})`}
+              </p>
+            </FormField>
+            <FormField label={t('assessments.enteredBy')}><p className="tamam-slider-value">{reviewing.enteredByName || '—'} · {formatDateTime(reviewing.createdAt)}</p></FormField>
+            {reviewing.signedByName && <FormField label={t('assessments.signedBy')}><p className="tamam-slider-value">{reviewing.signedByName} · {formatDateTime(reviewing.signedAt)}</p></FormField>}
+            {reviewInstrument?.questions.map((q, idx) => {
+              const value = reviewing.answers[q.id];
+              const option = reviewInstrument.options.find(o => o.value === value);
+              return (
+                <FormField key={q.id} label={`${idx + 1}. ${q.text}`}>
+                  <p className="tamam-slider-value">{option ? `${option.label} (${option.value})` : t('assessments.notAnswered')}</p>
+                </FormField>
+              );
+            })}
+            {error && <FormError message={error} />}
+          </div>
+        </FormSlider>
+      )}
     </ChartSection>
   );
 }

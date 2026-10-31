@@ -179,7 +179,7 @@ export default function CheckoutModal({
       width={440}
       onClose={onClose}
       footer={<>
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary">
             Cancel
           </button>
           {(() => {
@@ -198,12 +198,14 @@ export default function CheckoutModal({
                   );
                   setCompleting(false);
                 }}
+                type="button"
                 disabled={!canSubmit}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                style={{ background: blocked ? 'var(--color-warning)' : 'var(--color-success)' }}
+                // The shared action bar's primary. An override says so in its
+                // label; the Checkout blocked panel above carries the warning.
+                className="btn btn-primary"
               >
-                <CheckCircle className="w-4 h-4" />
                 {completing ? 'Closing…' : blocked ? 'Override & check out' : 'Complete checkout'}
+                <CheckCircle className="w-4 h-4" aria-hidden="true" />
               </button>
             );
           })()}

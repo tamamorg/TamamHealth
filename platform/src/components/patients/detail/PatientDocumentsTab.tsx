@@ -4,7 +4,7 @@ import { DocumentsPanel } from './lazy-panels';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { ReferralDoc } from '@/lib/db-types';
-export default function PatientDocumentsTab({ patient, patientReferrals, canViewClinical, focusId, setMessageSubject, setMessageIsEducation, setShowMessageModal, router, canManageReferrals, setShowReferModal }: {
+export default function PatientDocumentsTab({ patient, patientReferrals, canViewClinical, focusId, setMessageSubject, setMessageIsEducation, setShowMessageModal, router, canManageReferrals, setShowReferModal, onReferralsChanged }: {
   patient: PatientDoc;
   patientReferrals: ReferralDoc[];
   canViewClinical: boolean;
@@ -14,6 +14,7 @@ export default function PatientDocumentsTab({ patient, patientReferrals, canView
   setShowMessageModal: Dispatch<SetStateAction<boolean>>;
   router: AppRouterInstance;
   canManageReferrals: boolean;
+  onReferralsChanged?: () => void;
   setShowReferModal: Dispatch<SetStateAction<boolean>>;
 }) {
   return (
@@ -32,6 +33,7 @@ export default function PatientDocumentsTab({ patient, patientReferrals, canView
                   setMessageIsEducation(true);
                   setShowMessageModal(true);
                 }}
+                onReferralsChanged={onReferralsChanged}
                 onOpenAllReferrals={() => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`)}
                 onNewReferral={canManageReferrals ? () => setShowReferModal(true) : undefined}
               />

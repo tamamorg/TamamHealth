@@ -19,6 +19,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientUserWithInvitation } from '@/modules/identity/services/user-client';
+import { FormError } from '@/components/overlay/FormNotices';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -728,9 +729,9 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
 
       <div className="sadb-modal-actions" style={{ marginTop: 0, paddingTop: 16, borderTop: '1px solid var(--border-light)' }}>
         {formError && (
-          <p className="text-xs" role="alert" style={{ color: 'var(--color-danger-text)', marginInlineEnd: 'auto' }}>
-            {formError}
-          </p>
+          <div style={{ marginInlineEnd: 'auto', minWidth: 0, flex: 1 }}>
+            <FormError message={formError} />
+          </div>
         )}
         <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>
           {t('action.cancel')}

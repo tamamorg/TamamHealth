@@ -13,6 +13,7 @@
 
 import { isPathAllowed } from '@/lib/role-routes';
 import { roleCan, WARD_ADMIT_ROLES } from '@/lib/clinical-flow/ward-permissions';
+import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import type { UserRole } from '@/lib/db-types';
 
 /** Who may record an ANC visit — `canRecordVitalEvents` in usePermissions,
@@ -43,7 +44,23 @@ export const ROLE_FORM_RULES: Record<string, RoleFormRule> = {
   'anc-visit': { station: '/anc', clinicalMayOpen: false, may: role => roleCan(role, ANC_RECORD_ROLES) },
   // Narrower than the Wards page, which bed managers open too.
   'ward-admission': { station: '/wards', clinicalMayOpen: false, may: role => roleCan(role, WARD_ADMIT_ROLES) },
+  // The structured O3 forms (lib/forms/o3-form-definitions), each gated on
+  // whoever may write the record it files.
+  // Radiologists hold the lab_result grant for imaging reports only.
+  'form-lab-results': { station: '/lab', clinicalMayOpen: true, may: role => role !== 'radiologist' && roleCan(role, DOC_WRITE_ROLES.lab_result) },
+  'form-covid19': { station: '/notes', clinicalMayOpen: true, may: role => roleCan(role, DOC_WRITE_ROLES.clinical_note) },
+  'form-mental-health': { station: '/notes', clinicalMayOpen: true, may: role => roleCan(role, DOC_WRITE_ROLES.clinical_note) },
+  'form-surgical-operation': { station: '/notes', clinicalMayOpen: true, may: role => roleCan(role, DOC_WRITE_ROLES.clinical_note) },
 };
+
+/** Chart panel id ↔ structured form id. */
+export const STRUCTURED_FORM_PANELS = {
+  'form-lab-results': 'lab_results',
+  'form-covid19': 'covid19',
+  'form-mental-health': 'mental_health',
+  'form-surgical-operation': 'surgical_operation',
+} as const;
+export type StructuredFormPanelId = keyof typeof STRUCTURED_FORM_PANELS;
 
 /** May `role` open chart form `id`? Unknown ids are refused. */
 export function roleFormAllowed(id: string, role: string | undefined, canViewClinical: boolean): boolean {
@@ -51,4 +68,15 @@ export function roleFormAllowed(id: string, role: string | undefined, canViewCli
   if (!rule || !role) return false;
   if (rule.may && !rule.may(role)) return false;
   return isPathAllowed(role, rule.station) || (rule.clinicalMayOpen && canViewClinical);
+}
+
+/**
+ * The patient chart with workspace form `form` open on the right — where
+ * every station's work on one patient happens (triage, lab bench, dispensing),
+ * never a slider over the dashboard it was started from. `focus` picks one
+ * order or script inside the form.
+ */
+export function chartFormHref(patientId: string, form: string, focus?: string): string {
+  const f = focus ? `&focus=${encodeURIComponent(focus)}` : '';
+  return `/patients/${encodeURIComponent(patientId)}?form=${encodeURIComponent(form)}${f}`;
 }

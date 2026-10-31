@@ -56,9 +56,11 @@
   --font-condensed: var(--font-barlow-condensed), 'Barlow Condensed', var(--font-platform);
   --font-platform-mono: var(--font-jetbrains-mono), 'JetBrains Mono', system-ui, sans-serif;
   --font-mono: var(--font-platform-mono);
-  /* Carbon's typeface, for the Tamam-styled surfaces only (`.tamam-reg`).
-     Never set this on body — the platform is Barlow. */
-  --font-omrs: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  /* The registration-style forms (`.tamam-reg`: patient registration,
+     triage, SBAR handoff) read in the platform's own face, so they match the
+     chart and lists around them. They were set in IBM Plex Sans (Carbon's
+     face), the one place the chart changed typeface between tabs. */
+  --font-omrs: var(--font-platform);
 
   /* ============ Typography tokens ============
      Keep the app uniform by naming roles, not one-off pixel values. */
@@ -1323,7 +1325,6 @@ svg.lucide:not([style*="color"]) {
   .msgs-send,
   .pp-top,
   .pp-row-pay,
-  .pp-toast,
   .pp-hero,
   .pp-side-badge,
   .sadb-pill.is-active,
@@ -5283,51 +5284,6 @@ html:has(.mobile-shell-offline-banner) {
   justify-content: flex-end;
   padding-top: 0;
 }
-
-/* ── Greeting-row overflow ("More") ───────────────────────────────────
-   The actions column is a fixed track, so its contents cannot be allowed to
-   grow with the signed-in role's shortcut count. Two are written out and the
-   remainder open from here. Anchored to the button, right-aligned, because
-   the column sits at the page's right edge. */
-.ehr-header-more { position: relative; display: inline-flex; }
-
-.ehr-header-more-menu {
-  position: fixed;
-  z-index: 1500;
-  min-width: 190px;
-  width: 190px;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  padding: 6px;
-  gap: 2px;
-  border: 1px solid var(--ehr-border);
-  border-radius: 10px;
-  background: var(--ehr-panel);
-  box-shadow: 0 12px 28px rgba(17, 48, 85, 0.16);
-}
-
-/* Menu rows are rows, not the pill buttons the row above uses — inheriting
-   `.ehr-schedule-actions button` would put a bordered pill inside a bordered
-   menu, one per line. */
-.ehr-header-more-menu button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  text-align: start;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.ehr-header-more-menu button:hover { background: var(--overlay-subtle); }
 
 /* One label for the wide column, a shorter one for the narrow one. Both are
    in the DOM so the button's accessible name never changes with the viewport;
@@ -11308,11 +11264,14 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   border-radius: 0;
   background: transparent;
   color: color-mix(in srgb, var(--text-primary) 70%, transparent);
-  font-family: var(--font-condensed);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* Sentence case in the body face, as the labels are written — the
+     condensed tracked capitals read as shouting beside the chart's other
+     controls. */
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
@@ -12896,37 +12855,6 @@ span:has(> svg:only-child) {
   animation: sync-dot-pulse-kf 1.2s ease-in-out infinite;
 }
 
-/* Connectivity banner slide-down enter (220ms ease-out) and slide-up
-   exit (180ms ease-in). Uses transform + opacity, no colour change. */
-@keyframes connectivity-notice-enter-kf {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes connectivity-notice-exit-kf {
-  from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0; transform: translateY(-12px); }
-}
-/* The notice is fixed at z-60, but the EHR top rail is fixed at z-1200 —
-   anchored to the viewport top it slid in BEHIND the bar, leaving only a
-   red/amber sliver visible under the rail edge. Anchor it below the rail
-   (via the shared overlay inset) when one is on the page. */
-.connectivity-notice-wrap {
-  top: calc(var(--app-overlay-top-inset, 0px) + 10px);
-}
-/* Under 1024px the EHR rail grows to 82px (--ehr-top-rail-height, scoped to
-   .tamam-ehr-app where html-level rules can't read it) while the overlay
-   inset stays at the 60px base — clear the taller rail explicitly. */
-@media (max-width: 1023px) {
-  html:has(.ehr-top-rail) .connectivity-notice-wrap { top: 92px; }
-}
-
-.connectivity-notice-enter {
-  animation: connectivity-notice-enter-kf 220ms ease-out both;
-}
-.connectivity-notice-exit {
-  animation: connectivity-notice-exit-kf 180ms ease-in both;
-}
-
 /* Sync popover gentle fade/slide on open. */
 @keyframes sync-popover-enter-kf {
   from { opacity: 0; transform: translateY(-6px) scale(0.98); }
@@ -12939,8 +12867,6 @@ span:has(> svg:only-child) {
 
 @media (prefers-reduced-motion: reduce) {
   .sync-dot-pulse,
-  .connectivity-notice-enter,
-  .connectivity-notice-exit,
   .sync-popover-enter {
     animation: none !important;
   }
@@ -30475,25 +30401,6 @@ table.patient-data-table.patient-data-table {
 .pp-pill--amber { background: rgba(179, 89, 0, 0.10); border: 1px solid rgba(179, 89, 0, 0.42); color: var(--color-warning-text); }
 .pp-pill--blue { background: var(--color-info-bg); border: 1px solid var(--border-accent); color: var(--text-primary); }
 
-/* ── Toast ── */
-.pp-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #113055;
-  color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 8px 26px rgba(17, 48, 85, 0.35);
-  font-size: 13px;
-}
-.pp-toast svg { color: #4FC79B; }
-
 /* Payment-flow panels reuse pp-card; the narrow column centers itself. */
 .pp-narrow { max-width: 480px; margin: 0 auto; }
 .pp-back-link {
@@ -30644,8 +30551,6 @@ table.patient-data-table.patient-data-table {
 .pp-bk-help { margin: 0 0 10px; font-size: 13px; color: var(--text-secondary); }
 .pp-bk-hint { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
 .pp-bk-loading { display: flex; align-items: center; gap: 6px; }
-.pp-bk-error { margin: 0 0 10px; font-size: 13px; color: var(--color-danger-text); }
-.pp-bk-error--strong { font-weight: 700; }
 .pp-bk-wide { width: 100%; min-height: 48px; }
 .pp-bk-callme { margin-top: 14px; padding: 14px; border: 1px solid var(--border-light); border-radius: 10px; }
 .pp-bk-reasons { display: flex; flex-direction: column; gap: 8px; }
@@ -35919,6 +35824,95 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   html.tm-slider-open:has(.tamam-right-rail) .modal-portal-backdrop--slider { padding-inline-end: 56px !important; }
 }
 
+/* ── Sliders on a dashboard dock over the right panel ────────────────────
+   On a dashboard (EhrCareDashboard, EhrClinicalDashboard) a slider — check-in,
+   a confirmation, a form — takes the right-hand panel's column and covers it:
+   its left and right edges, from its top down to the bottom of the window.
+   The page is not squeezed. useDashboardRailDock publishes the column
+   (`--dash-rail-*`) and `tm-dash-rail` only while that panel is on screen.
+   A form wider than the panel (`tm-slider--wide`: registration, triage, ANC)
+   keeps its own width, opening leftward from the panel's right edge.
+
+   The panel is narrow (~260px), so a docked slider is laid out for it: a
+   compact head, one body gutter (the forms' own p-4/p-6 wrappers would add a
+   second), and the action bar stacked — main action on top, full width — so
+   no label wraps inside a half-width button. */
+@media (min-width: 900px) {
+  html.tm-slider-open.tm-dash-rail #main-content { padding-inline-end: 0; }
+  html.tm-dash-rail .modal-portal-backdrop--slider {
+    top: var(--dash-rail-top) !important;
+    bottom: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    padding-inline-end: var(--dash-rail-right) !important;
+    align-items: stretch !important;
+  }
+  html.tm-dash-rail .modal-portal-backdrop--slider > .tm-slider {
+    width: var(--dash-rail-w) !important;
+    max-width: var(--dash-rail-w) !important;
+    height: auto !important;
+    max-height: none !important;
+    border: 1px solid var(--border-light);
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0 !important;
+    overflow: hidden;
+    box-shadow: 0 -4px 24px -12px color-mix(in srgb, var(--text-primary) 30%, transparent) !important;
+  }
+  html.tm-dash-rail .modal-portal-backdrop--slider > .tm-slider.tm-slider--wide {
+    width: min(var(--slider-w, 640px), calc(100vw - var(--dash-rail-right) - 32px)) !important;
+    max-width: min(var(--slider-w, 640px), calc(100vw - var(--dash-rail-right) - 32px)) !important;
+  }
+
+  /* Narrow (panel-width) sliders only. */
+  /* The close control sits in the head band rather than on a white tile. */
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__ctl { background: transparent; border-inline-start: 0; }
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__body { padding: 4px 16px 20px; }
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__body > :is(.p-4, .p-5, .p-6),
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__body > * > :is(.p-4, .p-5, .p-6) {
+    padding-inline: 0 !important;
+  }
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__foot {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__foot > :is(.btn, button) {
+    min-height: 52px;
+    padding: 16px;
+  }
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__foot > :is(.btn-primary, .btn-danger, .btn-danger-solid) { order: -1; }
+}
+
+/* Every slider, and the patient chart's workspace drawer, names itself as
+   OpenMRS O3 does: the title and section names in sentence case, platform
+   font, weight not capitals marking them (title 16px, sections 14px), the
+   fields beneath in the slider's own light text. Was bold condensed capitals
+   until 2026-10-30 — the user asked for O3's headers.
+   !important: the slider kit sets its h3 size, weight and case. */
+:is(
+  .tm-slider .tm-dialog__title,
+  .tamam-drawer .tamam-drawer-title,
+  :is(.tm-slider, .tamam-drawer) :is(.sv-root .sv-section-title, .appt-edit-section, .nv-section-title, .tm-dialog__section-copy)
+) {
+  font-family: var(--font-platform) !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: var(--text-primary);
+}
+:is(.tm-slider .tm-dialog__title, .tamam-drawer .tamam-drawer-title) { font-size: 16px !important; }
+:is(.tm-slider, .tamam-drawer) :is(.sv-root .sv-section-title, .appt-edit-section, .nv-section-title, .tm-dialog__section-copy) { font-size: 14px !important; }
+/* One light label size for every slider and workspace form. */
+:is(.tm-slider, .tamam-drawer) .sv-label { font-size: 14px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: normal !important; }
+/* A section's subtitle stays the light field text under its bold name. */
+:is(.tm-slider, .tamam-drawer) .tm-dialog__section-copy .tm-dialog__section-sub {
+  font-family: var(--font-platform);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 13px;
+}
+
 /* ══════════════════ ROW ACTIONS MENU — O3 overflow menu ══════════════════
    Every list's ⋮ (RowActionsMenu) opens the OpenMRS overflow menu: a square
    light-grey panel hung under the trigger, plain 40px rows in body text, and
@@ -36077,7 +36071,8 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  width: min(400px, calc(100vw - 32px));
+  /* The dashboard's left panel at its widest; a long message grows downwards. */
+  width: min(260px, calc(100vw - 32px));
   pointer-events: none;
 }
 .ehr-toast-stack:empty { display: none; }
@@ -36280,3 +36275,130 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 }
 .nsup-stepper button:hover { background: var(--bg-app); }
 .nsup-empty { text-align: center; color: var(--text-secondary); padding: 24px 16px; }
+
+/* Station rows (lab, pharmacy, radiology, nutrition) on the clinical
+   dashboard: the patient's visit pill sits under the station's own. */
+.ehr-station-pill-open { cursor: pointer; }
+.ehr-station-pill-open:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+/* ── List row type: one size per line, platform-wide ─────────────────────
+   Every shared list row (`.appointment-card-row`: the dashboards' worklists,
+   patients, appointments, referrals, the station and HR lists) uses the same
+   two sizes: each column's first line (a name, a doctor, a place, a date)
+   is the bold head; every line beneath it (reason, ID, time-ago, nurse,
+   department, urgency) is the same light sub-line. The columns had drifted
+   to 13–14px heads in 700/800 over 11–13px sub-lines in three weights. The
+   worklist time keeps its own larger mono figure, and the urgency word its
+   tone colour. */
+.appointment-card-row:not(.appointment-card-head) :is(
+  .ehr-row-name > :is(a, button),
+  .ehr-appointment-main > :is(a, button, strong),
+  .appointment-card-patient > :is(a, button, strong),
+  .appointment-card-provider > strong,
+  .ehr-appointment-department > strong
+) {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  line-height: 1.3;
+}
+.appointment-card-row:not(.appointment-card-head) :is(
+  .ehr-appointment-main > p,
+  .appointment-card-patient > p,
+  .ehr-appointment-time > span,
+  .appointment-card-provider > span,
+  .ehr-appointment-department > span,
+  .appointment-card-status > small
+) {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.35;
+}
+.appointment-card-row:not(.appointment-card-head) :is(
+  .ehr-appointment-main > p,
+  .appointment-card-patient > p,
+  .ehr-appointment-time > span,
+  .appointment-card-provider > span,
+  .ehr-appointment-department > span
+) {
+  color: var(--ehr-muted, #5D728B) !important;
+}
+.appointment-card-row:not(.appointment-card-head) .appointment-card-status > small { font-weight: 600 !important; }
+
+/* ── One segmented switch ──────────────────────────────────────────────────
+   Every row of joined view/option buttons — the chart's Upcoming / Today /
+   Past (the model: `.tamam-appt-switcher`, tamam-chart.css), Documents /
+   Referrals / Patient education, Visits / All encounters, the dashboards'
+   Waiting / In service / Finished lanes, and Start a visit's New / Ongoing /
+   Past, attendance and urgency — draws the same: 36px, 14px sentence-case
+   labels, white options in a thin accent frame, the chosen one light blue
+   with accent text. They had five looks (dark fills in condensed capitals,
+   34–44px heights, underline tabs) for the one control. */
+:is(.ehr-chart-subtabs, .vt-tabs, .ehr-day-tabs, .sv-segmented, .tebra-demo-tabs) {
+  display: inline-grid !important;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(96px, auto);
+  gap: 0 !important;
+  margin: 0;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent) !important;
+  border-radius: 4px !important;
+  overflow: hidden;
+  background: var(--bg-card-solid) !important;
+}
+:is(.ehr-chart-subtabs, .vt-tabs, .ehr-day-tabs, .sv-segmented, .tebra-demo-tabs) > button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  height: auto !important;
+  min-height: 36px !important;
+  padding: 0 16px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-inline-start: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent) !important;
+  border-radius: 0 !important;
+  background: var(--bg-card-solid) !important;
+  box-shadow: none !important;
+  color: var(--text-secondary) !important;
+  font-family: var(--font-platform) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  white-space: nowrap;
+  cursor: pointer;
+}
+:is(.ehr-chart-subtabs, .vt-tabs, .ehr-day-tabs, .sv-segmented, .tebra-demo-tabs) > button:first-child { border-inline-start: 0 !important; }
+:is(.ehr-chart-subtabs, .vt-tabs, .ehr-day-tabs, .sv-segmented, .tebra-demo-tabs) > button:hover { background: var(--bg-app) !important; }
+:is(.ehr-chart-subtabs, .vt-tabs, .ehr-day-tabs, .sv-segmented, .tebra-demo-tabs) > button:is(.is-selected, .is-active, .active, [aria-selected="true"], [aria-checked="true"]) {
+  background: var(--color-info-bg, var(--bg-app)) !important;
+  color: var(--accent-text, var(--accent-primary)) !important;
+  /* No inner ring — the Appointments switch draws none (it read as a second,
+     darker blue frame around the chosen option). */
+  box-shadow: none !important;
+}
+/* The dashboards' worklist lanes keep their deep-blue chosen lane. */
+.ehr-day-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]) {
+  background: var(--accent-primary) !important;
+  color: var(--color-white) !important;
+}
+:is(.ehr-chart-subtabs, .vt-tabs, .ehr-day-tabs, .sv-segmented, .tebra-demo-tabs) > button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+/* Counts inside a lane ("Waiting · 22") take the label's own colour. */
+.ehr-day-tabs > button .ehr-day-tab-count { color: inherit !important; font: inherit !important; }
+/* Urgency keeps its meaning: Emergency chosen is the danger tone. */
+.sv-segmented > button.is-danger:is(.is-selected, [aria-checked="true"]) {
+  background: var(--color-danger-bg) !important;
+  color: var(--color-danger-text, var(--color-danger)) !important;
+  box-shadow: inset 0 0 0 1px var(--color-danger) !important;
+}
+
+/* The header's patient search drops the same menu as every field: square,
+   light grey, one soft shadow, hairline rows (see .tsel-menu). */
+.ehr-top-search-menu {
+  border: 0;
+  border-radius: 0;
+  background: var(--color-slate-50);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--text-primary) 30%, transparent);
+}
+.ehr-top-search-menu button { border-radius: 0; }
+.ehr-top-search-menu button + button { border-top: 1px solid var(--color-slate-200); }
+.ehr-top-search-menu button:hover { background: var(--color-slate-100); }

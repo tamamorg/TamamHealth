@@ -1,76 +1,30 @@
 /**
- * The clinical dashboard's greeting-row actions fit the column they sit in.
+ * The clinical dashboard's greeting-row actions.
  *
- * That row is a FIXED track in the header grid (~195px at every width — the
- * same width on a 1194px tablet as on a 1440px desktop), while its contents
- * are role-derived: Dispense and Print plus however many shortcuts the signed
- * in role's nav yields through `getPageHeaderNavItems`. A doctor therefore had
- * more labelled buttons than the track can hold, and because the row is
- * `nowrap` — which is what keeps it on the greeting's line rather than
- * wrapping under it — they compressed into each other instead of moving.
- *
- * Two are written out; the rest open from a "More" menu.
+ * The row once added the role's menu shortcuts (`getPageHeaderNavItems`) after
+ * Dispense and Print, more than its track could hold, so the overflow went
+ * behind a "More" menu. The shortcuts only repeated the menu, and More was
+ * taken out (2026-10-30): the row now carries the dashboard's own actions
+ * alone — Dispense, Print and the station's extras — every one written out.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
-import { ROLE_PERMISSIONS } from '@/lib/permissions';
-import type { UserRole } from '@/lib/db-types';
 
 const source = (relative: string) =>
   fs.readFileSync(path.join(process.cwd(), 'src', relative), 'utf8');
 
 const dashboard = source('components/ehr/EhrClinicalDashboard.tsx');
 
-/** What the header would build for `role`: Dispense + Print + the shortcuts. */
-function headerActionCount(role: UserRole): number {
-  const config = ROLE_PERMISSIONS[role];
-  const shortcuts = getPageHeaderNavItems(
-    config.navItems || [],
-    role,
-    config.defaultDashboard || '/dashboard',
-  );
-  return 2 + shortcuts.length; // Dispense and Print are always candidates.
-}
-
-describe('the greeting row shows two actions and hides the rest', () => {
-  test('the row slices at a stated limit rather than rendering every action', () => {
-    expect(dashboard).toContain('const INLINE_HEADER_ACTIONS = 2;');
-    expect(dashboard).toContain('headerActions.slice(0, INLINE_HEADER_ACTIONS)');
-    expect(dashboard).toContain('headerActions.length > INLINE_HEADER_ACTIONS');
-    expect(dashboard).toContain('headerActions.slice(INLINE_HEADER_ACTIONS)');
+describe('the greeting row shows the dashboard\'s own actions, no More', () => {
+  test('there is no More menu and no menu shortcuts in the row', () => {
+    expect(dashboard).not.toContain('ehr-header-more');
+    expect(dashboard).not.toContain('getPageHeaderNavItems');
+    expect(dashboard).not.toContain('INLINE_HEADER_ACTIONS');
   });
 
-  test('a clinical role really does overflow, so More is not dead code', () => {
-    // If no role ever produced a third action the menu would never render and
-    // this whole mechanism would be theatre.
-    const overflowing = (['doctor', 'clinical_officer', 'nurse'] as UserRole[])
-      .filter(role => headerActionCount(role) > 2);
-    expect(overflowing.length).toBeGreaterThan(0);
-  });
-
-  test('the More menu closes on outside click and on Escape', () => {
-    // A menu anchored in a header that scrolls away is a trap without both.
-    expect(dashboard).toContain("document.addEventListener('mousedown', onDown)");
-    expect(dashboard).toContain("event.key === 'Escape'");
-  });
-
-  test('the More menu escapes the clipped tablet schedule shell', () => {
-    const globalsCss = source('app/globals.css');
-    const tabletCss = source('app/tablet-desktop.css');
-    expect(dashboard).toContain("import { createPortal } from 'react-dom';");
-    expect(dashboard).toContain('moreRef.current?.getBoundingClientRect()');
-    expect(dashboard).toContain('headerMoreMenuRef.current?.contains(target)');
-    expect(dashboard).toContain('document.body');
-    expect(globalsCss).toMatch(/\.ehr-header-more-menu\s*\{[\s\S]*?position:\s*fixed;/);
-    expect(globalsCss).toMatch(/\.ehr-header-more-menu\s*\{[\s\S]*?z-index:\s*1500;/);
-    expect(tabletCss).toMatch(/\.ehr-header-more-menu button\s*\{[\s\S]*?font-size:\s*12px;/);
-    expect(tabletCss).toMatch(/\.ehr-header-more-menu button svg[\s\S]*?width:\s*15px;/);
-  });
-
-  test('the menu announces itself as a menu', () => {
-    expect(dashboard).toContain('aria-haspopup="menu"');
-    expect(dashboard).toContain('role="menuitem"');
+  test('every action is written out', () => {
+    expect(dashboard).toContain('{headerActions.map(action => {');
+    expect(dashboard).toContain('...(extraHeaderActions ?? [])');
   });
 
   test('tablet centre lists fit all five columns with Status still visible', () => {

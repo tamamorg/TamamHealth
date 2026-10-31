@@ -28,6 +28,112 @@
     break-after: avoid;
   }
 
+  /* The sheet's heading, added by printElementById: same shape and sizes as
+     the .doc-head and field grid of a generated printout. */
+  [data-print-active] > .print-doc-top { display: block !important; margin: 0 0 5mm; }
+  .print-doc-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10mm;
+    padding-bottom: 4mm;
+    border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white);
+    break-inside: avoid;
+  }
+  .print-doc-brand { display: flex; align-items: center; gap: 5mm; }
+  .print-doc-brand img { width: 13mm; height: 13mm; object-fit: contain; }
+  .print-doc-brand strong { font-size: 14pt; font-weight: 700; }
+  .print-doc-identity { display: grid; justify-items: end; gap: 0.8mm; }
+  .print-doc-identity strong { font-size: 12pt; font-weight: 700; }
+  .print-doc-identity span { font-size: 9pt; font-variant-numeric: tabular-nums; }
+  .print-doc-fields { margin-top: 5mm; break-inside: avoid; }
+  .print-doc-fields h2 { margin: 0 0 2mm; }
+  .print-doc-fields > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.5mm 6mm; padding: 1mm 1mm 0; }
+  .print-doc-fields span { display: block; color: color-mix(in srgb, black 68%, white); font-size: 7.5pt; margin-bottom: 0.3mm; }
+  .print-doc-fields strong { display: block; font-size: 9.5pt; font-weight: 700; overflow-wrap: anywhere; }
+
+  /* A screen's cards are not paper: no boxes, tints, accent bars or pills on
+     the sheet. Sections are told apart by their headings, as on the O3 sheet. */
+  [data-print-active] :is(div, section, article, aside, main, header, footer, p, span, ul, li, dl, dt, dd):not(.print-doc-top, .print-doc-top *, .labord-barcode, .labord-barcode *, .tamam-print-rule) {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+  }
+  [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-fields, .sbar-tile, .sbar-form-priority, .dash-card) {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-sectionhead h2)::before,
+  [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-sectionhead h2)::after { content: none !important; }
+  [data-print-active] .tamam-reg-sectionhead p { display: none !important; }
+  [data-print-active] .sbar-as-form-body { display: block !important; }
+  [data-print-active] :is(.sbar-allergies-list em, .sbar-chips li, .sbar-chips li *) {
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    font-style: normal !important;
+    font-weight: 700 !important;
+    color: black !important;
+  }
+  [data-print-active] .sbar-allergies-list { gap: 0 4mm !important; }
+  [data-print-active] .tamam-reg-section { margin: 0 0 5mm !important; }
+  [data-print-active] .tamam-reg-sectionhead h2 { margin: 0 0 2mm !important; }
+  [data-print-active].sbar-as-form .sbar-ro-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2.5mm 6mm !important; padding: 1mm 1mm 0 !important; }
+  [data-print-active].sbar-as-form .sbar-ro-label {
+    color: color-mix(in srgb, black 68%, white) !important;
+    font-size: 7.5pt !important;
+    font-weight: 400 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+  [data-print-active].sbar-as-form .sbar-ro-value { padding: 0 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
+
+  /* Screen affordances mean nothing on paper. */
+  [data-print-active] svg { display: none !important; }
+  [data-print-active] ::placeholder { color: transparent !important; }
+  [data-print-active] :is(input, textarea, select) {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    resize: none !important;
+  }
+  /* A heading in a flex row would otherwise rule only its own text width. */
+  [data-print-active] :is(h2, h3) { flex: 1 1 100%; width: 100%; }
+
+  /* Clinical note: facts in the field grid, body sections under their titles. */
+  [data-print-active] .tamam-nv-meta { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2.5mm 6mm !important; margin: 0 0 5mm !important; padding: 1mm 1mm 0 !important; }
+  [data-print-active] .tamam-nv-meta dt { color: color-mix(in srgb, black 68%, white) !important; font-size: 7.5pt !important; font-weight: 400 !important; letter-spacing: 0 !important; text-transform: none !important; }
+  [data-print-active] .tamam-nv-meta dd { margin: 0.3mm 0 0 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
+  [data-print-active] .tamam-nv-section { display: block !important; margin: 0 0 5mm !important; padding: 0 !important; }
+  [data-print-active] .tamam-nv-section h4 {
+    margin: 0 0 2mm !important;
+    padding-bottom: 1.2mm !important;
+    border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white) !important;
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+  }
+
+  /* Shift handoff: the rule runs the width of the sheet, and a section's count
+     is a screen badge. */
+  [data-print-active] .ehr-handoff-section-head {
+    display: block !important;
+    margin: 0 0 2mm !important;
+    padding: 0 0 1.2mm !important;
+    border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white) !important;
+  }
+  [data-print-active] .ehr-handoff-section-head :is(h2, h3) { margin: 0 !important; padding: 0 !important; border: 0 !important; }
+  [data-print-active] .ehr-handoff-badge { display: none !important; }
+
+  /* What the sheet's heading replaces on each screen. */
+  #mar-print-record .mar-screen-head { display: none !important; }
+  [data-print-active] :is(.tamam-nv-head, .ehr-handoff-head, .labord-req-facility) { display: none !important; }
+  #executive-briefing-print > .dash-card:first-of-type { display: none !important; }
+
   [data-print-active] table { width: 100%; border-collapse: collapse; font-size: 9pt; }
   [data-print-active] thead { display: table-header-group; }
 
@@ -56,4 +162,9 @@
     letter-spacing: 0 !important;
     text-transform: none !important;
   }
+}
+
+/* Added for the print only; never on the screen. */
+@media screen {
+  .print-doc-top { display: none; }
 }

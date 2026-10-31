@@ -3,7 +3,8 @@
  */
 import type { PaymentDoc } from '../db-types-payments';
 import { escapeHtml, openIsolatedHtmlWindow } from '../safe-html';
-import { buildClinicalPrintDocument } from '../print-document';
+import { buildClinicalPrintDocument, printFields } from '../print-document';
+import { printDate } from '../print-identity';
 
 export interface ReceiptData {
   receiptNumber: string;
@@ -11,6 +12,8 @@ export interface ReceiptData {
   patientId: string;
   date: string;
   time: string;
+  /** `date` as the printed sheet shows it (YYYY-MM-DD). */
+  dateIso?: string;
   method: string;
   methodLabel: string;
   amount: number;
@@ -44,6 +47,7 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hos
     patientId: hospitalNumber?.trim() || payment.patientId,
     date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    dateIso: printDate(date),
     method: payment.method,
     methodLabel: getMethodLabel(payment.method),
     amount: payment.amount,
@@ -56,49 +60,42 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hos
 }
 
 export function generateReceiptHTML(receipt: ReceiptData): string {
-  const facilityName = receipt.facilityName;
-  const receiptNumber = receipt.receiptNumber;
-  const patientName = escapeHtml(receipt.patientName);
-  const methodLabel = escapeHtml(receipt.methodLabel);
-  const reference = escapeHtml(receipt.reference);
-  const currency = escapeHtml(receipt.currency);
-  const processedBy = escapeHtml(receipt.processedBy);
-  const notes = escapeHtml(receipt.notes);
   const body = `
-    <section class="section">
-      <h2 class="section-title">Payment details</h2>
-      <table><tbody>
-        <tr><td class="muted">Patient</td><td class="num"><strong>${patientName}</strong></td></tr>
-        <tr><td class="muted">Patient ID</td><td class="num">${escapeHtml(receipt.patientId)}</td></tr>
-        <tr><td class="muted">Method</td><td class="num">${methodLabel}</td></tr>
-        ${receipt.reference ? `<tr><td class="muted">Transaction reference</td><td class="num">${reference}</td></tr>` : ''}
-        <tr><td class="muted">Processed by</td><td class="num">${processedBy}</td></tr>
-        ${receipt.notes ? `<tr><td class="muted">Notes</td><td class="num">${notes}</td></tr>` : ''}
-      </tbody></table>
+    <section class="section keep">
+      <h2 class="section-title">Payment Details</h2>
+      ${printFields([
+        { label: 'Receipt Number', value: receipt.receiptNumber },
+        { label: 'Time', value: receipt.time },
+        { label: 'Method', value: receipt.methodLabel },
+        { label: 'Processed By', value: receipt.processedBy },
+        // The receipt number is the payment's reference unless a separate one was keyed.
+        { label: 'Transaction Reference', value: receipt.reference === receipt.receiptNumber ? '' : receipt.reference },
+        { label: 'Notes', value: receipt.notes },
+      ])}
       <div class="totals">
-        <div class="total-row grand"><strong>Amount paid</strong><strong>${escapeHtml(receipt.amount.toLocaleString())} ${currency}</strong></div>
-        <div class="total-row"><span>Status</span><strong class="status status-paid">Paid</strong></div>
+        <div class="total-row grand"><strong>Amount Paid</strong><strong>${escapeHtml(receipt.amount.toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>
+        <div class="total-row"><span>Status</span><strong class="status">Paid</strong></div>
       </div>
     </section>`;
 
   return buildClinicalPrintDocument({
-    title: receiptNumber,
-    documentLabel: 'Payment receipt',
-    facilityName,
+    title: receipt.receiptNumber,
+    documentLabel: 'Payment Receipt',
+    date: receipt.dateIso || receipt.date,
+    facilityName: receipt.facilityName,
+    metaTitle: 'Patient Information',
     meta: [
-      { label: 'Receipt number', value: receipt.receiptNumber },
-      { label: 'Date', value: receipt.date },
-      { label: 'Time', value: receipt.time },
+      { label: 'Patient Name', value: receipt.patientName },
+      { label: 'Patient ID', value: receipt.patientId },
     ],
     safeBodyHtml: body,
-    page: 'receipt',
     footer: 'Thank you for your payment. For questions, contact the billing desk.',
   });
 }
 
 export function printReceipt(receipt: ReceiptData): void {
   const html = generateReceiptHTML(receipt);
-  openIsolatedHtmlWindow(html, 'width=400,height=600', true);
+  openIsolatedHtmlWindow(html, '', true);
 }
 
 /**

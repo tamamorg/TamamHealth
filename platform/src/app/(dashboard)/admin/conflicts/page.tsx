@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConflictQueueDoc } from '@/lib/db-types';
 import { useAuth } from '@/lib/context';
+import { FormError } from '@/components/overlay/FormNotices';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { apiFetch } from '@/lib/api-fetch';
 import { useToast } from '@/components/Toast';
@@ -227,14 +228,7 @@ export default function ConflictsPage() {
         </div>
 
         {errorMsg && (
-          <SadbCard>
-            <div role="alert" className="sadb-queue-row" style={{ cursor: 'default' }}>
-              <SadbChip tone="yellow">Error</SadbChip>
-              <span className="sadb-queue-copy">
-                <span className="sadb-queue-title">{errorMsg}</span>
-              </span>
-            </div>
-          </SadbCard>
+          <FormError message={errorMsg} onDismiss={() => setErrorMsg(null)} />
         )}
 
         {loading ? (

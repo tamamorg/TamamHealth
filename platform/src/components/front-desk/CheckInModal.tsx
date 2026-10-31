@@ -1,59 +1,32 @@
 'use client';
 
-import { useId, useState } from 'react';
-import Modal from '@/components/Modal';
+import { useState } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
-import { DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
-import StartVisitPanel, { type StartVisitUser } from '@/components/ehr/chart/panels/StartVisitPanel';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Calendar, ClipboardList, MapPin, CheckCircle, ArrowRightLeft } from '@/components/icons/lucide';
 import { formatClockTime } from '@/lib/format-utils';
 import type { AppointmentDoc } from '@/lib/db-types';
 import { DetailRow } from '@/components/front-desk/DetailPanel';
 
-// ── Appointment check-in. Not yet checked in: the shared Start a visit form
-//    with this booking chosen. Already in: the booking's detail, with Undo
-//    while it is still only checked in. ──
+// ── An appointment already checked in: the booking's detail, with Undo while
+//    it is still only checked in. A booking not yet in checks in from its own
+//    row's drop-down instead (RowCheckIn), not from here. ──
 export default function CheckInModal({
   appt,
-  currentUser,
   onClose,
   onUndoCheckIn,
   onViewPatient,
 }: {
   appt: AppointmentDoc;
-  currentUser: StartVisitUser;
   onClose: () => void;
   onUndoCheckIn: (appt: AppointmentDoc) => Promise<void>;
   onViewPatient: (patientId: string) => void;
 }) {
   const { t } = useTranslation();
-  const titleId = useId();
   const [reversing, setReversing] = useState(false);
-  const alreadyIn = appt.status === 'checked_in' || appt.status === 'in_progress' || appt.status === 'completed';
   // Only a plain check-in (not yet in consult / completed) can be cleanly
   // reversed back to scheduled without stepping over later workflow state.
   const canReverseCheckIn = appt.status === 'checked_in';
-
-  // Checking a booked patient in IS starting their visit: the same Start a
-  // visit form the chart uses, with this booking already chosen, so the desk
-  // answers visit type, billing and punctuality in one place.
-  if (!alreadyIn) {
-    return (
-      <Modal variant="slider" onClose={onClose} width={560} labelledBy={titleId}>
-        <DialogFrame>
-          <DialogHeader titleId={titleId} title={t('startVisit.title')} description={appt.patientName} onClose={onClose} />
-          <StartVisitPanel
-            patient={{ _id: appt.patientId, phone: appt.patientPhone }}
-            patientName={appt.patientName}
-            currentUser={currentUser}
-            appointmentId={appt._id}
-            onClose={onClose}
-          />
-        </DialogFrame>
-      </Modal>
-    );
-  }
 
   return (
     <FormSlider

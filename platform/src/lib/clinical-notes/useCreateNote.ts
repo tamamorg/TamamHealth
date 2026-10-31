@@ -86,6 +86,9 @@ export function findReusableDraft(
       && n.serviceDate === serviceDate && n.authorId === authorId;
   };
   return existingNotes
+    // A colleague's draft is theirs to finish (canEditDraft): never reopened for
+    // someone else, who starts their own.
+    .filter(n => !authorId || n.authorId === authorId || n.assignedToId === authorId)
     .filter(n => n.status === 'draft' && (!noteType || n.noteType === noteType) && sameVisit(n))
     .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
 }

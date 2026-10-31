@@ -23,7 +23,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
-  X, Wallet, Activity, AlertCircle, ExternalLink, Receipt, Shield, Clock, Banknote,
+  Wallet, Activity, AlertCircle, Receipt, Shield, Clock, Banknote,
   RotateCcw, Ban, AlertTriangle, Search, Users,
 } from '@/components/icons/lucide';
 import { useAuth, useUi } from '@/lib/context';
@@ -943,7 +943,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
         </div>
       </main>
 
-      {/* Account detail — centered modal */}
+      {/* Account detail — the side slider */}
       {selectedLine && (
         <PatientBillingDetail
           line={selectedLine}
@@ -1162,44 +1162,22 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
   const owing = line.outstanding > 0;
 
   return (
-    <Modal onClose={onClose} width={680} labelledBy="billing-detail-name">
-      <div
-        className="bl-root bl-account-dialog"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 0,
-          overflow: 'hidden',
-          maxHeight: 'calc(100vh - 32px)',
-        }}
-      >
-        {/* Header */}
-        <div className="px-5 py-4 border-b flex items-start justify-between gap-3 modal-headband" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
-          <div className="bl-account-identity">
-            <button
-              onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)}
-              className="bl-link"
-              style={{ fontSize: 20 }}
-              title={t('payments.openPatientRecord')}
-            >
-              <span id="billing-detail-name">{shortenPersonName(line.patientName)}</span>
-            </button>
-            {line.hospitalNumber && (
-              <div className="bl-id-tag" style={{ marginTop: 4, display: 'inline-block' }}>{line.hospitalNumber}</div>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'transparent', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6,
-              width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <FormSlider
+      title={shortenPersonName(line.patientName)}
+      subtitle={line.hospitalNumber}
+      width={620}
+      flush
+      onClose={onClose}
+      footer={<>
+        <button type="button" onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)} className="btn btn-secondary">
+          {t('payments.openPatientRecord')}
+        </button>
+        <button type="button" onClick={onRecordPayment} className="btn btn-primary">
+          <Banknote className="w-4 h-4" /> {t('billing.collectPayment')}
+        </button>
+      </>}
+    >
+      <div className="bl-root bl-account-dialog">
         {/* Balance summary — flat, no gradient tint; colour carries the state. */}
         <div className="px-5 py-4 bl-account-summary" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
           <div className="flex items-end justify-between gap-3 flex-wrap">
@@ -1411,23 +1389,9 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
             </div>
           )}
         </Section>
-        </div>{/* /scrollable account sections */}
-
-        {/* Footer actions */}
-        <div className="px-5 py-3 border-t flex items-center gap-2 bl-account-footer" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
-          <button onClick={() => router.push(`/patients/${line.patientId}?tab=billing`)} className="bl-btn bl-btn--outline" style={{ flex: 1 }}>
-            {t('payments.openPatientRecord')} <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={onRecordPayment}
-            className="bl-btn bl-btn--primary"
-            style={{ flex: 1 }}
-          >
-            <Banknote className="w-4 h-4" /> {t('billing.collectPayment')}
-          </button>
-        </div>
+        </div>{/* /account sections */}
       </div>
-    </Modal>
+    </FormSlider>
   );
 }
 

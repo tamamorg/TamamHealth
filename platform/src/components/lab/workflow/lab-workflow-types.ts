@@ -1,47 +1,35 @@
 /**
- * The bench-side counterpart to the ordering wizard: the steps a lab
- * technician walks an order through, from the requisition that arrived to the
- * report that goes back.
- *
- * These are not new states — they are a view of the existing diagnostics
- * lifecycle (`LAB_ORDER_TRANSITIONS`), grouped into the six things a
- * technician actually does. Mapping lives here so the panel, the stepper and
- * the queue all agree on "which step is this order on".
+ * The bench-side counterpart to the ordering wizard: what the lab's form asks
+ * for at each stage of the diagnostics lifecycle (`LAB_ORDER_TRANSITIONS`).
+ * Mapping lives here so the form, the rows and the queue all agree.
  */
 
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 
-export type LabWorkflowStepKey = 'order' | 'collect' | 'receive' | 'process' | 'result' | 'report';
-
-export const LAB_WORKFLOW_STEPS: LabWorkflowStepKey[] = [
-  'order', 'collect', 'receive', 'process', 'result', 'report',
-];
-
-export const LAB_WORKFLOW_STEP_LABEL: Record<LabWorkflowStepKey, string> = {
-  order: 'labFlow.stepOrder',
-  collect: 'labFlow.stepCollect',
-  receive: 'labFlow.stepReceive',
-  process: 'labFlow.stepProcess',
-  result: 'labFlow.stepResult',
-  report: 'labFlow.stepReport',
-};
-
-/**
- * The step a given lifecycle stage is waiting on — i.e. where the technician
- * picks the order up. A rejected specimen goes back to Collect, which is the
- * whole point of the rejection: someone has to draw it again.
- */
-export function stepForStage(stage: LabOrderStatus): LabWorkflowStepKey {
+/** What the next press does to an order at this stage. One label for the row,
+ *  the chart list and the slider, so each names the same step. */
+export function benchActionLabel(stage: LabOrderStatus): string {
   switch (stage) {
-    case 'ordered': return 'collect';
-    case 'specimen_collected': return 'receive';
-    case 'rejected_needs_recollection': return 'collect';
-    case 'received_at_lab': return 'process';
-    case 'in_process': return 'result';
-    default: return 'report';
+    case 'ordered':
+    case 'rejected_needs_recollection': return 'labFlow.nextCollect';
+    case 'specimen_collected':
+    case 'received_at_lab':
+    case 'in_process': return 'labFlow.nextResult';
+    default: return 'labFlow.nextReport';
   }
 }
+
+/** What a row's dropdown offers at this stage. Nothing once it has resulted. */
+export function benchActions(stage: LabOrderStatus, t: (key: string) => string): { value: string; label: string }[] {
+  if (['resulted', 'reviewed_by_clinician', 'acted_upon', 'communicated_to_patient'].includes(stage)) return [];
+  const next = { value: 'next', label: t(benchActionLabel(stage)) };
+  return stage === 'specimen_collected' ? [next, { value: 'reject', label: t('labFlow.actionReject') }] : [next];
+}
+
+/** Requests from outside this facility get their report back from the lab. */
+export const isOutsideRequest = (order: { requestSource?: string }) =>
+  order.requestSource === 'external_facility' || order.requestSource === 'walk_in';
 
 /** How far the order has got, as a step index — everything before it is done. */
 export function completedThrough(stage: LabOrderStatus): number {

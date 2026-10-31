@@ -1,3 +1,4 @@
+import { localClockOf } from './date-utils';
 import { generateTempPassword, hashPassword } from '@/modules/identity/client';
 import { runWithoutEncryption } from './encrypted-db';
 
@@ -1417,7 +1418,7 @@ const walkInAppointments: Omit<AppointmentDoc, '_rev' | 'createdBy'>[] = seedTri
   .filter(triage => !seedAppointments.some(a =>
     a.patientId === triage.patientId && a.appointmentDate === dateAgo(0)))
   .map((triage, i) => {
-    const time = (triage.triagedAt || '').slice(11, 16) || '08:00';
+    const time = localClockOf(triage.triagedAt) || '08:00';
     return {
       _id: `appointment-walkin-${i + 1}`,
       type: 'appointment' as const,

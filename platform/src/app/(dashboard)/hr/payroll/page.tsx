@@ -176,6 +176,7 @@ export default function HrPayrollPage() {
                       label={t(`hr.payrollStatus_${e.status}`)}
                       value={e.status}
                       ariaLabel={`Payroll status for ${e.userName}`}
+                      subject={e.userName}
                       style={statusPillStyle(tok)}
                       options={!isApprover ? [] : [
                         ...(e.status === 'draft' ? [{ value: 'approved', label: t('hr.approve') }] : []),

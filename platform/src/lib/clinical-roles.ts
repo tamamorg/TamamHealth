@@ -3,7 +3,7 @@ import type { UserRole } from './db-types';
 /**
  * Single source of truth for the clinical-document authorship roles used by both
  * the service layer (authorization) and the UI (action gating). Keeping these
- * here avoids the drift the audit flagged between RecordSignatureBar and
+ * here avoids the drift the audit flagged between record signing and
  * PhoneNotes.
  */
 
@@ -26,6 +26,13 @@ export const PROVIDER_ROLES: UserRole[] = ['doctor', 'medical_superintendent', '
 
 /** Clinical authors who sign but route to a supervising provider for co-signature. */
 export const TRAINEE_AUTHOR_ROLES: UserRole[] = ['nurse', 'midwife', 'nutritionist'];
+
+/** What a role may do to a consultation record: sign, route it, co-sign it. */
+export function recordSignRights(role: UserRole | undefined) {
+  const isProvider = !!role && PROVIDER_ROLES.includes(role);
+  const isTrainee = !!role && TRAINEE_AUTHOR_ROLES.includes(role);
+  return { isProvider, isTrainee, canAuthor: isProvider || isTrainee };
+}
 
 /** Can sign as final / co-sign / respond to a routed clinical communication. */
 export function isProviderRole(role?: UserRole | string): boolean {

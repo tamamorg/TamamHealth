@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import type {
@@ -41,15 +41,17 @@ export interface PatientTimelineProps {
   appointments?: AppointmentDoc[];
   triages?: TriageDoc[];
   /**
-   * Rendered inside an expanded consultation row. The chart passes the visit's
-   * signature/lock controls here, so a consult record is attested where it is
-   * read — the timeline itself stays free of any signing knowledge.
+   * Opens a document row (consultation or note) in the chart's sidebar, which
+   * carries all of its detail. The timeline itself stays free of any signing
+   * knowledge.
    */
-  renderRecordSignature?: (recordId: string) => ReactNode;
+  onOpenEvent?: (event: TimelineEvent) => void;
+  /** The Actions cell for an event; a visit row passes its lead event. */
+  renderEventActions?: (event: TimelineEvent) => ReactNode;
   /**
    * Deep-link target — the `_id` of a record/note the dashboard's "documents to
-   * sign" list sent the user here to act on. That row is expanded, scrolled to
-   * and highlighted on arrival.
+   * sign" list sent the user here to act on. That row is opened in the sidebar,
+   * scrolled to and highlighted on arrival.
    */
   focusId?: string;
 }
@@ -67,8 +69,10 @@ export interface TimelineEvent {
   meta?: string;
   badge?: { label?: string; bg: string; color: string; dot?: boolean };
   /** Underlying document id, when this row IS a document (vs a derived event).
-   *  Drives both the signature slot and deep-link focus. */
+   *  Drives both opening it in the sidebar and deep-link focus. */
   docId?: string;
+  /** Source id of a derived event, for linking to it on its own tab. */
+  sourceId?: string;
 }
 
 // Category is a word, not a colour. The dot that used to sit before the label
@@ -111,6 +115,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
     if (tr.systolic && tr.diastolic) vitals.push(`BP ${tr.systolic}/${tr.diastolic}`);
     events.push({
       id: `triage-${tr._id}`,
+      sourceId: tr._id,
       encounterId: tr.encounterId || undefined,
       date: tr.triagedAt || tr.createdAt,
       category: 'triage',
@@ -180,6 +185,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
     const status = lr.status === 'completed' ? lr.result || t('timeline.statusCompleted') : lr.status.replace('_', ' ');
     events.push({
       id: `lab-${lr._id}`,
+      sourceId: lr._id,
       encounterId: lr.encounterId || undefined,
       date: lr.completedAt || lr.orderedAt || lr.createdAt,
       category: 'lab',
@@ -197,6 +203,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
   for (const rx of props.prescriptions || []) {
     events.push({
       id: `rx-${rx._id}`,
+      sourceId: rx._id,
       encounterId: rx.encounterId || undefined,
       date: rx.createdAt,
       category: 'prescription',
@@ -212,6 +219,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
   for (const im of props.immunizations || []) {
     events.push({
       id: `imm-${im._id}`,
+      sourceId: im._id,
       encounterId: im.encounterId || undefined,
       date: im.dateGiven || im.createdAt,
       category: 'immunization',
@@ -224,6 +232,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
   for (const ref of props.referrals || []) {
     events.push({
       id: `ref-${ref._id}`,
+      sourceId: ref._id,
       date: ref.referralDate || ref.createdAt,
       category: 'referral',
       title: t('timeline.titleReferral', { facility: ref.toHospital || t('timeline.facilityFallback') }),
@@ -236,6 +245,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
   for (const a of props.ancVisits || []) {
     events.push({
       id: `anc-${a._id}`,
+      sourceId: a._id,
       date: a.visitDate || a.createdAt,
       category: 'anc',
       title: t('timeline.titleAncVisit', { number: a.visitNumber }),
@@ -252,6 +262,7 @@ export function buildEvents(props: PatientTimelineProps, t: TFunc): TimelineEven
   for (const ap of props.appointments || []) {
     events.push({
       id: `apt-${ap._id}`,
+      sourceId: ap._id,
       date: `${ap.appointmentDate}T${ap.appointmentTime || '00:00'}`,
       category: 'appointment',
       title: ap.reason || (ap.appointmentType ? `${humanizeStatus(ap.appointmentType)} appointment` : t('timeline.titleAppointment')),
@@ -345,6 +356,12 @@ export function summarizeGroup(group: TimelineGroup, t: TFunc): TimelineGroupSum
   return { title, detail, counts: parts.join(' · '), badge: (consult || note)?.badge };
 }
 
+/** The event a visit row's actions act on: its document, else its newest item. */
+export function groupLeadEvent(group: TimelineGroup): TimelineEvent {
+  const of = (category: TimelineCategory) => group.events.find(e => e.category === category);
+  return of('consultation') || of('note') || group.events[0];
+}
+
 function formatEventDate(date: string): string {
   try {
     return new Date(date).toLocaleDateString(undefined, {
@@ -360,29 +377,30 @@ export default function PatientTimeline(props: PatientTimelineProps) {
   const allGroups = groupTimelineEvents(events);
   const [filter, setFilter] = useState<'all' | TimelineEvent['category']>('all');
   const [search, setSearch] = useState('');
-  // Rows expanded to show their subtitle/meta. Kept as a set so several can be
-  // open at once — comparing two events is the common reason to expand.
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   // Visit groups opened to their item-level rows.
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
-  const toggleIn = (setter: typeof setExpanded) => (id: string) => setter(prev => {
+  const toggleGroup = (id: string) => setOpenGroups(prev => {
     const next = new Set(prev);
     if (!next.delete(id)) next.add(id);
     return next;
   });
-  const toggleDetail = toggleIn(setExpanded);
-  const toggleGroup = toggleIn(setOpenGroups);
 
-  // Deep-link arrival: the row the caller asked for opens itself (and the visit
-  // it belongs to), so the signature controls the user was sent here to use
-  // are on screen rather than one more click away.
-  const { focusId } = props;
+  // Deep-link arrival: the visit opens to the row the caller asked for and the
+  // row opens in the sidebar, so the signature controls the user was sent here
+  // to use are on screen rather than one more click away.
+  const { focusId, onOpenEvent, renderEventActions } = props;
+  const hasActions = !!renderEventActions;
+  const columnCount = hasActions ? 5 : 4;
+  const openEventRef = useRef(onOpenEvent);
+  useEffect(() => { openEventRef.current = onOpenEvent; });
+  const focusedEventRef = useRef<TimelineEvent | undefined>(undefined);
   const focusedEvent = focusId ? events.find(e => e.docId === focusId) : undefined;
   const focusedRowId = focusedEvent?.id;
+  useEffect(() => { focusedEventRef.current = focusedEvent; });
   const focusedGroupId = focusedRowId ? allGroups.find(g => g.events.some(e => e.id === focusedRowId))?.id : undefined;
   useEffect(() => {
     if (!focusedRowId) return;
-    setExpanded(prev => (prev.has(focusedRowId) ? prev : new Set(prev).add(focusedRowId)));
+    if (focusedEventRef.current) openEventRef.current?.(focusedEventRef.current);
     if (focusedGroupId) setOpenGroups(prev => (prev.has(focusedGroupId) ? prev : new Set(prev).add(focusedGroupId)));
     // The row mounts with the expansion, so the scroll waits a frame for it.
     const raf = requestAnimationFrame(() => {
@@ -421,54 +439,38 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     // Color-sniffing is fragile (hexes vary), so we match the label.
     const badgeLabel = (e.badge?.label || '').toLowerCase();
     const badgeIsAlarm = /critical|emergency|red|severe|abnormal|high risk|overdue|hypo|hyper/.test(badgeLabel);
-    // Only rows that actually carry more than the four columns show
-    // get a disclosure — an expander that opens onto nothing is worse
-    // than no expander.
-    // A consultation row always has detail once the signature slot is
-    // available, even when the record itself carries no subtitle/meta.
-    const signatureSlot = e.category === 'consultation' && e.docId
-      ? props.renderRecordSignature?.(e.docId)
-      : undefined;
-    const hasDetail = Boolean(e.subtitle || e.meta || signatureSlot);
-    const isOpen = hasDetail && expanded.has(e.id);
+    // A document opens in the sidebar, which carries all of its detail. Any
+    // other row has nowhere to open, so its one line of detail stays in the row.
+    const opens = !!onOpenEvent && !!e.docId;
+    const detail = opens ? '' : [e.subtitle, e.meta].filter(Boolean).join(' · ');
     const isFocused = !!e.docId && e.docId === focusId;
     return (
-      <Fragment key={e.id}>
-        <tr
-          id={`timeline-row-${e.id}`}
-          className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${hasDetail ? ' has-detail' : ''}${isOpen ? ' is-open' : ''}${nested ? ' is-nested' : ''}`}
-          style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
-          {...(hasDetail ? clickable(() => toggleDetail(e.id), { label: `${isOpen ? 'Hide' : 'Show'} details for ${e.title}` }) : {})}
-          aria-expanded={hasDetail ? isOpen : undefined}
-        >
-          <td className="tamam-activity-date" style={nested ? { paddingLeft: 28 } : undefined}><time dateTime={e.date}>{dateLabel}</time></td>
-          <td>
-            <span className="tamam-activity-type">
-              {t(cfg.labelKey)}
-            </span>
-          </td>
-          <td className="tamam-activity-title">{e.title}</td>
-          <td>
-            {e.badge?.dot
-              ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title="Priority indicator" />
-              : e.badge?.label
-                ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
-                : <span className="tamam-activity-dash">—</span>}
-          </td>
-        </tr>
-        {isOpen && (
-          <tr className="tamam-activity-detail">
-            {/* The detail cell stops click propagation: the parent row
-                toggles the disclosure, and a click on Sign inside it
-                would otherwise collapse the panel it was aimed at. */}
-            <td colSpan={4} {...stopsClickPropagation}>
-              {e.subtitle && <p>{e.subtitle}</p>}
-              {e.meta && <small>{e.meta}</small>}
-              {signatureSlot && <div style={{ marginTop: 10 }}>{signatureSlot}</div>}
-            </td>
-          </tr>
-        )}
-      </Fragment>
+      <tr
+        key={e.id}
+        id={`timeline-row-${e.id}`}
+        className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${opens ? ' has-detail' : ''}${nested ? ' is-nested' : ''}`}
+        style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
+        {...(opens ? clickable(() => onOpenEvent?.(e), { label: t('timeline.openEvent', { title: e.title }) }) : {})}
+      >
+        <td className="tamam-activity-date" style={nested ? { paddingLeft: 28 } : undefined}><time dateTime={e.date}>{dateLabel}</time></td>
+        <td>
+          <span className="tamam-activity-type">
+            {t(cfg.labelKey)}
+          </span>
+        </td>
+        <td className="tamam-activity-title">
+          {e.title}
+          {detail && <div className="tamam-cell-sub">{detail}</div>}
+        </td>
+        <td>
+          {e.badge?.dot
+            ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title="Priority indicator" />
+            : e.badge?.label
+              ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
+              : <span className="tamam-activity-dash">—</span>}
+        </td>
+        {hasActions && <td {...stopsClickPropagation}>{renderEventActions?.(e)}</td>}
+      </tr>
     );
   };
 
@@ -505,6 +507,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
       <table className="tamam-table tamam-table--fixed tamam-activity-table">
         <colgroup>
           <col /><col /><col /><col />
+          {hasActions && <col style={{ width: 72 }} />}
         </colgroup>
         <thead>
           <tr>
@@ -512,12 +515,13 @@ export default function PatientTimeline(props: PatientTimelineProps) {
             <th scope="col">Type</th>
             <th scope="col">Event</th>
             <th scope="col">Status</th>
+            {hasActions && <th scope="col" aria-label={t('timeline.actions')} />}
           </tr>
         </thead>
         <tbody>
           {visibleGroups.length === 0 && (
             <tr>
-              <td colSpan={4} style={{ cursor: 'default', background: 'transparent' }}>
+              <td colSpan={columnCount} style={{ cursor: 'default', background: 'transparent' }}>
                 <OmrsEmptyState itemLabel={events.length === 0 ? 'activity' : 'matching activity'} />
               </td>
             </tr>
@@ -553,6 +557,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                       ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: summary.badge.bg, color: summary.badge.color, borderColor: `${summary.badge.color}30` }}>{summary.badge.label}</em>
                       : <span className="tamam-activity-dash">—</span>}
                   </td>
+                  {hasActions && <td {...stopsClickPropagation}>{renderEventActions?.(groupLeadEvent(group))}</td>}
                 </tr>
                 {isOpen && items.map(e => renderEvent(e, true))}
               </Fragment>

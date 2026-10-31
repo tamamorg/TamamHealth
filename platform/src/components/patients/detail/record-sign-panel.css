@@ -1,0 +1,39 @@
+/* Consultation record workspace (RecordSignPanel) — `rsp-`. The O3 frame draws
+   the sections; this adds the read-only answers and pins the sign bar. */
+.rsp { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.rsp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+/* The drawer's own header already names the record. */
+.rsp .o3f-page-head { display: none; }
+
+.rsp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rsp-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rsp-grid .o3f-field--wide { grid-column: 1 / -1; }
+
+.rsp-value { font-size: 14px; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rsp-empty { color: var(--text-muted); }
+.rsp-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+
+.rsp-dx { margin-bottom: 8px; }
+.rsp-dx li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rsp-dx button { display: inline-flex; padding: 4px; border: 0; background: none; color: var(--text-secondary); cursor: pointer; }
+.rsp-dx svg { width: 14px; height: 14px; }
+
+.rsp-addenda { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.rsp-addenda span { font-size: 12px; color: var(--text-muted); }
+.rsp-addenda p { margin: 2px 0 0; }
+
+.rsp-confirm {
+  flex: none;
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-light);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.rsp-footer { display: flex; }
+.rsp-footer > .sv-footer-btn { flex: 1 1 0; min-width: 0; }
+
+@media (max-width: 720px) {
+  .rsp-grid, .rsp-grid--3 { grid-template-columns: minmax(0, 1fr); }
+}

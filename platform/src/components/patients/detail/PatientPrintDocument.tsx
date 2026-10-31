@@ -1,6 +1,6 @@
 'use client';
 import type { ChartVitalsLike } from './chart-constants';
-import { formatDateTime, formatDate } from '@/lib/format-utils';
+import { formatPrintedAt, printDate } from '@/lib/print-identity';
 import { patientFullName, patientAgeLabel } from '@/lib/patient-utils';
 import type { AppointmentDoc, ImmunizationDoc, LabResultDoc, MedicalRecordDoc, PatientDoc, PrescriptionDoc, ProblemDoc } from '@/lib/db-types';
 import { PrintSectionId } from './chart-constants';
@@ -36,7 +36,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
             const upcomingPrint = (patientAppointments || [])
               .filter(a => a.status !== 'cancelled' && a.status !== 'no_show' && new Date(`${a.appointmentDate}T${a.appointmentTime || '00:00'}`).getTime() >= Date.now())
               .sort((x, y) => `${x.appointmentDate}T${x.appointmentTime || '00:00'}`.localeCompare(`${y.appointmentDate}T${y.appointmentTime || '00:00'}`))[0];
-            const printedAt = new Date().toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' });
+            const printedAt = formatPrintedAt(new Date());
             // `registrationHospital` holds the facility ID, not its name — the
             // printed record was headed "hosp-001" instead of the hospital.
             // `regHospital` is the same lookup the Demographics tab already does.
@@ -44,40 +44,33 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
             return (
               <div className="print-only print-doc-root">
 
-                {/* ── Blue header band ── */}
+                {/* ── Heading ── */}
                 <div className="rx-header">
                   <div className="rx-header-left">
                     <div className="rx-logo-wrap">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/assets/logos/SVG/Tamam_Style_Guide-33.svg" alt="Tamam" />
+                      <img src="/assets/tamam-icon.svg" alt="" />
                     </div>
-                    <div>
-                      <div className="rx-facility-name">{printFacilityName}</div>
-                      <div className="rx-facility-sub">Tamam · Patient record</div>
-                    </div>
+                    <div className="rx-facility-name">{printFacilityName}</div>
                   </div>
                   <div className="rx-doc-label">
                     <div className="rx-doc-title">{t('ptDetail.printTitle')}</div>
-                    <div className="rx-doc-meta">
-                      <span>Printed: {printedAt}</span><br />
-                      <span>Record ID: {patient.hospitalNumber || patient.geocodeId || '—'}</span><br />
-                      {patient.nationalId && <span>National ID: {patient.nationalId}</span>}
-                    </div>
+                    <div className="rx-doc-meta">{printDate(new Date())}</div>
                   </div>
                 </div>
 
-                {/* ── Patient identity banner ── */}
+                {/* ── Patient information ── */}
                 <div className="rx-patient-banner">
-                  <div className="rx-patient-name">{patientFullName(patient)}</div>
+                  <div className="rx-patient-name">{t('print.patientInformation')}</div>
                   <div className="rx-patient-grid">
-                    <div className="rx-patient-field"><label>{t('births.dateOfBirth')}</label><span>{formatDate(patient.dateOfBirth)}</span></div>
+                    <div className="rx-patient-field"><label>{t('print.patientName')}</label><span>{patientFullName(patient)}</span></div>
+                    <div className="rx-patient-field"><label>{t('print.patientId')}</label><span>{patient.hospitalNumber || patient.geocodeId || '—'}</span></div>
+                    <div className="rx-patient-field"><label>{t('births.dateOfBirth')}</label><span>{printDate(patient.dateOfBirth) || '—'}</span></div>
                     <div className="rx-patient-field"><label>{t('labOrder.fieldAgeSex')}</label><span>{patientAgeLabel(patient)} · {patient.gender || '—'}</span></div>
-                    <div className="rx-patient-field"><label>{t('patient.hospitalNumber')}</label><span>{patient.hospitalNumber || '—'}</span></div>
-                    <div className="rx-patient-field"><label>Phone</label><span>{patient.phone || '—'}</span></div>
+                    <div className="rx-patient-field"><label>{t('print.phone')}</label><span>{patient.phone || '—'}</span></div>
                     <div className="rx-patient-field"><label>{t('ptDetail.printStateCounty')}</label><span>{patient.state || '—'}{patient.county ? ` · ${patient.county}` : ''}</span></div>
-                    <div className="rx-patient-field"><label>Facility</label><span>{printFacilityName}</span></div>
-                    <div className="rx-patient-field"><label>{t('anc.visitDate')}</label><span>{new Date().toLocaleDateString(undefined, { dateStyle: 'long' })}</span></div>
                     <div className="rx-patient-field"><label>{t('anc.bloodGroup')}</label><span>{(patient as unknown as Record<string, string>).bloodGroup || '—'}</span></div>
+                    {patient.nationalId && <div className="rx-patient-field"><label>{t('print.nationalId')}</label><span>{patient.nationalId}</span></div>}
                   </div>
                 </div>
 
@@ -90,7 +83,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                       <div className="rx-section-title">{t('ptDetail.printConsultationNote')}</div>
                       <div className="rx-section-body">
                         <div className="rx-two-col" style={{ marginBottom: 6 }}>
-                          <div className="rx-field"><b>Date:</b> {formatDateTime(latestRecord.consultedAt || latestRecord.visitDate)}</div>
+                          <div className="rx-field"><b>Date:</b> {formatPrintedAt(new Date(latestRecord.consultedAt || latestRecord.visitDate)).slice(0, 16)}</div>
                           <div className="rx-field"><b>Visit type:</b> {latestRecord.visitType}</div>
                           <div className="rx-field"><b>Provider:</b> {latestRecord.providerName}</div>
                           <div className="rx-field"><b>Department:</b> {latestRecord.department}</div>
@@ -148,20 +141,14 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                     <div className="rx-section">
                       <div className="rx-section-title">{t('consultation.sectionVitalSigns')}</div>
                       <div className="rx-section-body">
-                        <table className="rx-vitals-table">
-                          <tbody>
-                            <tr>
-                              {latestVitals.temperature && <><td>Temperature</td><td>{latestVitals.temperature} °C</td></>}
-                              {latestVitals.systolic && <><td>{t('vitals.bloodPressure')}</td><td>{latestVitals.systolic}/{latestVitals.diastolic} mmHg</td></>}
-                              {latestVitals.pulse && <><td>Pulse</td><td>{latestVitals.pulse} bpm</td></>}
-                            </tr>
-                            <tr>
-                              {latestVitals.respiratoryRate && <><td>Resp. Rate</td><td>{latestVitals.respiratoryRate} /min</td></>}
-                              {latestVitals.oxygenSaturation && <><td>SpO₂</td><td>{latestVitals.oxygenSaturation}%</td></>}
-                              {latestVitals.weight && <><td>Weight</td><td>{latestVitals.weight} kg</td></>}
-                            </tr>
-                          </tbody>
-                        </table>
+                        <div className="rx-patient-grid">
+                          {latestVitals.systolic && <div className="rx-patient-field"><label>{t('vitals.bloodPressure')}</label><span>{latestVitals.systolic}/{latestVitals.diastolic} mmHg</span></div>}
+                          {latestVitals.pulse && <div className="rx-patient-field"><label>{t('print.pulse')}</label><span>{latestVitals.pulse} beats/min</span></div>}
+                          {latestVitals.temperature && <div className="rx-patient-field"><label>{t('print.temperature')}</label><span>{latestVitals.temperature} °C</span></div>}
+                          {latestVitals.weight && <div className="rx-patient-field"><label>{t('print.weight')}</label><span>{latestVitals.weight} kg</span></div>}
+                          {latestVitals.oxygenSaturation && <div className="rx-patient-field"><label>{t('print.spo2')}</label><span>{latestVitals.oxygenSaturation} %</span></div>}
+                          {latestVitals.respiratoryRate && <div className="rx-patient-field"><label>{t('print.respiratoryRate')}</label><span>{latestVitals.respiratoryRate} breaths/min</span></div>}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -185,7 +172,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                   {/* Allergies */}
                   {printSections.has('allergies') && (activeAllergies.length > 0 || legacyAllergies.length > 0) && (
                     <div className="rx-section">
-                      <div className="rx-section-title">Allergy &amp; Adverse Reaction Record</div>
+                      <div className="rx-section-title">{t('print.allergies')}</div>
                       <div className="rx-section-body">
                         {activeAllergies.map((a: { id: string; substance: string; criticality?: string; classification?: string; reaction?: string }) => (
                           <div key={a.id} className="rx-allergy-row">
@@ -226,7 +213,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                                 <td style={{ padding: '3pt 8pt', color: l.abnormal ? '#d92b20' : '#001d3f', fontWeight: l.abnormal ? 700 : 400 }}>{l.result}{l.abnormal ? ' ↑' : ''}</td>
                                 <td style={{ padding: '3pt 8pt', color: '#555' }}>{l.unit || '—'}</td>
                                 <td style={{ padding: '3pt 8pt', color: '#555' }}>{l.referenceRange || '—'}</td>
-                                <td style={{ padding: '3pt 8pt', color: '#555' }}>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
+                                <td style={{ padding: '3pt 8pt', color: '#555' }}>{printDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -244,7 +231,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                           {patientImms.map((im, i) => (
                             <div key={i} className="rx-row" style={{ borderBottom: 'none', paddingBottom: 2 }}>
                               <b>{im.vaccine}</b>{im.doseNumber ? ` (Dose ${im.doseNumber})` : ''}<br />
-                              <span style={{ color: '#555', fontSize: '7.5pt' }}>{formatDate(im.dateGiven)}{im.batchNumber ? ` · Batch: ${im.batchNumber}` : ''}</span>
+                              <span style={{ color: '#555', fontSize: '7.5pt' }}>{printDate(im.dateGiven)}{im.batchNumber ? ` · Batch: ${im.batchNumber}` : ''}</span>
                             </div>
                           ))}
                         </div>
@@ -257,7 +244,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                     <div className="rx-section">
                       <div className="rx-section-title">{t('patientPortal.nextAppointment')}</div>
                       <div className="rx-section-body rx-two-col">
-                        <div className="rx-field"><b>Date &amp; Time:</b> {new Date(`${upcomingPrint.appointmentDate}T${upcomingPrint.appointmentTime || '00:00'}`).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })}</div>
+                        <div className="rx-field"><b>Date &amp; Time:</b> {upcomingPrint.appointmentDate}{upcomingPrint.appointmentTime ? ` ${upcomingPrint.appointmentTime}` : ''}</div>
                         {upcomingPrint.reason && <div className="rx-field"><b>Reason:</b> {upcomingPrint.reason}</div>}
                         {upcomingPrint.providerName && <div className="rx-field"><b>Provider:</b> {upcomingPrint.providerName}</div>}
                         <div className="rx-field"><b>Facility:</b> {printFacilityName}</div>

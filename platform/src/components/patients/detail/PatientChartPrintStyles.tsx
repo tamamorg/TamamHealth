@@ -15,7 +15,7 @@ export default function PatientChartPrintStyles() {
              margin; the first keeps none so the header band bleeds. */
           @page chart-record {
             size: A4;
-            margin: 14mm 14mm 18mm;
+            margin: 14mm 14mm 22mm;
           }
 
           html, body {
@@ -23,7 +23,7 @@ export default function PatientChartPrintStyles() {
             color: #001d3f !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            font-family: var(--font-platform) !important;
+            font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif !important;
             font-size: 9pt;
             line-height: 1.45;
           }
@@ -74,7 +74,7 @@ export default function PatientChartPrintStyles() {
 
           /* Reset everything inside the doc */
           .print-doc-root * {
-            font-family: var(--font-platform) !important;
+            font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif !important;
             box-sizing: border-box;
             animation: none !important;
             transition: none !important;
@@ -95,14 +95,13 @@ export default function PatientChartPrintStyles() {
             justify-content: space-between;
             page-break-inside: avoid;
           }
-          .rx-header-left { display: flex; align-items: center; gap: 10pt; }
+          .rx-header-left { display: flex; align-items: center; gap: 5mm; }
           .rx-logo-wrap { background: none !important; padding: 0; display: flex; }
-          .rx-logo-wrap img { width: 34pt; height: 34pt; display: block !important; }
+          .rx-logo-wrap img { width: 13mm; height: 13mm; object-fit: contain; display: block !important; }
           .rx-facility-name { color: #001d3f !important; font-size: 14pt; font-weight: 700; letter-spacing: 0; }
-          .rx-facility-sub { color: #3c5574 !important; font-size: 8pt; margin-top: 1pt; }
           .rx-doc-label { text-align: right; }
           .rx-doc-label .rx-doc-title { color: #001d3f !important; font-size: 12pt; font-weight: 700; text-transform: none; letter-spacing: 0; }
-          .rx-doc-label .rx-doc-meta { color: #3c5574 !important; font-size: 8pt; margin-top: 2pt; line-height: 1.5; }
+          .rx-doc-label .rx-doc-meta { color: #001d3f !important; font-size: 9pt; margin-top: .8mm; font-variant-numeric: tabular-nums; }
 
           /* ── Patient information ── */
           .rx-patient-banner {
@@ -156,18 +155,6 @@ export default function PatientChartPrintStyles() {
           .rx-field { margin-bottom: 4pt; }
           .rx-field b { color: #333 !important; font-weight: 600; }
 
-          /* ── Vitals table ── */
-          .rx-vitals-table { width: 100%; border-collapse: collapse; }
-          .rx-vitals-table td {
-            border: 1pt solid #cfd6dd !important;
-            padding: 4pt 8pt;
-            font-size: 8pt;
-            text-align: center;
-            color: #001d3f !important;
-          }
-          .rx-vitals-table td { border: 0 !important; border-bottom: 0.5pt solid #e2e6eb !important; }
-          .rx-vitals-table td:first-child { text-align: left; font-weight: 700; background: #f1f3f5 !important; color: #3c5574 !important; }
-
           /* ── Med / lab rows ── */
           .rx-row {
             border-bottom: 0.5pt solid #e2e6eb !important;
@@ -184,13 +171,10 @@ export default function PatientChartPrintStyles() {
           .rx-dx-name { font-size: 8.5pt; color: #001d3f !important; }
           .rx-dx-type { font-size: 7pt; color: #888 !important; margin-left: 4pt; }
 
-          /* ── Allergy pill ── */
+          /* ── Allergy criticality ── */
           .rx-allergy-row { display: flex; gap: 6pt; align-items: center; margin-bottom: 3pt; }
-          .rx-allergy-sev { font-size: 7pt; font-weight: 700; padding: 1pt 5pt; border-radius: 3pt; }
-          .rx-allergy-sev.severe { background: #fae6e4 !important; color: #d92b20 !important; }
-          .rx-allergy-sev.moderate { background: #fef2c7 !important; color: #cc6600 !important; }
-          .rx-allergy-sev.mild { background: #d8eee6 !important; color: #0A6E4A !important; }
-          .rx-allergy-sev.unknown { background: #f1f3f5 !important; color: #555 !important; }
+          .rx-allergy-sev { font-size: 8.5pt; font-weight: 700; color: #001d3f !important; }
+          .rx-allergy-sev.severe { color: #9e1b14 !important; }
 
           /* ── Signature block ── */
           .rx-sig-block {
@@ -222,7 +206,7 @@ export default function PatientChartPrintStyles() {
             color: #6b7f96 !important;
             margin-top: 10mm;
           }
-          .rx-footer-conf { font-weight: 700; color: #d92b20 !important; }
+          .rx-footer-conf { font-weight: 700; color: #3c5574 !important; }
 
           /* page break helpers */
           .rx-page-break { page-break-before: always; }

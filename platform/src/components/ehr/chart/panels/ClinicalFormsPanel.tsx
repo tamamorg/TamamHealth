@@ -36,7 +36,8 @@ import { useLabResults } from '@/lib/hooks/useLabResults';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { formatDate } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
-import { roleFormAllowed } from './role-form-access';
+import { STRUCTURED_FORMS } from '@/lib/forms/o3-form-definitions';
+import { STRUCTURED_FORM_PANELS, roleFormAllowed, type StructuredFormPanelId } from './role-form-access';
 import type { ChartPanelUser } from './types';
 
 interface ClinicalFormItem {
@@ -71,7 +72,8 @@ export default function ClinicalFormsPanel({ patient, canConsult, currentUser, o
   } : null);
   // The patient's notes, for each note form's "Last completed": the latest
   // signed note of that type — the same records the chart's Notes tab lists.
-  const [notes, setNotes] = useState<ClinicalNoteDoc[]>([]);
+  // null until read: "Never" is a statement about the record, not a loading state.
+  const [notes, setNotes] = useState<ClinicalNoteDoc[] | null>(null);
   useEffect(() => {
     if (!scope) return;
     let cancelled = false;
@@ -100,7 +102,7 @@ export default function ClinicalFormsPanel({ patient, canConsult, currentUser, o
   const { visits: ancVisits } = useANC();
   const { screenings } = useNutritionScreenings();
   const { admissions } = useWards();
-  const { results: labResults } = useLabResults(patient._id);
+  const { results: labResults, loading: labsLoading } = useLabResults(patient._id);
 
   const patientANC = (ancVisits || []).filter(a => a.patientId === patient._id);
   const patientScreenings = (screenings || []).filter(s => s.patientId === patient._id);
@@ -178,6 +180,7 @@ export default function ClinicalFormsPanel({ patient, canConsult, currentUser, o
 
   type Row = { id: string; name: string; lastCompleted: string; enabled: boolean; disabledReason?: string; open: () => void };
   const lastSigned = (type: NoteTypeId) => {
+    if (notes === null) return '…';
     const signed = notes.filter(n => n.noteType === type)
       .map(n => n.signedAt || n.serviceDate)
       .filter(Boolean)
@@ -194,6 +197,26 @@ export default function ClinicalFormsPanel({ patient, canConsult, currentUser, o
       disabledReason: t('clinicalForms.needsConsult'),
       open: () => void openNoteForm(type),
     })),
+    // The structured O3 forms. Laboratory Test Results files lab results, so
+    // its date is the latest completed lab result; the rest file signed notes
+    // of their own type.
+    ...(Object.keys(STRUCTURED_FORM_PANELS) as StructuredFormPanelId[]).map(panel => {
+      const formId = STRUCTURED_FORM_PANELS[panel];
+      const lastLab = formId === 'lab_results'
+        ? (labResults || []).filter(r => !isImagingStudy(r) && r.status === 'completed')
+          .map(r => r.completedAt).filter(Boolean).sort().pop()
+        : undefined;
+      return {
+        id: panel,
+        name: STRUCTURED_FORMS[formId].name,
+        lastCompleted: formId === 'lab_results'
+          ? (labsLoading ? '…' : lastLab ? formatDate(lastLab) : t('clinicalForms.never'))
+          : lastSigned(formId),
+        enabled: roleFormAllowed(panel, role, true) && (formId === 'lab_results' || canConsult),
+        disabledReason: t('clinicalForms.needsConsult'),
+        open: () => onOpenForm(panel),
+      };
+    }),
     ...forms.map(f => ({
       id: f.id,
       name: f.name,

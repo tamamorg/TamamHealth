@@ -136,7 +136,24 @@
 .pp-payment-choices button[aria-pressed="true"] { border-color: var(--accent-primary); background: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-primary)); color: var(--accent-text); }
 .pp-payment-choices button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 .pp-payment-guidance { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
-.bl-activity-reference { max-width: 200px; overflow-wrap: anywhere; font-size: 12px; }
+.bl-line-row { cursor: pointer; }
+.bl-line-open { padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.bl-line-open:hover { color: var(--accent-text); text-decoration: underline; }
+.bl-line { display: flex; flex-direction: column; gap: 24px; padding-top: 12px; }
+.bl-line-section h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.bl-line-list { margin: 0; padding: 0; list-style: none; }
+.bl-line-list > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; padding: 10px 0; border-top: 1px solid var(--border-light); font-size: 14px; color: var(--text-primary); }
+.bl-line-list > li > strong { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bl-line-sub { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
+.bl-line-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.bl-receipt { display: flex; flex-direction: column; gap: 16px; padding-top: 12px; }
+.bl-receipt-hero { display: flex; align-items: center; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); color: var(--color-success-text); }
+.bl-receipt-hero strong { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bl-receipt-actions { display: flex; gap: 8px; }
+.bl-receipt-actions > button { flex: 1 1 0; }
+.bl-receipt-email { flex-direction: row; gap: 8px; }
+.bl-receipt-email input { flex: 1; min-width: 0; }
+.bl-receipt-note { margin: 0; font-size: 12px; }
 .bl-activity-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-top: 1px solid var(--ehr-border, var(--border-light)); color: var(--ehr-muted); }
 .bl-activity-pagination > div { display: flex; gap: 8px; }
 .bl-activity-pagination button { min-height: 40px; padding: 8px 16px; border: 1px solid var(--ehr-border, var(--border-light)); border-radius: 6px; color: var(--accent-text); background: var(--bg-primary); }

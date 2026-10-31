@@ -79,6 +79,40 @@ describe('PatientTimeline grouping UI', () => {
   });
 });
 
+describe('PatientTimeline actions and sidebar', () => {
+  const record = { _id: 'm1', consultedAt: '2026-03-02T09:00:00', chiefComplaint: 'Fever', documentStatus: 'signed', providerName: 'Dr A' };
+  const props = { medicalRecords: [record] } as unknown as React.ComponentProps<typeof PatientTimeline>;
+
+  it('opens a document row in the sidebar instead of expanding it', () => {
+    const onOpenEvent = jest.fn();
+    mount(<PatientTimeline {...props} onOpenEvent={onOpenEvent} />);
+    click(q('#timeline-row-mr-m1'));
+    expect(onOpenEvent).toHaveBeenCalledWith(expect.objectContaining({ docId: 'm1' }));
+    expect(q('[aria-expanded]')).toBeNull();
+    expect(text()).not.toContain('Dr A');
+  });
+
+  it('opens the focused document on arrival', () => {
+    const onOpenEvent = jest.fn();
+    mount(<PatientTimeline {...props} onOpenEvent={onOpenEvent} focusId="m1" />);
+    expect(onOpenEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds an Actions cell that does not open the row', () => {
+    const onOpenEvent = jest.fn();
+    mount(<PatientTimeline {...props} onOpenEvent={onOpenEvent} renderEventActions={() => <button id="act">go</button>} />);
+    click(q('#act'));
+    expect(onOpenEvent).not.toHaveBeenCalled();
+    expect(host.querySelectorAll('thead th')).toHaveLength(5);
+  });
+
+  it('keeps the detail in the row when nothing can open it', () => {
+    mount(<PatientTimeline {...props} />);
+    expect(text()).toContain('Dr A');
+    expect(host.querySelectorAll('thead th')).toHaveLength(4);
+  });
+});
+
 describe('orderRowHref', () => {
   it('routes drug orders to prescriptions and lab orders to labs', () => {
     expect(orderRowHref('/patients/p1', { id: 'rx1', source: 'drug' })).toBe('/patients/p1?tab=prescriptions&focus=rx1');

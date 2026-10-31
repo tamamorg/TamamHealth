@@ -7,6 +7,7 @@ import {
   AlertTriangle, XCircle, Wallet,
 } from '@/components/icons/lucide';
 import { describeApiError } from '@/lib/user-facing-error';
+import { FormError } from '@/components/overlay/FormNotices';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /* ─────────────────────────────────────────────────────────────
@@ -287,9 +288,7 @@ export default function CheckoutPage() {
         )}
 
         {submitError && (
-          <div role="alert" style={{ padding: 10, borderRadius: 8, background: 'rgba(217, 43, 32,0.06)', border: '1px solid rgba(217, 43, 32,0.15)', marginBottom: 14 }}>
-            <p style={{ fontSize: 12, color: '#D92B20', fontWeight: 600 }}>{submitError}</p>
-          </div>
+          <FormError message={submitError} className="mb-3" />
         )}
 
         <button

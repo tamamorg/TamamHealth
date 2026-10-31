@@ -250,7 +250,7 @@ export default function MARPage() {
   return (
     <main id="mar-print-record" className="page-container">
       {/* Page header card */}
-        <div className="card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
+        <div className="mar-screen-head card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
             <button
               onClick={goBack}
@@ -288,7 +288,16 @@ export default function MARPage() {
               style={{ minWidth: 160 }}
             />
             <button
-              onClick={() => printElementById('mar-print-record')}
+              onClick={() => printElementById('mar-print-record', {
+                label: t('print.mar'),
+                date: day,
+                fieldsTitle: t('print.patientInformation'),
+                fields: [
+                  { label: t('print.patientName'), value: admission.patientName },
+                  { label: t('mar.wardBed'), value: `${admission.wardName}${admission.bedNumber ? ` · ${admission.bedNumber}` : ''}` },
+                  { label: t('mar.attendingLabel'), value: admission.attendingPhysicianName },
+                ],
+              })}
               className="btn btn-secondary inline-flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4" /> {t('action.print')}
@@ -461,8 +470,8 @@ export default function MARPage() {
             </div>
         </div>
 
-        {/* Legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
+        {/* Legend: colour swatches for the screen; a printed cell carries the word. */}
+        <div className="no-print mt-3 flex flex-wrap items-center gap-3 text-[11px]">
           {(['given', 'missed', 'refused', 'held'] as const).map(s => (
             <span key={s} className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
               <span
@@ -476,8 +485,7 @@ export default function MARPage() {
               {t(STATUS_LABEL_KEY[s])}
             </span>
           ))}
-          {/* A screen instruction: on the printed record there is no cell to click. */}
-          <span className="no-print" style={{ color: 'var(--text-muted)' }}>{t('mar.legendHint')}</span>
+          <span style={{ color: 'var(--text-muted)' }}>{t('mar.legendHint')}</span>
         </div>
 
         {/* Record-administration modal */}

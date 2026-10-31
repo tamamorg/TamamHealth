@@ -294,7 +294,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   const documentEntries: OutstandingEntry[] = [
     ...unsignedDrafts.map(r => {
       // A consult record is a VISIT — it is signed on the Visits timeline,
-      // where RecordSignatureBar now renders, not on the Notes tab.
+      // where the record opens in the sidebar to sign, not on the Notes tab.
       const href = `/patients/${r.patientId}?tab=history&focus=${r._id}`;
       return {
         id: r._id,

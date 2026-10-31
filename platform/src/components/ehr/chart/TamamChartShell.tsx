@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   ShoppingCart, Stethoscope, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
-  Utensils, ScanLine, FlaskConical, Pill, Activity, HeartPulse, BedDouble,
+  Utensils, ScanLine, FlaskConical, Pill, Activity, HeartPulse, BedDouble, ClipboardList,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
 import DrawerResizeHandle from './DrawerResizeHandle';
@@ -40,9 +40,10 @@ import NutritionScreeningPanel from './panels/NutritionScreeningPanel';
 import ImagingReportPanel from './panels/ImagingReportPanel';
 import { DispensePanel, LabOrdersPanel } from './panels/StationOrdersPanel';
 import WardAdmissionPanel from './panels/WardAdmissionPanel';
+import StructuredFormPanel from './panels/StructuredFormPanel';
 import TriageWorkflow from '@/components/nurse/TriageWorkflow';
 import AncVisitForm from '@/components/anc/AncVisitForm';
-import { ROLE_FORM_RULES, roleFormAllowed } from './panels/role-form-access';
+import { ROLE_FORM_RULES, STRUCTURED_FORM_PANELS, roleFormAllowed, type StructuredFormPanelId } from './panels/role-form-access';
 import { getDefaultDashboard } from '@/lib/role-routes';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './tamam-chart.css';
@@ -96,7 +97,7 @@ export function visibleDrawerPanels(canViewClinical: boolean): DrawerPanelDef[] 
 /** One open workspace in the stack: a rail panel (with the note it holds, if
  *  it is the note editor) or the page's own workspace. */
 type WorkspaceEntry =
-  | { kind: 'rail'; id: string; noteId?: string | null; noteTitle?: string | null }
+  | { kind: 'rail'; id: string; noteId?: string | null; noteTitle?: string | null; noteUnlocked?: boolean }
   | { kind: 'page' };
 
 /** Drawer slot id for a page-owned workspace (see the `workspace` prop). */
@@ -129,6 +130,12 @@ const ROLE_FORM_PANELS: (DrawerPanelDef & { wide?: boolean })[] = [
   { id: 'triage-form', title: 'Triage / ETAT assessment', icon: Activity, wide: true },
   { id: 'anc-visit', title: 'ANC visit', icon: HeartPulse, wide: true },
   { id: 'ward-admission', title: 'Ward admission', icon: BedDouble },
+  // The structured O3 forms (Clinical forms list): a page list beside the
+  // questions, so wide.
+  { id: 'form-lab-results', title: 'Laboratory test results', icon: FlaskConical, wide: true },
+  { id: 'form-covid19', title: 'Covid 19', icon: ClipboardList, wide: true },
+  { id: 'form-mental-health', title: 'Mental health assessment', icon: ClipboardList, wide: true },
+  { id: 'form-surgical-operation', title: 'Surgical operation', icon: ClipboardList, wide: true },
 ];
 
 function isWideRoleForm(id: string): boolean {
@@ -207,6 +214,7 @@ export default function TamamChartShell({
   // opened as from Clinical forms ("Consultation"), shown as the title.
   const drawerNoteId = top?.kind === 'rail' && top.id === CLINICAL_NOTE_PANEL.id ? top.noteId ?? null : null;
   const drawerNoteTitle = top?.kind === 'rail' && top.id === CLINICAL_NOTE_PANEL.id ? top.noteTitle ?? null : null;
+  const drawerNoteUnlocked = top?.kind === 'rail' && top.id === CLINICAL_NOTE_PANEL.id && Boolean(top.noteUnlocked);
   // Providers the note editor's "Assigned to" picker offers. Scoped by
   // useUsers, so a clinician can only hand a note to their own facility.
   const { users } = useUsers();
@@ -219,7 +227,7 @@ export default function TamamChartShell({
   // note forms included, opens as the docked slider on the right — and it
   // carries over as panels stack on one another.
   const [drawerMaximized, setDrawerMaximized] = useState(false);
-  const pushRail = useCallback((entry: { id: string; noteId?: string | null; noteTitle?: string | null }) => {
+  const pushRail = useCallback((entry: { id: string; noteId?: string | null; noteTitle?: string | null; noteUnlocked?: boolean }) => {
     setStack(prev => [...prev.filter(e => !(e.kind === 'rail' && e.id === entry.id)), { kind: 'rail', ...entry }]);
   }, []);
   // The order basket opens on a screen (Add drug order, Add test order) when
@@ -252,7 +260,10 @@ export default function TamamChartShell({
   useEffect(() => {
     if (panelRequest) {
       if (panelRequest.startsWith('clinical-note:')) {
-        pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId: panelRequest.slice('clinical-note:'.length) });
+        // `:edit` is the note viewer's Edit: the user has already chosen to change it.
+        const noteRequest = panelRequest.slice('clinical-note:'.length);
+        const noteUnlocked = noteRequest.endsWith(':edit');
+        pushRail({ id: CLINICAL_NOTE_PANEL.id, noteId: noteUnlocked ? noteRequest.slice(0, -':edit'.length) : noteRequest, noteUnlocked });
       } else if (panelRequest === 'order-basket:drug' || panelRequest === 'order-basket:lab') {
         openOrderBasket(panelRequest === 'order-basket:drug' ? 'drug' : 'lab');
       } else if (railPanels.some(p => p.id === panelRequest) || roleFormPanels.some(p => p.id === panelRequest)) {
@@ -424,6 +435,16 @@ export default function TamamChartShell({
           <div className="tamam-drawer-note-body">
             <ClinicalNoteEditor
               noteId={drawerNoteId}
+              lockSavedDraft
+              canEditDrafts={canConsult}
+              draftUnlocked={drawerNoteUnlocked}
+              // Kept on the stack entry, so a form opened on top of the note
+              // and closed again returns to it still unlocked.
+              onDraftUnlocked={() => setStack(prev => prev.map(entry => (
+                entry.kind === 'rail' && entry.id === CLINICAL_NOTE_PANEL.id && entry.noteId === drawerNoteId
+                  ? { ...entry, noteUnlocked: true }
+                  : entry
+              )))}
               showContextSidebar={false}
               // Notes in the chart are O3 forms: a section list with Save /
               // Sign / Cancel, collapsible groups, and a way back to the list.
@@ -487,19 +508,34 @@ export default function TamamChartShell({
           />
         );
       case 'nutrition-screening':
-        return <NutritionScreeningPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
+        return <div className="tamam-drawer-workspace o3f-scroll"><NutritionScreeningPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} /></div>;
       case 'imaging-report':
-        return <ImagingReportPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
+        return <div className="tamam-drawer-workspace o3f-scroll"><ImagingReportPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} /></div>;
       case 'triage-form':
         return (
-          <div className="tamam-drawer-body">
-            <TriageWorkflow lockedPatientId={patient._id} lockedPatient={patient} onSaved={closeDrawer} embedded />
+          <div className="tamam-drawer-workspace o3f-scroll">
+            <TriageWorkflow lockedPatientId={patient._id} lockedPatient={patient} onSaved={closeDrawer} onCancel={closeDrawer} embedded />
           </div>
         );
       case 'anc-visit':
-        return <AncVisitForm layout="workspace" lockedPatient={patient} onClose={closeDrawer} />;
+        return <div className="tamam-drawer-workspace o3f-scroll"><AncVisitForm layout="workspace" lockedPatient={patient} onClose={closeDrawer} /></div>;
       case 'ward-admission':
-        return <WardAdmissionPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} />;
+        return <div className="tamam-drawer-workspace o3f-scroll"><WardAdmissionPanel patient={patient} currentUser={currentUser} onClose={closeDrawer} /></div>;
+      case 'form-lab-results':
+      case 'form-covid19':
+      case 'form-mental-health':
+      case 'form-surgical-operation':
+        return (
+          <div className="tamam-drawer-workspace o3f-scroll">
+            <StructuredFormPanel
+              formId={STRUCTURED_FORM_PANELS[id as StructuredFormPanelId]}
+              patient={patient}
+              currentUser={currentUser}
+              onBack={closeDrawer}
+              onSaved={closeDrawer}
+            />
+          </div>
+        );
       case 'lab-orders':
         return <LabOrdersPanel patient={patient} focusId={formFocusId} />;
       case 'dispense':

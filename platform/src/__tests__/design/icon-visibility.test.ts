@@ -40,6 +40,9 @@ const NO_ICON = new Set([
   '.rbc-tamam .rbc-header.rbc-today a', '.rbc-tamam .rbc-header.rbc-today span',
   '.rbc-tamam .rbc-date-cell.rbc-now a', '.rbc-tamam .rbc-header .gcal-colhead-date.is-today',
   '.msgs-bubble--mine', '.pp-bubble-line.me .pp-bubble', '.civ-marker', '.civ-label-list li>span',
+  // Dashboard worklist lane, chosen: a label and a count, never an icon.
+  '.ehr-day-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"])',
+  // ANC visit form step numbers: a digit in a circle, never an icon.
   // Order basket status tag: text only, never an icon.
   '.obk-tag--danger',
   // Chart banner avatar: the patient's photo or initials, never an icon.
@@ -55,6 +58,8 @@ const NO_ICON = new Set([
   '.ehr-rail-menu-trigger-primary.open',
   '.modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head',
   '.tamam-root :is(.tamam-section-toggle button.is-active, .tamam-activity-filters button.is-active)',
+  // O3 form page-list Save: a text-only button.
+  '.o3f-save',
 ]);
 
 function solidWhiteTextSelectors(): { file: string; selector: string }[] {

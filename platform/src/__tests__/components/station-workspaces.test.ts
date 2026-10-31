@@ -56,7 +56,7 @@ function study(over: Partial<LabResultDoc>): LabResultDoc {
 
 const NUTRITION_LABELS = {
   samToTreat: 'SAM to treat', followUps: 'Follow-ups', supplyAlerts: 'Supply alerts',
-  edema: 'oedema', muac: (v: number) => `MUAC ${v} cm`,
+  edema: 'oedema', assigned: 'Assigned to me', muac: (v: number) => `MUAC ${v} cm`,
 };
 
 describe('assembleNutritionWorklist', () => {
@@ -122,7 +122,7 @@ describe('assembleNutritionWorklist', () => {
   });
 });
 
-const RADIOLOGY_LABELS = { toPerform: 'To perform', toReport: 'To report', urgent: 'Urgent', reportedToday: 'Reported today' };
+const RADIOLOGY_LABELS = { toPerform: 'To perform', toReport: 'To report', urgent: 'Urgent', reportedToday: 'Reported today', assigned: 'Assigned to me' };
 const NOW = new Date('2026-10-29T12:00:00');
 
 describe('assembleRadiologyWorklist', () => {
@@ -177,9 +177,13 @@ describe('chart role forms', () => {
   it('lets clinical roles screen but never report imaging', () => {
     // Plus the Clinical forms that used to leave the chart (triage, ANC,
     // ward admission) — opened in the workspace, never on the rail.
+    // The structured O3 forms follow who may write what they file: a doctor
+    // files notes and lab results, a nurse lab results only.
     const chartForms = ['nutrition-screening', 'triage-form', 'anc-visit', 'ward-admission'];
-    expect(allowedRoleFormPanels('doctor', true).map(p => p.id)).toEqual(chartForms);
-    expect(allowedRoleFormPanels('nurse', true).map(p => p.id)).toEqual(chartForms);
+    expect(allowedRoleFormPanels('doctor', true).map(p => p.id)).toEqual([
+      ...chartForms, 'form-lab-results', 'form-covid19', 'form-mental-health', 'form-surgical-operation',
+    ]);
+    expect(allowedRoleFormPanels('nurse', true).map(p => p.id)).toEqual([...chartForms, 'form-lab-results']);
     expect(railRoleFormPanels('doctor')).toEqual([]);
   });
 
@@ -213,5 +217,52 @@ describe('screeningAgeLabel', () => {
   it('falls back to the estimated age', () => {
     expect(screeningAgeLabel({ estimatedAge: 28 }, now)).toBe('28y');
     expect(screeningAgeLabel({}, now)).toBe('');
+  });
+});
+
+describe('patients the desk routed to a station', () => {
+  const routed = (station: 'radiology' | 'nutrition', id: string, staffId = ME._id) => ({
+    _id: id, firstName: 'Akol', surname: 'Ngor', gender: 'Male', hospitalNumber: 'JTH-1',
+    stationAssignments: { [station]: { staffId, staffName: 'Me', note: 'Chest film', assignedAt: '2026-10-29T09:00:00', assignedByName: 'Amira Desk' } },
+  }) as unknown as PatientDoc;
+
+  it('lists them on the radiologist\'s dashboard, opening the report form', () => {
+    const { patients, outstanding } = assembleRadiologyWorklist({
+      currentUser: ME,
+      patients: [routed('radiology', 'pat-1'), routed('radiology', 'pat-2', 'someone-else'), routed('nutrition', 'pat-3')],
+      results: [],
+      labels: RADIOLOGY_LABELS,
+      now: NOW,
+    });
+    expect(patients.map(p => p._id)).toEqual(['pat-1']);
+    expect(patients[0].station).toMatchObject({ status: 'Assigned to me', lane: 'scheduled', chartHref: imagingReportHref('pat-1') });
+    expect(outstanding.find(o => o.label === 'Assigned to me')).toMatchObject({ count: 1 });
+  });
+
+  it('keeps one row when a routed patient already has an open study', () => {
+    const { patients, outstanding } = assembleRadiologyWorklist({
+      currentUser: ME,
+      patients: [routed('radiology', 'pat-1')],
+      results: [study({ patientId: 'pat-1', testName: 'X-Ray — Chest PA' })],
+      labels: RADIOLOGY_LABELS,
+      now: NOW,
+    });
+    expect(patients.map(p => p._id)).toEqual(['pat-1']);
+    expect(patients[0].ward).toBe('X-Ray — Chest PA');
+    expect(outstanding.find(o => o.label === 'Assigned to me')).toMatchObject({ count: 1 });
+  });
+
+  it('lists them on the nutritionist\'s dashboard, opening the screening form', () => {
+    const { patients, outstanding } = assembleNutritionWorklist({
+      currentUser: ME,
+      patients: [routed('nutrition', 'pat-1'), routed('nutrition', 'pat-2', 'someone-else'), routed('radiology', 'pat-3')],
+      screenings: [],
+      supplies: [],
+      labels: NUTRITION_LABELS,
+      now: NOW,
+    });
+    expect(patients.map(p => p._id)).toEqual(['pat-1']);
+    expect(patients[0].station).toMatchObject({ lane: 'scheduled', chartHref: screeningFormHref('pat-1') });
+    expect(outstanding.find(o => o.label === 'Assigned to me')).toMatchObject({ count: 1 });
   });
 });

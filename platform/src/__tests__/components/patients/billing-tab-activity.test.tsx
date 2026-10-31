@@ -40,6 +40,8 @@ jest.mock('@/lib/services/payment-service', () => ({
   getRefundsByPatient: jest.fn(async () => []),
 }));
 
+jest.mock('@/lib/services/billing-service', () => ({ getBillsByPatient: jest.fn(async () => []) }));
+
 import BillingTab from '@/components/patients/BillingTab';
 import type { PatientDoc } from '@/lib/db-types';
 
@@ -73,6 +75,18 @@ describe('BillingTab activity', () => {
     mounted = await render();
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toContain('consultation');
+  });
+
+  it('folds a payment into the charge it paid instead of adding a row', async () => {
+    ledger = [
+      { _id: 'le-4', type: 'ledger_entry', patientId: 'pat-1', entryType: 'charge', amount: 8000, currency: 'SSP', description: 'Outpatient Consultation', createdAt: '2026-10-20T06:00:00.000Z' },
+      { _id: 'le-5', type: 'ledger_entry', patientId: 'pat-1', entryType: 'payment', amount: -8000, currency: 'SSP', description: 'Payment via cash: 8000 SSP', createdAt: '2026-10-30T06:00:00.000Z' },
+    ];
+    mounted = await render();
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]).toContain('Outpatient Consultation');
+    expect(rows()[0]).toContain('Paid');
+    expect(rows()[0]).not.toContain('Unpaid');
   });
 
   it('falls back to charge documents for an account with no ledger', async () => {

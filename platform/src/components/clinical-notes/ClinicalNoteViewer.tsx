@@ -17,6 +17,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { printElementById } from '@/lib/safe-html';
 import {
@@ -118,6 +120,8 @@ function SectionText({ text }: { text: string }) {
 
 interface ViewModel {
   kind: 'clinical' | 'record';
+  authorId?: string;
+  assignedToId?: string;
   id: string;
   typeLabel: string;
   status: NoteStatus;
@@ -163,6 +167,7 @@ export default function ClinicalNoteViewer({
           typeLabel: n.noteType === 'phone' ? t('notesList.phoneEncounter') : noteTypeLabel(t, n.noteType),
           status: n.status, date: n.serviceDate, time: n.serviceTime,
           author: n.assignedToName || n.authorName || '',
+          authorId: n.authorId, assignedToId: n.assignedToId,
           encounterId: n.encounterId,
           sections: clinicalViewerSections(n, t),
           addenda: (n.addenda || []).map(a => ({ id: a.id, text: a.text, authorName: a.authorName, createdAt: a.createdAt })),
@@ -202,6 +207,19 @@ export default function ClinicalNoteViewer({
 
   const locked = vm?.status === 'signed' || vm?.status === 'amended' || vm?.status === 'awaiting_cosign';
   const printId = useMemo(() => `clinical-note-print-${noteId}`, [noteId]);
+  const print = () => {
+    if (!vm) return;
+    printElementById(printId, {
+      label: vm.typeLabel,
+      date: vm.date,
+      fieldsTitle: t('print.patientInformation'),
+      fields: [
+        { label: t('print.patientName'), value: vm.patientName },
+        // The status badge goes with the screen header the sheet's heading replaces.
+        { label: t('print.status'), value: t((STATUS_KEY[vm.status] ?? STATUS_KEY.draft).key) },
+      ],
+    });
+  };
 
   async function saveAddendum() {
     if (!vm || !addendumText.trim() || !currentUser) return;
@@ -252,7 +270,8 @@ export default function ClinicalNoteViewer({
 
   const status = STATUS_KEY[vm.status] ?? STATUS_KEY.draft;
   const canAddAddendum = vm.kind === 'clinical' && (vm.status === 'signed' || vm.status === 'amended');
-  const canEdit = vm.kind === 'clinical' && vm.status === 'draft' && Boolean(onEdit);
+  const canEdit = vm.kind === 'clinical' && vm.status === 'draft' && Boolean(onEdit)
+    && canEditDraft({ authorId: vm.authorId ?? '', assignedToId: vm.assignedToId }, currentUser);
 
   const cancelAddendum = () => { setAdding(false); setAddendumText(''); setError(null); };
   // Secondary choices first, the one that moves the note forward last.
@@ -264,7 +283,7 @@ export default function ClinicalNoteViewer({
   ) : (
     <>
       <button type="button" className="btn btn-secondary" onClick={onClose}>{t('noteViewer.close')}</button>
-      {locked && vm.kind === 'clinical' && <button type="button" className="btn btn-secondary" onClick={() => printElementById(printId)}>{t('noteViewer.print')}</button>}
+      {locked && vm.kind === 'clinical' && <button type="button" className="btn btn-secondary" onClick={print}>{t('noteViewer.print')}</button>}
       {canAddAddendum && <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>{t('noteViewer.addAddendum')}</button>}
       {canEdit && <button type="button" className="btn btn-primary" onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
     </>
@@ -272,6 +291,11 @@ export default function ClinicalNoteViewer({
 
   return shell(
     <div className={`tamam-note-viewer modal-no-headband${inSlider ? ' tamam-note-viewer--slider' : ''}`}>
+      {vm.kind === 'clinical' && vm.status === 'draft' && (
+        <InlineBanner compact className="no-print" title={t('chart.locked')}>
+          {canEdit ? t('noteViewer.lockedHint') : null}
+        </InlineBanner>
+      )}
       <div id={printId} className="tamam-nv-doc modal-no-headband">
         <header className="tamam-nv-head">
           <div>
@@ -358,7 +382,7 @@ export default function ClinicalNoteViewer({
         <div className="tamam-nv-actions">
           {canEdit && <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
           {canAddAddendum && <button type="button" className="tamam-nv-btn" onClick={() => setAdding(true)}>{t('noteViewer.addAddendum')}</button>}
-          {locked && vm.kind === 'clinical' && <button type="button" className="tamam-nv-btn" onClick={() => printElementById(printId)}>{t('noteViewer.print')}</button>}
+          {locked && vm.kind === 'clinical' && <button type="button" className="tamam-nv-btn" onClick={print}>{t('noteViewer.print')}</button>}
           <button type="button" className="tamam-nv-btn" onClick={onClose}>{t('noteViewer.close')}</button>
         </div>
       )}

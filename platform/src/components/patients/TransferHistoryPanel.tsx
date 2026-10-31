@@ -11,6 +11,8 @@
  */
 import { useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import FormField from '@/components/overlay/FormField';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useAuth } from '@/lib/context';
 import { usePatientTransfers } from '@/lib/hooks/usePatientTransfers';
 import { useWards } from '@/lib/hooks/useWards';
@@ -21,12 +23,13 @@ import {
   canDecideTransfer, canCancelTransfer, canContributeTransfer,
 } from '@/lib/services/patient-transfer-permissions';
 import TransferPatientModal from './TransferPatientModal';
+import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import type {
   PatientDoc, PatientTransferDoc, PatientTransferStatus,
 } from '@/lib/db-types';
 import { formatDateTime } from '@/lib/format-utils';
 import {
-  ArrowRightLeft, Check, X, Clock, AlertTriangle, ChevronDown, ChevronUp, Plus,
+  ArrowRightLeft, Check, X, Clock, AlertTriangle, ChevronDown, ChevronUp,
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
@@ -203,35 +206,21 @@ function TransferCard({
         )}
 
         {rejecting && (
-          <div className="mt-3 space-y-2">
-            <label className="block">
-              <span className="text-[11px] font-semibold">
-                Why are you rejecting this transfer?
-              </span>
-              <textarea
-                className="form-input w-full mt-1 text-[12px]"
-                rows={2}
-                value={rejectNote}
-                onChange={e => setRejectNote(e.target.value)}
-                placeholder="The sending clinician gets the patient back — tell them what to fix."
-              />
-            </label>
-            <div className="flex gap-2">
-              <button
-                className="btn btn-primary text-[12px]"
-                disabled={busy || !rejectNote.trim()}
-                onClick={() => act(() => onReject(transfer._id, rejectNote.trim()))}
-              >
-                Confirm rejection
-              </button>
-              <button
-                className="btn btn-secondary text-[12px]"
-                onClick={() => { setRejecting(false); setRejectNote(''); }}
-              >
-                Back
-              </button>
-            </div>
-          </div>
+          <FormSlider
+            title={t('transfers.rejectTitle')}
+            subtitle={`${describeAssignment(transfer.from)} → ${describeAssignment(transfer.to)}`}
+            className="tamam-dialog"
+            onClose={() => { setRejecting(false); setRejectNote(''); }}
+            busy={busy}
+            footer={<>
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setRejecting(false); setRejectNote(''); }}>{t('action.cancel')}</button>
+              <button type="button" className="btn btn-primary" disabled={busy || !rejectNote.trim()} onClick={() => act(() => onReject(transfer._id, rejectNote.trim()))}>{t('transfers.confirmReject')}</button>
+            </>}
+          >
+            <FormField label={t('transfers.rejectReason')} required hint={t('transfers.rejectHint')}>
+              {control => <textarea {...control} rows={4} value={rejectNote} onChange={e => setRejectNote(e.target.value)} />}
+            </FormField>
+          </FormSlider>
         )}
 
         {awaitingConfirm && decide.allowed && (
@@ -480,60 +469,49 @@ export default function TransferHistoryPanel({
   const { transfers, loading, accept, reject, cancel, complete, updateLogistics, arrive, close } = usePatientTransfers(patient._id);
   const [showModal, setShowModal] = useState(false);
 
+  // The chart's own section — the same title, underline and Add as every
+  // other tab — not a card with a header of its own.
   return (
-    <div className="card-elevated overflow-hidden">
-      <div className="px-5 py-3 border-b flex items-center justify-between gap-3"
-        style={{ borderColor: 'var(--border-light)' }}>
-        <div>
-          <h3 className="font-semibold text-sm flex items-center gap-2">
-            <ArrowRightLeft className="w-4 h-4" /> {t('chartRows.careCoordination')}
-          </h3>
-          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            {t('chartRows.transfersSub')}
-          </p>
+    <>
+    <ChartSection
+      title={t('chartRows.careCoordination')}
+      addLabel="Transfer patient"
+      onAdd={canViewClinical ? () => setShowModal(true) : undefined}
+    >
+      {loading && (
+        <p className="tamam-cell-sub" style={{ padding: '12px 0' }}>Loading transfers…</p>
+      )}
+      {!loading && transfers.length === 0 && (
+        <OmrsEmptyState
+          itemLabel="transfers"
+          actionLabel="Transfer patient"
+          onAction={canViewClinical ? () => setShowModal(true) : undefined}
+        />
+      )}
+      {transfers.length > 0 && (
+        <div className="space-y-3" style={{ paddingTop: 4 }}>
+          {transfers.map(t => (
+            <TransferCard
+              key={t._id}
+              transfer={t}
+              showClinicalDetail={canViewClinical}
+              onAccept={accept}
+              onReject={reject}
+              onCancel={cancel}
+              onComplete={complete}
+              onLogistics={updateLogistics}
+              onArrive={arrive}
+              onClose={close}
+            />
+          ))}
         </div>
-        {canViewClinical && (
-          <button
-            className="btn btn-primary text-[12px] inline-flex items-center gap-1 shrink-0"
-            onClick={() => setShowModal(true)}
-          >
-            <Plus className="w-3.5 h-3.5" /> Transfer patient
-          </button>
-        )}
-      </div>
-
-      <div className="p-4 space-y-3">
-        {loading && (
-          <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>Loading transfers…</p>
-        )}
-        {!loading && transfers.length === 0 && (
-          <div className="text-center py-6">
-            <ArrowRightLeft className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-            <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
-              This patient has never been transferred.
-            </p>
-          </div>
-        )}
-        {transfers.map(t => (
-          <TransferCard
-            key={t._id}
-            transfer={t}
-            showClinicalDetail={canViewClinical}
-            onAccept={accept}
-            onReject={reject}
-            onCancel={cancel}
-            onComplete={complete}
-            onLogistics={updateLogistics}
-            onArrive={arrive}
-            onClose={close}
-          />
-        ))}
-      </div>
+      )}
+    </ChartSection>
 
       {showModal && canViewClinical && (
         <TransferPatientModal patient={patient} onClose={() => setShowModal(false)} />
       )}
-    </div>
+    </>
   );
 }
 

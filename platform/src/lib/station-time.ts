@@ -12,3 +12,10 @@ export function durationLabel(totalMinutes: number): string {
   if (totalMinutes >= 60) return `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`;
   return `${totalMinutes} min`;
 }
+
+/** A row's date as a person reads it ("Oct 24"), never an ISO day. */
+export function shortDayLabel(iso?: string): string {
+  if (!iso) return '';
+  const when = new Date(iso);
+  return Number.isNaN(when.getTime()) ? '' : when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}

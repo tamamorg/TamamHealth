@@ -17,7 +17,7 @@ describe('PHI field catalog contract', () => {
     for (const [type, entry] of Object.entries(entries)) {
       if (new Set(entry.fields).size !== entry.fields.length) duplicates.push(type);
       for (const path of entry.fields) {
-        if (!/^[A-Za-z][A-Za-z0-9]*(?:\[\])?(?:\.(?:[A-Za-z][A-Za-z0-9]*(?:\[\])?|\*\*))?$/.test(path)) {
+        if (!/^[A-Za-z][A-Za-z0-9]*(?:\[\])?(?:\.[A-Za-z][A-Za-z0-9]*(?:\[\])?)*(?:\.\*\*)?$/.test(path)) {
           invalid.push(`${type}.${path}`);
         }
       }

@@ -497,6 +497,7 @@ export async function createArrivalEncounter(input: CreateArrivalEncounterInput)
     attendanceType: input.attendanceType,
     arrivalChannel: input.arrivalChannel,
     appointmentId: input.appointmentId,
+    ...(input.visit?.appointmentType ? { appointmentType: input.visit.appointmentType } : {}),
     ...(input.visit?.visitType ? { visitType: input.visit.visitType } : {}),
     ...(input.visit?.visitBilling ? { visitBilling: input.visit.visitBilling } : {}),
     ...(input.visit?.punctuality ? { punctuality: input.visit.punctuality } : {}),

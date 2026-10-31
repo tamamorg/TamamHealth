@@ -130,9 +130,10 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
           </div>
         ))}
       </div>
-      <div className="tamam-drawer-footer">
-        <button type="button" className="tamam-btn-ghost" onClick={onClose}>Close</button>
-        <button type="button" className="tamam-btn-primary" onClick={onGoToRecall}><ArrowRight aria-hidden /> View all in Recall</button>
+      {/* The O3 action bar: two halves, as Cancel | Save. */}
+      <div className="sv-footer">
+        <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose}>{t('action.close')}</button>
+        <button type="button" className="sv-footer-btn sv-footer-btn--primary" onClick={onGoToRecall}>{t('taskList.viewAllInRecall')}<ArrowRight aria-hidden /></button>
       </div>
     </>
   );

@@ -1,5 +1,5 @@
 import { escapeHtml, openIsolatedHtmlWindow } from './safe-html';
-import { formatPrintedAt, getPrintIdentity, pageFooterCss } from './print-identity';
+import { formatPrintedAt, getPrintIdentity, pageFooterCss, printDate } from './print-identity';
 
 /** Kept for callers that imported it from here. */
 export { setPrintIdentity } from './print-identity';
@@ -10,7 +10,9 @@ export interface PrintDocumentMeta {
 }
 
 export interface PrintDocumentOptions {
+  /** The browser tab and saved-file name; not printed on the sheet. */
   title: string;
+  /** What the document is ("Payment Receipt"): the heading at the top right. */
   documentLabel: string;
   facilityName?: string;
   /** Heading over the meta grid, e.g. "Patient Information". */
@@ -20,19 +22,31 @@ export interface PrintDocumentOptions {
   safeBodyHtml: string;
   /** A closing line under the body (disclaimer); omitted when not given. */
   footer?: string;
-  /** The document's own date, shown under its label (YYYY-MM-DD). */
-  date?: string;
+  /** The document's own date under its label (any date form, printed
+   *  YYYY-MM-DD); today when not given. */
+  date?: string | Date;
   /** Who printed it — "Printed by: …" in the page footer. */
   printedBy?: string;
   /** The printing account's username — "System ID: …" in the page footer. */
   systemId?: string;
-  page?: 'a4' | 'a4-landscape' | 'receipt';
+  page?: 'a4' | 'a4-landscape';
+}
+
+/** Small grey labels over bold values, four to a row — the sheet's own form
+ *  for "label: value" facts, in the meta block and in a section body alike. */
+export function printFields(items: PrintDocumentMeta[]): string {
+  const cells = items
+    .filter(item => item.value !== undefined && item.value !== null && String(item.value).trim() !== '')
+    .map(item => `<div><span class="field-label">${escapeHtml(item.label)}</span><span class="field-value">${escapeHtml(item.value)}</span></div>`)
+    .join('');
+  return cells ? `<div class="doc-meta">${cells}</div>` : '';
 }
 
 /**
  * TamamHealth's paper, in the OpenMRS O3 print shape (the O3 Visit Summary):
  * the facility mark and name on the left and the document's label and date on
- * the right over a hairline; bold sentence-case section titles, each on its
+ * the right over a hairline, the patient's identity under "Patient Information"
+ * rather than in the heading; bold sentence-case section titles, each on its
  * own hairline; small grey labels over bold values; tables with a light grey
  * head row and hairline rows. Every page carries the same footer in its
  * margin: facility and "Printed by" at the left, the print time in the middle,
@@ -40,7 +54,7 @@ export interface PrintDocumentOptions {
  * photocopier-safe — no fills beyond the grey head rows.
  */
 export const CLINICAL_PRINT_CSS = `
-  :root { --ink:#001D3F; --muted:#3C5574; --line:#CFD6DD; --hair:#E2E6EB; --wash:#F1F3F5; --danger:#9E1B14; --success:#0A6E4A; }
+  :root { --ink:#001D3F; --muted:#3C5574; --line:#CFD6DD; --hair:#E2E6EB; --wash:#F1F3F5; --danger:#9E1B14; }
   * { box-sizing:border-box; }
   html { background:#fff; }
   body { margin:0 auto; color:var(--ink); background:#fff; font:9.5pt/1.45 "IBM Plex Sans", Arial, Helvetica, sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -50,7 +64,6 @@ export const CLINICAL_PRINT_CSS = `
   .doc-facility { margin:0; font-size:14pt; font-weight:700; line-height:1.2; }
   .doc-identity { text-align:right; }
   .doc-title { margin:0; font-size:12pt; font-weight:700; }
-  .doc-label { margin:.5mm 0 0; font-size:8pt; color:var(--muted); }
   .doc-date { margin:.8mm 0 0; font-size:9pt; font-variant-numeric:tabular-nums; }
   .doc-meta-block { margin-top:5mm; break-inside:avoid; }
   .doc-meta { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:2.5mm 6mm; margin:0; padding:1mm 1mm 0; }
@@ -61,7 +74,7 @@ export const CLINICAL_PRINT_CSS = `
   .section-title, .doc-meta-title { margin:0 0 2mm; padding-bottom:1.2mm; font-size:11pt; font-weight:700; color:var(--ink); border-bottom:.75pt solid var(--line); break-after:avoid; letter-spacing:0; text-transform:none; }
   .section-title small { float:right; color:var(--muted); font-size:7.5pt; font-weight:400; }
   p { margin:0 0 2.5mm; }
-  ul { margin:0; padding-left:5mm; }
+  ul, ol { margin:0; padding-left:5mm; }
   li { margin:0 0 1.2mm; }
   table { width:100%; border-collapse:collapse; font-size:9pt; margin:0 0 4mm; }
   thead { display:table-header-group; }
@@ -75,9 +88,8 @@ export const CLINICAL_PRINT_CSS = `
   .center { text-align:center; }
   .muted { color:var(--muted); }
   .empty { padding:2mm 2mm; color:var(--muted); background:#fff; border:.5pt dashed var(--line); }
-  .status { display:inline-block; padding:.4mm 1.8mm; border:.75pt solid var(--line); border-radius:1mm; font-size:7pt; font-weight:700; }
-  .status-paid { color:var(--success); border-color:var(--success); }
-  .status-alert { color:var(--danger); border-color:var(--danger); }
+  .status { font-weight:700; }
+  .status-alert { color:var(--danger); }
   .notice { margin:0 0 4mm; padding:2.5mm 3.5mm; border:.75pt solid var(--line); border-left:2.5pt solid var(--ink); break-inside:avoid; }
   .totals { width:min(78mm,100%); margin:4mm 0 0 auto; break-inside:avoid; }
   .total-row { display:flex; justify-content:space-between; gap:8mm; padding:1.2mm 0; border-bottom:.5pt solid var(--hair); }
@@ -97,28 +109,12 @@ export const CLINICAL_PRINT_CSS = `
 `;
 
 function pageCss(page: NonNullable<PrintDocumentOptions['page']>): string {
-  if (page === 'receipt') return `@page { size:80mm auto; margin:5mm; }
-    body { width:70mm; font-size:8.5pt; }
-    .doc-accent { margin-bottom:3mm; height:2mm; }
-    .doc-head { display:block; padding-bottom:3mm; }
-    .doc-facility { font-size:12pt; }
-    .doc-identity { margin-top:3mm; text-align:left; }
-    .doc-title { font-size:11pt; }
-    .doc-meta { grid-template-columns:1fr 1fr; gap:2mm 4mm; margin-top:3mm; padding:2.5mm 3mm; }
-    .doc-body { margin-top:4mm; }
-    table { font-size:8pt; }
-    .doc-footer { display:block; margin-top:6mm; }
-    .doc-footer span:last-child { display:block; margin-top:1mm; }`;
-  if (page === 'a4-landscape') return '@page { size:A4 landscape; margin:12mm; }';
-  return '@page { size:A4 portrait; margin:14mm; }';
+  return `@page { size:A4 ${page === 'a4-landscape' ? 'landscape' : 'portrait'}; }`;
 }
 
 export function buildClinicalPrintDocument(options: PrintDocumentOptions): string {
   const facility = options.facilityName?.trim() || 'TamamHealth Health Facility';
-  const meta = (options.meta || [])
-    .filter(item => item.value !== undefined && item.value !== null && String(item.value).trim() !== '')
-    .map(item => `<div><span class="field-label">${escapeHtml(item.label)}</span><span class="field-value">${escapeHtml(item.value)}</span></div>`)
-    .join('');
+  const meta = printFields(options.meta || []);
   const page = options.page || 'a4';
   const printedAtDate = new Date();
   const printedAt = formatPrintedAt(printedAtDate);
@@ -128,19 +124,19 @@ export function buildClinicalPrintDocument(options: PrintDocumentOptions): strin
   const right = systemId ? `System ID: ${systemId}` : '';
   // Margin boxes carry the footer on every printed page (Chromium 131+, the
   // browser the clinics run). The on-screen preview shows the same line once.
-  const footerCss = page === 'receipt' ? '' : pageFooterCss({ facilityName: facility, printedBy, systemId, printedAt: printedAtDate });
+  const footerCss = pageFooterCss({ facilityName: facility, printedBy, systemId, printedAt: printedAtDate });
   const logo = typeof window !== 'undefined' ? `${window.location.origin}/assets/tamam-icon.svg` : '';
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(options.documentLabel)} — ${escapeHtml(options.title)}</title>
+<title>${escapeHtml(options.documentLabel === options.title ? options.title : `${options.documentLabel} — ${options.title}`)}</title>
 <style>${pageCss(page)}${footerCss}${CLINICAL_PRINT_CSS}</style></head>
 <body>
   <header class="doc-head">
     <div class="doc-brand">${logo ? `<img class="doc-logo" src="${escapeHtml(logo)}" alt="">` : ''}<h1 class="doc-facility">${escapeHtml(facility)}</h1></div>
-    <div class="doc-identity"><h2 class="doc-title">${escapeHtml(options.title)}</h2>${options.documentLabel && options.documentLabel !== options.title ? `<p class="doc-label">${escapeHtml(options.documentLabel)}</p>` : ''}${options.date ? `<p class="doc-date">${escapeHtml(options.date)}</p>` : ''}</div>
+    <div class="doc-identity"><h2 class="doc-title">${escapeHtml(options.documentLabel)}</h2><p class="doc-date">${escapeHtml(printDate(options.date) || printDate(printedAtDate))}</p></div>
   </header>
-  ${meta ? `<section class="doc-meta-block">${options.metaTitle ? `<h2 class="doc-meta-title">${escapeHtml(options.metaTitle)}</h2>` : ''}<div class="doc-meta">${meta}</div></section>` : ''}
+  ${meta ? `<section class="doc-meta-block">${options.metaTitle ? `<h2 class="doc-meta-title">${escapeHtml(options.metaTitle)}</h2>` : ''}${meta}</section>` : ''}
   <main class="doc-body">${options.safeBodyHtml}</main>
   ${options.footer?.trim() ? `<p class="doc-closing">${escapeHtml(options.footer.trim())}</p>` : ''}
   <footer class="doc-footer-screen"><span>${escapeHtml(facility)}${printedBy ? `<br>Printed by: ${escapeHtml(printedBy)}` : ''}</span><span>${escapeHtml(printedAt)}</span><span>${right ? escapeHtml(right) : ''}</span></footer>

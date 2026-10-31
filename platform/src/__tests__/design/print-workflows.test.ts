@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { printDate } from '@/lib/print-identity';
 import { buildReceiptData, generateReceiptHTML, type ReceiptData } from '@/lib/services/receipt-service';
 import { buildPrintListHtml, printableTime, printListTitle } from '@/components/PrintListDialog';
 
@@ -34,25 +35,42 @@ describe('clinical print document', () => {
     expect(html).toContain('Juba &lt;Hospital&gt;');
     expect(html).toContain('A&amp;B');
     expect(html).toContain('<section class="section">Trusted body</section>');
-    expect(html).toContain('@page { size:A4 portrait; margin:14mm; }');
+    expect(html).toContain('@page { size:A4 portrait; }');
+    // O3 heading: what the document is, and its date, never a patient name.
+    expect(html).toContain('<h2 class="doc-title">Summary &quot;draft&quot;</h2>');
+    expect(html).toMatch(/<p class="doc-date">\d{4}-\d{2}-\d{2}<\/p>/);
     expect(html).toContain('thead { display:table-header-group; }');
   });
 
-  it('lays receipts out for 80 mm paper and prints essential payment identity', () => {
+  it('prints receipts on the A4 O3 sheet with essential payment identity', () => {
     const receipt: ReceiptData = {
       receiptNumber: 'RCT-1007', patientName: 'Alek & Deng', patientId: 'JTH-77',
-      date: 'August 31, 2026', time: '10:42 AM', method: 'cash', methodLabel: 'Cash',
+      date: 'August 31, 2026', dateIso: '2026-08-31', time: '10:42 AM', method: 'cash', methodLabel: 'Cash',
       amount: 12500, currency: 'SSP', reference: 'CASH-42', processedBy: 'Amira Juma',
       facilityName: 'Juba Teaching Hospital', notes: 'Paid in full',
     };
     const html = generateReceiptHTML(receipt);
-    expect(html).toContain('@page { size:80mm auto; margin:5mm; }');
+    expect(html).toContain('@page { size:A4 portrait; }');
+    expect(html).not.toContain('80mm');
+    expect(html).toContain('<h2 class="doc-title">Payment Receipt</h2>');
+    expect(html).toContain('<p class="doc-date">2026-08-31</p>');
+    expect(html).toContain('Patient Information');
     expect(html).toContain('RCT-1007');
     expect(html).toContain('JTH-77');
     expect(html).toContain('12,500');
     expect(html).toContain('CASH-42');
     expect(html).toContain('Alek &amp; Deng');
     expect(html).not.toContain('undefined');
+  });
+});
+
+describe('printDate', () => {
+  it('keeps a date-only value on its own calendar day', () => {
+    expect(printDate('1988-03-15')).toBe('1988-03-15');
+  });
+  it('prints nothing for no date and the raw text for a bad one', () => {
+    expect(printDate(undefined)).toBe('');
+    expect(printDate('soon')).toBe('soon');
   });
 });
 
@@ -159,9 +177,9 @@ describe('targeted in-page printing', () => {
 
   it('leaves the lab report printable for a read-only viewer', () => {
     // The panel disables its fieldset for viewers who cannot work the bench;
-    // a disabled fieldset disables Print with it.
+    // a disabled fieldset disables Print with it, so the report sits outside.
     const panel = read('components/lab/workflow/LabWorkflowPanel.tsx');
-    expect(panel).toContain("disabled={!canWork && ctrl.step !== 'report'}");
+    expect(panel.indexOf('<ReportStep')).toBeLessThan(panel.indexOf('<fieldset'));
     expect(panel).toContain('readOnly={!canWork}');
   });
 });

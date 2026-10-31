@@ -1,0 +1,351 @@
+/* O3Form — the OpenMRS O3 form layout (components/forms/O3Form.tsx). `o3f-`.
+   Drawn as O3 draws it — a page list with a marker bar, collapsible page
+   titles, collapsible section headers over grey bodies, white fields with one
+   bottom rule — in the Tamam theme: the platform font and accent, and ONE
+   text size (14px) for every label, answer, choice and link. Only the page
+   title steps up, to the chart's 16px section-title size; weight, not size,
+   marks a heading. */
+
+.o3f {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  font-family: var(--font-platform, inherit);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* The forms' own label rule (globals) uppercases and bolds every <label>. */
+.o3f label { text-transform: none; letter-spacing: normal; font-weight: inherit; margin: 0; }
+
+.o3f-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin: 0;
+  padding: 12px 24px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.o3f-back svg { width: 18px; height: 18px; color: currentColor !important; stroke: currentColor !important; }
+
+.o3f-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  border-top: 1px solid var(--border-light);
+}
+.o3f--single .o3f-grid { grid-template-columns: minmax(0, 1fr); }
+
+/* ── Page list ── */
+.o3f-nav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 16px;
+}
+.o3f-nav-item {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 16px 8px 18px;
+  border: 0;
+  border-inline-start: 6px solid color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.o3f-nav-item:hover { background: var(--bg-app); }
+.o3f-nav-item.is-active {
+  border-inline-start-color: var(--accent-primary);
+  background: var(--color-slate-100);
+  font-weight: 600;
+}
+.o3f-nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 12px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-medium, var(--border-light));
+}
+.o3f-save,
+.o3f-cancel {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--accent-primary);
+  border-radius: 0;
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.o3f-save { background: var(--accent-primary); color: var(--color-white); }
+.o3f-save:hover:not(:disabled) { background: var(--accent-hover, var(--accent-primary)); }
+.o3f-cancel { background: transparent; color: var(--accent-text, var(--accent-primary)); }
+.o3f-cancel:hover:not(:disabled) { background: var(--bg-app); }
+.o3f-save:disabled, .o3f-cancel:disabled { opacity: 0.55; cursor: default; }
+
+/* ── Pages and sections ── */
+.o3f-pages { min-width: 0; border-inline-start: 1px solid var(--border-light); }
+.o3f--single .o3f-pages { border-inline-start: 0; }
+.o3f--single .o3f-section-body { margin-inline-end: 0; }
+.o3f-page { scroll-margin-top: 8px; }
+.o3f-page-head,
+.o3f-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.o3f-page-head {
+  min-height: 56px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border-light);
+}
+.o3f .o3f-page-head h2 { margin: 0; font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1.3; letter-spacing: normal; text-transform: none; color: var(--text-primary); }
+.o3f-page-head svg, .o3f-section-head svg { width: 18px; height: 18px; flex: none; color: currentColor !important; stroke: currentColor !important; }
+.o3f-section-head {
+  min-height: 48px;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.o3f-section-head:hover, .o3f-page-head:hover { background: var(--bg-app); }
+.o3f-section-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 24px;
+  margin-inline-end: 24px;
+  padding: 24px;
+  background: var(--color-slate-100);
+}
+.o3f-caption { flex-basis: 100%; margin: 0; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+
+.o3f-intro { flex-basis: 100%; }
+.o3f .o3f-intro h3 { margin: 0 0 4px; font-family: inherit; letter-spacing: normal; text-transform: none; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.o3f-intro p { margin: 0 0 6px; font-size: 14px; line-height: 1.5; color: var(--text-primary); }
+
+/* ── Fields ── */
+.o3f-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 1 560px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.o3f-field--wide { flex-basis: 100%; }
+/* A required question left blank at Save. */
+.o3f-field.is-invalid { padding-inline-start: 12px; border-inline-start: 3px solid var(--color-danger); }
+.o3f-field.is-invalid .o3f-label { color: var(--color-danger); }
+.o3f-label { display: block; font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--text-primary); }
+.o3f-required { margin-inline-start: 6px; color: var(--color-danger); }
+
+.o3f .o3f-input,
+.o3f-multi .o3f-input,
+.o3f .o3f-number input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  /* !important: the chart page and the EHR app box every field with
+     `border … !important`; an O3 field is one bottom rule. */
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-slate-400, #8d8d8d) !important;
+  border-radius: 0 !important;
+  /* !important: sliders tint their fields; an O3 field is white. Colour,
+     not the shorthand — a select's chevron is its background image. */
+  background-color: var(--bg-card-solid) !important;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+}
+.o3f textarea.o3f-input { min-height: 96px; padding: 10px 12px; resize: vertical; }
+.o3f .o3f-input:focus, .o3f .o3f-number input:focus { outline: 2px solid var(--accent-primary); outline-offset: -2px; box-shadow: none; }
+.o3f-input--date { max-width: 360px; }
+
+.o3f-number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px 1px 40px;
+  align-items: center;
+  max-width: 360px;
+  background: var(--bg-card-solid);
+  border-bottom: 1px solid var(--color-slate-400, #8d8d8d);
+}
+.o3f .o3f-number input { border-bottom: 0 !important; background: transparent; }
+.o3f-number button {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.o3f-number button:hover:not(:disabled) { background: var(--bg-app); }
+.o3f-number button:disabled { color: var(--text-muted); cursor: default; }
+.o3f-number button svg { width: 16px; height: 16px; color: currentColor !important; stroke: currentColor !important; }
+.o3f-number-rule { width: 1px; height: 24px; background: var(--border-medium, var(--border-light)); }
+.o3f-number.is-computed { background: transparent; }
+
+.o3f-choices { display: flex; flex-direction: column; gap: 6px; }
+.o3f-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.o3f-choice input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-primary); }
+
+.o3f-datetime { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; }
+.o3f-datetime > .o3f-input--date { flex: 0 1 360px; }
+.o3f-time { display: flex; flex-direction: column; gap: 10px; }
+.o3f-time .o3f-input { width: 160px; }
+
+/* Single-page form: the action bar sits at the foot of the workspace. */
+.o3f-footer { position: sticky; bottom: 0; margin-top: auto; }
+
+@media (max-width: 720px) {
+  .o3f-grid { grid-template-columns: minmax(0, 1fr); }
+  .o3f-nav { position: static; flex-direction: row; flex-wrap: wrap; padding: 0; }
+  .o3f-nav-item { width: auto; flex: 1 1 auto; min-height: 44px; }
+  .o3f-nav-actions { flex-direction: row; flex-basis: 100%; margin: 8px 12px; padding-top: 12px; }
+  .o3f-section-body { margin-inline-end: 0; padding: 16px; }
+  .o3f-page-head, .o3f-section-head { padding-inline: 16px; }
+}
+
+.o3f-notice { padding: 16px 32px 0; }
+
+/* In the chart drawer: the form owns its scroll, so the page list and the
+   action bar stay pinned while the questions move. */
+.o3f-scroll { overflow-y: auto; }
+
+/* ── Forms whose questions are their own components, in the O3 frame ──
+   (O3Layout: triage, ANC, nutrition, imaging, ward.) One rule set so every
+   clinical form reads alike: 14px text, sentence-case labels, white fields
+   with one bottom rule, the section body stacking its content.
+   !important: globals.css sizes and capitalises every <label> with
+   !important, the chart page boxes every field with `border … !important`,
+   and the station components carry 8–10px utility sizes. */
+.o3f-section-body > :only-child { flex: 1 1 100%; min-width: 0; }
+.o3f-triage .o3f-section-body { display: block; }
+.o3f-triage .o3f-section-body > * + * { margin-top: 16px; }
+.o3f .o3f-section-body :is(span, p, label, legend, button, input, select, textarea, small, strong, h3, h4, li, td, th, dt, dd) {
+  font-size: 14px !important;
+  line-height: 1.45;
+}
+.o3f .o3f-section-body :is(label, legend, .sv-label):not(.o3f-choice) {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-weight: 500 !important;
+  color: var(--text-primary);
+}
+.o3f .o3f-section-body button { text-transform: none !important; letter-spacing: normal !important; }
+.o3f .o3f-section-body :is(input:not([type]), input[type="text"], input[type="number"], input[type="date"], input[type="time"], input[type="search"], input[type="tel"], select, textarea):not(.o3f-input):not(.o3f-number input) {
+  min-height: 40px;
+  border: 0 !important;
+  border-bottom: 1px solid var(--color-slate-400) !important;
+  border-radius: 0 !important;
+  /* background-color, not the shorthand: a select's chevron is its image. */
+  background-color: var(--bg-card-solid) !important;
+  box-shadow: none !important;
+}
+.o3f .o3f-section-body textarea:not(.o3f-input) { padding: 10px 12px; }
+
+.o3f-triage-draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 16px 24px 0;
+  padding: 10px 14px;
+  background: var(--color-info-bg, var(--accent-light));
+  color: var(--text-primary);
+}
+.o3f-triage-draft span { flex: 1 1 auto; }
+.o3f-triage-draft button { border: 0; background: transparent; color: var(--accent-text, var(--accent-primary)); font: inherit; cursor: pointer; padding: 0; }
+
+/* ── Dropdowns ── every choice on a form is one. */
+.o3f select.o3f-input { cursor: pointer; }
+.o3f-fields { display: flex; flex-wrap: wrap; gap: 20px 24px; }
+.o3f-fields > .o3f-field { flex: 1 1 240px; }
+.o3f-fields > .o3f-field--wide { flex-basis: 100%; }
+.o3f-multi { position: relative; width: 100%; }
+.o3f .o3f-multi-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: start;
+  cursor: pointer;
+}
+.o3f-multi-value { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.o3f-multi-trigger.is-danger .o3f-multi-value { color: var(--color-danger-text, var(--color-danger)); font-weight: 600; }
+.o3f-multi-trigger.is-warning .o3f-multi-value { color: var(--color-warning-text, var(--text-primary)); font-weight: 600; }
+.o3f-multi-count {
+  flex: none;
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--color-slate-100);
+  font-size: 12px !important;
+  text-align: center;
+}
+.o3f-multi-trigger svg { width: 16px; height: 16px; flex: none; color: currentColor !important; stroke: currentColor !important; }
+.o3f-multi-panel {
+  /* The platform dropdown's menu (globals .tsel-menu, O3/Carbon): a square
+     light-grey layer on one soft shadow, 40px rows with a hairline between. */
+  position: absolute;
+  z-index: 20;
+  inset-inline: 0;
+  top: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--color-slate-50);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--text-primary) 30%, transparent);
+}
+.o3f .o3f-multi-panel .o3f-choice {
+  min-height: 40px;
+  padding: 0 16px;
+  border-top: 1px solid var(--color-slate-200);
+  gap: 10px;
+}
+.o3f .o3f-multi-panel .o3f-choice:first-child { border-top: 0; }
+.o3f .o3f-multi-panel .o3f-choice:hover { background: var(--color-slate-150); }
+.o3f .o3f-multi-panel .o3f-choice:has(input:checked) { background: var(--color-slate-150); font-weight: 600; }
+
+/* ANC's step grids, in the frame: as many 200px+ columns as fit, so no
+   dropdown is squeezed to "Sele…". */
+.o3f-module .o3f-section-body .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important; }
+
+/* Triage vitals: reading, then its measured / not-taken dropdown. */
+.o3f-fields > .o3f-vital { flex: 1 1 180px; gap: 6px; }
+.o3f .o3f-vital-status { min-height: 32px; font-size: 13px !important; color: var(--text-secondary); }
+.o3f-vital-message { margin: 0; font-size: 13px !important; font-weight: 500; }
+.o3f .o3f-output { display: flex; align-items: center; color: var(--text-secondary); }
+.o3f .o3f-answer-status { max-width: 360px; min-height: 32px; color: var(--text-secondary); }

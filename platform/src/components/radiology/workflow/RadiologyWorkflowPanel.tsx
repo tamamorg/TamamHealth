@@ -47,7 +47,8 @@ export default function RadiologyWorkflowPanel({
 
   const runAction = async (fn: () => Promise<boolean>, successKey: string) => {
     const ok = await fn();
-    showToast(ok ? t(successKey) : t(ctrl.error || 'imgFlow.errGeneric'), ok ? 'success' : 'error');
+    // An outcome of the step, not a form's validation: it goes to the corner.
+    showToast(ok ? t(successKey) : t(ctrl.lastError.current || 'imgFlow.errGeneric'), ok ? 'success' : 'error', { placement: 'corner' });
   };
 
   /** The one thing this step is for — or nothing, when the step is history. */
@@ -140,7 +141,7 @@ export default function RadiologyWorkflowPanel({
         <div className="labord-footer">
           <span className="labord-footer-note">
             {t('labOrder.stepCounter', { current: index + 1, total: RADIOLOGY_WORKFLOW_STEPS.length })}
-            {!canWork && ` · ${t('imgFlow.readOnly')}`}
+            {!canWork && !(ctrl.step === 'release' && ctrl.canCloseOut) && ` · ${t('imgFlow.readOnly')}`}
           </span>
           <span className="labord-footer-nav">
             <button

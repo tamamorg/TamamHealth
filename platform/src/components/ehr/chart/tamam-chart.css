@@ -277,6 +277,17 @@
   table-layout: fixed;
 }
 
+/* With a workspace docked the column is too narrow for even shares: the table
+   fits it instead of scrolling, Event takes what the fixed columns leave. */
+.tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-activity-table { min-width: 0; }
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table col:nth-child(1) { width: 84px; }
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table col:nth-child(2) { width: 72px; }
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table col:nth-child(3) { width: auto; }
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table col:nth-child(4) { width: 92px; }
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table col:nth-child(5) { width: 44px !important; }
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table th:nth-child(n),
+.tamam-main-col:has(+ .tamam-drawer) .tamam-activity-table td { padding-inline: 8px; }
+
 .tamam-activity-tr.has-detail {
   cursor: pointer;
 }
@@ -288,7 +299,6 @@
 .tamam-activity-date {
   color: var(--ehr-muted, #5D728B);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .tamam-activity-title {
@@ -337,23 +347,9 @@
   box-shadow: inset 2px 0 0 var(--color-danger, #D92B20);
 }
 
-.tamam-activity-detail > td {
-  padding-top: 0;
-  background: transparent;
-}
-
-.tamam-activity-detail p {
-  margin: 0;
-  color: var(--ehr-text-body, #3C5574);
-  font-size: 12px;
-}
-
-.tamam-activity-detail small {
-  display: block;
-  margin-top: 2px;
-  color: var(--ehr-muted, #5D728B);
-  font-size: 11px;
-}
+/* A read-only answer inside a form slider, on the same line as its inputs. */
+.tamam-slider-value { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.tamam-slider-meta { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
 
 .tamam-visually-hidden {
   position: absolute;
@@ -2636,28 +2632,28 @@
 .tamam-root .tamam-table--referrals { table-layout: fixed; }
 /* Seven data columns, then the fixed 72px Actions column — so 94%, not 100. */
 .tamam-root .tamam-table--referrals th:nth-child(1),
-.tamam-root .tamam-table--referrals td:nth-child(1) { width: 10%; }
+.tamam-root .tamam-table--referrals td:nth-child(1) { width: 11%; }
 .tamam-root .tamam-table--referrals th:nth-child(2),
-.tamam-root .tamam-table--referrals td:nth-child(2) { width: 18%; }
+.tamam-root .tamam-table--referrals td:nth-child(2) { width: 15%; }
 .tamam-root .tamam-table--referrals th:nth-child(3),
 .tamam-root .tamam-table--referrals td:nth-child(3) { width: 12%; }
 .tamam-root .tamam-table--referrals th:nth-child(4),
-.tamam-root .tamam-table--referrals td:nth-child(4) { width: 24%; }
+.tamam-root .tamam-table--referrals td:nth-child(4) { width: 20%; }
 .tamam-root .tamam-table--referrals th:nth-child(5),
-.tamam-root .tamam-table--referrals td:nth-child(5) { width: 14%; }
+.tamam-root .tamam-table--referrals td:nth-child(5) { width: 12%; }
 .tamam-root .tamam-table--referrals th:nth-child(6),
-.tamam-root .tamam-table--referrals td:nth-child(6) { width: 8%; }
+.tamam-root .tamam-table--referrals td:nth-child(6) { width: 12%; }
 .tamam-root .tamam-table--referrals th:nth-child(7),
-.tamam-root .tamam-table--referrals td:nth-child(7) { width: 8%; }
+.tamam-root .tamam-table--referrals td:nth-child(7) { width: 12%; }
 
-/* One-line columns that must not wrap mid-value: a date, a department, a
-   provider name. They ellipsize instead of stacking. */
-.tamam-root .tamam-table--referrals td:nth-child(1),
+/* A date, a department and a provider stay whole: beside a slider they wrap
+   between words instead of ending in "…". */
+body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
 .tamam-root .tamam-table--referrals td:nth-child(3),
 .tamam-root .tamam-table--referrals td:nth-child(5) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: normal;
 }
 
 /* The badges sit hard against their column's edge, on the row's first line. */
@@ -3014,14 +3010,15 @@
 .scr-note { margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--text-muted); }
 
 /* ══════════════════ CLINICAL FORMS LIST (O3) ══════════════════ */
-/* Search bar over a "Form name (A–Z) / Last completed" table of links. */
+/* Search bar over a "Form name (A–Z) / Last completed" table of links —
+   O3's compact sizes: 48px search, 32px header and rows, 14px text. */
 .tamam-drawer-body.omf-forms { padding: 0; }
 
 .omf-forms-search {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
+  min-height: 48px;
   padding: 0 16px;
   background: var(--bg-app, #f4f4f4);
   border-bottom: 1px solid var(--border-medium, var(--border-light));
@@ -3040,27 +3037,34 @@
   background: transparent !important;
   box-shadow: none !important;
   padding: 0 !important;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
 }
 
 .omf-forms-table { width: 100%; border-collapse: collapse; }
 
-.omf-forms-table th {
-  padding: 14px 16px;
-  background: var(--color-slate-100, #e0e0e0);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
+/* !important: the chart's table head rule is small condensed capitals. */
+.tamam-ehr-app .omf-forms-table thead th,
+.omf-forms-table thead th {
+  height: 32px;
+  padding: 0 16px;
+  background: var(--color-slate-100, #e0e0e0) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-platform, inherit) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
   text-align: start;
-  text-transform: none;
-  letter-spacing: normal;
+  text-transform: none !important;
+  letter-spacing: normal !important;
 }
 
 .omf-forms-table td {
-  padding: 12px 16px;
+  height: 32px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--border-light);
   font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
   color: var(--text-secondary);
 }
 
@@ -3070,8 +3074,11 @@
   padding: 0;
   border: 0;
   background: transparent;
+  min-height: 0;
   color: var(--accent-text, var(--accent-primary));
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
   text-align: start;
   cursor: pointer;
 }
@@ -3503,3 +3510,68 @@ html.tm-slider-open .tamam-root .tamam-drawer {
   visibility: hidden;
   pointer-events: none;
 }
+
+/* ── One heading style per chart tab ──────────────────────────────────────
+   Every tab's sections are titled in `.tamam-section-title`'s voice (Barlow
+   16px semibold, sentence case). The summary panels, Demographics and the
+   Billing tab carried their own (15px extra-bold; condensed 18px; condensed
+   14px capitals), so moving between tabs changed the type of the headings. */
+.tamam-root .ehr-chart-content :is(.tebra-panel h2, .tebra-demo-panel h2, .tebra-demo-panel h3, .bl-card-title) {
+  font-family: var(--font-platform) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: var(--text-primary);
+}
+
+/* A section's one light line under its title (ChartSection `subtitle`), the
+   Billing activity header's shape: title, what the section holds, the blue
+   underline. */
+.tamam-root .tamam-section-sub {
+  margin: 2px 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ehr-muted, var(--text-secondary));
+}
+
+/* The portal access card's own styles size its heading at 15px; it is a
+   section title like the rest. */
+.tamam-root .pac-head .tamam-section-title { font-size: 16px !important; }
+.tamam-root .pac-head.tamam-section-title-wrap { display: block !important; }
+/* Demographics' section switch sits inside the panel's gutter, not on its edge. */
+.tamam-root .tebra-demo-tabs { margin: 12px 16px 4px !important; }
+
+/* Demographics: the tabs and Edit on one line. */
+.tebra-demo-tabbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.tebra-demo-tabbar .tebra-demo-tabs { margin: 0; flex: 0 1 auto; }
+.tebra-demo-tabbar .tebra-demo-edit { position: static; margin: 0; flex: none; }
+
+/* Patient lists: a list opened in place under its row. */
+.tamam-panel-patients { margin: 0 0 8px; padding: 0; list-style: none; border-top: 1px solid var(--border-light); }
+.tamam-panel-patients button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.tamam-panel-patients button:hover { background: var(--bg-app); }
+.tamam-panel-patients button span:last-child { color: var(--text-secondary); }
+.tamam-panel-patients-empty { padding: 8px 16px; font-size: 14px; color: var(--text-muted); }
+
+/* Documents retracted from the chart: the note clinical staff keep seeing. */
+.tamam-doc-retracted { margin-top: 12px; padding: 12px 16px; background: var(--bg-app); font-size: 13px; color: var(--text-secondary); }
+.tamam-doc-retracted p { margin: 0 0 4px; font-size: 13px; }
+.tamam-doc-retracted ul { margin: 0; padding: 0; list-style: none; }
+.tamam-doc-retracted li { padding: 2px 0; }

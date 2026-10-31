@@ -233,6 +233,7 @@ export default function HrSchedulePage() {
                       label={statusTok.label}
                       value={s.status}
                       ariaLabel={`Shift status for ${s.userName}`}
+                      subject={s.userName}
                       style={statusPillStyle(statusTok)}
                       options={[
                         ...SCHEDULE_STATUS_OPTIONS

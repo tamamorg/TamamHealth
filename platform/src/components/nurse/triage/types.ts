@@ -15,9 +15,12 @@ export interface TriageWorkflowProps {
   /** Focused pages close after a successful save; embedded stations may reset. */
   onSaved?: () => void;
   /**
-   * Inside a slider or the chart workspace: no left rail (the patient card
-   * and section list belong to the full page — the chart header already names
-   * the patient), one column, and Save / Reset at the foot of the form.
+   * Inside a slider or the chart workspace: the O3 form frame (O3Layout) —
+   * the assessment as pages in a list beside it, Save and Cancel under the
+   * list — and none of the full page's rail (the chart header already names
+   * the patient).
    */
   embedded?: boolean;
+  /** Embedded only: the O3 frame's Cancel (closes the slider / workspace). */
+  onCancel?: () => void;
 }

@@ -1,5 +1,8 @@
 'use client';
+import { useEffect } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
+import { FormError } from '@/components/overlay/FormNotices';
+import { useToast } from '@/components/Toast';
 import { MessageSquare } from '@/components/icons/lucide';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
@@ -26,6 +29,11 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
   messageSentNote: string;
   sendPatientMessage: () => Promise<void>;
 }) {
+  const { showToast } = useToast();
+  useEffect(() => {
+    if (messageSent) showToast(messageSentNote || 'Message saved.', messageSentWarning ? 'warning' : 'success', { placement: 'corner' });
+  }, [messageSent, messageSentNote, messageSentWarning, showToast]);
+
   return (
         <FormSlider
           title={t('ptDetail.messagePatient')}
@@ -97,8 +105,7 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                 />
               </div>
-              {messageError && <p className="text-[12px]" role="alert" style={{ color: 'var(--color-danger-text)' }}>{messageError}</p>}
-              {messageSent && <p className="text-[12px] font-semibold" role="status" style={{ color: messageSentWarning ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}>{messageSentNote || 'Message saved.'}</p>}
+              {messageError && <FormError message={messageError} />}
             </div>
           </div>
         </FormSlider>

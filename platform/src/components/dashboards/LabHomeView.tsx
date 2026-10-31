@@ -7,19 +7,18 @@
  * The lab station listed one row per test in its own console. It now works the
  * way a doctor's day does — one row per patient, the visit and vitals one click
  * away — but every column, lane, count and chart is the bench's: what is still
- * to be collected, what is on the bench, what has resulted. The test itself is
- * worked in the patient chart, in the lab form (`?form=lab-orders`), where the
- * six bench steps already live.
+ * to be collected, what is on the bench, what has resulted. A test is worked in
+ * the right-hand slider here, or in the chart's Lab orders workspace
+ * (`?form=lab-orders`); both are the same six bench steps.
  *
  * Patients the front desk sent to this technician (`stationAssignments.lab`)
  * are on the list even before a test is ordered.
  */
 
-import Link from 'next/link';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { Microscope, Table, Timer } from '@/components/icons/lucide';
+import { Microscope, Plus, Table, Timer } from '@/components/icons/lucide';
 import EhrClinicalDashboard, {
   type WorklistPatient,
   type OutstandingItem,
@@ -37,7 +36,12 @@ import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
-import { agoLabel, durationLabel } from '@/lib/station-time';
+import { agoLabel, durationLabel, shortDayLabel } from '@/lib/station-time';
+import { effectiveOrderStatus } from '@/lib/services/lab-service';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { benchActionLabel, benchActions } from '@/components/lab/workflow/lab-workflow-types';
+import LabBenchSlider from '@/components/lab/workflow/LabBenchSlider';
+import LabIntakeSlider from '@/components/lab/order/LabIntakeSlider';
 import type { LabResultDoc, PatientDoc } from '@/lib/db-types';
 
 /** Opens the chart with the lab form up, on one test when `orderId` is given. */
@@ -48,11 +52,16 @@ export function labFormHref(patientId: string, orderId?: string): string {
 
 export type LabBenchStage = 'collect' | 'bench' | 'resulted';
 
-/** Where one test stands on the bench. */
-export function labBenchStage(order: Pick<LabResultDoc, 'status'>): LabBenchStage {
-  if (order.status === 'completed') return 'resulted';
-  if (order.status === 'in_progress') return 'bench';
-  return 'collect';
+/**
+ * Where one test stands on the bench. Read from the lifecycle stage: the coarse
+ * status stays `pending` until processing starts, so a specimen already drawn
+ * and booked in still read "To collect".
+ */
+export function labBenchStage(order: Pick<LabResultDoc, 'status' | 'orderStatus'>): LabBenchStage {
+  const stage = effectiveOrderStatus(order);
+  if (stage === 'ordered' || stage === 'rejected_needs_recollection') return 'collect';
+  if (stage === 'specimen_collected' || stage === 'received_at_lab' || stage === 'in_process') return 'bench';
+  return 'resulted';
 }
 
 export interface LabWorklistLabels {
@@ -63,6 +72,8 @@ export interface LabWorklistLabels {
   assigned: string;
   resultedToday: string;
   tests: (count: number) => string;
+  /** Translates a row's next-step labels. */
+  t?: (key: string) => string;
 }
 
 export interface LabWorklistInput {
@@ -100,7 +111,7 @@ export function assembleLabWorklist({
       || STAGE_RANK[labBenchStage(a)] - STAGE_RANK[labBenchStage(b)]
       || (a.orderedAt || '').localeCompare(b.orderedAt || ''));
   const resultedToday = tests.filter(r => r.status === 'completed' && localDayOf(r.completedAt) === today);
-  const clock = (iso?: string) => (iso && localDayOf(iso) === today ? localClockOf(iso) : localDayOf(iso));
+  const clock = (iso?: string) => (iso && localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
 
   const rows: WorklistPatient[] = [];
   const seen = new Set<string>();
@@ -146,12 +157,17 @@ export function assembleLabWorklist({
         statusSubtext: mine.some(r => r.critical) ? labels.critical : mine.length > 1 ? labels.tests(mine.length) : '',
         lane: stage === 'bench' ? 'in_office' : 'scheduled',
         chartHref: labFormHref(test.patientId, test._id),
+        openId: test._id,
+        actions: labels.t ? benchActions(effectiveOrderStatus(test), labels.t) : undefined,
       },
     });
   }
-  // Then today's finished patients, so the Resulted lane has its day.
+    // Everything resulted today is under Resulted, even for a patient with other
+  // tests still open: that patient has a row in each lane.
+  const resultedRows = new Set<string>();
   for (const test of resultedToday) {
-    if (!test.patientId || seen.has(test.patientId)) continue;
+    if (!test.patientId || resultedRows.has(test.patientId)) continue;
+    resultedRows.add(test.patientId);
     const mine = resultedToday.filter(r => r.patientId === test.patientId);
     const flagged = mine.find(r => r.critical) || mine.find(r => r.abnormal);
     row(test.patientId, test.patientName, {
@@ -169,7 +185,9 @@ export function assembleLabWorklist({
         statusTone: flagged?.critical ? 'danger' : flagged ? 'warning' : 'done',
         statusSubtext: flagged ? (flagged.critical ? labels.critical : flagged.result) : (mine.length > 1 ? labels.tests(mine.length) : test.result),
         lane: 'finished',
+        rowKey: `${test.patientId}:resulted`,
         chartHref: labFormHref(test.patientId, test._id),
+        openId: test._id,
       },
     });
   }
@@ -205,6 +223,7 @@ export function assembleLabWorklist({
     meta: clock(r.status === 'completed' ? r.completedAt : r.orderedAt),
     tone: r.critical ? 'danger' : r.status === 'completed' ? 'neutral' : 'warning',
     href: labFormHref(r.patientId, r._id),
+    openId: r._id,
   });
   const toCollect = open.filter(r => labBenchStage(r) === 'collect');
   const onBench = open.filter(r => labBenchStage(r) === 'bench');
@@ -262,6 +281,10 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
   const { patients } = usePatients();
   const { appointments } = useAppointments();
   const { results } = useLabResults();
+  const { canEnterLabResults } = usePermissions();
+  // The test open in the slider, by id so it follows the record step to step.
+  const [bench, setBench] = useState<{ id: string; intent?: 'reject' } | null>(null);
+  const [intake, setIntake] = useState<{ patientId?: string } | null>(null);
   // The turnaround card's "longest waiting" clock, refreshed each minute.
   const nowMs = useNow(60_000);
 
@@ -273,6 +296,7 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
     assigned: t('labHome.assignedToMe'),
     resultedToday: t('labHome.resultedToday'),
     tests: (count: number) => t('labHome.testCount', { count }),
+    t,
   }), [t]);
 
   const worklist = useMemo(
@@ -288,30 +312,34 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
   const stationDetail = (patientId: string): ReactNode => {
     const mine = results.filter(r => r.patientId === patientId && !isImagingStudy(r)
       && (r.status !== 'completed' || localDayOf(r.completedAt) === today));
-    if (!mine.length) return null;
+    if (!mine.length) {
+      // Sent here by the desk with nothing ordered: the lab takes the request.
+      return canEnterLabResults ? (
+        <div className="ehr-visit-pop-row">
+          <span className="ehr-visit-pop-label">{t('visits.labs')}</span>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setIntake({ patientId })}>{t('labIntake.title')}</button>
+        </div>
+      ) : null;
+    }
     return (
       <div className="ehr-visit-pop-row">
         <span className="ehr-visit-pop-label">{t('visits.labs')}</span>
         <EhrPatientOrderList
           label={t('visits.labs')}
-          orders={mine.map(r => {
-            const stage = labBenchStage(r);
-            const tone = r.critical ? 'danger' : r.abnormal ? 'warning' : stage === 'resulted' ? 'done' : stage === 'bench' ? 'active' : 'scheduled';
-            return {
-              id: r._id,
-              title: r.testName,
-              detail: [r.specimen, r.accessionNumber].filter(Boolean).join(' · '),
-              note: stage === 'resulted'
-                ? `${r.result}${r.unit ? ` ${r.unit}` : ''}${r.referenceRange ? ` (${r.referenceRange})` : ''}`
-                : r.clinicalNotes,
-              status: <span className={`appointment-status-pill ${statusToneClass(tone)}`}>{labels[stage]}</span>,
-              actions: (
-                <Link href={labFormHref(patientId, r._id)} className="btn btn-secondary btn-sm">
-                  {stage === 'resulted' ? t('dashboard.open') : t('labHome.work')}
-                </Link>
-              ),
-            };
-          })}
+          orders={mine.map(r => ({
+            id: r._id,
+            title: r.testName,
+            detail: [r.specimen, r.accessionNumber].filter(Boolean).join(' · '),
+            note: labBenchStage(r) === 'resulted'
+              ? `${r.result}${r.unit ? ` ${r.unit}` : ''}${r.referenceRange ? ` (${r.referenceRange})` : ''}`
+              : r.clinicalNotes,
+            // The button names the next step, so no pill says it a second time.
+            actions: (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setBench({ id: r._id })}>
+                {t(benchActionLabel(effectiveOrderStatus(r)))}
+              </button>
+            ),
+          }))}
         />
       </div>
     );
@@ -319,6 +347,10 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
 
   const oldest = worklist.oldestOpen;
   const oldestMinutes = oldest ? Math.max(0, Math.round((nowMs - Date.parse(oldest.orderedAt)) / 60000)) : null;
+  const benchOrder = bench ? results.find(r => r._id === bench.id) : undefined;
+  const headerActions = [
+    ...(onBatchEntry ? [{ key: 'batch', label: t('lab.batchEntry'), icon: Table, run: onBatchEntry }] : []),
+  ];
 
   return (
     <main className="page-container page-enter">
@@ -352,12 +384,22 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
           </section>
         )}
         stationDetail={stationDetail}
+        railAction={canEnterLabResults ? { label: t('labIntake.title'), icon: Plus, run: () => setIntake({}) } : undefined}
+        onStationOpen={(id, action) => setBench({ id, intent: action === 'reject' ? 'reject' : undefined })}
         canWriteNotes={false}
-        extraHeaderActions={onBatchEntry ? [{ key: 'batch', label: t('lab.batchEntry'), icon: Table, run: onBatchEntry }] : undefined}
+        extraHeaderActions={headerActions.length ? headerActions : undefined}
         missionTitle={t('mission.lab.title')}
         missionDescription={t('mission.lab.body')}
         missionIcon={Microscope}
       />
+      {benchOrder && <LabBenchSlider order={benchOrder} patientName={shortenPersonName(benchOrder.patientName)} intent={bench?.intent} onClose={() => setBench(null)} />}
+      {intake && (
+        <LabIntakeSlider
+          presetPatientId={intake.patientId}
+          onClose={() => setIntake(null)}
+          onPlaced={orderId => { setIntake(null); setBench({ id: orderId }); }}
+        />
+      )}
     </main>
   );
 }

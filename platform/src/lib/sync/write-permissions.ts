@@ -378,6 +378,10 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
     'lab_tech', 'radiologist', 'pharmacist', 'nutritionist', 'cashier',
     'medical_biller',
   ],
+  // A request placed at the lab parks the visit at awaiting_labs and notes the
+  // test ids on it. The field list below keeps the visit's record out of reach.
+  encounter: ['lab_tech'],
+  clinical_encounter: ['lab_tech'],
 };
 
 /** Roles allowed to create a document but not receive unrestricted updates. */
@@ -407,6 +411,14 @@ export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   // replace consultation notes. The required-value constraint below limits
   // this create grant to the dedicated nursing observation shape.
   medical_record: ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'],
+  // The lab's own intake: an independent lab, or a test sent in from another
+  // hospital, has no clinician or desk upstream. The technician registers the
+  // patient, opens the visit and raises its bill, and may rewrite none of them.
+  patient: ['lab_tech'],
+  encounter: ['lab_tech'],
+  clinical_encounter: ['lab_tech'],
+  billing: ['lab_tech'],
+  ledger_entry: ['lab_tech'],
 };
 
 /**
@@ -425,10 +437,12 @@ export const DOC_CREATE_ONLY_REQUIRED_VALUES: Readonly<Record<string, Readonly<R
 
 /** Fields an amend-only role may change on the existing document. */
 export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  encounter: ['status', 'stageKey', 'statusHistory', 'labOrderIds', 'updatedAt', 'offlineSync'],
+  clinical_encounter: ['status', 'stageKey', 'statusHistory', 'labOrderIds', 'updatedAt', 'offlineSync'],
   prescription: [
     'status', 'orderStatus', 'dispensedAt', 'dispensedBy', 'dispensedByName',
     'quantityDispensed', 'dispenseAllocations', 'dispenseLock', 'dispenseOutcome',
-    'dispenseNote', 'controlledLogId', 'counselledAt', 'counselledBy',
+    'dispenseNote', 'dispenseAllergyReview', 'controlledLogId', 'counselledAt', 'counselledBy',
     'counselledPoints', 'counsellingNote', 'updatedAt', 'offlineSync',
   ],
   admission: [

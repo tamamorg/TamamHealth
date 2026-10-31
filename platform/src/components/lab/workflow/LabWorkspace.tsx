@@ -27,6 +27,7 @@ export default function LabWorkspace({
   patientId,
   canOrderLabs,
   canWork,
+  canWorkImaging,
   onAdd,
   focusId,
   seedResult,
@@ -35,6 +36,8 @@ export default function LabWorkspace({
   canOrderLabs: boolean;
   /** Lab-result permission — without it the walkthrough is read-only. */
   canWork: boolean;
+  /** The same, for a study: the reading room's, not the bench's. */
+  canWorkImaging: boolean;
   onAdd: () => void;
   focusId?: string;
   /** A reading handed over from an analyzer import, pre-filled for review. */
@@ -76,7 +79,7 @@ export default function LabWorkspace({
       {imaging ? (
         <RadiologyWorkflowPanel
           study={selected}
-          canWork={canWork}
+          canWork={canWorkImaging}
           onClose={() => setSelectedId(undefined)}
         />
       ) : (

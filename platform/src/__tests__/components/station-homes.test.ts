@@ -61,6 +61,22 @@ describe('assembleLabWorklist', () => {
     expect(outstanding.find(o => o.label === 'Critical')?.count).toBe(1);
   });
 
+  it('files a result under Resulted even while the same patient has a test open', () => {
+    const { patients, counts } = assembleLabWorklist({
+      currentUser: me,
+      patients: [patient('p1')],
+      results: [
+        lab('l1', 'p1', 'Haemoglobin', { status: 'completed', result: '12', completedAt: '2026-10-29T07:40:00.000Z' }),
+        lab('l2', 'p1', 'Malaria RDT'),
+      ],
+      labels: labLabels,
+      now: NOW,
+    });
+    expect(patients.map(p => p.station?.lane)).toEqual(['scheduled', 'finished']);
+    expect(new Set(patients.map(p => p.station?.rowKey ?? p._id)).size).toBe(2);
+    expect(counts.resulted).toBe(1);
+  });
+
   it('lists a patient the front desk sent to this technician before anything is ordered', () => {
     const routed = patient('p9', { stationAssignments: { lab: { staffId: 'u-lab', staffName: me.name, assignedAt: '2026-10-29T07:55:00.000Z', note: 'Fasting glucose' } } });
     const other = patient('p8', { stationAssignments: { lab: { staffId: 'u-other', staffName: 'Someone', assignedAt: '2026-10-29T07:55:00.000Z' } } });

@@ -36,18 +36,9 @@ import type { AppointmentType, FacilityLevel, PatientDoc } from '@/lib/db-types'
 import './book-appointment-panel.css';
 import FormNotices from '@/components/overlay/FormNotices';
 import Select from '@/components/Select';
+import { APPOINTMENT_TYPE_OPTIONS } from '@/lib/visits/visit-details';
 
-const TYPE_OPTIONS: { value: AppointmentType; labelKey: string }[] = [
-  { value: 'general', labelKey: 'appointments.typeGeneral' },
-  { value: 'follow_up', labelKey: 'appointments.typeFollowUp' },
-  { value: 'specialist', labelKey: 'appointments.typeSpecialist' },
-  { value: 'anc', labelKey: 'appointments.typeAnc' },
-  { value: 'immunization', labelKey: 'appointments.typeImmunization' },
-  { value: 'lab', labelKey: 'appointments.typeLab' },
-  { value: 'surgical', labelKey: 'appointments.typeSurgical' },
-  { value: 'dental', labelKey: 'appointments.typeDental' },
-  { value: 'mental_health', labelKey: 'appointments.typeMentalHealth' },
-];
+const TYPE_OPTIONS = APPOINTMENT_TYPE_OPTIONS;
 const PATTERNS = ['weekly', 'biweekly', 'monthly', 'quarterly'] as const;
 const SECOND_STAFF_ROLES = new Set(['nurse', 'midwife', 'triage_nurse', 'rooming_nurse']);
 const NOTE_MAX = 255;

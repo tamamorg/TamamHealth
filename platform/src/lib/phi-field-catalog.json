@@ -22,7 +22,7 @@
         "preferredPharmacy", "address", "tribe", "primaryLanguage", "bloodType",
         "allergies", "structuredAllergies.**", "directives.**", "careAlerts.**", "screenings.**",
         "chronicConditions", "nokName", "nokRelationship", "nokPhone", "nokAddress",
-        "additionalNextOfKin.**", "payorInfo.**", "ngoName", "exemptionReason", "assignmentNote",
+        "additionalNextOfKin.**", "payorInfo.**", "ngoName", "exemptionReason", "assignmentNote", "stationAssignments.lab.note", "stationAssignments.pharmacy.note", "stationAssignments.radiology.note", "stationAssignments.nutrition.note",
         "deathCause", "deathPlace", "deathInformant", "photoUrl", "medReconciliation.**", "programEnrollment"
       ],
       "blindIndex": { "nationalId": "nationalIdIndex" }
@@ -43,14 +43,14 @@
       "fields": [
         "patientName", "testName", "specimen", "result", "unit", "referenceRange", "observations.**",
         "findings", "impression", "clinicalNotes", "orderComment", "indications", "aoeAnswers.**",
-        "safetyChecks.**", "amendedFrom.**", "amendmentReason", "specimenRejectionNotes", "specimenRejectionReason",
+        "safetyChecks.**", "amendedFrom.**", "amendmentReason", "specimenRejectionNotes", "specimenRejectionReason", "specimenCollectionNote",
         "bodyRegion", "technique", "repeatReason"
       ]
     },
     "prescription": {
       "fields": [
         "patientName", "medication", "dose", "route", "frequency", "duration", "indication",
-        "pharmacyInstructions", "stoppedReason", "medicationSafety.**", "dispenseNote", "counsellingNote",
+        "pharmacyInstructions", "stoppedReason", "medicationSafety.**", "dispenseAllergyReview.**", "dispenseNote", "counsellingNote",
         "counselledPoints", "linkedProblemLabel", "patientCopies.**", "administrations[].notes", "administrations[].reason"
       ]
     },
@@ -59,7 +59,7 @@
     "history_entry": { "fields": ["patientName", "title", "relation", "factor", "detail"] },
     "program_enrollment": { "fields": ["patientName", "programName", "outcomeReason", "notes"] },
     "procedure": { "fields": ["patientName", "name", "bodySite", "outcome", "notes", "abortedReason", "amendmentReason", "statusReason"] },
-    "clinical_note": { "fields": ["patientName", "mrn", "patientDob", "sections.**", "addenda.**", "planActions.**"] },
+    "clinical_note": { "fields": ["patientName", "mrn", "patientDob", "sections.**", "addenda.**", "planActions.**", "formData.**"] },
     "clinical_encounter": { "fields": ["patientName", "snapshot.**", "visitBilling.policyNumber", "visitBilling.exemptionReason"] },
     "consultation_progress": { "fields": ["patientName", "nextAction", "blockedReason", "milestones.**", "tasks.**", "events.**"] },
     "triage": {

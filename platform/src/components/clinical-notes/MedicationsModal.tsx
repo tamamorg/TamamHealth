@@ -21,6 +21,7 @@
  * history for whoever opens this dialog next.
  */
 
+import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Info, Plus, X } from '@/components/icons/lucide';
 import PrescribeModal from './prescribe/PrescribeModal';
@@ -177,14 +178,9 @@ export default function MedicationsModal({
     if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
     const safety = await assessPrescriptionSafety(patientId, medication, scope);
     if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
-    const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
-    if (!severeWarnings.length) return undefined;
+    if (!hasSafetyStop(safety)) return undefined;
     const reason = await confirmPrompt({
-      title: t('prescribe.overrideTitle'),
-      message: t('prescribe.overrideMessage', {
-        medication,
-        allergy: severeWarnings.map(warning => warning.allergy).join(', '),
-      }),
+      ...safetyStopPrompt(t, medication, safety),
       inputLabel: t('prescribe.overrideReason'),
       confirmLabel: t('prescribe.overrideConfirm'),
       tone: 'danger',

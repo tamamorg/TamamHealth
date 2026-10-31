@@ -1,4 +1,5 @@
 'use client';
+import ChartSection from '@/components/ehr/chart/ChartSection';
 import { AlertTriangle, Pill, Activity, ClipboardList, Plus, Pencil, Sliders, Check } from '@/components/icons/lucide';
 import Badge from '@/components/Badge';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -99,14 +100,11 @@ export function PatientFacesheetView({
   if (!canViewClinical) {
     return (
       <div className="tebra-facesheet">
-        <section className="tebra-panel tebra-panel--wide">
-          <div className="tebra-panel__head">
-            <h2>Facesheet</h2>
-          </div>
-          <div className="tebra-empty">
-            Clinical information is restricted for your role. Use Demographics, Appointments, Billing history, Documents, and Care coordination for administrative work.
-          </div>
-        </section>
+        {/* The chart's own section header, its note as the light sub-line. */}
+        <ChartSection
+          title="Facesheet"
+          subtitle="Clinical information is restricted for your role. Use Demographics, Appointments, Billing history, Documents, and Care coordination for administrative work."
+        >{null}</ChartSection>
       </div>
     );
   }
@@ -114,7 +112,10 @@ export function PatientFacesheetView({
   return (
     <div className="tebra-facesheet">
       <div className="tebra-section-title">
-        <h1>{t('ptDetail.summaryTitle')}</h1>
+        <div className="tamam-section-title-wrap">
+          <h3 className="tamam-section-title">{t('ptDetail.summaryTitle')}</h3>
+          <span className="tamam-section-underline" aria-hidden />
+        </div>
         <button type="button" onClick={onToggleCustomize}>
           {customizeOpen ? <Check aria-hidden /> : <Sliders aria-hidden />}
           {customizeOpen ? 'Done' : 'Customize View'}
@@ -307,25 +308,29 @@ export function PatientDemographicsView({
 
   return (
     <div className="tebra-demographics">
-      <div className="tebra-demo-title">
-        <h1>Demographics</h1>
+      {/* Titled like every other chart tab. */}
+      <div className="tebra-demo-title tamam-section-title-wrap">
+        <h3 className="tamam-section-title">Demographics</h3>
+        <span className="tamam-section-underline" aria-hidden />
       </div>
-      <div className="tebra-demo-tabs" role="tablist" aria-label="Demographics sections">
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={activeTab === id ? 'active' : ''}
-            onClick={() => onTabChange(id)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="tebra-demo-tabbar">
+        <div className="tebra-demo-tabs" role="tablist" aria-label="Demographics sections">
+          {tabs.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={activeTab === id ? 'active' : ''}
+              onClick={() => onTabChange(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {activeTab === 'profile' && canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}><Pencil aria-hidden /> Edit</button>}
       </div>
 
       {activeTab === 'profile' && (
         <section className="tebra-demo-panel">
-          {canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}><Pencil aria-hidden /> Edit</button>}
           <div className="tebra-demo-person">
             <div className="tebra-demo-avatar">{patientInitials(patient)}</div>
             <h2>{patientFullName(patient)}</h2>

@@ -55,7 +55,7 @@ import { isPendingApproval } from '@/lib/appointment-workflow';
 import { appointmentCalendarClinicalAction } from '@/lib/appointment-calendar-role';
 import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
-import TriageSlider from '@/components/nurse/TriageSlider';
+import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -179,7 +179,6 @@ export default function AppointmentsPage() {
   // Appointment opened in the click-to-view detail dialog — from a calendar
   // event, or from a ?appointment= deep link.
   const [eventApt, setEventApt] = useState<typeof appointments[0] | null>(null);
-  const [triageFor, setTriageFor] = useState<{ patientId: string; name: string } | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const router = useRouter();
   const [showWalkIn, setShowWalkIn] = useState(false);
@@ -610,7 +609,7 @@ export default function AppointmentsPage() {
               onClick={() => {
                 if (calendarClinicalAction === 'consult') { navigate(primaryRoute); return; }
                 onDone();
-                setTriageFor({ patientId: apt.patientId, name: apt.patientName });
+                router.push(chartFormHref(apt.patientId, 'triage-form'));
               }}
             >
               <PrimaryIcon className="w-4 h-4" aria-hidden /> {primaryLabel}
@@ -947,10 +946,6 @@ export default function AppointmentsPage() {
             </PortalModal>
           );
         })()}
-
-      {triageFor && (
-        <TriageSlider patientId={triageFor.patientId} patientName={triageFor.name} onClose={() => setTriageFor(null)} />
-      )}
     </main>
   );
 }

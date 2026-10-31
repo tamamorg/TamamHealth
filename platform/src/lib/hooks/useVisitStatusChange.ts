@@ -69,10 +69,12 @@ export function useVisitStatusChange() {
     ];
   }, [choices, currentUser?.role, labelFor]);
 
-  const change = useCallback(async (target: VisitStatusTarget, next: AppointmentStatus): Promise<boolean> => {
+  // `givenReason`: an exit's reason already collected by the caller (the
+  // dashboards' StatusChangeSlider) — then no second prompt.
+  const change = useCallback(async (target: VisitStatusTarget, next: AppointmentStatus, givenReason?: string): Promise<boolean> => {
     if (canonicalAppointmentStatus(target.status) === next) return false;
-    let reason: string | undefined;
-    if (appointmentStatusNeedsReason(next)) {
+    let reason: string | undefined = givenReason?.trim() || undefined;
+    if (appointmentStatusNeedsReason(next) && !reason) {
       const answer = await confirmPrompt({
         title: t('visitStatus.reasonTitle', { status: labelFor(next) }),
         message: target.patientName ? t('visitStatus.reasonMessage', { name: target.patientName }) : undefined,

@@ -124,10 +124,8 @@ it('flags a critically low Hemoglobin entered into a Full Blood Count panel and 
   expect(harness.controller!.resultDraft.critical).toBe(true);
   expect(harness.controller!.resultDraft.criticalManual).toBe(false);
 
-  // Walk the specimen through to the bench, same as a real filing.
+  // Collect, then file: the form makes the receipt and bench hops itself.
   await act(async () => { await harness.controller!.collect(); });
-  await act(async () => { await harness.controller!.receive(); });
-  await act(async () => { await harness.controller!.startProcessing(); });
   await act(async () => { await harness.controller!.fileResult(); });
 
   const filed = await getLabResultById(order._id);

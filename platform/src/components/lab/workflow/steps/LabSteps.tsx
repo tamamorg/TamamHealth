@@ -1,21 +1,21 @@
 'use client';
 
 /**
- * The six bench steps. Each renders the same way: what was captured (once the
- * order has moved past it) or the form plus its one action (when the order is
- * sitting on it). They share a file because each is small and they are only
- * ever rendered by LabWorkflowPanel.
+ * The sections of the lab's one form. Each renders the same way: what was
+ * captured, or its fields while they are still to fill. They share a file because
+ * each is small and they are only ever rendered by LabWorkflowPanel.
  */
 
 import { AlertTriangle, CheckCircle2, Printer } from '@/components/icons/lucide';
 import { formatDateTime } from '@/lib/format-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabResultDoc } from '@/lib/db-types';
-import { containersFor, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types';
+import { containersFor, fallbackAccessionNumber, isOutsideRequest, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types';
 import type { LabWorkflowController } from '../useLabWorkflow';
-import Select from '@/components/Select';
 import { printElementById } from '@/lib/safe-html';
-import StructuredResultForm from '../StructuredResultForm';
+import O3Form from '@/components/forms/O3Form';
+import { ObfQuestion, ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
+import { labProfilePage } from '@/lib/forms/o3-form-definitions';
 import { resolveLabResultProfile } from '../lab-result-catalog';
 import { getLabReferenceRange } from '@/lib/services/lab-critical-flag';
 
@@ -32,12 +32,7 @@ const SPECIMEN_CONDITIONS: { value: NonNullable<LabResultDoc['specimenCondition'
 ];
 
 export function Field({ label, value }: { label: string; value?: React.ReactNode }) {
-  return (
-    <div>
-      <span className="labord-field-label">{label}</span>
-      <span className="labord-field-value">{value || '—'}</span>
-    </div>
-  );
+  return <ObfValue label={label} value={value} />;
 }
 
 /**
@@ -96,9 +91,9 @@ export function OrderContext({ order }: { order: LabResultDoc }) {
         an unlabelled chip row reads as a diagnosis rather than the reason
         the test was asked for. */}
     {(order.indications?.length || order.clinicalNotes || order.orderComment) && (
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.clinicalContext')}</div>
-        <div className="labord-section-body labord-context">
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labFlow.clinicalContext')}</div>
+        <div className="lwf-section-body labord-context">
           {order.indications?.length ? (
             <div>
               <span className="labord-field-label">{t('labOrder.reasons')}</span>
@@ -126,9 +121,9 @@ export function OrderContext({ order }: { order: LabResultDoc }) {
     )}
 
     {order.aoeAnswers?.length ? (
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labOrder.aoeHeading')}</div>
-        <div className="labord-section-body" style={{ padding: 0 }}>
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labOrder.aoeHeading')}</div>
+        <div className="lwf-section-body" style={{ padding: 0 }}>
           {order.aoeAnswers.map(entry => (
             <div key={entry.question} className="labord-row">
               <span className="labord-pick-meta">{entry.question}</span>
@@ -142,15 +137,15 @@ export function OrderContext({ order }: { order: LabResultDoc }) {
   );
 }
 
-/** Step 1 — the requisition as it arrived. Read-only by definition. */
+/** The requisition as it arrived. Read-only by definition. */
 export function OrderStep({ order }: { order: LabResultDoc }) {
   const { t } = useTranslation();
   return (
     <div>
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.requisition')}</div>
-        <div className="labord-section-body">
-          <div className="labord-grid-2">
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labFlow.requisition')}</div>
+        <div className="lwf-section-body">
+          <div className="obf-row">
             <Field label={t('labFlow.test')} value={order.testName} />
             <Field label={t('labFlow.specimen')} value={order.specimen} />
             <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy} />
@@ -167,17 +162,18 @@ export function OrderStep({ order }: { order: LabResultDoc }) {
               label={t('labOrder.fastingState')}
               value={order.fasting === 'yes' ? t('labOrder.fastingYes') : order.fasting === 'no' ? t('labOrder.fastingNo') : t('labOrder.fastingUnknown')}
             />
-            <Field label={t('labFlow.accession')} value={order.accessionNumber} />
+            <Field label={t('labFlow.accession')} value={fallbackAccessionNumber(order)} />
+            {order.requestSource && <Field label={t('labIntake.source')} value={t(`labIntake.source_${order.requestSource}`)} />}
+            {order.externalFacility && <Field label={t('labIntake.facility')} value={order.externalFacility} />}
+            {order.externalReference && <Field label={t('labIntake.reference')} value={order.externalReference} />}
           </div>
         </div>
       </div>
-
-      <OrderContext order={order} />
     </div>
   );
 }
 
-/** Step 2 — draw the specimen. */
+/** Draw the specimen. */
 export function CollectStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWorkflowController }) {
   const { t } = useTranslation();
   const done = ctrl.doneThrough >= 1;
@@ -186,14 +182,14 @@ export function CollectStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
   return (
     <div>
       {rejected && (
-        <div className="labord-section">
-          <div className="labord-section-head" style={{ color: 'var(--color-danger, #D92B20)' }}>
+        <div className="obf-section">
+          <div className="obf-section-head lwf-section-head" style={{ color: 'var(--color-danger, #D92B20)' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <AlertTriangle className="w-4 h-4" aria-hidden /> {t('labFlow.rejectedHeading')}
             </span>
           </div>
-          <div className="labord-section-body">
-            <div className="labord-grid-2">
+          <div className="lwf-section-body">
+            <div className="obf-row">
               <Field label={t('labFlow.rejectionReason')} value={order.specimenRejectionReason} />
               <Field label={t('labFlow.rejectedBy')} value={order.specimenRejectedBy} />
               <Field label={t('labFlow.rejectedAt')} value={order.specimenRejectedAt ? formatDateTime(order.specimenRejectedAt) : undefined} />
@@ -203,15 +199,16 @@ export function CollectStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
         </div>
       )}
 
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.collectHeading')}</div>
-        <div className="labord-section-body">
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labFlow.collectHeading')}</div>
+        <div className="lwf-section-body">
           {done && !rejected ? (
-            <div className="labord-grid-2">
+            <div className="obf-row">
               <Field label={t('labFlow.collectedBy')} value={order.specimenCollectedBy} />
               <Field label={t('labFlow.collectedAt')} value={order.specimenCollectedAt ? formatDateTime(order.specimenCollectedAt) : undefined} />
               <Field label={t('labFlow.container')} value={order.specimenContainer} />
-              <Field label={t('labFlow.accession')} value={order.accessionNumber} />
+              {order.specimenCollectedOutside && <Field label={t('labFlow.collectedOutside')} value={order.externalFacility || t('labIntake.source_walk_in')} />}
+              {order.specimenCollectionNote && <Field label={t('labFlow.collectionNote')} value={order.specimenCollectionNote} />}
             </div>
           ) : (
             <>
@@ -225,29 +222,38 @@ export function CollectStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
                   draw on a fasting glucose was only caught after the run. */}
               <CollectPreconditions order={order} />
 
-              <div className="labord-grid-2">
-                <div>
-                  <label htmlFor="labflow-container">{t('labFlow.container')}</label>
-                  <Select
-                    id="labflow-container"
-                    value={ctrl.collectDraft.container}
-                    onChange={e => ctrl.setCollectDraft({ ...ctrl.collectDraft, container: e.target.value })}
-                  >
-                    <option value="">—</option>
-                    {containersFor(order.specimen).map(container => (
-                      <option key={container} value={container}>{container}</option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <label htmlFor="labflow-collected-by">{t('labFlow.collectedBy')}</label>
+              <div className="obf-row">
+                <Field label={t('labFlow.accession')} value={ctrl.receiveDraft.accessionNumber} />
+                <ObfSelectField
+                  id="labflow-container"
+                  label={t('labFlow.container')}
+                  required
+                  value={ctrl.collectDraft.container}
+                  options={containersFor(order.specimen).map(container => ({ value: container, label: container }))}
+                  onChange={container => ctrl.setCollectDraft({ ...ctrl.collectDraft, container })}
+                />
+                <ObfTextField
+                  id="labflow-collected-by"
+                  label={t('labFlow.collectedBy')}
+                  required
+                  value={ctrl.collectDraft.collectedBy}
+                  onChange={collectedBy => ctrl.setCollectDraft({ ...ctrl.collectDraft, collectedBy })}
+                />
+                <ObfQuestion label={t('labFlow.collectedAt')} htmlFor="labflow-collected-at">
                   <input
-                    id="labflow-collected-by"
-                    type="text"
-                    value={ctrl.collectDraft.collectedBy}
-                    onChange={e => ctrl.setCollectDraft({ ...ctrl.collectDraft, collectedBy: e.target.value })}
+                    id="labflow-collected-at"
+                    type="datetime-local"
+                    value={ctrl.collectDraft.collectedAt}
+                    onChange={e => ctrl.setCollectDraft({ ...ctrl.collectDraft, collectedAt: e.target.value })}
                   />
-                </div>
+                </ObfQuestion>
+                <ObfTextField
+                  id="labflow-collect-note"
+                  label={t('labFlow.collectionNote')}
+                  multiline
+                  value={ctrl.collectDraft.note}
+                  onChange={note => ctrl.setCollectDraft({ ...ctrl.collectDraft, note })}
+                />
               </div>
             </>
           )}
@@ -257,18 +263,19 @@ export function CollectStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
   );
 }
 
-/** Step 3 — book the specimen in, or send it back. */
-export function ReceiveStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWorkflowController }) {
+/** Book the specimen in, or (picked from the row) send it back. */
+export function ReceiveStep({ order, ctrl, rejecting = false }: { order: LabResultDoc; ctrl: LabWorkflowController; rejecting?: boolean }) {
   const { t } = useTranslation();
   const done = ctrl.doneThrough >= 2;
 
   return (
     <div>
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.receiveHeading')}</div>
-        <div className="labord-section-body">
+      {!rejecting && (
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labFlow.receiveHeading')}</div>
+        <div className="lwf-section-body">
           {done ? (
-            <div className="labord-grid-2">
+            <div className="obf-row">
               <Field label={t('labFlow.accession')} value={order.accessionNumber} />
               <Field
                 label={t('labFlow.condition')}
@@ -278,60 +285,48 @@ export function ReceiveStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
               <Field label={t('labFlow.receivedAt')} value={order.specimenReceivedAt ? formatDateTime(order.specimenReceivedAt) : undefined} />
             </div>
           ) : (
-            <div className="labord-grid-2">
-              <div>
-                <label htmlFor="labflow-accession">{t('labFlow.accession')}</label>
-                <input
-                  id="labflow-accession"
-                  type="text"
-                  value={ctrl.receiveDraft.accessionNumber}
-                  onChange={e => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, accessionNumber: e.target.value })}
-                />
-                <p className="labord-help">{t('labFlow.accessionHelp')}</p>
-              </div>
-              <div>
-                <label htmlFor="labflow-condition">{t('labFlow.condition')}</label>
-                <Select
-                  id="labflow-condition"
-                  value={ctrl.receiveDraft.condition}
-                  onChange={e => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, condition: e.target.value as NonNullable<LabResultDoc['specimenCondition']> })}
-                >
-                  {SPECIMEN_CONDITIONS.map(condition => (
-                    <option key={condition.value} value={condition.value}>{condition.label}</option>
-                  ))}
-                </Select>
-              </div>
+            <div className="obf-row">
+              <ObfTextField
+                id="labflow-accession"
+                label={t('labFlow.accession')}
+                required
+                value={ctrl.receiveDraft.accessionNumber}
+                onChange={accessionNumber => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, accessionNumber })}
+              />
+              <ObfSelectField
+                id="labflow-condition"
+                label={t('labFlow.condition')}
+                value={ctrl.receiveDraft.condition}
+                placeholder={null}
+                options={SPECIMEN_CONDITIONS}
+                onChange={condition => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, condition: condition as NonNullable<LabResultDoc['specimenCondition']> })}
+              />
+              <p className="labord-help">{t('labFlow.accessionHelp')}</p>
             </div>
           )}
         </div>
       </div>
+      )}
 
-      {!done && (
-        <div className="labord-section">
-          <div className="labord-section-head">{t('labFlow.rejectHeading')}</div>
-          <div className="labord-section-body">
+      {!done && rejecting && (
+        <div className="obf-section">
+          <div className="obf-section-head lwf-section-head">{t('labFlow.rejectHeading')}</div>
+          <div className="lwf-section-body">
             <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.rejectHelp')}</p>
-            <div className="labord-grid-2">
-              <div>
-                <label htmlFor="labflow-reject-reason">{t('labFlow.rejectionReason')}</label>
-                <Select
-                  id="labflow-reject-reason"
-                  value={ctrl.receiveDraft.rejectionReason}
-                  onChange={e => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, rejectionReason: e.target.value })}
-                >
-                  <option value="">—</option>
-                  {SPECIMEN_REJECTION_REASONS.map(reason => <option key={reason} value={reason}>{reason}</option>)}
-                </Select>
-              </div>
-              <div>
-                <label htmlFor="labflow-reject-notes">{t('labFlow.rejectionNotes')}</label>
-                <input
-                  id="labflow-reject-notes"
-                  type="text"
-                  value={ctrl.receiveDraft.rejectionNotes}
-                  onChange={e => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, rejectionNotes: e.target.value })}
-                />
-              </div>
+            <div className="obf-row">
+              <ObfSelectField
+                id="labflow-reject-reason"
+                label={t('labFlow.rejectionReason')}
+                value={ctrl.receiveDraft.rejectionReason}
+                options={SPECIMEN_REJECTION_REASONS.map(reason => ({ value: reason, label: reason }))}
+                onChange={rejectionReason => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, rejectionReason })}
+              />
+              <ObfTextField
+                id="labflow-reject-notes"
+                label={t('labFlow.rejectionNotes')}
+                value={ctrl.receiveDraft.rejectionNotes}
+                onChange={rejectionNotes => ctrl.setReceiveDraft({ ...ctrl.receiveDraft, rejectionNotes })}
+              />
             </div>
           </div>
         </div>
@@ -340,31 +335,8 @@ export function ReceiveStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWor
   );
 }
 
-/** Step 4 — on the bench. */
-export function ProcessStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWorkflowController }) {
-  const { t } = useTranslation();
-  const done = ctrl.doneThrough >= 3;
-
-  return (
-    <div className="labord-section">
-      <div className="labord-section-head">{t('labFlow.processHeading')}</div>
-      <div className="labord-section-body">
-        <p className="labord-help" style={{ marginTop: 0 }}>
-          {done ? t('labFlow.processDone') : t('labFlow.processHelp')}
-        </p>
-        <div className="labord-grid-2">
-          <Field label={t('labFlow.test')} value={order.testName} />
-          <Field label={t('labFlow.specimen')} value={`${order.specimen}${order.specimenContainer ? ` · ${order.specimenContainer}` : ''}`} />
-          <Field label={t('labFlow.accession')} value={order.accessionNumber} />
-          <Field label={t('labFlow.receivedAt')} value={order.specimenReceivedAt ? formatDateTime(order.specimenReceivedAt) : undefined} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Step 5 — the value, with the QC check attached to it. */
-export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWorkflowController }) {
+/** The value, with the QC check attached to it. */
+export function ResultStep({ order, ctrl, onAmend }: { order: LabResultDoc; ctrl: LabWorkflowController; onAmend: () => void }) {
   const { t } = useTranslation();
   const filed = ctrl.doneThrough >= 4;
   const draft = ctrl.resultDraft;
@@ -373,8 +345,8 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
 
   return (
     <div>
-      <div className="labord-section">
-        <div className="labord-section-head">
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">
           <span>{t('labFlow.resultHeading')}</span>
           {filed && (
             <span className="labord-pick-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-success, #0E9463)' }}>
@@ -382,82 +354,70 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
             </span>
           )}
         </div>
-        <div className="labord-section-body">
+        <div className="lwf-section-body">
           {structuredProfile ? (
-            <StructuredResultForm
-              profile={structuredProfile}
-              values={draft.observations}
-              onChange={ctrl.setObservationValue}
-            />
+            // The same O3 form the chart's Laboratory Test Results opens, one
+            // page per profile; the step's own File action saves it.
+            <div className="labord-o3">
+              <O3Form
+                pages={[labProfilePage(structuredProfile)]}
+                values={draft.observations}
+                onChange={ctrl.setObservationValue}
+              />
+            </div>
           ) : (
-            <div className="labord-grid-2">
-              <div>
-                <label htmlFor="labflow-value">{t('labFlow.value')}</label>
-                {qualitative ? (
-                  // A qualitative test is a choice, not free text: "pos", "+ve"
-                  // and "P.f seen" all meant Positive and none of them flagged.
-                  <Select
-                    id="labflow-value"
-                    value={draft.result}
-                    onChange={e => ctrl.setResultValue(e.target.value)}
-                    autoFocus={!filed}
-                  >
-                    <option value="">{t('labFlow.chooseResult')}</option>
-                    {qualitative.map(option => <option key={option} value={option}>{option}</option>)}
-                  </Select>
-                ) : (
-                  <input
-                    id="labflow-value"
-                    type="text"
-                    value={draft.result}
-                    onChange={e => ctrl.setResultValue(e.target.value)}
-                    placeholder={t('lab.enterValue')}
-                    autoFocus={!filed}
-                  />
-                )}
-              </div>
-              <div>
-                <label htmlFor="labflow-unit">{t('lab.unit')}</label>
-                <input
-                  id="labflow-unit"
-                  type="text"
-                  value={draft.unit}
-                  onChange={e => ctrl.setResultDraft({ ...draft, unit: e.target.value })}
-                  placeholder={t('lab.unitExamplePlaceholder')}
+            <div className="obf-row">
+              {qualitative ? (
+                // A qualitative test is a choice, not free text: "pos", "+ve"
+                // and "P.f seen" all meant Positive and none of them flagged.
+                <ObfSelectField
+                  id="labflow-value"
+                  label={t('labFlow.value')}
+                  required
+                  value={draft.result}
+                  placeholder={t('labFlow.chooseResult')}
+                  options={qualitative.map(option => ({ value: option, label: option }))}
+                  onChange={ctrl.setResultValue}
                 />
-              </div>
-              <div>
-                <label htmlFor="labflow-range">{t('lab.referenceRange')}</label>
-                <input
-                  id="labflow-range"
-                  type="text"
-                  value={draft.referenceRange}
-                  onChange={e => ctrl.setResultDraft({ ...draft, referenceRange: e.target.value })}
+              ) : (
+                <ObfTextField
+                  id="labflow-value"
+                  label={t('labFlow.value')}
+                  required
+                  value={draft.result}
+                  onChange={ctrl.setResultValue}
+                  placeholder={t('lab.enterValue')}
                 />
-              </div>
+              )}
+              <ObfTextField
+                id="labflow-unit"
+                label={t('lab.unit')}
+                value={draft.unit}
+                onChange={unit => ctrl.setResultDraft({ ...draft, unit })}
+                placeholder={t('lab.unitExamplePlaceholder')}
+              />
+              <ObfTextField
+                id="labflow-range"
+                label={t('lab.referenceRange')}
+                value={draft.referenceRange}
+                onChange={referenceRange => ctrl.setResultDraft({ ...draft, referenceRange })}
+              />
             </div>
           )}
 
-          <div className="lab-result-flags">
-            <span className="labord-field-label">{t('labFlow.flags')}</span>
-            <div style={{ display: 'flex', gap: 16, paddingTop: 4 }}>
-              <label className="labord-check" style={{ width: 'auto', padding: 0 }}>
-                <input
-                  type="checkbox"
-                  checked={draft.abnormal}
-                  onChange={e => ctrl.setResultDraft({ ...draft, abnormal: e.target.checked, critical: e.target.checked ? draft.critical : false })}
-                />
-                <span>{t('lab.abnormal')}</span>
-              </label>
-              <label className="labord-check" style={{ width: 'auto', padding: 0 }}>
-                <input
-                  type="checkbox"
-                  checked={draft.critical}
-                  onChange={e => ctrl.setResultDraft({ ...draft, critical: e.target.checked, criticalManual: true, abnormal: e.target.checked ? true : draft.abnormal })}
-                />
-                <span>{t('lab.criticalLabel')}</span>
-              </label>
-            </div>
+          <div className="obf-row">
+            <ObfSelectField
+              id="labflow-flag"
+              label={t('labFlow.flags')}
+              value={draft.critical ? 'critical' : draft.abnormal ? 'abnormal' : 'normal'}
+              placeholder={null}
+              options={[
+                { value: 'normal', label: t('labFlow.withinRange') },
+                { value: 'abnormal', label: t('lab.abnormal') },
+                { value: 'critical', label: t('lab.criticalLabel') },
+              ]}
+              onChange={flag => ctrl.setResultDraft({ ...draft, abnormal: flag !== 'normal', critical: flag === 'critical', criticalManual: true })}
+            />
           </div>
 
           {ctrl.criticalVerdict.isCriticalValue && (
@@ -491,9 +451,9 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
           a reason on the record — a clinician may already have acted on what it
           said before. */}
       {filed && (
-        <div className="labord-section">
-          <div className="labord-section-head">{t('labFlow.amendHeading')}</div>
-          <div className="labord-section-body">
+        <div className="obf-section">
+          <div className="obf-section-head lwf-section-head">{t('labFlow.amendHeading')}</div>
+          <div className="lwf-section-body">
             {order.amended && (
               <p className="labord-help" style={{ marginTop: 0, color: 'var(--color-warning, #CC6600)', fontWeight: 600 }}>
                 {t('labFlow.amendedNotice', {
@@ -503,15 +463,24 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
                 })}
               </p>
             )}
-            <label htmlFor="labflow-amend-reason">{t('labFlow.amendReason')}</label>
-            <textarea
+            <ObfTextField
               id="labflow-amend-reason"
-              rows={2}
+              label={t('labFlow.amendReason')}
+              multiline
               value={ctrl.amendReason}
-              onChange={e => ctrl.setAmendReason(e.target.value)}
+              onChange={ctrl.setAmendReason}
               placeholder={t('labFlow.amendReasonPlaceholder')}
             />
             <p className="labord-help">{t('labFlow.amendHelp')}</p>
+            <button
+              type="button"
+              className="labord-btn"
+              onClick={onAmend}
+              // An amendment without a stated reason is just an overwrite.
+              disabled={ctrl.busy || !ctrl.amendReason.trim()}
+            >
+              {t('labFlow.actionAmend')}
+            </button>
           </div>
         </div>
       )}
@@ -519,7 +488,7 @@ export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWork
   );
 }
 
-/** Step 6 — the report that goes back to the clinician. */
+/** The report that goes back to the clinician. */
 export function ReportStep({
   order, ctrl, readOnly = false,
 }: {
@@ -533,25 +502,24 @@ export function ReportStep({
 
   return (
     <div>
-      <div className="labord-section">
-        <div className="labord-section-head">
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">
           <span>{t('labFlow.reportHeading')}</span>
-          <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={() => printElementById('lab-result-print')}>
+          <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={() => printElementById('lab-result-print', {
+            label: t('labFlow.finalDiagnosticReport'),
+            date: order.completedAt,
+            fieldsTitle: t('print.patientInformation'),
+            fields: [
+              { label: t('print.patientName'), value: order.patientName },
+              { label: t('print.patientId'), value: order.hospitalNumber },
+              { label: t('lab.specimen'), value: order.specimen },
+              { label: t('labFlow.accession'), value: order.accessionNumber },
+            ],
+          })}>
             <Printer className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.printReport')}
           </button>
         </div>
-        <div id="lab-result-print" className="labord-section-body labord-print">
-          <div className="labord-print-only labord-req-head">
-            <div>
-              <div className="labord-req-facility">{order.hospitalName || 'TamamHealth Health Facility'}</div>
-              <div className="labord-req-meta">{t('labFlow.finalDiagnosticReport')}</div>
-            </div>
-            <div className="labord-req-meta" style={{ textAlign: 'end' }}>
-              Patient: {order.patientName}<br />
-              Hospital number: {order.hospitalNumber || '—'}<br />
-              Specimen: {order.specimen || '—'}
-            </div>
-          </div>
+        <div id="lab-result-print" className="lwf-section-body labord-print">
           {order.amended && (
             <div className="labord-print-only" style={{ border: '1px solid var(--color-warning-border)', padding: 8, marginBottom: 10 }}>
               <strong>{t('labFlow.amendedResult')}</strong> — {t('labFlow.previousValue')}: {order.amendedFrom || '—'} · {t('labFlow.reason')}: {order.amendmentReason || '—'} · {t('labFlow.amendedBy')}: {order.amendedBy || '—'}
@@ -571,7 +539,7 @@ export function ReportStep({
                   ))}
                 </tbody>
               </table>
-              <div className="labord-grid-2 lab-result-report-meta">
+              <div className="obf-row lab-result-report-meta">
                 <Field label={t('labFlow.test')} value={order.testName} />
                 <Field label={t('labFlow.accession')} value={order.accessionNumber} />
                 <Field label={t('labFlow.reportedAt')} value={order.completedAt ? formatDateTime(order.completedAt) : undefined} />
@@ -584,7 +552,7 @@ export function ReportStep({
               </div>
             </>
           ) : (
-          <div className="labord-grid-2">
+          <div className="obf-row">
             <Field label={t('labFlow.test')} value={order.testName} />
             <Field label={t('labFlow.accession')} value={order.accessionNumber} />
             <Field
@@ -608,11 +576,28 @@ export function ReportStep({
         </div>
       </div>
 
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.handoffHeading')}</div>
-        <div className="labord-section-body">
+      {isOutsideRequest(order) ? (
+        <div className="obf-section">
+          <div className="obf-section-head lwf-section-head">{t('labFlow.releaseHeading')}</div>
+          <div className="lwf-section-body">
+            <p className="labord-help" style={{ marginTop: 0 }}>
+              {t('labFlow.releaseHelp', { to: order.externalFacility || order.patientName })}
+            </p>
+            {order.reportReleasedAt ? (
+              <Field label={t('labFlow.releasedBy')} value={`${order.reportReleasedBy || '—'} · ${formatDateTime(order.reportReleasedAt)}`} />
+            ) : (
+              <button type="button" className="labord-btn" onClick={ctrl.releaseReport} disabled={ctrl.busy || readOnly}>
+                {t('labFlow.markReleased')}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (<>
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labFlow.handoffHeading')}</div>
+        <div className="lwf-section-body">
           <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.handoffHelp')}</p>
-          <div className="labord-grid-2">
+          <div className="obf-row">
             <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy} />
             <Field
               label={t('labFlow.reviewStatus')}
@@ -629,9 +614,9 @@ export function ReportStep({
           the queue's status labels but had no way to be entered, so every
           reported result stayed "awaiting review" and kept escalating against
           its SLA. One step at a time — the transition guard rejects skips. */}
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.closeoutHeading')}</div>
-        <div className="labord-section-body">
+      <div className="obf-section">
+        <div className="obf-section-head lwf-section-head">{t('labFlow.closeoutHeading')}</div>
+        <div className="lwf-section-body">
           <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutHelp')}</p>
           {!ctrl.canCloseOut && (
             <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutClinicianOnly')}</p>
@@ -670,12 +655,14 @@ export function ReportStep({
           </div>
         </div>
       </div>
+      </>)}
     </div>
   );
 }
 
-/** One rung of the close-out ladder: done (who/when) or the button to do it. */
-function CloseoutRow({
+/** One rung of the close-out ladder: done (who/when) or the button to do it.
+ *  The imaging Release step uses it too. */
+export function CloseoutRow({
   index, label, by, at, actionLabel, onAction, enabled, busy,
 }: {
   index: number;

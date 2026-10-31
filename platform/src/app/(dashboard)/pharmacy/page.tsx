@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useMemo, useEffect, Fragment } from 'react';
-import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
+import StationActionPill from '@/components/ehr/StationActionPill';
+import DispenseSlider from '@/components/pharmacy/workflow/DispenseSlider';
+import type { RxIntent } from '@/components/pharmacy/workflow/PharmacyWorkflowPanel';
+import { counterActions, counterPillLabel } from '@/components/pharmacy/workflow/pharmacy-workflow-types';
 import TableCols from '@/components/TableCols';
 import Link from 'next/link';
 import PatientAvatar from '@/components/patients/PatientAvatar';
 import { INITIALS_PLATE_STYLE, nameInitials } from '@/components/ehr/initials-plate';
 import { patientAgeLabel, shortenPersonName } from '@/lib/patient-utils';
-import { AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download, Check, ExternalLink } from '@/components/icons/lucide';
+import { AlertTriangle, Loader2, Plus, X, Printer, ChevronRight, AlertOctagon, Download } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUi } from '@/lib/context';
@@ -15,30 +18,24 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { useUsers } from '@/lib/hooks/useUsers';
 import { useToast } from '@/components/Toast';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
-import { medicationMatches } from '@/lib/services/dispensing-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { formatCompactDateTime, formatMoney } from '@/lib/format-utils';
 import { isActivePharmacyStage, isOutsidePharmacyOrder, pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
 import { usePatientBalances } from '@/lib/hooks/usePatientBalances';
-import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
-import { prescription as rxLifecycle } from '@/lib/clinical-flow/order-lifecycles';
 import Select from '@/components/Select';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { formatPrintedAt } from '@/lib/print-identity';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { useRoleChoice } from '@/lib/settings/useRoleSetting';
 import { stopsClickPropagation } from '@/lib/a11y';
 import PatientMedHistoryModal from '@/components/pharmacy/PatientMedHistoryModal';
 import StockInModal from '@/components/pharmacy/StockInModal';
 import RestockModal from '@/components/pharmacy/RestockModal';
-import DispenseConfirmModal from '@/components/pharmacy/DispenseConfirmModal';
 import { RX_STAGE_PILL_CLASS, prescriptionSig, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
-import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
 export default function PharmacyPage() {
@@ -65,12 +62,11 @@ export default function PharmacyPage() {
     if (patientParam) setGlobalSearch(patientParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-  const { canDispense, canAccess } = usePermissions();
+  const { canDispense } = usePermissions();
   const { showToast } = useToast();
   const { t } = useTranslation();
-  const confirmPrompt = useConfirmPrompt();
   const router = useRouter();
-  const { prescriptions: allPrescriptions, loading: rxLoading, dispense, markUnfilled, advance } = usePrescriptions();
+  const { prescriptions: allPrescriptions, loading: rxLoading } = usePrescriptions();
   // Scripts issued for an outside pharmacy are not this pharmacy's work — the
   // patient is holding them. Dropped here so no queue, count or export below
   // can pick one up.
@@ -78,13 +74,11 @@ export default function PharmacyPage() {
   const { items: rawInventory, create: createInventory, update: updateInventory } = usePharmacyInventory();
   const { patients } = usePatients();
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);
-  const { users } = useUsers();
-  const [workflowRxId, setWorkflowRxId] = useState<string | null>(null);
+  // The script open in the slider from its pill's dropdown.
+  const [counter, setCounter] = useState<{ id: string; intent?: RxIntent } | null>(null);
+  const counterRx = counter ? allPrescriptions.find(rx => rx._id === counter.id) : undefined;
   // One handover confirmation combines counselling with dispensing; controlled
   // medicines add a verified witness to the same dialog.
-  const [dispenseTarget, setDispenseTarget] = useState<{ rx: typeof rxQueue[number]; inv: typeof rawInventory[number]; qty: number } | null>(null);
-  const [witnessId, setWitnessId] = useState('');
-  const [counsellingConfirmed, setCounsellingConfirmed] = useState(false);
 
   // ── Shared list-page toolbar state ──
   // Table search (the listpage-table-search input) takes priority over the
@@ -140,389 +134,11 @@ export default function PharmacyPage() {
   // `Promise.allSettled` and only ever marks a balance 'ready' once a real
   // read for THAT patient has landed.
   const rxPatientIds = useMemo(() => rxQueue.map(rx => rx.patientId), [rxQueue]);
-  const { balanceFor, isKnownFor, isClearedFor, confirmCleared } = usePatientBalances(rxPatientIds);
+  const { balanceFor, isKnownFor, isClearedFor } = usePatientBalances(rxPatientIds);
 
   // Distinct medication categories present in the current inventory, for the
   // header's "filter by category" select.
   const categories = useMemo(() => Array.from(new Set(inventory.map(i => i.category))).sort(), [inventory]);
-
-  // Find the inventory row for a medication at the current facility.
-  // Same normalised match the dispensing transaction uses, so the button
-  // state can never disagree with what the transaction will find. Returns the
-  // earliest-expiring in-stock batch (FEFO), which is the one that will move.
-  const findInventoryFor = (medication: string) =>
-    inventory
-      .filter(i => medicationMatches(medication, i.medicationName))
-      .filter(i => !currentUser?.hospitalId || i.hospitalId === currentUser.hospitalId)
-      .filter(i => (i.stockLevel || 0) > 0)
-      .sort((a, b) => (a.expiryDate || '9999').localeCompare(b.expiryDate || '9999'))[0];
-
-  const stockOnHandFor = (medication: string) =>
-    inventory
-      .filter(i => medicationMatches(medication, i.medicationName))
-      .filter(i => !currentUser?.hospitalId || i.hospitalId === currentUser.hospitalId)
-      .reduce((sum, i) => sum + (i.stockLevel || 0), 0);
-
-  const advanceRx = async (rx: typeof rxQueue[number], to: PrescriptionStatus, successMessage: string) => {
-    try {
-      await advance(rx._id, to);
-      showToast(successMessage, 'success');
-    } catch (err) {
-      showToast(describeError(err, t('msg.prescriptionStatusNotChangedTry')), 'error');
-    }
-  };
-
-  const handleClearForDispense = (rx: typeof rxQueue[number]) => {
-    const qty = estimateCourseQuantity(rx);
-    const inv = findInventoryFor(rx.medication);
-    if (!inv || inv.stockLevel < qty) {
-      advanceRx(rx, 'stockout_partial_referred', `Stockout recorded: ${inv?.stockLevel ?? 0} ${inv?.unit || t('statusWord.units')} available.`);
-      return;
-    }
-    advanceRx(rx, 'cleared_for_dispensing', `${rx.medication} cleared. Send patient for payment if a balance remains.`);
-  };
-
-  const handlePaymentStep = (rx: typeof rxQueue[number]) => {
-    if (canAccess('/payments') && rx.patientId) {
-      router.push(`/payments?patientId=${rx.patientId}`);
-      return;
-    }
-    const message = isKnownFor(rx.patientId)
-      ? `Payment due for ${rx.patientName}: ${formatMoney(balanceFor(rx.patientId))}. Send the patient to cashier before dispensing.`
-      : `Could not confirm ${rx.patientName}'s balance. Send the patient to cashier to verify before dispensing.`;
-    showToast(message, 'error');
-  };
-
-  // One call, one transaction. The stock gate, FEFO batch decrement, the
-  // controlled-substance register entry and the prescription update all run
-  // inside dispenseMedication(), which rolls back anything already applied if
-  // a later step fails — so this can no longer leave stock moved with no
-  // dispense record (or the reverse), which the old three-await sequence did.
-  const doDispense = async (
-    rx: typeof rxQueue[number],
-    inv: typeof rawInventory[number] | undefined,
-    qty: number,
-    witness: { id: string; name: string } | null,
-  ): Promise<boolean> => {
-    // Live re-read of the ledger, immediately before the write it gates. The
-    // on-screen balance (what handleDispense checked to decide whether to
-    // even get here) can already be stale by the time this fires — a witness
-    // pick, a slow click, or just queue time passing. confirmCleared also
-    // refreshes the cached balance so the row reflects it on the next render.
-    if (rx.patientId) {
-      const clearance = await confirmCleared(rx.patientId);
-      if (!clearance.cleared) {
-        showToast(
-          clearance.reason === 'outstanding'
-            ? t('msg.paymentDueOwesSendThe', { patientName: rx.patientName, value: formatMoney(clearance.balance) })
-            : t('msg.notDispensedSBalanceCould', { patientName: rx.patientName }),
-          'warning',
-        );
-        return false;
-      }
-    }
-    try {
-      const result = await dispense({
-        prescription: rx,
-        quantity: qty,
-        dispenserId: currentUser?._id || '',
-        dispenserName: currentUser?.name || currentUser?.username || '',
-        facilityId: rx.hospitalId || currentUser?.hospitalId || '',
-        facilityName: rx.hospitalName || currentUser?.hospitalName,
-        orgId: currentUser?.orgId,
-        witnessId: witness?.id,
-        witnessName: witness?.name,
-        counsellingConfirmed: true,
-      });
-      const batches = result.allocations.map(a => a.batchNumber).join(', ');
-      showToast(
-        result.outcome === 'partial'
-          ? t('msg.partialFillOfDispensedFrom2', { quantityDispensed: result.quantityDispensed, value: inv?.unit || t('statusWord.units'), medication: rx.medication, batches })
-          : t('msg.dispensedFromBatch', { medication: rx.medication, batches }),
-        result.outcome === 'partial' ? 'error' : 'success',
-      );
-      return true;
-    } catch (err) {
-      showToast(describeError(err, t('msg.medicationNotDispensedTryAgain')), 'error');
-      return false;
-    }
-  };
-
-  /** Stock-out referral / prescriber clarification — the two non-dispense
-   *  outcomes the lifecycle has always had but nothing could reach. */
-  const markRxUnfilled = async (
-    rx: typeof rxQueue[number],
-    reason: 'stock_out' | 'clarification_requested',
-  ) => {
-    const stockOut = reason === 'stock_out';
-    // null = Cancel; an empty note is allowed (optional), as before.
-    const note = await confirmPrompt({
-      title: t(stockOut ? 'confirm.rxStockOutTitle' : 'confirm.rxClarifyTitle', { medication: rx.medication }),
-      inputLabel: t(stockOut ? 'confirm.rxStockOutLabel' : 'confirm.rxClarifyLabel'),
-      confirmLabel: t(stockOut ? 'confirm.rxStockOutConfirm' : 'confirm.rxClarifyConfirm'),
-      tone: 'warning',
-    });
-    if (note === null) return;
-    try {
-      await markUnfilled(rx, reason, note.trim(), {
-        id: currentUser?._id || '',
-        name: currentUser?.name || currentUser?.username || '',
-      });
-      showToast(
-        reason === 'stock_out'
-          ? t('msg.recordedAsOutOfStock', { medication: rx.medication })
-          : t('msg.onHoldUntilThePrescriber', { medication: rx.medication }),
-        'success',
-      );
-    } catch (err) {
-      showToast(describeError(err, t('msg.outcomeNotRecordedTryAgain')), 'error');
-    }
-  };
-
-  const handleDispense = async (rxId: string, overrideQty?: number) => {
-    const rx = rxQueue.find(r => r._id === rxId);
-    if (!rx) return;
-    // Checked before the cleared/outstanding branch: an unresolved balance
-    // (still loading, or the ledger fetch errored) is not "money owed" — it's
-    // "we don't know" — and must not fall through to the stock check below.
-    if (!isKnownFor(rx.patientId)) {
-      showToast(t('msg.sBalanceCouldNotBe', { patientName: rx.patientName }), 'warning');
-      return;
-    }
-    if (!isClearedFor(rx.patientId)) {
-      handlePaymentStep(rx);
-      return;
-    }
-    const qty = overrideQty ?? ((estimateCourseQuantity(rx)) - (rx.quantityDispensed || 0));
-    const inv = findInventoryFor(rx.medication);
-    // Clearance, stock and expiry are all re-checked inside the transaction
-    // against live batch data — this only decides whether to collect a
-    // witness signature first, so the modal isn't shown for nothing.
-    if (inv?.controlledSchedule || inv?.requiresWitness) {
-      setWitnessId('');
-    }
-    if (!inv) {
-      showToast(t('msg.noDispensableStockIsAvailable'), 'error');
-      return;
-    }
-    setCounsellingConfirmed(false);
-    setDispenseTarget({ rx, inv, qty });
-  };
-
-  const confirmControlledDispense = async () => {
-    if (!dispenseTarget) return;
-    if (!counsellingConfirmed) {
-      showToast(t('msg.confirmThatThePatientWas'), 'error');
-      return;
-    }
-    const requiresWitness = Boolean(dispenseTarget.inv.controlledSchedule || dispenseTarget.inv.requiresWitness);
-    const witness = requiresWitness ? users.find(u => u._id === witnessId) : undefined;
-    if (requiresWitness && !witness) {
-      showToast(t('msg.selectAWitness'), 'error');
-      return;
-    }
-    const ok = await doDispense(
-      dispenseTarget.rx,
-      dispenseTarget.inv,
-      dispenseTarget.qty,
-      witness ? { id: witness._id, name: witness.name } : null,
-    );
-    if (ok) setDispenseTarget(null);
-  };
-
-  /**
-   * Explicit branch actions (KAN-39). `stockout_partial_referred` was only ever
-   * reachable as a side effect of "Clear" finding the shelf empty, and
-   * `held_awaiting_clarification` / `dispensing_error_recalled` were not
-   * reachable from the UI at all — so three states the lifecycle defines could
-   * never be entered by a pharmacist who needed them.
-   */
-  // Both outcomes capture WHY through recordUnfilled — a status flip alone
-  // tells the next pharmacist nothing about where the patient was referred or
-  // what the prescriber was asked.
-  const handleHold = (rx: typeof rxQueue[number]) =>
-    markRxUnfilled(rx, 'clarification_requested');
-
-  const handleStockout = (rx: typeof rxQueue[number]) =>
-    markRxUnfilled(rx, 'stock_out');
-
-  const handleRecall = (rx: typeof rxQueue[number]) =>
-    advanceRx(rx, 'dispensing_error_recalled', `${rx.medication} recalled — dispensing error logged. Re-check before re-issuing.`);
-
-  /**
-   * Secondary actions available alongside the main step action, gated on the
-   * lifecycle so a pharmacist is never offered a transition the service layer
-   * would reject.
-   */
-  const secondaryActionsFor = (rx: typeof rxQueue[number]): Array<{ label: string; onClick: () => void; tone?: 'danger' }> => {
-    if (!canDispense) return [];
-    const stage = pharmacyStage(rx);
-    const out: Array<{ label: string; onClick: () => void; tone?: 'danger' }> = [];
-    if (rxLifecycle.can(stage, 'held_awaiting_clarification')) {
-      out.push({ label: 'Hold — query prescriber', onClick: () => handleHold(rx) });
-    }
-    if (rxLifecycle.can(stage, 'stockout_partial_referred')) {
-      out.push({ label: 'Record stockout', onClick: () => handleStockout(rx) });
-    }
-    if (rxLifecycle.can(stage, 'dispensing_error_recalled')) {
-      out.push({ label: 'Recall — dispensing error', onClick: () => handleRecall(rx), tone: 'danger' });
-    }
-    return out;
-  };
-
-  const workflowActionFor = (rx: typeof rxQueue[number]): { label?: string; onClick?: () => void; disabled?: boolean; disabledReason?: string } => {
-    if (!canDispense) return {};
-    const stage = pharmacyStage(rx);
-    if (stage === 'received_in_pharmacy_queue' || stage === 'under_review' || stage === 'held_awaiting_clarification' || stage === 'stockout_partial_referred' || stage === 'clinician_consultation_in_progress') {
-      return { label: 'Review & clear', onClick: () => handleClearForDispense(rx) };
-    }
-    if (stage === 'cleared_for_dispensing' && !isClearedFor(rx.patientId)) {
-      return { label: canAccess('/payments') ? 'Collect payment' : 'Send to cashier', onClick: () => handlePaymentStep(rx) };
-    }
-    if (stage === 'cleared_for_dispensing') {
-      // Stock position drives which dispense is on offer. A shelf that cannot
-      // cover the full course is not a dead end any more: the pharmacist can
-      // hand over what exists as a partial fill and the order stays open for
-      // the balance. Only a genuinely empty shelf disables the button, and
-      // "Record stockout" is the route forward there.
-      const dispenseQty = (estimateCourseQuantity(rx)) - (rx.quantityDispensed || 0);
-      const onHand = stockOnHandFor(rx.medication);
-      if (onHand <= 0) {
-        return {
-          label: t('pharmacy.dispense'),
-          disabled: true,
-          disabledReason: 'Out of stock — record a stockout referral instead.',
-        };
-      }
-      if (onHand < dispenseQty) {
-        return {
-          label: `Dispense ${onHand} of ${dispenseQty}`,
-          onClick: () => handleDispense(rx._id, onHand),
-        };
-      }
-      return { label: t('pharmacy.dispense'), onClick: () => handleDispense(rx._id) };
-    }
-    if (stage === 'dispensed' || stage === 'counseled') return { label: 'Finish record', onClick: () => advanceRx(rx, 'complete', `${rx.medication} workflow completed.`) };
-    return {};
-  };
-
-
-  const renderWorkflowPopup = (rx: typeof rxQueue[number]) => {
-    const stage = pharmacyStage(rx);
-    const balance = balanceFor(rx.patientId);
-    const balanceKnown = isKnownFor(rx.patientId);
-    const inv = findInventoryFor(rx.medication);
-    const qty = estimateCourseQuantity(rx);
-    const stockOk = !!inv && inv.stockLevel >= qty;
-    const paymentClear = isClearedFor(rx.patientId);
-    const action = workflowActionFor(rx);
-    const completed = {
-      checked: ['cleared_for_dispensing', 'dispensed', 'counseled', 'complete'].includes(stage),
-      payment: ['dispensed', 'counseled', 'complete'].includes(stage) || (stage === 'cleared_for_dispensing' && paymentClear),
-      dispensed: ['dispensed', 'counseled', 'complete'].includes(stage),
-      handedOver: stage === 'complete' || stage === 'counseled',
-    };
-    const currentKey =
-      !completed.checked ? 'checked' :
-      !completed.payment ? 'payment' :
-      !completed.handedOver ? 'handedOver' :
-      '';
-    const steps = [
-      { key: 'checked', label: 'Review order and stock', note: stockOk ? `${inv?.stockLevel ?? qty} ${inv?.unit || t('statusWord.units')} available — ${qty} needed` : `Stock issue: ${inv?.stockLevel ?? 0} available, ${qty} needed`, done: completed.checked },
-      { key: 'payment', label: 'Receive / confirm payment', note: !balanceKnown ? 'Balance unavailable — verify before dispensing' : paymentClear ? 'Payment clear or no charge' : `${formatMoney(balance)} outstanding`, done: completed.payment },
-      { key: 'handedOver', label: 'Counsel and dispense', note: 'Explain use, hand over medicine, and update stock in one action.', done: completed.handedOver },
-    ];
-
-    return (
-      /* The doctor dashboard's expanded visit row, exactly: one label/value
-         list in `.ehr-visit-pop-*`, no nested cards or boxes of its own. The
-         workflow steps are rows in the same list rather than a second, louder
-         language stacked underneath it. */
-      <div className="ehr-visit-pop ehr-visit-pop--inline">
-        <div className="ehr-visit-pop-body">
-          <div className="ehr-visit-pop-row">
-            <span className="ehr-visit-pop-label">Ordered</span>
-            <div>
-              <strong>{rx.medication}</strong>
-              <p>{prescriptionSig(rx)}</p>
-            </div>
-          </div>
-          <div className="ehr-visit-pop-row">
-            <span className="ehr-visit-pop-label">Payment</span>
-            <div>
-              <strong style={{ color: paymentClear ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>
-                {paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}
-              </strong>
-            </div>
-          </div>
-          <div className="ehr-visit-pop-row">
-            <span className="ehr-visit-pop-label">Stage</span>
-            <div><strong>{pharmacyStageLabel(stage)}</strong></div>
-          </div>
-          {steps.map((step, index) => {
-            const isCurrent = step.key === currentKey;
-            return (
-              <div key={step.key} className="ehr-visit-pop-row">
-                <span className="ehr-visit-pop-label">Step {index + 1}</span>
-                <div>
-                  {/* State is carried by the text itself — done reads muted
-                      with a tick, the step in hand reads in the accent. */}
-                  <strong style={{
-                    color: step.done ? 'var(--ehr-muted)' : isCurrent ? 'var(--accent-text)' : undefined,
-                  }}>
-                    {step.done && <Check className="w-3.5 h-3.5" style={{ display: 'inline', verticalAlign: '-2px', marginInlineEnd: 4 }} aria-hidden />}
-                    {step.label}
-                  </strong>
-                  <p>{step.note}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {rx.patientId && (
-          <button
-            type="button"
-            className="ehr-visit-pop-link"
-            onClick={() => router.push(`/patients/${rx.patientId}?tab=prescriptions&focus=${encodeURIComponent(rx._id)}`)}
-            title={`Open ${rx.patientName}'s chart`}
-          >
-            <ExternalLink className="w-3.5 h-3.5" aria-hidden />
-            Open patient chart
-          </button>
-        )}
-        {action.label && action.disabled && (
-          <div className="space-y-1">
-            <button type="button" className="btn btn-primary w-full" disabled title={action.disabledReason}>
-              {action.label}
-            </button>
-            {action.disabledReason && (
-              <p className="text-xs" style={{ color: 'var(--color-warning-text)' }}>{action.disabledReason}</p>
-            )}
-          </div>
-        )}
-        {secondaryActionsFor(rx).length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {secondaryActionsFor(rx).map(secondary => (
-              <button
-                key={secondary.label}
-                type="button"
-                className="btn btn-secondary"
-                style={secondary.tone === 'danger' ? { color: 'var(--color-danger-text)' } : undefined}
-                onClick={secondary.onClick}
-              >
-                {secondary.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {action.label && action.onClick && (
-          <button type="button" className="btn btn-primary w-full" onClick={action.onClick}>
-            {action.label}
-          </button>
-        )}
-      </div>
-    );
-  };
 
   const handleStockIn = async () => {
     if (!stockForm.medicationName.trim() || stockForm.stockLevel <= 0) {
@@ -730,10 +346,11 @@ export default function PharmacyPage() {
       title: t('pharmacy.purchaseOrderRestock'),
       documentLabel: t('pharmacy.purchaseOrder'),
       facilityName: currentUser?.hospitalName,
+      metaTitle: 'Order Details',
       meta: [
-        { label: 'Prepared', value: new Date().toLocaleString('en-GB') },
-        { label: 'Items requested', value: reorderList.length },
-        { label: 'Prepared by', value: currentUser?.name || currentUser?.username || '—' },
+        { label: 'Prepared', value: formatPrintedAt(new Date()) },
+        { label: 'Items Requested', value: reorderList.length },
+        { label: 'Prepared By', value: currentUser?.name || currentUser?.username || '—' },
       ],
       safeBodyHtml: body,
       footer: 'Stock request prepared from current inventory and reorder thresholds.',
@@ -964,14 +581,13 @@ export default function PharmacyPage() {
                   const balanceKnown = isKnownFor(rx.patientId);
                   const paymentClear = isClearedFor(rx.patientId);
                   const rowPatient = patientById.get(rx.patientId);
-                  const toggleWorkflow = () => setWorkflowRxId(current => (current === rx._id ? null : rx._id));
+                  const toggleWorkflow = () => setCounter({ id: rx._id });
                   return (
                     <Fragment key={rx._id}>
                       <div
                         className="ehr-appointment-row appointment-card-row"
                         role="button"
                         tabIndex={0}
-                        aria-expanded={workflowRxId === rx._id}
                         onClick={toggleWorkflow}
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleWorkflow(); } }}
                       >
@@ -1016,19 +632,18 @@ export default function PharmacyPage() {
                         </div>
 
                         <div className="appointment-card-status">
-                          <span className={`appointment-status-pill ${RX_STAGE_PILL_CLASS[stage] ?? 'status-scheduled'}`}>
-                            {pharmacyStageLabel(stage)}
-                          </span>
+                          <StationActionPill
+                            label={counterPillLabel(rx.orderStatus || 'prescribed', t)}
+                            className={RX_STAGE_PILL_CLASS[stage] ?? 'status-scheduled'}
+                            actions={canDispense ? counterActions(rx.orderStatus || 'prescribed', t) : []}
+                            ariaLabel={`Next step for ${rx.medication}`}
+                            onPick={action => setCounter({ id: rx._id, intent: action === 'hold' || action === 'stockout' ? action : undefined })}
+                          />
                           {rx.urgency === 'immediate' && (
                             <small style={{ color: 'var(--color-warning-text)' }}>Immediate</small>
                           )}
                         </div>
                       </div>
-                      {workflowRxId === rx._id && (
-                        <div className="ehr-row-detail ehr-row-detail--table" role="region" aria-label={`${rx.patientName} \u2014 ${rx.medication}`}>
-                          {renderWorkflowPopup(rx)}
-                        </div>
-                      )}
                     </Fragment>
                   );
                 })}
@@ -1268,7 +883,6 @@ export default function PharmacyPage() {
         />
       )}
 
-
       {/* Stock-in modal */}
       {showStockInModal && (
         <StockInModal
@@ -1291,17 +905,13 @@ export default function PharmacyPage() {
       )}
 
       {/* Single medication handover; controlled medicines add witness sign-off. */}
-      {dispenseTarget && (
-        <DispenseConfirmModal
-          dispenseTarget={dispenseTarget}
-          counsellingConfirmed={counsellingConfirmed}
-          setCounsellingConfirmed={setCounsellingConfirmed}
-          witnessId={witnessId}
-          setWitnessId={setWitnessId}
-          users={users}
-          currentUserId={currentUser?._id}
-          onClose={() => setDispenseTarget(null)}
-          onConfirm={confirmControlledDispense}
+      {counterRx && (
+        <DispenseSlider
+          rx={counterRx}
+          patientName={shortenPersonName(counterRx.patientName)}
+          activeMedications={allPrescriptions.filter(rx => rx.patientId === counterRx.patientId && rx._id !== counterRx._id && rx.status !== 'discontinued').map(rx => rx.medication).filter(Boolean)}
+          intent={counter?.intent}
+          onClose={() => setCounter(null)}
         />
       )}
     </main>

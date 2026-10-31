@@ -20,6 +20,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Package, Utensils } from '@/components/icons/lucide';
+import { useState } from 'react';
+import FormSlider from '@/components/overlay/FormSlider';
+import NutritionScreeningPanel from '@/components/ehr/chart/panels/NutritionScreeningPanel';
+import '@/components/lab/workflow/lab-workflow.css';
 import EhrClinicalDashboard, {
   type WorklistPatient,
   type OutstandingItem,
@@ -33,7 +37,8 @@ import { useNutritionSupplies } from '@/lib/hooks/useNutritionSupplies';
 import { classifySupplyStatus, type NutritionSupplyDoc } from '@/lib/services/nutrition-supply-service';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
-import { localClockOf, localDayOf } from '@/lib/date-utils';
+import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { agoLabel, shortDayLabel } from '@/lib/station-time';
 import type { NutritionScreeningDoc, PatientDoc } from '@/lib/db-types';
 
 export const NUTRITION_SUPPLIES_HREF = '/dashboard/nutrition/supplies';
@@ -55,7 +60,8 @@ export interface NutritionWorklistInput {
   /** Every screening in scope, newest first (`useNutritionScreenings`). */
   screenings: NutritionScreeningDoc[];
   supplies: NutritionSupplyDoc[];
-  labels: { samToTreat: string; followUps: string; supplyAlerts: string; edema: string; muac: (value: number) => string };
+  labels: { samToTreat: string; followUps: string; supplyAlerts: string; edema: string; assigned: string; muac: (value: number) => string; nextAction?: string };
+  now?: Date;
 }
 
 export interface NutritionWorklistResult {
@@ -65,7 +71,7 @@ export interface NutritionWorklistResult {
 }
 
 export function assembleNutritionWorklist({
-  currentUser, patients, screenings, supplies, labels,
+  currentUser, patients, screenings, supplies, labels, now = new Date(),
 }: NutritionWorklistInput): NutritionWorklistResult {
   const patientById = new Map(patients.map(p => [p._id, p]));
 
@@ -77,6 +83,7 @@ export function assembleNutritionWorklist({
   }
   const open = [...latestByPatient.values()].filter(needsFollowUp);
 
+  const clockOf = (iso?: string) => (localDayOf(iso) === toIsoDate(now) ? localClockOf(iso) : shortDayLabel(iso));
   const rows: WorklistPatient[] = open.map(s => {
     const doc = patientById.get(s.patientId as string);
     const context = `${s.status} · ${labels.muac(s.muac)}`;
@@ -94,8 +101,61 @@ export function assembleNutritionWorklist({
       assignedDoctorName: currentUser.name,
       assignmentStatus: 'assigned',
       triagePriority: s.status === 'SAM' ? 'RED' : s.status === 'MAM' ? 'YELLOW' : 'GREEN',
+      station: {
+        timeLabel: clockOf(s.createdAt),
+        timeSubtext: agoLabel(s.createdAt, now),
+        context,
+        contextSubtext: '',
+        status: s.status,
+        statusTone: s.status === 'SAM' ? 'danger' : 'warning',
+        statusSubtext: '',
+        careTeamSecondary: '',
+        lane: 'scheduled',
+        chartHref: screeningFormHref(s.patientId as string),
+        openId: s.patientId as string,
+        actions: labels.nextAction ? [{ value: 'next', label: labels.nextAction }] : undefined,
+      },
     };
   });
+
+  // And anyone the desk routed here who has no open case yet.
+  const today = toIsoDate(now);
+  const clock = (iso?: string) => (localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
+  const assignedToMe = patients.filter(p => p.stationAssignments?.nutrition?.staffId === currentUser._id);
+  const listed = new Set(rows.map(row => row._id));
+  for (const doc of assignedToMe) {
+    if (listed.has(doc._id)) continue;
+    const slot = doc.stationAssignments!.nutrition!;
+    rows.push({
+      _id: doc._id,
+      photoUrl: doc.photoUrl,
+      name: patientDisplayName(doc),
+      age: patientAge(doc),
+      gender: doc.gender?.[0] || '',
+      id: doc.hospitalNumber,
+      ward: labels.assigned,
+      division: labels.assigned,
+      doctor: doc.assignedDoctorName || '',
+      assignedDoctor: currentUser._id,
+      assignedDoctorName: currentUser.name,
+      assignmentStatus: 'assigned',
+      assignmentNote: slot.note,
+      triagePriority: 'GREEN',
+      station: {
+        timeLabel: clock(slot.assignedAt),
+        timeSubtext: agoLabel(slot.assignedAt, now),
+        context: labels.assigned,
+        contextSubtext: slot.assignedByName ? shortenPersonName(slot.assignedByName) : '',
+        status: labels.assigned,
+        statusTone: 'ready',
+        statusSubtext: slot.note || '',
+        lane: 'scheduled',
+        chartHref: screeningFormHref(doc._id),
+        openId: doc._id,
+        actions: labels.nextAction ? [{ value: 'next', label: labels.nextAction }] : undefined,
+      },
+    });
+  }
 
   const entry = (s: NutritionScreeningDoc): OutstandingEntry => ({
     id: s._id,
@@ -138,6 +198,19 @@ export function assembleNutritionWorklist({
         href: NUTRITION_SUPPLIES_HREF,
       })),
     },
+    {
+      label: labels.assigned,
+      count: assignedToMe.length,
+      tone: 'neutral',
+      entries: assignedToMe.map(p => ({
+        id: p._id,
+        title: patientDisplayName(p),
+        subtitle: p.stationAssignments?.nutrition?.note || p.hospitalNumber,
+        meta: clock(p.stationAssignments?.nutrition?.assignedAt),
+        tone: 'neutral' as const,
+        href: screeningFormHref(p._id),
+      })),
+    },
   ];
 
   // Week bars: every screening taken, flagged (series 0) vs normal (series 1)
@@ -160,6 +233,8 @@ export default function NutritionHomeView() {
   const { appointments } = useAppointments();
   const { screenings } = useNutritionScreenings();
   const { items: supplies } = useNutritionSupplies();
+  // Who is open in the screening slider.
+  const [screenFor, setScreenFor] = useState<string | null>(null);
 
   if (!currentUser) return null;
 
@@ -170,9 +245,12 @@ export default function NutritionHomeView() {
       followUps: t('nutritionHome.followUps'),
       supplyAlerts: t('nutrition.kpiSupplyAlerts'),
       edema: t('nutritionHome.edema'),
+      assigned: t('labHome.assignedToMe'),
       muac: value => t('nutritionForm.muacReading', { value }),
+      nextAction: t('nutritionHome.actionScreen'),
     },
   });
+  const screenPatient = screenFor ? patients.find(p => p._id === screenFor) : undefined;
 
   return (
     <main className="page-container page-enter">
@@ -192,7 +270,15 @@ export default function NutritionHomeView() {
           icon: Package,
           run: () => router.push(NUTRITION_SUPPLIES_HREF),
         }]}
+        onStationOpen={setScreenFor}
       />
+      {screenPatient && (
+        <FormSlider title={t('nutritionHome.actionScreen')} subtitle={patientDisplayName(screenPatient)} className="tamam-dialog" width={560} flush onClose={() => setScreenFor(null)}>
+          <div className="station-form-slider o3f-scroll">
+            <NutritionScreeningPanel patient={screenPatient} currentUser={currentUser} onClose={() => setScreenFor(null)} />
+          </div>
+        </FormSlider>
+      )}
     </main>
   );
 }

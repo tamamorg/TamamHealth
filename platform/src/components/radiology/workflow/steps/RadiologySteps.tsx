@@ -22,6 +22,7 @@ import {
 } from '../radiology-workflow-types';
 import type { RadiologyWorkflowController } from '../useRadiologyWorkflow';
 import StudyImageWorkspace from '../StudyImageWorkspace';
+import { CloseoutRow } from '@/components/lab/workflow/steps/LabSteps';
 
 export function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -440,22 +441,69 @@ export function ReleaseStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
   const { t } = useTranslation();
 
   return (
-    <div className="labord-section">
-      <div className="labord-section-head">{t('imgFlow.releaseHead')}</div>
-      <div className="labord-section-body">
-        <div className="labord-grid-2">
-          <Field label={t('imgFlow.study')} value={studyLine(study)} />
-          <Field label={t('imgFlow.stage')} value={t(`labFlow.stage_${ctrl.stage}`)} />
-          <Field label={t('labOrder.orderingProviderLabel')} value={study.orderedBy} />
-          <Field label={t('imgFlow.reportedBy')} value={study.reportedBy} />
+    <div>
+      <div className="labord-section">
+        <div className="labord-section-head">{t('imgFlow.releaseHead')}</div>
+        <div className="labord-section-body">
+          <div className="labord-grid-2">
+            <Field label={t('imgFlow.study')} value={studyLine(study)} />
+            <Field label={t('imgFlow.stage')} value={t(`labFlow.stage_${ctrl.stage}`)} />
+            <Field label={t('labOrder.orderingProviderLabel')} value={study.orderedBy} />
+            <Field label={t('imgFlow.reportedBy')} value={study.reportedBy} />
+          </div>
+          <div className="labord-divider" />
+          <Field label={t('imgFlow.impression')} value={study.impression || study.result} />
+          <p className="labord-help" style={{ margin: '10px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {ctrl.stage === 'communicated_to_patient'
+              ? <><CheckCircle2 className="w-4 h-4" aria-hidden /> {t('imgFlow.loopClosed')}</>
+              : t('imgFlow.releaseHelp')}
+          </p>
         </div>
-        <div className="labord-divider" />
-        <Field label={t('imgFlow.impression')} value={study.impression || study.result} />
-        <p className="labord-help" style={{ margin: '10px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {ctrl.stage === 'communicated_to_patient'
-            ? <><CheckCircle2 className="w-4 h-4" aria-hidden /> {t('imgFlow.loopClosed')}</>
-            : t('imgFlow.releaseHelp')}
-        </p>
+      </div>
+
+      {/* Closing the loop, one hop at a time, as on a lab result — the three
+          actions existed on the workflow with no way to press them, so a
+          reported study sat at "awaiting review" for good. */}
+      <div className="labord-section">
+        <div className="labord-section-head">{t('labFlow.closeoutHeading')}</div>
+        <div className="labord-section-body">
+          <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutHelp')}</p>
+          {!ctrl.canCloseOut && (
+            <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutClinicianOnly')}</p>
+          )}
+          <div className="labord-numbered">
+            <CloseoutRow
+              index={1}
+              label={t('labFlow.stage_reviewed_by_clinician')}
+              by={study.reviewedBy}
+              at={study.reviewedAt}
+              actionLabel={t('labFlow.markReviewed')}
+              onAction={ctrl.markReviewed}
+              enabled={ctrl.canCloseOut && ctrl.stage === 'resulted'}
+              busy={ctrl.busy}
+            />
+            <CloseoutRow
+              index={2}
+              label={t('labFlow.stage_acted_upon')}
+              by={study.actedUponBy}
+              at={study.actedUponAt}
+              actionLabel={t('labFlow.markActedUpon')}
+              onAction={ctrl.markActedUpon}
+              enabled={ctrl.canCloseOut && ctrl.stage === 'reviewed_by_clinician'}
+              busy={ctrl.busy}
+            />
+            <CloseoutRow
+              index={3}
+              label={t('labFlow.stage_communicated_to_patient')}
+              by={study.communicatedBy}
+              at={study.communicatedAt}
+              actionLabel={t('labFlow.markCommunicated')}
+              onAction={ctrl.markCommunicated}
+              enabled={ctrl.canCloseOut && ctrl.stage === 'acted_upon'}
+              busy={ctrl.busy}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

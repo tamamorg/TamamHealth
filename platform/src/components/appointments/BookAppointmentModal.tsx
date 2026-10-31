@@ -51,6 +51,7 @@ import type {
   AppointmentType, AppointmentPriority, AppointmentStatus, FacilityLevel,
 } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { APPOINTMENT_TYPE_OPTIONS } from '@/lib/visits/visit-details';
 import { describeError } from '@/lib/user-facing-error';
 import { mirrorBookingCareTeam } from '@/lib/booking/mirror-booking-care-team';
 import { withServerConflictCheck } from '@/lib/booking/server-conflict-check';
@@ -77,17 +78,7 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, h) =>
   return hour >= 7 && hour <= 18;
 });
 
-const TYPE_OPTIONS: { value: AppointmentType; labelKey: string }[] = [
-  { value: 'general', labelKey: 'appointments.typeGeneral' },
-  { value: 'follow_up', labelKey: 'appointments.typeFollowUp' },
-  { value: 'specialist', labelKey: 'appointments.typeSpecialist' },
-  { value: 'anc', labelKey: 'appointments.typeAnc' },
-  { value: 'immunization', labelKey: 'appointments.typeImmunization' },
-  { value: 'lab', labelKey: 'appointments.typeLab' },
-  { value: 'surgical', labelKey: 'appointments.typeSurgical' },
-  { value: 'dental', labelKey: 'appointments.typeDental' },
-  { value: 'mental_health', labelKey: 'appointments.typeMentalHealth' },
-];
+const TYPE_OPTIONS = APPOINTMENT_TYPE_OPTIONS;
 
 /**
  * Four steps, in the order the decisions actually happen.

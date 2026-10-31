@@ -145,11 +145,11 @@ export function buildPrescriptionScriptHtml(prescriptions: PrescriptionDoc[], ct
   const body = `
     <section class="section keep"><h2 class="section-title">Prescription <small>${items.length} item${items.length === 1 ? '' : 's'}</small></h2>
       ${items.length ? `<table>
-        <thead><tr><th class="center">#</th><th>Medication</th><th>Directions for patient</th><th class="num">Qty</th><th>Duration</th><th class="num">Refills</th><th>Reference</th></tr></thead>
+        <thead><tr><th class="center">#</th><th>Medication</th><th>Directions for Patient</th><th class="num">Qty</th><th>Duration</th><th class="num">Refills</th><th>Reference</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>` : '<p class="empty">No active prescription to print.</p>'}
     </section>
-    <section class="section keep"><h2 class="section-title">For the dispensing pharmacist</h2>
+    <section class="section keep"><h2 class="section-title">For the Dispensing Pharmacist</h2>
       <p><strong>Recorded allergies:</strong> ${e(allergies.join(', ') || 'None recorded')}</p>
       <p class="notice">To be dispensed by a licensed pharmacy. Quote the reference to ${e(ctx.facilityName)} to confirm any item on this prescription.</p>
     </section>
@@ -161,14 +161,16 @@ export function buildPrescriptionScriptHtml(prescriptions: PrescriptionDoc[], ct
   return buildClinicalPrintDocument({
     title: ctx.patient.name,
     documentLabel: 'Prescription',
+    date: ctx.issuedAt,
     facilityName: ctx.facilityName,
+    metaTitle: 'Patient Information',
     meta: [
+      { label: 'Patient Name', value: ctx.patient.name },
       { label: 'Patient ID', value: ctx.patient.hospitalNumber },
-      { label: 'Age / sex', value: [ctx.patient.ageLabel, ctx.patient.sex].filter(Boolean).join(' · ') },
-      { label: 'Date issued', value: scriptDate(ctx.issuedAt) },
+      { label: 'Age / Sex', value: [ctx.patient.ageLabel, ctx.patient.sex].filter(Boolean).join(' · ') },
       { label: 'Prescriber', value: ctx.prescriberName },
       {
-        label: 'Preferred pharmacy',
+        label: 'Preferred Pharmacy',
         value: ctx.patient.preferredPharmacy
           ? [ctx.patient.preferredPharmacy.name, ctx.patient.preferredPharmacy.address].filter(Boolean).join(', ')
           : undefined,

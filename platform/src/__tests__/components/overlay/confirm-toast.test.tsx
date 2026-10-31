@@ -91,6 +91,15 @@ describe('Toast tones', () => {
     unmount();
   });
 
+  it('leads every toast with a bold title, one sentence or two', () => {
+    const { container, unmount } = mount(<ToastProvider><Toaster /></ToastProvider>);
+    act(() => container.querySelector<HTMLButtonElement>('[data-k="info"]')!.click());
+    const toast = container.querySelector('.ehr-toast')!;
+    expect(toast.querySelector('.ehr-toast-title')?.textContent).toBe('Saved offline');
+    expect(toast.querySelector('.ehr-toast-text')).toBeNull();
+    unmount();
+  });
+
   it('keeps a sticky error until dismissed and folds a repeat into one toast', () => {
     function Failer() {
       const { showToast } = useToast();

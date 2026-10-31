@@ -23,6 +23,7 @@ import {
   Server, ShieldCheck, Smartphone, Upload,
 } from '@/components/icons/lucide';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface DbStat {
@@ -71,7 +72,7 @@ export default function ItOperationsPanel({ embedded = false }: {
   const [loadingStats, setLoadingStats] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [pushing, setPushing] = useState<'sync' | 'dhis2' | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -125,12 +126,11 @@ export default function ItOperationsPanel({ embedded = false }: {
 
   const runLocalSync = async () => {
     setSyncing(true);
-    setMessage(null);
     try {
       await syncNow();
-      setMessage(t('msg.localSyncStarted'));
+      showToast(t('msg.localSyncStarted'), 'success');
     } catch (err) {
-      setMessage(describeError(err, t('msg.syncNotStartedTryAgain')));
+      showToast(describeError(err, t('msg.syncNotStartedTryAgain')), 'error');
     } finally {
       setSyncing(false);
     }
@@ -138,17 +138,16 @@ export default function ItOperationsPanel({ embedded = false }: {
 
   const runServerPush = async (kind: 'sync' | 'dhis2') => {
     setPushing(kind);
-    setMessage(null);
     try {
       const res = await apiFetch(kind === 'sync' ? '/api/admin/sync-push' : '/api/admin/dhis2-push', { method: 'POST' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage(describeApiError(body, t('msg.syncNotSentTheServer', { status: res.status })));
+        showToast(describeApiError(body, t('msg.syncNotSentTheServer', { status: res.status })), 'error');
         return;
       }
-      setMessage(kind === 'sync' ? t('msg.syncCompleteRecordsSent', { pushed: body.pushed ?? 0 }) : t('msg.dhis2ReportSentDataValues2', { dataValues: body.dataValues ?? 0 }));
+      showToast(kind === 'sync' ? t('msg.syncCompleteRecordsSent', { pushed: body.pushed ?? 0 }) : t('msg.dhis2ReportSentDataValues2', { dataValues: body.dataValues ?? 0 }), 'success');
     } catch (err) {
-      setMessage(describeError(err, t('msg.notSentCheckTheConnection')));
+      showToast(describeError(err, t('msg.notSentCheckTheConnection')), 'error');
     } finally {
       setPushing(null);
     }
@@ -218,11 +217,6 @@ export default function ItOperationsPanel({ embedded = false }: {
               onClick={() => runServerPush('dhis2')}
             />
           </div>
-          {message && (
-            <div className="mx-4 mt-3 p-3 rounded-lg text-sm font-semibold" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)' }}>
-              {message}
-            </div>
-          )}
 
           {/* Consoles: descriptive tiles, role-gated. */}
           {consoles.length > 0 && (

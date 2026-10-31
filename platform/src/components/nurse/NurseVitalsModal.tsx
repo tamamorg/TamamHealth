@@ -32,6 +32,7 @@ import { describeError } from '@/lib/user-facing-error';
 import { isAnyModalOpen } from '@/components/Modal';
 import './nurse-vitals-panel.css';
 import FormNotices from '@/components/overlay/FormNotices';
+import InlineBanner from '@/components/overlay/InlineBanner';
 
 type NurseVitals = VitalsInput & { height?: string };
 type FieldKey = Exclude<keyof NurseVitals, 'notes'>;
@@ -89,6 +90,8 @@ export default function NurseVitalsModal({
   encounterId,
   currentUser,
   correctingRecord,
+  readOnly = false,
+  onEdit,
   onClose,
   onSaved,
   presentation = 'modal',
@@ -102,6 +105,10 @@ export default function NurseVitalsModal({
   encounterId?: string;
   currentUser: Pick<{ _id: string; name: string }, '_id' | 'name'>;
   correctingRecord?: MedicalRecordDoc;
+  /** Show `correctingRecord` locked: nothing can be typed or saved. */
+  readOnly?: boolean;
+  /** Offered on a locked reading, only to those who may correct it. */
+  onEdit?: () => void;
   onClose: () => void;
   onSaved?: () => void;
   /**
@@ -192,7 +199,8 @@ export default function NurseVitalsModal({
       step="any"
       value={vitals[key] || ''}
       onChange={setField(key)}
-      placeholder={FIELDS[key].placeholder}
+      placeholder={readOnly ? undefined : FIELDS[key].placeholder}
+      disabled={readOnly}
       aria-label={ariaLabel || t(FIELDS[key].labelKey)}
       aria-invalid={flags[key] ? true : undefined}
       className="nv-input"
@@ -214,6 +222,11 @@ export default function NurseVitalsModal({
 
   const form = (
     <div className="nv-form">
+      {readOnly && (
+        <InlineBanner compact title={t('chart.locked')}>
+          {onEdit ? t('vitalsPanel.lockedHint') : null}
+        </InlineBanner>
+      )}
       <section className="nv-section" aria-labelledby="nv-vitals-heading">
         <h3 id="nv-vitals-heading" className="nv-section-title">{t('vitalsPanel.sectionVitals')}</h3>
         <div className="nv-grid">
@@ -240,7 +253,8 @@ export default function NurseVitalsModal({
             value={vitals.notes || ''}
             onChange={event => setVitals(current => ({ ...current, notes: event.target.value }))}
             rows={3}
-            placeholder={t('vitalsPanel.notesPlaceholder')}
+            disabled={readOnly}
+            placeholder={readOnly ? undefined : t('vitalsPanel.notesPlaceholder')}
           />
         </label>
       </section>
@@ -270,7 +284,7 @@ export default function NurseVitalsModal({
         </div>
       </section>
 
-      {correctingRecord && (
+      {correctingRecord && !readOnly && (
         <label className="nv-notes">
           <span className="nv-label">{t('chart.correctionReason')}</span>
           <textarea
@@ -285,7 +299,12 @@ export default function NurseVitalsModal({
     </div>
   );
 
-  const actions = (
+  const actions = readOnly ? (
+    <div className="nv-footer">
+      <button type="button" className="nv-btn nv-btn--ghost" onClick={close}>{t('vitalsPanel.close')}</button>
+      {onEdit && <button type="button" className="nv-btn nv-btn--primary" onClick={onEdit}>{t('chart.vitalsEdit')}</button>}
+    </div>
+  ) : (
     <>
     <FormNotices />
     <div className="nv-footer">

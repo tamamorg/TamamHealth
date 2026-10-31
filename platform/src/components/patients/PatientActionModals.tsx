@@ -15,6 +15,7 @@
  * requisition and all — as one placed from the lab queue.
  */
 
+import { hasSafetyStop } from '@/lib/pharmacy/rx-safety';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { Pill, ArrowRightLeft, X, AlertTriangle } from '@/components/icons/lucide';
@@ -140,7 +141,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
     || reviewedMedication?.allergyCheckUnavailable
     || reviewedMedication?.interactionWarnings?.hasInteractions
     || reviewedMedication?.duplicateWarnings?.length);
-  const hasSevereAllergy = !!reviewedMedication?.allergyWarnings?.some(warning => warning.requiresOverride);
+  const hasSevereAllergy = !!reviewedMedication && hasSafetyStop(reviewedMedication);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;

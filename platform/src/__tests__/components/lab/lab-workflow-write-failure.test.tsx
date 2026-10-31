@@ -30,12 +30,12 @@ function Harness() {
 let mounted: Mounted | null = null;
 afterEach(() => { mounted?.unmount(); mounted = null; jest.clearAllMocks(); });
 
-it('reports failure and keeps the step when advanceLabOrder throws a conflict', async () => {
+it('reports failure and keeps the stage when advanceLabOrder throws a conflict', async () => {
   advance.mockRejectedValue(new Error('Lab order was changed by someone else'));
   jest.spyOn(console, 'error').mockImplementation(() => {});
   mounted = mount(<Harness />);
   await act(async () => { await flush(); });
-  const stepBefore = harness.c!.step;
+  const stageBefore = harness.c!.stage;
 
   let ok: unknown;
   await act(async () => { ok = await harness.c!.collect(); await flush(); });
@@ -43,6 +43,6 @@ it('reports failure and keeps the step when advanceLabOrder throws a conflict', 
   expect(advance).toHaveBeenCalledTimes(1);
   expect(ok).toBe(false);
   expect(harness.c!.error).toBe('Lab order was changed by someone else');
-  expect(harness.c!.step).toBe(stepBefore);
+  expect(harness.c!.stage).toBe(stageBefore);
   expect(harness.c!.busy).toBe(false);
 });

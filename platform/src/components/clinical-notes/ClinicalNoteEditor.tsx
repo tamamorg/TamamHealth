@@ -52,8 +52,9 @@ import {
   removeNoteSection, changeNoteType, clearNote, signClinicalNote,
   addNoteAddendum, recordPlanAction, isNoteLocked,
   listClinicalNotes, foldRetiredNoteSections, includeChartHistory, sectionBody,
-  cosignClinicalNote, copyForwardIntoDraft, findLastSignedNote, missingRequiredSections,
+  cosignClinicalNote, copyForwardIntoDraft, findLastSignedNote, missingRequiredSections, hasContent,
 } from '@/lib/clinical-notes/note-service';
+import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 import { isProviderRole } from '@/lib/clinical-roles';
 import { noteTypeLabel, sectionLabel } from '@/lib/clinical-notes/note-labels';
 import { formatPhoneDisplay } from '@/lib/field-formats';
@@ -150,11 +151,19 @@ interface ClinicalNoteEditorProps {
   /** Fires with the new type's label after the note type changes, so a host
    *  showing the note's name (the chart drawer's title) can follow it. */
   onNoteTypeChange?: (label: string) => void;
+  /** Open a draft that already holds content locked, until the user chooses Edit. */
+  lockSavedDraft?: boolean;
+  /** The role may write notes; Edit also needs canEditDraft. */
+  canEditDrafts?: boolean;
+  /** The user already chose to edit this draft. */
+  draftUnlocked?: boolean;
+  onDraftUnlocked?: () => void;
 }
 
 export default function ClinicalNoteEditor({
   noteId, currentUser, assignableUsers = [], showContextSidebar = true, onClose, onOpenChartTab, onOpenOrderBasket,
   layout = 'standard', onBack, onNoteTypeChange,
+  lockSavedDraft = false, canEditDrafts = false, draftUnlocked = false, onDraftUnlocked,
 }: ClinicalNoteEditorProps) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -163,6 +172,7 @@ export default function ClinicalNoteEditor({
   const scope = useDataScope();
 
   const [note, setNote] = useState<ClinicalNoteDoc | null>(null);
+  const [draftLocked, setDraftLocked] = useState(false);
   // Workspace layout: which group the section list marks as current, and
   // which groups the clinician has folded away.
   const [workspaceGroup, setWorkspaceGroup] = useState<string>('visit-details');
@@ -227,6 +237,12 @@ export default function ClinicalNoteEditor({
       const loaded = await foldRetiredNoteSections(noteId)
         .catch(() => getClinicalNoteById(noteId));
       if (cancelled) return;
+      if (loaded && lockSavedDraft) {
+        const mayEdit = canEditDrafts && canEditDraft(loaded, currentUser);
+        const lockIt = loaded.status === 'draft' && (!mayEdit || (!draftUnlocked && hasContent(loaded)));
+        setDraftLocked(lockIt);
+        if (!lockIt) onDraftUnlocked?.();
+      }
       setNote(loaded);
       setLoading(false);
       if (loaded) setSavedAt(loaded.updatedAt);
@@ -355,7 +371,8 @@ export default function ClinicalNoteEditor({
   // Read-only once attested. A note awaiting co-signature is not `isNoteLocked`
   // (the supervisor can still act on it) but it is signed: the trainee's text
   // is what the supervisor must co-sign, so it is not editable here either.
-  const locked = note ? note.status !== 'draft' : false;
+  const locked = note ? note.status !== 'draft' || draftLocked : false;
+  const mayEditDraft = Boolean(note && canEditDrafts && canEditDraft(note, currentUser));
   const signedFinal = note ? isNoteLocked(note) : false;
   const awaitingCosign = note?.status === 'awaiting_cosign';
   const canCosign = Boolean(
@@ -1078,6 +1095,11 @@ export default function ClinicalNoteEditor({
   );
   const lockBanners = (
     <>
+          {draftLocked && (
+            <InlineBanner compact title={t('chart.locked')}>
+              {mayEditDraft ? t('noteViewer.lockedHint') : null}
+            </InlineBanner>
+          )}
           {awaitingCosign && (
             <div className="cn-locked-banner">
               <Check size={15} />
@@ -1518,6 +1540,11 @@ export default function ClinicalNoteEditor({
               {!locked && (
                 <button type="button" className="omf-btn omf-btn--primary" onClick={openSignConfirm} disabled={saving} title={t('noteEditor.signHint')}>
                   <Check size={14} aria-hidden /> {t('noteEditor.sign')}
+                </button>
+              )}
+              {draftLocked && mayEditDraft && (
+                <button type="button" className="omf-btn omf-btn--primary" onClick={() => { setDraftLocked(false); onDraftUnlocked?.(); }}>
+                  {t('noteViewer.edit')}
                 </button>
               )}
               {canCosign && (

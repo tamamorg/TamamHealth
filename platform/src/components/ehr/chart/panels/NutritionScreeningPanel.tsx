@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
+import { O3Layout, O3SelectField } from '@/components/forms/O3Form';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useNutritionScreenings } from '@/lib/hooks/useNutritionScreenings';
 import { classifyScreening } from '@/lib/services/nutrition-screening-service';
@@ -131,12 +132,18 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
     return t('nutrition.followUpNeeded');
   };
 
+  // The O3 frame every clinical form shares: one page, earlier screenings
+  // and today's measurements as its sections, Cancel | Save at the foot.
   return (
-    <div className="sv-root">
-      <div className="sv-body">
-        {history.length > 0 && (
-          <section>
-            <h3 className="sv-label">{t('nutritionForm.previous')}</h3>
+    <O3Layout
+      pages={[{
+        id: 'nutrition',
+        label: t('nutritionForm.title'),
+        sections: [
+          ...(history.length > 0 ? [{
+            id: 'previous',
+            label: t('nutritionForm.previous'),
+            body: (
             <dl className="sv-facts">
               {history.map(s => {
                 const open = FLAGGED.has(s.status) && (!s.followUpAction || s.followUpAction === 'needed');
@@ -163,9 +170,12 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
                 );
               })}
             </dl>
-          </section>
-        )}
-
+            ),
+          }] : []),
+          {
+            id: 'screening',
+            label: t('nutritionForm.measurements'),
+            body: (
         <div className="sv-form">
           <div className="nsp-grid">
             <label className="sv-field">
@@ -183,10 +193,14 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
             </label>
           </div>
 
-          <div className="nsp-checks">
-            <label><input type="checkbox" checked={edema} onChange={e => setEdema(e.target.checked)} /> {t('nutrition.formEdema')}</label>
+          <div className="o3f-fields">
+            <O3SelectField id="nsp-edema" label={t('nutrition.formEdema')} value={edema ? 'yes' : 'no'} placeholder={null}
+              onChange={v => setEdema(v === 'yes')}
+              options={[{ value: 'no', label: t('action.no') }, { value: 'yes', label: t('action.yes') }]} />
             {isFemale && (
-              <label><input type="checkbox" checked={isAnc} onChange={e => setIsAnc(e.target.checked)} /> {t('nutrition.formAnc')}</label>
+              <O3SelectField id="nsp-anc" label={t('nutrition.formAnc')} value={isAnc ? 'yes' : 'no'} placeholder={null}
+                onChange={v => setIsAnc(v === 'yes')}
+                options={[{ value: 'no', label: t('action.no') }, { value: 'yes', label: t('action.yes') }]} />
             )}
           </div>
 
@@ -201,16 +215,17 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
             <textarea rows={3} value={notes} placeholder={t('nutrition.formNotesPlaceholder')} onChange={e => setNotes(e.target.value)} />
           </label>
         </div>
-      </div>
-      <FormNotices />
-      <div className="sv-footer">
-        <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose} disabled={saving}>
-          {t('nutrition.formCancel')}
-        </button>
-        <button type="button" className="sv-footer-btn sv-footer-btn--primary" onClick={() => void save()} disabled={saving || !muac}>
-          {saving ? t('nutritionForm.saving') : t('nutrition.formSave')}
-        </button>
-      </div>
-    </div>
+            ),
+          },
+        ],
+      }]}
+      notice={<FormNotices />}
+      onSave={() => void save()}
+      saveDisabled={!muac}
+      saveLabel={t('nutrition.formSave')}
+      cancelLabel={t('nutrition.formCancel')}
+      saving={saving}
+      onCancel={onClose}
+    />
   );
 }

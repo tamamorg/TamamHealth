@@ -1,9 +1,15 @@
 'use client';
 
-import { type TriageVitalField, type TriageVitalWarning } from '@/lib/clinical/vitals';
-import { UNMEASURED_VITAL_REASONS } from './constants';
 import Select from '@/components/Select';
+import { type TriageVitalField, type TriageVitalWarning } from '@/lib/clinical/vitals';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { UNMEASURED_VITAL_REASONS } from './constants';
 
+/**
+ * One triage vital as an O3 field: the reading on the white field, and under
+ * it a dropdown for whether it was taken — "Measured", or why it could not be
+ * (UNMEASURED_VITAL_REASONS). Not taken clears and locks the reading.
+ */
 export function VitalInputField({
   field,
   label,
@@ -29,30 +35,19 @@ export function VitalInputField({
   unmeasuredReason?: string;
   onUnmeasuredReasonChange: (reason: string | undefined) => void;
 }) {
+  const { t } = useTranslation();
   const message = error || warning?.message;
   const messageId = `triage-vital-${field}-message`;
   const tone = error || warning?.urgency === 'RED' ? 'var(--color-danger)' : 'var(--color-warning)';
   const isUnmeasured = unmeasuredReason !== undefined;
 
   return (
-    <div data-vital-field={field}>
-      <div className="flex items-center justify-between gap-1">
-        <label htmlFor={`triage-vital-${field}`} className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-          {label}
-        </label>
-        <button
-          type="button"
-          onClick={() => onUnmeasuredReasonChange(isUnmeasured ? undefined : UNMEASURED_VITAL_REASONS[0][0])}
-          className="text-[8px] font-semibold uppercase tracking-wide"
-          style={{ color: isUnmeasured ? 'var(--color-warning)' : 'var(--text-muted)' }}
-          title="Record why this vital could not be measured"
-        >
-          {isUnmeasured ? 'Not taken' : 'N/A'}
-        </button>
-      </div>
+    <div className={`o3f-field o3f-vital${message ? ' has-message' : ''}`} data-vital-field={field}>
+      <label htmlFor={`triage-vital-${field}`}><span className="o3f-label">{label}</span></label>
       <input
         id={`triage-vital-${field}`}
         type="text"
+        className="o3f-input"
         inputMode={inputMode}
         value={value}
         onChange={event => onChange(event.target.value)}
@@ -60,28 +55,21 @@ export function VitalInputField({
         disabled={isUnmeasured}
         aria-invalid={Boolean(error)}
         aria-describedby={message ? messageId : undefined}
-        style={{
-          width: '100%',
-          padding: '5px 8px',
-          borderRadius: 6,
-          fontSize: 12,
-          background: isUnmeasured ? 'var(--overlay-subtle)' : 'var(--bg-card)',
-          border: `1px solid ${message ? tone : 'var(--border-light)'}`,
-          color: 'var(--text-primary)',
-        }}
+        style={message ? { borderBottomColor: tone } : undefined}
       />
-      {isUnmeasured && (
-        <Select
-          aria-label={`Reason ${label} was not measured`}
-          value={unmeasuredReason}
-          onChange={event => onUnmeasuredReasonChange(event.target.value)}
-          style={{ width: '100%', marginTop: 4, padding: '3px 6px', borderRadius: 6, fontSize: 10, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-        >
-          {UNMEASURED_VITAL_REASONS.map(([code, reasonLabel]) => <option key={code} value={code}>{reasonLabel}</option>)}
-        </Select>
-      )}
+      <Select
+        className="o3f-input o3f-vital-status"
+        aria-label={t('triageO3.vitalTaken', { vital: label })}
+        value={unmeasuredReason ?? ''}
+        onChange={event => onUnmeasuredReasonChange(event.target.value === '' ? undefined : event.target.value)}
+      >
+        <option value="">{t('triageO3.measured')}</option>
+        {UNMEASURED_VITAL_REASONS.map(([code, reasonLabel]) => (
+          <option key={code} value={code}>{t('triageO3.notTaken', { reason: reasonLabel })}</option>
+        ))}
+      </Select>
       {message && (
-        <p id={messageId} role={error ? 'alert' : 'status'} className="mt-1 text-[9px] leading-tight font-medium" style={{ color: tone }}>
+        <p id={messageId} role={error ? 'alert' : 'status'} className="o3f-vital-message" style={{ color: tone }}>
           {error || `${warning?.urgency}: ${warning?.message}`}
         </p>
       )}

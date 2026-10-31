@@ -1,0 +1,12 @@
+/* ANC visit form — the missing-field mark. The form is drawn in the O3
+   frame (O3Layout) on the ANC register's slider and in the chart alike. */
+
+/* A required answer a stop has flagged: red label, red rule under the field. */
+/* Scoped under the form so it outranks the page's and the drawer's own
+   field rules, which also set the bottom border with !important. */
+.anc-visit-form label.anc-field-missing { color: var(--color-danger-text, var(--color-danger)) !important; }
+.anc-visit-form :is(input, select).anc-field-missing,
+/* Outranks the O3 frame's own field rule (o3-form.css), also !important. */
+.anc-visit-form.o3f .o3f-section-body :is(input, select).anc-field-missing:not(.o3f-input):not(.o3f-number input) {
+  border-bottom: 2px solid var(--color-danger) !important;
+}

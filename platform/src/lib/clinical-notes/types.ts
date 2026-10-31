@@ -88,6 +88,11 @@ export interface ClinicalNoteDoc extends BaseDoc {
   patientDob?: string;
 
   noteType: NoteTypeId;
+  /**
+   * A structured form's answers (Covid 19, Mental Health Assessment, Surgical
+   * Operation), keyed by field id — the readable copy is the memo section.
+   */
+  formData?: Record<string, string>;
   /** Optional sections the clinician added beyond the type's defaults. */
   addedSections?: NoteSectionId[];
   sections: NoteSectionContent[];

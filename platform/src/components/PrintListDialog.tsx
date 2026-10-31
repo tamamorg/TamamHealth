@@ -6,6 +6,7 @@ import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/component
 import { Printer, Download } from '@/components/icons/lucide';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
+import { formatPrintedAt } from '@/lib/print-identity';
 import { useAuth } from '@/lib/context';
 
 /** One column of a printable list. `key` indexes into each row record. */
@@ -58,9 +59,7 @@ export function buildPrintListHtml(
   sections: PrintListSection[],
   facilityName?: string,
 ): string {
-  const printedAt = new Date().toLocaleString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+  const printedAt = formatPrintedAt(new Date());
   const body = sections.map(section => {
     const heading = `<h2 class="section-title">${escapeHtml(section.label)}<small>${section.rows.length} ${section.rows.length === 1 ? 'entry' : 'entries'}</small></h2>`;
     if (section.rows.length === 0) return `<section class="section">${heading}<p class="empty">No entries in this list.</p></section>`;
@@ -74,14 +73,15 @@ export function buildPrintListHtml(
     // The dialog is titled for the action ("Print worklist"); the sheet is
     // titled for what it is.
     title: printListTitle(title),
-    documentLabel: 'Operational list',
+    documentLabel: printListTitle(title),
     // Without this every list was headed with the product's placeholder
     // facility name, so a sheet left on a desk did not say whose list it was.
     facilityName,
+    metaTitle: 'List Details',
     meta: [
       ...(subtitle ? [{ label: 'Scope', value: subtitle }] : []),
       { label: 'Generated', value: printedAt },
-      { label: 'Selected lists', value: sections.map(section => section.label).join(', ') },
+      { label: 'Selected Lists', value: sections.map(section => section.label).join(', ') },
     ],
     safeBodyHtml: body,
     page: sections.some(section => section.columns.length > 6) ? 'a4-landscape' : 'a4',

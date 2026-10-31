@@ -10,16 +10,19 @@ import { useDataScope } from './useDataScope';
 /** Scanned/uploaded documents filed on a patient's chart, live-reloaded. */
 export function usePatientDocuments(patientId?: string) {
   const [documents, setDocuments] = useState<PatientDocumentDoc[]>([]);
+  const [retracted, setRetracted] = useState<PatientDocumentDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const scope = useDataScope();
 
   const load = useCallback(async () => {
-    if (!patientId) { setDocuments([]); setLoading(false); return; }
+    if (!patientId) { setDocuments([]); setRetracted([]); setLoading(false); return; }
     try {
-      const { getPatientDocuments } = await import('../services/patient-document-service');
+      const { getPatientDocuments, getRetractedPatientDocuments } = await import('../services/patient-document-service');
       setDocuments(await getPatientDocuments(patientId, scope));
+      setRetracted(scope ? await getRetractedPatientDocuments(patientId, scope) : []);
     } catch {
       setDocuments([]);
+      setRetracted([]);
     } finally {
       setLoading(false);
     }
@@ -34,7 +37,7 @@ export function usePatientDocuments(patientId?: string) {
     return doc;
   }, [load]);
 
-  const remove = useCallback(async (id: string, reason: string, actor?: { id?: string; name?: string }) => {
+  const remove = useCallback(async (id: string, reason: string, actor?: { id?: string; name?: string; role?: string }) => {
     if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
     const { deletePatientDocument } = await import('../services/patient-document-service');
     const ok = await deletePatientDocument(id, scope, reason, actor);
@@ -66,5 +69,5 @@ export function usePatientDocuments(patientId?: string) {
     return doc;
   }, [load, scope]);
 
-  return { documents, loading, add, remove, addAnnotation, updateAnnotation, deleteAnnotation, reload: load };
+  return { documents, retracted, loading, add, remove, addAnnotation, updateAnnotation, deleteAnnotation, reload: load };
 }

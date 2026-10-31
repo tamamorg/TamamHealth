@@ -2,6 +2,7 @@
 
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useDashboardRailDock } from '@/lib/hooks/useDashboardRailDock';
 import { useRouter } from 'next/navigation';
 import { shortenPersonName, abbreviateProviderName } from '@/lib/patient-utils';
 import { ClipboardList, Printer, Search, X, type LucideIcon } from '@/components/icons/lucide';
@@ -23,8 +24,10 @@ import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/e
 import {
   APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_GROUPS,
   APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusGroup, appointmentStatusLabel,
-  canonicalAppointmentStatus, APPOINTMENT_SLOT_RELEASED_STATUSES, type AppointmentStatusGroup,
+  canonicalAppointmentStatus, APPOINTMENT_SLOT_RELEASED_STATUSES, appointmentStatusNeedsReason, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
+import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
+import CheckInSlider from '@/components/appointments/CheckInSlider';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
@@ -374,6 +377,9 @@ export default function EhrCareDashboard({
   children?: ReactNode;
 }) {
   const router = useRouter();
+  // Sliders dock over the right panel on a dashboard (see the hook).
+  const rightRailRef = useRef<HTMLElement>(null);
+  useDashboardRailDock(rightRailRef);
   const { currentUser } = useAuth();
   /** The signed-in user's role, as every other surface writes it. */
   const roleLabel = currentUser ? getRoleConfig(currentUser.role).label : undefined;
@@ -399,7 +405,17 @@ export default function EhrCareDashboard({
   //
   // A row whose patient has no visit today keeps its own pill text.
   const visitStatus = useVisitStatusChange();
+  // A pick from the pill confirms in a slider before it is written (on a
+  // dashboard it docks over the right panel); an exit asks its reason there.
+  const [pendingVisit, setPendingVisit] = useState<{
+    target: { appointmentId: string; patientName: string; status: AppointmentStatus };
+    next: AppointmentStatus;
+  } | null>(null);
   const { appointments } = useAppointments();
+  const pendingCheckIn = pendingVisit?.next === 'checked_in'
+    && !['checked_in', 'in_progress', 'completed'].includes(canonicalAppointmentStatus(pendingVisit.target.status))
+    ? (appointments || []).find(a => a._id === pendingVisit.target.appointmentId) ?? null
+    : null;
   const visitByPatient = useMemo(() => {
     const today = visitIsoDate(new Date());
     const map = new Map<string, { id: string; status: AppointmentStatus }>();
@@ -947,7 +963,8 @@ export default function EhrCareDashboard({
                     const visitOptions = visitStatusPicker && visit ? visitStatus.optionsFor(visit.status) : [];
                     const moveVisit = (next: string) => {
                       if (!visit) return;
-                      void visitStatus.change({ appointmentId: visit.id, patientName: row.title, status: visit.status }, next as AppointmentStatus);
+                      if (canonicalAppointmentStatus(visit.status) === next) return;
+                      setPendingVisit({ target: { appointmentId: visit.id, patientName: row.title, status: visit.status }, next: next as AppointmentStatus });
                     };
                     const usesVisitPicker = !row.statusOptions?.length && ladderOwnsRow && visitOptions.length > 0;
                     const addsVisitGroup = !!row.lockStatus && visitOptions.length > 0;
@@ -1159,7 +1176,7 @@ export default function EhrCareDashboard({
         </section>
 
         {effectiveView === 'dashboard' && (
-        <aside className="ehr-right-rail" data-tour="side-cards">
+        <aside ref={rightRailRef} className="ehr-right-rail" data-tour="side-cards">
           <div className="ehr-side-card">
             <div className="ehr-side-card-head">
               <ClipboardList className="w-5 h-5" />
@@ -1212,6 +1229,21 @@ export default function EhrCareDashboard({
           sections={printSections}
           filename={`${title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'worklist'}-${selectedDate}`}
           onClose={() => setPrintOpen(false)}
+        />
+      )}
+      {/* Checked in opens the visit, so it asks the check-in questions
+          (CheckInSlider) — as on the reception and clinical dashboards. */}
+      {pendingCheckIn && (
+        <CheckInSlider appointment={pendingCheckIn} onClose={() => setPendingVisit(null)} />
+      )}
+      {pendingVisit && !pendingCheckIn && (
+        <StatusChangeSlider
+          patientName={pendingVisit.target.patientName}
+          from={pendingVisit.target.status}
+          to={pendingVisit.next}
+          needsReason={appointmentStatusNeedsReason(pendingVisit.next)}
+          onClose={() => setPendingVisit(null)}
+          onConfirm={reason => visitStatus.change(pendingVisit.target, pendingVisit.next, reason)}
         />
       )}
     </div>

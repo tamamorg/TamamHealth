@@ -17,7 +17,7 @@ import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { formatDate , humanizeStatus } from '@/lib/format-utils';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
-import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
+import { benchActionLabel } from '@/components/lab/workflow/lab-workflow-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { clickable } from '@/lib/a11y';
 import type { LabResultDoc } from '@/lib/db-types';
@@ -134,7 +134,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
               <th {...columnSort.headerProps(0, l => l.testName)}>Test</th>
               <th {...columnSort.headerProps(1, l => l.result || '')}>Result</th>
               <th {...columnSort.headerProps(2, l => l.referenceRange || '')}>Reference range</th>
-              <th {...columnSort.headerProps(3, l => t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))]))}>Next step</th>
+              <th {...columnSort.headerProps(3, l => t(benchActionLabel(effectiveOrderStatus(l))))}>Next step</th>
               <th {...columnSort.headerProps(4, l => l.completedAt || l.orderedAt || l.createdAt || '')}>Date</th>
               <th {...columnSort.headerProps(5, l => humanizeStatus(effectiveOrderStatus(l)))}>Status</th>
               <th className="tamam-col-actions">{t('chart.actions')}</th>
@@ -165,7 +165,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                   {l.result || '—'}{l.unit ? ` ${l.unit}` : ''}
                 </td>
                 <td>{l.referenceRange || '—'}</td>
-                <td>{t(LAB_WORKFLOW_STEP_LABEL[stepForStage(effectiveOrderStatus(l))])}</td>
+                <td>{t(benchActionLabel(effectiveOrderStatus(l)))}</td>
                 <td>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
                 <td><span className={STATUS_BADGE[lifecycleStatus] || STATUS_BADGE[l.status] || 'tamam-panel-badge tamam-panel-badge--pending'}>{humanizeStatus(lifecycleStatus)}</span></td>
                 <td>

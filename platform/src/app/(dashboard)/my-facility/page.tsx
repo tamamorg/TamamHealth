@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
+import { useToast } from '@/components/Toast';
+import { FormError } from '@/components/overlay/FormNotices';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import {
@@ -33,8 +35,7 @@ export default function MyFacilityPage() {
   const { currentUser } = useAuth();
   const { hospitals, loading: hospitalsLoading, update } = useHospitals();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+  const { showToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -95,8 +96,6 @@ export default function MyFacilityPage() {
   const handleSave = useCallback(async () => {
     if (!hospitalId) return;
     setSaving(true);
-    setError('');
-    setSaved(false);
     try {
       await update(hospitalId, {
         operationalStatus: operationalStatus as 'functional' | 'partially_functional' | 'non_functional' | 'closed',
@@ -106,16 +105,15 @@ export default function MyFacilityPage() {
         hasInternet, internetType, hasAmbulance, emergency24hr,
         serviceFlags,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      showToast(t('myFacility.savedSuccessfully'), 'success');
     } catch (err) {
       // Surface the real failure (validation, 4xx/5xx, etc.) instead of a
       // generic message — silently swallowing the cause hid actual problems.
-      setError(describeError(err, t('myFacility.saveFailed')));
+      showToast(describeError(err, t('myFacility.saveFailed')), 'error');
     } finally {
       setSaving(false);
     }
-  }, [hospitalId, update, operationalStatus, totalBeds, icuBeds, maternityBeds, pediatricBeds, doctors, nurses, clinicalOfficers, labTechnicians, pharmacists, hasElectricity, electricityHours, hasGenerator, hasSolar, hasInternet, internetType, hasAmbulance, emergency24hr, serviceFlags, t]);
+  }, [hospitalId, update, showToast, operationalStatus, totalBeds, icuBeds, maternityBeds, pediatricBeds, doctors, nurses, clinicalOfficers, labTechnicians, pharmacists, hasElectricity, electricityHours, hasGenerator, hasSolar, hasInternet, internetType, hasAmbulance, emergency24hr, serviceFlags, t]);
 
   const handleSubmitToMoH = useCallback(async () => {
     if (!hospitalId) return;
@@ -204,16 +202,6 @@ export default function MyFacilityPage() {
       greeting="My facility"
       actions={
         <>
-          {error && (
-            <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
-              <AlertTriangle className="w-3.5 h-3.5" /> {error}
-            </span>
-          )}
-          {saved && (
-            <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-success-text)' }}>
-              <CheckCircle className="w-3.5 h-3.5" /> {t('myFacility.savedSuccessfully')}
-            </span>
-          )}
           <button
             type="button"
             onClick={handleSave}
@@ -358,9 +346,7 @@ export default function MyFacilityPage() {
                     {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
                   </button>
                   {submitError && (
-                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
-                      <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
-                    </span>
+                    <FormError message={submitError} />
                   )}
                 </div>
 

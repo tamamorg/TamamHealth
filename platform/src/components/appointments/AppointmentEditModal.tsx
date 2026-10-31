@@ -31,18 +31,9 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { canAssignStaffAtFacility, canRescheduleAppointmentRole } from '@/lib/care-team-permissions';
 import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
 import { FormError } from '@/components/overlay/FormNotices';
-
-const TYPE_OPTIONS: { value: AppointmentType; label: string }[] = [
-  { value: 'general', label: 'General consultation' },
-  { value: 'follow_up', label: 'Follow-up' },
-  { value: 'specialist', label: 'Specialist' },
-  { value: 'anc', label: 'Antenatal' },
-  { value: 'immunization', label: 'Immunisation' },
-  { value: 'lab', label: 'Laboratory' },
-  { value: 'surgical', label: 'Surgical' },
-  { value: 'dental', label: 'Dental' },
-  { value: 'mental_health', label: 'Mental health' },
-];
+import { useCheckInDraft } from './useCheckInDraft';
+import { APPOINTMENT_TYPE_OPTIONS } from '@/lib/visits/visit-details';
+import { jubaDate } from '@/lib/time-juba';
 
 const DURATIONS = [15, 20, 30, 45, 60, 90];
 const TIME_SLOTS = Array.from({ length: 28 }, (_, i) => {
@@ -126,6 +117,15 @@ export default function AppointmentEditModal({
   const [type, setType] = useState<AppointmentType>(appointment.appointmentType);
   const [priority, setPriority] = useState<AppointmentPriority>(appointment.priority);
   const [status, setStatus] = useState<AppointmentStatus>(appointment.status);
+
+  // ── Check-in ──
+  // Setting Status to Checked in opens the visit, so it asks what Start a
+  // visit asks (useCheckInDraft) in this editor's own rows. Only for a
+  // booking not yet in.
+  const alreadyIn = ['checked_in', 'in_progress', 'completed'].includes(appointment.status);
+  const checkingIn = !alreadyIn && status === 'checked_in';
+  const targetStatus: AppointmentStatus = status;
+  const checkIn = useCheckInDraft(appointment, checkingIn, 'row');
   const [department, setDepartment] = useState(appointment.department);
   // Provider carried as id + name. Name-only saves left providerId pointing
   // at the OLD doctor after a change — conflict checks and provider filters
@@ -228,6 +228,18 @@ export default function AppointmentEditModal({
     detail.room !== (appointment.room || '');
 
   const save = async () => {
+    // A booking is checked in on its own day (Start a visit and the
+    // dashboards' check-in slider refuse a later one the same way).
+    if (checkingIn && appointment.appointmentDate !== jubaDate()) {
+      setSaveError(t('statusSlider.notToday', { date: appointment.appointmentDate }));
+      return;
+    }
+    // A check-in needs to know how the visit is paid before it opens.
+    if (checkingIn && !checkIn.complete) {
+      setTab('billing');
+      setSaveError(t('startVisit.billingIncomplete'));
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -285,8 +297,8 @@ export default function AppointmentEditModal({
           appointmentId: appointment._id,
         });
       }
-      if (status !== appointment.status) {
-        if (status === 'checked_in') {
+      if (targetStatus !== appointment.status) {
+        if (targetStatus === 'checked_in') {
           // Checking in is the one rung that is more than a status: it opens
           // the visit encounter triage, rooming, the clinician's note and the
           // checkout gate all join. `checkInAppointment` stamps the status
@@ -302,19 +314,23 @@ export default function AppointmentEditModal({
             facilityId: appointment.facilityId || myHospitalId,
             facilityName: appointment.facilityName || currentUser?.hospitalName,
             orgId: appointment.orgId || currentUser?.orgId,
+            attendanceType: checkIn.attendance,
+            visit: checkIn.visit,
             actorId: currentUser?._id,
             actorName: currentUser?.name || currentUser?.username,
             actorRole: currentUser?.role,
           });
         } else {
-          await updateAppointmentStatus(appointment._id, status, {
+          await updateAppointmentStatus(appointment._id, targetStatus, {
             actorId: currentUser?._id,
             actorName: currentUser?.name || currentUser?.username,
             actorRole: currentUser?.role,
           });
         }
       }
-      showToast(t('msg.appointmentUpdated', { patientName: appointment.patientName }), 'success');
+      showToast(targetStatus === 'checked_in' && appointment.status !== 'checked_in'
+        ? t('startVisit.checkedIn', { name: appointment.patientName })
+        : t('msg.appointmentUpdated', { patientName: appointment.patientName }), 'success');
       onSaved?.();
       onClose();
     } catch (err) {
@@ -392,9 +408,10 @@ export default function AppointmentEditModal({
               <div>
                 <label>Visit type</label>
                 <Select value={type} onChange={e => setType(e.target.value as AppointmentType)}>
-                  {TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {APPOINTMENT_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
                 </Select>
               </div>
+              {checkIn.detailsFields}
               </>
             )}
           />
@@ -486,6 +503,7 @@ export default function AppointmentEditModal({
             </Select>
           </div>
           <AppointmentDetailFields section="billing" {...detailProps} />
+          {checkIn.billingFields}
         </div>
         )}
       </div>
@@ -494,11 +512,11 @@ export default function AppointmentEditModal({
           {headerActions}
         </div>
       )}
-      {dirty && (
+      {(dirty || checkingIn) && (
       <div className="appt-edit-actions">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : `Save${status !== appointment.status ? ` · ${appointmentStatusLabel(status)}` : ''}`}
+          {saving ? 'Saving…' : checkingIn ? t('frontDesk.checkInTab') : `Save${status !== appointment.status ? ` · ${appointmentStatusLabel(status)}` : ''}`}
         </button>
       </div>
       )}

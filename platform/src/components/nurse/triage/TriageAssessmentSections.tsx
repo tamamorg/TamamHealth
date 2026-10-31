@@ -1,259 +1,109 @@
 'use client';
 
-import { Wind, Activity, Heart, Brain, AlertTriangle, TrendingUp } from '@/components/icons/lucide';
+/**
+ * The triage ETAT questions, drawn as O3 form fields (components/forms/O3Form):
+ * every choice a dropdown — one answer a select, a sign list a multi-select —
+ * on the white field with one bottom rule. The rules behind each answer
+ * (auto-priority, vital overrides) are the form hook's and unchanged.
+ */
+
 import Select from '@/components/Select';
+import { TrendingUp } from '@/components/icons/lucide';
+import { O3MultiSelectField, O3SelectField, O3TextField } from '@/components/forms/O3Form';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
 import { patientFullName } from '@/lib/patient-utils';
 import type { TriageFormState } from './useTriageForm';
 
+const asOptions = (list: readonly (readonly [string, string])[]) => list.map(([value, label]) => ({ value, label }));
+
 export function TriageAbccAssessment({ f }: { f: TriageFormState }) {
   const { t, triageData, setTriageData, resetVitalOverride } = f;
+  const set = (key: 'airway' | 'breathing' | 'circulation' | 'consciousness') => (value: string) => {
+    setTriageData(prev => ({ ...prev, [key]: value }));
+    resetVitalOverride();
+  };
   return (
-    <>
-          {/* ABCC Assessment */}
-          <div id="triage-section-assessment" className="grid grid-cols-1 sm:grid-cols-2 gap-3 scroll-mt-3">
-            {/* Airway */}
-            <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Wind className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.airway')}</span>
-              </div>
-              <div className="flex gap-2">
-                {(['clear', 'obstructed'] as const).map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => { setTriageData(prev => ({ ...prev, airway: prev.airway === opt ? '' : opt })); resetVitalOverride(); }}
-                    title={triageData.airway === opt ? t('action.deselect') : undefined}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
-                    style={{
-                      background: triageData.airway === opt
-                        ? (opt === 'clear' ? 'rgba(79, 199, 155,0.2)' : 'rgba(224, 49, 39,0.2)')
-                        : 'var(--bg-card)',
-                      color: triageData.airway === opt
-                        ? (opt === 'clear' ? 'var(--color-success)' : 'var(--color-danger)')
-                        : 'var(--text-secondary)',
-                      border: `1px solid ${triageData.airway === opt
-                        ? (opt === 'clear' ? 'rgba(79, 199, 155,0.3)' : 'rgba(224, 49, 39,0.3)')
-                        : 'var(--border-light)'}`,
-                    }}
-                  >
-                    {opt === 'clear' ? t('nurse.airwayClear') : t('nurse.airwayObstructed')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Breathing */}
-            <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-4 h-4" style={{ color: 'var(--chart-3)' }} />
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.breathing')}</span>
-              </div>
-              <div className="flex gap-2">
-                {(['normal', 'distressed', 'absent'] as const).map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => { setTriageData(prev => ({ ...prev, breathing: prev.breathing === opt ? '' : opt })); resetVitalOverride(); }}
-                    title={triageData.breathing === opt ? t('action.deselect') : undefined}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
-                    style={{
-                      background: triageData.breathing === opt
-                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.2)' : opt === 'distressed' ? 'rgba(255, 210, 166,0.2)' : 'rgba(224, 49, 39,0.2)')
-                        : 'var(--bg-card)',
-                      color: triageData.breathing === opt
-                        ? (opt === 'normal' ? 'var(--color-success)' : opt === 'distressed' ? 'var(--color-warning)' : 'var(--color-danger)')
-                        : 'var(--text-secondary)',
-                      border: `1px solid ${triageData.breathing === opt
-                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.3)' : opt === 'distressed' ? 'rgba(255, 210, 166,0.3)' : 'rgba(224, 49, 39,0.3)')
-                        : 'var(--border-light)'}`,
-                    }}
-                  >
-                    {opt === 'normal' ? t('nurse.breathingNormal') : opt === 'distressed' ? t('nurse.breathingDistressed') : t('nurse.breathingAbsent')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Circulation */}
-            <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Heart className="w-4 h-4" style={{ color: 'var(--chart-2)' }} />
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.circulation')}</span>
-              </div>
-              <div className="flex gap-2">
-                {(['normal', 'impaired', 'absent'] as const).map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => { setTriageData(prev => ({ ...prev, circulation: prev.circulation === opt ? '' : opt })); resetVitalOverride(); }}
-                    title={triageData.circulation === opt ? t('action.deselect') : undefined}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
-                    style={{
-                      background: triageData.circulation === opt
-                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.2)' : opt === 'impaired' ? 'rgba(255, 210, 166,0.2)' : 'rgba(224, 49, 39,0.2)')
-                        : 'var(--bg-card)',
-                      color: triageData.circulation === opt
-                        ? (opt === 'normal' ? 'var(--color-success)' : opt === 'impaired' ? 'var(--color-warning)' : 'var(--color-danger)')
-                        : 'var(--text-secondary)',
-                      border: `1px solid ${triageData.circulation === opt
-                        ? (opt === 'normal' ? 'rgba(79, 199, 155,0.3)' : opt === 'impaired' ? 'rgba(255, 210, 166,0.3)' : 'rgba(224, 49, 39,0.3)')
-                        : 'var(--border-light)'}`,
-                    }}
-                  >
-                    {opt === 'normal' ? t('nurse.circulationNormal') : opt === 'impaired' ? t('nurse.circulationImpaired') : t('nurse.circulationAbsent')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Consciousness (AVPU) */}
-            <div className="p-3 rounded-xl" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Brain className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.consciousnessAvpu')}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 keep-cols">
-                {([
-                  { key: 'alert' as const, label: t('nurse.avpuAlert') },
-                  { key: 'verbal' as const, label: t('nurse.avpuVerbal') },
-                  { key: 'pain' as const, label: t('nurse.avpuPain') },
-                  { key: 'unresponsive' as const, label: t('nurse.avpuUnresponsive') },
-                ]).map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => { setTriageData(prev => ({ ...prev, consciousness: prev.consciousness === opt.key ? '' : opt.key })); resetVitalOverride(); }}
-                    title={triageData.consciousness === opt.key ? t('action.deselect') : undefined}
-                    className="px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
-                    style={{
-                      background: triageData.consciousness === opt.key
-                        ? (opt.key === 'alert' ? 'rgba(79, 199, 155,0.2)' : opt.key === 'verbal' ? 'rgba(255, 210, 166,0.2)' : 'rgba(224, 49, 39,0.2)')
-                        : 'var(--bg-card)',
-                      color: triageData.consciousness === opt.key
-                        ? (opt.key === 'alert' ? 'var(--color-success)' : opt.key === 'verbal' ? 'var(--color-warning)' : 'var(--color-danger)')
-                        : 'var(--text-secondary)',
-                      border: `1px solid ${triageData.consciousness === opt.key
-                        ? (opt.key === 'alert' ? 'rgba(79, 199, 155,0.3)' : opt.key === 'verbal' ? 'rgba(255, 210, 166,0.3)' : 'rgba(224, 49, 39,0.3)')
-                        : 'var(--border-light)'}`,
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-    </>
+    <div id="triage-section-assessment" className="o3f-fields scroll-mt-3">
+      <O3SelectField id="triage-airway" label={t('nurse.airway')} value={triageData.airway} onChange={set('airway')}
+        options={[{ value: 'clear', label: t('nurse.airwayClear') }, { value: 'obstructed', label: t('nurse.airwayObstructed') }]} />
+      <O3SelectField id="triage-breathing" label={t('nurse.breathing')} value={triageData.breathing} onChange={set('breathing')}
+        options={[
+          { value: 'normal', label: t('nurse.breathingNormal') },
+          { value: 'distressed', label: t('nurse.breathingDistressed') },
+          { value: 'absent', label: t('nurse.breathingAbsent') },
+        ]} />
+      <O3SelectField id="triage-circulation" label={t('nurse.circulation')} value={triageData.circulation} onChange={set('circulation')}
+        options={[
+          { value: 'normal', label: t('nurse.circulationNormal') },
+          { value: 'impaired', label: t('nurse.circulationImpaired') },
+          { value: 'absent', label: t('nurse.circulationAbsent') },
+        ]} />
+      <O3SelectField id="triage-consciousness" label={t('nurse.consciousnessAvpu')} value={triageData.consciousness} onChange={set('consciousness')}
+        options={[
+          { value: 'alert', label: t('nurse.avpuAlert') },
+          { value: 'verbal', label: t('nurse.avpuVerbal') },
+          { value: 'pain', label: t('nurse.avpuPain') },
+          { value: 'unresponsive', label: t('nurse.avpuUnresponsive') },
+        ]} />
+    </div>
   );
 }
 
 export function TriageDangerSigns({ f }: { f: TriageFormState }) {
   const { t, presentationCategory, setPresentationCategory, redCriteria, setRedCriteria, yellowCriteria, setYellowCriteria, capillaryRefillSeconds, setCapillaryRefillSeconds, setPregnancyStatus, gestationalAgeWeeks, setGestationalAgeWeeks, injuryMechanism, setInjuryMechanism, infectionRiskSigns, setInfectionRiskSigns, isolationRequired, setIsolationRequired, preArrivalCare, setPreArrivalCare, immediateInterventions, setImmediateInterventions, triagePathway, recordedPregnancyStatus, resetVitalOverride } = f;
+  // WHO/ICRC/MSF Interagency Integrated Triage Tool. ABCC alone does not
+  // capture trauma, obstetric, exposure, infection or the full adult /
+  // paediatric danger-sign screen used at first contact.
   return (
-    <>
-          {/* WHO/ICRC/MSF Interagency Integrated Triage Tool. ABCC alone does
-              not capture trauma, obstetric, exposure, infection or the full
-              adult/paediatric danger-sign screen used at first contact. */}
-          <div id="triage-section-danger" className="p-3 rounded-xl scroll-mt-3 space-y-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <div>
-                <span className="block text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>IITT danger-sign screen</span>
-                <span className="block text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  {triagePathway === 'pediatric_under_12' ? 'Pediatric pathway (under 12)' : 'Adult pathway (12+)'} · Any red sign requires immediate high-acuity care.
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div>
-                <label htmlFor="triage-presentation-category" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Presentation</label>
-                <Select id="triage-presentation-category" value={presentationCategory} onChange={event => setPresentationCategory(event.target.value as typeof presentationCategory)} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
-                  <option value="medical">Medical</option>
-                  <option value="trauma">{t('triageForm.trauma')}</option>
-                  <option value="obstetric">Obstetric</option>
-                  <option value="mental_health">{t('triageForm.mentalHealth')}</option>
-                  <option value="other">Other</option>
-                </Select>
-              </div>
-              <div>
-                <label htmlFor="triage-capillary-refill" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Capillary refill (seconds)</label>
-                <input id="triage-capillary-refill" type="text" inputMode="decimal" value={capillaryRefillSeconds} onChange={event => { setCapillaryRefillSeconds(event.target.value); resetVitalOverride(); }} placeholder="2" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label htmlFor="triage-pregnancy-status" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('imgFlow.pregnancy')}</label>
-                <Select id="triage-pregnancy-status" value={recordedPregnancyStatus} onChange={event => { setPregnancyStatus(event.target.value as typeof f.pregnancyStatus); resetVitalOverride(); }} style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
-                  <option value="unknown">Unknown</option>
-                  <option value="not_applicable">{t('imgFlow.pregnancyNA')}</option>
-                  <option value="not_pregnant">{t('triageForm.notPregnant')}</option>
-                  <option value="pregnant">Pregnant</option>
-                  <option value="postpartum">Postpartum</option>
-                </Select>
-              </div>
-              {recordedPregnancyStatus === 'pregnant' && (
-                <div>
-                  <label htmlFor="triage-gestational-age" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>Gestational age (weeks)</label>
-                  <input id="triage-gestational-age" type="text" inputMode="numeric" value={gestationalAgeWeeks} onChange={event => setGestationalAgeWeeks(event.target.value)} placeholder="28" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-                </div>
-              )}
-              {presentationCategory === 'trauma' && (
-                <div className="sm:col-span-2">
-                  <label htmlFor="triage-injury-mechanism" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('triageForm.injuryMechanism')}</label>
-                  <input id="triage-injury-mechanism" type="text" value={injuryMechanism} onChange={event => setInjuryMechanism(event.target.value)} placeholder="Road traffic crash, fall, penetrating injury…" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-                </div>
-              )}
-            </div>
-
-            <fieldset className="rounded-lg p-2" style={{ border: '1px solid rgba(224,49,39,0.3)', background: 'var(--bg-card)' }}>
-              <legend className="px-1 text-[10px] font-bold" style={{ color: 'var(--color-danger)' }}>Red — immediate</legend>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {IITT_RED_CRITERIA.map(([code, label]) => (
-                  <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
-                    <input type="checkbox" checked={redCriteria.includes(code)} onChange={event => { setRedCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code)); resetVitalOverride(); }} />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="rounded-lg p-2" style={{ border: '1px solid rgba(255,153,51,0.4)', background: 'var(--bg-card)' }}>
-              <legend className="px-1 text-[10px] font-bold" style={{ color: 'var(--color-warning)' }}>Yellow — urgent review</legend>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {IITT_YELLOW_CRITERIA.map(([code, label]) => (
-                  <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
-                    <input type="checkbox" checked={yellowCriteria.includes(code)} onChange={event => { setYellowCriteria(current => event.target.checked ? [...current, code] : current.filter(item => item !== code)); resetVitalOverride(); }} />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="rounded-lg p-2" style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card)' }}>
-              <legend className="px-1 text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>{t('triageForm.outbreakScreen')}</legend>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {INFECTION_RISK_SIGNS.map(([code, label]) => (
-                  <label key={code} className="flex items-start gap-2 text-[10px] leading-tight" style={{ color: 'var(--text-primary)' }}>
-                    <input type="checkbox" checked={infectionRiskSigns.includes(code)} onChange={event => setInfectionRiskSigns(current => event.target.checked ? [...current, code] : current.filter(item => item !== code))} />
-                    <span>{label}</span>
-                  </label>
-                ))}
-                <label className="flex items-start gap-2 text-[10px] font-semibold leading-tight" style={{ color: 'var(--color-danger)' }}>
-                  <input type="checkbox" checked={isolationRequired} onChange={event => setIsolationRequired(event.target.checked)} />
-                  <span>Separate immediately and apply facility isolation / IPC pathway</span>
-                </label>
-              </div>
-            </fieldset>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label htmlFor="triage-pre-arrival-care" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('triageForm.preArrivalCare')}</label>
-                <input id="triage-pre-arrival-care" type="text" value={preArrivalCare} onChange={event => setPreArrivalCare(event.target.value)} placeholder="First aid, medicines, fluids, referral treatment…" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label htmlFor="triage-immediate-interventions" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('triageForm.immediateInterventions')}</label>
-                <input id="triage-immediate-interventions" type="text" value={immediateInterventions} onChange={event => setImmediateInterventions(event.target.value)} placeholder="Airway manoeuvre, oxygen, bleeding control, glucose…" style={{ width: '100%', padding: '5px 8px', borderRadius: 6, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-              </div>
-            </div>
-          </div>
-    </>
+    <div id="triage-section-danger" className="o3f-fields scroll-mt-3">
+      <p className="o3f-caption">
+        {triagePathway === 'pediatric_under_12' ? t('triageO3.pathwayChild') : t('triageO3.pathwayAdult')}
+      </p>
+      <O3SelectField id="triage-presentation-category" label={t('triageO3.presentation')} value={presentationCategory} placeholder={null}
+        onChange={value => setPresentationCategory(value as typeof presentationCategory)}
+        options={[
+          { value: 'medical', label: t('triageO3.medical') },
+          { value: 'trauma', label: t('triageForm.trauma') },
+          { value: 'obstetric', label: t('triageO3.obstetric') },
+          { value: 'mental_health', label: t('triageForm.mentalHealth') },
+          { value: 'other', label: t('triageO3.other') },
+        ]} />
+      <O3SelectField id="triage-pregnancy-status" label={t('imgFlow.pregnancy')} value={recordedPregnancyStatus} placeholder={null}
+        onChange={value => { setPregnancyStatus(value as typeof f.pregnancyStatus); resetVitalOverride(); }}
+        options={[
+          { value: 'unknown', label: t('triageO3.unknown') },
+          { value: 'not_applicable', label: t('imgFlow.pregnancyNA') },
+          { value: 'not_pregnant', label: t('triageForm.notPregnant') },
+          { value: 'pregnant', label: t('triageO3.pregnant') },
+          { value: 'postpartum', label: t('triageO3.postpartum') },
+        ]} />
+      <O3TextField id="triage-capillary-refill" label={t('triageO3.capillaryRefill')} value={capillaryRefillSeconds} inputMode="decimal" placeholder="2"
+        onChange={value => { setCapillaryRefillSeconds(value); resetVitalOverride(); }} />
+      {recordedPregnancyStatus === 'pregnant' && (
+        <O3TextField id="triage-gestational-age" label={t('triageO3.gestationalAge')} value={gestationalAgeWeeks} inputMode="numeric" placeholder="28"
+          onChange={setGestationalAgeWeeks} />
+      )}
+      {presentationCategory === 'trauma' && (
+        <O3TextField id="triage-injury-mechanism" label={t('triageForm.injuryMechanism')} value={injuryMechanism} wide
+          placeholder={t('triageO3.injuryPlaceholder')} onChange={setInjuryMechanism} />
+      )}
+      <O3MultiSelectField id="triage-red-criteria" label={t('triageO3.redSigns')} tone="danger"
+        values={redCriteria} options={asOptions(IITT_RED_CRITERIA)}
+        onChange={next => { setRedCriteria(next as typeof redCriteria); resetVitalOverride(); }} />
+      <O3MultiSelectField id="triage-yellow-criteria" label={t('triageO3.yellowSigns')} tone="warning"
+        values={yellowCriteria} options={asOptions(IITT_YELLOW_CRITERIA)}
+        onChange={next => { setYellowCriteria(next as typeof yellowCriteria); resetVitalOverride(); }} />
+      <O3MultiSelectField id="triage-infection-signs" label={t('triageForm.outbreakScreen')}
+        values={infectionRiskSigns} options={asOptions(INFECTION_RISK_SIGNS)}
+        onChange={next => setInfectionRiskSigns(next as typeof infectionRiskSigns)} />
+      <O3SelectField id="triage-isolation" label={t('triageO3.isolation')} value={isolationRequired ? 'yes' : 'no'} placeholder={null}
+        onChange={value => setIsolationRequired(value === 'yes')}
+        options={[{ value: 'no', label: t('action.no') }, { value: 'yes', label: t('triageO3.isolateNow') }]} />
+      <O3TextField id="triage-pre-arrival-care" label={t('triageForm.preArrivalCare')} value={preArrivalCare}
+        placeholder={t('triageO3.preArrivalPlaceholder')} onChange={setPreArrivalCare} />
+      <O3TextField id="triage-immediate-interventions" label={t('triageForm.immediateInterventions')} value={immediateInterventions}
+        placeholder={t('triageO3.interventionsPlaceholder')} onChange={setImmediateInterventions} />
+    </div>
   );
 }
 
@@ -301,23 +151,17 @@ export function TriagePriorityResult({ f }: { f: TriageFormState }) {
                 <TrendingUp className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{t('nurse.raisePriorityAboveComputed')}</span>
               </div>
-              <div className="flex gap-2">
+              <Select
+                id="triage-manual-raise"
+                className="o3f-input"
+                value={effectiveManualPriorityRaise || ''}
+                onChange={e => setManualPriorityRaise(e.target.value as '' | 'RED' | 'YELLOW')}
+              >
+                <option value="">{t('triageO3.noRaise')}</option>
                 {manualRaiseOptions.map(option => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setManualPriorityRaise(current => current === option ? '' : option)}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
-                    style={{
-                      background: effectiveManualPriorityRaise === option ? triagePriorityColor(option).bg : 'var(--bg-card)',
-                      color: effectiveManualPriorityRaise === option ? triagePriorityColor(option).text : 'var(--text-secondary)',
-                      border: `1px solid ${effectiveManualPriorityRaise === option ? triagePriorityColor(option).bg : 'var(--border-light)'}`,
-                    }}
-                  >
-                    {t('nurse.raiseTo', { label: triagePriorityColor(option).label })}
-                  </button>
+                  <option key={option} value={option}>{t('nurse.raiseTo', { label: triagePriorityColor(option).label })}</option>
                 ))}
-              </div>
+              </Select>
               {effectiveManualPriorityRaise && (
                 <div className="mt-2">
                   <label htmlFor="triage-manual-raise-reason" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--color-danger)' }}>

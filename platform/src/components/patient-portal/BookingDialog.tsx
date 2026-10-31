@@ -274,8 +274,8 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
               <button type="button" className="pp-btn pp-btn-secondary pp-bk-nav" aria-label={t('patientPortal.bk.nextWeek')}
                 disabled={loadingSlots || atHorizon} onClick={() => setWeekStart(nextWeekStart(weekStart))}><ChevronRight size={16} /></button>
             </div>
-            {notice && <p role="status" className="pp-bk-error pp-bk-error--strong">{notice}</p>}
-            {slotsError && <p role="alert" className="pp-bk-error">{slotsError}</p>}
+            {notice && <FormError message={notice} />}
+            {slotsError && <FormError message={slotsError} />}
             {!loadingSlots && ownVisitDates.map(date => (
               <p key={date} className="pp-bk-help">{t('patientPortal.bk.ownVisitDay', { day: dayLabel(date) })}</p>
             ))}

@@ -272,6 +272,8 @@ export interface CreateNoteInput {
   orgId?: string;
   /** Pre-filled sections, e.g. derived snapshots taken at creation. */
   sections?: NoteSectionContent[];
+  /** A structured form's answers (Covid 19, PHQ, …), kept beside the body. */
+  formData?: Record<string, string>;
   amendsNoteId?: string;
 }
 
@@ -337,6 +339,7 @@ export async function createClinicalNote(input: CreateNoteInput): Promise<Clinic
     hospitalName: input.hospitalName,
     orgId: input.orgId,
     amendsNoteId: input.amendsNoteId,
+    ...(input.formData ? { formData: input.formData } : {}),
     createdBy: input.authorId,
     createdAt: ts,
     updatedAt: ts,

@@ -113,6 +113,11 @@ export interface LabOrderDraft {
   /** Files that travel with the order (prior report, external result, consent).
    *  Filed against the patient's chart when the order is placed. */
   documents: OrderAttachment[];
+  /** Set by the lab's own intake; a clinician's order leaves these empty. */
+  requestSource?: 'facility' | 'external_facility' | 'walk_in';
+  externalFacility?: string;
+  externalRequester?: string;
+  externalReference?: string;
 }
 
 export const emptyLabOrderDraft = (orderedByName = ''): LabOrderDraft => ({

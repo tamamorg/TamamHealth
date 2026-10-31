@@ -16,6 +16,7 @@
  * which this links out to); the education view can send a new message through
  * the chart's existing patient-education action.
  */
+import { canRetractDocument, canSeeRetractedDocuments } from '@/lib/clinical/document-retraction';
 import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
@@ -28,6 +29,7 @@ import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import { messagesDB } from '@/lib/db';
 import { formatDate } from '@/lib/format-utils';
 import ChartSection from '@/components/ehr/chart/ChartSection';
+import FormSlider from '@/components/overlay/FormSlider';
 import type { Attachment } from '@/data/mock';
 import type { PatientDoc, PatientDocumentCategory, PatientDocumentDoc, ReferralDoc, MessageDoc } from '@/lib/db-types';
 import { FileText, X, ArrowRightLeft, ChevronRight, Send, AlertTriangle } from '@/components/icons/lucide';
@@ -37,6 +39,7 @@ import { FOCUSED_ROW_STYLE } from '@/components/ehr/chart/sections/rowFocus';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useReferralActions } from '@/components/referrals/useReferralActions';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
 const CATEGORY_LABELS: Record<PatientDocumentCategory, string> = {
@@ -118,6 +121,7 @@ export default function DocumentsPanel({
   canViewClinical = true,
   onSendEducation,
   onOpenAllReferrals,
+  onReferralsChanged,
   onNewReferral,
   focusId,
 }: {
@@ -130,6 +134,8 @@ export default function DocumentsPanel({
   onSendEducation?: () => void;
   /** Jumps to the referrals module filtered to this patient. */
   onOpenAllReferrals?: () => void;
+  /** Re-read the referrals after a row action writes. */
+  onReferralsChanged?: () => void;
   /** Opens the chart's refer modal. Omitted for roles that cannot refer. */
   onNewReferral?: () => void;
   /** When set (e.g. deep-linked from elsewhere in the chart), the sub-view
@@ -138,11 +144,12 @@ export default function DocumentsPanel({
   focusId?: string;
 }) {
   const { t } = useTranslation();
+  const { actionsFor: referralActions, slider: referralSlider } = useReferralActions({ canViewClinical, onChanged: onReferralsChanged, onOpenAll: onOpenAllReferrals });
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const confirmPrompt = useConfirmPrompt();
   const { showToast } = useToast();
-  const { documents, add, remove, addAnnotation, updateAnnotation, deleteAnnotation } = usePatientDocuments(patient._id);
+  const { documents, retracted, add, remove, addAnnotation, updateAnnotation, deleteAnnotation } = usePatientDocuments(patient._id);
   // In the URL so Back returns to the tab the user was on.
   const [view, setView] = useUrlView<DocView>(['documents', 'referrals', 'education'], 'documents');
   const [category, setCategory] = useState<PatientDocumentCategory>('radiology');
@@ -307,7 +314,7 @@ export default function DocumentsPanel({
     });
     if (!reason?.trim()) return;
     try {
-      if (!(await remove(d._id, reason, { id: currentUser?._id, name: currentUser?.name }))) throw new Error('Change not saved. Try again.');
+      if (!(await remove(d._id, reason, { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role }))) throw new Error('Change not saved. Try again.');
       showToast(t('chart.documentRemoved', { name: d.title || d.fileName }), 'success');
     } catch (err) {
       showToast(describeError(err, t('msg.changeNotSavedTryAgain')), 'error');
@@ -337,7 +344,9 @@ export default function DocumentsPanel({
           actions={[
             { key: 'preview', label: t('documents.preview'), onClick: () => openPreview(d) },
             { key: 'download', label: t('documents.download'), onClick: () => downloadDoc(d) },
-            { key: 'remove', label: t('action.delete'), tone: 'danger' as const, onClick: () => void removeDoc(d) },
+            ...(canRetractDocument({ id: currentUser?._id, role: currentUser?.role }, d)
+              ? [{ key: 'remove', label: t('action.delete'), tone: 'danger' as const, onClick: () => void removeDoc(d) }]
+              : []),
           ]}
         />
       </td>
@@ -414,13 +423,12 @@ export default function DocumentsPanel({
     <ChartSection
       title={VIEW_LABELS[view]}
       toggleSlot={subTabs}
-      addLabel={uploadOpen ? 'Close' : 'Upload'}
-      onAdd={() => setUploadOpen(o => !o)}
+      addLabel="Upload"
+      onAdd={() => setUploadOpen(true)}
     >
       {view === 'documents' && (
         <>
           <p className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>Scans, films, letters &amp; IDs</p>
-          {uploadOpen && uploader}
 
           {generalDocs.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-4 mb-2">
@@ -459,7 +467,6 @@ export default function DocumentsPanel({
               )}
             </div>
           </div>
-          {uploadOpen && uploader}
 
           {listTable([
             ...referrals.map(ref => (
@@ -488,13 +495,14 @@ export default function DocumentsPanel({
                 <td>
                   <RowActionsMenu
                     ariaLabel={t('chart.referralRowActions', { name: ref.toHospital })}
-                    actions={onOpenAllReferrals ? [{ key: 'open', label: t('chart.referralOpen'), onClick: onOpenAllReferrals }] : []}
+                    actions={referralActions(ref)}
                   />
                 </td>
               </tr>
             )),
             ...referralDocs.map(docRow),
           ], 'No referrals or referral letters on this chart.')}
+          {referralSlider}
         </>
       )}
 
@@ -508,7 +516,6 @@ export default function DocumentsPanel({
               </button>
             )}
           </div>
-          {uploadOpen && uploader}
 
           {listTable([
             ...educationDocs.map(docRow),
@@ -532,6 +539,26 @@ export default function DocumentsPanel({
             )),
           ], 'Nothing yet. File a handout, or send education to the patient.')}
         </>
+      )}
+
+      {/* A retraction hides the document, not the fact of it: clinical staff
+          see what was removed, by whom and why, and can ask for the original. */}
+      {retracted.length > 0 && canSeeRetractedDocuments(currentUser?.role) && (
+        <div className="tamam-doc-retracted">
+          <p className="tamam-cell-strong">{t('documents.retractedHeading', { count: retracted.length })}</p>
+          <ul>
+            {retracted.map(d => (
+              <li key={d._id}>
+                {t('documents.retractedLine', {
+                  title: d.title || d.fileName,
+                  name: d.removedByName || '—',
+                  date: docDate(d.removedAt) || '—',
+                  reason: d.removalReason || '—',
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* Preview modal */}
@@ -576,6 +603,17 @@ export default function DocumentsPanel({
           </div>
           )}
         </div>
+      )}
+      {uploadOpen && (
+        <FormSlider
+          title={t('documents.uploadTitle')}
+          className="tamam-dialog"
+          onClose={() => setUploadOpen(false)}
+          busy={busy}
+          footer={<button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setUploadOpen(false)}>{t('action.close')}</button>}
+        >
+          {uploader}
+        </FormSlider>
       )}
     </ChartSection>
   );

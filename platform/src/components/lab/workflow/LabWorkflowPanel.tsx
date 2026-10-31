@@ -1,204 +1,132 @@
 'use client';
 
 /**
- * The bench workspace for one lab order, rendered inside the patient chart —
- * same six-chevron shape as the ordering wizard, so a technician and a
- * clinician are reading the same picture of the same order.
- *
- * The footer carries exactly one action: whatever the order's current stage is
- * waiting for. Steps already passed open read-only, which is how a technician
- * checks who drew the specimen without touching the lifecycle.
+ * One lab order as a single form, in the dashboard's slider (LabBenchSlider) and
+ * the patient chart. There are no steps to walk: the form opens on what the test
+ * needs. A new test asks for the specimen; a specimen in hand asks for the result;
+ * a filed result shows its report. Save does that one thing; the lifecycle's own
+ * hops happen behind it (see `fileResult` in useLabWorkflow).
  */
 
-import { ArrowLeft, ArrowRight, Loader2, X } from '@/components/icons/lucide';
+import { useState } from 'react';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabResultDoc } from '@/lib/db-types';
-import {
-  LAB_WORKFLOW_STEPS,
-  LAB_WORKFLOW_STEP_LABEL,
-  type LabWorkflowStepKey,
-} from './lab-workflow-types';
+import { fallbackAccessionNumber } from './lab-workflow-types';
 import { useLabWorkflow } from './useLabWorkflow';
-import { CollectStep, OrderContext, OrderStep, ProcessStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
+import { CollectStep, OrderContext, OrderStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
+import FormNotices from '@/components/overlay/FormNotices';
+import '@/components/forms/o3-form.css';
+import '@/components/ehr/chart/panels/order-basket/order-basket.css';
 import '../order/lab-order.css';
+import './lab-workflow.css';
 
 export default function LabWorkflowPanel({
-  order,
+  order: orderFromList,
   onClose,
   canWork,
   seedResult,
+  hideTitle = false,
+  intent,
 }: {
   order: LabResultDoc;
-  /** Back to the results list. */
+  /** Back out of the workflow: to the list, or closes the slider. */
   onClose: () => void;
   /** False for viewers without lab-result permission — read-only walkthrough. */
   canWork: boolean;
   /** Analyzer reading to pre-fill the Result step with, for review. */
   seedResult?: { value: string; unit: string; referenceRange: string };
+  /** The slider's own header already names the test. */
+  hideTitle?: boolean;
+  /** Picked from the row's dropdown: Save rejects the specimen rather than books it in. */
+  intent?: 'reject';
 }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
-  const ctrl = useLabWorkflow(order, seedResult, canWork);
+  const ctrl = useLabWorkflow(orderFromList, seedResult, canWork);
+  const { order } = ctrl;
+  const [rejecting, setRejecting] = useState(intent === 'reject');
 
-  const index = LAB_WORKFLOW_STEPS.indexOf(ctrl.step);
-  const onActiveStep = ctrl.step === ctrl.activeStep;
+  const needsSpecimen = ctrl.stage === 'ordered' || ctrl.stage === 'rejected_needs_recollection';
+  const filed = ctrl.doneThrough >= 4;
 
-  const runAction = async (fn: () => Promise<boolean>, successKey: string) => {
+  const runAction = async (fn: () => Promise<boolean>, successKey: string, closes = false) => {
     const ok = await fn();
-    showToast(ok ? t(successKey) : t(ctrl.error || 'labFlow.errGeneric'), ok ? 'success' : 'error');
+    // An outcome of the form, not its validation: it goes to the corner.
+    showToast(ok ? t(successKey) : t(ctrl.lastError.current || 'labFlow.errGeneric'), ok ? 'success' : 'error', { placement: 'corner' });
+    if (ok && closes) onClose();
   };
 
-  /** The one thing this step is for — or nothing, when the step is history. */
-  const primaryAction = (): { label: string; run: () => void } | null => {
-    if (!canWork || !onActiveStep) return null;
-    switch (ctrl.step) {
-      case 'collect':
-        return { label: t('labFlow.actionCollect'), run: () => runAction(ctrl.collect, 'labFlow.okCollected') };
-      case 'receive':
-        return { label: t('labFlow.actionReceive'), run: () => runAction(ctrl.receive, 'labFlow.okReceived') };
-      case 'process':
-        return { label: t('labFlow.actionProcess'), run: () => runAction(ctrl.startProcessing, 'labFlow.okProcessing') };
-      case 'result':
-        return { label: t('labFlow.actionFile'), run: () => runAction(ctrl.fileResult, 'labFlow.okFiled') };
-      default:
-        return null;
+  /** The form's one Save — or nothing, once the result is filed. */
+  const primaryAction = (): { run: () => void; blocked?: boolean } | null => {
+    if (!canWork || filed) return null;
+    if (rejecting) {
+      return {
+        run: () => { void runAction(ctrl.reject, 'labFlow.okRejected', true); setRejecting(false); },
+        blocked: !ctrl.receiveDraft.rejectionReason,
+      };
     }
+    // Collected: the row moves to the bench and the result comes later.
+    if (needsSpecimen) {
+      return {
+        run: () => void runAction(ctrl.collect, 'labFlow.okCollected', true),
+        blocked: !ctrl.collectDraft.container || !ctrl.collectDraft.collectedBy.trim(),
+      };
+    }
+    // Filed: the slider stays open on the report, to print or send it.
+    return {
+      run: () => void runAction(ctrl.fileResult, 'labFlow.okFiled'),
+      blocked: !ctrl.hasResultEntry || !ctrl.receiveDraft.accessionNumber.trim(),
+    };
   };
 
   const action = primaryAction();
-  const canAmend = canWork && ctrl.step === 'result' && ctrl.doneThrough >= 4;
 
   return (
-    <div className="labord labord--panel">
-      <div className="labord-header">
-        <div>
-          <h3 className="labord-title">{order.testName}</h3>
-          {/* Specimen only. This panel renders inside the patient's own chart,
-              under a banner that already names them and carries their hospital
-              number — repeating both here told the reader nothing they had not
-              just read, and pushed the one fact they came for (which specimen)
-              to the end of the line. */}
-          {order.specimen && <p className="labord-subtitle">{order.specimen}</p>}
+    <div className="station-form-slider obk-root lwf">
+      <div className="obf-form">
+        <div className="obf-form-body">
+          <div className="obf-pad">
+            {!hideTitle && <h3 className="lwf-title">{order.testName}</h3>}
+            {/* Who sent it, when that is not a clinician here. */}
+            <div className="lwf-meta">
+              <span>
+                {t('labFlow.metaLine', {
+                  accession: fallbackAccessionNumber(order),
+                  orderedBy: [order.orderedBy, order.externalFacility].filter(Boolean).join(', ') || '—',
+                })}
+              </span>
+              {order.priority === 'stat' && <strong className="lwf-stat">{t('lab.priorityStat')}</strong>}
+            </div>
+
+            {/* Filed: the report is what the slider is open for, so it leads.
+                A read-only viewer (the ordering clinician) cannot work the bench,
+                but that report is theirs to read and print — so it sits outside
+                the fieldset and guards its own write controls. A disabled
+                fieldset disables every button inside it, Print included. */}
+            {filed && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} />}
+            <fieldset className="lwf-fields" disabled={!canWork}>
+              {/* What this form is open to do comes first; the clinician's notes
+                  stay above it, and what is already on record follows. */}
+              <OrderContext order={order} />
+              {needsSpecimen && <CollectStep order={order} ctrl={ctrl} />}
+              {!needsSpecimen && !rejecting && <ResultStep order={order} ctrl={ctrl} onAmend={() => runAction(ctrl.amendResult, 'labFlow.okAmended')} />}
+              {!needsSpecimen && <ReceiveStep order={order} ctrl={ctrl} rejecting={rejecting} />}
+              {!needsSpecimen && <CollectStep order={order} ctrl={ctrl} />}
+              <OrderStep order={order} />
+            </fieldset>
+          </div>
         </div>
-        <button type="button" className="labord-close" onClick={onClose} aria-label={t('action.close')}>
-          <X className="w-4 h-4" aria-hidden />
-        </button>
-      </div>
-
-      <div className="labord-meta-row">
-        <span>
-          {t('labFlow.metaLine', {
-            accession: order.accessionNumber || '—',
-            stage: t(`labFlow.stage_${ctrl.stage}`),
-            orderedBy: order.orderedBy || '—',
-          })}
-        </span>
-        {order.priority === 'stat' && <span className="labord-required">{t('lab.priorityStat')}</span>}
-      </div>
-
-      <nav className="labord-stepper" aria-label={t('labFlow.stepsNav')}>
-        {LAB_WORKFLOW_STEPS.map((stepKey, i) => {
-          const isCurrent = stepKey === ctrl.step;
-          const isDone = i <= ctrl.doneThrough;
-          return (
-            <button
-              key={stepKey}
-              type="button"
-              // Any step up to where the order actually is can be opened; ahead
-              // of that there is nothing to show yet.
-              disabled={i > ctrl.doneThrough + 1}
-              onClick={() => ctrl.setStep(stepKey as LabWorkflowStepKey)}
-              aria-current={isCurrent ? 'step' : undefined}
-              className={[
-                'labord-step',
-                isCurrent ? 'labord-step--current' : '',
-                !isCurrent && isDone ? 'labord-step--done' : '',
-                i > ctrl.doneThrough + 1 ? 'labord-step--blocked' : '',
-              ].filter(Boolean).join(' ')}
-            >
-              {t(LAB_WORKFLOW_STEP_LABEL[stepKey])}
+        <FormNotices />
+        <div className="obk-footer">
+          <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={ctrl.busy} onClick={onClose}>
+            {t(action ? 'action.cancel' : 'action.close')}
+          </button>
+          {action && (
+            <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={action.run} disabled={ctrl.busy || action.blocked}>
+              {t('action.save')}
             </button>
-          );
-        })}
-      </nav>
-
-      <div className="labord-main">
-        {/* A read-only viewer (the ordering clinician) cannot work the bench,
-            but the finished report is theirs to read and print — so the Report
-            step stays enabled and guards its own write controls instead. A
-            disabled fieldset disables every button inside it, Print included. */}
-        <fieldset className="labord-scroll" disabled={!canWork && ctrl.step !== 'report'} style={{ border: 0, margin: 0, minWidth: 0 }}>
-          {/* The bench steps carry the order's context with them: the panel
-              opens on the step that needs doing, one past where it is shown. */}
-          {(ctrl.step === 'collect' || ctrl.step === 'receive' || ctrl.step === 'process' || ctrl.step === 'result') && (
-            <div className="labord-context-strip"><OrderContext order={order} /></div>
           )}
-          {ctrl.step === 'order' && <OrderStep order={order} />}
-          {ctrl.step === 'collect' && <CollectStep order={order} ctrl={ctrl} />}
-          {ctrl.step === 'receive' && <ReceiveStep order={order} ctrl={ctrl} />}
-          {ctrl.step === 'process' && <ProcessStep order={order} ctrl={ctrl} />}
-          {ctrl.step === 'result' && <ResultStep order={order} ctrl={ctrl} />}
-          {ctrl.step === 'report' && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} />}
-        </fieldset>
-
-        <div className="labord-footer">
-          <span className="labord-footer-note">
-            {t('labOrder.stepCounter', { current: index + 1, total: LAB_WORKFLOW_STEPS.length })}
-            {!canWork && ` · ${t('labFlow.readOnly')}`}
-          </span>
-          <span className="labord-footer-nav">
-            <button
-              type="button"
-              className="labord-btn"
-              onClick={() => ctrl.setStep(LAB_WORKFLOW_STEPS[Math.max(index - 1, 0)])}
-              disabled={index === 0 || ctrl.busy}
-            >
-              <ArrowLeft className="w-4 h-4" aria-hidden /> {t('action.back')}
-            </button>
-
-            {/* Rejecting sits beside receiving because it is the other half of
-                the same decision: accept this specimen, or send it back. */}
-            {canWork && onActiveStep && ctrl.step === 'receive' && (
-              <button
-                type="button"
-                className="labord-btn"
-                onClick={() => runAction(ctrl.reject, 'labFlow.okRejected')}
-                disabled={ctrl.busy || !ctrl.receiveDraft.rejectionReason}
-              >
-                {t('labFlow.actionReject')}
-              </button>
-            )}
-
-            {canAmend && (
-              <button
-                type="button"
-                className="labord-btn"
-                onClick={() => runAction(ctrl.amendResult, 'labFlow.okAmended')}
-                // An amendment without a stated reason is just an overwrite.
-                disabled={ctrl.busy || !ctrl.amendReason.trim()}
-              >
-                {t('labFlow.actionAmend')}
-              </button>
-            )}
-
-            {action ? (
-              <button type="button" className="labord-btn labord-btn--primary" onClick={action.run} disabled={ctrl.busy}>
-                {ctrl.busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden />}
-                {action.label}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="labord-btn labord-btn--primary"
-                onClick={() => ctrl.setStep(LAB_WORKFLOW_STEPS[Math.min(index + 1, LAB_WORKFLOW_STEPS.length - 1)])}
-                disabled={index >= Math.min(ctrl.doneThrough + 1, LAB_WORKFLOW_STEPS.length - 1) || ctrl.busy}
-              >
-                {t('action.next')} <ArrowRight className="w-4 h-4" aria-hidden />
-              </button>
-            )}
-          </span>
-          <span />
         </div>
       </div>
     </div>

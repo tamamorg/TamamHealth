@@ -11,9 +11,10 @@
  * split the lab bench uses in `useLabWorkflow`.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { useLabResults } from '@/lib/hooks/useLabResults';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
 import type { LabResultDoc } from '@/lib/db-types';
 import {
@@ -64,7 +65,15 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
   const { currentUser } = useAuth();
   const { advance, update } = useLabResults(study.patientId);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  // The panel reads this right after an action resolves, before React has
+  // re-rendered with the new `error`.
+  const lastError = useRef<string | null>(null);
+  const setError = useCallback((message: string | null) => {
+    lastError.current = message;
+    setErrorState(message);
+  }, []);
+  const { canOrderLabs: canCloseOut } = usePermissions();
 
   const stage = effectiveOrderStatus(study);
   const activeStep = stepForStage(stage);
@@ -257,18 +266,30 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
     });
   }), [currentUser, reportDraft.impression, run, study]);
 
-  /** Close out the tail of the lifecycle, same hops as the lab's. */
-  const markReviewed = useCallback(() => run(
+  /**
+   * Close out the tail of the lifecycle, same hops and same rule as the lab's:
+   * these record a clinician's review, not reading-room work, and the patient
+   * portal releases on them — so ordering clinicians only.
+   */
+  const closeOut = useCallback(async (fn: () => Promise<unknown>) => {
+    if (!canCloseOut) {
+      setError(t('labFlow.closeoutClinicianOnly'));
+      return false;
+    }
+    return run(fn);
+  }, [canCloseOut, run, t]);
+
+  const markReviewed = useCallback(() => closeOut(
     () => advance(study._id, 'reviewed_by_clinician', { reviewedBy: currentUser?.name, reviewedAt: new Date().toISOString() }),
-  ), [advance, currentUser, run, study._id]);
+  ), [advance, closeOut, currentUser, study._id]);
 
-  const markActedUpon = useCallback(() => run(
+  const markActedUpon = useCallback(() => closeOut(
     () => advance(study._id, 'acted_upon', { actedUponBy: currentUser?.name, actedUponAt: new Date().toISOString() }),
-  ), [advance, currentUser, run, study._id]);
+  ), [advance, closeOut, currentUser, study._id]);
 
-  const markCommunicated = useCallback(() => run(
+  const markCommunicated = useCallback(() => closeOut(
     () => advance(study._id, 'communicated_to_patient', { communicatedBy: currentUser?.name, communicatedAt: new Date().toISOString() }),
-  ), [advance, currentUser, run, study._id]);
+  ), [advance, closeOut, currentUser, study._id]);
 
   return {
     stage,
@@ -279,13 +300,14 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
     steps: RADIOLOGY_WORKFLOW_STEPS,
     busy,
     error,
+    lastError,
     safetyBlockers: safetyBlockers(),
     scheduleDraft, setScheduleDraft,
     safetyDraft, setSafetyDraft,
     acquireDraft, setAcquireDraft,
     reportDraft, setReportDraft,
     schedule, clearSafety, acquire, repeat, fileReport, notifyClinician,
-    markReviewed, markActedUpon, markCommunicated,
+    canCloseOut, markReviewed, markActedUpon, markCommunicated,
   };
 }
 

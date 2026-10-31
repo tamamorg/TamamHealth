@@ -11,6 +11,8 @@ import { TriagePatientPicker, TriageChiefComplaint, TriageVitalSafetySummary } f
 import { TriageAbccAssessment, TriageDangerSigns, TriagePriorityResult } from './triage/TriageAssessmentSections';
 import { TriageVitalsSection, TriageIntakeHistory, TriageVisitContext, TriageHandoffSection, TriageNotesSection, TriageFormActions } from './triage/TriageDetailSections';
 import { TriageRecentList } from './triage/TriageRecentList';
+import { O3Layout } from '@/components/forms/O3Form';
+import '@/components/forms/o3-form.css';
 
 export { mayAutoResume } from './triage/triage-helpers';
 
@@ -18,6 +20,54 @@ export default function TriageWorkflow(props: TriageWorkflowProps) {
   const f = useTriageForm(props);
   const { t, triageHistory, draftRestoredNotice, setDraftRestoredNotice, clearForm, lockedPatientId } = f;
   const embedded = !!props.embedded;
+
+  // In a slider or the chart workspace the assessment is an O3 form: its
+  // sections become pages and sections of the O3 frame, Save / Cancel sit
+  // under the page list. The questions are the station's own components, so
+  // every rule they carry (vital safety, auto-priority, drafts) is unchanged.
+  if (embedded && lockedPatientId) {
+    const { editingTriageId, triageData, triageSubmitting, selectedTriagePatient, handleSubmitTriage, clearForm } = f;
+    return (
+      <O3Layout
+        className="o3f-triage"
+        notice={draftRestoredNotice ? (
+          <div className="o3f-notice o3f-triage-draft">
+            <span>{t('nurse.draftRestoredNotice')}</span>
+            <button type="button" onClick={() => clearForm({ discardDraft: true })}>{t('nurse.discardDraft')}</button>
+            <button type="button" onClick={() => setDraftRestoredNotice(false)}>{t('action.dismiss')}</button>
+          </div>
+        ) : undefined}
+        pages={[
+          { id: 'complaint', label: t('triageO3.pageComplaint'), sections: [
+            { id: 'cc', label: t('triageO3.chiefComplaint'), body: <TriageChiefComplaint f={f} /> },
+          ] },
+          { id: 'etat', label: t('triageO3.pageEtat'), sections: [
+            { id: 'abcc', label: t('triageO3.abcc'), body: <TriageAbccAssessment f={f} /> },
+            { id: 'danger', label: t('triageO3.dangerSigns'), body: <TriageDangerSigns f={f} /> },
+            { id: 'priority', label: t('triageO3.priority'), body: <TriagePriorityResult f={f} /> },
+          ] },
+          { id: 'vitals', label: t('triageO3.pageVitals'), sections: [
+            // The safety summary reads the observations, so it sits with them
+            // (it renders nothing until a vital is out of range).
+            { id: 'vitals', label: t('triageO3.vitalSigns'), body: <><TriageVitalSafetySummary f={f} /><TriageVitalsSection f={f} /></> },
+          ] },
+          { id: 'history', label: t('triageO3.pageHistory'), sections: [
+            { id: 'intake', label: t('triageO3.intakeHistory'), body: <TriageIntakeHistory f={f} /> },
+            { id: 'visit', label: t('triageO3.visitContext'), body: <TriageVisitContext f={f} /> },
+          ] },
+          { id: 'handoff', label: t('triageO3.pageHandoff'), sections: [
+            { id: 'handoff', label: t('triageO3.handoff'), body: <TriageHandoffSection f={f} /> },
+            { id: 'notes', label: t('triageO3.notes'), body: <><TriageNotesSection f={f} /><TriageFormActions f={f} showActions={false} /></> },
+          ] },
+        ]}
+        onSave={() => void handleSubmitTriage()}
+        saveDisabled={!triageData.priority || !selectedTriagePatient}
+        saveLabel={editingTriageId ? t('action.saveChanges') : t('nurse.saveTriage')}
+        saving={triageSubmitting}
+        onCancel={props.onCancel ?? (() => clearForm({ discardDraft: true }))}
+      />
+    );
+  }
 
   return (
     <div className={lockedPatientId ? `tamam-reg triage-reg${embedded ? ' triage-reg--embedded' : ''}` : 'flex flex-col lg:flex-row gap-4'} style={{ flex: 1, minHeight: 0 }}>

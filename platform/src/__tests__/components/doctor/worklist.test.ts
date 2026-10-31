@@ -338,7 +338,7 @@ describe('assembleDoctorWorklist — outstanding: documents to sign', () => {
       .find(o => o.label === 'Documents to sign')!.entries!;
     const byId = Object.fromEntries(entries.map(e => [e.id, e]));
 
-    // Consult records are signed on the Visits timeline (RecordSignatureBar).
+    // Consult records are signed on the Visits timeline (RecordSignPanel).
     expect(byId['draft-1'].href).toBe('/patients/patient-akol?tab=history&focus=draft-1');
     expect(byId['cosign-1'].href).toBe('/patients/patient-nyara?tab=history&focus=cosign-1');
     // Assessments are signed in AssessmentsPanel, on the Care plan tab.

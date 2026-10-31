@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { EligibilityCheckDoc } from '@/lib/db-types-payments';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { BILLING } from '@/lib/sync/write-permissions';
 import EligibilityBadge from '@/components/payments/EligibilityBadge';
@@ -19,23 +20,23 @@ export default function PolicyEligibility({ patientId, policyId, facilityId, org
   const [decision, setDecision] = useState<'verified' | 'denied'>('verified');
   const [expiry, setExpiry] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const { showToast } = useToast();
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     let cancelled = false;
     if (!scope) return;
     getLatestEligibility(patientId, scope, policyId).then(value => { if (!cancelled) setCheck(value); })
-      .catch(() => { if (!cancelled) setMessage(t('insuranceFlow.failed')); });
+      .catch(() => { if (!cancelled) showToast(t('insuranceFlow.failed'), 'error'); });
     return () => { cancelled = true; };
-  }, [patientId, policyId, scope, revision, t]);
+  }, [patientId, policyId, scope, revision, t, showToast]);
   async function save(manual: boolean) {
-    setBusy(true); setMessage('');
+    setBusy(true);
     try {
       if (!scope) throw new Error('INSURANCE_FORBIDDEN');
       await checkEligibility({ patientId, policyId, facilityId, orgId, checkedBy: scope?.userId || '',
         manualEvidence: manual ? { reference, method, decision, expiresAt: new Date(expiry).toISOString() } : undefined }, scope);
-      setRevision(value => value + 1); setMessage(t(manual ? 'insuranceFlow.evidenceSaved' : 'insuranceFlow.estimateSaved'));
-    } catch { setMessage(t('insuranceFlow.failed')); }
+      setRevision(value => value + 1); showToast(t(manual ? 'insuranceFlow.evidenceSaved' : 'insuranceFlow.estimateSaved'), 'success');
+    } catch { showToast(t('insuranceFlow.failed'), 'error'); }
     finally { setBusy(false); }
   }
   // getLatestEligibility is the single expiry authority and already normalizes
@@ -62,6 +63,5 @@ export default function PolicyEligibility({ patientId, policyId, facilityId, org
         <button type="button" disabled={busy || !reference.trim() || !expiry} onClick={() => void save(true)}>{t('insuranceFlow.saveEvidence')}</button>
       </div>
     </details>}
-    {message && <p role="status">{message}</p>}
   </div>;
 }

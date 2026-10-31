@@ -11,6 +11,30 @@
  * at the services the patient receives, and they read the payer from here.
  */
 
+import type { AppointmentType } from '@/lib/db-types';
+
+/**
+ * The one "Visit type" list: the service the patient came for. Booking, the
+ * appointment editor, check-in and Start a visit all offer it. `walk_in` is
+ * left out because it says how the patient arrived, not what they came for.
+ */
+export const APPOINTMENT_TYPE_OPTIONS: ReadonlyArray<{ value: AppointmentType; labelKey: string }> = [
+  { value: 'general', labelKey: 'appointments.typeGeneral' },
+  { value: 'follow_up', labelKey: 'appointments.typeFollowUp' },
+  { value: 'specialist', labelKey: 'appointments.typeSpecialist' },
+  { value: 'anc', labelKey: 'appointments.typeAnc' },
+  { value: 'immunization', labelKey: 'appointments.typeImmunization' },
+  { value: 'lab', labelKey: 'appointments.typeLab' },
+  { value: 'surgical', labelKey: 'appointments.typeSurgical' },
+  { value: 'dental', labelKey: 'appointments.typeDental' },
+  { value: 'mental_health', labelKey: 'appointments.typeMentalHealth' },
+];
+
+/** The list's value for a booking; a walk-in row has none of its own yet. */
+export const visitTypeForBooking = (type?: AppointmentType): AppointmentType =>
+  (type && type !== 'walk_in' ? type : 'general');
+
+/** Where the visit happens, labelled "Visit setting" on the forms. */
 export type VisitType = 'opd' | 'facility' | 'home' | 'outreach' | 'group';
 
 /** In the order the form lists them — the everyday one first. */
@@ -47,6 +71,8 @@ export const VISIT_PUNCTUALITY: readonly VisitPunctuality[] = ['early', 'on_time
 
 /** The visit fields check-in writes onto the encounter. */
 export interface VisitDetails {
+  /** The service, from APPOINTMENT_TYPE_OPTIONS. */
+  appointmentType?: AppointmentType;
   visitType?: VisitType;
   visitBilling?: VisitBilling;
   punctuality?: VisitPunctuality;

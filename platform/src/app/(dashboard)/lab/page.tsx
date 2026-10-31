@@ -14,7 +14,10 @@ import { useRouter } from 'next/navigation';
 import { X, Plus, Radio } from '@/components/icons/lucide';
 import EhrListHeader, { EhrListHeaderButton, LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import LabOrderModal from '@/components/lab/order/LabOrderModal';
-import { LAB_WORKFLOW_STEP_LABEL, stepForStage } from '@/components/lab/workflow/lab-workflow-types';
+import LabIntakeSlider from '@/components/lab/order/LabIntakeSlider';
+import LabBenchSlider from '@/components/lab/workflow/LabBenchSlider';
+import StationActionPill from '@/components/ehr/StationActionPill';
+import { benchActions } from '@/components/lab/workflow/lab-workflow-types';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { evaluateCritical } from '@/lib/services/lab-critical-flag';
 import { matchAnalyzerResult, parseInstrumentPayload, type ParsedInstrumentResult } from '@/lib/services/instrument-intake-service';
@@ -205,6 +208,10 @@ export default function LabPage() {
 
   // Create-order modal state
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showIntake, setShowIntake] = useState(false);
+  // The test open in the slider, by id so it follows the record step to step.
+  const [bench, setBench] = useState<{ id: string; intent?: 'reject' } | null>(null);
+  const benchOrder = bench ? labResults.find(r => r._id === bench.id) : undefined;
 
   // Results back but not yet reviewed by a clinician past their SLA
   // (24h critical / 7 days routine) — surfaced so they can't sit unseen.
@@ -355,6 +362,11 @@ export default function LabPage() {
                       <Radio className="w-4 h-4" />
                     </EhrListHeaderButton>
                   )}
+                  {canEnterLabResults && (
+                    <button onClick={() => setShowIntake(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
+                      <Plus className="w-4 h-4" /> {t('labIntake.title')}
+                    </button>
+                  )}
                   {canOrderLabs && (
                     <button onClick={() => setShowOrderModal(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap' }}>
                       <Plus className="w-4 h-4" /> {t('lab.newOrder')}
@@ -368,7 +380,7 @@ export default function LabPage() {
                 the bench queue reads in the same list language as the rest of
                 the app. Result values are deliberately absent: they are read
                 on the chart's Labs tab, which every row click opens. */}
-          <div className={`appointment-card-surface patients-list-surface lab-list-surface${canEnterLabResults ? ' has-actions' : ''}`}>
+          <div className="appointment-card-surface patients-list-surface lab-list-surface">
             <div className="appointment-card-flow">
               <div className="appointment-card-head" aria-hidden="true">
                 <span>{t('lab.patient')}</span>
@@ -376,7 +388,6 @@ export default function LabPage() {
                 <span>{t('lab.specimen')}</span>
                 <span>{t('lab.orderedByLabel')}</span>
                 <span>{t('lab.status')}</span>
-                {canEnterLabResults && <span>{t('lab.action')}</span>}
               </div>
               {!labLoading && sortedFiltered.length === 0 && (
                 <div className="appointment-card-empty">
@@ -440,33 +451,20 @@ export default function LabPage() {
                       <span>{formatCompactDateTime(order.orderedAt)}</span>
                     </div>
 
-                    {/* With an Action track holding the right edge, Status sits
-                        mid-table and aligns under its own head. */}
-                    <div className={`appointment-card-status${canEnterLabResults ? ' appointment-card-status--start' : ''}`}>
-                      <span className={`appointment-status-pill ${STAGE_PILL_CLASS[stage]}`}>
-                        {ORDER_STAGE_LABEL[stage]}
-                      </span>
+                    <div className="appointment-card-status">
+                      <StationActionPill
+                        label={ORDER_STAGE_LABEL[stage]}
+                        className={STAGE_PILL_CLASS[stage]}
+                        actions={canEnterLabResults ? benchActions(stage, t) : []}
+                        ariaLabel={`Next step for ${order.testName}`}
+                        onPick={action => setBench({ id: order._id, intent: action === 'reject' ? 'reject' : undefined })}
+                        onOpen={canEnterLabResults ? () => setBench({ id: order._id }) : undefined}
+                      />
                       {turnaroundOverdue
                         ? <small className="lab-turnaround-overdue">{t('lab.tatOverdue')} · {labTat}</small>
                         : changedAt && <small>{formatCompactDateTime(changedAt)}</small>}
                     </div>
 
-                    {canEnterLabResults && (
-                      <div className="appointment-card-status" {...stopsClickPropagation}>
-                        {/* Lab work happens in the chart, not in a popup: the
-                            technician needs the patient around the result, and
-                            the six bench steps live there. This button just
-                            names the next step and links straight to it. */}
-                        <button
-                          className="btn btn-primary btn-sm"
-                          style={{ padding: '4px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                          onClick={openChart}
-                          disabled={!order.patientId}
-                        >
-                          {t(LAB_WORKFLOW_STEP_LABEL[stepForStage(stage)])}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -568,6 +566,13 @@ export default function LabPage() {
                 )}
               </div>
             </FormSlider>
+          )}
+
+          {showIntake && (
+            <LabIntakeSlider onClose={() => setShowIntake(false)} onPlaced={id => { setShowIntake(false); void reloadLabs(); setBench({ id }); }} />
+          )}
+          {bench && benchOrder && (
+            <LabBenchSlider order={benchOrder} patientName={shortenPersonName(benchOrder.patientName)} intent={bench.intent} onClose={() => { setBench(null); void reloadLabs(); }} />
           )}
 
           {/* Create Lab Order — compact dialog → five-step requisition wizard. */}

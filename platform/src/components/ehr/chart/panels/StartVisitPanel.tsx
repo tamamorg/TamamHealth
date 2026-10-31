@@ -28,11 +28,11 @@ import { APPOINTMENT_PENDING_STATUSES } from '@/lib/appointment-status';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { formatClockTime } from '@/lib/format-utils';
 import {
-  VISIT_EXEMPTIONS, VISIT_PAYMENT_METHODS, VISIT_PUNCTUALITY, VISIT_TYPES,
-  cleanVisitBilling, derivePunctuality, visitBillingComplete,
+  APPOINTMENT_TYPE_OPTIONS, VISIT_EXEMPTIONS, VISIT_PAYMENT_METHODS, VISIT_PUNCTUALITY, VISIT_TYPES,
+  cleanVisitBilling, derivePunctuality, visitBillingComplete, visitTypeForBooking,
   type VisitBilling, type VisitPunctuality, type VisitType,
 } from '@/lib/visits/visit-details';
-import type { AppointmentDoc, EncounterDoc, PatientDoc } from '@/lib/db-types';
+import type { AppointmentDoc, AppointmentType, EncounterDoc, PatientDoc } from '@/lib/db-types';
 import type { AttendanceType, CheckInAcuity } from '@/lib/services/check-in-service';
 import './start-visit-panel.css';
 import FormNotices from '@/components/overlay/FormNotices';
@@ -87,6 +87,7 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
   const [bannerOpen, setBannerOpen] = useState(true);
   const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
   const [chosenAppointmentId, setChosenAppointmentId] = useState<string>(appointmentId ?? WALK_IN);
+  const [typeChoice, setTypeChoice] = useState<AppointmentType | null>(null);
   const [visitType, setVisitType] = useState<VisitType>('opd');
   const [department, setDepartment] = useState('');
   const [attendance, setAttendance] = useState<AttendanceType>('new');
@@ -176,6 +177,7 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
   const departmentNames = departments.length ? departments.map(d => d.name) : ['OPD'];
   const chosenDepartment = department || departmentNames[0];
   const isWalkIn = !chosenAppointment;
+  const appointmentType = typeChoice ?? visitTypeForBooking(chosenAppointment?.appointmentType);
   const childUnderFive = (ageInYears(patient.dateOfBirth) ?? 99) < 5;
 
   const canStart = timing === 'new'
@@ -189,6 +191,7 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
     if (!canStart) return;
     setSaving(true);
     const visit = {
+      appointmentType,
       visitType,
       visitBilling: cleanVisitBilling(billing),
       ...(chosenAppointment && effectivePunctuality ? { punctuality: effectivePunctuality } : {}),
@@ -355,8 +358,15 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
               <p className="sv-readonly">{currentUser.hospitalName || '—'}</p>
             </section>
 
+            <section className="sv-section">
+              <h3 className="sv-section-title">{t('startVisit.visitTypeTitle')}</h3>
+              <Select value={appointmentType} aria-label={t('startVisit.visitTypeTitle')} onChange={e => setTypeChoice(e.target.value as AppointmentType)}>
+                {APPOINTMENT_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
+              </Select>
+            </section>
+
             <fieldset className="sv-fieldset sv-section">
-              <legend className="sv-section-title">{t('startVisit.visitTypeTitle')}</legend>
+              <legend className="sv-section-title">{t('startVisit.settingLabel')}</legend>
               <div className="sv-choices">
                 {VISIT_TYPES.map(type => (
                   <label key={type} className="sv-choice">

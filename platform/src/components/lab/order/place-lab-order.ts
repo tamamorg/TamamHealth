@@ -93,7 +93,11 @@ export async function placeLabOrder({
       testName: test.name,
       specimen: test.specimen,
       tier: test.tier,
-      status: draft.priority === 'stat' ? 'in_progress' : 'pending',
+      // Every test starts at the bench's first step, STAT included: priority
+      // moves it up the queue, it does not draw the specimen. 'in_progress'
+      // here read as already processing and skipped Collect and Receive.
+      status: 'pending',
+      orderStatus: 'ordered',
       result: '',
       unit: '',
       referenceRange: '',
@@ -131,6 +135,10 @@ export async function placeLabOrder({
       indications: draft.indications.length ? draft.indications : undefined,
       aoeAnswers: answers.length ? answers : undefined,
       orderGroupId,
+      requestSource: draft.requestSource,
+      externalFacility: draft.externalFacility || undefined,
+      externalRequester: draft.externalRequester || undefined,
+      externalReference: draft.externalReference || undefined,
     });
     createdIds.push(created._id);
     if (created.accessionNumber) accessionNumbers.push(created.accessionNumber);

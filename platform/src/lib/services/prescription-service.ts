@@ -1,3 +1,4 @@
+import { SAFETY_REASON_MIN_LENGTH, hasSafetyStop } from '../pharmacy/rx-safety';
 import { prescriptionsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
 import type { PrescriptionDoc, PrescriptionPatientCopy, UserRole, HospitalDoc } from '../db-types';
@@ -559,9 +560,10 @@ export async function createPrescription(
   }
 
   const acknowledgementReason = data.medicationSafetyAcknowledgement?.reason.trim() || '';
-  if (overrides.length && acknowledgementReason.length < 10) {
+  const stopped = hasSafetyStop({ allergyWarnings, interactionWarnings });
+  if (stopped && acknowledgementReason.length < SAFETY_REASON_MIN_LENGTH) {
     throw new ValidationError({
-      medicationSafetyAcknowledgement: 'A clinical justification of at least 10 characters is required to override a severe allergy warning.',
+      medicationSafetyAcknowledgement: 'A clinical justification of at least 10 characters is required to continue past a severe allergy or contraindicated interaction warning.',
     });
   }
 

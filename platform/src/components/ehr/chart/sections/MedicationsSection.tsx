@@ -17,6 +17,7 @@
  * explicit reload here.
  */
 
+import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -200,15 +201,10 @@ export default function MedicationsSection({
       if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
       const safety = await assessPrescriptionSafety(patientId, rx.medication, scope);
       if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
-      const severeWarnings = safety.allergyWarnings?.filter(warning => warning.requiresOverride) || [];
       let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
-      if (severeWarnings.length) {
+      if (hasSafetyStop(safety)) {
         const reason = await confirmPrompt({
-          title: t('prescribe.overrideTitle'),
-          message: t('prescribe.overrideMessage', {
-            medication: rx.medication,
-            allergy: severeWarnings.map(warning => warning.allergy).join(', '),
-          }),
+          ...safetyStopPrompt(t, rx.medication, safety),
           inputLabel: t('prescribe.overrideReason'),
           confirmLabel: t('prescribe.overrideConfirm'),
           tone: 'danger',

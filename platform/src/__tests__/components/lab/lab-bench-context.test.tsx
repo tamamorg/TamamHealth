@@ -60,8 +60,8 @@ describe('OrderContext', () => {
 describe('the lab workflow panel', () => {
   const panel = fs.readFileSync(path.join(process.cwd(), 'src/components/lab/workflow/LabWorkflowPanel.tsx'), 'utf8');
 
-  it('carries that context onto every bench step', () => {
-    expect(panel).toContain("(ctrl.step === 'collect' || ctrl.step === 'receive' || ctrl.step === 'process' || ctrl.step === 'result')");
+  it('carries that context on the one form', () => {
+    expect(panel).toContain('<OrderStep order={order} />');
     expect(panel).toContain('<OrderContext order={order} />');
   });
 });

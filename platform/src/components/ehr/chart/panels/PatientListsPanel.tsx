@@ -9,15 +9,16 @@
  * clinician — the same `assignedDoctor` field AssignDoctorModal writes and the
  * registry's "Assigned to me" filter reads).
  *
- * Each row opens the registry ALREADY filtered to the list it counted. The
- * counts previously came from appointment providers while both rows navigated
- * to the same unfiltered /patients, so the number on the row and the list you
- * landed in were unrelated.
+ * Each row opens in place: its patients listed under it, the row's count being
+ * the length of that list. A patient opens their chart. (The rows used to leave
+ * for the registry, taking the clinician away to read a list.)
  */
 
-import { useMemo } from 'react';
-import { Users, ChevronRight } from '@/components/icons/lucide';
+import { useMemo, useState } from 'react';
+import { Users, ChevronDown, ChevronUp } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
+import { patientDisplayName } from '@/lib/patient-utils';
+import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelRouter, ChartPanelUser } from './types';
 
 interface PatientListsPanelProps {
@@ -28,45 +29,62 @@ interface PatientListsPanelProps {
 
 export default function PatientListsPanel({ currentUser, router, onClose }: PatientListsPanelProps) {
   const { patients } = usePatients();
-
-  const myPatientsCount = useMemo(
-    () => (patients || []).filter(p => p.registrationHospital === currentUser?.hospitalId).length,
-    [patients, currentUser?.hospitalId],
-  );
-
-  // Read out of the user once so the memo below depends on the FIELD rather
-  // than on the whole user object: a dependency list naming a property of an
-  // object the body reads is narrower than the compiler can infer, and it
-  // skips optimizing the component rather than guess.
+  const [openList, setOpenList] = useState<string | null>(null);
+  const myHospitalId = currentUser?.hospitalId;
   const myUserId = currentUser?._id;
-  const assignedToMeCount = useMemo(() => {
-    if (!myUserId) return 0;
-    return (patients || []).filter(p => p.assignedDoctor === myUserId).length;
-  }, [patients, myUserId]);
 
-  const lists = [
-    { id: 'my-patients', name: 'My patients', type: `Hospital · ${currentUser?.hospitalName || '—'}`, count: myPatientsCount, href: '/patients' },
-    { id: 'assigned-to-me', name: 'Assigned to me', type: 'Provider worklist', count: assignedToMeCount, href: '/patients?assigned=me' },
-  ];
+  const lists = useMemo<{ id: string; name: string; type: string; patients: PatientDoc[] }[]>(() => [
+    {
+      id: 'my-patients',
+      name: 'My patients',
+      type: `Hospital · ${currentUser?.hospitalName || '—'}`,
+      patients: (patients || []).filter(p => p.registrationHospital === myHospitalId),
+    },
+    {
+      id: 'assigned-to-me',
+      name: 'Assigned to me',
+      type: 'Provider worklist',
+      patients: myUserId ? (patients || []).filter(p => p.assignedDoctor === myUserId) : [],
+    },
+  ], [patients, myHospitalId, myUserId, currentUser?.hospitalName]);
 
-  const openList = (href: string) => {
-    router.push(href);
+  const openPatient = (id: string) => {
+    router.push(`/patients/${encodeURIComponent(id)}`);
     onClose();
   };
 
   return (
     <div className="tamam-drawer-body">
-      {lists.map(list => (
-        <button key={list.id} type="button" className="tamam-panel-list-item" onClick={() => openList(list.href)}>
-          <Users />
-          <div style={{ flex: 1 }}>
-            <div className="tamam-panel-row-main">{list.name}</div>
-            <div className="tamam-panel-row-sub">{list.type}</div>
+      {lists.map(list => {
+        const open = openList === list.id;
+        return (
+          <div key={list.id}>
+            <button type="button" className="tamam-panel-list-item" aria-expanded={open}
+              onClick={() => setOpenList(open ? null : list.id)}>
+              <Users />
+              <div style={{ flex: 1 }}>
+                <div className="tamam-panel-row-main">{list.name}</div>
+                <div className="tamam-panel-row-sub">{list.type}</div>
+              </div>
+              <span className="tamam-panel-list-count">{list.patients.length}</span>
+              {open ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {open && (
+              <ul className="tamam-panel-patients">
+                {list.patients.length === 0 && <li className="tamam-panel-patients-empty">No patients in this list.</li>}
+                {list.patients.map(p => (
+                  <li key={p._id}>
+                    <button type="button" onClick={() => openPatient(p._id)}>
+                      <span>{patientDisplayName(p)}</span>
+                      <span>{p.hospitalNumber}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <span className="tamam-panel-list-count">{list.count}</span>
-          <ChevronRight />
-        </button>
-      ))}
+        );
+      })}
     </div>
   );
 }

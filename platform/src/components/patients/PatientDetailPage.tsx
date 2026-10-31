@@ -1,5 +1,6 @@
 'use client';
 
+import { ROLE_FORM_RULES } from '@/components/ehr/chart/panels/role-form-access';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
@@ -19,7 +20,7 @@ import { MessageSquare } from '@/components/icons/lucide';
 import { Icon as DuotoneInfoIcon } from '@/components/icons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
-import { LabOrderModal, LabWorkspace, OrdersSection, PatientMessagesSection, HistorySection, ProceduresSection, ProgramsSection, ImmunizationsSection, AssignDoctorModal, NurseVitalsModal, ReferModal, VisitSummaryDialog, ConditionAddSlider, RecordMedicationSlider, ChartPaymentPanel } from './detail/lazy-panels';
+import { LabOrderModal, LabWorkspace, OrdersSection, PatientMessagesSection, HistorySection, ProceduresSection, ProgramsSection, ImmunizationsSection, AssignDoctorModal, NurseVitalsModal, RecordSignPanel, ReferModal, VisitSummaryDialog, ConditionAddSlider, RecordMedicationSlider, ChartPaymentPanel } from './detail/lazy-panels';
 import { toIsoDate } from '@/lib/date-utils';
 // Canonical geography — the same lists patient registration writes from, so an
 // edit here can't introduce a state/county spelling the geo rollups don't know.
@@ -32,6 +33,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTriage } from '@/lib/hooks/useTriage';
 
 import { buildChartLatestVitals } from '@/lib/chart-latest-vitals';
+import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
@@ -68,6 +70,7 @@ import PatientAllergiesTab from './detail/PatientAllergiesTab';
 import PatientCareChecklistTab from './detail/PatientCareChecklistTab';
 import PatientDocumentsTab from './detail/PatientDocumentsTab';
 import PatientHistoryTab from './detail/PatientHistoryTab';
+import type { RecordPanelIntent } from './detail/RecordSignPanel';
 import { printWithFooter } from '@/lib/safe-html';
 import PatientAppointmentsTab from './detail/PatientAppointmentsTab';
 import PatientBillingTab from './detail/PatientBillingTab';
@@ -161,17 +164,31 @@ export default function PatientDetailPage() {
       stripArrivalParams();
     }
     // `?note=<id>` (where /notes/[id] now lands): open that note in the
-    // chart's workspace — notes are documented here, beside the record.
+    // chart's workspace — notes are documented here, beside the record. A
+    // saved draft opens locked first, as it does from the Notes tab; the
+    // workspace already locks a signed note and carries its co-signature.
     const noteParam = searchParams.get('note');
     if (noteParam) {
-      setChartPanelRequest(`clinical-note:${noteParam}`);
+      void import('@/lib/clinical-notes/note-service')
+        .then(m => m.getClinicalNoteById(noteParam))
+        .catch(() => null)
+        .then(note => {
+          if (note?.status === 'draft') {
+            setNoteViewer({ id: noteParam, kind: 'clinical' });
+            selectTab('notes');
+          } else {
+            setChartPanelRequest(`clinical-note:${noteParam}`);
+          }
+        });
       stripArrivalParams();
     }
     // `?form=<panel>` (a dashboard's to-do entry: "screen this child",
     // "report this study"): open that role form in the workspace. The shell
     // ignores an id this viewer may not open.
     const formParam = searchParams.get('form');
-    if (formParam === 'nutrition-screening' || formParam === 'imaging-report' || formParam === 'lab-orders' || formParam === 'dispense') {
+    // Any workspace form (role-form-access): triage, ANC, ward admission, the
+    // lab bench, dispensing, the structured forms.
+    if (formParam && formParam in ROLE_FORM_RULES) {
       setChartPanelRequest(formParam);
       stripArrivalParams();
     }
@@ -229,15 +246,20 @@ export default function PatientDetailPage() {
   // be open at once. The one opened last shows; closing it reveals the next
   // one still open, and so on — the chart's workspace stack does the same for
   // the rail panels. Reopening one brings it back to the top.
-  type PageWorkspace = 'vitals' | 'startVisit' | 'prescribe' | 'appointment';
+  type PageWorkspace = 'vitals' | 'startVisit' | 'prescribe' | 'appointment' | 'record';
   const [showBookAppointment, setShowBookAppointment] = useState(false);
   const [pageWorkspaceOrder, setPageWorkspaceOrder] = useState<PageWorkspace[]>([]);
   const bringPageWorkspace = useCallback((ws: PageWorkspace) => {
     setPageWorkspaceOrder(prev => [...prev.filter(x => x !== ws), ws]);
   }, []);
   const openPrescribe = useCallback(() => { setShowPrescribeModal(true); bringPageWorkspace('prescribe'); }, [bringPageWorkspace]);
+  // The consultation record open in the sidebar, where it is read and signed.
+  const [recordPanel, setRecordPanel] = useState<{ id: string; intent: RecordPanelIntent } | null>(null);
+  const openRecordPanel = useCallback((id: string, intent: RecordPanelIntent = 'view') => { setRecordPanel({ id, intent }); bringPageWorkspace('record'); }, [bringPageWorkspace]);
   const openBookAppointment = useCallback(() => { setShowBookAppointment(true); bringPageWorkspace('appointment'); }, [bringPageWorkspace]);
   const [correctingVitalsRecord, setCorrectingVitalsRecord] = useState<MedicalRecordDoc | undefined>(undefined);
+  // A saved reading opens locked; Edit turns the same panel into the correction form.
+  const [vitalsLocked, setVitalsLocked] = useState(false);
   const [assignTarget, setAssignTarget] = useState<AssignDoctorTarget | null>(null);
   // One-shot request for the chart shell to open a workspace drawer panel
   // (e.g. header "+ Note" → `clinical-note:<id>`, the note editor drawer).
@@ -475,7 +497,8 @@ export default function PatientDetailPage() {
       const { listClinicalNotes } = await import('@/lib/clinical-notes/note-service');
       const today = toIsoDate(new Date());
       const drafts = await listClinicalNotes({ patientId: patient._id, display: 'unsigned' }, scope);
-      const note = drafts.find(n => n.serviceDate === today)
+      // A colleague's draft is theirs to finish: this clinician gets their own.
+      const note = drafts.find(n => n.serviceDate === today && canEditDraft(n, currentUser))
         ?? await createClinicalNoteDraft({
           patientId: patient._id,
           patientName: patientFullName(patient),
@@ -488,7 +511,7 @@ export default function PatientDetailPage() {
       // still goes somewhere useful.
       selectTab('notes');
     }
-  }, [patient, createClinicalNoteDraft, scope, selectTab]);
+  }, [patient, createClinicalNoteDraft, scope, selectTab, currentUser]);
 
   // Edit form state — initialised when modal opens
   const [editForm, setEditForm] = useState({
@@ -862,9 +885,24 @@ export default function PatientDetailPage() {
             // record (OpenMRS O3), so the chart narrows instead of being covered.
             workspace={(() => {
               if (!patient || !currentUser) return null;
-              const isOpen: Record<PageWorkspace, boolean> = { vitals: showNurseVitals, startVisit: showStartVisit, prescribe: showPrescribeModal, appointment: showBookAppointment };
+              const openRecord = recordPanel ? records.find(r => r._id === recordPanel.id) : undefined;
+              const isOpen: Record<PageWorkspace, boolean> = { vitals: showNurseVitals, startVisit: showStartVisit, prescribe: showPrescribeModal, appointment: showBookAppointment, record: !!openRecord };
               const top = [...pageWorkspaceOrder].reverse().find(ws => isOpen[ws])
-                ?? (showNurseVitals ? 'vitals' : showStartVisit ? 'startVisit' : showPrescribeModal ? 'prescribe' : showBookAppointment ? 'appointment' : null);
+                ?? (showNurseVitals ? 'vitals' : showStartVisit ? 'startVisit' : showPrescribeModal ? 'prescribe' : showBookAppointment ? 'appointment' : openRecord ? 'record' : null);
+              if (top === 'record' && openRecord) return {
+                title: t('recordSign.title'),
+                wide: true,
+                onClose: () => setRecordPanel(null),
+                content: (
+                  <RecordSignPanel
+                    key={`${openRecord._id}:${recordPanel?.intent}`}
+                    record={openRecord}
+                    intent={recordPanel?.intent}
+                    onClose={() => setRecordPanel(null)}
+                    onChanged={() => reloadRecords()}
+                  />
+                ),
+              };
               if (top === 'startVisit') return {
               title: t('startVisit.title'),
               onClose: () => setShowStartVisit(false),
@@ -885,10 +923,15 @@ export default function PatientDetailPage() {
               ),
             };
               if (top === 'vitals') return {
-              title: correctingVitalsRecord ? t('chart.correctVitals') : t('vitalsPanel.title'),
-              onClose: () => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); },
+              title: correctingVitalsRecord
+                ? t(vitalsLocked ? 'vitalsPanel.viewTitle' : 'chart.correctVitals')
+                : t('vitalsPanel.title'),
+              onClose: () => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); setVitalsLocked(false); },
               content: (
                 <NurseVitalsModal
+                  key={`${correctingVitalsRecord?._id ?? 'new'}:${vitalsLocked}`}
+                  readOnly={vitalsLocked && Boolean(correctingVitalsRecord)}
+                  onEdit={canConsult || canRecordVitalEvents ? () => setVitalsLocked(false) : undefined}
                   presentation="workspace"
                   patientId={patient._id}
                   patientName={patientFullName(patient)}
@@ -899,7 +942,7 @@ export default function PatientDetailPage() {
                   encounterId={nurseVitalsEncounterId}
                   currentUser={currentUser}
                   correctingRecord={correctingVitalsRecord}
-                  onClose={() => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); }}
+                  onClose={() => { setShowNurseVitals(false); setCorrectingVitalsRecord(undefined); setVitalsLocked(false); }}
                   onSaved={() => reloadRecords()}
                 />
               ),
@@ -1036,15 +1079,15 @@ export default function PatientDetailPage() {
               stay reachable here since they don't have their own rail slot. */}
           {activeTab === 'allergies' && patient && <PatientAllergiesTab focusId={focusId} patient={patient} sectionAddRequest={sectionAddRequest} setSectionAddRequest={setSectionAddRequest} />}
 
-          {activeTab === 'notes' && patient && <PatientNotesTab patient={patient} currentUser={currentUser} canConsult={canConsult} setNoteViewer={setNoteViewer} notesRefreshToken={notesRefreshToken} noteViewer={noteViewer} setNotesRefreshToken={setNotesRefreshToken} setChartPanelRequest={setChartPanelRequest} onCreateNote={() => void openClinicalNoteDrawer()} />}
+          {activeTab === 'notes' && patient && <PatientNotesTab patient={patient} currentUser={currentUser} canConsult={canConsult} setNoteViewer={setNoteViewer} notesRefreshToken={notesRefreshToken} noteViewer={noteViewer} setNotesRefreshToken={setNotesRefreshToken} setChartPanelRequest={setChartPanelRequest} onCreateNote={() => void openClinicalNoteDrawer()} onOpenRecord={id => (records.some(r => r._id === id) ? openRecordPanel(id) : setNoteViewer({ id, kind: 'record' }))} />}
 
           {activeTab === 'demographics' && patient && <PatientDemographicsTab patient={patient} demographicsTab={demographicsTab} setDemographicsTab={setDemographicsTab} openEditModal={openEditModal} canRegisterPatients={canRegisterPatients} patientAppointments={patientAppointments} regHospital={regHospital} />}
 
           {activeTab === 'careChecklist' && patient && <PatientCareChecklistTab t={t} patient={patient} focusId={focusId} />}
 
-          {activeTab === 'documents' && patient && <PatientDocumentsTab patient={patient} patientReferrals={patientReferrals} canViewClinical={canViewClinical} focusId={focusId} setMessageSubject={setMessageSubject} setMessageIsEducation={setMessageIsEducation} setShowMessageModal={setShowMessageModal} router={router} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} />}
+          {activeTab === 'documents' && patient && <PatientDocumentsTab patient={patient} patientReferrals={patientReferrals} canViewClinical={canViewClinical} focusId={focusId} setMessageSubject={setMessageSubject} setMessageIsEducation={setMessageIsEducation} setShowMessageModal={setShowMessageModal} router={router} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} onReferralsChanged={reloadReferrals} />}
 
-          {activeTab === 'history' && patient && <PatientHistoryTab patient={patient} patientProblems={patientProblems || []} vitalsTimeline={vitalsTimeline} facilityName={currentUser?.hospital?.name || currentUser?.hospitalName || regHospital?.name} records={records} clinicalNotes={clinicalNotes} allLabResults={allLabResults} allPrescriptions={allPrescriptions} allImmunizations={allImmunizations} patientReferrals={patientReferrals} patientANC={patientANC} patientAppointments={patientAppointments} patientTriages={patientTriages} canViewClinical={canViewClinical} focusId={focusId} />}
+          {activeTab === 'history' && patient && <PatientHistoryTab patient={patient} patientProblems={patientProblems || []} vitalsTimeline={vitalsTimeline} facilityName={currentUser?.hospital?.name || currentUser?.hospitalName || regHospital?.name} records={records} clinicalNotes={clinicalNotes} allLabResults={allLabResults} allPrescriptions={allPrescriptions} allImmunizations={allImmunizations} patientReferrals={patientReferrals} patientANC={patientANC} patientAppointments={patientAppointments} patientTriages={patientTriages} canViewClinical={canViewClinical} canConsult={canConsult} focusId={focusId} onOpenRecord={openRecordPanel} noteViewer={noteViewer} setNoteViewer={setNoteViewer} setChartPanelRequest={setChartPanelRequest} />}
 
           {/* Labs Tab — results list, and the bench workflow for one order. */}
           {activeTab === 'labs' && (
@@ -1052,6 +1095,7 @@ export default function PatientDetailPage() {
               patientId={patient._id}
               canOrderLabs={canOrderLabs}
               canWork={canEnterLabResults}
+              canWorkImaging={roleFormAllowed('imaging-report', currentUser?.role, canViewClinical)}
               onAdd={openLabOrder}
               focusId={focusId}
               seedResult={seedResult}
@@ -1062,7 +1106,7 @@ export default function PatientDetailPage() {
           {activeTab === 'prescriptions' && <PatientMedicationsTab patient={patient} canPrescribe={canPrescribe} canRecordMedications={canRecordMedicationHistory} canDispense={canDispense} onPrescribe={openDrugOrder} currentUser={currentUser} focusId={focusId} />}
 
           {/* Vitals Tab */}
-          {activeTab === 'vitals' && <PatientVitalsTab patientAgeYears={patientAgeYearsExact(patient) ?? undefined} isPregnant={isPregnant} vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={setCorrectingVitalsRecord} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) bringPageWorkspace('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} onVitalsChanged={() => reloadRecords()} />}
+          {activeTab === 'vitals' && <PatientVitalsTab patientAgeYears={patientAgeYearsExact(patient) ?? undefined} isPregnant={isPregnant} vitalsView={vitalsView} canConsult={canConsult} canRecordVitalEvents={canRecordVitalEvents} setCorrectingVitalsRecord={record => { setVitalsLocked(false); setCorrectingVitalsRecord(record); }} onViewReading={record => { setCorrectingVitalsRecord(record); setVitalsLocked(true); setShowNurseVitals(true); bringPageWorkspace('vitals'); }} setShowNurseVitals={(next) => { setShowNurseVitals(next); if (next === true) bringPageWorkspace('vitals'); }} setVitalsView={setVitalsView} recordsWithTriageVitals={recordsWithTriageVitals} t={t} vitalsTimeline={vitalsTimeline} records={records} onVitalsChanged={() => reloadRecords()} />}
 
           {/* Immunizations — dose history recorded in the chart, through the
               same service the /immunizations module writes with. */}

@@ -11,7 +11,7 @@ import type { AppointmentDoc, TriageDoc, TriagePriority, EncounterDoc, UserRole 
 import {
   createTriage, updateTriage, getTriageByEncounter, findActiveTriageForPatient, DuplicateActiveTriageError,
 } from './triage-service';
-import { createAppointment, getAppointmentsByPatient, updateAppointmentStatus, BookingConflictError } from './appointment-service';
+import { createAppointment, getAppointmentsByPatient, updateAppointment, updateAppointmentStatus, BookingConflictError } from './appointment-service';
 import { jubaDate, jubaTime } from '../time-juba';
 import { orgOnlyScope } from './data-scope';
 import { APPOINTMENT_PENDING_STATUSES } from '../appointment-status';
@@ -92,6 +92,12 @@ export async function checkInAppointment(input: {
       actorRole: input.actorRole as never,
     });
     if (!appointment) throw new Error('Patient not checked in. Try again.');
+    // The desk may correct the visit type on arrival. A role that cannot amend
+    // bookings still checks the patient in; the visit keeps its answer.
+    const visitType = input.visit?.appointmentType;
+    if (visitType && visitType !== appointment.appointmentType && input.actorRole) {
+      await updateAppointment(input.appointmentId, { appointmentType: visitType }, input.actorRole as UserRole).catch(() => undefined);
+    }
     await upsertWorkflowRepair(repairId, { ...repairBase, status: 'open', currentStep: 'encounter' });
     const existing = await findOpenEncounterForPatient(input.patientId, input.facilityId || '');
     if (!existing) {
@@ -106,7 +112,7 @@ export async function checkInAppointment(input: {
         arrivalChannel: 'appointment',
         appointmentId: input.appointmentId,
         attendanceType,
-        visit: input.visit,
+        visit: { appointmentType: appointment.appointmentType, ...input.visit },
         actorId: input.actorId,
       });
     } else if (hasVisitDetails(input.visit)) {
@@ -140,7 +146,7 @@ export async function checkInAppointment(input: {
 }
 
 const hasVisitDetails = (visit?: VisitDetails): boolean =>
-  Boolean(visit && (visit.visitType || visit.visitBilling || visit.punctuality));
+  Boolean(visit && (visit.appointmentType || visit.visitType || visit.visitBilling || visit.punctuality));
 
 export type CheckInAcuity = 'routine' | 'priority' | 'emergency';
 

@@ -79,7 +79,7 @@
   border: 0;
   background: transparent;
   color: var(--accent-text, var(--accent-primary));
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -136,7 +136,7 @@
   border: 0;
   background: transparent;
   color: var(--accent-text, var(--accent-primary));
-  font-size: 13px;
+  font-size: 14px;
   text-align: start;
   cursor: pointer;
 }
@@ -163,13 +163,15 @@
   border: 0;
   background: var(--ehr-panel, var(--bg-card-solid));
   color: var(--text-primary);
-  font-size: 20px;
+  /* The O3 frame's sizes (components/forms/o3-form.css), so a note and a
+     structured form read alike: 16px page title, 14px everything else. */
+  font-size: 16px;
   font-weight: 600;
   text-align: start;
   cursor: pointer;
 }
 
-.omf-group--major > .omf-group-head { font-size: 22px; }
+.omf-group--major > .omf-group-head { font-size: 16px; }
 
 /* O3's sub-heading row under a group title ("Visit particulars"). */
 .omf-subhead {
@@ -178,7 +180,8 @@
   min-height: 48px;
   padding: 0 16px;
   border-top: 1px solid var(--border-light);
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -188,14 +191,14 @@
 .omf-chevron.is-folded { transform: none; }
 
 .omf-group-body {
-  margin-inline-end: 32px;
-  padding: 24px 16px 32px;
-  background: var(--bg-app, #f4f4f4);
+  margin-inline-end: 24px;
+  padding: 24px;
+  background: var(--color-slate-100);
 }
 
-.tamam-drawer.is-maximized .omf-group-body { margin-inline-end: 64px; }
+.tamam-drawer.is-maximized .omf-group-body { margin-inline-end: 48px; }
 
-.omf-purpose { margin: 0 0 20px; font-size: 16px; line-height: 1.4; color: var(--text-primary); }
+.omf-purpose { margin: 0 0 20px; font-size: 14px; line-height: 1.45; color: var(--text-primary); }
 .omf-purpose strong { font-weight: 600; }
 
 /* The note's section card sits inside the group: the group head already names
@@ -315,3 +318,8 @@
   .omf-group-body, .tamam-drawer.is-maximized .omf-group-body { margin-inline-end: 0; }
 }
 
+
+/* One text size in the note form, as in every clinical form (O3 frame):
+   the pulled-in rows (problems, medications, allergies, vitals), the
+   signature line and the save stamp read at 14px too. */
+.omf-root :is(.cn-derived-row, .cn-signature-note, .omf-saved) { font-size: 14px; line-height: 1.45; }

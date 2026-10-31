@@ -139,16 +139,19 @@ export default function CareCoordinationModal({
     const selectedProblems = problems.filter((_, index) => includeProblems && pickedProblems.has(index));
     const selectedSocial = socialHistory.filter((_, index) => includeSocial && pickedSocial.has(index));
     const body = `${noteSections}
-      ${selectedProblems.length ? `<section class="section"><h2 class="section-title">Problems</h2><table><thead><tr><th>Effective date</th><th>Problem</th><th>Status</th></tr></thead><tbody>${selectedProblems.map(problem => `<tr><td>${escapeHtml(problem.effectiveDate || '—')}</td><td>${escapeHtml(problem.problem)}</td><td><span class="status">${escapeHtml(problem.status)}</span></td></tr>`).join('')}</tbody></table></section>` : ''}
-      ${selectedSocial.length ? `<section class="section"><h2 class="section-title">Social history</h2><table><thead><tr><th>Context</th><th>Description</th></tr></thead><tbody>${selectedSocial.map(item => `<tr><td>${escapeHtml(item.comment || '—')}</td><td>${escapeHtml(item.description)}</td></tr>`).join('')}</tbody></table></section>` : ''}
-      ${includeInstructions && instructions.trim() ? `<section class="section"><h2 class="section-title">Referral instructions</h2><p class="notice">${escapeHtml(instructions.trim()).replace(/\n/g, '<br>')}</p></section>` : ''}`;
+      ${selectedProblems.length ? `<section class="section"><h2 class="section-title">Problems</h2><table><thead><tr><th>Effective Date</th><th>Problem</th><th>Status</th></tr></thead><tbody>${selectedProblems.map(problem => `<tr><td>${escapeHtml(problem.effectiveDate || '—')}</td><td>${escapeHtml(problem.problem)}</td><td><span class="status">${escapeHtml(problem.status)}</span></td></tr>`).join('')}</tbody></table></section>` : ''}
+      ${selectedSocial.length ? `<section class="section"><h2 class="section-title">Social History</h2><table><thead><tr><th>Context</th><th>Description</th></tr></thead><tbody>${selectedSocial.map(item => `<tr><td>${escapeHtml(item.comment || '—')}</td><td>${escapeHtml(item.description)}</td></tr>`).join('')}</tbody></table></section>` : ''}
+      ${includeInstructions && instructions.trim() ? `<section class="section"><h2 class="section-title">Referral Instructions</h2><p class="notice">${escapeHtml(instructions.trim()).replace(/\n/g, '<br>')}</p></section>` : ''}`;
     const html = buildClinicalPrintDocument({
       title: note.patientName,
-      documentLabel: 'Summary of care',
+      documentLabel: 'Summary of Care',
+      date: note.serviceDate,
       facilityName: note.hospitalName,
+      metaTitle: 'Patient Information',
       meta: [
-        { label: 'MRN', value: note.mrn || '—' },
-        { label: 'Date of service', value: `${note.serviceDate}${note.serviceTime ? ` ${note.serviceTime}` : ''}` },
+        { label: 'Patient Name', value: note.patientName },
+        { label: 'Patient ID', value: note.mrn },
+        { label: 'Date of Service', value: `${note.serviceDate}${note.serviceTime ? ` ${note.serviceTime}` : ''}` },
         { label: 'Author', value: note.authorName || note.signedByName || '—' },
         { label: 'Recipient', value: recipient.trim() || 'Not yet assigned' },
       ],

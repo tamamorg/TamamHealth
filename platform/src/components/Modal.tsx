@@ -299,6 +299,10 @@ export default function Modal({
           'tm-motion',
           isDrawer ? 'tm-motion--drawer modal-portal-dialog--drawer' : 'tm-motion--dialog',
           isSlider && 'tm-slider',
+          // A form wider than a side panel (triage, ANC, the lab wizard). On a
+          // dashboard a slider docks over the right panel; one this wide keeps
+          // its width there rather than being crushed to the panel's.
+          isSlider && ((width ?? 0) > 560 || size === 'lg' || size === 'xl' || size === '2xl' || size === 'full') && 'tm-slider--wide',
           className,
         ].filter(Boolean).join(' ')}
         // Spread first: this element is a real dialog, so its own role and tab

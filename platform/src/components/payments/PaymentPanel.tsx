@@ -7,7 +7,6 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { getRoleChoice } from '@/lib/settings/role-settings-store';
 import { PAYOR_LABELS, type PaymentMethodKey } from '@/lib/settings/facility-settings';
-import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
 import { formatMoney } from '@/lib/format-utils';
 import type { PaymentDoc } from '@/lib/db-types-payments';
@@ -22,6 +21,8 @@ interface PaymentPanelProps {
   /** Printed on the receipt as the patient's ID, in place of the record id. */
   hospitalNumber?: string;
   encounterId?: string;
+  /** The billing line this is taken against, so the payment lands on it. */
+  allocation?: { encounterId?: string; chargeId?: string };
   amountDue: number;
   currency?: string;
   onSuccess: (paymentId: string) => void;
@@ -42,7 +43,7 @@ function defaultPaymentTab(): TabType {
 }
 
 export default function PaymentPanel({
-  patientId, patientName, hospitalNumber, encounterId, amountDue, currency = 'SSP', onSuccess, onCancel
+  patientId, patientName, hospitalNumber, encounterId, allocation, amountDue, currency = 'SSP', onSuccess, onCancel
 }: PaymentPanelProps) {
   const { currentUser } = useAuth();
   const scope = useDataScope();
@@ -231,6 +232,7 @@ export default function PaymentPanel({
         reference,
         mobileMoneyPhone,
         cardLast4: cardLast4Digits,
+        allocations: allocation ? [{ encounterId: allocation.encounterId ?? '', chargeId: allocation.chargeId, amount: numAmount }] : undefined,
         notes: notes || undefined,
         processedBy: currentUser?._id || 'system',
         processedByName: currentUser ? currentUser.name : 'System',
@@ -285,98 +287,52 @@ export default function PaymentPanel({
   };
 
   if (success && paymentDoc) {
+    const close = () => onSuccess(paymentDoc._id);
     return (
-      <Modal onClose={() => onSuccess(paymentDoc._id)} width={420} disableBackdropClose>
-        <div className="bl-root modal-content" style={{ width: '100%', display: 'block' }}>
-          {/* Success header — flat, no gradient wash; the checkmark carries the
-              "it worked" signal on its own. */}
-          <div style={{
-            padding: '28px 20px', textAlign: 'center',
-            borderBottom: '1px solid var(--ehr-border, #E2E6EB)',
-          }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
-              background: 'var(--color-success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <CheckCircle2 size={56} style={{ color: 'var(--color-success)' }} />
-            </div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>{t('payments.paymentRecorded')}</h3>
-            <p style={{ margin: '6px 0 0', fontSize: 26, fontWeight: 800, color: 'var(--color-success-text)' }}>
-              {formatMoney(parseFloat(amount), { currency })}
-            </p>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>{patientName}</p>
+      <FormSlider
+        title={t('payments.paymentRecorded')}
+        subtitle={patientName}
+        width={560}
+        onClose={close}
+        disableBackdropClose
+        footer={<button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={close}>{t('payments.done')}</button>}
+      >
+        <div className="bl-root bl-receipt">
+          <div className="bl-receipt-hero">
+            <CheckCircle2 size={28} aria-hidden="true" />
+            <strong>{formatMoney(parseFloat(amount), { currency })}</strong>
           </div>
-
-          {/* Receipt details */}
-          <div style={{ padding: '16px 20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { label: t('payments.receiptNumberLabel'), value: paymentDoc.reference || paymentDoc._id },
-                { label: t('payments.dateLabel'), value: new Date(paymentDoc.processedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
-                { label: t('payments.methodLabel'), value: tab === 'cash' ? t('payments.methodCash') : tab === 'mobile' ? (mobileProvider === 'mpesa' ? t('payments.methodMpesa') : mobileProvider === 'airtel' ? t('payments.methodAirtelMoney') : t('payments.methodMtnMomo')) : tab === 'card' ? t('payments.methodCard') : tab === 'bank' ? t('payments.methodBankTransfer') : insuranceWaiverMode === 'insurance' ? t('billing.insurance') : t('payments.methodWaiver') },
-                { label: t('payments.processedByLabel'), value: paymentDoc.processedByName },
-              ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{row.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div style={{ padding: '0 20px 12px', display: 'flex', gap: 8 }}>
-            <button type="button" className="bl-btn bl-btn--outline" style={{ flex: 1 }} onClick={handlePrint}>
+          <dl className="bl-totals">
+            {[
+              { label: t('payments.receiptNumberLabel'), value: paymentDoc.reference || paymentDoc._id },
+              { label: t('payments.dateLabel'), value: new Date(paymentDoc.processedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+              { label: t('payments.methodLabel'), value: tab === 'cash' ? t('payments.methodCash') : tab === 'mobile' ? (mobileProvider === 'mpesa' ? t('payments.methodMpesa') : mobileProvider === 'airtel' ? t('payments.methodAirtelMoney') : t('payments.methodMtnMomo')) : tab === 'card' ? t('payments.methodCard') : tab === 'bank' ? t('payments.methodBankTransfer') : insuranceWaiverMode === 'insurance' ? t('billing.insurance') : t('payments.methodWaiver') },
+              { label: t('payments.processedByLabel'), value: paymentDoc.processedByName },
+            ].map(row => <div key={row.label} className="bl-totals-row"><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
+          </dl>
+          <div className="bl-receipt-actions">
+            <button type="button" className="bl-btn bl-btn--outline" onClick={handlePrint}>
               <Printer size={14} /> {t('payments.printReceipt')}
             </button>
-            <button type="button" className="bl-btn bl-btn--outline" style={{ flex: 1 }} onClick={() => setShowEmailInput(!showEmailInput)}>
+            <button type="button" className="bl-btn bl-btn--outline" onClick={() => setShowEmailInput(!showEmailInput)}>
               <Mail size={14} /> {emailSent ? t('payments.sent') : t('payments.emailReceipt')}
             </button>
           </div>
-
-          {/* Email input (shown when email button clicked) */}
           {showEmailInput && !emailSent && (
-            <div className="bl-field" style={{ padding: '0 20px 12px', flexDirection: 'row' }}>
+            <div className="bl-field bl-receipt-email">
               <input type="email" value={emailAddress} readOnly aria-label={t('payments.emailOnFile')}
                 placeholder={emailLoaded ? t('payments.noPatientEmail') : ''}
-                style={{ flex: 1 }}
               />
               <button type="button" className="bl-btn bl-btn--primary" disabled={emailSending || !emailAddress} onClick={handleEmailReceipt}>
                 {emailSending ? t('payments.sending') : t('payments.send')}
               </button>
             </div>
           )}
-
-          {showEmailInput && !emailSent && emailLoaded && !emailAddress && (
-            <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-muted" style={{ fontSize: 12 }}>{t('payments.noPatientEmailNote')}</div>
-            </div>
-          )}
-
-          {emailSent && (
-            <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-muted" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F5F8FB)', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6, textAlign: 'center' }}>
-                {t('payments.receiptSentTo', { email: emailAddress })}
-              </div>
-            </div>
-          )}
-
-          {emailError && !emailSent && (
-            <div style={{ padding: '0 20px 12px' }}>
-              <div className="bl-danger" style={{ fontSize: 12, padding: '6px 12px', background: 'var(--ehr-page-bg, #F5F8FB)', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 6, textAlign: 'center' }}>
-                {emailError}
-              </div>
-            </div>
-          )}
-
-          {/* Done button */}
-          <div style={{ padding: '0 20px 20px' }}>
-            <button type="button" className="bl-btn bl-btn--primary" style={{ width: '100%' }} onClick={() => onSuccess(paymentDoc._id)}>
-              {t('payments.done')}
-            </button>
-          </div>
+          {showEmailInput && !emailSent && emailLoaded && !emailAddress && <p className="bl-muted bl-receipt-note">{t('payments.noPatientEmailNote')}</p>}
+          {emailSent && <p className="bl-muted bl-receipt-note">{t('payments.receiptSentTo', { email: emailAddress })}</p>}
+          {emailError && !emailSent && <p className="bl-danger bl-receipt-note">{emailError}</p>}
         </div>
-      </Modal>
+      </FormSlider>
     );
   }
 

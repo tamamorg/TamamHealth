@@ -23,9 +23,12 @@ import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { todayIso } from '@/lib/date-utils';
+import { patientFullName } from '@/lib/patient-utils';
 import { describeError } from '@/lib/user-facing-error';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { FormError } from '@/components/overlay/FormNotices';
+import FormField from '@/components/overlay/FormField';
+import FormSlider from '@/components/overlay/FormSlider';
 
 const COMMON_SCREENINGS = ['Blood pressure', 'HIV test', 'Cervical cancer (VIA)', 'Diabetes (blood glucose)', 'TB symptom screen', 'Well-child check', 'Nutrition (MUAC)'];
 const screeningOptions = COMMON_SCREENINGS.map(s => ({ code: '', name: s }));
@@ -65,6 +68,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
 
   const today = todayIso();
   const rows = ordered(screenings);
+  const closeForm = () => { setAdding(false); setError(null); };
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
 
   async function run(fn: () => Promise<ScreeningEntry[] | null>, done: string) {
@@ -201,38 +205,41 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
           </tbody>
         </table>
 
-      {adding && (
-        <div className="mt-2 space-y-2">
-          <CodedSearchField
-            label={t('screenings.colScreening')}
-            placeholder={t('screenings.searchPlaceholder')}
-            options={screeningOptions}
-            value={form.type}
-            onChange={type => setForm({ ...form, type })}
-            onSelect={o => setForm({ ...form, type: o.name })}
-            showCodeBadge={false}
-            autoFocus
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              {t('screenings.colDue')}
-              <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-            </label>
-            <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              {t('screenings.recallLabel')}
-              <input type="number" step="1" min="0" value={form.intervalMonths} onChange={(e) => setForm({ ...form, intervalMonths: e.target.value })} placeholder={t('screenings.recallPlaceholder')}
-                className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" className="btn btn-sm btn-primary" disabled={busy || form.type.trim().length === 0} onClick={add}>{t('screenings.save')}</button>
-            <button type="button" className="btn btn-sm btn-secondary" disabled={busy} onClick={() => { setAdding(false); setError(null); }}>{t('screenings.cancel')}</button>
-          </div>
-        </div>
-      )}
+      {error && !adding && <FormError message={error} />}
 
-      {error && <FormError message={error} />}
+      {adding && (
+        <FormSlider
+          title={t('screenings.addTitle')}
+          subtitle={patientFullName(patient)}
+          className="tamam-dialog"
+          onClose={closeForm}
+          busy={busy}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeForm}>{t('screenings.cancel')}</button>
+            <button type="button" className="btn btn-primary" disabled={busy || form.type.trim().length === 0} onClick={add}>{t('screenings.save')}</button>
+          </>}
+        >
+          <div className="space-y-4">
+            <CodedSearchField
+              label={t('screenings.colScreening')}
+              placeholder={t('screenings.searchPlaceholder')}
+              options={screeningOptions}
+              value={form.type}
+              onChange={type => setForm({ ...form, type })}
+              onSelect={o => setForm({ ...form, type: o.name })}
+              showCodeBadge={false}
+              autoFocus
+            />
+            <FormField label={t('screenings.colDue')}>
+              {control => <input {...control} type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />}
+            </FormField>
+            <FormField label={t('screenings.recallLabel')} optional>
+              {control => <input {...control} type="number" step="1" min="0" value={form.intervalMonths} onChange={e => setForm({ ...form, intervalMonths: e.target.value })} placeholder={t('screenings.recallPlaceholder')} />}
+            </FormField>
+            {error && <FormError message={error} />}
+          </div>
+        </FormSlider>
+      )}
     </ChartSection>
   );
 }
