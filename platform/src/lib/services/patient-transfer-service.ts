@@ -388,9 +388,9 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
     const scripts = await findByType<PrescriptionDoc>(
       prescriptionsDB(), 'prescription', { patientId }, { indexFields: ['type', 'patientId'] },
     );
-    summary.activeMedications = scripts
+    summary.activeMedications = [...new Set(scripts
       .filter(p => p.status !== 'discontinued' && !p.stoppedAt)
-      .map(p => p.medication)
+      .map(p => p.medication))]
       .slice(0, 30);
   } catch { /* ignore */ }
 
