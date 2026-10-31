@@ -41,6 +41,7 @@
  * of the deleted /org-admin Org Overview is the cautionary tale).
  */
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -319,7 +320,7 @@ export default function FacilityManagementDashboard() {
   // registry fields nothing recomputes (2026-08 hardcoded-data sweep).
   const { census: facilityCensus } = useFacilityCensus();
 
-  const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: 'SSP', days: [] });
+  const [cash, setCash] = useState<{ currency: string; days: DailyCash[] }>({ currency: defaultCurrency(), days: [] });
   const [facilitySearch, setFacilitySearch] = useState('');
   const [flow, setFlow] = useState<DailyFlow[]>([]);
   const [enquiries, setEnquiries] = useState<MessageDoc[]>([]);
@@ -363,7 +364,7 @@ export default function FacilityManagementDashboard() {
         row.pending += Math.max(0, b.balanceDue || 0);
         byDate.set(date, row);
       }
-      return { currency: bills[0]?.currency || 'SSP', days: Array.from(byDate.values()) };
+      return { currency: bills[0]?.currency || defaultCurrency(), days: Array.from(byDate.values()) };
     };
     /* Arrivals per day, split by disposition. Counted from the records
        themselves rather than any stored total, and reduced to a row per day

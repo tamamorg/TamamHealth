@@ -27,6 +27,7 @@ function rand(): number {
 
 // Patient-chart clinical list types now live in lib/types; re-exported here so
 // existing `from '@/data/mock'` imports keep working.
+import type { PatientIdentifier } from '@/lib/country/patient-identity';
 import type {
   AllergyEntry, DirectiveEntry, CareAlertEntry, ScreeningEntry,
 } from '@/lib/types/patient-clinical';
@@ -289,9 +290,18 @@ export interface Patient {
   middleName: string;
   surname: string;
   maidenName?: string;
+  /** The name in Latin letters when it is written in another script. */
+  latinName?: string;
+  /** ISO 3166-1 alpha-2. Absent means this deployment's country. */
+  residenceCountry?: string;
+  citizenship?: string;
+  /** Passport, refugee ID and the like; `nationalId` stays this country's own. */
+  identifiers?: PatientIdentifier[];
   dateOfBirth: string;
   estimatedAge?: number;
-  gender: 'Male' | 'Female';
+  /** Other and Unknown cover an unconscious or unidentified patient, and
+   *  anyone the record must not force into two values. */
+  gender: 'Male' | 'Female' | 'Other' | 'Unknown';
   phone: string;
   altPhone?: string;
   whatsapp?: string;
@@ -334,6 +344,7 @@ export interface Patient {
   nokName: string;
   nokRelationship: string;
   nokPhone: string;
+  nokEmail?: string;
   nokAddress?: string;
   /** Additional next-of-kin contacts beyond the primary (up to 3 additional). */
   additionalNextOfKin?: Array<{ name: string; relationship: string; phone: string; address?: string }>;

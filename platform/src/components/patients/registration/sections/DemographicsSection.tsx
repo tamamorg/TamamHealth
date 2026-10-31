@@ -2,7 +2,10 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
-import { tribes, languages } from '@/lib/data/south-sudan-reference';
+import { useMemo } from 'react';
+import { tribes } from '@/lib/data/south-sudan-reference';
+import { activeCountry } from '@/lib/country/country-pack';
+import { worldCountries, worldLanguages } from '@/lib/country/world-lists';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 import { todayIso } from '@/lib/date-utils';
@@ -23,6 +26,9 @@ export default function DemographicsSection({
   form, errors, update, facilities = [], facilityRequired = false,
 }: DemographicsSectionProps) {
   const { t } = useTranslation();
+  const pack = activeCountry();
+  const languages = useMemo(() => [...new Set([...pack.languages, ...worldLanguages(), 'Other'])], [pack.languages]);
+  const countries = useMemo(() => worldCountries(), []);
   const today = todayIso();
   return (
     <>
@@ -63,7 +69,7 @@ export default function DemographicsSection({
               placeholder={t('patientNew.middleNamePlaceholder')} />
           )}
         </RegistrationField>
-        <RegistrationField name="surname" label={t('patientNew.surname')} error={errors.surname} required>
+        <RegistrationField name="surname" label={t('patientNew.surname')} error={errors.surname}>
           {field => (
             <input {...field} type="text" value={form.surname}
               onChange={e => update('surname', e.target.value)}
@@ -73,6 +79,13 @@ export default function DemographicsSection({
       </div>
 
       <div className="registration-field-grid registration-field-grid--three">
+        <RegistrationField name="latinName" label={t('patientNew.latinName')}>
+          {field => (
+            <input {...field} type="text" value={form.latinName}
+              onChange={e => update('latinName', e.target.value)}
+              placeholder={t('patientNew.latinNamePlaceholder')} />
+          )}
+        </RegistrationField>
         <RegistrationField name="maidenName" label={t('patientNew.maidenName')}>
           {field => (
             <input {...field} type="text" value={form.maidenName}
@@ -109,10 +122,12 @@ export default function DemographicsSection({
               <option value="">{t('patientNew.selectGender')}</option>
               <option value="Male">{t('patient.male')}</option>
               <option value="Female">{t('patient.female')}</option>
+              <option value="Other">{t('patient.other')}</option>
+              <option value="Unknown">{t('patient.unknown')}</option>
             </Select>
           )}
         </RegistrationField>
-        <RegistrationField name="tribe" label={t('patientNew.tribe')}>
+        {pack.asksTribe && <RegistrationField name="tribe" label={t('patientNew.tribe')}>
           {field => (
             <Select {...field} value={form.tribe} onChange={e => update('tribe', e.target.value)}
               searchThreshold={0} searchPlaceholder={t('patientNew.searchTribes')}>
@@ -120,12 +135,24 @@ export default function DemographicsSection({
               {tribes.map(tribe => <option key={tribe.value} value={tribe.value}>{tribe.label}</option>)}
             </Select>
           )}
-        </RegistrationField>
+        </RegistrationField>}
         <RegistrationField name="primaryLanguage" label={t('patientNew.primaryLanguage')} error={errors.primaryLanguage} required>
           {field => (
-            <Select {...field} value={form.primaryLanguage} onChange={e => update('primaryLanguage', e.target.value)}>
+            <Select {...field} value={form.primaryLanguage} searchThreshold={0}
+              searchPlaceholder={t('patientNew.searchLanguages')}
+              onChange={e => update('primaryLanguage', e.target.value)}>
               <option value="">{t('patientNew.selectLanguage')}</option>
               {languages.map(language => <option key={language} value={language}>{language}</option>)}
+            </Select>
+          )}
+        </RegistrationField>
+        <RegistrationField name="citizenship" label={t('patientNew.citizenship')}>
+          {field => (
+            <Select {...field} value={form.citizenship} searchThreshold={0}
+              searchPlaceholder={t('patientNew.searchCountries')}
+              onChange={e => update('citizenship', e.target.value)}>
+              <option value="">{t('patientNew.selectCountry')}</option>
+              {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
             </Select>
           )}
         </RegistrationField>

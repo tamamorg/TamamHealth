@@ -6,6 +6,8 @@
  * codes into the country's canonical vocabulary before shipping data to
  * DHIS2 or the regional layer.
  */
+import { activeCountry } from '@/lib/country/country-pack';
+import { countryName as countryNameFor } from '@/lib/country/world-lists';
 import { NextRequest, NextResponse } from 'next/server';
 import { logApiError, serverError } from '@/modules/identity';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
@@ -35,19 +37,20 @@ function envList(name: string, fallback: string[]): string[] {
   return value.split(',').map(v => v.trim()).filter(Boolean);
 }
 
-function southSudanMetadata(): CountryMetadata {
-  const countryName = process.env.NEXT_PUBLIC_ORG_COUNTRY || 'South Sudan';
+function countryMetadata(): CountryMetadata {
+  const pack = activeCountry();
+  const countryName = process.env.NEXT_PUBLIC_ORG_COUNTRY || countryNameFor(pack.code);
   return {
-    countryId: 'SS',
+    countryId: pack.code,
     name: countryName,
     locale: process.env.NEXT_PUBLIC_ORG_LOCALE || 'en-SS',
-    currency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'SSP',
-    timezone: process.env.NEXT_PUBLIC_ORG_TIMEZONE || 'Africa/Juba',
+    currency: pack.currency,
+    timezone: pack.timeZone,
     dhis2: {
       // This route is intentionally public. Never fall back to the private
       // server-side endpoint: it may reveal internal DNS or network topology.
       baseUrl: process.env.NEXT_PUBLIC_DHIS2_BASE_URL,
-      rootOrgUnit: process.env.DHIS2_ROOT_ORG_UNIT || 'SS',
+      rootOrgUnit: process.env.DHIS2_ROOT_ORG_UNIT || pack.code,
       periodType: process.env.DHIS2_PERIOD_TYPE || 'Monthly',
     },
     terminologies: envList('NEXT_PUBLIC_TERMINOLOGIES', ['ICD-11', 'LOINC', 'RxNorm']),
@@ -68,7 +71,7 @@ function southSudanMetadata(): CountryMetadata {
 }
 
 const COUNTRY_CATALOG: Record<string, CountryMetadata> = {
-  SS: southSudanMetadata(),
+  SS: countryMetadata(),
   KE: {
     countryId: 'KE',
     name: 'Kenya',

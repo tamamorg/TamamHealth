@@ -1,3 +1,4 @@
+import { defaultCurrency, offeredCurrencies } from '@/lib/country/country-pack';
 import type { AppointmentPriority, AppointmentType, FacilityLevel } from './db-types';
 import type { PaymentMethodType } from './db-types-payments';
 import { jubaDate } from './time-juba';
@@ -10,7 +11,7 @@ const PAYMENT_METHODS = new Set<PaymentMethodType>([
   'cash', 'mobile_money', 'mpesa', 'airtel', 'mtn_momo', 'm_gurush', 'card',
   'bank_transfer', 'payment_plan', 'waiver', 'insurance',
 ]);
-const CURRENCIES = new Set(['SSP', 'USD', 'KES', 'UGX']);
+const CURRENCIES = new Set(offeredCurrencies());
 const FACILITY_LEVELS = new Set<FacilityLevel>(['boma', 'payam', 'county', 'state', 'national']);
 const APPOINTMENT_TYPES = new Set<AppointmentType>([
   'general', 'follow_up', 'specialist', 'anc', 'immunization', 'lab', 'surgical',
@@ -54,7 +55,7 @@ export function validatePortalPayment(body: Record<string, unknown>): Validation
   const method = stringValue(body, 'method') || 'mobile_money';
   if (!PAYMENT_METHODS.has(method as PaymentMethodType)) fields.method = 'Unsupported payment method';
 
-  const currency = (stringValue(body, 'currency') || 'SSP').toUpperCase();
+  const currency = (stringValue(body, 'currency') || defaultCurrency()).toUpperCase();
   if (!CURRENCIES.has(currency)) fields.currency = 'Unsupported currency';
 
   for (const [field, max] of [['reference', 200], ['mobileMoneyPhone', 40], ['notes', 2_000]] as const) {

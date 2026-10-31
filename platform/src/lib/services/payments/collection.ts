@@ -1,4 +1,5 @@
 /** Payment service split: collection. Re-exported through ../payment-service. */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { findByType } from '../db-query';
 import type { PaymentDoc, PaymentMethodType, PaymentStatus, PaymentAllocation } from '../../db-types-payments';
 import type { DataScope } from '../data-scope';
@@ -49,7 +50,7 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
     paymentPlanId: input.paymentPlanId,
     method: input.method,
     amount: input.amount,
-    currency: input.currency || 'SSP',
+    currency: input.currency || defaultCurrency(),
     reference: input.reference || `REC-${uuidv4().slice(0, 8).toUpperCase()}`,
     mobileMoneyPhone: input.mobileMoneyPhone,
     cardLast4: input.cardLast4,

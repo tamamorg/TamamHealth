@@ -13,6 +13,8 @@
  */
 
 import { normalizePhone, normalizeEmail, normalizeNationalId } from '@/lib/field-formats';
+import { identifiersFrom } from '@/lib/country/patient-identity';
+import type { PatientDoc } from '@/lib/db-types';
 import type { AdditionalNok, RegistrationForm } from './registration-form';
 
 export interface BuildPatientDocInput {
@@ -53,9 +55,13 @@ export function buildPatientDoc({
     middleName: form.middleName.trim(),
     surname: form.surname.trim(),
     maidenName: form.maidenName.trim(),
+    latinName: form.latinName.trim() || undefined,
+    residenceCountry: form.residenceCountry || undefined,
+    citizenship: form.citizenship || undefined,
+    identifiers: identifiersFrom(form.idType, form.idNumber, form.idCountry),
     dateOfBirth: form.dateOfBirth,
     estimatedAge: optionalInt(form.estimatedAge),
-    gender: form.gender as 'Male' | 'Female',
+    gender: form.gender as PatientDoc['gender'],
     tribe: form.tribe,
     primaryLanguage: form.primaryLanguage,
     phone: normalizePhone(form.phone) ?? form.phone,
@@ -72,6 +78,7 @@ export function buildPatientDoc({
     nokName: form.nokName,
     nokRelationship: form.nokRelationship,
     nokPhone: normalizePhone(form.nokPhone) ?? form.nokPhone,
+    nokEmail: normalizeEmail(form.nokEmail) || undefined,
     nokAddress: form.nokAddress,
     // A contact with no name is an empty row the clerk added and left, not a
     // person — it is dropped rather than stored blank.

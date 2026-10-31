@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
@@ -80,7 +81,7 @@ export function useSuperbill({
     return () => { cancelled = true; };
   }, [scope]);
 
-  const currency = fees[0]?.currency || 'SSP';
+  const currency = fees[0]?.currency || defaultCurrency();
   const totals = useMemo(() => {
     const total = lines.reduce((s, l) => s + l.quantity * l.fee.unitPrice, 0);
     const nonCovered = lines.filter((l) => l.nonCovered).reduce((s, l) => s + l.quantity * l.fee.unitPrice, 0);

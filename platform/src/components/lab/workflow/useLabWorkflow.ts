@@ -227,7 +227,7 @@ export function useLabWorkflow(
     } finally {
       setBusy(false);
     }
-  }, [t]);
+  }, [setError, t]);
 
   /** Bench work: collecting, receiving, processing, filing, amending. */
   const run = useCallback(async (fn: () => Promise<unknown>) => {
@@ -236,7 +236,7 @@ export function useLabWorkflow(
       return false;
     }
     return execute(fn);
-  }, [canWork, currentUser?.role, execute]);
+  }, [canWork, currentUser?.role, execute, setError]);
 
   /**
    * Close-out: a clinician's attestation, not the bench's. It was gated like
@@ -251,7 +251,7 @@ export function useLabWorkflow(
       return false;
     }
     return execute(fn);
-  }, [canCloseOut, execute]);
+  }, [canCloseOut, execute, setError]);
 
   /** The specimen is in hand. The form then asks for the result. */
   const collect = useCallback(() => run(async () => {

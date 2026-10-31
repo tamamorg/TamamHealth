@@ -11,6 +11,7 @@
  * SettingsProvider/useSettings hook makes them reactive in components.
  */
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import type { RoomClass } from '../db-types-ward';
 
 /** A single lab investigation the facility offers. */
@@ -217,7 +218,7 @@ export const facilitySettingsId = (hospitalId: string) => `facility_settings:${h
  *   - lockTimeoutMinutes:  hooks/useAutoLock.ts
  */
 export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
-  currency: 'SSP',
+  currency: defaultCurrency(),
   hospitalNumberPrefix: 'TAB',
   language: 'en',
   resultReviewSLA: { criticalHours: 24, routineHours: 168 },
@@ -248,10 +249,10 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   rooms: ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Room 6', 'Bay A', 'Bay B', 'Bay C', 'Bay D'],
   departments: ['General Medicine', 'Maternity', 'Emergency', 'Pediatrics', 'Ophthalmology', 'Dental', 'Dermatology', 'OPD'],
   roomClasses: [
-    { code: 'standard', name: 'Standard', currency: 'SSP', active: true },
-    { code: 'semi_private', name: 'Semi-private', currency: 'SSP', active: true },
-    { code: 'private', name: 'Private', currency: 'SSP', active: true },
-    { code: 'vip', name: 'VIP', currency: 'SSP', active: true },
+    { code: 'standard', name: 'Standard', currency: defaultCurrency(), active: true },
+    { code: 'semi_private', name: 'Semi-private', currency: defaultCurrency(), active: true },
+    { code: 'private', name: 'Private', currency: defaultCurrency(), active: true },
+    { code: 'vip', name: 'VIP', currency: defaultCurrency(), active: true },
   ],
   stationSequence: ['registration', 'triage', 'rooming', 'consultation', 'lab', 'radiology', 'cashier', 'pharmacy', 'clinic_checkout', 'facility_checkout'],
   checkoutGateKeys: ['all_clinic_visits_closed', 'prescriptions_dispensed', 'critical_labs_reviewed', 'in_clinic_procedures_complete', 'required_documentation_generated', 'payment_status_determined', 'pending_items_flagged'],

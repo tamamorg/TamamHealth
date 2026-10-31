@@ -188,7 +188,7 @@ export function usePharmacyWorkflow(
     } finally {
       setBusy(false);
     }
-  }, [t]);
+  }, [setError, t]);
 
   /** Send it back to the prescriber with a stated question. */
   const hold = useCallback(() => run(async () => {

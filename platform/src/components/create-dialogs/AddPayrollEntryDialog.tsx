@@ -6,6 +6,7 @@
  * entry exists — see AddInquiryDialog for the reasoning.
  */
 
+import { defaultCurrency, offeredCurrencies } from '@/lib/country/country-pack';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -40,7 +41,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
   const entryPeriod = period || new Date().toISOString().slice(0, 7);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    userId: '', baseSalary: 0, allowances: 0, deductions: 0, currency: 'SSP', notes: '',
+    userId: '', baseSalary: 0, allowances: 0, deductions: 0, currency: defaultCurrency(), notes: '',
   });
 
   const facilityId = currentUser?.hospitalId;
@@ -94,7 +95,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelCurrency')}</label>
             <Select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>
-              <option value="SSP">SSP</option><option value="USD">USD</option><option value="KES">KES</option>
+              {offeredCurrencies().map(code => <option key={code} value={code}>{code}</option>)}
             </Select>
           </div>
           <div>

@@ -490,9 +490,9 @@ async function checkDuplicates(data: Record<string, unknown>, scope: DataScope):
 
   for (const p of all) {
     // Match by name + DOB
-    if (firstName && surname && dob &&
+    if (firstName && dob &&
         p.firstName.toLowerCase() === firstName &&
-        p.surname.toLowerCase() === surname &&
+        (p.surname || '').toLowerCase() === surname &&
         p.dateOfBirth === dob) {
       return isInScope(p)
         ? `A patient named "${p.firstName} ${p.surname}" with the same date of birth already exists (${p.hospitalNumber})`

@@ -3,6 +3,7 @@
  * equipment, vehicles, IT, cold-chain, etc. Scope-aware so org admins,
  * superintendents, and Ministry of Health users see the right slice.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { assetsDB } from '../db';
 import type { AssetDoc, AssetMaintenanceLog, AssetStatus } from '../db-types-asset';
 import type { DataScope } from './data-scope';
@@ -82,7 +83,7 @@ export async function createAsset(input: CreateAssetInput): Promise<AssetDoc> {
     condition: input.condition || 'good',
     acquiredDate: input.acquiredDate,
     cost: input.cost,
-    costCurrency: input.costCurrency || 'SSP',
+    costCurrency: input.costCurrency || defaultCurrency(),
     donor: input.donor,
     warrantyExpiresAt: input.warrantyExpiresAt,
     serviceIntervalMonths: input.serviceIntervalMonths,

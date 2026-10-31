@@ -1,4 +1,5 @@
 /** Payment service split: invoices. Re-exported through ../payment-service. */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { findByType } from '../db-query';
 import type { InvoiceDoc, InvoiceLineItem, InvoiceStatus } from '../../db-types-payments';
 import type { DataScope } from '../data-scope';
@@ -76,7 +77,7 @@ export async function generateInvoice(input: {
     adjustments,
     priorPayments,
     totalDue,
-    currency: input.currency || 'SSP',
+    currency: input.currency || defaultCurrency(),
     issuedDate: now.slice(0, 10),
     dueDate: toIsoDate(dueDate),
     status: 'draft' as InvoiceStatus,

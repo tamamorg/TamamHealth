@@ -1,4 +1,5 @@
 /** Payment service split: payment-plans. Re-exported through ../payment-service. */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { findByType } from '../db-query';
 import type { PaymentPlanDoc, PlanInstallment } from '../../db-types-payments';
 import type { DataScope } from '../data-scope';
@@ -29,7 +30,7 @@ export async function createPaymentPlan(input: {
 }): Promise<PaymentPlanDoc> {
   if (!Number.isFinite(input.totalBalance) || input.totalBalance <= 0 ||
       !Number.isInteger(input.termMonths) || input.termMonths < 1 || input.termMonths > 120 ||
-      (input.apr !== undefined && input.apr !== 0) || !/^[A-Z]{3}$/.test(input.currency ?? 'SSP')) {
+      (input.apr !== undefined && input.apr !== 0) || !/^[A-Z]{3}$/.test(input.currency ?? defaultCurrency())) {
     throw new Error('INVALID_PAYMENT_PLAN');
   }
   const db = paymentPlansDB();
@@ -67,7 +68,7 @@ export async function createPaymentPlan(input: {
     patientId: input.patientId,
     patientName: input.patientName,
     totalBalance: input.totalBalance,
-    currency: input.currency ?? 'SSP',
+    currency: input.currency ?? defaultCurrency(),
     termMonths: input.termMonths,
     monthlyAmount,
     apr,

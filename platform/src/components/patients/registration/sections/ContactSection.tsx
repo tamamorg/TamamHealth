@@ -2,6 +2,10 @@
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
+import { useMemo } from 'react';
+import { activeCountry, usesAddressLists } from '@/lib/country/country-pack';
+import { IDENTITY_DOCUMENT_TYPES } from '@/lib/country/patient-identity';
+import { worldCountries } from '@/lib/country/world-lists';
 import { bomasFor, countiesFor, locationLabel, payamsFor, states } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
@@ -20,6 +24,9 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
   const payams = payamsFor(form.state, form.county);
   const bomas = bomasFor(form.state, form.county, form.payam);
   const geocodeId = geocodeIdFor(form.bomaCode, form.householdNumber);
+  const pack = activeCountry();
+  const listed = usesAddressLists(form.residenceCountry);
+  const countries = useMemo(() => worldCountries(), []);
 
   return (
     <>
@@ -59,6 +66,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
       </div>
 
       <div className="registration-subsection">
+        {pack.usesGeocode && listed && (<>
         <h4>{t('patientNew.geographicIdentifier')}</h4>
         <p>{t('patientNew.geocodeDescription')}</p>
         <div className="registration-field-grid registration-field-grid--three">
@@ -85,6 +93,8 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
             )}
           </RegistrationField>
         </div>
+        </>)}
+        <h4>{t('patientNew.identityDocuments')}</h4>
         <div className="registration-field-grid registration-field-grid--three">
           <RegistrationField name="nationalId" label={t('patientNew.nationalId')} error={errors.nationalId}>
             {field => (
@@ -94,10 +104,55 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
             )}
           </RegistrationField>
         </div>
+        <div className="registration-field-grid registration-field-grid--three">
+          <RegistrationField name="idType" label={t('patientNew.idType')} error={errors.idType}>
+            {field => (
+              <Select {...field} value={form.idType} onChange={e => update('idType', e.target.value)}>
+                <option value="">{t('patientNew.selectIdType')}</option>
+                {IDENTITY_DOCUMENT_TYPES.map(type => <option key={type} value={type}>{t(`idType.${type}`)}</option>)}
+              </Select>
+            )}
+          </RegistrationField>
+          <RegistrationField name="idNumber" label={t('patientNew.idNumber')} error={errors.idNumber}>
+            {field => (
+              <input {...field} type="text" value={form.idNumber}
+                onChange={e => update('idNumber', e.target.value)} />
+            )}
+          </RegistrationField>
+          <RegistrationField name="idCountry" label={t('patientNew.idCountry')}>
+            {field => (
+              <Select {...field} value={form.idCountry} searchThreshold={0}
+                searchPlaceholder={t('patientNew.searchCountries')}
+                onChange={e => update('idCountry', e.target.value)}>
+                <option value="">{t('patientNew.selectCountry')}</option>
+                {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </Select>
+            )}
+          </RegistrationField>
+        </div>
       </div>
 
       <div className="registration-subsection">
         <h4>{t('patientNew.address')}</h4>
+        <div className="registration-field-grid registration-field-grid--two">
+          <RegistrationField name="residenceCountry" label={t('patientNew.residenceCountry')}>
+            {field => (
+              <Select {...field} value={form.residenceCountry} searchThreshold={0}
+                searchPlaceholder={t('patientNew.searchCountries')}
+                onChange={e => {
+                  update('residenceCountry', e.target.value);
+                  // A list value means nothing in another country's address.
+                  update('state', '');
+                  update('county', '');
+                  update('payam', '');
+                  update('boma', '');
+                }}>
+                {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </Select>
+            )}
+          </RegistrationField>
+        </div>
+        {listed ? (<>
         <div className="registration-field-grid registration-field-grid--two">
           <RegistrationField name="state" label={t('patientNew.state')} error={errors.state} required>
             {field => (
@@ -152,6 +207,22 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
             )}
           </RegistrationField>
         </div>
+        </>) : (<>
+        <div className="registration-field-grid registration-field-grid--two">
+          <RegistrationField name="state" label={t('patientNew.region')} error={errors.state}>
+            {field => (
+              <input {...field} type="text" value={form.state}
+                onChange={e => update('state', e.target.value)} />
+            )}
+          </RegistrationField>
+          <RegistrationField name="county" label={t('patientNew.district')} error={errors.county}>
+            {field => (
+              <input {...field} type="text" value={form.county}
+                onChange={e => update('county', e.target.value)} />
+            )}
+          </RegistrationField>
+        </div>
+        </>)}
         <RegistrationField name="address" label={t('patientNew.residentialAddress')}>
           {field => (
             <textarea {...field} rows={2} value={form.address}

@@ -8,6 +8,8 @@
  * components take a typed `form` instead of `any`-shaped props.
  */
 
+import { activeCountry } from '@/lib/country/country-pack';
+
 export type CoverageType = 'out-of-pocket' | 'program' | 'exemption' | 'ngo';
 
 export interface RegistrationForm {
@@ -26,11 +28,14 @@ export interface RegistrationForm {
   middleName: string;
   surname: string;
   maidenName: string;
+  latinName: string;
   dateOfBirth: string;
   estimatedAge: string;
   gender: string;
   tribe: string;
   primaryLanguage: string;
+  citizenship: string;
+  residenceCountry: string;
   phone: string;
   altPhone: string;
   whatsapp: string;
@@ -43,9 +48,13 @@ export interface RegistrationForm {
   householdNumber: string;
   address: string;
   nationalId: string;
+  idType: string;
+  idNumber: string;
+  idCountry: string;
   nokName: string;
   nokRelationship: string;
   nokPhone: string;
+  nokEmail: string;
   nokAddress: string;
   payorCoverageType: CoverageType;
   payorProgram: string;
@@ -71,12 +80,13 @@ export interface AdditionalNok {
 
 export const EMPTY_REGISTRATION_FORM: RegistrationForm = {
   registrationFacility: '',
-  firstName: '', middleName: '', surname: '', maidenName: '',
+  firstName: '', middleName: '', surname: '', maidenName: '', latinName: '',
   dateOfBirth: '', estimatedAge: '', gender: '', tribe: '', primaryLanguage: '',
+  citizenship: '', residenceCountry: activeCountry().code,
   phone: '', altPhone: '', whatsapp: '', email: '',
   state: '', county: '', payam: '', boma: '', bomaCode: '', householdNumber: '', address: '',
-  nationalId: '',
-  nokName: '', nokRelationship: '', nokPhone: '', nokAddress: '',
+  nationalId: '', idType: '', idNumber: '', idCountry: '',
+  nokName: '', nokRelationship: '', nokPhone: '', nokEmail: '', nokAddress: '',
   payorCoverageType: 'out-of-pocket',
   payorProgram: '', payorNgo: '', payorExemptionReason: '', payorExemptionOther: '',
 };

@@ -1,4 +1,6 @@
 'use client';
+import { activeCountry } from '@/lib/country/country-pack';
+import { countryName } from '@/lib/country/world-lists';
 import ChartSection from '@/components/ehr/chart/ChartSection';
 import { AlertTriangle, Pill, Activity, ClipboardList, Plus, Pencil, Sliders, Check } from '@/components/icons/lucide';
 import Badge from '@/components/Badge';
@@ -346,6 +348,11 @@ export function PatientDemographicsView({
             <DemoField label="Date of Birth" value={patient.dateOfBirth ? `${formatDate(patient.dateOfBirth)} (${patientAgeLabel(patient)})` : '-'} />
             <DemoField label="Gender Identity" value={patient.gender || '-'} />
             <DemoField label="National ID" value={patient.nationalId || '-'} />
+            {patient.identifiers?.map(id => (
+              <DemoField key={`${id.type}-${id.value}`} label={t(`idType.${id.type}`)} value={[id.value, countryName(id.country)].filter(Boolean).join(' · ')} />
+            ))}
+            {patient.latinName && <DemoField label={t('patientNew.latinName')} value={patient.latinName} />}
+            <DemoField label={t('patientNew.citizenship')} value={countryName(patient.citizenship) || '-'} />
             <DemoField label="Previous Full Name" value={patient.maidenName || '-'} />
             <DemoField label="Sexual Orientation" value="Choose not to disclose" />
             <DemoField label="Facility" value={regHospitalName || '-'} />
@@ -359,7 +366,7 @@ export function PatientDemographicsView({
             <div className="tebra-demo-columns">
               <DemoField label="Home Address" value={[patient.address, patient.boma, patient.payam, patient.county, patient.state].filter(Boolean).join(', ') || '-'} wide />
               <DemoField label="Mobile Phone" value={patient.phone ? `${formatPhoneDisplay(patient.phone)} Primary` : '-'} />
-              <DemoField label="Personal Email" value="-" />
+              <DemoField label="Personal Email" value={patient.email || '-'} />
               <DemoField label="Mailing Address" value={patient.address || '-'} wide />
               <DemoField label="Home Phone" value="-" />
               <DemoField label="Work Email" value="-" />
@@ -376,11 +383,12 @@ export function PatientDemographicsView({
       {activeTab === 'additional' && (
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
+            <DemoField label={t('patientNew.residenceCountry')} value={countryName(patient.residenceCountry || activeCountry().code)} />
             <DemoField label="State" value={patient.state || '-'} />
             <DemoField label="County" value={patient.county || '-'} />
             <DemoField label="Payam" value={patient.payam || '-'} />
             <DemoField label="Boma" value={patient.boma || '-'} />
-            <DemoField label="Tribe" value={patient.tribe || '-'} />
+            {(activeCountry().asksTribe || patient.tribe) && <DemoField label="Tribe" value={patient.tribe || '-'} />}
             <DemoField label="Registered" value={(patient.registrationDate || patient.registeredAt) ? formatDate(patient.registrationDate || patient.registeredAt) : '-'} />
           </div>
         </section>
@@ -392,6 +400,7 @@ export function PatientDemographicsView({
             <DemoField label="Primary Contact" value={patient.nokName || '-'} />
             <DemoField label="Relationship" value={patient.nokRelationship || '-'} />
             <DemoField label="Phone" value={patient.nokPhone ? formatPhoneDisplay(patient.nokPhone) : '-'} />
+            {patient.nokEmail && <DemoField label={t('patientNew.nokEmail')} value={patient.nokEmail} />}
             <DemoField label="Address" value={patient.nokAddress || '-'} wide />
           </div>
         </section>

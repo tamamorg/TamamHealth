@@ -12,6 +12,7 @@
  * carrying a time component is a real instant and is parsed as one.
  */
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { parseIsoDate } from './date-utils';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -182,14 +183,14 @@ export function formatLongDate(input?: Date | string | null): string {
  * "SSP 1,234". Null/undefined/NaN render as the zero amount.
  *
  * @param amount  numeric value (minor handling: undefined/null → 0)
- * @param opts.currency  currency code/symbol (default "SSP")
+ * @param opts.currency  currency code/symbol (default: the country's)
  * @param opts.decimals  fixed decimal places (default 0, matching prior `.toLocaleString()`)
  */
 export function formatMoney(
   amount?: number | null,
   opts?: { currency?: string; decimals?: number },
 ): string {
-  const currency = opts?.currency ?? 'SSP';
+  const currency = opts?.currency ?? defaultCurrency();
   const decimals = opts?.decimals ?? 0;
   const n = typeof amount === 'number' && Number.isFinite(amount) ? amount : 0;
   const num = n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

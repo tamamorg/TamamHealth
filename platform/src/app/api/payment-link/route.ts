@@ -1,3 +1,4 @@
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
@@ -44,7 +45,7 @@ function generateLinkId(): string {
  * for the demo deployment; override via `NEXT_PUBLIC_DEFAULT_CURRENCY` for
  * other countries.
  */
-const DEFAULT_CURRENCY = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'SSP';
+const DEFAULT_CURRENCY = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || defaultCurrency();
 
 function generatePaymentUrl(linkId: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.tamamhealth.org';

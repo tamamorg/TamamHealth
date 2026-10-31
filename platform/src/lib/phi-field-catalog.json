@@ -18,10 +18,11 @@
     "patient": {
       "fields": [
         "firstName", "middleName", "surname", "maidenName", "name",
-        "nationalId", "dateOfBirth", "phone", "altPhone", "whatsapp", "email",
+        "nationalId", "identifiers.**", "latinName", "residenceCountry", "citizenship",
+        "dateOfBirth", "phone", "altPhone", "whatsapp", "email",
         "preferredPharmacy", "address", "tribe", "primaryLanguage", "bloodType",
         "allergies", "structuredAllergies.**", "directives.**", "careAlerts.**", "screenings.**",
-        "chronicConditions", "nokName", "nokRelationship", "nokPhone", "nokAddress",
+        "chronicConditions", "nokName", "nokRelationship", "nokPhone", "nokEmail", "nokAddress",
         "additionalNextOfKin.**", "payorInfo.**", "ngoName", "exemptionReason", "assignmentNote", "stationAssignments.lab.note", "stationAssignments.pharmacy.note", "stationAssignments.radiology.note", "stationAssignments.nutrition.note",
         "deathCause", "deathPlace", "deathInformant", "photoUrl", "medReconciliation.**", "programEnrollment"
       ],

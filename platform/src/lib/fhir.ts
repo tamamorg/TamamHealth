@@ -51,6 +51,10 @@ export function toFhirPatient(p: PatientDoc): FhirPatient {
       ...(p.hospitalNumber ? [{ system: `${FHIR_NAMESPACE_BASE}/hospital-number`, value: p.hospitalNumber }] : []),
       ...(p.geocodeId ? [{ system: `${FHIR_NAMESPACE_BASE}/geocode`, value: p.geocodeId }] : []),
       ...(p.nationalId ? [{ system: `${FHIR_NAMESPACE_BASE}/national-id`, value: p.nationalId }] : []),
+      ...(p.identifiers ?? []).map(id => ({
+        system: `${FHIR_NAMESPACE_BASE}/${id.type.replace('_', '-')}${id.country ? `/${id.country.toLowerCase()}` : ''}`,
+        value: id.value,
+      })),
     ],
     active: p.isActive !== false,
     name: [{
@@ -62,14 +66,14 @@ export function toFhirPatient(p: PatientDoc): FhirPatient {
       ...(p.phone ? [{ system: 'phone', value: p.phone, use: 'mobile' }] : []),
       ...(p.altPhone ? [{ system: 'phone', value: p.altPhone, use: 'home' }] : []),
     ],
-    gender: p.gender === 'Male' ? 'male' : p.gender === 'Female' ? 'female' : 'unknown',
+    gender: p.gender === 'Male' ? 'male' : p.gender === 'Female' ? 'female' : p.gender === 'Other' ? 'other' : 'unknown',
     birthDate: p.dateOfBirth,
-    address: p.state || p.county ? [{
+    address: p.state || p.county || p.residenceCountry ? [{
       line: p.address ? [p.address] : undefined,
       city: p.county,
       district: p.payam,
       state: p.state,
-      country: p.countryId,
+      country: p.residenceCountry ?? p.countryId,
     }] : undefined,
     managingOrganization: p.registrationHospital
       ? { reference: `Organization/${p.registrationHospital}` }

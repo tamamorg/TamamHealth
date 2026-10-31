@@ -55,6 +55,13 @@ export default function NextOfKinSection({
                 placeholder={t('patientNew.phonePlaceholder')} />
             )}
           </RegistrationField>
+          <RegistrationField name="nokEmail" label={t('patientNew.nokEmail')} error={errors.nokEmail}>
+            {field => (
+              <input {...field} type="email" inputMode="email" value={form.nokEmail}
+                onChange={e => update('nokEmail', e.target.value)}
+                placeholder={t('patientNew.emailPlaceholder')} />
+            )}
+          </RegistrationField>
           <RegistrationField name="nokAddress" label={t('patientNew.nokAddress')}>
             {field => (
               <input {...field} type="text" value={form.nokAddress}

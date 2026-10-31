@@ -155,7 +155,7 @@ export default function AdminDataGovernancePage() {
         const d = new Date(p.dateOfBirth).getTime();
         if (!Number.isNaN(d) && d > now) futureDob++;
       }
-      if (p.gender !== 'Male' && p.gender !== 'Female') { missingGender++; missing = true; }
+      if (!p.gender) { missingGender++; missing = true; }
       if (!p.phone) { missingPhone++; missing = true; }
       if (missing) missingAny++;
     }
@@ -177,7 +177,7 @@ export default function AdminDataGovernancePage() {
     const rows = hospitals
       .map(h => {
         const list = byHospital.get(h._id) || [];
-        const complete = list.filter(p => !!p.dateOfBirth && (p.gender === 'Male' || p.gender === 'Female') && !!p.phone).length;
+        const complete = list.filter(p => !!p.dateOfBirth && !!p.gender && !!p.phone).length;
         const score = list.length > 0 ? Math.round((complete / list.length) * 100) : null;
         return { hospitalId: h._id, name: h.name, total: list.length, complete, score };
       })

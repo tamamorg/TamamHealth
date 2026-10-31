@@ -1,5 +1,7 @@
 'use client';
 
+import { usesAddressLists } from '@/lib/country/country-pack';
+import { isValidDocumentNumber } from '@/lib/country/patient-identity';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from '@/components/icons/lucide';
@@ -340,7 +342,6 @@ export function PatientRegistrationForm({
         errs.registrationFacility = t('patientNew.errRegistrationFacilityRequired');
       }
       if (!form.firstName.trim()) errs.firstName = t('patientNew.errFirstNameRequired');
-      if (!form.surname.trim()) errs.surname = t('patientNew.errSurnameRequired');
       if (!form.gender) errs.gender = t('patientNew.errGenderRequired');
       if (!form.dateOfBirth && !form.estimatedAge) errs.dateOfBirth = t('patientNew.errDobRequired');
       if (form.estimatedAge) {
@@ -352,8 +353,10 @@ export function PatientRegistrationForm({
       if (requireGeocode && !form.householdNumber.trim()) {
         errs.householdNumber = t('patientNew.errGeocodeRequired');
       }
-      if (!form.state) errs.state = t('patientNew.errStateRequired');
-      if (form.state && !form.county) errs.county = t('patientNew.errCountyRequired');
+      if (usesAddressLists(form.residenceCountry)) {
+        if (!form.state) errs.state = t('patientNew.errStateRequired');
+        if (form.state && !form.county) errs.county = t('patientNew.errCountyRequired');
+      }
       // Phone is optional by default — the validators return true for empty,
       // so this only flags something typed wrong. The desk's "Require phone
       // number" setting (`reg.phone`) makes it mandatory, which is what that
@@ -364,11 +367,14 @@ export function PatientRegistrationForm({
       if (!isValidPhone(form.whatsapp)) errs.whatsapp = t('validation.errPhone');
       if (!isValidEmail(form.email)) errs.email = t('validation.errEmail');
       if (!isValidNationalId(form.nationalId)) errs.nationalId = t('validation.errNationalId');
+      if (form.idNumber.trim() && !isValidDocumentNumber(form.idNumber)) errs.idNumber = t('validation.errDocumentNumber');
+      if (form.idNumber.trim() && !form.idType) errs.idType = t('validation.errDocumentType');
     } else if (section === NEXTOFKIN_SECTION) {
       if (!form.nokName.trim()) errs.nokName = t('patientNew.errNokNameRequired');
       if (!form.nokRelationship) errs.nokRelationship = t('patientNew.errRelationshipRequired');
       if (!form.nokPhone.trim()) errs.nokPhone = t('patientNew.errNokPhoneRequired');
       else if (!isValidPhone(form.nokPhone)) errs.nokPhone = t('validation.errPhone');
+      if (!isValidEmail(form.nokEmail)) errs.nokEmail = t('validation.errEmail');
       additionalNok.forEach((nok, index) => {
         if (nok.phone && !isValidPhone(nok.phone)) {
           errs[`additionalNok.${index}.phone`] = t('validation.errPhone');

@@ -8,6 +8,7 @@
  * charges, then posts them through the existing billing path and records each
  * ABN acknowledgement as a chart directive (reusing P2.1).
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import type { ChargeCategory } from '../db-types-billing';
 import type { DataScope } from './data-scope';
 import {
@@ -62,7 +63,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export async function buildSuperbillPreview(
   selections: SuperbillSelection[],
   scope: DataScope,
-  currency = 'SSP',
+  currency = defaultCurrency(),
 ): Promise<SuperbillPreview> {
   const lines: SuperbillLine[] = [];
   // One catalog read for the whole preview. Previously every line called

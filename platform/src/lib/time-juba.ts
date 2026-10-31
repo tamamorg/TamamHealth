@@ -1,7 +1,11 @@
+import { activeCountry } from '@/lib/country/country-pack';
+
 /**
- * Date helpers scoped to Africa/Juba (UTC+02:00, no DST).
+ * Date helpers scoped to the deployment's clinical time zone
+ * (`activeCountry().timeZone`). The `juba*` names are historic: South Sudan is
+ * the default country, and nothing here is specific to it any more.
  *
- * All clinical events are recorded by users physically in South Sudan; if
+ * All clinical events are recorded by users physically in one country; if
  * we compare them with `new Date().toISOString()` on a UTC server, a death
  * at 22:00 Juba on Mar 31 shifts into April UTC and lands in the wrong
  * monthly bucket. Use these helpers wherever you'd otherwise slice
@@ -15,9 +19,24 @@
  */
 const JUBA_OFFSET_MS = 2 * 60 * 60 * 1000;
 
+/** The zone's offset from UTC at an instant; zones with DST change through the year. */
+function zoneOffsetMs(at: Date): number {
+  const { timeZone } = activeCountry();
+  if (timeZone === 'Africa/Juba') return JUBA_OFFSET_MS;
+  if (Number.isNaN(at.getTime())) return 0;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(at);
+  const get = (type: string) => Number(parts.find(p => p.type === type)?.value);
+  const wall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  return wall - Math.floor(at.getTime() / 1000) * 1000;
+}
+
 function toJuba(d: Date | string | number): Date {
   const date = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d;
-  return new Date(date.getTime() + JUBA_OFFSET_MS);
+  return new Date(date.getTime() + zoneOffsetMs(date));
 }
 
 export function jubaYearMonth(d: Date | string | number = new Date()): string {
@@ -49,14 +68,15 @@ export function jubaDateRangeUtc(fromDate: string, toDateExclusive: string): { f
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
     if (!match) throw new Error(`Invalid ISO date: ${value}`);
     const [, year, month, day] = match;
-    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)) - JUBA_OFFSET_MS).toISOString();
+    const wall = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    return new Date(wall - zoneOffsetMs(new Date(wall))).toISOString();
   };
   return { from: toUtc(fromDate), to: toUtc(toDateExclusive) };
 }
 
 /**
  * "Now" as a Date whose LOCAL fields (getHours/getDate/…) equal the current
- * Africa/Juba wall-clock — regardless of the viewer's browser timezone.
+ * clinical wall-clock — regardless of the viewer's browser timezone.
  *
  * Appointment dates/times are stored as naive Juba wall-clock strings and are
  * positioned on the calendar via their local fields, so any component that
@@ -66,7 +86,7 @@ export function jubaDateRangeUtc(fromDate: string, toDateExclusive: string): { f
  */
 export function jubaNow(): Date {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Africa/Juba', hour12: false,
+    timeZone: activeCountry().timeZone, hour12: false,
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   }).formatToParts(new Date());
@@ -75,10 +95,20 @@ export function jubaNow(): Date {
   return new Date(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
 }
 
-/** Current Africa/Juba time as a "HH:MM" wall-clock string. */
+/** Current clinical time as a "HH:MM" wall-clock string. */
 export function jubaTime(): string {
   const n = jubaNow();
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+}
+
+/** The UTC instant of a clinical wall-clock moment, given as if it were UTC. */
+export function wallClockToUtcMs(wallMs: number): number {
+  return wallMs - zoneOffsetMs(new Date(wallMs));
+}
+
+/** ISO instant of a clinical date (and optional HH:MM) in the deployment's zone. */
+export function clinicalInstant(date: string, time = '00:00'): string {
+  return new Date(wallClockToUtcMs(new Date(`${date}T${time}:00Z`).getTime())).toISOString();
 }
 
 /**

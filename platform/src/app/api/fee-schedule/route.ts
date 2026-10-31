@@ -13,6 +13,7 @@
  * existing fee (or the facility it prices) must belong to the caller's
  * organization unless the caller is super_admin.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
@@ -168,7 +169,7 @@ async function postHandler(request: NextRequest) {
         serviceName: cleaned.patch.serviceName!,
         unitPrice: cleaned.patch.unitPrice!,
         billingUnit: cleaned.patch.billingUnit,
-        currency: cleaned.patch.currency || 'SSP',
+        currency: cleaned.patch.currency || defaultCurrency(),
         isActive: cleaned.patch.isActive ?? true,
         effectiveFrom: now,
         orgId,

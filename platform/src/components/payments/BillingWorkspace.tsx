@@ -19,6 +19,7 @@
  * than on which URL the user arrived through.
  */
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -81,24 +82,6 @@ const ACTIVITY_OPTIONS: FilterOption[] = [
   { value: '30', label: 'Last 30 days' },
   { value: '90', label: 'Last 90 days' },
 ];
-
-/**
- * What an account's Status chip should say. The queue used to answer this with
- * one boolean — balance > 0 → "Outstanding", else "Paid" — which called an
- * account that had paid most of its charges exactly the same thing as one that
- * has paid nothing, and labelled a patient who was never charged "Paid". The
- * three states match the bill chips (`STATUS_CHIP` in billing-utils) so a row
- * and the invoices inside its popup use one vocabulary.
- */
-function accountStatus(line: PatientLine): { label: string; chip: string } {
-  if (line.outstanding <= 0) {
-    if (line.totalCollected > 0) return { label: 'Paid', chip: 'bl-chip--paid' };
-    // Nothing owed and nothing taken — a registered account with no activity.
-    return { label: 'No charges', chip: 'bl-chip--waived' };
-  }
-  if (line.totalCollected > 0) return { label: 'Partial', chip: 'bl-chip--partial' };
-  return { label: 'Unpaid', chip: 'bl-chip--unpaid' };
-}
 
 /** The stores this screen aggregates; a change in any of them redraws it. */
 const billingFeeds = () => [paymentsDB(), billingDB(), claimsDB(), paymentPlansDB()];
@@ -1357,7 +1340,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="bl-fee-name">
-                          {t('payments.planMonthly', { amount: formatMoney(p.monthlyAmount, { currency: p.currency ?? 'SSP' }), months: p.termMonths })}
+                          {t('payments.planMonthly', { amount: formatMoney(p.monthlyAmount, { currency: p.currency ?? defaultCurrency() }), months: p.termMonths })}
                         </div>
                         <div className="bl-fee-cat">
                           {p.startDate.slice(0, 10)} → {p.endDate.slice(0, 10)} · {p.apr === 0 ? t('payments.interestFree') : t('payments.aprValue', { apr: p.apr })}
@@ -1369,8 +1352,8 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                     </div>
                     <div className="flex items-center justify-between gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--ehr-border-soft, #ECEEF1)' }}>
                       <div className="bl-fee-cat">
-                        {t('payments.paid')}: <span style={{ color: 'var(--color-success-text)' }}>{formatMoney(p.paidToDate, { currency: p.currency ?? 'SSP' })}</span>
-                        {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #3C5574)' }}>{formatMoney(planOutstanding, { currency: p.currency ?? 'SSP' })}</span>
+                        {t('payments.paid')}: <span style={{ color: 'var(--color-success-text)' }}>{formatMoney(p.paidToDate, { currency: p.currency ?? defaultCurrency() })}</span>
+                        {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #3C5574)' }}>{formatMoney(planOutstanding, { currency: p.currency ?? defaultCurrency() })}</span>
                       </div>
                       {p.status === 'active' && (
                         <button

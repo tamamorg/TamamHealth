@@ -32,6 +32,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTriage } from '@/lib/hooks/useTriage';
 
+import { activeCountry } from '@/lib/country/country-pack';
 import { buildChartLatestVitals } from '@/lib/chart-latest-vitals';
 
 import { usePermissions } from '@/lib/hooks/usePermissions';
@@ -520,7 +521,13 @@ export default function PatientDetailPage() {
     boma: '',
     tribe: '',
     dateOfBirth: '',
-    gender: 'Male' as 'Male' | 'Female',
+    gender: 'Male' as PatientDoc['gender'],
+    email: '',
+    residenceCountry: '',
+    citizenship: '',
+    idType: '',
+    idNumber: '',
+    idCountry: '',
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
@@ -552,7 +559,13 @@ export default function PatientDetailPage() {
       boma: patient.boma || '',
       tribe: patient.tribe || '',
       dateOfBirth: patient.dateOfBirth || '',
-      gender: (patient.gender as 'Male' | 'Female') || 'Male',
+      gender: patient.gender || 'Unknown',
+      email: patient.email || '',
+      residenceCountry: patient.residenceCountry || activeCountry().code,
+      citizenship: patient.citizenship || '',
+      idType: patient.identifiers?.[0]?.type || '',
+      idNumber: patient.identifiers?.[0]?.value || '',
+      idCountry: patient.identifiers?.[0]?.country || '',
     });
     setShowEditModal(true);
   };

@@ -26,7 +26,6 @@ import EhrClinicalDashboard, {
 } from '@/components/ehr/EhrClinicalDashboard';
 import EhrPanelTitle from '@/components/ehr/EhrPanelTitle';
 import { EhrPatientOrderList, withOthers } from '@/components/ehr/EhrPatientOrders';
-import { statusToneClass } from '@/components/ehr/EhrCareDashboard';
 import type { DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useAppointments } from '@/lib/hooks/useAppointments';

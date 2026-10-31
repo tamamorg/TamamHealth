@@ -10,7 +10,7 @@ import { resolveDataElement, validateDataElements } from './dhis2-element-map';
 import type { DHIS2ElementValidation } from './dhis2-element-map';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
-import { isInRange } from '../time-juba';
+import { isInRange, wallClockToUtcMs } from '../time-juba';
 import { escapeCsvCell } from '../csv';
 
 // DHIS2 only accepts compact period codes (YYYYMM / YYYYWww / YYYY) — accept
@@ -44,8 +44,6 @@ export interface DHIS2ExportScope {
   role?: string;
 }
 
-/** Africa/Juba is UTC+02:00 (CAT since 1 Feb 2021), no DST — mirrors the constant in time-juba.ts. */
-const JUBA_OFFSET_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Convert a normalized DHIS2 period (YYYYMM / YYYYWww / YYYY — the output of
@@ -59,8 +57,8 @@ export function periodToRange(period: string, frequency: 'monthly' | 'weekly' | 
   if (frequency === 'yearly') {
     const y = Number(period);
     return {
-      from: new Date(Date.UTC(y, 0, 1) - JUBA_OFFSET_MS).toISOString(),
-      to: new Date(Date.UTC(y + 1, 0, 1) - JUBA_OFFSET_MS).toISOString(),
+      from: new Date(wallClockToUtcMs(Date.UTC(y, 0, 1))).toISOString(),
+      to: new Date(wallClockToUtcMs(Date.UTC(y + 1, 0, 1))).toISOString(),
     };
   }
   if (frequency === 'weekly') {
@@ -77,16 +75,16 @@ export function periodToRange(period: string, frequency: 'monthly' | 'weekly' | 
     const week1MondayCalendarMs = Date.UTC(y, 0, 4 - daysFromMonday);
     const startCalendarMs = week1MondayCalendarMs + (week - 1) * 7 * 24 * 60 * 60 * 1000;
     return {
-      from: new Date(startCalendarMs - JUBA_OFFSET_MS).toISOString(),
-      to: new Date(startCalendarMs + 7 * 24 * 60 * 60 * 1000 - JUBA_OFFSET_MS).toISOString(),
+      from: new Date(wallClockToUtcMs(startCalendarMs)).toISOString(),
+      to: new Date(wallClockToUtcMs(startCalendarMs + 7 * 24 * 60 * 60 * 1000)).toISOString(),
     };
   }
   // monthly: YYYYMM
   const y = Number(period.slice(0, 4));
   const mo = Number(period.slice(4, 6)); // 1-12
   return {
-    from: new Date(Date.UTC(y, mo - 1, 1) - JUBA_OFFSET_MS).toISOString(),
-    to: new Date(Date.UTC(y, mo, 1) - JUBA_OFFSET_MS).toISOString(),
+    from: new Date(wallClockToUtcMs(Date.UTC(y, mo - 1, 1))).toISOString(),
+    to: new Date(wallClockToUtcMs(Date.UTC(y, mo, 1))).toISOString(),
   };
 }
 

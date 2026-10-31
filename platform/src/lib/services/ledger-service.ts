@@ -3,6 +3,7 @@
  * Every charge, payment, adjustment, refund, and write-off creates a ledger entry.
  * Patient balances are computed from the ledger, never stored separately.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { getDB } from '../db';
 import type { LedgerEntryDoc, LedgerEntryType, PaymentMethodType } from '../db-types-payments';
 import type { DataScope } from './data-scope';
@@ -19,11 +20,11 @@ const ledgerDB = () => getDB('tamamhealth_ledger');
  * Defaults to South Sudanese Pound (SSP) for the South Sudan demo deployment;
  * override via `NEXT_PUBLIC_DEFAULT_CURRENCY` for other countries.
  */
-const DEFAULT_CURRENCY = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || 'SSP';
+const DEFAULT_CURRENCY = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || defaultCurrency();
 
 /**
  * Effective default currency: prefer the live facility setting, then the
- * env-configured default, then 'SSP'. Used when a ledger entry doesn't carry
+ * env-configured default, then the country's. Used when a ledger entry doesn't carry
  * its own currency.
  */
 function currencyDefault(): string {

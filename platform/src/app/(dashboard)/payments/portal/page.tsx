@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect, useMemo } from 'react';
 import DemoModeBanner from '@/components/DemoModeBanner';
 import {
@@ -252,7 +253,7 @@ export default function PatientPortalPage() {
         patientName: selectedBill.patientName || currentUser?.name || t('portal.patient'),
         method: METHOD_TO_PAYMENT_TYPE[paymentMethod],
         amount: numericAmount,
-        currency: selectedBill.currency || 'SSP',
+        currency: selectedBill.currency || defaultCurrency(),
         reference,
         status: 'pending' as PaymentStatus,
         processedAt: now,

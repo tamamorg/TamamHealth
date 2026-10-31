@@ -4,6 +4,8 @@
  *
  * Applicable to Level 3+ facilities (County, State, National hospitals).
  */
+import { clinicalInstant } from '@/lib/time-juba';
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { getDB } from '../db';
 import type { WardDoc, BedDoc, AdmissionDoc, BedStatus } from '../db-types-ward';
 import type { UserRole } from '../db-types';
@@ -543,7 +545,7 @@ async function ensureAdmissionDepositBillForAdmission(admission: AdmissionDoc): 
         quantity: 1, unitPrice: required, billingUnit: 'each', totalPrice: required,
         referenceId: admission._id, referenceType: 'admission',
       }],
-      currency: admission.tariffCurrency || 'SSP', generatedBy: admission.admittedBy,
+      currency: admission.tariffCurrency || defaultCurrency(), generatedBy: admission.admittedBy,
       generatedByName: admission.admittedByName, state: admission.state,
       county: admission.county, orgId: admission.orgId,
       notes: `Admission deposit for ${admission._id}`,
@@ -627,7 +629,7 @@ export async function refundAdmissionDeposit(input: {
   if (!input.reason.trim()) throw new Error('Enter the reason for the refund.');
   const bill = admission.admissionDepositBillId ? await getBillById(admission.admissionDepositBillId, input.scope) : null;
   const payment = bill?.payments.find(item => item.id === input.paymentId);
-  if (!bill || !payment || bill.patientId !== admission.patientId || bill.orgId !== admission.orgId || bill.facilityId !== admission.facilityId || bill.currency !== (admission.tariffCurrency || 'SSP')) throw new Error('Select a payment from this admission deposit.');
+  if (!bill || !payment || bill.patientId !== admission.patientId || bill.orgId !== admission.orgId || bill.facilityId !== admission.facilityId || bill.currency !== (admission.tariffCurrency || defaultCurrency())) throw new Error('Select a payment from this admission deposit.');
   let pending = admission.admissionDepositPendingRefund;
   if (pending && (pending.paymentId !== input.paymentId || pending.amount !== input.amount || pending.method !== input.method || pending.reason !== input.reason.trim())) throw new Error('A refund is already pending. Retry it with the original details.');
   const refunds = await getRefundsByPatient(admission.patientId, input.scope);
@@ -639,7 +641,7 @@ export async function refundAdmissionDeposit(input: {
     const response = await wardDB().put(reserved);
     admission = { ...reserved, _rev: response.rev };
   }
-  const refund = await issueRefund({ idempotencyKey: pending.id, paymentId: pending.paymentId, patientId: admission.patientId, patientName: admission.patientName, amount: pending.amount, currency: admission.tariffCurrency || 'SSP', method: pending.method, reason: pending.reason, processedBy: input.actor.id, processedByName: input.actor.name, facilityId: admission.facilityId, orgId: admission.orgId });
+  const refund = await issueRefund({ idempotencyKey: pending.id, paymentId: pending.paymentId, patientId: admission.patientId, patientName: admission.patientName, amount: pending.amount, currency: admission.tariffCurrency || defaultCurrency(), method: pending.method, reason: pending.reason, processedBy: input.actor.id, processedByName: input.actor.name, facilityId: admission.facilityId, orgId: admission.orgId });
   const remaining = Math.max(0, due - input.amount);
   const updated: AdmissionDoc = {
     ...admission,
@@ -801,7 +803,7 @@ export async function dischargePatient(
         status: 'active',
         condition: dischargeData.dischargeDiagnosis!.trim(),
         facilityLevel: admission.facilityLevel,
-        scheduledDate: `${dischargeData.followUpDate}T00:00:00+02:00`,
+        scheduledDate: clinicalInstant(dischargeData.followUpDate!),
         notes: dischargeData.followUpInstructions?.trim(),
         state: admission.state,
         county: admission.county || '',

@@ -5,6 +5,7 @@
  * Public facilities (government) are fee-free, but the billing module
  * can still track costs for donor reporting and budget planning.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { getDB } from '../db';
 import type {
   BillingDoc, BillLineItem, PaymentRecord, PaymentMethod,
@@ -226,7 +227,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
     totalAmount,
     amountPaid,
     balanceDue: Math.round((totalAmount - amountPaid) * 100) / 100,
-    currency: data.currency || 'SSP',
+    currency: data.currency || defaultCurrency(),
     payments: [],
     insuranceProvider: data.insuranceProvider,
     insurancePolicyNumber: data.insurancePolicyNumber,
@@ -1019,7 +1020,7 @@ export async function getBillingSummary(scope: DataScope): Promise<{
   currency: string;
 }> {
   const bills = await getAllBills(scope);
-  const currency = bills[0]?.currency || 'SSP';
+  const currency = bills[0]?.currency || defaultCurrency();
 
   return {
     totalRevenue: bills.filter(b => b.status === 'paid').reduce((s, b) => s + b.totalAmount, 0),

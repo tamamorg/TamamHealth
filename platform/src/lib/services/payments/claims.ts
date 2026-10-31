@@ -1,4 +1,5 @@
 /** Payment service split: claims. Re-exported through ../payment-service. */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { getDB } from '../../db';
 import { findByType } from '../db-query';
 import type { PayerType, ClaimDoc, ClaimStatus, ChargeDoc } from '../../db-types-payments';
@@ -119,7 +120,7 @@ export async function submitClaim(input: SubmitClaimInput, scope: DataScope): Pr
     claimNumber: `CLM-${Date.now().toString(36).toUpperCase()}-${uuidv4().slice(0, 8)}`,
     payerName: policy.payerName,
     payerType: policy.payerType,
-    currency: linkedBill?.currency || input.currency || getSettings().currency || 'SSP',
+    currency: linkedBill?.currency || input.currency || getSettings().currency || defaultCurrency(),
     billItems: linkedBill?.items,
     queuedAt: now,
     status: 'queued' as ClaimStatus,

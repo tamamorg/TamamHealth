@@ -8,6 +8,7 @@
  * The FeeScheduleDoc type, its PouchDB store, and sync config already exist;
  * this module adds the CRUD + lookup + charge-generation layer on top.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { getDB } from '../db';
 import { getSettings } from '../settings/settings-store';
 import type { FeeScheduleDoc, ChargeCategory, BillLineItem, BillingDoc, BillingUnit } from '../db-types-billing';
@@ -59,7 +60,7 @@ export async function createFee(input: FeeInput, by: Actor = {}): Promise<FeeSch
     serviceName: input.serviceName,
     unitPrice: input.unitPrice,
     billingUnit: input.billingUnit,
-    currency: input.currency || 'SSP',
+    currency: input.currency || defaultCurrency(),
     isActive: true,
     effectiveFrom: now,
     orgId: input.orgId,
@@ -219,7 +220,7 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
     encounterId: ctx.encounterId,
     appointmentId: ctx.appointmentId,
     items,
-    currency: ctx.currency || 'SSP',
+    currency: ctx.currency || defaultCurrency(),
     // Default service tax/VAT from facility settings (0 for public facilities).
     taxRate: getSettings().taxRatePercent || undefined,
     generatedBy: ctx.generatedBy,

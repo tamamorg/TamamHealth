@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Wallet, CalendarClock, Receipt, Printer, Search, ShieldCheck, RotateCcw, RefreshCw, Send, Copy, Check, ExternalLink } from '@/components/icons/lucide';
 import { PaymentPanel, PaymentPlanWizard } from '@/components/payments';
@@ -14,7 +15,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
-import { formatDate, formatMoney, humanizeStatus } from '@/lib/format-utils';
+import { formatDate, formatMoney } from '@/lib/format-utils';
 import { summariseLedger, type LedgerSummary } from '@/lib/ledger-summary';
 import { buildAccountLines, type AccountLine } from '@/lib/billing-account-lines';
 import BillingLinePanel, { accountLineTitle } from '@/components/patients/BillingLinePanel';
@@ -117,7 +118,7 @@ function buildStatementHTML(opts: {
   balance: number;
 }): string {
   const { patientName, hospitalNumber, dateOfBirth, gender, phone, facilityName, preparedBy, overview, balance } = opts;
-  const currency = overview.payments[0]?.currency || 'SSP';
+  const currency = overview.payments[0]?.currency || defaultCurrency();
   const generatedAt = new Date();
   const fmt = (n: number) => `${n.toLocaleString()} ${currency}`;
   const e = escapeHtml;
@@ -607,7 +608,7 @@ export default function BillingTab({
             {activePlan ? t('billing.monthPlan', { count: activePlan.termMonths }) : '—'}
           </span>
           {activePlan && (
-            <span className="bl-stat-sub">{t('billing.remaining', { amount: formatMoney(activePlan.remainingBalance, { currency: activePlan.currency ?? 'SSP' }) })}</span>
+            <span className="bl-stat-sub">{t('billing.remaining', { amount: formatMoney(activePlan.remainingBalance, { currency: activePlan.currency ?? defaultCurrency() }) })}</span>
           )}
         </div>
       </div>
