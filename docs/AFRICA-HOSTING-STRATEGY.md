@@ -1,5 +1,11 @@
 # Hosting & Rollout Strategy — Scaling TamamHealth across Africa
 
+> **Current production:** DigitalOcean (the `tamamhealth-production` droplet,
+> deployed by `deploy-production.yml`; backups to DigitalOcean Spaces). DigitalOcean
+> has no Africa region, so this document is the sovereignty roadmap for where
+> country nodes should live as deployments move in-country; it is not a second
+> deploy target.
+
 A practical, opinionated guide for how to host and grow the platform from one
 demo to a multi-country deployment, written against how the system is actually
 built (offline-first facility nodes → in-country country node → regional
@@ -39,8 +45,8 @@ Facility (browser, offline-first)  ─►  Country node (per country, in-region)
   `DEMO_MODE=false` (clean slate), LUKS-encrypted disk, offsite encrypted backups.
 - Recommended hosting, in order of preference:
   1. **Government / MoH data centre** in-country — best for sovereignty and buy-in.
-  2. **In-region sovereign cloud** — AWS Cape Town (`af-south-1`), Azure South
-     Africa, or a reputable national cloud provider.
+  2. **In-region cloud** — a reputable provider with an African region, or a
+     national cloud provider.
   3. **Local hosting/ISP** with a UPS + good uplink, if the above aren't available.
 - Sign a data-processing/hosting agreement with the MoH or facility group.
 - Wire **DHIS2** (already built) so national reporting flows automatically — this

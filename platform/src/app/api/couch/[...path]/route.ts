@@ -28,6 +28,15 @@ import {
   participantSelector,
   type ParticipantScopeKind,
 } from '@/lib/sync/participant-scope';
+import {
+  auditDue,
+  bulkReadKind,
+  canReadFacilityDoc,
+  facilityReadSelector,
+  readEntitlementFor,
+  scopeReadRequest,
+  stripAllDocsBodies,
+} from '@/lib/sync/read-scope';
 import { messageIntegrityViolation } from '@/lib/sync/message-integrity';
 import { SERVER_HELD_BEFORE, applyPortalCredentialAuthority } from '@/lib/sync/portal-credential-authority';
 import { readRequestNamesPortalSecret, stripPortalSecrets } from '@/lib/sync/portal-read-redaction';
@@ -296,16 +305,60 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
             logBlockedWrite('sync.gateway.message_integrity_blocked', auth, database, tampered.map(entry => entry.id));
           }
         }
-      } else if (!isMutatingWrite) {
-        const rewrite = scopeReadRequest(scope, request, pathAfterDatabase, parsed, upstream);
-        if (rewrite.error) return forbidden(rewrite.error);
-        if (rewrite.body !== undefined) {
+      }
+    }
+
+    // Every read of an org-scoped database is narrowed to what this account is
+    // entitled to hold (read-scope.ts): the same facility rule the device
+    // applies to its own replication, enforced here because a device is the
+    // one party that cannot be trusted to apply it. Staff chat adds the
+    // participant rule on top.
+    let readAllowed: ((doc: unknown) => boolean) | null = null;
+    let stripDocs = false;
+    const endpoint = pathAfterDatabase[0] || '';
+    if (config.orgScoped && !isMutatingWrite && request.method.toUpperCase() !== 'HEAD') {
+      const entitlement = readEntitlementFor(auth);
+      const facilitySelector = facilityReadSelector(entitlement);
+      const selector = scope
+        ? mergeSelector(participantSelector(scope.kind, scope.userId, Array.from(scope.conversationIds)), facilitySelector)
+        : facilitySelector;
+      const rewrite = scopeReadRequest(selector, request.nextUrl.searchParams, pathAfterDatabase, parsed, upstream);
+      if (rewrite.error) return forbidden(rewrite.error);
+      if (rewrite.body !== undefined) {
+        if (endpoint === '_all_docs') {
+          headers.set('content-type', 'application/json');
+        } else {
           method = 'POST';
           headers.set('content-type', 'application/json');
-          body = new TextEncoder().encode(JSON.stringify(rewrite.body)).buffer as ArrayBuffer;
         }
-        // Responses are filtered as JSON below; never negotiate multipart.
-        headers.set('accept', 'application/json');
+        body = new TextEncoder().encode(JSON.stringify(rewrite.body)).buffer as ArrayBuffer;
+      }
+      stripDocs = rewrite.stripDocs === true;
+      // Attachments sit below a document and bypass the body filters. Chat has
+      // none; elsewhere the parent document decides.
+      if (endpoint && !endpoint.startsWith('_') && pathAfterDatabase.length > 1) {
+        if (scope) return forbidden('Attachments are not available for this database.');
+        const parent = (await readCouchDocuments(databaseUrl, [endpoint], authorization)).get(endpoint);
+        if (parent && !canReadFacilityDoc(entitlement, parent)) {
+          logFacilityRead(auth, database, endpoint, 1);
+          return forbidden('This record is outside your facility.');
+        }
+      }
+      // Responses are filtered as JSON below; never negotiate multipart.
+      headers.set('accept', 'application/json');
+      readAllowed = doc => canReadFacilityDoc(entitlement, doc);
+
+      const bulk = bulkReadKind(endpoint, request.nextUrl.searchParams, parsed);
+      // An initial pull is one per device, not per database: key it on the user.
+      if (bulk && auditDue(bulk === 'initial_pull' ? `${auth.sub}|${bulk}` : `${auth.sub}|${database}|${bulk}`)) {
+        void logAuditSafe(
+          'sync.gateway.bulk_read',
+          auth.sub,
+          auth.username,
+          JSON.stringify({ kind: bulk, database, endpoint, orgId: auth.orgId, hospitalId: auth.hospitalId, role: auth.actualRole || auth.role }),
+          true,
+          { orgId: auth.orgId, hospitalId: auth.hospitalId, role: auth.actualRole || auth.role },
+        );
       }
     }
 
@@ -399,31 +452,50 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
       if (value) responseHeaders.set(name, value);
     }
     responseHeaders.set('cache-control', 'no-store');
-    if (scope && !isMutatingWrite && response.ok && readReturnsDocuments(request, pathAfterDatabase)) {
-      // The selector keeps other people's threads out of feeds and queries;
-      // this is the backstop for a document asked for by id.
-      const readScope = scope;
-      const filtered = filterScopedReadResponse(
-        await response.json(),
-        doc => canReadScopedDoc(readScope.kind, doc, readScope.userId, readScope.conversationIds),
-      );
-      if (filtered.denied > 0) {
-        void logAuditSafe(
-          'sync.gateway.participant_read_blocked',
-          auth.sub,
-          auth.username,
-          JSON.stringify({ database, endpoint: pathAfterDatabase[0] || '', count: filtered.denied, orgId: auth.orgId }),
-          false,
-        );
+    const mustFilter = (scope !== null || readAllowed !== null) && !isMutatingWrite && response.ok
+      && readReturnsDocuments(request, pathAfterDatabase);
+    if (mustFilter || (redactPortalSecrets && response.ok)) {
+      let payload: unknown = await response.json();
+      let status = response.status;
+      if (mustFilter) {
+        // A query with `fields` returns projections that may lack the fields
+        // the check reads; the selector already scoped those.
+        const projected = endpoint === '_find' && Array.isArray((parsed as { fields?: unknown } | null)?.fields);
+        if (scope) {
+          const readScope = scope;
+          // The selector keeps other people's threads out of feeds and queries;
+          // this is the backstop for a document asked for by id.
+          const filtered = filterScopedReadResponse(
+            payload,
+            doc => canReadScopedDoc(readScope.kind, doc, readScope.userId, readScope.conversationIds),
+          );
+          payload = filtered.payload;
+          status = filtered.status ?? status;
+          if (filtered.denied > 0) {
+            void logAuditSafe(
+              'sync.gateway.participant_read_blocked',
+              auth.sub,
+              auth.username,
+              JSON.stringify({ database, endpoint, count: filtered.denied, orgId: auth.orgId }),
+              false,
+              { orgId: auth.orgId, hospitalId: auth.hospitalId },
+            );
+          }
+        }
+        if (readAllowed && !projected) {
+          const filtered = filterScopedReadResponse(payload, readAllowed, {
+            reason: 'This record is outside your facility.',
+            // A listing the client did not key must not echo the ids it refuses.
+            dropRows: !(Array.isArray((parsed as { keys?: unknown } | null)?.keys)),
+          });
+          payload = filtered.payload;
+          status = filtered.status ?? status;
+          if (filtered.denied > 0) logFacilityRead(auth, database, endpoint, filtered.denied);
+        }
+        if (stripDocs) payload = stripAllDocsBodies(payload);
       }
-      return NextResponse.json(filtered.payload, {
-        status: filtered.status ?? response.status,
-        headers: { 'cache-control': 'no-store' },
-      });
-    }
-    if (redactPortalSecrets && response.ok) {
-      const stripped = stripPortalSecrets(await response.json());
-      return NextResponse.json(stripped, { status: response.status, headers: { 'cache-control': 'no-store' } });
+      if (redactPortalSecrets && response.ok) payload = stripPortalSecrets(payload);
+      return NextResponse.json(payload, { status, headers: { 'cache-control': 'no-store' } });
     }
     return new NextResponse(request.method === 'HEAD' ? null : response.body, {
       status: response.status,
@@ -479,6 +551,29 @@ function logBlockedWrite(
     auth.username,
     JSON.stringify({ database, ids: ids.slice(0, 50), count: ids.length, orgId: auth.orgId }),
     false,
+    { orgId: auth.orgId, hospitalId: auth.hospitalId },
+  );
+}
+
+/**
+ * A read reached for records outside the caller's facilities. A healthy
+ * client never asks (its own selector excludes them), so any row here is a
+ * modified client or a stale session; throttled so one probe loop is one row.
+ */
+function logFacilityRead(
+  auth: NonNullable<Awaited<ReturnType<typeof getAuthPayload>>>,
+  database: string,
+  endpoint: string,
+  count: number,
+): void {
+  if (!auditDue(`${auth.sub}|${database}|facility_read_blocked`)) return;
+  void logAuditSafe(
+    'sync.gateway.facility_read_blocked',
+    auth.sub,
+    auth.username,
+    JSON.stringify({ database, endpoint, count, orgId: auth.orgId, hospitalId: auth.hospitalId }),
+    false,
+    { orgId: auth.orgId, hospitalId: auth.hospitalId },
   );
 }
 
@@ -645,41 +740,6 @@ function readReturnsDocuments(request: NextRequest, pathAfterDatabase: string[])
   const endpoint = pathAfterDatabase[0] || '';
   if (endpoint === '_bulk_get' || endpoint === '_all_docs' || endpoint === '_find') return true;
   return !!endpoint && !endpoint.startsWith('_') && request.method.toUpperCase() === 'GET';
-}
-
-/**
- * Narrow a read to the user's own conversations before CouchDB runs it.
- *
- * `_changes` and `_find` are rewritten to carry the participant selector, so
- * CouchDB never emits another thread's documents (or their ids) at all. When
- * a rewrite is needed the request goes upstream as a POST with this body.
- */
-function scopeReadRequest(
-  scope: ParticipantScope,
-  request: NextRequest,
-  pathAfterDatabase: string[],
-  parsed: unknown,
-  upstream: URL,
-): { body?: unknown; error?: string } {
-  const endpoint = pathAfterDatabase[0] || '';
-  const selector = participantSelector(scope.kind, scope.userId, Array.from(scope.conversationIds));
-  if (endpoint === '_changes') {
-    const filter = request.nextUrl.searchParams.get('filter');
-    if (filter && filter !== '_selector') return { error: 'Only selector-filtered change feeds are available for this database.' };
-    upstream.searchParams.set('filter', '_selector');
-    const clientBody = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
-    return { body: { ...clientBody, selector: mergeSelector(clientBody.selector, selector) } };
-  }
-  if (endpoint === '_find') {
-    const clientBody = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
-    return { body: { ...clientBody, selector: mergeSelector(clientBody.selector, selector) } };
-  }
-  // Attachments are not used by messaging; a path below a document is refused
-  // rather than streamed past the document check.
-  if (endpoint && !endpoint.startsWith('_') && pathAfterDatabase.length > 1) {
-    return { error: 'Attachments are not available for this database.' };
-  }
-  return {};
 }
 
 async function validateTransferRelationships(

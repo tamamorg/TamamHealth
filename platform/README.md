@@ -338,7 +338,7 @@ Deployment paths and runbooks live outside this package:
 `docs/DEPLOY-PRODUCTION.md`, `docs/DEPLOY-DIGITALOCEAN.md`,
 `docs/GO-LIVE-STEP-BY-STEP.md`, `docs/OPERATOR-RUNBOOK.md`, and the workflows
 under `.github/workflows/` (`ci.yml`, `deploy-production.yml`,
-`deploy-staging.yml`, `deploy-app-platform.yml`).
+`deploy-staging.yml`).
 
 ---
 

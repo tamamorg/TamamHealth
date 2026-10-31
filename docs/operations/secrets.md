@@ -5,8 +5,8 @@
 > host" flow.
 >
 > **PHI residency:** TamamHealth processes Protected Health Information (PHI)
-> for South Sudan. The data plane (CouchDB / Postgres / S3 backups) **must**
-> stay in `af-south-1` (Cape Town). Doppler is a US/EU-hosted control plane —
+> for South Sudan. The data plane (CouchDB / Postgres / Spaces backups) runs
+> on DigitalOcean, the production host. Doppler is a US/EU-hosted control plane —
 > only **secret material** transits Doppler. No PHI ever passes through it. If
 > your compliance posture forbids non-residency control planes, see
 > "Self-hosted alternative" at the bottom of this page.
@@ -257,10 +257,11 @@ on-call lead.
 
 If your compliance posture cannot accept a US-hosted control plane:
 
-- run `infisical` self-hosted in `af-south-1` on a separate EC2 in the same
-  VPC, OR
-- run AWS Secrets Manager (also `af-south-1`) and replace the `doppler run`
-  wrapper with `aws secretsmanager get-secret-value | export-and-exec`.
+- run `infisical` self-hosted on a separate DigitalOcean droplet in the same
+  VPC as production, OR
+- keep secrets in a root-only `.env` on the droplet (see
+  `docs/operations/production-hardening.md`) and drop the `doppler run`
+  wrapper.
 
 The `secrets.ts` helper is provider-agnostic — it only checks for env
 presence, so swapping the front-end script does not require code changes.

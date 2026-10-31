@@ -2,7 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { getDB } from '@/lib/db';
 import { decryptField, encryptField } from '@/lib/field-encryption';
-import { logAuditSafe } from '@/lib/services/audit-service';
+import { logAuditRequired, logAuditSafe } from '@/lib/services/audit-service';
 import { findByType } from '@/lib/services/db-query';
 import type { RestrictedMentalHealthNote, RestrictedMentalHealthNoteCategory } from '../core/restricted-notes';
 
@@ -49,7 +49,12 @@ export async function createRestrictedMentalHealthNote(input: {
   };
   const response = await restrictedDB().put(doc);
   doc._rev = response.rev;
-  await logAuditSafe('RESTRICTED_MH_NOTE_CREATED', input.actorId, input.actorName, `Restricted mental-health note ${id} created for patient ${input.patientId}`);
+  await logAuditSafe(
+    'RESTRICTED_MH_NOTE_CREATED', input.actorId, input.actorName,
+    `Restricted mental-health note ${id} created for patient ${input.patientId}`,
+    true,
+    { orgId: input.orgId, hospitalId: input.hospitalId, patientId: input.patientId, resourceType: 'restricted_mental_health_note', resourceId: id },
+  );
   return { id, patientId: doc.patientId, patientName: doc.patientName, episodeId: doc.episodeId, category: doc.category, narrative, hospitalId: doc.hospitalId, orgId: doc.orgId, authoredBy: doc.authoredBy, authoredByName: doc.authoredByName, authoredAt: doc.authoredAt, updatedAt: doc.updatedAt };
 }
 
@@ -65,6 +70,15 @@ export async function getRestrictedMentalHealthNotes(input: {
   const rows = await findByType<EncryptedRestrictedNoteDoc>(restrictedDB(), 'restricted_mental_health_note', { patientId: input.patientId }, { indexFields: ['type', 'patientId'] });
   const facilities = new Set(input.allowedFacilityIds ?? []);
   const scoped = rows.filter((row) => row.orgId === input.orgId && (input.allFacilities || facilities.has(row.hospitalId)));
-  await logAuditSafe(input.breakGlassReason ? 'RESTRICTED_MH_NOTE_BREAK_GLASS_READ' : 'RESTRICTED_MH_NOTE_READ', input.actorId, input.actorName, `Read ${scoped.length} restricted mental-health note(s) for patient ${input.patientId}${input.breakGlassReason ? `; reason: ${input.breakGlassReason}` : ''}`);
+  const auditContext = { orgId: input.orgId, patientId: input.patientId, resourceType: 'restricted_mental_health_note' };
+  const auditDetails = `Read ${scoped.length} restricted mental-health note(s) for patient ${input.patientId}${input.breakGlassReason ? `; reason: ${input.breakGlassReason}` : ''}`;
+  if (input.breakGlassReason) {
+    // Break-glass is permitted ONLY because it is recorded. The row is written
+    // and confirmed before any note leaves this function; if it cannot be
+    // written the read fails and nothing is released.
+    await logAuditRequired('RESTRICTED_MH_NOTE_BREAK_GLASS_READ', input.actorId, input.actorName, auditDetails, true, auditContext);
+  } else {
+    await logAuditSafe('RESTRICTED_MH_NOTE_READ', input.actorId, input.actorName, auditDetails, true, auditContext);
+  }
   return scoped.sort((a, b) => b.authoredAt.localeCompare(a.authoredAt)).map((doc) => ({ id: doc._id, patientId: doc.patientId, patientName: doc.patientName, episodeId: doc.episodeId, category: doc.category, narrative: decryptField(doc.ciphertext), hospitalId: doc.hospitalId, orgId: doc.orgId, authoredBy: doc.authoredBy, authoredByName: doc.authoredByName, authoredAt: doc.authoredAt, updatedAt: doc.updatedAt }));
 }

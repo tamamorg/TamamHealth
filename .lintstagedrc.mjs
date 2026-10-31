@@ -17,10 +17,10 @@
 // package — ESLint 9 resolves its flat config from the CWD, so running it from
 // the repo root fails outright. See that file for the full explanation.
 //
-// Net effect: touching one file in platform/ checks platform/ only; mobile/
-// and website/ are untouched. Emergency escape hatch: `git commit --no-verify`.
+// Net effect: touching one file in platform/ checks platform/ only;
+// website/ is untouched. Emergency escape hatch: `git commit --no-verify`.
 
-const PACKAGES = ['platform', 'website', 'mobile'];
+const PACKAGES = ['platform', 'website'];
 
 const RUNNER = 'node scripts/lint-staged-runner.mjs';
 

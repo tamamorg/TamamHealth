@@ -15,6 +15,8 @@ export function buildContentSecurityPolicy(input: {
   isDev: boolean;
   couchdbUrl?: string;
   posthogHost?: string;
+  /** The desk PC's fingerprint bridge, when this deployment enables it. */
+  fingerprintBridgeUrl?: string;
   /**
    * Whether this response is going out over HTTPS.
    *
@@ -42,7 +44,7 @@ export function buildContentSecurityPolicy(input: {
     'https://fonts.googleapis.com',
     'https://fonts.gstatic.com',
   ]);
-  for (const candidate of [input.couchdbUrl, input.posthogHost]) {
+  for (const candidate of [input.couchdbUrl, input.posthogHost, input.fingerprintBridgeUrl]) {
     const origin = safeOrigin(candidate);
     if (origin) connectOrigins.add(origin);
   }

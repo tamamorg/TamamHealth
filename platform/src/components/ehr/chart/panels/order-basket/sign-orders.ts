@@ -13,7 +13,7 @@
  * basket, the rest are written.
  */
 
-import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import type { PatientDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
@@ -62,8 +62,12 @@ export async function signOrders({
     const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
     for (const order of drugs) {
       try {
-        const safety = await assessPrescriptionSafety(patient._id, order.drug.name, scope);
+        const safety = await assessPrescriptionSafety(patient._id, order.drug.name, scope, {
+          dose: order.freeText ? '' : doseText(order), frequency: frequencyText(order),
+        });
         if (safety.allergyCheckUnavailable) outcome.warnings.push(t('prescribe.allergyCheckUnavailable'));
+        if (safety.interactionCheckUnavailable) outcome.warnings.push(t('prescribe.interactionCheckUnavailable'));
+        for (const w of safety.doseWarnings || []) outcome.warnings.push(doseWarningText(t, w));
         let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
         if (hasSafetyStop(safety)) {
           const reason = await confirmPrompt({
@@ -114,6 +118,12 @@ export async function signOrders({
             medication: order.drug.name,
             value: result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', '),
           }));
+        }
+        if (result.duplicateWarnings?.length) {
+          outcome.warnings.push(t('msg.possibleDuplicateIsAlreadyActive', { value: result.duplicateWarnings.join(', ') }));
+        }
+        if (result.duplicateRecord) {
+          outcome.warnings.push(t('dup.orderWarning', { name: result.duplicateRecord.survivorName }));
         }
         outcome.signed.push(order.id);
       } catch (err) {

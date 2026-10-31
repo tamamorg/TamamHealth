@@ -191,7 +191,9 @@ export default function OrderBasketPanel({
         } catch { /* the orders are placed; a signed note cannot take the line */ }
       }
 
-      for (const line of outcome.warnings) showToast(line, 'warning');
+      // Corner: the panel closes below, and a warning raised in a form lands
+      // inside it, so a dose or interaction warning would vanish with the form.
+      for (const line of outcome.warnings) showToast(line, 'warning', { placement: 'corner' });
       const failed = outcome.kept.filter(k => k.reason === 'failed');
       if (failed.length) {
         showToast(t('basket.signPartlyFailed', { count: failed.length }), 'error');

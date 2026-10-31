@@ -45,17 +45,19 @@ it holds credentials:
   cat > $ENV_FILE <<'ENV'
   BACKUP_BUCKET=your-bucket-name
   DATABASE_URL=postgresql://backup-user:password@private-host:25060/tamamhealth?sslmode=require
-  AWS_REGION=af-south-1
+  # DigitalOcean Spaces, not AWS: the AWS_* names are the S3-compatible client settings.
+  AWS_REGION=fra1
+  AWS_ENDPOINT_URL=https://fra1.digitaloceanspaces.com
   AWS_ACCESS_KEY_ID=...
   AWS_SECRET_ACCESS_KEY=...
-  # Backblaze B2 / MinIO only:
+  # Backblaze B2 / MinIO instead of Spaces:
   # AWS_ENDPOINT_URL=https://s3.eu-central-003.backblazeb2.com
   BACKUP_PUBKEY_PATH=/etc/tamamhealth/backup-pubkey.gpg
   ENV
   chmod 600 $ENV_FILE
 
-AWS_REGION must stay af-south-1 unless you have explicit authorisation to move
-clinical data outside the region — see docs/AFRICA-HOSTING-STRATEGY.md.
+Use the Spaces region and endpoint of your bucket (fra1 shown). Confirm that
+storing encrypted clinical backups in that region is authorised before go-live.
 EOF
   missing=1
 else

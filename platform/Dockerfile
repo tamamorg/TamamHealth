@@ -95,7 +95,8 @@ COPY --from=builder /app/src/lib/db-types.ts ./src/lib/db-types.ts
 # Drop privileges. The `node` user (UID 1000) is shipped by node:20-alpine.
 # Required for the writable scratch dirs Next.js needs (.next/cache during
 # revalidation) so we chown those before switching.
-RUN chown -R node:node /app/.next
+# /app/data is created here so its named volume starts out owned by `node`.
+RUN mkdir -p /app/data && chown -R node:node /app/.next /app/data
 USER node
 EXPOSE 3000
 CMD ["npm", "run", "start"]

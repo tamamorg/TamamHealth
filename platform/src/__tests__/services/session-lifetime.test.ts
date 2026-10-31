@@ -52,8 +52,8 @@ beforeEach(() => {
 });
 
 describe('session policy constants', () => {
-  test('default TTL is 30 days and cookies/JWT share it', () => {
-    expect(SESSION_TTL_SEC).toBe(30 * 24 * 60 * 60);
+  test('default TTL is one clinical shift (12 h) and cookies/JWT share it', () => {
+    expect(SESSION_TTL_SEC).toBe(12 * 60 * 60);
   });
 
   test('renewal threshold never exceeds half the TTL', () => {

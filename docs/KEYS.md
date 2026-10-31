@@ -33,7 +33,7 @@ cp .env.example .env.local
 | `COUCHDB_ADMIN_USER` | CouchDB admin username | `admin` | For setup script |
 | `COUCHDB_ADMIN_PASSWORD` | CouchDB admin password | (empty) | For setup script & sync webhook |
 | `COUCHDB_WEBHOOK_SECRET` | HMAC secret shared with `sync-worker`, signs every `/api/sync` request | — | Yes if the analytics sync worker is enabled |
-| `COUCHDB_GATEWAY_SECRET` | Signs the same-origin `/api/couch` replication gateway used by the App Platform / database-per-org deployment | — | Yes if `NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=true` |
+| `COUCHDB_GATEWAY_SECRET` | Signs the same-origin `/api/couch` replication gateway used by the database-per-org deployment | — | Yes if `NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=true` |
 | `PHI_ENCRYPTION_KEY` | Application-level AES key that encrypts the most sensitive patient fields before they hit CouchDB/PouchDB | — | **Yes for production** (on by default; see `lib/config-validation.ts`) |
 | `TAMAMHEALTH_LICENSE_SECRET` | HMAC secret that signs this deployment's license key (SaaS control plane), per `platform/.env.production.example`'s comment | — | Template says required, but nothing in `platform/src` currently reads this variable or a `license` npm script — treat as not-yet-enforced until verified against a current build |
 | `SUPERADMIN_INITIAL_PASSWORD` | Login password for the seeded `superadmin` bootstrap account | `Superadmin!` (demo only) | **Yes whenever `NEXT_PUBLIC_SYNC_ENABLED=true`** — `config-validation.ts` refuses to boot without a real, 16+ char value. It is documented in both platform environment templates. Distinct from the older, optional `ADMIN_INITIAL_PASSWORD` (legacy `admin` account). |
@@ -102,7 +102,7 @@ npm run db:migrate
 COUCHDB_URL=http://admin:yourpassword@localhost:5984 npm run setup:couchdb:validators
 ```
 This installs `validate_doc_update` + `_security` on every org-scoped
-database. For the database-per-organization production model (App Platform
+database. For the database-per-organization production model (tenant
 cutover), see `npm run db:migrate:couchdb-tenants` / `db:verify:couchdb-tenants`
 and [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md).
 

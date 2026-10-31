@@ -12,9 +12,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import type { UserRole } from '@/lib/db-types';
+import { hasRoleRouteConfig } from '@/lib/role-routes';
 import { deriveIndexKeyBytes, deriveOrgKeyBytes, orgKeyIdFor } from '@/lib/org-data-cipher';
 
 const CROSS_ORG_ROLES: UserRole[] = ['super_admin', 'government'];
+
+/**
+ * Who is issued a key. The key opens every sealed field of the organisation,
+ * and every staff role holds PHI on its device (clinical, front desk, billing
+ * and records roles all replicate and write catalogued fields), so the gate is
+ * "a known staff role", not a shortlist: a role the platform does not define
+ * (a retired or forged claim, anything that is not a staff account) is refused.
+ * Which RECORDS a key can open on a device is decided by the gateway's facility
+ * scoping (lib/sync/read-scope.ts), not by withholding the key.
+ */
+function mayHoldOrgKey(role: string | undefined): boolean {
+  return !!role && hasRoleRouteConfig(role);
+}
 
 const NO_STORE = { 'Cache-Control': 'no-store, max-age=0', Pragma: 'no-cache' };
 
@@ -22,6 +36,12 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
     if (!auth) return unauthorized();
+
+    // The real account decides, as for cross-organisation reach below.
+    if (!mayHoldOrgKey(auth.actualRole || auth.role)) {
+      void logAuditSafe('ORG_KEY_REFUSED', auth.sub, auth.username, `Organisation key refused for role ${auth.role}`, false, { orgId: auth.orgId });
+      return forbidden('This account type is not issued an organisation key');
+    }
 
     const requested = new URL(request.url).searchParams.get('orgId') || orgKeyIdFor(auth.orgId);
     // The real account decides cross-org reach, not a role a super-admin is
@@ -48,6 +68,8 @@ export async function GET(request: NextRequest) {
     await logAuditSafe(
       'ORG_KEY_ISSUED', auth.sub, auth.username,
       `Organisation data key ${requested} issued to this device`,
+      true,
+      { orgId: auth.orgId, hospitalId: auth.hospitalId, role: auth.actualRole || auth.role },
     );
     return NextResponse.json({ orgId: requested, version: 'v1', key, indexKey }, { headers: NO_STORE });
   } catch (err) {

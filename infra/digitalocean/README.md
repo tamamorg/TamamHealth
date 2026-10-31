@@ -5,13 +5,10 @@ stack with [`docker-compose.ghcr.yml`](../../docker-compose.ghcr.yml) for GHCR p
 
 Tracking doc: [`docs/operations/jira-github-do-tracking.md`](../../docs/operations/jira-github-do-tracking.md).
 
-> **This is not the only production path.** These droplets are the `vps` target of
-> the **deploy-production** workflow (its default). The App Platform stack in
-> [`app-platform/`](app-platform/README.md) runs the platform app as a managed
-> service against the existing `tamamhealth-analytics` PostgreSQL cluster and the
-> data droplet, and `deploy-production` also offers an `aws` target
-> ([`infra/aws`](../aws/README.md), CloudFormation in `af-south-1`). Know which
-> target you are deploying before you run anything here.
+> **DigitalOcean is the production platform.** The `tamamhealth-production`
+> droplet is deployed by the **deploy-production** workflow over SSH. DigitalOcean
+> App Platform is not used. Release runbook:
+> [`docs/DEPLOY-PRODUCTION.md`](../../docs/DEPLOY-PRODUCTION.md).
 
 ---
 
@@ -103,8 +100,9 @@ See [`docs/operations/github-environments-setup.md`](../../docs/operations/githu
 | `NEXT_PUBLIC_DEMO_MODE` | `false` |
 | GitHub Environment | `production` → `PROD_SSH_*` secrets (required reviewers) |
 
-**Residency:** DO is suitable for demo/staging and pre-pilot. Real PHI production
-should move in-country or to `af-south-1` — see [`docs/AFRICA-HOSTING-STRATEGY.md`](../../docs/AFRICA-HOSTING-STRATEGY.md).
+**Residency:** DO has no Africa region, so data lives outside South Sudan. Confirm
+the hosting agreement or MoH approval covers the region before real PHI is
+stored — see [`docs/AFRICA-HOSTING-STRATEGY.md`](../../docs/AFRICA-HOSTING-STRATEGY.md).
 
 ---
 
@@ -135,7 +133,7 @@ sudo bash deploy.sh   # first boot: builds locally; after CI wired, use GHCR pul
 ## After GitHub CI is wired
 
 Staging auto-deploys on every green `main` build. Production promotes manually via
-**Actions → deploy-production → Run workflow** (`target: vps`).
+**Actions → deploy-production → Run workflow** (from `main`; optional `sha` input).
 
 Verify on host:
 

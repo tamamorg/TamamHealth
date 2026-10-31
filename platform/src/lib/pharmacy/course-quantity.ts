@@ -13,7 +13,8 @@
  *
  * The estimate multiplies three parses, each with an honest fallback:
  *
- *   units per dose  ← dose amount ÷ strength in the medication name
+ *   units per dose  ← a dose written as a count ("4 tablets" = 4), else dose
+ *                     amount ÷ strength in the medication name
  *                     ("1000 mg" ÷ "Paracetamol 500mg" = 2); 1 when either
  *                     side is missing or their units differ
  *   doses per day   ← the frequency code (OD 1 · BD 2 · TDS 3 · QDS 4 · "every
@@ -78,8 +79,13 @@ function parseAmount(text: string | undefined): { value: number; unit: string } 
   return { value, unit };
 }
 
-/** Units per single dose — dose amount over the strength in the name. */
+/** "4 Tablet", "2 caps", "1.5 tablets": a dose already counted in units. */
+const COUNTED_DOSE = /^\s*(\d+(?:\.\d+)?)\s*(?:x\s*)?(?:tab(?:let)?s?|cap(?:sule)?s?|sachets?|suppositor(?:y|ies)|pessar(?:y|ies)|puffs?|drops?|vials?|ampoules?|amps?)\b/i;
+
+/** Units per single dose: the count written, or dose amount over the strength in the name. */
 export function unitsPerDose(medication: string | undefined, dose: string | undefined): number {
+  const counted = dose?.match(COUNTED_DOSE);
+  if (counted) return Math.max(1, Math.ceil(Number(counted[1])));
   const doseAmt = parseAmount(dose);
   const strength = parseAmount(medication);
   if (!doseAmt || !strength || doseAmt.unit !== strength.unit) return 1;

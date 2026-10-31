@@ -3,6 +3,15 @@
 > **Status:** not production-ready. Do the steps in order. Do not load real
 > patient data until Steps 1–6 are green.
 
+> **Topology:** production is the single `tamamhealth-production` droplet
+> (docker-compose stack, deployed by `deploy-production`). DigitalOcean App
+> Platform is not used and its Terraform stack has been removed. Steps below
+> that mention a separate data droplet (`tamamhealth-data`, private VPC
+> `10.114.0.3`, `docker-compose.data.yml`) apply only if you deliberately run
+> CouchDB on its own host; on the single production droplet CouchDB is the
+> `couchdb` service in `docker-compose.yml`, bound to `127.0.0.1:5984`. See
+> [DEPLOY-PRODUCTION.md](DEPLOY-PRODUCTION.md).
+
 **Legend:** ☐ action for you · 🔴 blocks go-live · 🟡 do before real data · ✅ already done
 
 ---
@@ -11,8 +20,8 @@
 
 Strategy chosen: **disk/volume encryption** (keeps offline-first). Field-level
 app encryption is a no-op on the browser write path, so it stays off. The app
-now boots on `PHI_AT_REST_STRATEGY=disk-encryption` (wired in `main.tf`; boot
-refuses if no strategy is declared). ✅ *code side done — your actions:*
+now boots on `PHI_AT_REST_STRATEGY=disk-encryption` (set it in
+`platform/.env.production`; boot refuses if no strategy is declared). ✅ *code side done — your actions:*
 
 - ☐ **CouchDB data on an encrypted volume.** Put `/opt/tamamhealth` CouchDB data
   on a DigitalOcean Block Storage **Volume** (encrypted at rest by DO), or
@@ -25,7 +34,11 @@ refuses if no strategy is declared). ✅ *code side done — your actions:*
 
 ---
 
-## 2. Get into the data droplet + bring CouchDB up 🔴
+## 2. Get into the CouchDB host + bring CouchDB up 🔴
+
+*Single-droplet production: CouchDB already runs as part of the main stack
+(`docker compose up`, see DEPLOY-PRODUCTION.md); the steps below are for a
+separate data droplet.*
 
 Droplet `tamamhealth-data` · id `591879204` · private `10.114.0.3` · `doctl` context `tamamhealth-final-deploy`.
 
@@ -78,49 +91,51 @@ bash /opt/tamamhealth/scripts/backup-restore-drill.sh
 
 ## 4. Set production secrets 🔴
 
-Put these in `infra/digitalocean/app-platform/terraform.tfvars` under
-`runtime_secrets` (gitignored — never commit). Boot fails if any is missing/weak.
+Put these in `platform/.env.production` on the `tamamhealth-production` droplet
+(or in the Doppler `prd` config if `DOPPLER_TOKEN` is set on the host; never
+commit them). Boot fails if any is missing/weak.
 
-```hcl
-runtime_secrets = {
-  JWT_SECRET                  = "<≥32 random chars>"
-  PHI_ENCRYPTION_KEY          = "<32-byte base64>"
-  COUCHDB_ADMIN_USER          = "couchadmin"
-  COUCHDB_ADMIN_PASSWORD      = "<value from Step 2>"
-  COUCHDB_GATEWAY_SECRET      = "<≥32 random chars>"
-  COUCHDB_WEBHOOK_SECRET      = "<≥32 random chars>"
-  UPSTASH_REDIS_REST_URL      = "<upstash url>"
-  UPSTASH_REDIS_REST_TOKEN    = "<upstash token>"
-  # Optional: add each secret and set its matching
-  # *_WEBHOOK_GATEWAY_VERIFIED=true only after the verified gateway is live.
-  DATABASE_CA_CERT_BASE64     = "<doctl databases get-ca output>"
-  SUPERADMIN_INITIAL_PASSWORD = "<strong secret — NOT 'Superadmin!'>"
-}
+```bash
+JWT_SECRET=<>=32 random chars>
+PHI_ENCRYPTION_KEY=<32-byte base64>
+COUCHDB_GATEWAY_SECRET=<>=32 random chars>
+COUCHDB_WEBHOOK_SECRET=<>=32 random chars>
+UPSTASH_REDIS_REST_URL=<upstash url>
+UPSTASH_REDIS_REST_TOKEN=<upstash token>
+SUPERADMIN_INITIAL_PASSWORD=<strong secret, NOT 'Superadmin!'>
+# Optional: add each webhook secret and set its matching
+# *_WEBHOOK_GATEWAY_VERIFIED=true only after the verified gateway is live.
 ```
 
-**Verify:** `terraform validate` → `Success`.
+`COUCHDB_USER` / `COUCHDB_PASSWORD` (the value from Step 2) go in the host's
+`/opt/tamamhealth/.env`; compose passes them to the platform as
+`COUCHDB_ADMIN_USER` / `COUCHDB_ADMIN_PASSWORD`. `./scripts/gen-secrets.sh`
+generates the random values.
+
+**Verify:** `./scripts/preflight.sh` on the droplet passes.
 
 ---
 
-## 5. Deploy the App Platform stack 🔴
+## 5. Deploy the production stack 🔴
 
-```bash
-cd infra/digitalocean/app-platform
-terraform plan     # confirm: data-plane firewall shows ONLY 22 + 5984-from-VPC
-terraform apply    # also locks the analytics Postgres trusted sources
-```
+Run **Actions, deploy-production, Run workflow** from `main` (optionally with a
+`sha`). It builds the images, pulls them onto the droplet, restarts the stack,
+installs the CouchDB validators, verifies health and rolls back on failure. Full
+description: [DEPLOY-PRODUCTION.md](DEPLOY-PRODUCTION.md).
 
-First apply lands on `*.ondigitalocean.app` (domain DNS is on GoDaddy). Cut the
-custom domain over after boot is healthy.
-
-**Verify:** `curl -s https://<app-origin>/api/health` → `server`, `database`,
-`couchdb` all `ok`; deploy logs show no `PRODUCTION STARTUP REFUSED`.
+**Verify:** `curl -s https://app.tamamhealth.org/api/health` returns `server`,
+`database`, `couchdb` all `ok` and `release` equal to the deployed SHA; the
+platform container logs show no `PRODUCTION STARTUP REFUSED`.
 
 ---
 
 ## 6. Set up + verify tenant isolation 🔴
 
-From the deployed app's environment (or with the same env vars set):
+Run `setup:couchdb:validators` inside the platform container (the deploy
+workflow already does this on each release). The two `db:*` scripts are not in
+the production image: run them from a repository checkout on the droplet with
+`COUCHDB_URL=http://127.0.0.1:5984` and the CouchDB admin credentials set
+(see DEPLOY-PRODUCTION.md section 3):
 ```bash
 npm run db:migrate:couchdb-tenants     # create per-org databases + replicators
 npm run setup:couchdb:validators       # install _security + validate_doc_update

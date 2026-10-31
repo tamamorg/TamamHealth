@@ -27,9 +27,7 @@ next-env.d.ts
 # SWC cache
 .swc/
 
-# Expo / React Native (mobile)
-.expo/
-.expo-shared/
+# Signing keys / certificates must never be committed
 *.jks
 *.p8
 *.p12

@@ -12,7 +12,7 @@ import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { redactPatients, redactPatient, PATIENT_PORTAL_FIELDS } from '@/lib/patient-redaction';
 // Roles that may read patient lists. Every read here is scoped by
-// filterByScope to the caller's own org/facility (this route is the mobile/
+// filterByScope to the caller's own org/facility (this route is the
 // integration surface; the browser reads via services). Each grant carries a
 // concrete need, not a "the page route allows it" inference (audit 2026-08-30):
 //   • lab_tech / pharmacist — open the chart named in their own worklist

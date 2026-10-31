@@ -58,10 +58,8 @@ resource "digitalocean_firewall" "staging" {
   }
 }
 
-# NOTE: "production" here means pre-pilot load testing and cutover rehearsal,
-# NOT live patient data. This droplet is outside South Sudan (DO has no Africa
-# region) — see the data-residency block at the top of variables.tf. Real PHI
-# belongs on AWS af-south-1 (infra/aws/) or an in-country host.
+# NOTE: this is the production droplet. It is outside South Sudan (DO has no
+# Africa region) — see the data-residency block at the top of variables.tf.
 resource "digitalocean_droplet" "production" {
   name     = "${var.project_name}-production"
   region   = var.region

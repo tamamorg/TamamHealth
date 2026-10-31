@@ -168,8 +168,8 @@ operator's signal that something is wrong.)
 A stronger alternative worth considering: `GET /api/health` is
 unauthenticated, returns `200`/`503` based on actual CouchDB + Postgres
 reachability (not just "the server process is up"), and is already what
-the DigitalOcean App Platform deploy pipeline polls as its own post-deploy
-smoke test (see `.github/workflows/deploy-app-platform.yml`) — it catches
+the production deploy pipeline polls as its own post-deploy
+smoke test (see `.github/workflows/deploy-production.yml`) — it catches
 dependency outages that `/api/auth/me` (which touches neither database)
 would miss.
 

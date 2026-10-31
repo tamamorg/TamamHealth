@@ -38,7 +38,7 @@ describe('getOverdueUnreviewedResults clocks from completedAt', () => {
   test('a later write does not reset the SLA clock', async () => {
     const base = { type: 'lab_result', status: 'completed', orderStatus: 'resulted', critical: true, orgId: 'o' };
     await putDoc(labResultsDB(), { _id: 'lab-old', ...base, completedAt: hoursAgo(72), updatedAt: hoursAgo(1), createdAt: hoursAgo(80) } as never);
-    await putDoc(labResultsDB(), { _id: 'lab-new', ...base, completedAt: hoursAgo(2), updatedAt: hoursAgo(1), createdAt: hoursAgo(80) } as never);
+    await putDoc(labResultsDB(), { _id: 'lab-new', ...base, completedAt: hoursAgo(0.25), updatedAt: hoursAgo(0.1), createdAt: hoursAgo(80) } as never);
     await putDoc(labResultsDB(), { _id: 'lab-legacy', ...base, updatedAt: hoursAgo(72), createdAt: hoursAgo(80) } as never);
     const ids = (await getOverdueUnreviewedResults()).map(r => r._id).sort();
     expect(ids).toEqual(['lab-legacy', 'lab-old']);

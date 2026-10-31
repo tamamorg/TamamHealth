@@ -27,9 +27,17 @@ function todayISO(): string {
   return toIsoDate(new Date());
 }
 
-function dueLabel(due?: string): { text: string; overdue: boolean } | null {
+function dueLabel(due?: string): { text: string; overdue: boolean; timed?: boolean } | null {
   if (!due) return null;
   const today = todayISO();
+  // A critical result carries a time as well: one hour, not one day.
+  const at = due.length > 10 ? new Date(due) : null;
+  if (at && !Number.isNaN(at.getTime())) {
+    const clock = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (at.getTime() < Date.now()) return { text: `Overdue · ${clock}`, overdue: true, timed: true };
+    if (toIsoDate(at) === today) return { text: `Due ${clock}`, overdue: false, timed: true };
+    return { text: toIsoDate(at), overdue: false };
+  }
   if (due < today) return { text: `Overdue · ${due}`, overdue: true };
   if (due === today) return { text: 'Today', overdue: false };
   return { text: due, overdue: false };
@@ -338,15 +346,15 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                       )}
                       {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {shortenPersonName(task.patientName)}</div>}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        {(!d || d.overdue || d.text === 'Today') && (
+                        {(!d || d.overdue || d.timed || d.text === 'Today') && (
                           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
                             {d?.overdue ? <Clock className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
-                            {d ? (d.overdue ? 'Overdue' : d.text) : 'No date'}
+                            {d ? (d.overdue && !d.timed ? 'Overdue' : d.text) : 'No date'}
                           </span>
                         )}
                         <input
                           type="date"
-                          value={task.dueDate || ''}
+                          value={(task.dueDate || '').slice(0, 10)}
                           onChange={e => reschedule(task._id, e.target.value)}
                           title="Reschedule"
                           aria-label={`Reminder date for "${task.title}"`}

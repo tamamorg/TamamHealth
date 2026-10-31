@@ -25,7 +25,9 @@ import { isPathAllowed } from '@/lib/role-routes';
 import RegistrationJumpNav from './RegistrationJumpNav';
 import RegistrationReview from './RegistrationReview';
 import DuplicateWarning from './DuplicateWarning';
-import { findPossibleDuplicates } from '@/lib/patients/duplicate-match';
+import { findPossibleDuplicates, type DuplicateMatch } from '@/lib/patients/duplicate-match';
+import { patientDisplayName } from '@/lib/patient-utils';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import { buildReviewGroups } from './review-groups';
 import { buildPatientDoc } from './build-patient-doc';
 import DemographicsSection from './sections/DemographicsSection';
@@ -319,9 +321,38 @@ export function PatientRegistrationForm({
    * answer is actionable — the clerk still has the person in front of them and
    * nothing has been written yet.
    */
+  const scope = useDataScope();
+  // The master patient index adds what the name/age/locality check cannot see:
+  // the same date of birth or phone under a differently spelled name.
+  const [mpiMatches, setMpiMatches] = useState<DuplicateMatch[]>([]);
+  useEffect(() => {
+    if (!warnDuplicates || !reviewMode || !scope) return;
+    let cancelled = false;
+    (async () => {
+      const { findMpiDuplicates } = await import('@/lib/services/patient-service');
+      const hits = await findMpiDuplicates({
+        firstName: form.firstName, surname: form.surname,
+        dateOfBirth: form.dateOfBirth, phone: form.phone, nationalId: form.nationalId,
+      }, scope);
+      if (cancelled) return;
+      setMpiMatches(hits.map(hit => ({
+        patient: hit.patient,
+        name: patientDisplayName(hit.patient),
+        strength: hit.score >= 0.95 ? 'strong' as const : 'possible' as const,
+        reasons: [
+          ...(hit.reasons.includes('DOB exact') ? [{ code: 'dob-same' as const }] : []),
+          ...(hit.reasons.includes('phone exact') ? [{ code: 'phone-same' as const }] : []),
+          ...(hit.method === 'hospital_number' ? [{ code: 'hospital-number' as const, number: hit.patient.hospitalNumber || '' }] : []),
+          { code: 'name-similar' as const },
+        ],
+      })));
+    })();
+    return () => { cancelled = true; };
+  }, [warnDuplicates, reviewMode, scope, form.firstName, form.surname, form.dateOfBirth, form.phone, form.nationalId]);
+
   const duplicateMatches = useMemo(() => {
     if (!warnDuplicates || !reviewMode) return [];
-    return findPossibleDuplicates({
+    const local = findPossibleDuplicates({
       firstName: form.firstName,
       middleName: form.middleName,
       surname: form.surname,
@@ -331,9 +362,11 @@ export function PatientRegistrationForm({
       state: form.state,
       county: form.county,
     }, patients);
+    const seen = new Set(local.map(m => m.patient._id));
+    return [...local, ...mpiMatches.filter(m => !seen.has(m.patient._id))].slice(0, 5);
   }, [warnDuplicates, reviewMode, patients,
       form.firstName, form.middleName, form.surname, form.dateOfBirth,
-      form.estimatedAge, form.gender, form.state, form.county]);
+      form.estimatedAge, form.gender, form.state, form.county, mpiMatches]);
 
   const validateSection = (section: number): Record<string, string> => {
     const errs: Record<string, string> = {};

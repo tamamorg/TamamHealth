@@ -194,8 +194,8 @@ curl -sb /tmp/jar.txt -X POST http://localhost:3000/api/mpi/match \
 
 For anything real, use the CI pipeline described in
 [CONTRIBUTING.md](CONTRIBUTING.md): `deploy-staging` runs automatically on a
-green `main`, and `deploy-production` / `deploy-app-platform` are manual,
-smoke-tested promotions of an already-reviewed commit.
+green `main`, and `deploy-production` is a manual,
+smoke-tested promotion of an already-reviewed commit.
 
 For a one-shot self-hosted box, [`deploy.sh`](deploy.sh) still works on a fresh
 Ubuntu 22.04 VPS:

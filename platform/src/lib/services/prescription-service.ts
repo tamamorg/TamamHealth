@@ -15,6 +15,7 @@ import {
   type InteractionCheckResult,
   type StructuredAllergyAlert,
 } from './drug-interaction-service';
+import { checkDoseAdvisory, WEIGHT_MAX_AGE_DAYS, type DoseAdvisory } from '../pharmacy/dose-check';
 import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinical-flow/order-lifecycles';
 import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
@@ -284,14 +285,35 @@ export interface PrescriptionCreateResult {
    * for confronting the prescriber with these.
    */
   allergyWarnings: StructuredAllergyAlert[] | null;
-  /** Same-drug (dose/form-insensitive) matches against the patient's active prescriptions. */
+  /** Same-drug (dose/form-insensitive) matches against the patient's current medicines. */
   duplicateWarnings: string[] | null;
+  /** Daily total above the usual maximum. Advisory only, never blocks. */
+  doseWarnings: DoseAdvisory[] | null;
+  /**
+   * Set when the order was written on a record marked as a duplicate. The
+   * order is written either way (an emergency must still be treatable); the
+   * caller's UI says so, because allergies on the surviving record were not
+   * checked against this medicine.
+   */
+  duplicateRecord?: { survivorId: string; survivorName: string } | null;
 }
 
 export interface PrescriptionSafetyAssessment {
   interactionWarnings: InteractionCheckResult | null;
   allergyWarnings: StructuredAllergyAlert[] | null;
   duplicateWarnings: string[] | null;
+  /**
+   * Daily total above the usual maximum for a few common drugs (see
+   * pharmacy/dose-check.ts). Advisory: shown and recorded, never a stop.
+   * Absent for a caller that did not pass the dose.
+   */
+  doseWarnings?: DoseAdvisory[] | null;
+  /**
+   * True when the interaction check could not run (a storage or lookup error).
+   * `interactionWarnings: null` then means "unknown", NOT "no interactions".
+   * Switching `rx.interactions` off is a deliberate skip and is not flagged.
+   */
+  interactionCheckUnavailable?: boolean;
   /**
    * True when the allergy check could not run: the patient record was not
    * readable in the caller's scope (other org / missing / storage error) or the
@@ -324,18 +346,107 @@ async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | und
 }
 
 /**
- * Check a proposed medication against a patient's active prescriptions.
+ * Fallback look-back for a dispensed course whose length cannot be read
+ * ("ongoing", "as needed", blank). A medicine dispensed longer ago than this is
+ * treated as finished, so an old script does not raise warnings forever.
+ */
+export const UNREADABLE_COURSE_LOOKBACK_DAYS = 30;
+
+const DAY_MS = 86_400_000;
+
+/** Days named in a duration note ("5 days", "2 weeks", "1 month"); null when none is readable. */
+function courseLengthDays(duration: string | undefined): number | null {
+  // The number beside a unit, not the first number: "1 tablet for 10 days".
+  // A bare number is days; anything else is unreadable.
+  const text = duration || '';
+  const m = text.match(/(\d+(?:\.\d+)?)\s*(day|d\b|week|wk|month|mo\b)/i) ?? text.match(/^\s*(\d+(?:\.\d+)?)\s*$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const unit = (m[2] || 'day').toLowerCase();
+  if (unit.startsWith('w')) return n * 7;
+  if (unit.startsWith('m')) return n * 30;
+  return n;
+}
+
+/**
+ * Is this order a medicine the patient is, or may still be, taking?
+ *
+ * - Not yet dispensed (`pending`): yes.
+ * - Dispensed: only while its course is still running, counted from the
+ *   dispense date (or the order date) plus the days in `duration`. A course with
+ *   no readable length counts for UNREADABLE_COURSE_LOOKBACK_DAYS.
+ * - Discontinued: no.
+ */
+export function isMedicationCurrent(
+  rx: Pick<PrescriptionDoc, 'status'> & Partial<Pick<PrescriptionDoc, 'duration' | 'dispensedAt' | 'createdAt'>>,
+  now: number = Date.now(),
+): boolean {
+  if (rx.status === 'pending') return true;
+  if (rx.status !== 'dispensed') return false;
+  const started = Date.parse(rx.dispensedAt || rx.createdAt || '');
+  if (!Number.isFinite(started)) return false;
+  const days = courseLengthDays(rx.duration) ?? UNREADABLE_COURSE_LOOKBACK_DAYS;
+  return now <= started + days * DAY_MS;
+}
+
+/**
+ * Every medicine the patient is currently on, as names: open orders, dispensed
+ * courses still running, and what the patient reports taking (nurse-entered
+ * `medication` history). The checks below compare a new order against this.
+ */
+export async function getCurrentMedicationNames(patientId: string, scope: DataScope): Promise<string[]> {
+  const names = (await getPrescriptionsByPatient(patientId, scope))
+    .filter(rx => isMedicationCurrent(rx))
+    .map(rx => rx.medication);
+  try {
+    const { getHistoryByPatient } = await import('./history-service');
+    const { activeHistory } = await import('../clinical/patient-history');
+    const reported = activeHistory(await getHistoryByPatient(patientId, scope))
+      .filter(entry => entry.domain === 'medication')
+      .map(entry => entry.title);
+    names.push(...reported);
+  } catch {
+    // A reported-medicine lookup failure must not hide the orders we do have.
+  }
+  return names.filter(Boolean);
+}
+
+/**
+ * Check a proposed medication against what the patient is currently taking.
  */
 export async function checkPrescriptionInteractions(
   patientId: string,
   newMedication: string,
   scope: DataScope,
 ): Promise<InteractionCheckResult> {
-  const patientRx = await getPrescriptionsByPatient(patientId, scope);
-  const activeRx = patientRx
-    .filter(rx => rx.status === 'pending')
-    .map(rx => rx.medication);
-  return checkNewPrescription(newMedication, activeRx);
+  return checkNewPrescription(newMedication, await getCurrentMedicationNames(patientId, scope));
+}
+
+/**
+ * The patient's latest recorded weight in kg from triage or a vitals record, or
+ * null when there is none within WEIGHT_MAX_AGE_DAYS.
+ */
+export async function getRecentWeightKg(patientId: string, scope: DataScope): Promise<number | null> {
+  const readings: Array<{ at: number; kg: number }> = [];
+  const add = (raw: unknown, when: string | undefined) => {
+    const kg = typeof raw === 'number' ? raw : parseFloat(String(raw ?? ''));
+    const at = Date.parse(when || '');
+    if (Number.isFinite(kg) && kg >= 0.4 && kg <= 400 && Number.isFinite(at)) readings.push({ at, kg });
+  };
+  try {
+    const { getTriageByPatient } = await import('./triage-service');
+    for (const t of await getTriageByPatient(patientId, scope)) add(t.weight, t.triagedAt || t.createdAt);
+  } catch { /* fall through to the other source */ }
+  try {
+    const { getRecordsByPatient } = await import('./medical-record-service');
+    for (const r of await getRecordsByPatient(patientId, scope)) {
+      add(r.vitalSigns?.weight, r.consultedAt || r.visitDate || r.createdAt);
+    }
+  } catch { /* no weight is not an error */ }
+  const newest = readings.sort((a, b) => b.at - a.at)[0];
+  if (!newest || Date.now() - newest.at > WEIGHT_MAX_AGE_DAYS * DAY_MS) return null;
+  return newest.kg;
 }
 
 /** Assess a proposed medication before it becomes an order. */
@@ -343,32 +454,43 @@ export async function assessPrescriptionSafety(
   patientId: string,
   medication: string,
   scope: DataScope,
+  order?: { dose?: string; frequency?: string },
 ): Promise<PrescriptionSafetyAssessment> {
   let interactionWarnings: InteractionCheckResult | null = null;
+  let interactionCheckUnavailable = false;
   let duplicateWarnings: string[] | null = null;
   let allergyWarnings: StructuredAllergyAlert[] | null = null;
   let allergyCheckUnavailable = false;
+  let doseWarnings: DoseAdvisory[] | null = null;
 
+  // One read of the current medicines serves both the interaction and the
+  // duplicate check.
+  let current: string[] | null = null;
+  let currentError = false;
   try {
-    if (!getRoleFlag('rx.interactions', true)) throw new SkipCheck();
-    interactionWarnings = await checkPrescriptionInteractions(patientId, medication, scope);
+    current = await getCurrentMedicationNames(patientId, scope);
   } catch {
-    // Advisory only: unavailable decision support must not block urgent care.
+    currentError = true;
   }
 
   try {
-    const activeRx = (await getPrescriptionsByPatient(patientId, scope))
-      .filter(rx => rx.status === 'pending')
-      .map(rx => rx.medication);
-    // Compare the proposal to each active order. Running the duplicate finder
-    // across the entire list also reports old duplicate pairs unrelated to
-    // this medication, which makes the warning noisy and misleading.
-    const dupes = activeRx.filter(existing =>
+    if (!getRoleFlag('rx.interactions', true)) throw new SkipCheck();
+    if (current === null) throw new Error('current medicines unreadable');
+    interactionWarnings = checkNewPrescription(medication, current);
+  } catch (err) {
+    // Advisory only: unavailable decision support must not block urgent care,
+    // but it must not read as "no interactions" either.
+    if (!(err instanceof SkipCheck)) interactionCheckUnavailable = true;
+  }
+
+  if (!currentError && current) {
+    // Compare the proposal to each current medicine. Running the duplicate
+    // finder across the entire list also reports old duplicate pairs unrelated
+    // to this medication, which makes the warning noisy and misleading.
+    const dupes = current.filter(existing =>
       findDuplicateMedications([existing, medication]).length > 0,
     );
-    duplicateWarnings = dupes.length ? dupes : null;
-  } catch {
-    // Advisory only.
+    duplicateWarnings = dupes.length ? [...new Set(dupes)] : null;
   }
 
   try {
@@ -390,7 +512,22 @@ export async function assessPrescriptionSafety(
     // Advisory only: still never blocks urgent care, but flagged as unknown.
   }
 
-  return { interactionWarnings, allergyWarnings, duplicateWarnings, allergyCheckUnavailable };
+  if (order?.dose || order?.frequency) {
+    try {
+      const advisory = checkDoseAdvisory({
+        medication, dose: order.dose, frequency: order.frequency,
+        weightKg: await getRecentWeightKg(patientId, scope),
+      });
+      doseWarnings = advisory ? [advisory] : null;
+    } catch {
+      // Advisory only; an unreadable weight just means the adult maximum applies.
+    }
+  }
+
+  return {
+    interactionWarnings, allergyWarnings, duplicateWarnings, doseWarnings,
+    allergyCheckUnavailable, interactionCheckUnavailable,
+  };
 }
 
 /**
@@ -499,8 +636,23 @@ export async function createPrescription(
     throw new ValidationError(errors);
   }
 
-  const { interactionWarnings, allergyWarnings, duplicateWarnings, allergyCheckUnavailable } =
-    await assessPrescriptionSafety(data.patientId, data.medication, scope);
+  const {
+    interactionWarnings, allergyWarnings, duplicateWarnings, doseWarnings,
+    allergyCheckUnavailable, interactionCheckUnavailable,
+  } = await assessPrescriptionSafety(data.patientId, data.medication, scope, {
+    dose: data.dose, frequency: data.frequency,
+  });
+
+  if (interactionCheckUnavailable) {
+    await logAuditSafe(
+      'DRUG_INTERACTION_CHECK_UNAVAILABLE',
+      undefined,
+      data.prescribedBy,
+      `Interaction check could not run for patient ${data.patientId}; ${data.medication} ordered without it`,
+      true,
+      { patientId: data.patientId, resourceType: 'prescription' },
+    );
+  }
 
   if (allergyCheckUnavailable) {
     // Never block urgent care, but leave a record that this order went out
@@ -620,12 +772,13 @@ export async function createPrescription(
     criticalityTier: resolvePrescriptionTier(data.medication, data.criticalityTier),
     admissionId,
     orgId,
-    ...((allergyWarnings?.length || interactionWarnings?.hasInteractions || duplicateWarnings?.length) ? {
+    ...((allergyWarnings?.length || interactionWarnings?.hasInteractions || duplicateWarnings?.length || doseWarnings?.length) ? {
       medicationSafety: {
         assessedAt: now,
         allergyWarnings: allergyWarnings || [],
         interactionWarnings: interactionWarnings?.interactions || [],
         duplicateWarnings: duplicateWarnings || [],
+        ...(doseWarnings?.length ? { doseWarnings } : {}),
         ...(acknowledgement ? { acknowledgement } : {}),
       },
     } : {}),
@@ -660,7 +813,22 @@ export async function createPrescription(
     await billPrescription(doc);
   }
 
-  return { prescription: doc, interactionWarnings, allergyWarnings, duplicateWarnings };
+  let duplicateRecord: { survivorId: string; survivorName: string } | null = null;
+  try {
+    const { getPatientById } = await import('./patient-service');
+    const chart = await getPatientById(doc.patientId, scope);
+    if (chart?.duplicateOf) {
+      const kept = await getPatientById(chart.duplicateOf, scope).catch(() => null);
+      duplicateRecord = {
+        survivorId: chart.duplicateOf,
+        survivorName: kept ? [kept.firstName, kept.surname].filter(Boolean).join(' ') : '',
+      };
+      await logAuditSafe('RX_ON_DUPLICATE_RECORD', undefined, doc.prescribedBy,
+        `Rx ${doc._id} written on patient ${doc.patientId}, marked as a duplicate of ${chart.duplicateOf}`);
+    }
+  } catch { /* the order is already written; the notice is best-effort */ }
+
+  return { prescription: doc, interactionWarnings, allergyWarnings, duplicateWarnings, doseWarnings: doseWarnings ?? null, duplicateRecord };
 }
 
 /**

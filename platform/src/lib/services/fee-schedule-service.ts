@@ -251,5 +251,24 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
     /* no policy / lookup failed — bill as cash */
   }
 
+  input.exemptReason = await exemptionReason(ctx);
   return createBill(input);
+}
+
+/**
+ * Why a patient registered as exempt owes nothing, or undefined. The service
+ * still happened, so the bill stands as a record, created waived. Otherwise a
+ * child under five is held at the pharmacy's pay-first gate. Best-effort: a
+ * failed lookup leaves an ordinary bill a cashier can waive.
+ */
+async function exemptionReason(ctx: ChargeContext): Promise<string | undefined> {
+  try {
+    const { getPatientById } = await import('./patient-service');
+    const patient = await getPatientById(ctx.patientId, ctx.scope) as { payorInfo?: { coverageType?: string; exemptionReason?: string } } | null;
+    if (patient?.payorInfo?.coverageType !== 'exemption') return undefined;
+    return `Exempt: ${patient.payorInfo.exemptionReason || 'reason not recorded'}`;
+  } catch (err) {
+    console.warn('[billing] could not read the exemption (billing as usual):', err);
+    return undefined;
+  }
 }

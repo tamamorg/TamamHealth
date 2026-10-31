@@ -93,7 +93,7 @@ const USER_FACING_ERRORS = new Set([
   'ValidationError', 'NoteIncompleteError', 'AllergyHardStopError', 'AppointmentAmendNotAllowedError',
   'AssessmentAuthorizationError', 'AssessmentLockError', 'BillingError', 'BookingConflictError',
   'ControlledSubstanceError', 'DispenseError', 'DuplicateActiveTriageError', 'MedicationAdministrationError',
-  'NoteLockedError', 'NoteSigningAuthorizationError', 'OrganizationNotEmptyError', 'PaymentOperationError',
+  'NoteLockedError', 'NoteSigningAuthorizationError', 'OrganizationNotEmptyError', 'PatientDuplicateError', 'PaymentOperationError',
   'PrescriptionClearanceError', 'ReferralTenantError', 'SignedRecordLockError', 'SigningAuthorizationError',
   'TransferValidationError', 'WardWorkflowError',
 ]);

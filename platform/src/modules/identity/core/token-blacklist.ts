@@ -29,9 +29,15 @@
  * working there until its `exp` passes. Rate limiting already moved to shared
  * Upstash Redis for exactly this reason; this store has not. Until it does,
  * the platform must run as a SINGLE replica in production — or every replica
- * must share the TOKEN_BLACKLIST_FILE path on a shared volume. We warn once at
- * first use in production rather than failing closed, because refusing to boot
- * would take down a correctly-configured single-replica deploy too.
+ * must share the TOKEN_BLACKLIST_FILE path on a shared volume.
+ *
+ * DURABILITY — the default path (`.token-blacklist.json` in the working
+ * directory) is inside the container image and is erased by every restart and
+ * redeploy, after which each logged-out token works again until its `exp`.
+ * lib/config-validation.ts therefore refuses to boot in production unless
+ * Upstash is configured or TOKEN_BLACKLIST_FILE names a path on a mounted
+ * volume. (We still warn at first use: the multi-replica caveat is not
+ * something a single process can detect.)
  *
  * NOT a replacement for short JWT lifetimes — it complements them.
  */
@@ -130,6 +136,7 @@ async function persistNow(): Promise<void> {
       '# TamamHealth token blacklist — gitignored, do not commit.\n' +
       JSON.stringify(obj) +
       '\n';
+    await fs.mkdir(path.dirname(filePath()), { recursive: true });
     await fs.writeFile(filePath(), body, { mode: 0o600 });
   } catch (err) {
     console.error('[token-blacklist] failed to persist:', err);
@@ -231,7 +238,40 @@ export async function revokeToken(token: string): Promise<void> {
 
   await ensureLoaded();
   store!.set(token, { expSec });
-  schedulePersist();
+  if (getUpstashConfig() || process.env.NODE_ENV !== 'production') {
+    schedulePersist();
+  } else {
+    // In production the file is the only durable record. A debounced write
+    // could be lost to a restart inside its window, and the logout would
+    // already have been reported as done.
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    await flushDurably();
+  }
+}
+
+let writing: Promise<void> | null = null;
+let queuedWrite: Promise<void> | null = null;
+
+/**
+ * Write the file and resolve once a write that started AFTER this call has
+ * finished. Concurrent logouts share one follow-up write instead of each
+ * rewriting the file.
+ */
+function flushDurably(): Promise<void> {
+  if (!writing) {
+    writing = persistNow().finally(() => { writing = null; });
+    return writing;
+  }
+  if (!queuedWrite) {
+    queuedWrite = writing.then(() => {
+      queuedWrite = null;
+      return flushDurably();
+    });
+  }
+  return queuedWrite;
 }
 
 /**

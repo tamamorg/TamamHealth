@@ -35,6 +35,10 @@ export const PATIENT_IMMUTABLE_FIELDS = [
   // only). A patient never carries it, and writing it would expose the
   // patient to another organisation.
   'toOrgId',
+  // The duplicate link is written only by markPatientDuplicate /
+  // clearPatientDuplicate, which check org, scope and chains. A generic
+  // update must not set or clear it.
+  'duplicateOf', 'duplicateMarkedAt', 'duplicateMarkedBy', 'duplicateMarkedByName', 'duplicateReason',
 ] as const;
 
 /** Additional fields refused on the HTTP surface (the service lets internal flows re-home a patient). */

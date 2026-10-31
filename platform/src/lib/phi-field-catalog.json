@@ -24,7 +24,7 @@
         "allergies", "structuredAllergies.**", "directives.**", "careAlerts.**", "screenings.**",
         "chronicConditions", "nokName", "nokRelationship", "nokPhone", "nokEmail", "nokAddress",
         "additionalNextOfKin.**", "payorInfo.**", "ngoName", "exemptionReason", "assignmentNote", "stationAssignments.lab.note", "stationAssignments.pharmacy.note", "stationAssignments.radiology.note", "stationAssignments.nutrition.note",
-        "deathCause", "deathPlace", "deathInformant", "photoUrl", "medReconciliation.**", "programEnrollment"
+        "deathCause", "deathPlace", "deathInformant", "photoUrl", "medReconciliation.**", "programEnrollment", "duplicateReason"
       ],
       "blindIndex": { "nationalId": "nationalIdIndex" }
     },
@@ -56,7 +56,7 @@
       ]
     },
     "medication_administration": { "fields": ["patientName", "doseGiven", "reason", "notes"] },
-    "problem": { "fields": ["patientName", "name", "notes"] },
+    "problem": { "fields": ["patientName", "name", "notes", "icd11Code", "icd10Code"] },
     "history_entry": { "fields": ["patientName", "title", "relation", "factor", "detail"] },
     "program_enrollment": { "fields": ["patientName", "programName", "outcomeReason", "notes"] },
     "procedure": { "fields": ["patientName", "name", "bodySite", "outcome", "notes", "abortedReason", "amendmentReason", "statusReason"] },
@@ -89,7 +89,7 @@
     "conversation": { "fields": ["name", "lastMessagePreview"] },
     "patient_note": { "fields": ["body"] },
     "phone_note": { "fields": ["patientName", "callerName", "callerPhone", "subject", "message", "response"] },
-    "assessment": { "fields": ["patientName", "answers.**", "interpretation"] },
+    "assessment": { "fields": ["patientName", "answers.**", "interpretation", "instrumentName", "severity"] },
     "patient_document": { "fields": ["title", "fileName", "base64Data", "note", "imageAnnotations.**", "removalReason"] },
     "patient_reminder": { "fields": ["patientName", "message"] },
     "clinician_task": { "fields": ["title", "description", "patientName"] },
@@ -104,29 +104,30 @@
     "death": {
       "fields": [
         "deceasedFirstName", "deceasedSurname", "dateOfBirth", "immediateCause", "antecedentCause1",
-        "antecedentCause2", "underlyingCause", "contributingConditions"
+        "antecedentCause2", "underlyingCause", "contributingConditions", "immediateICD11", "antecedentICD11_1",
+        "antecedentICD11_2", "underlyingICD11", "contributingICD11", "mannerOfDeath"
       ]
     },
     "follow_up": { "fields": ["patientName", "condition", "notes", "outcome"] },
     "admission": {
       "fields": [
         "patientName", "admittingDiagnosis", "dischargeDiagnosis", "dischargeSummary", "dietaryRequirements",
-        "isolationReason", "followUpInstructions"
+        "isolationReason", "followUpInstructions", "icd11Code", "dischargeIcd11"
       ]
     },
     "bed": { "fields": ["currentPatientName"] },
     "biometric_template": { "fields": ["template", "patientName"] },
     "specialty_care_episode": { "fields": ["patientName", "notes"] },
-    "controlled_substance_log": { "fields": ["patientName", "reason"] },
+    "controlled_substance_log": { "fields": ["patientName", "reason", "medicationName"] },
     "blood_bank": { "fields": ["donorName", "reservedForPatient", "transfusedTo", "notes"] },
-    "billing": { "fields": ["patientName", "notes", "payerName", "memberId", "phoneNumber"] },
-    "charge": { "fields": ["patientName", "notes"] },
-    "claim": { "fields": ["patientName", "memberId", "subscriberName", "notes"] },
-    "payment": { "fields": ["patientName", "phoneNumber", "payerName", "notes"] },
+    "billing": { "fields": ["patientName", "notes", "payerName", "memberId", "phoneNumber", "items[].description"] },
+    "charge": { "fields": ["patientName", "notes", "description", "icdCodes"] },
+    "claim": { "fields": ["patientName", "memberId", "subscriberName", "notes", "billItems[].description"] },
+    "payment": { "fields": ["patientName", "phoneNumber", "payerName", "notes", "mobileMoneyPhone"] },
     "refund": { "fields": ["patientName", "reason", "notes"] },
     "payment_plan": { "fields": ["patientName", "notes"] },
-    "invoice": { "fields": ["patientName", "notes"] },
-    "insurance_policy": { "fields": ["patientName", "memberId", "subscriberName", "subscriberPhone", "notes"] },
+    "invoice": { "fields": ["patientName", "notes", "lineItems[].description"] },
+    "insurance_policy": { "fields": ["patientName", "memberId", "subscriberName", "subscriberPhone", "notes", "policyNumber"] },
     "eligibility_check": { "fields": ["patientName", "memberId", "responseNote"] },
     "saved_payment_method": { "fields": ["patientName", "phoneNumber", "holderName", "label"] },
     "ledger_entry": { "fields": ["patientName", "memo"] },
@@ -134,6 +135,6 @@
     "sync_event": { "fields": ["payloadJson"] },
     "workflow_repair": { "fields": ["patientName", "lastError"] },
     "patient_feedback": { "fields": ["patientName", "comment", "comments"] },
-    "provider_review": { "fields": ["patientName", "comment", "comments"] }
+    "provider_review": { "fields": ["patientName", "body", "moderationNote"] }
   }
 }

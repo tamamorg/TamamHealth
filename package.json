@@ -2,7 +2,7 @@
   "name": "tamamhealth-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Repo-root tooling only (git hooks + lint-staged). Application code lives in platform/, mobile/, website/, sync-worker/, fingerprint-bridge/, country-node/ and regional-exchange/, each with its own package.json and lockfile. Nothing here is published or deployed.",
+  "description": "Repo-root tooling only (git hooks + lint-staged). Application code lives in platform/, website/, sync-worker/, country-node/ and regional-exchange/, each with its own package.json and lockfile. Nothing here is published or deployed.",
   "engines": {
     "node": ">=20.0.0 <21.0.0",
     "npm": ">=10.0.0"

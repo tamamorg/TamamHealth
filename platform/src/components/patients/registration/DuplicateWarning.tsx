@@ -38,6 +38,8 @@ export default function DuplicateWarning({ matches, onOpen }: DuplicateWarningPr
       case 'same-county': return t('patientNew.dupSameCounty', { place: reason.place });
       case 'same-state': return t('patientNew.dupSameState', { place: reason.place });
       case 'hospital-number': return t('patientNew.dupHospitalNumber', { number: reason.number });
+      case 'dob-same': return t('patientNew.dupSameDob');
+      case 'phone-same': return t('patientNew.dupSamePhone');
     }
   };
 

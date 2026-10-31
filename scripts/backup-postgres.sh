@@ -11,12 +11,14 @@
 #
 # Environment:
 #   DATABASE_URL            required. Standard postgres:// connection string.
-#                           For RDS in af-south-1, must include sslmode=require.
+#                           Managed Postgres must include sslmode=require.
 #   BACKUP_BUCKET           required. Bucket name (no s3:// prefix).
-#   AWS_REGION              optional, default af-south-1.
-#                           PHI residency: must remain af-south-1.
+#   AWS_REGION              optional, default fra1 (DigitalOcean Spaces region;
+#                           the AWS_* names are the S3-compatible client
+#                           settings - this is Spaces, not AWS).
 #   BACKUP_PUBKEY_PATH      optional, default /etc/tamamhealth/backup-pubkey.gpg
-#   AWS_ENDPOINT_URL        optional. Set for B2 / MinIO / etc.
+#   AWS_ENDPOINT_URL        optional, default https://$AWS_REGION.digitaloceanspaces.com.
+#                           Override for B2 / MinIO / etc.
 #   BACKUP_HTTP_PUT_URL     optional. Fallback target if `aws` CLI missing.
 #
 # Exits non-zero on any failure. Logs to syslog.
@@ -37,7 +39,9 @@ die() { log "ERROR: $*"; exit 1; }
 
 : "${DATABASE_URL:?DATABASE_URL is required}"
 : "${BACKUP_BUCKET:?BACKUP_BUCKET is required (no s3:// prefix)}"
-: "${AWS_REGION:=af-south-1}"
+: "${AWS_REGION:=fra1}"
+# DigitalOcean Spaces, not AWS: the AWS_* names are the S3-compatible client settings.
+: "${AWS_ENDPOINT_URL:=https://${AWS_REGION}.digitaloceanspaces.com}"
 : "${BACKUP_PUBKEY_PATH:=/etc/tamamhealth/backup-pubkey.gpg}"
 
 command -v pg_dump >/dev/null 2>&1 || die "pg_dump not installed (apt install postgresql-client)"

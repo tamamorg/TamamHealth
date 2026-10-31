@@ -140,7 +140,10 @@ export async function getBillsByPatient(patientId: string, scope: DataScope): Pr
  * them. Caller must pass the verified portal token subject. Never use for staff.
  */
 export async function getBillsByPatientUnscopedForPortal(patientId: string): Promise<BillingDoc[]> {
-  return findByType<BillingDoc>(billingDB(), 'billing', { patientId }, { indexFields: ['type', 'patientId'] });
+  const bills = await findByType<BillingDoc>(billingDB(), 'billing', { patientId }, { indexFields: ['type', 'patientId'] });
+  // A draft is a charge nobody has agreed yet (see finalizeBill): the patient
+  // does not owe it until a cashier says so.
+  return bills.filter(bill => bill.status !== 'draft');
 }
 
 export async function getUnpaidBills(scope: DataScope): Promise<BillingDoc[]> {
@@ -172,6 +175,11 @@ export interface CreateBillInput {
   county?: string;
   orgId?: string;
   notes?: string;
+  /**
+   * The patient owes nothing. Decided here, in the one write that creates the
+   * bill, because the roles that raise charges may not move a bill to waived.
+   */
+  exemptReason?: string;
 }
 
 export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
@@ -233,7 +241,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
     insurancePolicyNumber: data.insurancePolicyNumber,
     insuranceCoveragePercent: data.insuranceCoveragePercent,
     insuranceClaimStatus: 'none',
-    status: amountPaid >= totalAmount ? 'paid' : 'pending',
+    status: data.exemptReason ? 'waived' : amountPaid >= totalAmount ? 'paid' : 'pending',
     generatedBy: data.generatedBy,
     generatedByName: data.generatedByName,
     invoiceNumber,
@@ -245,8 +253,15 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
     updatedAt: now,
   };
 
+  if (data.exemptReason) {
+    doc.discountReason = data.exemptReason;
+    doc.balanceDue = 0;
+  }
+
   const resp = await db.put(doc);
   doc._rev = resp.rev;
+
+  if (data.exemptReason) return doc; // nothing is owed, so nothing is posted
 
   // Mirror the bill into the append-only ledger so patient balances, the
   // front-desk checkout gate, and Collect-Payment — all of which read the
@@ -671,12 +686,34 @@ export async function finalizeBill(
     const bill = await db.get(billId) as BillingDoc;
     if (bill.finalizedAt || bill.status === 'cancelled' || bill.status === 'waived') return null;
     const now = new Date().toISOString();
+    // A draft came from scripts/rebuild-lost-charges.mjs and was written with
+    // no ledger entry, so an old charge nobody reviewed cannot hold a patient
+    // at the pharmacy. Finalizing is the review: only now does it count.
+    const postCharge = bill.status === 'draft';
+    if (postCharge) bill.status = 'pending';
     bill.finalizedAt = now;
     bill.finalizedBy = finalizedBy;
     bill.finalizedByName = finalizedByName;
     bill.updatedAt = now;
     const resp = await db.put(bill);
     bill._rev = resp.rev;
+
+    if (postCharge) {
+      const { createLedgerEntry } = await import('./ledger-service');
+      await createLedgerEntry({
+        patientId: bill.patientId,
+        encounterId: bill.encounterId,
+        entryType: 'charge',
+        amount: bill.totalAmount,
+        description: `Invoice ${bill.invoiceNumber}`,
+        referenceId: bill._id,
+        referenceType: 'billing',
+        currency: bill.currency,
+        facilityId: bill.facilityId,
+        orgId: bill.orgId,
+        createdBy: finalizedBy,
+      });
+    }
 
     await logAuditSafe(
       'BILL_FINALIZED', finalizedBy, finalizedByName,
@@ -830,6 +867,8 @@ export async function cancelBill(
     const bill = await db.get(billId) as BillingDoc;
     if (bill.payments.length > 0 || bill.status === 'paid' || bill.status === 'cancelled') return null;
 
+    // A draft never reached the ledger; a waived bill already nets to nothing.
+    const charged = bill.status !== 'draft' && bill.status !== 'waived';
     bill.status = 'cancelled';
     bill.balanceDue = 0;
     if (reason) bill.notes = bill.notes ? `${bill.notes}\nCancelled: ${reason}` : `Cancelled: ${reason}`;
@@ -837,7 +876,7 @@ export async function cancelBill(
     const resp = await db.put(bill);
     bill._rev = resp.rev;
 
-    await postLedgerAdjustment(bill, -(bill.totalAmount - bill.amountPaid), `Bill cancelled — ${bill.invoiceNumber}`, cancelledBy);
+    if (charged) await postLedgerAdjustment(bill, -(bill.totalAmount - bill.amountPaid), `Bill cancelled — ${bill.invoiceNumber}`, cancelledBy);
 
     await logAuditSafe(
       'BILL_CANCELLED', cancelledBy, cancelledByName,
@@ -981,6 +1020,7 @@ export async function waiveBill(
   }
 
   const waivedAmount = Math.round((bill.balanceDue || 0) * 100) / 100;
+  const charged = bill.status !== 'draft'; // a draft never reached the ledger
   bill.status = 'waived';
   bill.discountReason = reason.trim();
   bill.balanceDue = 0;
@@ -988,7 +1028,7 @@ export async function waiveBill(
   const resp = await db.put(bill);
   bill._rev = resp.rev;
 
-  await postLedgerAdjustment(bill, -waivedAmount, `Bill waived — ${bill.invoiceNumber}`, waivedBy);
+  if (charged) await postLedgerAdjustment(bill, -waivedAmount, `Bill waived — ${bill.invoiceNumber}`, waivedBy);
 
   await logAuditSafe(
     'BILL_WAIVED', waivedBy, waivedByName,

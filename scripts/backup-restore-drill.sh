@@ -23,8 +23,9 @@
 #
 # Environment:
 #   BACKUP_BUCKET           required.
-#   AWS_REGION              optional, default af-south-1.
-#                           PHI residency: must remain af-south-1.
+#   AWS_REGION              optional, default fra1 (DigitalOcean Spaces region;
+#                           the AWS_* names are the S3-compatible client
+#                           settings - this is Spaces, not AWS).
 #   BACKUP_PRIVKEY_PATH     required. Path to the GPG private key able to
 #                           decrypt the snapshots. Operator must place this on
 #                           the drill host out-of-band; never store the
@@ -33,7 +34,8 @@
 #                           optional. Set if the private key is passphrase-
 #                           protected (recommended). Provided via env so it
 #                           never appears in the process list.
-#   AWS_ENDPOINT_URL        optional, for B2/MinIO/etc.
+#   AWS_ENDPOINT_URL        optional, default https://$AWS_REGION.digitaloceanspaces.com.
+#                           Override for B2/MinIO/etc.
 #   DRILL_SKIP_POSTGRES     optional. Set to "1" if the deployment does not
 #                           use the analytics Postgres yet.
 #
@@ -56,7 +58,9 @@ log()  { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; logger -t "$LOG_TAG" "$*" |
 fail() { log "FAIL: $*"; FAILED=1; }
 
 : "${BACKUP_BUCKET:?BACKUP_BUCKET required}"
-: "${AWS_REGION:=af-south-1}"
+: "${AWS_REGION:=fra1}"
+# DigitalOcean Spaces, not AWS: the AWS_* names are the S3-compatible client settings.
+: "${AWS_ENDPOINT_URL:=https://${AWS_REGION}.digitaloceanspaces.com}"
 : "${BACKUP_PRIVKEY_PATH:?BACKUP_PRIVKEY_PATH required}"
 
 [ -r "$BACKUP_PRIVKEY_PATH" ] || { log "FAIL: privkey not readable at $BACKUP_PRIVKEY_PATH"; exit 1; }

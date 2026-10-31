@@ -131,7 +131,10 @@ describe('reads', () => {
 
     const [sent] = forwarded('_changes');
     expect(sent.method).toBe('POST');
-    expect(sent.body!.selector).toEqual({ participantIds: { $elemMatch: { $eq: me } } });
+    // The participant rule first, then the facility rule every org-scoped read carries.
+    const [participant, facility] = (sent.body!.selector as { $and: unknown[] }).$and;
+    expect(participant).toEqual({ participantIds: { $elemMatch: { $eq: me } } });
+    expect(JSON.stringify(facility)).toContain('org-a');
   });
 
   test('a custom changes filter cannot be used to step around the selector', async () => {

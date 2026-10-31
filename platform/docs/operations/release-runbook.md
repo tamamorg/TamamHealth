@@ -62,7 +62,7 @@ nothing) type-checked perfectly.
 
 ## 2 · Branch, PR, merge
 
-`main` is protected: four required status checks plus a required review.
+`main` is protected: three required status checks plus a required review.
 
 ```bash
 git checkout -b fix/short-description
@@ -71,11 +71,10 @@ git push -u origin HEAD
 gh pr create --fill
 ```
 
-The four required checks:
+The three required checks:
 
 - `platform · lint + type-check + test + build`
 - `website · lint + type-check + build`
-- `mobile · lint + type-check`
 - `fingerprint-bridge · syntax check + tests`
 
 They run on the PR and again on `main` after merge. Roughly four minutes.
@@ -117,7 +116,7 @@ gh run list --limit 5       # ci must be green for it
 ```bash
 gh workflow run deploy-production.yml \
   -f sha=<full-40-char-sha> \
-  -f target=vps
+ 
 ```
 
 **3. Approve**
@@ -151,21 +150,11 @@ and runs `docker compose pull && up -d`.
 > deployment look successful. It does not auto-roll back, and the role-based
 > browser checks below remain mandatory.
 
-### Use `target=vps`, not App Platform
+### Production is the droplet, not App Platform
 
-`production-runbook.md` says the app runs on DigitalOcean App Platform and calls
-`vps` a legacy path. That is currently wrong, and it's worth knowing why before
-you trust it:
-
-- `app.tamamhealth.org` resolves to **164.90.243.83** — an A record to a droplet,
-  the same IP as `couch.tamamhealth.org`. App Platform would be a CNAME to
-  `*.ondigitalocean.app`.
-- The App Platform Terraform state (`infra/digitalocean/app-platform/terraform.tfstate`)
-  has `live_url: null` and no custom domain configured.
-- The live host responds `via: 1.1 Caddy` — the droplet's proxy.
-
-Deploying App Platform would ship to something no user is looking at. Verify for
-yourself before a cutover changes this:
+Production is the `tamamhealth-production` droplet behind Caddy, deployed by
+`deploy-production.yml`. DigitalOcean App Platform is not used and its
+Terraform stack and workflow have been removed. Verify the live host:
 
 ```bash
 dig +short app.tamamhealth.org A
@@ -212,7 +201,7 @@ Same workflow, previous SHA — it re-tags that image as `production` and redepl
 ```bash
 gh workflow run deploy-production.yml \
   -f sha=<previous-good-sha> \
-  -f target=vps
+ 
 ```
 
 Then approve it the same way. Any SHA that reached staging can be promoted, so

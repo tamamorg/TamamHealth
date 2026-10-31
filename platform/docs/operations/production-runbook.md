@@ -1,17 +1,12 @@
 # Tamam Health — Production Security & Operations Runbook
 
 **Deployment model:** centrally hosted SaaS (the operator runs the servers; facilities connect over the internet).
-As of the 2026-08-12 go-live, the concrete topology is: the platform app runs
-on **DigitalOcean App Platform**, and CouchDB + the analytics Postgres cluster
-run on a separate **data droplet** behind Caddy, reachable only from the
-platform app and never directly from a browser (browsers talk to CouchDB
-through the authenticated same-origin `/api/couch` gateway). See
-`infra/digitalocean/app-platform/README.md` and `infra/digitalocean/README.md`
-for the authoritative infra details. `deploy-production.yml` also offers
-`vps` (SSH + docker-compose to a droplet — its default) and `aws`
-(CloudFormation) targets; those are alternate/legacy deploy paths that still
-exist in CI, not the current production path — know which one you're
-operating on before running anything.
+Production is the **DigitalOcean** droplet `tamamhealth-production`, deployed by
+`.github/workflows/deploy-production.yml` over SSH (docker-compose + Caddy). CouchDB
+is never reached directly from a browser (browsers talk to it through the
+authenticated same-origin `/api/couch` gateway). See `infra/digitalocean/README.md`
+for the authoritative infra details and `docs/DEPLOY-PRODUCTION.md` for the
+release runbook. DigitalOcean App Platform is not used.
 **Audience:** the platform operator / SRE team.
 **Goal:** launch securely, keep operational control after launch, and protect patient data (PHI).
 
@@ -22,8 +17,7 @@ monitoring guide in `docs/operations/monitoring.md`. A separate, more
 detailed root-level `docs/operations/` tree (`backups.md`, `secrets.md`,
 `production-hardening.md`) documents the single-VPS/EC2 systemd-timer model
 in more depth — useful if you're operating the `vps`/`aws` path, but written
-before the DO App Platform + data-droplet topology existed, so cross-check
-before assuming it applies unchanged there.
+for the single-host model, which is the production topology (one droplet).
 
 ---
 
@@ -100,7 +94,7 @@ in the same gate as the tenant check.
 - **Liveness:** `GET /api/health` — unauthenticated, checks actual CouchDB and
   Postgres reachability (not just "the process is up") and returns 503 if
   either configured dependency is down. This is what
-  `deploy-app-platform.yml`'s post-deploy step polls before declaring a
+  `deploy-production.yml`'s post-deploy step polls before declaring a
   rollout healthy, and is a stronger uptime-probe target than `/api/auth/me`
   — see `docs/operations/monitoring.md`.
 - **Per-tenant usage:** Admin → Organizations + `getOrganizationStats(orgId)`
@@ -136,9 +130,9 @@ in the same gate as the tenant check.
   secure/httpOnly session cookies are set separately in the auth routes
   (`src/lib/session.ts`), not in `next.config.mjs`.
 - CouchDB replication uses the public HTTPS endpoint (`NEXT_PUBLIC_COUCHDB_URL`);
-  the server reaches CouchDB over the internal network only. On the current
-  DO App Platform topology, browsers reach CouchDB through the authenticated
-  same-origin `/api/couch` gateway rather than talking to the data droplet
+  the server reaches CouchDB over the internal network only. On the production
+  droplet, browsers reach CouchDB through the authenticated
+  same-origin `/api/couch` gateway rather than talking to CouchDB
   directly — see the top-of-doc topology note.
 
 ### 3.2 Encryption at rest
@@ -176,7 +170,7 @@ need to be built, just verified and kept running.
   `tamamhealth-backup-couchdb.timer` (02:30 UTC) and
   `tamamhealth-backup-postgres.timer` (02:45 UTC) — run
   `scripts/backup-couchdb.sh` / `scripts/backup-postgres.sh`, which GPG-encrypt
-  versioned snapshots and upload them off-site (S3 in `af-south-1`, or B2).
+  versioned snapshots and upload them off-site (DigitalOcean Spaces, `fra1` by default, or B2).
   Full detail in the root-level `docs/operations/backups.md`.
 - **Quarterly restore drill — automated, not manual.** GitHub Actions
   workflow `backups-restore-drill` (`.github/workflows/backups-cron.yml`,
@@ -193,11 +187,10 @@ need to be built, just verified and kept running.
   you keep one separately, rather than trusting both to agree by default.
 - **Data-droplet caveat:** the systemd-timer backup setup in
   `docs/operations/backups.md` was written for the single-VPS/EC2
-  "production host" model. Whether the current DO App Platform + data-droplet
-  topology's data droplet runs the same timers unchanged (via
-  `infra/digitalocean/cloud-init-data-plane.yaml`) wasn't confirmed while
-  writing this doc — check that cloud-init file before assuming continuity,
-  and update this note once verified either way.
+  "production host" model. Whether a separate data droplet (via
+  `infra/digitalocean/cloud-init-data-plane.yaml`) runs the same timers unchanged
+  was not confirmed; the production droplet runs them via
+  `scripts/install-offsite-backup.sh`.
 - **Manual restore verification:** independent of the automated drill above,
   periodically stand up the latest backups on a staging stack, boot the app,
   and confirm login + a patient chart loads — the automated drill is

@@ -1,6 +1,7 @@
 import { patientsDB, hospitalsDB } from '../db';
 import { stripProtectedPatientFields } from '@/lib/patient-redaction';
-import type { PatientDoc, HospitalDoc } from '../db-types';
+import type { PatientDoc, HospitalDoc, UserRole } from '../db-types';
+import { PATIENT_DUPLICATE_ROLES } from '../sync/write-permissions';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
@@ -56,8 +57,24 @@ export function generateGeocodeId(bomaCode: string, householdNumber: number): st
   return `BOMA-${code}-HH${householdNumber}`;
 }
 
-export async function getAllPatients(scope: DataScope): Promise<PatientDoc[]> {
-  return filterByScope(await readEveryPatientOnDevice(), scope);
+export interface PatientListOptions {
+  /** Include records marked as duplicates. Only the duplicate review screen asks. */
+  includeDuplicates?: boolean;
+}
+
+/** A record staff have marked as a duplicate of another (the survivor). */
+export function isMarkedDuplicate(p: { duplicateOf?: string }): boolean {
+  return typeof p.duplicateOf === 'string' && p.duplicateOf.length > 0;
+}
+
+/**
+ * Every patient in scope. Records marked as duplicates are left out: they are
+ * filtered here, after the read, because duplicateOf is not a field a Mango
+ * selector may use. A direct open by id (getPatientById) still returns them.
+ */
+export async function getAllPatients(scope: DataScope, options: PatientListOptions = {}): Promise<PatientDoc[]> {
+  const rows = filterByScope(await readEveryPatientOnDevice(), scope);
+  return options.includeDuplicates ? rows : rows.filter(p => !isMarkedDuplicate(p));
 }
 
 async function readEveryPatientOnDevice(): Promise<PatientDoc[]> {
@@ -279,7 +296,8 @@ async function inferCountryIdFromHospital(hospitalId?: string): Promise<string |
 async function assignGeocodeId(data: Record<string, unknown>, scope: DataScope): Promise<string | undefined> {
   const bomaCode = (data.bomaCode as string | undefined)?.trim();
   const householdNumber = data.householdNumber as string | number | undefined;
-  const all = await getAllPatients(scope);
+  // Duplicates keep the identifiers they were issued; their suffix is not free.
+  const all = await getAllPatients(scope, { includeDuplicates: true });
 
   // No boma/household yet — displaced, transient, or an emergency admission.
   // Issue a temporary UNKNOWN- identifier rather than leaving the field empty:
@@ -627,6 +645,40 @@ export interface PortalInviteAtRegistration {
   expiresAt: string;
   /** Who is registering, for the audit trail. */
   enabledBy?: string;
+}
+
+/**
+ * Existing patients that look like the one being registered, from the master
+ * patient index. A WARNING source for the registration desk, never a block:
+ * exact name + date of birth and exact identifiers are already refused by
+ * `createPatient`, so this finds what those miss: a spelling that differs, or a
+ * hospital number or phone shared with a record.
+ *
+ * A probabilistic hit counts only when the date of birth or the phone also
+ * matches exactly. Name similarity alone is too common to warn on (short
+ * South Sudanese names collide), and a warning that fires on strangers gets
+ * clicked past. Scoped like every other read, so a hit outside the caller's
+ * reach is never disclosed. Returns [] when the index cannot be read; a
+ * missed warning must never stop a registration.
+ */
+export async function findMpiDuplicates(
+  data: { firstName?: string; surname?: string; dateOfBirth?: string; phone?: string; nationalId?: string },
+  scope: DataScope,
+): Promise<import('./mpi-service').MpiCandidate[]> {
+  try {
+    const { matchPatient } = await import('./mpi-service');
+    const nationalId = data.nationalId && data.nationalId.trim().length >= MIN_NATIONAL_ID_LENGTH
+      ? data.nationalId : undefined;
+    const hits = await matchPatient({
+      firstName: data.firstName, surname: data.surname, dateOfBirth: data.dateOfBirth,
+      phone: data.phone, nationalId,
+    }, 5, scope);
+    return hits.filter(hit => hit.method !== 'probabilistic'
+      || (hit.score >= 0.85 && hit.reasons.some(r => r === 'DOB exact' || r === 'phone exact')));
+  } catch (err) {
+    console.warn('[patient] fuzzy duplicate check unavailable:', err);
+    return [];
+  }
 }
 
 export interface CreatePatientOptions {
@@ -1054,4 +1106,150 @@ export async function unarchivePatient(id: string, actor?: string): Promise<Pati
     hospitalId: updated.registrationHospital,
   });
   return updated;
+}
+
+
+// ── Duplicate links ─────────────────────────────────────────────────────────
+//
+// A reversible LINK, not a merge. Nothing clinical moves: allergies, medicines,
+// notes, ledger and audit rows stay on the record that holds them, because a
+// wrong merge would mix two people's data and append-only documents cannot be
+// rewritten. The duplicate drops out of searches and lists; a person must
+// still check its allergies and medicines against the surviving record.
+
+export type PatientDuplicateErrorCode =
+  | 'not_allowed' | 'same_record' | 'reason_required' | 'not_found'
+  | 'survivor_is_duplicate' | 'already_linked' | 'has_duplicates' | 'different_organisation';
+
+const DUPLICATE_ERROR_TEXT: Record<PatientDuplicateErrorCode, string> = {
+  not_allowed: 'Duplicate not marked. Ask a records officer or administrator to do this.',
+  same_record: 'Duplicate not marked. Choose two different records.',
+  reason_required: 'Duplicate not marked. Enter the reason.',
+  not_found: 'Duplicate not marked. A record could not be found in your access. Reload and try again.',
+  survivor_is_duplicate: 'Duplicate not marked. The record you chose to keep is already marked as a duplicate. Choose its surviving record instead.',
+  already_linked: 'Duplicate not marked. This record is already marked as a duplicate. Undo that first.',
+  has_duplicates: 'Duplicate not marked. Other records are marked as duplicates of this one. Undo those first.',
+  different_organisation: 'Duplicate not marked. The two records belong to different organisations.',
+};
+
+export class PatientDuplicateError extends Error {
+  constructor(public code: PatientDuplicateErrorCode) {
+    super(DUPLICATE_ERROR_TEXT[code]);
+    this.name = 'PatientDuplicateError';
+  }
+}
+
+export interface PatientDuplicateActor {
+  id?: string;
+  name?: string;
+  role: UserRole;
+}
+
+async function readPatientInScope(id: string, scope: DataScope): Promise<PatientDoc | null> {
+  try {
+    const doc = await patientsDB().get(id) as PatientDoc;
+    return filterByScope([doc], scope).length > 0 ? doc : null;
+  } catch (error) {
+    const failure = error as { status?: number; name?: string } | null;
+    if (failure?.status === 404 || failure?.name === 'not_found') return null;
+    throw new PatientRecordReadError();
+  }
+}
+
+export async function markPatientDuplicate(
+  duplicateId: string,
+  survivorId: string,
+  reason: string,
+  actor: PatientDuplicateActor,
+  scope: DataScope,
+): Promise<PatientDoc> {
+  if (!PATIENT_DUPLICATE_ROLES.includes(actor.role)) throw new PatientDuplicateError('not_allowed');
+  if (!duplicateId || !survivorId || duplicateId === survivorId) throw new PatientDuplicateError('same_record');
+  const why = (reason || '').trim();
+  if (!why) throw new PatientDuplicateError('reason_required');
+
+  const [duplicate, survivor] = await Promise.all([
+    readPatientInScope(duplicateId, scope),
+    readPatientInScope(survivorId, scope),
+  ]);
+  if (!duplicate || !survivor) throw new PatientDuplicateError('not_found');
+  if (!duplicate.orgId || duplicate.orgId !== survivor.orgId) throw new PatientDuplicateError('different_organisation');
+  if (isMarkedDuplicate(survivor)) throw new PatientDuplicateError('survivor_is_duplicate');
+  if (isMarkedDuplicate(duplicate)) throw new PatientDuplicateError('already_linked');
+  // A record other records point at cannot itself become a duplicate: that
+  // would chain survivor -> duplicate -> duplicate.
+  const pointedAt = (await readEveryPatientOnDevice()).some(p => p.orgId === duplicate.orgId && p.duplicateOf === duplicate._id);
+  if (pointedAt) throw new PatientDuplicateError('has_duplicates');
+
+  const now = new Date().toISOString();
+  const updated: PatientDoc = withPendingOfflineSync({
+    ...duplicate,
+    duplicateOf: survivor._id,
+    duplicateMarkedAt: now,
+    duplicateMarkedBy: actor.id,
+    duplicateMarkedByName: actor.name,
+    duplicateReason: why,
+    updatedAt: now,
+  });
+  const resp = await patientsDB().put(updated);
+  updated._rev = resp.rev;
+  // Ids only: no names, no reason text.
+  await logAuditSafe('MARK_PATIENT_DUPLICATE', actor.id, actor.name,
+    `Marked patient ${duplicate._id} as a duplicate of ${survivor._id}`);
+  emitSyncEvent({
+    resourceType: 'patient',
+    resourceId: updated._id,
+    operation: 'update',
+    resourceVersion: updated._rev,
+    username: actor.name,
+    orgId: updated.orgId,
+    hospitalId: updated.registrationHospital,
+  });
+  return updated;
+}
+
+export async function clearPatientDuplicate(
+  duplicateId: string,
+  actor: PatientDuplicateActor,
+  scope: DataScope,
+): Promise<PatientDoc> {
+  if (!PATIENT_DUPLICATE_ROLES.includes(actor.role)) throw new PatientDuplicateError('not_allowed');
+  const duplicate = await readPatientInScope(duplicateId, scope);
+  if (!duplicate) throw new PatientDuplicateError('not_found');
+  if (!isMarkedDuplicate(duplicate)) return duplicate;
+
+  const previousSurvivor = duplicate.duplicateOf;
+  const cleared = { ...duplicate } as Partial<PatientDoc>;
+  delete cleared.duplicateOf;
+  delete cleared.duplicateMarkedAt;
+  delete cleared.duplicateMarkedBy;
+  delete cleared.duplicateMarkedByName;
+  delete cleared.duplicateReason;
+  const updated: PatientDoc = withPendingOfflineSync({
+    ...(cleared as PatientDoc),
+    updatedAt: new Date().toISOString(),
+  });
+  const resp = await patientsDB().put(updated);
+  updated._rev = resp.rev;
+  await logAuditSafe('CLEAR_PATIENT_DUPLICATE', actor.id, actor.name,
+    `Undid duplicate link on patient ${duplicate._id} (was ${previousSurvivor})`);
+  emitSyncEvent({
+    resourceType: 'patient',
+    resourceId: updated._id,
+    operation: 'update',
+    resourceVersion: updated._rev,
+    username: actor.name,
+    orgId: updated.orgId,
+    hospitalId: updated.registrationHospital,
+  });
+  return updated;
+}
+
+/**
+ * Records in scope that are marked as duplicates of `survivorId`. Reads the
+ * whole scoped set because duplicateOf is not selectable; callers are charts.
+ */
+export async function getDuplicatesOf(survivorId: string, scope: DataScope): Promise<PatientDoc[]> {
+  const rows = await getAllPatients(scope, { includeDuplicates: true });
+  return rows.filter(p => p.duplicateOf === survivorId);
 }

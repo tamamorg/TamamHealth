@@ -406,11 +406,25 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   // test ids on it. The field list below keeps the visit's record out of reach.
   encounter: ['lab_tech'],
   clinical_encounter: ['lab_tech'],
+  // Marking a record as a duplicate of another is a records-office act:
+  // org_admin, hrio and super_admin already hold the full patient row above;
+  // these two do not, and may change only the duplicate link fields.
+  patient: ['records_hmis_officer', 'hospital_manager'],
   // Stopping an order, or sending it to an outside pharmacy, withdraws the
   // charge the order raised. The validator holds these roles to the two moves
   // that makes: cancelling an unpaid bill and reversing a paid one.
   billing: ['doctor', 'clinical_officer', 'clinician'],
 };
+
+/**
+ * Roles that may link a patient record to another as its duplicate. Each must
+ * be able to write the duplicate link fields at sync: a full `patient` row in
+ * DOC_WRITE_ROLES, or the amend-only grant above. Tested in
+ * patient-duplicate.test.ts so the table and the UI cannot drift.
+ */
+export const PATIENT_DUPLICATE_ROLES: readonly UserRole[] = [
+  'org_admin', 'hrio', 'records_hmis_officer', 'hospital_manager', 'super_admin',
+];
 
 /** Roles allowed to create a document but not receive unrestricted updates. */
 export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
@@ -447,6 +461,13 @@ export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   clinical_encounter: ['lab_tech'],
   billing: CHARGE_RAISERS,
   ledger_entry: CHARGE_RAISERS,
+  // A critical lab result, or a pharmacy stall (stock-out, clarification), puts
+  // a task on the ORDERING clinician's list. The bench, imaging and the
+  // pharmacy raise it as themselves (createTask in lab-service and
+  // dispensing-service), so they must be able to create one. They hold no
+  // other right to the type: they may not edit or complete anyone's task, and
+  // they are deliberately absent from DOC_WRITE_ROLES.
+  clinician_task: ['lab_tech', 'radiologist', 'pharmacist'],
 };
 
 /**
@@ -474,6 +495,10 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
   billing: [
     'status', 'balanceDue', 'notes', 'chargeReversedAt', 'chargeReversedBy',
     'chargeReversalReason', 'updatedAt', 'offlineSync',
+  ],
+  patient: [
+    'duplicateOf', 'duplicateMarkedAt', 'duplicateMarkedBy', 'duplicateMarkedByName',
+    'duplicateReason', 'updatedAt', 'offlineSync',
   ],
   encounter: ['status', 'stageKey', 'statusHistory', 'labOrderIds', 'updatedAt', 'offlineSync'],
   clinical_encounter: ['status', 'stageKey', 'statusHistory', 'labOrderIds', 'updatedAt', 'offlineSync'],

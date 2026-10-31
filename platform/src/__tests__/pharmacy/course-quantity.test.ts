@@ -71,6 +71,13 @@ describe('course days', () => {
 });
 
 describe('units per dose', () => {
+  test('reads a dose written as a count', () => {
+    expect(unitsPerDose('Artemether-Lumefantrine (Coartem)', '4 Tablet')).toBe(4);
+    expect(unitsPerDose('Paracetamol 500mg', '2 tablets')).toBe(2);
+    expect(unitsPerDose('Paracetamol 500mg', '1.5 tabs')).toBe(2);
+    expect(estimateCourseQuantity({ medication: 'Coartem', dose: '4 Tablet', frequency: 'BD', duration: '3 days' })).toBe(24);
+  });
+
   it('divides the dose by the strength in the name', () => {
     expect(unitsPerDose('Paracetamol 500mg tablets', '1000 mg')).toBe(2);
     expect(unitsPerDose('Amoxicillin 250mg capsules', '500 mg')).toBe(2);

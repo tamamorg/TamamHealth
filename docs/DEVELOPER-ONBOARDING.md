@@ -73,12 +73,10 @@ TamamHealth/
 │           ├── role-routes.ts    # Route gating table (Edge proxy + server + client)
 │           └── observability.ts  # Sentry shim (no-ops without DSN)
 ├── website/           # Marketing site (Next.js)
-├── mobile/            # React Native client (early)
 ├── sync-worker/       # CouchDB _changes → /api/sync poller (analytics)
-├── fingerprint-bridge/ # Localhost HTTP bridge for USB fingerprint scanners
 ├── country-node/      # National aggregation tier (skeleton)
 ├── regional-exchange/ # Cross-border tier (skeleton)
-├── infra/             # Terraform (DigitalOcean App Platform, AWS CloudFormation)
+├── infra/             # Terraform + bootstrap for DigitalOcean (production)
 ├── scripts/           # Backups, preflight, CouchDB dumps
 ├── docs/              # You are here
 └── docker-compose.yml # Full-stack production deployment
@@ -137,7 +135,8 @@ npx tsc --noEmit         # type-check (CI runs this)
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint + type-check + test + build for
-`platform`, `website`, `mobile`, and `fingerprint-bridge` on every PR, plus
+`platform`, `website`, `sync-worker`, and `fingerprint-bridge` (which lives in
+`platform/tools/fingerprint-bridge/`) on every PR, plus
 an `infrastructure` job (Terraform fmt/validate). The build step catches
 server/client boundary mistakes — run `npm run build` locally if you touched
 env handling or `instrumentation.ts`.

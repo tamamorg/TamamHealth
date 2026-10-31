@@ -175,7 +175,7 @@ demo: **PHI is real**, so it must be hosted in/near the country, encrypted, and
 
 ### Step B2 — Choose hosting (in this order)
 1. MoH / government data centre in-country (best).
-2. In-region cloud: **AWS Cape Town (`af-south-1`)** or Azure South Africa.
+2. In-region cloud: a reputable provider with an African region.
 3. Reputable local host with a UPS + good uplink.
 Provision **Ubuntu 22.04**, ≥ 4 vCPU / 16 GB / 100 GB, with a public IP and a
 domain/subdomain for that country (e.g. `ss.tamamhealth.org` or a national domain).

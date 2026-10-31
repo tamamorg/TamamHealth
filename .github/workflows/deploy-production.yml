@@ -1,6 +1,7 @@
 name: deploy-production
 
-# Manual-only. Pin the `production` GitHub environment to a required-reviewer
+# Manual-only. Production is the DigitalOcean droplet `tamamhealth-production`,
+# deployed over SSH. Pin the `production` GitHub environment to a required-reviewer
 # list in the repo settings; GitHub will block the job until an approver
 # clicks "Approve and deploy". While staging is paused, this workflow builds
 # the exact selected main commit with production settings, publishes immutable
@@ -13,14 +14,6 @@ on:
         description: 'Main-branch commit to deploy. Leave blank to use the current main HEAD.'
         required: false
         type: string
-      target:
-        description: 'Deploy target. "vps" = legacy SSH path; "aws" = CloudFormation deploy to af-south-1.'
-        required: true
-        type: choice
-        default: vps
-        options:
-          - vps
-          - aws
 
 permissions:
   contents: read
@@ -57,30 +50,14 @@ jobs:
 
       - name: Refuse an unconfigured deploy target before changing image tags
         env:
-          TARGET: ${{ github.event.inputs.target || 'vps' }}
           PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
           PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
           PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SEC: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ACM_ARN: ${{ secrets.PROD_ACM_CERT_ARN }}
-          DOMAIN: ${{ secrets.PROD_DOMAIN }}
-          KEYPAIR: ${{ secrets.PROD_EC2_KEYPAIR }}
-          DB_PASSWORD: ${{ secrets.PROD_DB_MASTER_PASSWORD }}
         run: |
           missing=""
-          if [ "$TARGET" = "vps" ]; then
-            [ -n "$PROD_SSH_HOST" ] || missing="$missing PROD_SSH_HOST"
-            [ -n "$PROD_SSH_USER" ] || missing="$missing PROD_SSH_USER"
-            [ -n "$PROD_SSH_KEY" ] || missing="$missing PROD_SSH_KEY"
-          else
-            [ -n "$AWS_KEY" ] || missing="$missing AWS_ACCESS_KEY_ID"
-            [ -n "$AWS_SEC" ] || missing="$missing AWS_SECRET_ACCESS_KEY"
-            [ -n "$ACM_ARN" ] || missing="$missing PROD_ACM_CERT_ARN"
-            [ -n "$DOMAIN" ] || missing="$missing PROD_DOMAIN"
-            [ -n "$KEYPAIR" ] || missing="$missing PROD_EC2_KEYPAIR"
-            [ -n "$DB_PASSWORD" ] || missing="$missing PROD_DB_MASTER_PASSWORD"
-          fi
+          [ -n "$PROD_SSH_HOST" ] || missing="$missing PROD_SSH_HOST"
+          [ -n "$PROD_SSH_USER" ] || missing="$missing PROD_SSH_USER"
+          [ -n "$PROD_SSH_KEY" ] || missing="$missing PROD_SSH_KEY"
           if [ -n "$missing" ]; then
             echo "::error title=Production target not configured::Missing production-environment secrets:$missing"
             exit 1
@@ -226,8 +203,7 @@ jobs:
           severity: Production images could not be built, so no deploy can proceed.
 
   ssh-deploy:
-    name: ssh deploy to production host (vps target)
-    if: ${{ (github.event.inputs.target || 'vps') == 'vps' }}
+    name: ssh deploy to production droplet
     needs: build-production-images
     runs-on: ubuntu-latest
     environment: production
@@ -434,69 +410,6 @@ jobs:
             "cd '$APP_DIR' && \
              rm -f '.tamamhealth-rollback-stack-$SHA' && \
              docker image prune -f"
-
-      # An unread red run is not an alarm. Opens one issue while this
-      # workflow is broken and closes it on the next success.
-      - name: Raise or clear the failure alarm
-        if: always()
-        uses: ./.github/actions/alert-failure
-        with:
-          status: ${{ job.status }}
-          severity: Production is running whatever build it had before this run. New fixes are not live.
-
-  aws-deploy:
-    name: cloudformation deploy to af-south-1 (aws target)
-    if: ${{ github.event.inputs.target == 'aws' }}
-    needs: build-production-images
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Check AWS deploy prerequisites
-        id: gate
-        env:
-          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SEC: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ACM_ARN: ${{ secrets.PROD_ACM_CERT_ARN }}
-          DOMAIN:  ${{ secrets.PROD_DOMAIN }}
-          KEYPAIR: ${{ secrets.PROD_EC2_KEYPAIR }}
-        run: |
-          missing=""
-          [ -n "$AWS_KEY" ] || missing="$missing AWS_ACCESS_KEY_ID"
-          [ -n "$AWS_SEC" ] || missing="$missing AWS_SECRET_ACCESS_KEY"
-          [ -n "$ACM_ARN" ] || missing="$missing PROD_ACM_CERT_ARN"
-          [ -n "$DOMAIN" ]  || missing="$missing PROD_DOMAIN"
-          [ -n "$KEYPAIR" ] || missing="$missing PROD_EC2_KEYPAIR"
-          if [ -n "$missing" ]; then
-            echo "::error title=AWS deploy not configured::Missing production-environment secrets:$missing"
-            exit 1
-          fi
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-
-      - name: Configure AWS credentials
-        if: steps.gate.outputs.ready == 'true'
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'af-south-1' }}
-
-      - name: Run cloudformation deploy
-        if: steps.gate.outputs.ready == 'true'
-        env:
-          TAMAM_DB_PASSWORD: ${{ secrets.PROD_DB_MASTER_PASSWORD }}
-          GH_OWNER: ${{ github.repository_owner }}
-        run: |
-          chmod +x ./infra/aws/scripts/deploy.sh
-          ./infra/aws/scripts/deploy.sh \
-              --env production \
-              --domain "${{ secrets.PROD_DOMAIN }}" \
-              --acm-cert "${{ secrets.PROD_ACM_CERT_ARN }}" \
-              --instance-type "${{ vars.PROD_INSTANCE_TYPE || 't3.large' }}" \
-              --image-tag "${{ needs.build-production-images.outputs.sha }}" \
-              --keypair "${{ secrets.PROD_EC2_KEYPAIR }}" \
-              --region "${{ secrets.AWS_REGION || 'af-south-1' }}"
 
       # An unread red run is not an alarm. Opens one issue while this
       # workflow is broken and closes it on the next success.

@@ -150,12 +150,23 @@ jobs:
       - name: Tests
         run: npm test
 
-  mobile:
-    name: mobile · lint + type-check
+  # Not a required check: the integration suite is skipped locally unless
+  # COUCH_IT_URL is set, and this job gives it a throwaway CouchDB to run
+  # against. It creates its own uniquely named databases and users.
+  couch-gateway-live:
+    name: couch-gateway · live CouchDB integration
     runs-on: ubuntu-latest
+    services:
+      couchdb:
+        image: couchdb:3
+        env:
+          COUCHDB_USER: ci-admin
+          COUCHDB_PASSWORD: ci-throwaway-password-not-a-secret
+        ports:
+          - 5984:5984
     defaults:
       run:
-        working-directory: mobile
+        working-directory: platform
     steps:
       - uses: actions/checkout@v7
 
@@ -163,23 +174,33 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: mobile/package-lock.json
+          cache-dependency-path: platform/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Wait for CouchDB
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5984/_up >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "::error title=CouchDB did not start::The couchdb:3 service never answered /_up."
+          exit 1
 
-      - name: Type-check
-        run: npx tsc --noEmit
+      - name: Gateway tests against live CouchDB
+        env:
+          COUCH_IT_URL: http://127.0.0.1:5984
+          COUCH_IT_USER: ci-admin
+          COUCH_IT_PASSWORD: ci-throwaway-password-not-a-secret
+        run: npx jest --ci src/__tests__/integration/couch-gateway-live.test.ts
 
   fingerprint-bridge:
     name: fingerprint-bridge · syntax check + tests
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: fingerprint-bridge
+        working-directory: platform/tools/fingerprint-bridge
     steps:
       - uses: actions/checkout@v7
 
@@ -195,14 +216,10 @@ jobs:
         run: npm test
 
   infrastructure:
-    name: infrastructure · terraform + deployment manifests
+    name: infrastructure · migration scripts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.15.7
 
       - uses: actions/setup-node@v7
         with:
@@ -216,35 +233,6 @@ jobs:
       - name: Install platform dependencies
         working-directory: platform
         run: npm ci
-
-      - name: Terraform format
-        run: terraform fmt -check -recursive infra/digitalocean/app-platform
-
-      - name: Terraform init (no backend)
-        working-directory: infra/digitalocean/app-platform
-        # Provider install fetches the signature from github.com, which
-        # occasionally answers 504 (2026-09-07: "failed to retrieve
-        # cryptographic signature for provider ... 504 Gateway Timeout"). A
-        # single transient fetch failure must not turn a green main commit red:
-        # deploy-production refuses any commit whose CI run did not succeed, so
-        # a flaky init here blocks a production release. Retry with backoff.
-        run: |
-          for attempt in 1 2 3 4; do
-            if terraform init -backend=false -input=false; then
-              exit 0
-            fi
-            if [ "$attempt" = 4 ]; then
-              echo "::error title=terraform init failed::Provider install failed after $attempt attempts. If the log shows a registry/github.com timeout, re-run this job."
-              exit 1
-            fi
-            delay=$((attempt * 20))
-            echo "terraform init failed (attempt $attempt/4); retrying in ${delay}s"
-            sleep "$delay"
-          done
-
-      - name: Terraform validate
-        working-directory: infra/digitalocean/app-platform
-        run: terraform validate
 
       - name: Validate migration scripts without network writes
         working-directory: platform

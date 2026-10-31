@@ -43,7 +43,7 @@ export const LAB_ORDER_TRANSITIONS: Readonly<Record<LabOrderStatus, readonly Lab
 /** Result-review enforcement windows (Stage 6 / Stage 11 Workflow 1). */
 export const RESULT_REVIEW_SLA = {
   routineHours: 7 * 24, // unreviewed routine results escalate after 7 days
-  criticalHours: 24, // unreviewed critical results escalate after 24 hours
+  criticalHours: 1, // unreviewed critical results escalate after 1 hour (configurable in settings)
 } as const;
 
 /**

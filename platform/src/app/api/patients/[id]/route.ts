@@ -38,15 +38,21 @@ export async function GET(
     if (filterByScope([patient], buildScopeFromAuth(auth)).length === 0) {
       return forbidden('Access denied to this patient record');
     }
-    // PHI read audit (KAN-97). Fire-and-forget: a failed audit write
-    // must never turn a clinician's chart open into an error.
-    import('@/lib/services/audit-service').then(({ logPhiRead }) =>
-      logPhiRead(
+    // PHI read audit (KAN-97). Awaited so the row is written before the
+    // response leaves: a floating promise can be dropped when the request
+    // ends. Best-effort still — `logPhiRead` records its own failures and
+    // never throws, because a clinician must be able to open a chart when
+    // the audit store is unavailable.
+    try {
+      const { logPhiRead } = await import('@/lib/services/audit-service');
+      await logPhiRead(
         { userId: auth.sub, username: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId, route: '/api/patients/:id' },
         'patient',
         { patientId: id },
-      ),
-    ).catch(() => {});
+      );
+    } catch (auditErr) {
+      logApiError('[API /patients/:id GET] PHI read audit', auditErr);
+    }
     return NextResponse.json({ patient: redactPatient(patient) });
   } catch (err) {
     logApiError('[API /patients/:id GET]', err);

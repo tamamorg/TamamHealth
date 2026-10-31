@@ -15,23 +15,62 @@ const SEALED_COLUMNS = new Set([
   'deceased_first_name', 'deceased_surname', 'patient_phone', 'mobile_money_phone',
   'body', 'subject', 'notes', 'details', 'comment', 'member_id', 'subscriber_name',
   'donor_name', 'reason', 'chief_complaint', 'outcome',
+  'policy_number', 'witness_name',
 ]);
-const SEALED_COLUMNS_BY_TABLE: Record<string, string[]> = { patients: ['name'] };
+/**
+ * Free clinical text and one table's date of birth. Per table because the same
+ * column name means something else elsewhere (`condition` on an asset is its
+ * state; `description` on an emergency plan is not clinical). Diagnoses stay
+ * countable through their ICD codes, which are NOT sealed.
+ */
+const SEALED_COLUMNS_BY_TABLE: Record<string, string[]> = {
+  // `age` is derived separately and stays; the birth date itself is an
+  // identifier. births/deaths are DATE-typed, so they cannot hold ciphertext:
+  // see the month rounding in sealIdentifyingColumns.
+  patients: ['name', 'date_of_birth'],
+  medical_records: ['diagnosis'],
+  admissions: ['admitting_diagnosis', 'discharge_diagnosis', 'isolation_reason'],
+  deaths: ['immediate_cause', 'underlying_cause'],
+  follow_ups: ['condition'],
+  charges: ['description'],
+};
+/**
+ * Identifiers the national copy must still be able to MATCH on (de-duplication
+ * by geocode, household linkage for contact tracing, one patient across the
+ * patient and admission tables) but never read. Stored as the keyed
+ * fingerprint, so equality and the indexes keep working and the value does
+ * not come back out. A missing index key stores NULL, never the plaintext.
+ */
+const FINGERPRINTED_COLUMNS = ['national_id', 'geocode_id', 'household_number', 'hospital_number'];
 
 /**
- * Seal identifying columns in place. The national ID becomes its keyed
- * fingerprint rather than ciphertext, so national de-duplication can still
- * match on equality (and its index still serves) without holding the ID.
+ * Seal identifying columns in place. Direct identifiers become their keyed
+ * fingerprint; names, contacts, dates of birth and free text become
+ * ciphertext under the record's organisation key.
  */
-async function sealIdentifyingColumns(table: string, row: Record<string, unknown>, orgId: string | undefined): Promise<void> {
+export async function sealIdentifyingColumns(table: string, row: Record<string, unknown>, orgId: string | undefined): Promise<void> {
   const columns = [...SEALED_COLUMNS, ...(SEALED_COLUMNS_BY_TABLE[table] ?? [])];
   await Promise.all(columns.map(async column => {
     const value = row[column];
     if (typeof value === 'string' && value) row[column] = await encryptForOrg(value, orgId);
   }));
-  if (typeof row.national_id === 'string' && row.national_id) {
-    row.national_id = (await blindIndex(row.national_id)) ?? null;
+  for (const column of FINGERPRINTED_COLUMNS) {
+    const value = row[column];
+    if (typeof value === 'string' && value) row[column] = (await blindIndex(value)) ?? null;
   }
+  // The monthly views only need the month, and a full date beside a place
+  // identifies a newborn or a death. A death's birth date is not an event at
+  // all (`age_at_death` carries what the indicators use).
+  if (table === 'births') row.date_of_birth = monthOf(row.date_of_birth);
+  if (table === 'deaths') {
+    row.date_of_death = monthOf(row.date_of_death);
+    row.date_of_birth = null;
+  }
+}
+
+/** `2026-03-17` → `2026-03-01`. Anything else is left for the column to refuse. */
+function monthOf(value: unknown): unknown {
+  return typeof value === 'string' && /^\d{4}-\d{2}/.test(value) ? `${value.slice(0, 7)}-01` : value;
 }
 /**
  * Analytics-domain implementation of the CouchDB → PostgreSQL Sync Webhook

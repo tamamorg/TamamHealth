@@ -9,7 +9,7 @@
  * keys (email, phone, dob, password*, nationalId, notes) are scrubbed.
  */
 import * as Sentry from '@sentry/nextjs';
-import { stripPHI } from '@/lib/observability';
+import { stripPHI, stripPHITransaction } from '@/lib/observability';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN;
 
@@ -19,6 +19,7 @@ Sentry.init({
   tracesSampleRate: 0.1,
   release: process.env.SENTRY_RELEASE,
   beforeSend: (event) => stripPHI(event),
+  beforeSendTransaction: (event) => stripPHITransaction(event),
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

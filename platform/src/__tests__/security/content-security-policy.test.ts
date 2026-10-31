@@ -18,6 +18,12 @@ describe('strict content security policy', () => {
     expect(policy).not.toContain('/path');
   });
 
+  it('lets the page reach the fingerprint bridge only when one is configured', () => {
+    expect(buildContentSecurityPolicy({ nonce: 'a', isDev: false, fingerprintBridgeUrl: 'http://127.0.0.1:7345' }))
+      .toMatch(/connect-src [^;]*http:\/\/127\.0\.0\.1:7345/);
+    expect(buildContentSecurityPolicy({ nonce: 'a', isDev: false })).not.toContain('7345');
+  });
+
   it('keeps unsafe-eval development-only and rejects nonce injection', () => {
     expect(buildContentSecurityPolicy({ nonce: 'dev123', isDev: true }))
       .toContain("'unsafe-eval'");

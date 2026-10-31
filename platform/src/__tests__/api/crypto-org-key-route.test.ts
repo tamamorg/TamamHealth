@@ -43,7 +43,21 @@ test("issues the member's own organisation key, uncached and audited", async () 
   const body = await res.json();
   expect(body.orgId).toBe('org-a');
   expect(Buffer.from(body.key, 'base64')).toEqual(Buffer.from(await deriveOrgKeyBytes('org-a')));
-  expect(audit).toHaveBeenCalledWith('ORG_KEY_ISSUED', 'user-1', 'dr.one', expect.stringContaining('org-a'));
+  expect(audit).toHaveBeenCalledWith('ORG_KEY_ISSUED', 'user-1', 'dr.one', expect.stringContaining('org-a'), true, expect.objectContaining({ orgId: 'org-a' }));
+});
+
+test('refuses an account whose role is not a staff role the platform defines', async () => {
+  Object.assign(actor, { role: 'patient' });
+  expect((await get()).status).toBe(403);
+  expect(Buffer.from(JSON.stringify(audit.mock.calls)).toString()).not.toContain('ORG_KEY_ISSUED');
+});
+
+test('every defined staff role is still issued its key', async () => {
+  const { ROLE_ROUTE_TABLE } = await import('@/lib/role-routes');
+  for (const role of Object.keys(ROLE_ROUTE_TABLE)) {
+    Object.assign(actor, { role, actualRole: undefined });
+    expect((await get()).status).toBe(200);
+  }
 });
 
 test("refuses another organisation's key to a member", async () => {

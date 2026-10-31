@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs eslint / tsc for one package with the CWD set to that package.
 //
-// Why this wrapper exists: each package (platform/, website/, mobile/) has its
+// Why this wrapper exists: each package (platform/, website/) has its
 // own flat `eslint.config.*` and `tsconfig.json`. ESLint 9 resolves its flat
 // config from the CURRENT WORKING DIRECTORY, not from the files it is given —
 // so invoking it from the repo root fails with "couldn't find eslint.config"
@@ -65,9 +65,7 @@ if (mode === 'eslint') {
   if (files.length === 0) process.exit(0);
   // Paths must be relative to the package so ESLint's ignore rules apply.
   const rel = files.map((f) => relative(pkgDir, resolve(REPO_ROOT, f)));
-  // `--no-warn-ignored` is flat-config only (ESLint 9+). mobile/ is still on
-  // ESLint 8 + .eslintrc.js, where the flag is rejected outright — and 8 already
-  // exits 0 on ignored files, so dropping it there changes nothing.
+  // `--no-warn-ignored` is flat-config only (ESLint 9+); older majors reject it.
   const ignoredFlag = eslintMajor() >= 9 ? ['--no-warn-ignored'] : [];
   status = run('eslint', ['--fix', ...ignoredFlag, ...rel]);
 } else {
