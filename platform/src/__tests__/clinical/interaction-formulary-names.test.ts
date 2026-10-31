@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FORMULARY } from '@/lib/data/formulary';
-import { checkInteractions, checkNewPrescription } from '@/lib/services/drug-interaction-service';
+import { checkAllergies, checkAllergiesStructured, checkInteractions, checkNewPrescription } from '@/lib/services/drug-interaction-service';
 
 const source = readFileSync(join(process.cwd(), 'src/lib/services/drug-interaction-service.ts'), 'utf8');
 const ruleDrugs = [...new Set(
@@ -62,5 +62,26 @@ describe('checkNewPrescription', () => {
   it('keeps what the new drug does with each current medicine', () => {
     const result = checkNewPrescription('Ciprofloxacin', ['Insulin (soluble/regular)', 'Diclofenac', 'Paracetamol']);
     expect(result.interactions.map(i => i.severity)).toEqual(['serious', 'moderate']);
+  });
+});
+
+describe('sulfa allergy and sulfate salts', () => {
+  const salts = ['Zinc sulfate', 'Ferrous sulfate', 'Magnesium sulfate', 'Ferrous Sulfate + Folic Acid'];
+  const allergies = ['Sulfa drugs', 'Sulfa', 'Sulfonamide', 'sulpha'];
+
+  it.each(salts)('does not flag %s', salt => {
+    for (const substance of allergies) {
+      expect(checkAllergies([salt], [substance])).toEqual([]);
+      expect(checkAllergiesStructured([salt], [{ substance, criticality: 'unknown' }])).toEqual([]);
+    }
+  });
+
+  it.each(['Cotrimoxazole (Sulfamethoxazole-Trimethoprim)', 'Sulfadoxine-Pyrimethamine'])('still flags %s', drug => {
+    expect(checkAllergiesStructured([drug], [{ substance: 'Sulfa drugs', criticality: 'severe' }])[0].requiresOverride).toBe(true);
+  });
+
+  it('still flags an allergy to the salt itself', () => {
+    expect(checkAllergies(['Magnesium sulfate'], ['Magnesium sulfate'])).toHaveLength(1);
+    expect(checkAllergies(['Ferrous sulfate'], ['Ferrous'])).toHaveLength(1);
   });
 });

@@ -329,6 +329,19 @@ function allergyTargets(allergy: string): string[] {
   return [...targets].filter(Boolean);
 }
 
+/**
+ * The medicine as allergy matching should read it. "sulfa" sits inside
+ * "sulfate", and a sulfate salt is not a sulfonamide: without this a sulfa
+ * allergy flags zinc, ferrous and magnesium sulfate, and an unknown-severity
+ * entry then stops eclampsia treatment for a written reason. An allergy that
+ * names the sulfate itself still matches.
+ */
+function medicationForAllergy(medication: string, allergy: string): string {
+  const med = normalize(medication);
+  if (/sul(f|ph)ate/.test(normalize(allergy))) return med;
+  return med.replace(/\bsul(f|ph)ates?\b/g, '').trim() || med;
+}
+
 const NO_ALLERGY_SENTINELS = ['none', 'nkda', 'no known', 'nil', 'n/a', 'na'];
 
 /**
@@ -344,7 +357,7 @@ export function checkAllergies(medications: string[], allergies: string[]): Alle
   for (const allergy of allgs) {
     const targets = allergyTargets(allergy);
     for (const med of meds) {
-      const m = normalize(med);
+      const m = medicationForAllergy(med, allergy);
       const direct = m.includes(normalize(allergy)) || normalize(allergy).includes(m);
       const klass = targets.some(t => t.length >= 4 && m.includes(t));
       if (direct || klass) {
@@ -376,7 +389,7 @@ export function checkAllergiesStructured(
   for (const allergy of allgs) {
     const targets = allergyTargets(allergy.substance);
     for (const med of meds) {
-      const m = normalize(med);
+      const m = medicationForAllergy(med, allergy.substance);
       const direct = m.includes(normalize(allergy.substance)) || normalize(allergy.substance).includes(m);
       const klass = targets.some((t) => t.length >= 4 && m.includes(t));
       if (direct || klass) {
