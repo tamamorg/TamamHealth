@@ -233,6 +233,19 @@ export interface PatientDoc extends BaseDoc, Omit<Patient, 'id'> {
    * the record keeps who obtained the answer and when, whichever way it went.
    */
   medHistoryConsent?: { granted: boolean; byId?: string; byName?: string; at: string };
+  /**
+   * Set when staff mark this record as a duplicate of another (the survivor).
+   * A reversible LINK only: no clinical data moves, so allergies and medicines
+   * on this record stay here until a clinician checks them. Written only by
+   * markPatientDuplicate / clearPatientDuplicate. Left unsealed on purpose: the
+   * sync validator and every list filter must read it.
+   */
+  duplicateOf?: string;
+  duplicateMarkedAt?: string;
+  duplicateMarkedBy?: string;
+  duplicateMarkedByName?: string;
+  /** Free text written by staff; sealed at rest (phi-field-catalog.json). */
+  duplicateReason?: string;
 }
 
 /**
@@ -691,6 +704,15 @@ export interface PrescriptionDoc extends BaseDoc {
       clinicalAdvice: string;
     }>;
     duplicateWarnings: string[];
+    /** Daily total above the usual maximum (advisory; see pharmacy/dose-check.ts). */
+    doseWarnings?: Array<{
+      medication: string;
+      drug: string;
+      dailyMg: number;
+      limitMg: number;
+      basis: 'adult_max' | 'per_kg';
+      weightKg?: number;
+    }>;
     /** Explicit clinical justification when the prescriber continued despite
      * a severe or unknown-criticality allergy match. */
     acknowledgement?: {

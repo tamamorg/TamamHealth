@@ -66,7 +66,9 @@ export type DuplicateReason =
   | { code: 'age-near'; gap: number }
   | { code: 'same-county'; place: string }
   | { code: 'same-state'; place: string }
-  | { code: 'hospital-number'; number: string };
+  | { code: 'hospital-number'; number: string }
+  | { code: 'dob-same' }
+  | { code: 'phone-same' };
 
 export interface DuplicateMatch {
   patient: PatientDoc;

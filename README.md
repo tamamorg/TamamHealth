@@ -39,13 +39,13 @@ cd TamamHealth
 
 # One command: pins Node, installs every package, activates the git hooks,
 # seeds platform/.env.local, and finishes with a type-check.
-./scripts/setup.sh            # add --fast to skip the mobile app install
+./scripts/setup.sh
 
 cd platform && npm run dev    # http://localhost:3000
 ```
 
 There is no repo-level install of application code — every subproject
-(`platform/`, `website/`, `mobile/`, `sync-worker/`, `fingerprint-bridge/`)
+(`platform/`, `website/`, `sync-worker/`)
 carries its own `package.json` and lockfile. The root `package.json` holds
 git-hook tooling only.
 
@@ -123,14 +123,13 @@ LEVEL 5 — NATIONAL (Teaching Hospitals + MoH)
 ```text
 TamamHealth/
 ├── platform/           EHR application (Next.js) — port 3000
+│   └── tools/fingerprint-bridge/  Localhost USB-scanner bridge for the
+│                       registration desk (Node, 127.0.0.1:7345; see its README)
 ├── website/            Marketing site, tamamhealth.org (Next.js) — port 3001
-├── mobile/             Expo / React Native companion app
-├── fingerprint-bridge/ Localhost USB-scanner bridge for the registration desk
-│                       (Node service on 127.0.0.1:7345; see its README)
 ├── sync-worker/        CouchDB → PostgreSQL national-analytics sync worker
 ├── country-node/       Country-level aggregation node
 ├── regional-exchange/  Cross-facility / cross-border record exchange
-├── infra/              Terraform (aws, digitalocean, digitalocean-website),
+├── infra/              Terraform (digitalocean, digitalocean-website),
 │                       systemd units and backup config
 ├── scripts/            Setup, backup, preflight and deploy scripts
 ├── docs/               Documentation, specs, research, operator runbooks
@@ -141,7 +140,7 @@ TamamHealth/
 > The **fingerprint-bridge** runs on the same machine as the USB scanner (the
 > registration-desk PC), not on the server — the platform talks to it over
 > loopback HTTP and degrades gracefully when it's unavailable. See
-> [fingerprint-bridge/README.md](fingerprint-bridge/README.md).
+> [platform/tools/fingerprint-bridge/README.md](platform/tools/fingerprint-bridge/README.md).
 
 ### Technology Stack
 
@@ -150,7 +149,6 @@ TamamHealth/
 | Runtime | Node.js 20 (pinned in `.nvmrc`), npm 10 |
 | Platform | Next.js 16 (App Router) + React 19 + TypeScript 5 + Tailwind CSS 3 |
 | Website | Next.js 16 + React 19 (marketing site) |
-| Mobile | Expo / React Native |
 | Client database | PouchDB 9 on browser IndexedDB — offline-first, 76 replicating databases |
 | Sync | CouchDB 3 — one database per organization, optional |
 | Analytics database | PostgreSQL 16, fed by `sync-worker` |

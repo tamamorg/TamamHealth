@@ -21,7 +21,9 @@ export async function GET(request: NextRequest) {
   if (!auth.orgId) return forbidden('An organization context is required');
   const patientId = request.nextUrl.searchParams.get('patientId')?.trim();
   if (!patientId) return NextResponse.json({ error: 'patientId is required' }, { status: 400 });
-  const breakGlassReason = request.nextUrl.searchParams.get('breakGlassReason')?.trim();
+  // A header, not a query parameter: URLs reach access logs, and this reason
+  // can describe the patient.
+  const breakGlassReason = request.headers.get('x-break-glass-reason')?.trim();
   let routine = false;
   try { routine = await hasRoutineAccess(auth.sub, auth.role); } catch { routine = false; }
   if (!routine) {

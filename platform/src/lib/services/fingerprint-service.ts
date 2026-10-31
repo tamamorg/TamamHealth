@@ -2,7 +2,7 @@
  * Fingerprint service — enrollment, identification, and revocation of
  * fingerprint templates, plus the HTTP client for the local hardware bridge.
  *
- * Architecture (see fingerprint-bridge/README.md):
+ * Architecture (see tools/fingerprint-bridge/README.md):
  *   - Scanners are driven by the `fingerprint-bridge` service on the SAME
  *     machine as the scanner (loopback HTTP). Browsers can't load vendor SDKs.
  *   - Capture and matching happen in the bridge (vendor SDK territory);

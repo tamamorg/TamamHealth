@@ -97,6 +97,27 @@ export async function encryptForOrgs(secret, plaintext, keyIds) {
   return `${MULTI_PREFIX}${b64url(enc.encode(JSON.stringify(ids)))}:${wrapped.join(',')}:${b64(iv)}:${b64(ct)}`;
 }
 
+/** Read an envelope back. Plaintext passes through; the retired `enc:v1:` form cannot be opened here. */
+export async function openValue(secret, value) {
+  if (typeof value !== 'string' || !isSealed(value)) return value;
+  const fromB64 = text => new Uint8Array(Buffer.from(text, 'base64'));
+  const fromB64Url = text => new Uint8Array(Buffer.from(text, 'base64url'));
+  if (value.startsWith(PREFIX)) {
+    const [org, iv, ct] = value.slice(PREFIX.length).split(':');
+    const keyId = Buffer.from(org, 'base64url').toString('utf8');
+    const plain = await subtle().decrypt({ name: 'AES-GCM', iv: fromB64(iv), additionalData: aad([keyId]) }, await orgKey(secret, keyId), fromB64(ct));
+    return new TextDecoder().decode(plain);
+  }
+  if (!value.startsWith(MULTI_PREFIX)) throw new Error('Retired server-only envelope.');
+  const [orgs, wrappedPart, iv, ct] = value.slice(MULTI_PREFIX.length).split(':');
+  const ids = JSON.parse(Buffer.from(orgs, 'base64url').toString('utf8'));
+  const [wiv, wct] = wrappedPart.split(',')[0].split('.');
+  const raw = await subtle().decrypt({ name: 'AES-GCM', iv: fromB64Url(wiv), additionalData: aad([ids[0]]) }, await orgKey(secret, ids[0]), fromB64Url(wct));
+  const dataKey = await subtle().importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+  const plain = await subtle().decrypt({ name: 'AES-GCM', iv: fromB64(iv), additionalData: aad(ids) }, dataKey, fromB64(ct));
+  return new TextDecoder().decode(plain);
+}
+
 export async function blindIndex(secret, value) {
   const normalised = value.normalize('NFKC').toUpperCase().replace(/[\s\-_./]/g, '');
   if (!normalised) return null;

@@ -47,6 +47,7 @@ const ORG = `org-it-${Date.now().toString(36)}`;
 const MESSAGES = tenantDatabaseName('tamamhealth_messages', ORG);
 const CONVERSATIONS = tenantDatabaseName('tamamhealth_conversations', ORG);
 const AUDIT = tenantDatabaseName('tamamhealth_audit_log', ORG);
+const RX = tenantDatabaseName('tamamhealth_prescriptions', ORG);
 const ANA = `user-ana-${ORG}`, BEN = `user-ben-${ORG}`, CAT = `user-cat-${ORG}`;
 type Doc = Record<string, unknown>;
 
@@ -62,8 +63,8 @@ async function couch(path: string, init: { method?: string; body?: unknown; as?:
   return { status: response.status, json: await response.json() as never };
 }
 
-function signInAs(userId: string) {
-  actor.sub = userId; actor.username = userId; actor.name = userId; actor.orgId = ORG;
+function signInAs(userId: string, role = 'doctor') {
+  actor.sub = userId; actor.username = userId; actor.name = userId; actor.orgId = ORG; actor.role = role;
 }
 
 async function gateway(db: string, path: string[], init: { body?: unknown; query?: string } = {}) {
@@ -94,12 +95,14 @@ live('sync gateway against a real CouchDB', () => {
     process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED = 'true';
     process.env.COUCHDB_URL = IT_URL;
     delete process.env.DEMO_MODE;
+    // A fresh single-node CouchDB has no system databases until they are made.
+    await couch('_users', { method: 'PUT' });
     for (const userId of [ANA, BEN, CAT]) {
       await couch(`_users/org.couchdb.user:${userId}`, { method: 'PUT', body: {
         name: userId, password: 'it-password', type: 'user', roles: [`org:${ORG}`, 'role:doctor', `user:${userId}`],
       } });
     }
-    for (const db of [MESSAGES, CONVERSATIONS, AUDIT]) {
+    for (const db of [MESSAGES, CONVERSATIONS, AUDIT, RX]) {
       expect((await couch(db, { method: 'PUT' })).status).toBe(201);
       await couch(`${db}/_security`, { method: 'PUT', body: { admins: { names: [], roles: [] }, members: { names: [], roles: [`org:${ORG}`] } } });
       const design = await couch(`${db}/_design/tamamhealth-org-scope`, { method: 'PUT', body: { validate_doc_update: ORG_SCOPED_VALIDATE_FN } });
@@ -107,6 +110,10 @@ live('sync gateway against a real CouchDB', () => {
     }
     await couch(`${CONVERSATIONS}/_bulk_docs`, { body: { docs: [
       conversation('conv-mine', [ANA, BEN]), conversation('conv-theirs', [BEN, CAT]),
+    ] } });
+    await couch(`${RX}/_bulk_docs`, { body: { docs: [
+      { _id: 'rx-here', type: 'prescription', orgId: ORG, hospitalId: 'hosp-1', patientId: 'pat-1', medication: 'here' },
+      { _id: 'rx-there', type: 'prescription', orgId: ORG, hospitalId: 'hosp-2', patientId: 'pat-2', medication: 'there' },
     ] } });
     await couch(`${MESSAGES}/_bulk_docs`, { body: { docs: [
       message('msg-mine', 'conv-mine', ANA, 'Give 500 mg'),
@@ -116,7 +123,7 @@ live('sync gateway against a real CouchDB', () => {
   }, 60_000);
 
   afterAll(async () => {
-    for (const db of [MESSAGES, CONVERSATIONS, AUDIT]) await couch(db, { method: 'DELETE' });
+    for (const db of [MESSAGES, CONVERSATIONS, AUDIT, RX]) await couch(db, { method: 'DELETE' });
   });
 
   describe('the generated validator, as CouchDB itself runs it', () => {
@@ -163,6 +170,46 @@ live('sync gateway against a real CouchDB', () => {
       expect(text).toContain('Give 500 mg');
       expect(text).not.toContain('private to ben and cat');
       expect((await gateway(MESSAGES, ['msg-theirs'])).status).toBe(403);
+    });
+  });
+
+  describe('another facility in the same organisation', () => {
+    const ids = (feed: { json: unknown }) => ((feed.json as { results: Array<{ id: string }> }).results).map(row => row.id);
+
+    test('its records do not appear in a change feed, even a raw one', async () => {
+      signInAs(ANA);
+      expect(ids(await gateway(RX, ['_changes'], { query: '?since=0' }))).toEqual(['rx-here']);
+      expect(ids(await gateway(RX, ['_changes'], { body: { selector: { orgId: ORG } }, query: '?filter=_selector&since=0' }))).toEqual(['rx-here']);
+    });
+
+    test('they cannot be fetched by id, listed, or queried', async () => {
+      signInAs(ANA);
+      expect((await gateway(RX, ['rx-here'])).status).toBe(200);
+      expect((await gateway(RX, ['rx-there'])).status).toBe(403);
+      const got = JSON.stringify((await gateway(RX, ['_bulk_get'], { body: { docs: [{ id: 'rx-here' }, { id: 'rx-there' }] } })).json);
+      expect(got).toContain('"here"');
+      expect(got).not.toContain('"there"');
+      const listing = JSON.stringify((await gateway(RX, ['_all_docs'], { query: '?include_docs=true' })).json);
+      expect(listing).toContain('rx-here');
+      expect(listing).not.toContain('"there"');
+      const found = JSON.stringify((await gateway(RX, ['_find'], { body: { selector: { type: 'prescription' } } })).json);
+      expect(found).toContain('rx-here');
+      expect(found).not.toContain('rx-there');
+    });
+
+    test('a shared-care patient arrives when their record names this facility', async () => {
+      signInAs(ANA);
+      const doc = await serverDoc(RX, 'rx-there');
+      await couch(`${RX}/rx-there`, { method: 'PUT', body: { ...doc, hospitalId: 'hosp-1' } });
+      expect(ids(await gateway(RX, ['_changes'], { query: '?since=0' })).sort()).toEqual(['rx-here', 'rx-there']);
+      const moved = await serverDoc(RX, 'rx-there');
+      await couch(`${RX}/rx-there`, { method: 'PUT', body: { ...moved, hospitalId: 'hosp-2' } });
+    });
+
+    test('an organisation administrator still reads every facility', async () => {
+      signInAs(ANA, 'org_admin');
+      expect(ids(await gateway(RX, ['_changes'], { query: '?since=0' })).sort()).toEqual(['rx-here', 'rx-there']);
+      signInAs(ANA);
     });
   });
 

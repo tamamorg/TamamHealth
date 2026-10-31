@@ -10,7 +10,7 @@ const dockerfile = readFileSync(resolve(process.cwd(), 'Dockerfile'), 'utf8');
 describe('production release integrity', () => {
   it('deploys only immutable SHA image tags', () => {
     expect(workflow).not.toMatch(/tamamhealth-(?:platform|website|sync-worker).*:production/);
-    expect(workflow).toContain('--image-tag "${{ needs.build-production-images.outputs.sha }}"');
+    expect(workflow).toContain("expected_sha='${{ needs.build-production-images.outputs.sha }}'");
   });
 
   it('health-checks and rolls back all application services as one release', () => {

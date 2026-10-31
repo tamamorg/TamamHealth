@@ -6,12 +6,10 @@ DigitalOcean-specific notes layered on top of the generic runbook
 is a single docker-compose bundle with stateful CouchDB + a Caddy reverse
 proxy on one box, which App Platform doesn't host well.
 
-> **This is the self-hosted, single-box path.** The application layer has a
-> second, current production path — DigitalOcean **App Platform** with CouchDB
-> split onto its own data Droplet behind a private-VPC gateway — cut over
-> 2026-08-12. See [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md) before
-> standing up a new production host; use this page for the data Droplet piece
-> either way, or for a fully self-hosted deployment (e.g. `docs/DEPLOY-SOUTH-SUDAN.md`).
+> **This is the production path.** `tamamhealth-production` is a single
+> droplet running this docker-compose stack, deployed by the `deploy-production`
+> workflow. See [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md) for the release
+> runbook. DigitalOcean App Platform is not used.
 
 ---
 
@@ -31,10 +29,9 @@ DigitalOcean → **Create → Droplets**:
 - **Region:** DO has **no Africa region**. Nearest are **Frankfurt (FRA1)** or
   **Bangalore (BLR1)**.
   - **Demo (no real patient data):** any region is fine — pick FRA1.
-  - **Real PHI / production:** DigitalOcean cannot host inside South Sudan, so it
-    does **not** satisfy in-country data-residency. Use DO only for the demo;
-    host the real country node in-country / on an MoH-approved host. (See
-    `docs/AFRICA-HOSTING-STRATEGY.md`.)
+  - **Production:** DigitalOcean is the production platform. It cannot host
+    inside South Sudan, so confirm the hosting agreement or MoH approval covers
+    the region before real PHI is stored. (See `docs/AFRICA-HOSTING-STRATEGY.md`.)
 - **Authentication:** add your **SSH key** (paste `~/.ssh/id_ed25519.pub`).
 - Create, then copy the droplet's public IP.
 
@@ -192,6 +189,4 @@ Only if you accept DO as the host (residency caveat above):
 - **Cloud Firewall** = network allowlist (22/80/443).
 - **Block Storage Volume** = the encrypted data disk for production PHI.
 - **Spaces** = S3-compatible object storage for offsite encrypted backups.
-- **App Platform** = not used *on this page's path* (the single-box docker-compose
-  + CouchDB stack doesn't fit it) — but it IS the current production host for
-  the platform app alone, split from CouchDB; see `DEPLOY-PRODUCTION.md`.
+- **App Platform** = not used (the single-box docker-compose + CouchDB stack doesn't fit it).

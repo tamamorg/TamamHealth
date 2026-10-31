@@ -21,7 +21,7 @@
  * history for whoever opens this dialog next.
  */
 
-import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Info, Plus, X } from '@/components/icons/lucide';
 import PrescribeModal from './prescribe/PrescribeModal';
@@ -173,11 +173,14 @@ export default function MedicationsModal({
 
   const reviewSevereAllergy = async (
     medication: string,
+    order?: { dose?: string; frequency?: string },
   ): Promise<PrescriptionCreateInput['medicationSafetyAcknowledgement'] | null> => {
     const { assessPrescriptionSafety } = await import('@/lib/services/prescription-service');
     if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
-    const safety = await assessPrescriptionSafety(patientId, medication, scope);
+    const safety = await assessPrescriptionSafety(patientId, medication, scope, order);
     if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
+    if (safety.interactionCheckUnavailable) showToast(t('prescribe.interactionCheckUnavailable'), 'error');
+    for (const w of safety.doseWarnings || []) showToast(doseWarningText(t, w), 'warning');
     if (!hasSafetyStop(safety)) return undefined;
     const reason = await confirmPrompt({
       ...safetyStopPrompt(t, medication, safety),
@@ -194,7 +197,7 @@ export default function MedicationsModal({
   };
 
   const handleRenew = () => selected && withBusy(async () => {
-    const medicationSafetyAcknowledgement = await reviewSevereAllergy(selected.medication);
+    const medicationSafetyAcknowledgement = await reviewSevereAllergy(selected.medication, { dose: selected.dose, frequency: selected.frequency });
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
     if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
@@ -215,6 +218,7 @@ export default function MedicationsModal({
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
     } as PrescriptionCreateInput, scope);
+    if (result.duplicateRecord) showToast(t('dup.orderWarning', { name: result.duplicateRecord.survivorName }), 'warning');
     if (result.allergyWarnings?.length) {
       showToast(
         t('msg.allergyAlertRenewedAgainstA', { value: result.allergyWarnings
@@ -269,11 +273,11 @@ export default function MedicationsModal({
       return;
     }
     const medication = addMed.medication.trim();
-    const medicationSafetyAcknowledgement = await reviewSevereAllergy(medication);
+    const medicationSafetyAcknowledgement = await reviewSevereAllergy(medication, { dose: addMed.dose, frequency: addMed.frequency });
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
     if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
-    await createPrescription({
+    const added = await createPrescription({
       patientId,
       patientName,
       encounterId,
@@ -290,6 +294,7 @@ export default function MedicationsModal({
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
     } as PrescriptionCreateInput, scope);
+    if (added.duplicateRecord) showToast(t('dup.orderWarning', { name: added.duplicateRecord.survivorName }), 'warning');
     showToast(t('msg.addedToTheMedicationList', { medication }), 'success');
     setAddMed({ medication: '', dose: '', frequency: '' });
     setShowAddMed(false);

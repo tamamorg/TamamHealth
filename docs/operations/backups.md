@@ -5,16 +5,11 @@
 > `/var/lib/docker/volumes/tamamhealth_couchdb_backups/_data` on the same
 > host" pattern.
 >
-> **PHI residency:** all backups MUST land in a region pinned to South Africa
-> or the EU — `af-south-1` (Cape Town) on AWS, an EU DigitalOcean Spaces region
-> (`fra1`, `ams3`), or a Backblaze B2 region contractually pinned the same way.
-> Never `us-east-1`, `nyc3`, `sfo3` or any other US region.
->
-> **On DigitalOcean specifically:** DO has no African region, so the
-> South-Africa half of that rule is unreachable there. `fra1` satisfies the EU
-> half and is the deployment's choice; this is a decision taken knowingly, not
-> an oversight, and it is written down here so the next operator does not have
-> to rediscover it.
+> **PHI residency:** backups MUST land in an EU DigitalOcean Spaces region
+> (`fra1` is the default; `ams3` is acceptable), or a Backblaze B2 region
+> contractually pinned the same way. Never `nyc3`, `sfo3` or any other US
+> region. DigitalOcean has no African region, so storing backups outside Africa
+> is a decision taken knowingly and must be covered by the hosting agreement.
 
 ---
 
@@ -85,114 +80,18 @@ an expiry date so the operator gets a forced reminder.
 
 ### 2. Create the offsite bucket
 
-We strongly prefer S3 in `af-south-1` over Backblaze B2 because:
-
-- residency is contractually exact (af-south-1 is Cape Town only),
-- IAM is more granular,
-- the rest of the platform's infra is already in af-south-1.
-
-Choose B2 only if cost is the binding constraint AND you have explicit sign-
-off that B2's `eu-central` region is acceptable for South Sudan PHI.
-
-#### S3 (af-south-1) setup
-
-```bash
-# In a SEPARATE AWS account from the production deploy. Cross-account
-# isolation is the entire point — a compromised prod account must not be
-# able to delete its own backups.
-aws --region af-south-1 s3api create-bucket \
-    --bucket tamamhealth-backups-prod \
-    --create-bucket-configuration LocationConstraint=af-south-1
-
-# Block all public access (defense in depth — bucket policy below also
-# denies, but the account-level toggle is the belt-and-braces).
-aws s3api put-public-access-block \
-    --bucket tamamhealth-backups-prod \
-    --public-access-block-configuration \
-      BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-
-# Encryption at rest with SSE-S3 (object-level GPG is our primary defense;
-# SSE-S3 is the second layer).
-aws s3api put-bucket-encryption \
-    --bucket tamamhealth-backups-prod \
-    --server-side-encryption-configuration '{
-      "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]
-    }'
-
-# Versioning + 30-day MFA-delete window so accidental / malicious deletes are
-# recoverable.
-aws s3api put-bucket-versioning \
-    --bucket tamamhealth-backups-prod \
-    --versioning-configuration Status=Enabled
-
-# Lifecycle: keep 30 days hot, transition to GLACIER, expire at 2 years.
-aws s3api put-bucket-lifecycle-configuration \
-    --bucket tamamhealth-backups-prod \
-    --lifecycle-configuration file://lifecycle.json
-# (see lifecycle.json template in this file's "Lifecycle template" section.)
-
-# Object-lock (compliance mode) prevents both root and IAM from deleting
-# under-retention objects. Once enabled, this is irreversible — only enable
-# after testing that you can still write.
-aws s3api put-object-lock-configuration \
-    --bucket tamamhealth-backups-prod \
-    --object-lock-configuration '{
-      "ObjectLockEnabled":"Enabled",
-      "Rule":{"DefaultRetention":{"Mode":"COMPLIANCE","Days":35}}
-    }'
-```
-
-##### Lifecycle template
-
-```json
-{
-  "Rules": [
-    {
-      "ID": "transition-to-glacier-after-30d",
-      "Status": "Enabled",
-      "Filter": {"Prefix": ""},
-      "Transitions": [{"Days": 30, "StorageClass": "GLACIER"}],
-      "Expiration": {"Days": 730}
-    }
-  ]
-}
-```
-
-##### IAM policy for the prod-host writer
-
-The production host needs **write-only** to the bucket — never delete, never
-list cross-account. This minimises blast radius.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "PutBackupsOnly",
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:PutObjectAcl"],
-      "Resource": "arn:aws:s3:::tamamhealth-backups-prod/*"
-    },
-    {
-      "Sid": "HeadOwnUploads",
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:GetObjectVersion"],
-      "Resource": "arn:aws:s3:::tamamhealth-backups-prod/*"
-    }
-  ]
-}
-```
-
-The drill IAM (used by the GitHub Action) gets `s3:GetObject` + `s3:ListBucket`
-+ `s3:GetObjectVersion`, no put / delete.
+Production is a DigitalOcean droplet, so the offsite destination is a
+DigitalOcean Space. Backblaze B2 is a fallback if cost is the binding
+constraint and you have explicit sign-off for its region. The `AWS_*` variable
+names and the `aws` CLI used by the scripts are only the S3-compatible client
+for Spaces; this is Spaces, not AWS, and no AWS account is involved.
 
 #### DigitalOcean Spaces setup (this deployment)
 
 The platform runs on a DigitalOcean droplet, so its object storage is Spaces.
-Spaces speaks the S3 API, and every script here already supports a non-AWS
-endpoint (`AWS_ENDPOINT_URL`, honoured by `backup-couchdb.sh`,
-`backup-postgres.sh` and `backup-restore-drill.sh`) — no AWS account is needed
-anywhere in this runbook.
+Spaces speaks the S3 API. `AWS_REGION` defaults to `fra1` and `AWS_ENDPOINT_URL`
+defaults to `https://<AWS_REGION>.digitaloceanspaces.com` in `backup-couchdb.sh`,
+`backup-postgres.sh` and `backup-restore-drill.sh`. No AWS account is needed.
 
 1. **Create the Space.** Control panel → Spaces Object Storage → Create.
    Region `fra1` (see the residency note at the top), name
@@ -201,8 +100,8 @@ anywhere in this runbook.
 2. **Create a Spaces access key.** API → Spaces Keys → Generate New Key. The
    secret is shown once. Save both to 1Password.
 
-3. **Point the tooling at it.** Wherever this document says `AWS_REGION` and a
-   bucket, add the endpoint:
+3. **Point the tooling at it.** These are the values (the first two are the
+   defaults, shown so they are explicit):
 
    ```bash
    AWS_ENDPOINT_URL=https://fra1.digitaloceanspaces.com
@@ -211,9 +110,9 @@ anywhere in this runbook.
    ```
 
 **Two protections you do NOT get on Spaces, and what to do instead.** Both are
-real losses relative to the S3 design above, not paperwork:
+real losses relative to AWS S3, not paperwork:
 
-- **No object-lock.** The compliance-mode retention below cannot be
+- **No object-lock.** The S3-style compliance-mode retention cannot be
   reproduced, so a stolen or mistakenly-scoped key CAN delete the backups it
   can write. Mitigate by keeping the drill's key separate from the host's
   writer key, and ideally in a separate DO team, so one compromise does not
@@ -224,7 +123,7 @@ real losses relative to the S3 design above, not paperwork:
   so do not "tidy" that scheme into a fixed filename.
 
 Spaces lifecycle rules handle expiry; set them in the control panel to match
-the two-year retention in the lifecycle template above.
+a two-year retention.
 
 #### Backblaze B2 setup (if chosen)
 
@@ -259,10 +158,12 @@ root-owned):
 ```sh
 BACKUP_BUCKET=tamamhealth-backups-prod
 DATABASE_URL=postgresql://backup-user:password@private-host:25060/tamamhealth?sslmode=require
-AWS_REGION=af-south-1
+# DigitalOcean Spaces, not AWS: the AWS_* names are the S3-compatible client settings.
+AWS_REGION=fra1
+AWS_ENDPOINT_URL=https://fra1.digitaloceanspaces.com
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-# Backblaze B2 / MinIO only:
+# Backblaze B2 / MinIO instead of Spaces:
 # AWS_ENDPOINT_URL=https://s3.eu-central-003.backblazeb2.com
 BACKUP_PUBKEY_PATH=/etc/tamamhealth/backup-pubkey.gpg
 ```
@@ -299,9 +200,9 @@ uses a separate, ungated environment for exactly that reason — see the note on
 the job in the workflow.
 
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — the drill's credentials.
-  Read-only where the provider allows it (AWS IAM does; DO Spaces keys do not).
-- `AWS_REGION` — `af-south-1` on AWS, `fra1` on DO Spaces.
-- `AWS_ENDPOINT_URL` — required on DO Spaces / B2 / MinIO, omitted on AWS.
+  Spaces keys cannot be scoped read-only, so keep the drill's key separate from the host's writer key.
+- `AWS_REGION` — optional, defaults to `fra1` (DO Spaces).
+- `AWS_ENDPOINT_URL` — optional, defaults to `https://<AWS_REGION>.digitaloceanspaces.com`; set it only for B2 / MinIO.
 - `BACKUP_BUCKET`.
 - `BACKUP_PRIVKEY_GPG` — paste the full `gpg --armor --export-secret-keys`
   block.
@@ -314,7 +215,7 @@ gh secret set BACKUP_BUCKET             --env production-cron
 gh secret set AWS_ACCESS_KEY_ID         --env production-cron
 gh secret set AWS_SECRET_ACCESS_KEY     --env production-cron
 gh secret set AWS_REGION                --env production-cron
-gh secret set AWS_ENDPOINT_URL          --env production-cron   # DO Spaces / B2 only
+gh secret set AWS_ENDPOINT_URL          --env production-cron   # optional: B2 / MinIO only
 ```
 
 **The drill restores; it does not produce.** Until the host-side timers in step
@@ -340,15 +241,17 @@ notification arrives at the start of the operator's day.)
 > Practice this every six months on a non-production host. The runbook only
 > works if the operator has done it once before.
 
-### Scenario: prod host is gone, restore to a fresh af-south-1 EC2
+### Scenario: prod host is gone, restore to a fresh DigitalOcean droplet
 
-1. **Stand up an empty replacement** following `infra/aws/scripts/cutover.md`
-   step 1–4. CouchDB and Postgres should be running but empty.
+1. **Stand up an empty replacement droplet** following
+   `docs/DEPLOY-DIGITALOCEAN.md` and `infra/digitalocean/README.md`. CouchDB and
+   Postgres should be running but empty.
 
 2. **Pull the most recent CouchDB snapshot:**
 
    ```bash
-   export AWS_REGION=af-south-1
+   export AWS_REGION=fra1
+   export AWS_ENDPOINT_URL=https://fra1.digitaloceanspaces.com
    LATEST=$(aws s3api list-objects-v2 \
      --bucket tamamhealth-backups-prod \
      --prefix "$(date -u +%Y/%m)" \
@@ -407,7 +310,7 @@ notification arrives at the start of the operator's day.)
    counts of `tamamhealth_patients` and `tamamhealth_encounters` to the
    pre-disaster monitoring graphs.
 
-7. **Cut DNS over** per `infra/aws/scripts/cutover.md`.
+7. **Cut DNS over** to the new droplet's (reserved) IP.
 
 Expected RTO: ~3 hours from key restore to DNS cutover for a clinic with
 <10k patient records. Expected RPO: 24h - last successful nightly backup.

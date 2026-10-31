@@ -24,10 +24,11 @@ import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
-type FilterKey = 'open' | 'pending' | 'partial' | 'paid' | 'waived' | 'cancelled' | 'all';
+type FilterKey = 'open' | 'review' | 'pending' | 'partial' | 'paid' | 'waived' | 'cancelled' | 'all';
 
 const FILTERS: { key: FilterKey; label: string; match: (b: BillingDoc) => boolean }[] = [
   { key: 'open', label: 'Open bills', match: b => b.status === 'pending' || b.status === 'partial' },
+  { key: 'review', label: 'To review', match: b => b.status === 'draft' },
   { key: 'pending', label: 'Pending payment', match: b => b.status === 'pending' },
   { key: 'partial', label: 'Partially paid', match: b => b.status === 'partial' },
   { key: 'paid', label: 'Paid', match: b => b.status === 'paid' },

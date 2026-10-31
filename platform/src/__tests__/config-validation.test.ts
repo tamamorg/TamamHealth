@@ -285,7 +285,33 @@ describe('optional integrations are not boot-critical unless enabled', () => {
     delete env.UPSTASH_REDIS_REST_TOKEN;
     expect(validateProductionConfig(env).join(' ')).toMatch(/UPSTASH/);
 
-    expect(validateProductionConfig({ ...env, SINGLE_REPLICA_ACK: 'true' })).toEqual([]);
+    const acked = { ...env, SINGLE_REPLICA_ACK: 'true' };
+    // The acknowledgement alone is not enough: a per-instance file in the
+    // image is erased by the next restart, and logouts with it.
+    expect(validateProductionConfig(acked).join(' ')).toMatch(/TOKEN_BLACKLIST_FILE is unset/);
+    expect(validateProductionConfig({ ...acked, TOKEN_BLACKLIST_FILE: '/tmp/b.json' }).join(' ')).toMatch(/not a durable location/);
+    expect(validateProductionConfig({ ...acked, TOKEN_BLACKLIST_FILE: 'relative.json' }).join(' ')).toMatch(/not a durable location/);
+    expect(validateProductionConfig({ ...acked, TOKEN_BLACKLIST_FILE: '/app/data/token-blacklist.json' })).toEqual([]);
+  });
+});
+
+describe('switches that void a protection', () => {
+  test.each([
+    ['the sync gateway is off', { NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: 'false' }, /GATEWAY_ENABLED is not true/],
+    ['the sync gateway is unset', { NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: undefined }, /GATEWAY_ENABLED is not true/],
+    ['client PHI encryption is switched off', { NEXT_PUBLIC_PHI_ENCRYPTION: 'false' }, /plaintext/],
+    ['the server demo flag is set on a real deployment', { DEMO_MODE: 'true' }, /DEMO_MODE=true/],
+    ['field encryption is on without its key', { PHI_ENCRYPTION_KEY: undefined }, /PHI_ENCRYPTION_KEY is unset/],
+  ])('refuses boot when %s', (_name, change, expected) => {
+    const env = { ...validEnvironment(), ...change } as ConfigEnv;
+    expect(validateProductionConfig(env).join(' ')).toMatch(expected);
+  });
+
+  test('the standalone demo (demo build, no datastore) keeps its carve-out', () => {
+    const env = { ...validEnvironment(), NEXT_PUBLIC_DEMO_MODE: 'true', DEMO_MODE: 'true' } as ConfigEnv;
+    delete env.COUCHDB_ADMIN_USER;
+    delete env.COUCHDB_ADMIN_PASSWORD;
+    expect(validateProductionConfig(env).join(' ')).not.toMatch(/DEMO_MODE=true on a deployment|GATEWAY_ENABLED is not true/);
   });
 });
 

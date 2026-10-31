@@ -96,7 +96,7 @@
 
   12. Approach to Solving the Problem (2000 chars)
 
-  Solution Architecture: TamamHealth is a full-stack offline-first EMR built with Next.js, React, PouchDB (IndexedDB), and Expo (React Native for mobile). Every feature works without internet —
+  Solution Architecture: TamamHealth is a full-stack offline-first EMR built with Next.js, React, PouchDB (IndexedDB), running in the browser on tablets, phones and desktops. Every feature works without internet —
   data is stored locally and syncs when connectivity is available.
 
   How It Works for Each User:
@@ -490,7 +490,7 @@
   Technical Expertise:
 
   - Full-Stack Software Engineering: Deep expertise in Next.js, React, TypeScript, PouchDB/CouchDB, and offline-first architecture. The MVP was built with 31 functional modules, 22 service layers, and 189 automated tests in under 2 months — demonstrating rapid execution capability.
-  - Mobile Development: Expo/React Native mobile application already in demo stage, demonstrating cross-platform capability critical for $50 Android deployment.
+  - Mobile Reach: the web platform runs offline in the browser on low-cost Android devices, so no separate app is needed.
   - AI/ML for Healthcare: Built 4 client-side AI tools (Symptom Checker, Clinical Scribe, Clinical Evaluation, Assistant Chat) that operate without internet — a non-trivial engineering challenge.
 
   Domain Expertise:

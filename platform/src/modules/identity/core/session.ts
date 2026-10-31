@@ -5,12 +5,12 @@
  * A session is a signed JWT in the httpOnly `tamamhealth-token` cookie plus a
  * non-httpOnly CSRF twin. Cookie Max-Age and JWT `exp` share SESSION_TTL_SEC
  * so neither outlives the other. "The browser remembers I logged in" comes
- * from the long TTL plus sliding renewal: /api/auth/me (called on every app
+ * from the TTL plus sliding renewal: /api/auth/me (called on every app
  * load) re-mints any token older than SESSION_RENEW_AFTER_SEC, so an actively
  * used session never expires while an abandoned one dies TTL after its last
  * renewal.
  *
- * A long-lived token is safe to carry here only because possession alone is
+ * A token that outlives a shift is safe to carry only because possession alone is
  * not enough: getAuthPayload re-checks the live user record on every API
  * request (deactivation, tenant kill-switch) and rejects tokens minted before
  * the account's latest password change (`pwdAt` claim vs the user document's
@@ -24,7 +24,14 @@
 import { CSRF_COOKIE_NAME } from '@/modules/identity/core/csrf';
 
 const HOUR_SEC = 60 * 60;
-const DEFAULT_TTL_HOURS = 24 * 30; // 30 days
+// One clinical shift. A revoked or stolen token is only as dangerous as it is
+// long-lived, and the live app renews an in-use session every 30 s while it is
+// open (lib/context.tsx -> /api/auth/me -> sliding renewal), so a short TTL
+// only ends sessions that were abandoned. A device that was closed or offline
+// past the TTL signs back in; its local work stays available meanwhile
+// (offline-session.ts is separate and unaffected). Operators may raise it with
+// SESSION_TTL_HOURS.
+const DEFAULT_TTL_HOURS = 12;
 
 function ttlHoursFromEnv(): number {
   const raw = process.env.SESSION_TTL_HOURS;

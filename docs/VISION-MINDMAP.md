@@ -494,11 +494,11 @@
     │  In-memory PouchDB             tamamhealth_facility_assessments       │
     │  for isolated testing          tamamhealth_messages                   │
     │                                tamamhealth_audit_log                  │
-    │  MOBILE                        tamamhealth_users                      │
-    │  ──────                                                         │
-    │  Expo 52                       SERVICES: 22 data access layers  │
-    │  React Native 0.76             HOOKS: 22 React state hooks      │
-    │  Tab navigation                COMPONENTS: 14 shared UI         │
+    │                                tamamhealth_users                      │
+    │                                                                 │
+    │                                SERVICES: 22 data access layers  │
+    │                                HOOKS: 22 React state hooks      │
+    │                                COMPONENTS: 14 shared UI         │
     │                                                                 │
     └─────────────────────────────────────────────────────────────────┘
 ```
@@ -594,7 +594,7 @@
     ✓ CRVS (births + deaths)
     ✓ ANC (WHO 8-contact)
     ✓ EPI defaulter tracker
-    ✓ Mobile app (Expo)
+    ✓ Offline web app on phones and tablets
 ```
 
 ---

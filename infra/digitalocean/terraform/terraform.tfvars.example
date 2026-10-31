@@ -9,6 +9,6 @@ ssh_public_key = "ssh-ed25519 AAAA... you@host"
 # curl -4 ifconfig.me then add /32
 admin_ssh_cidr = "203.0.113.10/32"
 
-# Data residency: DO has no Africa region. Demo/staging with synthetic data only.
+# Data residency: DO has no Africa region. Confirm the hosting agreement / MoH approval covers this region.
 # Required — terraform apply fails without it. See variables.tf.
 data_residency_acknowledged = true

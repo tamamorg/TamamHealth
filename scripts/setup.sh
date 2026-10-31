@@ -5,8 +5,6 @@
 # Takes a fresh clone to a runnable dev environment.
 #
 #   ./scripts/setup.sh              full setup
-#   ./scripts/setup.sh --fast       skip mobile (biggest install; skip if not
-#                                   doing React Native work)
 #   ./scripts/setup.sh --check      verify an existing setup, install nothing
 #
 # Deliberately NOT set -e: we want to run every check and report all problems
@@ -29,11 +27,9 @@ warn() { printf "  ${YELLOW}!${RESET} %s\n" "$1"; WARNINGS+=("$1"); }
 fail() { printf "  ${RED}✗${RESET} %s\n" "$1"; FAILURES+=("$1"); }
 head_() { printf "\n${BOLD}%s${RESET}\n" "$1"; }
 
-FAST=0
 CHECK_ONLY=0
 for arg in "$@"; do
   case "$arg" in
-    --fast)  FAST=1 ;;
     --check) CHECK_ONLY=1 ;;
     -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "Unknown option: $arg (try --help)"; exit 2 ;;
@@ -62,8 +58,8 @@ fi
 head_ "2. Dependencies"
 # -----------------------------------------------------------------------------
 # Each package carries its own lockfile; there is no workspace hoisting.
-PKGS=(platform website sync-worker fingerprint-bridge)
-[ "$FAST" -eq 0 ] && PKGS+=(mobile)
+# The fingerprint bridge lives in platform/tools/ and has no dependencies.
+PKGS=(platform website sync-worker)
 
 install_pkg() {
   local dir="$1"

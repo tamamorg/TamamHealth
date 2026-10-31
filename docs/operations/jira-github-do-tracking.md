@@ -99,7 +99,7 @@ flowchart LR
 6. **deploy-staging** runs → staging droplet pulls `:staging`.
 7. Smoke-test `https://app.staging.<domain>`.
 8. Move Jira subtask to **Done**; comment with deployed SHA if useful.
-9. To promote: **Actions → deploy-production → Run workflow** (`target: vps`, optional SHA).
+9. To promote: **Actions → deploy-production → Run workflow** (optional SHA).
 10. Approver confirms in GitHub **production** environment → prod droplet pulls `:production`.
 
 See [Smart commits & PR conventions](../../CONTRIBUTING.md#jira-integration-smart-commits).
@@ -164,7 +164,7 @@ Manual end-to-end:
 1. Push a trivial commit to `main` with `KAN-N` in the message.
 2. Confirm **ci** → **deploy-staging** succeed.
 3. Confirm staging droplet shows new image tag.
-4. Run **deploy-production** with `target: vps`; confirm prod droplet updates.
+4. Run **deploy-production**; confirm prod droplet updates.
 
 ---
 
@@ -180,6 +180,6 @@ Manual end-to-end:
 
 ## Residency note
 
-DigitalOcean staging/demo is fine for KAN deployment work. Production on DO is
-**pre-pilot only** — real PHI belongs in-country or on AWS `af-south-1`
+DigitalOcean is the production platform. It has no Africa region, so before real
+PHI is stored confirm the hosting agreement or MoH approval covers the region
 ([`docs/AFRICA-HOSTING-STRATEGY.md`](../AFRICA-HOSTING-STRATEGY.md)).

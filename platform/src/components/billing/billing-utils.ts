@@ -21,6 +21,7 @@ export function formatBillDate(iso?: string): string {
 }
 
 export const STATUS_CHIP: Partial<Record<BillingStatus, { label: string; cls: string }>> = {
+  draft: { label: 'To review', cls: 'bl-chip--partial' },
   pending: { label: 'Unpaid', cls: 'bl-chip--unpaid' },
   partial: { label: 'Partial', cls: 'bl-chip--partial' },
   paid: { label: 'Paid', cls: 'bl-chip--paid' },
@@ -60,5 +61,6 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 /** Invoice status shown on the bill detail summary strip. */
 export function invoiceStatusLabel(bill: BillingDoc): string {
   if (bill.status === 'pending') return bill.finalizedAt ? 'POSTED' : 'PENDING';
+  if (bill.status === 'draft') return 'TO REVIEW';
   return bill.status.toUpperCase();
 }

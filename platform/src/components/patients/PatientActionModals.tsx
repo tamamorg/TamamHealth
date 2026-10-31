@@ -15,7 +15,7 @@
  * requisition and all — as one placed from the lab queue.
  */
 
-import { hasSafetyStop } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop } from '@/lib/pharmacy/rx-safety';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { Pill, ArrowRightLeft, X, AlertTriangle } from '@/components/icons/lucide';
@@ -139,6 +139,8 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
   const reviewedMedication = safetyReview?.medication === medication.trim() ? safetyReview : null;
   const hasAdvisory = !!(reviewedMedication?.allergyWarnings?.length
     || reviewedMedication?.allergyCheckUnavailable
+    || reviewedMedication?.interactionCheckUnavailable
+    || reviewedMedication?.doseWarnings?.length
     || reviewedMedication?.interactionWarnings?.hasInteractions
     || reviewedMedication?.duplicateWarnings?.length);
   const hasSevereAllergy = !!reviewedMedication && hasSafetyStop(reviewedMedication);
@@ -166,11 +168,13 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
           return;
         }
         if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
-        const assessment = await assessPrescriptionSafety(patient._id, medication.trim(), scope);
+        const assessment = await assessPrescriptionSafety(patient._id, medication.trim(), scope, { dose: dose.trim(), frequency });
         const review = { ...assessment, medication: medication.trim() };
         setSafetyReview(review);
         const warnings = !!(assessment.allergyWarnings?.length
           || assessment.allergyCheckUnavailable
+          || assessment.interactionCheckUnavailable
+          || assessment.doseWarnings?.length
           || assessment.interactionWarnings?.hasInteractions
           || assessment.duplicateWarnings?.length);
         if (warnings) return;
@@ -310,6 +314,12 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
                 {reviewedMedication?.allergyCheckUnavailable && (
                   <li>{t('prescribe.allergyCheckUnavailable')}</li>
                 )}
+                {reviewedMedication?.interactionCheckUnavailable && (
+                  <li>{t('prescribe.interactionCheckUnavailable')}</li>
+                )}
+                {reviewedMedication?.doseWarnings?.map((warning, index) => (
+                  <li key={`dose-${index}`}>{doseWarningText(t, warning)}</li>
+                ))}
                 {reviewedMedication?.allergyWarnings?.map((warning, index) => (
                   <li key={`allergy-${index}`}>
                     {t('prescribe.allergyConflict', { allergy: warning.allergy, medication: warning.medication })}

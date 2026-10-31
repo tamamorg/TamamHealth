@@ -17,7 +17,7 @@
  * explicit reload here.
  */
 
-import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useEffect, useMemo, useState } from 'react';
 import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -199,8 +199,10 @@ export default function MedicationsSection({
     try {
       const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
       if (!scope) throw new Error('Your account is not linked to an organization. Sign in again, or contact your administrator.');
-      const safety = await assessPrescriptionSafety(patientId, rx.medication, scope);
+      const safety = await assessPrescriptionSafety(patientId, rx.medication, scope, { dose: rx.dose, frequency: rx.frequency });
       if (safety.allergyCheckUnavailable) showToast(t('prescribe.allergyCheckUnavailable'), 'error');
+      if (safety.interactionCheckUnavailable) showToast(t('prescribe.interactionCheckUnavailable'), 'error');
+      for (const w of safety.doseWarnings || []) showToast(doseWarningText(t, w), 'warning');
       let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
       if (hasSafetyStop(safety)) {
         const reason = await confirmPrompt({
@@ -234,6 +236,7 @@ export default function MedicationsSection({
         // Deliberately not set — a renewal from the chart isn't tied to the
         // encounter the original order came from.
       } as PrescriptionCreateInput, scope);
+      if (result.duplicateRecord) showToast(t('dup.orderWarning', { name: result.duplicateRecord.survivorName }), 'warning');
       if (result.allergyWarnings?.length) {
         showToast(
           t('msg.allergyAlertRenewedAgainstA', { value: result.allergyWarnings

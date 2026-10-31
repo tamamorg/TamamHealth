@@ -64,11 +64,10 @@ deploy — it now enforces several of the gates below automatically.
 ## 4. Encryption at rest (data residency)
 
 - **MUST** store the CouchDB and Postgres data volumes on an **encrypted disk**
-  (LUKS on a self-managed host, or the cloud's encrypted-EBS/volume equivalent).
-  PHI residency for South Sudan means the encrypted volume must live on an
-  MoH-approved / in-country host — see
-  [`AFRICA-HOSTING-STRATEGY.md`](../AFRICA-HOSTING-STRATEGY.md). DigitalOcean has
-  no Africa region, so it is **demo-only** for real PHI.
+  (LUKS on the droplet, or an encrypted DigitalOcean volume). DigitalOcean has
+  no Africa region, so confirm the hosting agreement / MoH approval covers the
+  region before real PHI is stored — see
+  [`AFRICA-HOSTING-STRATEGY.md`](../AFRICA-HOSTING-STRATEGY.md).
 - Point Docker's data-root at the encrypted mount so container layers and
   volumes land there, not on the unencrypted root disk.
 

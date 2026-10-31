@@ -1,259 +1,240 @@
-# Production cutover: App Platform + database-per-organization
+# Production runbook: the `tamamhealth-production` droplet
 
-How to bring TamamHealth up on DigitalOcean App Platform with per-organization
-CouchDB databases, where browsers replicate only through the authenticated
-same-origin gateway.
+How TamamHealth production is deployed and operated. Production is a single
+DigitalOcean droplet (`tamamhealth-production`, 138.68.124.30) running the
+[`docker-compose.yml`](../docker-compose.yml) stack with
+[`docker-compose.ghcr.yml`](../docker-compose.ghcr.yml) (images pulled from
+GHCR), fronted by Caddy. There is no DigitalOcean App Platform app and no
+second stack.
 
-**There is no earlier version still serving.** `app.tamamhealth.org` resolves to
-a Droplet that no longer exists in this team and presents a certificate for the
-wrong hostname; the only TamamHealth service actually running is CouchDB on the
-data Droplet. Treat this as a cold start, not a hand-off between two live
-stacks. That means no clinician is disrupted while it runs — and equally that
-there is no previous stack to fall back to.
-
-Nothing here deletes a database, and every step is idempotent, so a failed step
-is retried rather than unwound.
-
-**Order matters.** Section 4 must not run before section 3 has been verified,
-and section 6 is the point of no easy return. Read [ordering rules](#ordering-rules)
-before improvising.
+Everything below is derived from
+[`.github/workflows/deploy-production.yml`](../.github/workflows/deploy-production.yml),
+`docker-compose.yml`, the backup scripts and
+[`infra/digitalocean/README.md`](../infra/digitalocean/README.md). Where a step
+lives in another document, this one links to it rather than copying it.
 
 ---
 
-## What changes
+## What runs on the droplet
 
-| | Previous design | This design |
-|---|---|---|
-| Hosting | Droplet + docker-compose | App Platform, ≥2 instances |
-| Browser → CouchDB | direct, public HTTPS | `/api/couch` gateway, same origin |
-| CouchDB exposure | public 443 | private VPC only (`10.114.0.0/20`, port 5984) |
-| Tenant isolation | `orgId` filters on shared databases | one database per organization |
-| CouchDB credentials in the browser | yes | never |
+| Service | Container | Image / source | Notes |
+|---|---|---|---|
+| `platform` | `tamamhealth-platform` | `ghcr.io/<owner>/tamamhealth-platform:<sha>` | Next.js app; health probe `/api/health`; bound to `127.0.0.1:3000` |
+| `website` | `tamamhealth-website` | `ghcr.io/<owner>/tamamhealth-website:<sha>` | Marketing site container; bound to `127.0.0.1:3001` |
+| `sync-worker` | `tamamhealth-sync-worker` | `ghcr.io/<owner>/tamamhealth-sync-worker:<sha>` | CouchDB to Postgres bridge; `analytics` profile |
+| `couchdb` | `tamamhealth-couchdb` | `couchdb:3` | Bound to `127.0.0.1:5984`; `nofile` ulimit 65536 |
+| `couchdb-backup` | `tamamhealth-couchdb-backup` | `alpine:3.19` + `scripts/dump-couchdb.sh` | Nightly dump at 02:15 UTC to the `couchdb_backups` volume, 14-day retention |
 
-The data plane Droplet stays. It keeps CouchDB and the encrypted off-site
-backup jobs; the application layer is new.
+Browsers never talk to CouchDB directly with credentials: the platform serves
+the authenticated same-origin `/api/couch` gateway
+(`NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED` defaults to `true` for production and the
+platform refuses to boot with the gateway off).
+
+Host layout: the repo is cloned at `/opt/tamamhealth` (override with the
+`PROD_APP_DIR` secret). Compose-level settings live in `/opt/tamamhealth/.env`
+(including the lines from
+[`infra/digitalocean/production.env.append`](../infra/digitalocean/production.env.append):
+`GH_OWNER`, `IMAGE_TAG`, `COMPOSE_FILE`). Platform runtime settings live in
+`platform/.env.production`. `DOPPLER_TOKEN` on the host, if set, makes the
+platform fetch its secrets through Doppler at boot (see
+[operations/secrets.md](operations/secrets.md)).
 
 ---
 
 ## 0. Prerequisites
 
-- `doctl` authenticated against the **Tamam Health** team.
-- `terraform` ≥ 1.8 and a dedicated private Spaces bucket for remote state.
-- CouchDB admin credentials and the canonical organization IDs to migrate.
-  IDs must match `org-[a-z0-9-]`; the scripts reject anything else rather than
-  guessing.
-- The PHI encryption key already escrowed. Losing it makes every encrypted
-  field permanently unreadable — there is no recovery path.
+- GitHub environment `production` with required reviewers, holding the secrets
+  `PROD_SSH_HOST`, `PROD_SSH_USER`, `PROD_SSH_KEY`. Optional overrides:
+  `PROD_APP_DIR` (default `/opt/tamamhealth`), `PROD_HEALTH_URL` (default
+  `https://app.tamamhealth.org/api/health`), `PROD_WEBSITE_HEALTH_URL` (default
+  `https://tamamhealth.org/`). See
+  [operations/github-environments-setup.md](operations/github-environments-setup.md).
+- Optional repository variables `NEXT_PUBLIC_*` (sync, CouchDB URL, app URL,
+  offline settings). They are compiled into the browser bundle at **build**
+  time; the workflow has defaults, and changing one needs a new deploy, not a
+  restart.
+- The PHI encryption key escrowed. Losing it makes every encrypted field
+  permanently unreadable.
+- Go-live items (demo mode off, every secret rotated, a reachable shared
+  CouchDB, backups): [operations/production-hardening.md](operations/production-hardening.md)
+  and [GO-LIVE-STEP-BY-STEP.md](GO-LIVE-STEP-BY-STEP.md).
 
-Confirm the inventory has not drifted since the IDs in `variables.tf` were
-recorded (2026-08-12):
+---
+
+## 1. First-time droplet setup
+
+Done once per droplet. Full detail, including Terraform provisioning and DNS, is
+in [`infra/digitalocean/README.md`](../infra/digitalocean/README.md) and
+[DEPLOY-DIGITALOCEAN.md](DEPLOY-DIGITALOCEAN.md). In short:
 
 ```bash
-doctl vpcs list; doctl compute droplet list; doctl databases list
+ssh root@<production-ip>
+git clone https://github.com/tamamorg/TamamHealth.git /opt/tamamhealth
+cd /opt/tamamhealth
+./scripts/gen-secrets.sh
+# Edit platform/.env.production for the production URLs
+cat infra/digitalocean/production.env.append >> .env
+./scripts/preflight.sh
+sudo bash deploy.sh        # first boot; later releases come from GHCR
+docker login ghcr.io       # PAT with read:packages if packages are private
+```
+
+Set `NEXT_PUBLIC_DEMO_MODE=false` for production. Cloud firewall: inbound 22
+(operator IP), 80, 443 only.
+
+---
+
+## 2. Deploy a release
+
+Releases are deployed only by the **deploy-production** workflow
+(Actions, Run workflow, `workflow_dispatch`). Run it from `main`; the
+optional `sha` input selects a main commit (blank means the current main HEAD).
+
+What the workflow does, in order:
+
+1. Refuses to run from any ref but `main`, and refuses if the three `PROD_SSH_*`
+   secrets are missing.
+2. Resolves the target SHA and requires it to be an ancestor of `origin/main`.
+3. Requires a successful `ci.yml` push run for that exact commit, waiting up
+   to 45 minutes for one that is still running. A commit whose CI is red or
+   absent is refused.
+4. Builds and pushes three images tagged with the 7-character SHA:
+   `tamamhealth-platform` (built with `NEXT_PUBLIC_DEMO_MODE=false`),
+   `tamamhealth-website`, `tamamhealth-sync-worker`.
+5. Over SSH, records the currently running image of each service in
+   `.tamamhealth-rollback-stack-<sha>`, then runs
+   `docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml pull` and `up -d`
+   with `IMAGE_TAG=<sha>`.
+6. Waits (up to 30 x 10 s) until `platform`, `website` and `sync-worker` run the
+   expected image tag and report healthy.
+7. Installs the role-aware CouchDB validators from the running immutable image:
+   `docker exec <platform container> npm run setup:couchdb:validators`.
+8. Checks the website URL, then polls the platform health URL until it returns
+   200 with `release` equal to the deployed SHA.
+9. On failure after the deploy step, rolls the three services back to the images
+   recorded in step 5 and waits for them to recover. On success it removes the
+   rollback record and runs `docker image prune -f`.
+10. Raises or clears a failure-alarm issue (`.github/actions/alert-failure`).
+
+If the host stack was already down, step 5 warns and treats the deploy as a
+fresh start; there is then no previous release to roll back to and the
+rollback step fails with the container state and logs printed for manual
+recovery.
+
+### Post-deploy check
+
+```bash
+curl -fsS https://app.tamamhealth.org/api/health   # 200, "release" = deployed SHA
+curl -fsSI https://tamamhealth.org/                # 200
+```
+
+On the host:
+
+```bash
+cd /opt/tamamhealth
+docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps
+docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml images
 ```
 
 ---
 
-## 1. Bind CouchDB to the VPC
+## 3. CouchDB tenant databases and validators
 
-On the data Droplet, set the private address so App Platform can reach it while
-the public interface stays closed:
+The platform uses one CouchDB database per organization (`<database>--<orgId>`),
+reachable by browsers only through the `/api/couch` gateway.
 
-```bash
-# /opt/tamamhealth/.env on the data droplet
-COUCHDB_BIND_ADDRESS=10.114.0.3
-```
+- **Validators** are installed by the deploy workflow on every release (step 7
+  above). To reinstall by hand, run the same command the workflow runs:
 
-Keep the example default (`127.0.0.1`) everywhere else. Restart the data stack:
+  ```bash
+  cd /opt/tamamhealth
+  docker exec "$(docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -q platform)" \
+    npm run setup:couchdb:validators
+  ```
 
-```bash
-docker compose -f docker-compose.data.yml up -d
-```
+  Once tenant databases are the live path, set
+  `COUCHDB_TENANT_DATABASES_ENABLED=true` for that run, otherwise the script
+  re-grants browser membership on the shared aggregate databases and undoes the
+  isolation. `COUCHDB_MEMBER_ORG_IDS` lists the organizations for the
+  pre-cutover run. The policy for each database name is in
+  `platform/src/lib/sync/couch-database-policy.ts`.
 
-The public HTTPS endpoint stays reachable until section 7, so the migration
-and verification scripts can run against it before the VPC route is proven.
+- **Tenant migration** (`db:migrate:couchdb-tenants`,
+  `db:verify:couchdb-tenants` in `platform/package.json`) is only needed when
+  moving existing shared-aggregate data into tenant databases. These scripts are
+  not copied into the production image (only `install-validate-doc-updates.mjs`
+  is), so run them from a repository checkout with `cd platform && npm ci`,
+  pointing `COUCHDB_URL` at the host-local CouchDB (`http://127.0.0.1:5984`) with
+  `COUCHDB_ADMIN_USER`, `COUCHDB_ADMIN_PASSWORD` and
+  `COUCHDB_TENANT_ORG_IDS` (ids must match `org-[a-z0-9-]`):
 
----
+  ```bash
+  DRY_RUN=true npm run db:migrate:couchdb-tenants   # writes nothing
+  npm run db:migrate:couchdb-tenants                # non-destructive copy
+  npm run db:verify:couchdb-tenants                 # must exit 0
+  ```
 
-## 2. Provision the application stack
-
-```bash
-cd infra/digitalocean/app-platform
-cp backend.hcl.example backend.hcl
-export AWS_ACCESS_KEY_ID='your-dedicated-spaces-key'
-export AWS_SECRET_ACCESS_KEY='your-dedicated-spaces-secret'
-terraform init -backend-config=backend.hcl
-terraform import digitalocean_firewall.data_plane 265e3909-f1e4-43e9-94d1-92e701fa122b
-terraform plan -out=tamamhealth.tfplan
-terraform show tamamhealth.tfplan
-```
-
-`terraform apply` creates paid capacity and rewrites PostgreSQL trusted
-sources. It needs separate explicit production approval. Spaces provides no
-state locking, so exactly one operator or job may plan/apply at a time.
-
-Two probes, deliberately different:
-
-- **readiness** `/api/health` — deep. Returns 503 when CouchDB or the analytics
-  database is unreachable, so a broken instance takes no traffic and a bad
-  deployment is not promoted.
-- **liveness** `/api/health/live` — process only. Never let this point at the
-  deep check: a CouchDB blip would restart every instance at once, and the
-  restarts cannot succeed until the dependency recovers.
+  Order: verify the copy before relying on tenant databases, and only then run
+  `FINALIZE_SHARED_ACCESS=true npm run db:migrate:couchdb-tenants`, which makes
+  the shared aggregates admin-only. That last step is the point of no easy
+  return; any client still replicating directly against an aggregate stops
+  working. No step deletes a source database.
 
 ---
 
-## 3. Migrate the data (non-destructive)
+## 4. Backups and restore
 
-Dry run first — it writes nothing and prints every source → target pair:
-
-```bash
-cd platform
-export COUCHDB_URL=http://10.114.0.3:5984
-export COUCHDB_ADMIN_USER=... COUCHDB_ADMIN_PASSWORD=...
-export COUCHDB_TENANT_ORG_IDS=org-one,org-two
-
-DRY_RUN=true npm run db:migrate:couchdb-tenants
-```
-
-Then the real copy. Shared access is retained, so nothing that reads the
-aggregates breaks partway through:
-
-```bash
-npm run db:migrate:couchdb-tenants
-```
-
-For each organization and each org-scoped database this creates
-`<database>--<orgId>`, installs the validator and `_security` for that single
-organization, copies the matching documents, and persists continuous
-`_replicator` jobs in both directions.
-
-### Verify before going further
-
-```bash
-npm run db:verify:couchdb-tenants
-```
-
-It compares per-organization document counts between aggregate and tenant
-databases, asserts each tenant database grants exactly one `org:` role, and
-fails if any `tamamhealth-*` replication job is not `running`/`pending`.
-It exits non-zero on any problem. Do not continue until it passes.
-
-Also complete an encrypted off-site restore drill (`scripts/install-offsite-backup.sh`,
-verified by restoring into a scratch database) before any real PHI moves.
+- Nightly in-stack dump: the `couchdb-backup` service (`scripts/dump-couchdb.sh`)
+  writes verified dumps to the `couchdb_backups` volume on the same droplet.
+- Off-site encrypted copies exist only after
+  `sudo ./scripts/install-offsite-backup.sh` has been run on the droplet (GPG
+  public key, `/etc/tamamhealth/backup.env`, S3-compatible bucket on
+  DigitalOcean Spaces). Until then a destroyed droplet loses the database and
+  every backup together.
+- The weekly `backups-restore-drill` workflow (`backups-cron.yml`) proves the
+  latest snapshots decrypt and are structurally sound; it needs the secrets on
+  the `production-cron` environment listed in that file.
+- Restore procedure, drill setup, and full-droplet recovery:
+  [operations/backups.md](operations/backups.md). A dump is replayed with
+  `scripts/restore-couchdb-dump.sh`.
 
 ---
 
-## 4. Install validators and membership
+## 5. Audit trail integrity
 
-While the shared aggregates are still authoritative, run **without** the tenant
-flag:
+The analytics `audit_log` refuses edits and deletes, and every row is chained by
+hash (`0016_audit_hash_chain.sql`). A database superuser can still switch that
+off, so keep the proof outside the database.
 
-```bash
-COUCHDB_MEMBER_ORG_IDS=org-one,org-two npm run setup:couchdb:validators
+Monthly, on the droplet, run these against the analytics Postgres:
+
+```sql
+SELECT * FROM verify_audit_chain();  -- ok must be true; otherwise it names the first bad row
+SELECT * FROM audit_chain_head();    -- copy this hash somewhere outside the server
 ```
 
-The script enumerates the live `_all_dbs` and applies
-`src/lib/sync/couch-database-policy.ts` to each name:
-
-- **tenant** database → org-scoping validator, members `["org:<orgId>"]`, taken
-  from the database name itself. Unaffected by the flag.
-- **shared aggregate** → org-scoping validator; members are
-  `COUCHDB_MEMBER_ORG_IDS` while `COUCHDB_TENANT_DATABASES_ENABLED` is unset,
-  and **empty** once it is `true`.
-- **anything else** (users, account requests, slot holds) → deny-all-but-admin
-  validator, no members.
-
-After the section 6 cutover, every later run of this script must set
-`COUCHDB_TENANT_DATABASES_ENABLED=true`:
-
-```bash
-COUCHDB_TENANT_DATABASES_ENABLED=true npm run setup:couchdb:validators
-```
-
-Without it the script re-grants browser membership on the shared aggregates and
-silently undoes the isolation that section 6 established.
-
----
-
-## 5. Deploy the application
-
-Merge to `main`, then run the `deploy-app-platform` workflow with the exact
-reviewed commit SHA. The workflow refuses to deploy a SHA that is not the
-current tip of `main`, waits for the deployment to go `ACTIVE`, smoke-tests
-`/api/health` and `/login`, and rolls back to the previous deployment if the
-smoke test fails.
-
-Required repository secrets: `DIGITALOCEAN_ACCESS_TOKEN`, `DO_APP_ID`,
-`DO_BASE_URL`. The `production` environment should require reviewers.
-
-`NEXT_PUBLIC_*` values are compiled into the browser bundle at **build** time.
-They are set `RUN_AND_BUILD_TIME` in `main.tf` and mirrored as `ARG`s in
-`platform/Dockerfile`; changing one requires a rebuild, not a restart.
-
----
-
-## 6. Finalize isolation (point of no easy return)
-
-Only after the application serves real traffic correctly:
-
-```bash
-FINALIZE_SHARED_ACCESS=true npm run db:migrate:couchdb-tenants
-```
-
-Shared aggregate databases become admin-only. Browsers can then reach their own
-organization's database and nothing else. Any client still replicating directly
-against an aggregate stops working at this point — that is the intent.
-
-Re-run the verification, and confirm a login and a chart write in each
-organization.
-
----
-
-## 7. Close the public data plane
-
-Once the application is confirmed:
-
-1. Remove the public HTTPS rules from the data-plane firewall, leaving SSH from
-   the operator CIDR and 5984 from `10.114.0.0/20`.
-2. Remove the public CouchDB DNS record.
-3. Confirm `/api/couch` still replicates — it goes over the private VPC.
-
----
-
-## Ordering rules
-
-- **Verify (3) before validators (4).** The installer writes `_security` from
-  what it finds live; run it against a half-copied migration and you pin
-  membership onto an incomplete set.
-- **Never point liveness at `/api/health`.** See section 2.
-- **`COUCHDB_TENANT_DATABASES_ENABLED=true` only after cutover — and always
-  after it.** Setting it early revokes the aggregates'
-  browser membership and cuts clients off before the tenant path is proven; omitting it on a later re-run
-  silently re-grants that membership.
-- **Tenant databases are browser-facing.** They are absent from the sync map by
-  name, and treating "absent from the map" as "server-only" would install a
-  deny-all validator over live tenant data and clear its member role. That
-  judgment now lives in `couch-database-policy.ts` with tests; keep it there
-  rather than re-deriving it in a script.
-
----
+`verify_audit_chain()` reads the whole trail, so run it off-peak. A rewritten
+chain shows when the recorded hash no longer appears in `audit_chain`.
+`prune_audit_log(days)` is the only way to remove rows, keeps the 90-day floor,
+and records a checkpoint.
 
 ## Rollback
 
-| Stage | How to undo |
+| Situation | What happens / what to do |
 |---|---|
-| Before §6 | Aggregates still hold every document — the continuous `_replicator` jobs kept them current — so the data is intact. There is no earlier application stack to point DNS back at; recovery means fixing forward. |
-| After §6 | Re-grant membership: run `setup:couchdb:validators` **without** `COUCHDB_TENANT_DATABASES_ENABLED`, with `COUCHDB_MEMBER_ORG_IDS` set. |
-| Bad app deploy | The deploy workflow rolls back automatically on smoke-test failure; otherwise `doctl apps create-deployment` from the previous SHA. |
+| Release goes unhealthy during deploy | The workflow rolls platform, website and sync-worker back to the images recorded before the deploy. |
+| Bad release that passed the health gate | Dispatch deploy-production again with the `sha` of the last good main commit (its images are rebuilt from that commit). |
+| Stack was already down before the deploy | No previous release exists; the workflow prints container state and logs. Restore by hand on the host with the compose commands above. |
+| Data loss | Restore from backup; see [operations/backups.md](operations/backups.md). |
 
-No step deletes a source database, so rollback is always a configuration
-change, never a restore.
+Rollback is always a redeploy or a configuration change; no deploy step deletes
+a database.
 
 ---
 
 ## Related
 
-- [infra/digitalocean/app-platform/README.md](../infra/digitalocean/app-platform/README.md) — stack contents and safety gates
-- [OPERATOR-RUNBOOK.md](OPERATOR-RUNBOOK.md) — day-to-day operation
-- [DEPLOY-DIGITALOCEAN.md](DEPLOY-DIGITALOCEAN.md) — the earlier Droplet deployment
+- [OPERATOR-RUNBOOK.md](OPERATOR-RUNBOOK.md): day-to-day operation
+- [DEPLOY-DIGITALOCEAN.md](DEPLOY-DIGITALOCEAN.md): droplet bootstrap detail
+- [infra/digitalocean/README.md](../infra/digitalocean/README.md): Terraform for the droplets, DNS, GitHub secrets
+- [operations/production-hardening.md](operations/production-hardening.md): go-live checklist

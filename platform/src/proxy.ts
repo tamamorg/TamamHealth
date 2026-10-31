@@ -37,6 +37,9 @@ function nextWithCsp(request: NextRequest): NextResponse {
     isDev: process.env.NODE_ENV !== 'production',
     couchdbUrl: process.env.NEXT_PUBLIC_COUCHDB_URL,
     posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    fingerprintBridgeUrl: process.env.NEXT_PUBLIC_FINGERPRINT_ENABLED === 'true'
+      ? process.env.NEXT_PUBLIC_FINGERPRINT_BRIDGE_URL || 'http://127.0.0.1:7345'
+      : undefined,
     isSecureOrigin: isSecureRequest(request),
   });
   const requestHeaders = new Headers(request.headers);

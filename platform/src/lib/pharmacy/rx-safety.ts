@@ -5,7 +5,7 @@ import { checkAllergiesStructured, type AllergyLike, type StructuredAllergyAlert
  *  script was written — the pharmacist reviews these first. */
 export function hasSafetyWarning(rx: Pick<PrescriptionDoc, 'medicationSafety'>): boolean {
   const s = rx.medicationSafety;
-  return !!(s && (s.allergyWarnings.length || s.interactionWarnings.length || s.duplicateWarnings.length));
+  return !!(s && (s.allergyWarnings.length || s.interactionWarnings.length || s.duplicateWarnings.length || s.doseWarnings?.length));
 }
 
 /** The shortest justification accepted for continuing past a safety stop. */
@@ -68,4 +68,18 @@ export function unreviewedAllergyConflicts(
   }
   return checkAllergiesStructured([rx.medication], allergies)
     .filter(alert => alert.requiresOverride && !answered.has(alert.allergy));
+}
+
+/** One advisory dose line, worded for the prescriber. */
+export function doseWarningText(
+  t: (key: string, params?: Record<string, string>) => string,
+  warning: { medication: string; dailyMg: number; limitMg: number; basis: 'adult_max' | 'per_kg'; weightKg?: number },
+): string {
+  const params = {
+    medication: warning.medication,
+    daily: String(warning.dailyMg),
+    limit: String(warning.limitMg),
+    weight: String(warning.weightKg ?? ''),
+  };
+  return t(warning.basis === 'per_kg' ? 'prescribe.doseAboveMaxWeight' : 'prescribe.doseAboveMax', params);
 }

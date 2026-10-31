@@ -100,7 +100,10 @@ export async function matchPatient(query: MpiQuery, limit = 10, scope?: DataScop
 
   /** Tenant/facility isolation — without this a caller could probe the FULL
    *  multi-tenant patient index (names, national IDs, phones) across orgs. */
-  const scoped = (docs: PatientDoc[]) => (scope ? filterByScope(docs, scope) : docs);
+  const scoped = (docs: PatientDoc[]) =>
+    (scope ? filterByScope(docs, scope) : docs)
+      // A record marked as a duplicate is never offered as a match.
+      .filter(p => !p.duplicateOf);
 
   const candidates: MpiCandidate[] = [];
 

@@ -98,7 +98,7 @@ export function canReadScopedDoc(
   return !conversationId || conversationIds.has(conversationId);
 }
 
-const FORBIDDEN = { error: 'forbidden', reason: 'You are not a participant in this conversation.' };
+const DEFAULT_FORBIDDEN = { error: 'forbidden', reason: 'You are not a participant in this conversation.' };
 
 /**
  * Remove documents the user may not read from a JSON read response. Handles
@@ -110,8 +110,19 @@ const FORBIDDEN = { error: 'forbidden', reason: 'You are not a participant in th
 export function filterScopedReadResponse(
   payload: unknown,
   allowed: (doc: unknown) => boolean,
+  options: {
+    /** Replaces the default "not a participant" wording. */
+    reason?: string;
+    /**
+     * Drop a refused `_all_docs` row instead of marking it. A marker carries
+     * the row's key, which for a listing the client did not key is the id of
+     * a record it may not know exists.
+     */
+    dropRows?: boolean;
+  } = {},
 ): { payload: unknown; denied: number; status?: number } {
   let denied = 0;
+  const FORBIDDEN = options.reason ? { error: 'forbidden', reason: options.reason } : DEFAULT_FORBIDDEN;
   if (Array.isArray(payload)) {
     // GET /db/doc?open_revs=…
     const rows = payload.map(entry => {
@@ -142,10 +153,10 @@ export function filterScopedReadResponse(
   }
   if (Array.isArray(body.rows)) {
     // GET|POST /db/_all_docs?include_docs=true
-    const rows = (body.rows as Array<{ key?: unknown; id?: unknown; doc?: unknown }>).map(row => {
-      if (row.doc === undefined || row.doc === null || allowed(row.doc)) return row;
+    const rows = (body.rows as Array<{ key?: unknown; id?: unknown; doc?: unknown }>).flatMap(row => {
+      if (row.doc === undefined || row.doc === null || allowed(row.doc)) return [row];
       denied += 1;
-      return { key: row.key ?? row.id, ...FORBIDDEN };
+      return options.dropRows ? [] : [{ key: row.key ?? row.id, ...FORBIDDEN }];
     });
     return { payload: { ...body, rows }, denied };
   }

@@ -94,7 +94,7 @@ Deploy TamamHealth to a DigitalOcean Droplet (docker-compose + CouchDB + Caddy).
 
 Scope:
 - Staging/demo on DO (manual deploy.sh, then GitHub auto-deploy)
-- NOT in-country PHI production (see docs/AFRICA-HOSTING-STRATEGY.md)
+- Residency: see docs/AFRICA-HOSTING-STRATEGY.md
 
 References:
 - docs/DEPLOY-DIGITALOCEAN.md
@@ -712,7 +712,7 @@ The website droplet has its own module at `infra/digitalocean-website/`.
 | **Summary** | Document fingerprint bridge on registration desk PC |
 | **Parent** | Phase 7 — Optional enhancements |
 
-**Description:** `fingerprint-bridge` runs on local desk PC, not cloud. Set `NEXT_PUBLIC_FINGERPRINT_ENABLED=true` at build time if enabled.
+**Description:** `fingerprint-bridge` (`platform/tools/fingerprint-bridge/`) runs on local desk PC, not cloud. Set `NEXT_PUBLIC_FINGERPRINT_ENABLED=true` at build time if enabled.
 
 **Acceptance criteria:** Operator runbook updated; desk PC tested.
 

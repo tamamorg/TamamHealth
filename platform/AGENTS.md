@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Offline-first EHR for South Sudan. Next.js 16 (App Router) + React 19 + TypeScript, port 3000. Package name `tamamhealth`. Requires Node >=20 <25, npm >=10.
 
-This is one package in a monorepo (`platform/`, `website/`, `mobile/`, `sync-worker/`, `country-node/`, `regional-exchange/`, `fingerprint-bridge/`). Each has its own `package.json` and lockfile — run npm commands from inside `platform/`, never the repo root. `README.md` here is the full developer reference.
+This is one package in a monorepo (`platform/`, `website/`, `sync-worker/`, `country-node/`, `regional-exchange/`). The local fingerprint scanner bridge lives inside this package at `tools/fingerprint-bridge/` (dependency-free Node service, run with `npm run fingerprint:bridge`; excluded from the Docker image). Each has its own `package.json` and lockfile — run npm commands from inside `platform/`, never the repo root. `README.md` here is the full developer reference.
 
 ## Commands
 
@@ -75,7 +75,7 @@ When you finish migrating a domain, add its name to `MIGRATED_MODULES` in
 `eslint.config.mjs` and a line to `.github/CODEOWNERS` — the boundary is not
 enforced until the first, and review routing is not either until the second.
 
-**Data access.** The browser calls services directly (hooks → `lib/services/*` → local PouchDB); that is what makes the app work offline, and CouchDB replication carries writes to the server. `/api/*` is for consumers with no browser — mobile, integrations, cron. Do not route UI writes through `/api`.
+**Data access.** The browser calls services directly (hooks → `lib/services/*` → local PouchDB); that is what makes the app work offline, and CouchDB replication carries writes to the server. `/api/*` is for consumers with no browser — integrations, cron, webhooks. Do not route UI writes through `/api`.
 
 **Encryption at rest.** `getDB()` returns a wrapper (`lib/encrypted-db.ts`) that seals every field listed in `lib/phi-field-catalog.json` under the record's organisation key on write and opens it on read; storage, replication, CouchDB and the analytics copy hold only `oenc:` envelopes. Consequences: never filter a Mango selector on a catalogued field (the wrapper throws — filter after reading, or use a blind index like `nationalIdIndex`); replication and wipe code use `getRawDB()`; a new PHI field goes in the catalog, and a field a sync validator or lookup must read stays out of it. Keys derive from `ORG_DATA_KEY_SECRET` (server) and reach devices via `/api/crypto/org-key`.
 

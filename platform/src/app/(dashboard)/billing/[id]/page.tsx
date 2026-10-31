@@ -111,6 +111,8 @@ export default function BillDetailPage() {
   useEffect(() => { loadBill(); }, [loadBill]);
 
   const finalized = !!bill?.finalizedAt;
+  // Rebuilt after charges were lost at sync: nothing is owed until it is finalized.
+  const underReview = bill?.status === 'draft';
   const editable = !!bill && canCollectPayments && !finalized && bill.payments.length === 0 && bill.status === 'pending';
   const payable = !!bill && canCollectPayments && finalized && (bill.status === 'pending' || bill.status === 'partial');
   const currency = bill?.currency;
@@ -434,12 +436,12 @@ export default function BillDetailPage() {
                 Add items to bill <Plus size={15} />
               </button>
             )}
-            {editable && (
+            {(editable || (underReview && canCollectPayments)) && (
               <button type="button" className="bl-btn bl-btn--danger-link" onClick={() => setConfirmDelete(true)} disabled={busy}>
                 Delete bill
               </button>
             )}
-            {!finalized && bill.status === 'pending' && (
+            {!finalized && (bill.status === 'pending' || underReview) && (
               <button type="button" className="bl-btn bl-btn--primary" onClick={() => setConfirmFinalize(true)} disabled={busy}>
                 Finalize bill
               </button>
@@ -448,6 +450,12 @@ export default function BillDetailPage() {
               Print bill <Printer size={15} />
             </button>
           </div>
+        )}
+
+        {underReview && (
+          <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
+            <strong>{t('billing.review.title')}</strong> {t('billing.review.body')}
+          </p>
         )}
 
         {bill.chargeReversedAt && (
@@ -551,7 +559,7 @@ export default function BillDetailPage() {
               <h2 className="bl-card-title">Payments</h2>
               <span className="bl-underline" />
 
-              {!finalized && (bill.status === 'pending') ? (
+              {!finalized && (bill.status === 'pending' || underReview) ? (
                 <div className="bl-empty">
                   <h3>Bill not finalized</h3>
                   <p>Finalize this bill before recording a payment.</p>

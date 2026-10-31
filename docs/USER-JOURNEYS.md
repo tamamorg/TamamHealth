@@ -86,7 +86,7 @@ Everything below details each stop.
 Searchable, filterable table (gender, state, registration date, allergies, chronic conditions, recently visited, assigned-to-me, outstanding balance). Row click opens the chart. **Find Patient** modal offers three identity lookups:
 1. **Text lookup** — hospital ID, geocode, national ID.
 2. **QR scan** — camera scan of the patient's QR card.
-3. **Fingerprint identify** — 1:N match via the local fingerprint-bridge scanner (feature-flagged; works offline against locally-replicated templates; org-scoped so tenants can't leak).
+3. **Fingerprint identify** — 1:N match via the local fingerprint-bridge scanner (`platform/tools/fingerprint-bridge/`) (feature-flagged; works offline against locally-replicated templates; org-scoped so tenants can't leak).
 
 ### 4.2 Register a new patient (`/patients/new`) — 6-step wizard
 

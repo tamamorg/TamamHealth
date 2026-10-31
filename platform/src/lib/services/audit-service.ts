@@ -70,63 +70,98 @@ export async function logAudit(
   context: Partial<AuditContext> = {},
 ): Promise<void> {
   try {
-    const db = auditLogDB();
-    const now = new Date().toISOString();
-    const actor = typeof window === 'undefined' ? null : ambientActor;
-    const doc: AuditLogDoc = {
-      _id: `audit-${uuidv4()}`,
-      type: 'audit_log',
-      action,
-      // The actor is whoever is signed in. Several callers pass the id of the
-      // person the action concerns instead (the clinician a check-in was made
-      // for, the doctor who certified a death) — filed as `userId`, that put
-      // a front-desk action under a doctor's name. With a session, the
-      // session is the actor and a different id from the caller is kept as
-      // the subject. Without one (server code), the caller's word stands.
-      userId: actor?.userId ?? userId,
-      // The name follows the id. When the caller named someone other than
-      // the signed-in user, their name is that person's too — keeping it
-      // would pair the session's id with another person's name, and the audit
-      // screen shows the name. Otherwise the caller's display name stands.
-      username: actor && userId && userId !== actor.userId
-        ? actor.username
-        : (username ?? actor?.username),
-      details,
-      success,
-      ...definedOnly({
-        subjectUserId: context.subjectUserId
-          ?? (actor?.userId && userId && userId !== actor.userId ? userId : undefined),
-        // Organisation and facility come from ONE source: the caller's explicit
-        // context when it names an organisation (server routes), otherwise the
-        // signed-in session. Mixing them could pair one organisation with
-        // another's facility.
-        orgId: context.orgId ?? actor?.orgId,
-        hospitalId: context.orgId ? context.hospitalId : (context.hospitalId ?? actor?.hospitalId),
-        role: context.role ?? actor?.role,
-        patientId: context.patientId,
-        resourceType: context.resourceType,
-        resourceId: context.resourceId,
-      }),
-      createdAt: now,
-      updatedAt: now,
-    };
-    try {
-      await db.put(doc);
-    } catch (err) {
-      // The cached auditLogDB() instance can be closed mid-write by a
-      // concurrent background wipe (logout / session-expiry / device
-      // handover — lib/security/local-wipe.ts), most commonly right after a
-      // fast re-login on the same device. A fresh auditLogDB() call is
-      // guaranteed to return a healthy instance — see isClosingConnectionError
-      // in lib/db.ts — so retry once before falling through to the outer
-      // catch's "never break the caller" handling.
-      if (!isClosingConnectionError(err)) throw err;
-      await auditLogDB().put(doc);
-    }
+    await writeAuditRow(action, userId, username, details, success, context);
   } catch (err) {
     // Never let audit logging failures break the main flow
     console.error('[Audit] Failed to write audit log:', err);
     captureException(err, { tag: '[Audit] Failed to write audit log:' });
+  }
+}
+
+/**
+ * Write an audit row and THROW if it could not be written.
+ *
+ * `logAudit` swallows failures on purpose: an audit hiccup must not turn a
+ * clinician's save into an error. An access that is only permitted because it
+ * is recorded (break-glass) is the opposite case, so those callers use this
+ * and refuse to release the data when the row did not land.
+ */
+export async function logAuditRequired(
+  action: string,
+  userId: string | undefined,
+  username: string | undefined,
+  details: string,
+  success: boolean = true,
+  context: Partial<AuditContext> = {},
+): Promise<void> {
+  try {
+    await writeAuditRow(action, userId, username, details, success, context);
+  } catch (err) {
+    console.error('[Audit] Required audit row was not written:', err);
+    captureException(err, { tag: '[Audit] Required audit row was not written:' });
+    throw err;
+  }
+}
+
+async function writeAuditRow(
+  action: string,
+  userId: string | undefined,
+  username: string | undefined,
+  details: string,
+  success: boolean,
+  context: Partial<AuditContext>,
+): Promise<void> {
+  const db = auditLogDB();
+  const now = new Date().toISOString();
+  const actor = typeof window === 'undefined' ? null : ambientActor;
+  const doc: AuditLogDoc = {
+    _id: `audit-${uuidv4()}`,
+    type: 'audit_log',
+    action,
+    // The actor is whoever is signed in. Several callers pass the id of the
+    // person the action concerns instead (the clinician a check-in was made
+    // for, the doctor who certified a death) — filed as `userId`, that put
+    // a front-desk action under a doctor's name. With a session, the
+    // session is the actor and a different id from the caller is kept as
+    // the subject. Without one (server code), the caller's word stands.
+    userId: actor?.userId ?? userId,
+    // The name follows the id. When the caller named someone other than
+    // the signed-in user, their name is that person's too — keeping it
+    // would pair the session's id with another person's name, and the audit
+    // screen shows the name. Otherwise the caller's display name stands.
+    username: actor && userId && userId !== actor.userId
+      ? actor.username
+      : (username ?? actor?.username),
+    details,
+    success,
+    ...definedOnly({
+      subjectUserId: context.subjectUserId
+        ?? (actor?.userId && userId && userId !== actor.userId ? userId : undefined),
+      // Organisation and facility come from ONE source: the caller's explicit
+      // context when it names an organisation (server routes), otherwise the
+      // signed-in session. Mixing them could pair one organisation with
+      // another's facility.
+      orgId: context.orgId ?? actor?.orgId,
+      hospitalId: context.orgId ? context.hospitalId : (context.hospitalId ?? actor?.hospitalId),
+      role: context.role ?? actor?.role,
+      patientId: context.patientId,
+      resourceType: context.resourceType,
+      resourceId: context.resourceId,
+    }),
+    createdAt: now,
+    updatedAt: now,
+  };
+  try {
+    await db.put(doc);
+  } catch (err) {
+    // The cached auditLogDB() instance can be closed mid-write by a
+    // concurrent background wipe (logout / session-expiry / device
+    // handover — lib/security/local-wipe.ts), most commonly right after a
+    // fast re-login on the same device. A fresh auditLogDB() call is
+    // guaranteed to return a healthy instance — see isClosingConnectionError
+    // in lib/db.ts — so retry once before giving up.
+    if (!isClosingConnectionError(err)) throw err;
+    await auditLogDB().put(doc);
   }
 }
 

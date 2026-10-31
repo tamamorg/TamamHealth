@@ -99,6 +99,23 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
   const [punctuality, setPunctuality] = useState<VisitPunctuality | ''>('');
   const [punctualityTouched, setPunctualityTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  // A visit may still be started on a record marked as a duplicate (an
+  // emergency must be treatable); the panel says so rather than blocking.
+  const [keptRecord, setKeptRecord] = useState<{ name: string } | null>(null);
+  useEffect(() => {
+    if (!scope) return;
+    let cancelled = false;
+    void import('@/lib/services/patient-service')
+      .then(async svc => {
+        const chart = await svc.getPatientById(patient._id, scope);
+        if (!chart?.duplicateOf) return null;
+        const kept = await svc.getPatientById(chart.duplicateOf, scope);
+        return { name: kept ? [kept.firstName, kept.surname].filter(Boolean).join(' ') : t('dup.keptUnknown') };
+      })
+      .then(found => { if (!cancelled) setKeptRecord(found); })
+      .catch(() => { if (!cancelled) setKeptRecord(null); });
+    return () => { cancelled = true; };
+  }, [patient._id, scope, t]);
 
   // Is a visit already open here? One open visit per patient per facility is
   // the rule the queues are built on, so a second one is refused up front.
@@ -239,6 +256,7 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
         encounter = result.encounter;
         showToast(t('startVisit.started', { name: patientName }), 'success');
       }
+      if (keptRecord) showToast(t('dup.visitWarning', { name: keptRecord.name }), 'warning');
       onStarted?.(encounter);
       onClose();
     } catch (error) {
@@ -279,6 +297,10 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
             ))}
           </div>
         </fieldset>
+
+        {keptRecord && (
+          <InlineBanner tone="warning" compact>{t('dup.visitPanelWarning', { name: keptRecord.name })}</InlineBanner>
+        )}
 
         {activeVisit && bannerOpen && (
           <InlineBanner tone="info" title={t('startVisit.activeTitle')} onDismiss={() => setBannerOpen(false)}>

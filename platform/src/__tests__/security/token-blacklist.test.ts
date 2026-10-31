@@ -48,6 +48,24 @@ describe('token-blacklist (persisted)', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
+  it('in production a logout is on disk before revokeToken returns, concurrent logouts included', async () => {
+    const env = process.env as Record<string, string | undefined>;
+    const saved = env.NODE_ENV;
+    env.NODE_ENV = 'production';
+    try {
+      const exp = Math.floor(Date.now() / 1000) + 3600;
+      const tokens = [buildToken(exp), buildToken(exp), buildToken(exp)];
+      await Promise.all(tokens.map(revokeToken));
+      // No debounce flush, no reset: read the file as a restarted process would.
+      const onDisk = await fs.readFile(process.env.TOKEN_BLACKLIST_FILE!, 'utf8');
+      for (const t of tokens) expect(onDisk).toContain(t);
+      _resetTokenBlacklistForTest();
+      for (const t of tokens) await expect(isTokenRevoked(t)).resolves.toBe(true);
+    } finally {
+      env.NODE_ENV = saved;
+    }
+  });
+
   it('a fresh token is not revoked', async () => {
     const t = buildToken(Math.floor(Date.now() / 1000) + 3600);
     await expect(isTokenRevoked(t)).resolves.toBe(false);

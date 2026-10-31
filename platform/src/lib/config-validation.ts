@@ -131,6 +131,37 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
     }
   }
 
+  // --- Switches that void a protection ---------------------------------------
+  // Each of these is a legitimate lever in development and an open door in a
+  // real deployment, so production refuses to boot with any of them thrown.
+  //
+  // The gateway is the ONLY enforcement point for tenant and facility read
+  // scoping (lib/sync/read-scope.ts). With it off, browsers replicate straight
+  // from CouchDB and every member of an organisation can read every facility's
+  // records, sealed or not.
+  if (!isDemo && env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED !== 'true') {
+    errors.push(
+      'NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED is not true — the same-origin gateway is the only place read '
+      + 'access is scoped to an organisation and facility, so browsers must not replicate around it. '
+      + 'Set NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=true (with NEXT_PUBLIC_COUCHDB_URL=<app origin>/api/couch).',
+    );
+  }
+  // The emergency switch for patient-data encryption (lib/encrypted-db.ts).
+  // It never decrypts what is sealed, but while it is off new patient data is
+  // stored and replicated in plaintext.
+  if (!isDemo && env.NEXT_PUBLIC_PHI_ENCRYPTION === 'false') {
+    errors.push(
+      'NEXT_PUBLIC_PHI_ENCRYPTION=false — new patient data would be stored and replicated in plaintext. '
+      + 'Remove the variable; it is an incident-only switch for development.',
+    );
+  }
+  // The server-side demo flag lets a chat author be forged on create and
+  // relaxes other seeded-account checks. Only the standalone demo (demo build,
+  // no datastore) may set it.
+  if (env.DEMO_MODE === 'true' && (couchConfigured || !isDemo)) {
+    errors.push('DEMO_MODE=true on a deployment with real data — remove it. Only the standalone demo (no CouchDB) may run in demo mode.');
+  }
+
   // --- Organisation data keys ---------------------------------------------
   // Patient data is encrypted on the device under a key derived from this
   // secret. Without it the server cannot hand devices a key, so they could
@@ -167,6 +198,22 @@ export function validateProductionConfig(env: ConfigEnv): string[] {
         'revocation list are per-instance — a logged-out token stays valid on other ' +
         'replicas. Configure Upstash, or set SINGLE_REPLICA_ACK=true to confirm this ' +
         'deploy runs exactly ONE platform replica.',
+      );
+    }
+    // Without Upstash, revocations live in a file. Left at its default that is
+    // `.token-blacklist.json` inside the container image, which a restart or a
+    // redeploy erases — and every logged-out token then works again until its
+    // `exp`. A durable path (a mounted volume) is the only acceptable home.
+    const blacklistFile = env.TOKEN_BLACKLIST_FILE || '';
+    if (!blacklistFile) {
+      errors.push(
+        'Token revocation has no durable store: Upstash is unset and TOKEN_BLACKLIST_FILE is unset, so logouts are ' +
+        'forgotten on every restart or redeploy. Configure Upstash, or set TOKEN_BLACKLIST_FILE to an absolute path on a ' +
+        'mounted volume (for example /app/data/token-blacklist.json).',
+      );
+    } else if (!blacklistFile.startsWith('/') || /^\/(tmp|var\/tmp)\//.test(blacklistFile) || /^\/app\/\.next\//.test(blacklistFile)) {
+      errors.push(
+        `TOKEN_BLACKLIST_FILE=${blacklistFile} is not a durable location — use an absolute path on a mounted volume, not /tmp or the build output.`,
       );
     }
   } else if (!isDemo && sharedRedisUrl && !sharedRedisToken) {
@@ -371,13 +418,12 @@ export function productionConfigWarnings(env: ConfigEnv): string[] {
   const warnings: string[] = [];
   if (env.NEXT_PUBLIC_DEMO_MODE === 'true') return warnings;
 
-  // The emergency switch for patient-data encryption (lib/encrypted-db.ts).
-  // It never decrypts what is sealed, but while it is off new patient data is
-  // stored and replicated in plaintext — say so on every boot.
-  if (env.NEXT_PUBLIC_PHI_ENCRYPTION === 'false') {
+  // Restricted mental-health notes are sealed on the server with
+  // PHI_ENCRYPTION_KEY whether or not field encryption is switched on; without
+  // a valid key they answer 503.
+  if (!env.PHI_ENCRYPTION_KEY || Buffer.from(env.PHI_ENCRYPTION_KEY, 'base64').length !== 32) {
     warnings.push(
-      'NEXT_PUBLIC_PHI_ENCRYPTION=false — new patient data is being stored and replicated in plaintext. '
-      + 'Remove it once the incident that called for it is over.',
+      'PHI_ENCRYPTION_KEY is unset or not 32 bytes — restricted mental-health notes cannot be saved or read until it is set.',
     );
   }
 

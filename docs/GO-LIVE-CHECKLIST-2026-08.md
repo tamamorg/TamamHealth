@@ -5,6 +5,12 @@ shape (full test suite green, production config validation in place), but there 
 infrastructure and security-hardening blockers below. This is a PHI platform, so the
 bar is "safe for real patient data."
 
+> **Correction (2026-10-31):** production is the single `tamamhealth-production`
+> droplet, not DigitalOcean App Platform. The App Platform Terraform stack and
+> `deploy-app-platform` workflow were removed; references below to App Platform
+> and the `tamamhealth-data` VPC host describe the abandoned plan. Use the
+> droplet runbook for current steps.
+
 Full runbook: [DEPLOY-PRODUCTION.md](./DEPLOY-PRODUCTION.md). This file is the
 current-state blocker list + exact commands, not a replacement for it.
 
@@ -28,7 +34,7 @@ droplet id 591879204, `doctl` context `tamamhealth-final-deploy`.
 
 **Then, on the droplet:**
 1. Read the real CouchDB admin password: `grep COUCHDB_PASSWORD /opt/tamamhealth/.env.data`
-2. Ensure CouchDB binds to the VPC IP so App Platform can reach it:
+2. Ensure CouchDB binds to the VPC IP so a separate app host can reach it (only relevant to the split-host plan; the single production droplet keeps CouchDB on loopback):
    set `COUCHDB_BIND_ADDRESS=10.114.0.3` (compose default is 127.0.0.1) and
    `docker compose -f docker-compose.data.yml up -d`.
 3. Put that password into every deploy env below as `COUCHDB_ADMIN_PASSWORD`.
@@ -40,17 +46,13 @@ Verify: `/api/health` returns `couchdb: ok`.
 ## Blocker 2 — No production app deployment exists (HIGH)
 
 `app.tamamhealth.org` does not serve; `tamamhealth.org` is the marketing site.
-The intended production stack (DO App Platform: per-org CouchDB + same-origin
-`/api/couch` gateway), merged to `main`, has never been deployed — cold start,
-no fallback.
+The production stack (single droplet: per-org CouchDB + same-origin
+`/api/couch` gateway), merged to `main`, had not been deployed when this list was written.
 
-- Apply infra: `infra/digitalocean/app-platform/` with the local-state override
-  (`backend_override.tf`, gitignored, never commit). Reviewed plan preserves SSH
-  from your IP + public 80/443 and adds 5984 from the VPC.
-- This apply is also what **locks the analytics Postgres cluster's trusted
-  sources** (currently open) to the app + data droplet. Do not skip it.
-- First apply on the default `*.ondigitalocean.app` ingress (DNS for
-  tamamhealth.org is on GoDaddy, not DO), then cut over the domain.
+- Deploy with the `deploy-production` workflow (see DEPLOY-PRODUCTION.md). DNS for
+  tamamhealth.org is on GoDaddy, not DO.
+- If an analytics Postgres cluster is used, restrict its trusted sources to the
+  production droplet.
 - After boot, confirm the served browser bundle actually shipped the
   `NEXT_PUBLIC_*` sync flags (build-time ARGs default to false).
 
@@ -62,7 +64,7 @@ alone does not make the platform production-ready.
 ## Blocker 3 — Required production secrets (fail-closed at boot)
 
 `instrumentation.ts` runs `validateProductionConfig` and **refuses to boot** on any
-missing/placeholder secret. Every one of these must be set in the App Platform env
+missing/placeholder secret. Every one of these must be set in the production droplet env (`platform/.env.production` or Doppler)
 (and any Vercel deploy meant for real use):
 
 - `JWT_SECRET` (≥32 chars), `PHI_ENCRYPTION_KEY` (32 bytes base64), `PHI_ENCRYPTION_ENABLED=true`
@@ -76,7 +78,7 @@ missing/placeholder secret. Every one of these must be set in the App Platform e
   default `Superadmin!`). Boot now refuses without it. Set a strong secret; the
   `superadmin` account is provisioned on first login and **forced to change it**
   immediately (bootstrap credential is single-use). Add this to
-  `terraform.tfvars` / the App Platform env before deploying, or the app won't start.
+  `platform/.env.production` (or Doppler) before deploying, or the app won't start.
 
 ---
 

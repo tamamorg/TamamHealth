@@ -104,6 +104,13 @@ describe('signOrders', () => {
     }), scope);
   });
 
+  test('a drug already active is reported, and the order is still signed', async () => {
+    createPrescription.mockResolvedValueOnce({ interactionWarnings: null, duplicateWarnings: ['Amoxicillin 500mg'] });
+    const outcome = await sign([filled()]);
+    expect(outcome.warnings).toEqual([expect.stringContaining('msg.possibleDuplicateIsAlreadyActive')]);
+    expect(outcome.signed).toHaveLength(1);
+  });
+
   test('a prescription raised from a note is filed under its visit', async () => {
     await sign([filled({ context: { encounterId: 'enc-9', noteId: 'note-1' } })]);
     expect(createPrescription).toHaveBeenCalledWith(expect.objectContaining({ encounterId: 'enc-9' }), scope);

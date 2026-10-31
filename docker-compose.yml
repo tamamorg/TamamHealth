@@ -25,8 +25,7 @@
 # Why json-file and not journald/awslogs: max-size/max-file are json-file
 # options — journald ignores them and delegates retention to the host's
 # journald.conf, and awslogs needs AWS credentials the DO droplet does not
-# have. On the AWS path the CloudFormation stack sets awslogs with real log
-# groups instead (infra/aws/cloudformation/platform.yml).
+# have.
 #
 # NOTE: rotation bounds disk use, it does not offload. Shipping these logs off
 # the host is still open — see KAN-70's remaining scope in
@@ -94,6 +93,13 @@ services:
       # the Doppler CLI at boot. Unset = legacy .env_file path. See
       # docs/operations/secrets.md.
       DOPPLER_TOKEN: ${DOPPLER_TOKEN:-}
+      # Logged-out tokens must stay revoked across a container recreate, so the
+      # list lives on a volume. Upstash, when set, takes over from this file.
+      SINGLE_REPLICA_ACK: ${SINGLE_REPLICA_ACK:-true}
+      # Same default as the build argument in deploy-production.yml. Production
+      # refuses to boot with the gateway off.
+      NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED: ${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED:-true}
+      TOKEN_BLACKLIST_FILE: ${TOKEN_BLACKLIST_FILE:-/app/data/token-blacklist.json}
     # Loopback only by default: Docker-published ports bypass UFW, so a bare
     # "3000:3000" exposes the app (plain HTTP, no TLS) to the internet. The
     # host-level Caddy that deploy.sh writes proxies to localhost:3000. Set
@@ -105,6 +111,7 @@ services:
     # seed-credentials.ts can read/write without EACCES on /app.
     volumes:
       - ./platform/.seed-credentials.json:/app/.seed-credentials.json
+      - platform_data:/app/data
     depends_on:
       couchdb:
         condition: service_healthy
@@ -277,6 +284,7 @@ volumes:
   couchdb_data:
   couchdb_backups:
   sync_worker_state:
+  platform_data:
 
 networks:
   app-net:

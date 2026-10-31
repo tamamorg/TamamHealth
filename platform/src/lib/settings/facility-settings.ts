@@ -221,7 +221,7 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   currency: defaultCurrency(),
   hospitalNumberPrefix: 'TAB',
   language: 'en',
-  resultReviewSLA: { criticalHours: 24, routineHours: 168 },
+  resultReviewSLA: { criticalHours: 1, routineHours: 168 },
   acuity: { timeAging: true, agingPerMinute: 0.1 },
   labCatalog: [
     { name: 'Full Blood Count', tier: 'basic', specimen: 'Blood', loinc: '58410-2' },

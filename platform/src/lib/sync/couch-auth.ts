@@ -287,7 +287,7 @@ const gatewayProvisioning = new Map<string, Promise<{ username: string; password
 /**
  * Provision a deterministic server-held CouchDB identity for one platform
  * user. The browser never receives this credential; the same-origin sync
- * gateway attaches it only on the private App Platform → CouchDB hop.
+ * gateway attaches it only on the private app-to-CouchDB hop.
  */
 export async function ensureCouchGatewayUser(input: {
   sub: string;

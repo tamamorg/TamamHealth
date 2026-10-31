@@ -8,8 +8,7 @@
 #
 # Usage:
 #   ./scripts/preflight.sh                 # full local + repo checks
-#   TARGET=aws ./scripts/preflight.sh      # also validate AWS preconditions
-#                                          # (region opt-in, ACM cert, SSM)
+#                                          # production target: DigitalOcean droplet
 #
 # This script is intentionally written in pure bash — no Node, no Python — so
 # it can run on a fresh Ubuntu host before any of our own tooling is set up.
@@ -36,7 +35,7 @@ echo "  repo: $ROOT"
 echo
 
 # ── 1. tooling ────────────────────────────────────────────────────────────────
-cyan "1/8 · host tooling"
+cyan "1/6 · host tooling"
 for tool in node npm git; do
   if command -v "$tool" >/dev/null 2>&1; then
     ok "$tool $($tool --version | head -1)"
@@ -49,7 +48,7 @@ NODE_MAJOR=$(node --version | sed 's/v//' | cut -d. -f1)
 echo
 
 # ── 2. clean working tree ────────────────────────────────────────────────────
-cyan "2/8 · git working tree"
+cyan "2/6 · git working tree"
 if [ -n "$(git status --porcelain)" ]; then
   warn "uncommitted changes (review with 'git status' before tagging a release):"
   git status --short | sed 's/^/      /'
@@ -59,7 +58,7 @@ fi
 echo
 
 # ── 3. secrets that must NEVER ship ──────────────────────────────────────────
-cyan "3/8 · secret leak scan"
+cyan "3/6 · secret leak scan"
 # Strings that must never appear *as live values* in source. The JWT fallback
 # constant is intentionally still in the codebase (the boot guard in
 # instrumentation.ts and auth-token.ts itself refuses to USE it in production)
@@ -72,7 +71,7 @@ declare -a leaks=(
 for needle in "${leaks[@]}"; do
   if grep -RIln --include='*.ts' --include='*.tsx' --include='*.mjs' --include='*.json' \
                 --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=coverage \
-                "$needle" platform/ website/ mobile/ 2>/dev/null | grep -v '/__tests__/' >/dev/null; then
+                "$needle" platform/ website/ 2>/dev/null | grep -v '/__tests__/' >/dev/null; then
     fail "found '$needle' in source — must be rotated/removed"
   fi
 done
@@ -84,12 +83,12 @@ jwt_default='tamamhealth-south-sudan-health-2026-secret-key'
 allowed_jwt_paths='^platform/(src/lib/(auth-token|csrf|patient-portal-auth)\.ts|src/instrumentation\.ts|src/app/api/patient-portal/login/route\.ts|src/__tests__/)'
 if grep -RIln --include='*.ts' --include='*.tsx' --include='*.mjs' --include='*.json' \
               --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=coverage \
-              "$jwt_default" platform/ website/ mobile/ 2>/dev/null \
+              "$jwt_default" platform/ website/ 2>/dev/null \
               | grep -vE "$allowed_jwt_paths" >/dev/null; then
   fail "JWT fallback string appears outside its allowed declaration sites:"
   grep -RIln --include='*.ts' --include='*.tsx' --include='*.mjs' --include='*.json' \
               --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=coverage \
-              "$jwt_default" platform/ website/ mobile/ 2>/dev/null \
+              "$jwt_default" platform/ website/ 2>/dev/null \
               | grep -vE "$allowed_jwt_paths" | sed 's/^/      /'
 fi
 [ "$failed" -eq 0 ] && ok "no known-leaked credentials in src (JWT fallback only at documented sites)"
@@ -97,7 +96,7 @@ fi
 # Disallow NEXT_PUBLIC_ADMIN_PASSWORD anywhere
 if grep -RIln --include='*.example' --include='*.ts' --include='*.tsx' \
               --exclude-dir=node_modules --exclude-dir=.next \
-              "NEXT_PUBLIC_ADMIN_PASSWORD" platform/ website/ mobile/ 2>/dev/null \
+              "NEXT_PUBLIC_ADMIN_PASSWORD" platform/ website/ 2>/dev/null \
               | grep -v 'instrumentation.ts' >/dev/null; then
   fail "NEXT_PUBLIC_ADMIN_PASSWORD appears outside the boot-guard — it must never be public"
 else
@@ -168,7 +167,7 @@ fi
 echo
 
 # ── 4. platform pipeline ─────────────────────────────────────────────────────
-cyan "4/8 · platform: tsc + lint + jest"
+cyan "4/6 · platform: tsc + lint + jest"
 (
   cd platform
   if npx --no-install tsc --noEmit >/tmp/preflight-tsc.log 2>&1; then
@@ -190,72 +189,31 @@ cyan "4/8 · platform: tsc + lint + jest"
 )
 echo
 
-# ── 5. workflow + CFN YAML parse ─────────────────────────────────────────────
-cyan "5/8 · workflow + CFN YAML"
+# ── 5. workflow + compose YAML parse ─────────────────────────────────────────────
+cyan "5/6 · workflow + compose YAML"
 node -e "
 const fs = require('fs');
 const path = require('path');
 const yaml = require(path.resolve('platform/node_modules/js-yaml'));
-const SCHEMA = yaml.DEFAULT_SCHEMA.extend([
-  ['Sub','GetAtt','Ref','Equals','Not','If','Select','Join','Base64','FindInMap','Cidr'].flatMap(tag => [
-    new yaml.Type('!'+tag,{kind:'scalar',  construct:d=>({[tag]:d})}),
-    new yaml.Type('!'+tag,{kind:'sequence',construct:d=>({[tag]:d})}),
-  ])
-].flat());
 const targets = [
   '.github/workflows/ci.yml',
   '.github/workflows/deploy-staging.yml',
   '.github/workflows/deploy-production.yml',
-  '.github/workflows/mobile-beta.yml',
   '.github/workflows/backups-cron.yml',
   'docker-compose.yml',
-  'infra/aws/cloudformation/platform.yml',
 ];
 let bad = 0;
 for (const f of targets) {
   if (!fs.existsSync(f)) { console.log('  ⚠ skip (missing):', f); continue; }
-  try { yaml.load(fs.readFileSync(f,'utf8'),{schema:SCHEMA}); console.log('  ✓ '+f); }
+  try { yaml.load(fs.readFileSync(f,'utf8')); console.log('  ✓ '+f); }
   catch (e) { console.log('  ✗ '+f+': '+e.message); bad++; }
 }
 process.exit(bad ? 2 : 0);
 " || failed=$((failed+1))
 echo
 
-# ── 6. CFN structural sanity ─────────────────────────────────────────────────
-cyan "6/8 · CFN: required resources for the wired data flow"
-node -e "
-const fs = require('fs');
-const path = require('path');
-const yaml = require(path.resolve('platform/node_modules/js-yaml'));
-const SCHEMA = yaml.DEFAULT_SCHEMA.extend([
-  ['Sub','GetAtt','Ref','Equals','Not','If','Select','Join','Base64','FindInMap','Cidr'].flatMap(tag => [
-    new yaml.Type('!'+tag,{kind:'scalar',  construct:d=>({[tag]:d})}),
-    new yaml.Type('!'+tag,{kind:'sequence',construct:d=>({[tag]:d})}),
-  ])
-].flat());
-const t = yaml.load(fs.readFileSync('infra/aws/cloudformation/platform.yml','utf8'),{schema:SCHEMA});
-const need = [
-  'VPC', 'PublicSubnetA', 'PublicSubnetB', 'PrivateSubnetA', 'PrivateSubnetB',
-  'ALB', 'PostgresDB',
-  'CouchDBTargetGroup', 'AppIngressFromALBCouch',
-  'AppLaunchTemplate', 'AppAutoScalingGroup',
-  'BackupsBucket',
-];
-let bad = 0;
-for (const r of need) {
-  if (t.Resources && t.Resources[r]) {
-    console.log('  ✓ '+r);
-  } else {
-    console.log('  ✗ missing resource: '+r);
-    bad++;
-  }
-}
-process.exit(bad ? 2 : 0);
-" || failed=$((failed+1))
-echo
-
-# ── 7. sync-worker readiness ─────────────────────────────────────────────────
-cyan "7/8 · sync-worker (CouchDB → /api/sync bridge)"
+# ── 6. sync-worker readiness ─────────────────────────────────────────────────
+cyan "6/6 · sync-worker (CouchDB → /api/sync bridge)"
 if [ -f sync-worker/index.mjs ]; then
   if node --check sync-worker/index.mjs >/dev/null 2>&1; then
     ok "sync-worker/index.mjs parses"
@@ -271,37 +229,6 @@ if [ -f sync-worker/index.mjs ]; then
   fi
 else
   fail "sync-worker/ directory is missing — analytics will be empty after deploy"
-fi
-echo
-
-# ── 8. AWS preconditions (only when TARGET=aws) ──────────────────────────────
-cyan "8/8 · AWS preconditions"
-if [ "${TARGET:-}" = "aws" ]; then
-  if ! command -v aws >/dev/null 2>&1; then
-    fail "aws CLI not installed — set TARGET=aws only on a host that has it"
-  else
-    ok "aws CLI: $(aws --version)"
-    region="${AWS_REGION:-af-south-1}"
-    if aws ec2 describe-regions --region "$region" \
-         --query "Regions[?RegionName=='$region'].OptInStatus" \
-         --output text 2>/dev/null | grep -qE 'opted-in|opt-in-not-required'; then
-      ok "region $region is opted-in"
-    else
-      fail "region $region is NOT opted-in — enable in Account Settings → Regions ≥24h before deploy"
-    fi
-    for p in DOPPLER_TOKEN COUCHDB_PASSWORD; do
-      env="${ENVIRONMENT:-production}"
-      name="/tamamhealth/${env}/${p}"
-      if aws ssm get-parameter --name "$name" --region "$region" --with-decryption \
-           --query 'Parameter.Name' --output text >/dev/null 2>&1; then
-        ok "SSM: $name present"
-      else
-        fail "SSM parameter $name missing — see infra/aws/README.md pre-flight"
-      fi
-    done
-  fi
-else
-  warn "TARGET!=aws, skipping AWS preconditions (set TARGET=aws to enable)"
 fi
 echo
 

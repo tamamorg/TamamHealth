@@ -14,7 +14,7 @@
  * form is its own presentational component.
  */
 
-import { hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Maximize2, X } from '@/components/icons/lucide';
 import { useRouter } from 'next/navigation';
@@ -337,14 +337,18 @@ export default function PrescribeModal({
         showToast(
           t('msg.savedInteractionWarningReviewBefore', { value: result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', ') }),
           'warning',
+          { placement: 'corner' },
         );
       }
+      for (const w of result.doseWarnings || []) showToast(doseWarningText(t, w), 'warning', { placement: 'corner' });
       if (result.duplicateWarnings?.length) {
         showToast(
           t('msg.possibleDuplicateIsAlreadyActive', { value: result.duplicateWarnings.join(', ') }),
           'warning',
+          { placement: 'corner' },
         );
       }
+      if (result.duplicateRecord) showToast(t('dup.orderWarning', { name: result.duplicateRecord.survivorName }), 'warning', { placement: 'corner' });
       // A host may leave the screen on this signal (the full-page route goes
       // back to the chart). An outside-pharmacy script still has to be handed
       // to the patient first, so its signal waits for the handover to close.

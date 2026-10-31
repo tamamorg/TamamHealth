@@ -7,11 +7,10 @@ remain in one application boundary so appointment, triage, nursing, MAR, and
 doctor-chart updates cannot partially commit across network services.
 
 > This page describes the **Vercel + direct-to-CouchDB** topology (browser
-> replicates straight to CouchDB behind Caddy). A second, current production
-> topology also exists — DigitalOcean **App Platform** with CouchDB reached
-> only through a private-VPC, same-origin `/api/couch` gateway (no direct
-> browser→CouchDB credentials at all) — cut over 2026-08-12. See
-> [`DEPLOY-PRODUCTION.md`](../DEPLOY-PRODUCTION.md) for that model; the two are
+> replicates straight to CouchDB behind Caddy). Production is different: the
+> single `tamamhealth-production` droplet runs the docker-compose stack and
+> CouchDB is reached only through the authenticated same-origin `/api/couch`
+> gateway. See [`DEPLOY-PRODUCTION.md`](../DEPLOY-PRODUCTION.md); the two are
 > not interchangeable mid-deployment, so pick one per environment.
 
 ```text

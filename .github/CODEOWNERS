@@ -31,7 +31,6 @@
 #
 # To spread the load, change the handle on the right of any line. The two
 # reassignments that were previously pencilled in here were:
-#     /mobile/     -> @ikyalo01
 #     /website/    -> @senyomd
 # ---------------------------------------------------------------------------
 
@@ -40,7 +39,6 @@
 
 # --- Application code ------------------------------------------------------
 /platform/                  @makuachteny
-/mobile/                    @makuachteny
 /website/                   @makuachteny
 
 # --- Domain modules --------------------------------------------------------
@@ -89,7 +87,7 @@
 /platform/src/modules/tenancy/                 @makuachteny
 /platform/src/lib/field-encryption.ts           @makuachteny
 /platform/src/lib/config-validation.ts          @makuachteny
-/fingerprint-bridge/                            @makuachteny
+/platform/tools/fingerprint-bridge/             @makuachteny
 
 # --- Architecture boundaries -----------------------------------------------
 # The rules that keep the modules apart, and the tests that prove they hold.

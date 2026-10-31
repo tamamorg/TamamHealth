@@ -43,6 +43,7 @@ import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 import { TransferBanner, TransferredRecords } from '@/components/patients/TransferHistoryPanel';
 import CareAlertsBanner from '@/components/patients/CareAlertsBanner';
+import DuplicateRecordBanner from '@/components/patients/DuplicateRecordBanner';
 import { useProblems } from '@/lib/hooks/useProblems';
 import type { MedicalRecordDoc, PatientDoc } from '@/lib/db-types';
 
@@ -1053,6 +1054,7 @@ export default function PatientDetailPage() {
           {/* Care ownership is in flight (or time-boxed) — shown on every tab,
               because a clinician who doesn't know a transfer is pending can
               start work the receiving team is about to take over. */}
+          {patient && <DuplicateRecordBanner patient={patient} />}
           {patient && (
             <TransferBanner
               patient={patient}

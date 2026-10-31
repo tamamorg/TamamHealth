@@ -14,7 +14,6 @@ toolchain actually works. Useful flags:
 
 | Flag | Effect |
 |------|--------|
-| `--fast` | Skip `mobile/` (much the largest install) |
 | `--check` | Verify an existing setup; install nothing |
 
 Then:
@@ -29,12 +28,15 @@ For generated secrets and a guided config walkthrough, run
 
 ### This is not an npm workspace
 
-There is no hoisting and no root-level application install. Five packages each
+There is no hoisting and no root-level application install. Three packages each
 carry their own `package.json` **and their own lockfile**:
 
 ```text
-platform/  website/  mobile/  sync-worker/  fingerprint-bridge/
+platform/  website/  sync-worker/
 ```
+
+`platform/tools/fingerprint-bridge/` is a dependency-free local service that
+ships inside `platform/` but is not part of its build or Docker image.
 
 The repo-root `package.json` is tooling only (husky + lint-staged) — nothing
 there is published or deployed. So:
@@ -65,8 +67,8 @@ part of the install or CI matrix.
 ### Node version
 
 `.nvmrc` (Node 20) is the single source of truth — every CI job reads the same
-file via `node-version-file`, so local and CI cannot drift apart. The root,
-`website/` and `mobile/` `engines` fields pin that exact major; `platform/`,
+file via `node-version-file`, so local and CI cannot drift apart. The root
+and `website/` `engines` fields pin that exact major; `platform/`,
 `sync-worker/` and `fingerprint-bridge/` declare looser floors, but everything
 that ships is built on 20.
 
@@ -88,7 +90,7 @@ sign in as a different role — to enter any role's workspace directly.
 ## Pre-commit hooks
 
 `husky` + `lint-staged` run automatically on `git commit`, scoped to the
-packages your commit actually touches (`platform`, `website`, `mobile`):
+packages your commit actually touches (`platform`, `website`):
 
 - **eslint `--fix`** on the staged files — auto-fixable problems are repaired
   in place.
@@ -121,8 +123,7 @@ registers them.
 | `platform` | `npm run i18n:check` | Missing/extra keys between `en` and `apd` (Juba Arabic), plus the untranslated-text ratchet |
 | `website` | `npm run lint` · `npx tsc --noEmit` · `npm run build` | The full CI job |
 | `website` | `npm run i18n:check` | Same check for the marketing site |
-| `mobile` | `npm run lint` · `npx tsc --noEmit` | The full CI job |
-| `fingerprint-bridge` | `npm run check` · `npm test` | Syntax check + tests |
+| `fingerprint-bridge` (`platform/tools/fingerprint-bridge/`) | `npm run check` · `npm test` there, or `npm run fingerprint:bridge:test` in `platform/` | Syntax check + tests |
 
 `i18n:check` **is** a CI gate for `platform` (the "Translation coverage" step
 in `ci.yml`) but **not** for `website` — run the website one yourself when you
@@ -158,15 +159,16 @@ layer, tenant isolation, PHI safety, permissions).
 
 ## CI gates
 
-[`ci.yml`](.github/workflows/ci.yml) runs five independent jobs on every push
+[`ci.yml`](.github/workflows/ci.yml) runs independent jobs on every push
 to `main` and every PR:
 
 | Job | What it runs | Required to merge |
 |-----|--------------|-------------------|
 | `platform` | lint + type-check + test + build | yes |
 | `website` | lint + type-check + build | yes |
-| `mobile` | lint + type-check | yes |
 | `fingerprint-bridge` | syntax check + tests | yes |
+| `sync-worker` | syntax check + tests | not yet |
+| `couch-gateway-live` | sync-gateway integration tests against a throwaway CouchDB | no |
 | `infrastructure` | terraform fmt/validate + deployment-manifest checks | not yet |
 
 The pre-commit hook covers the lint and type-check halves locally, so CI
@@ -218,10 +220,9 @@ Full operator guide: [docs/operations/jira-github-do-tracking.md](docs/operation
 | Workflow | Trigger | Effect |
 |----------|---------|--------|
 | `deploy-staging` | automatic, after green `ci` on `main` | Builds platform + website + sync-worker images, publishes them to GHCR as `:staging`, and (when the `STAGING_SSH_*` secrets exist) pulls and restarts the staging stack |
-| `deploy-production` | manual (`workflow_dispatch`), `target: vps` or `aws` | Re-tags the staging images as `production` — refusing any demo-mode image — then SSH-deploys, or runs the CloudFormation path in `af-south-1` |
-| `deploy-app-platform` | manual | Deploys to DigitalOcean App Platform against an exact reviewed commit, smoke-tests it, and rolls back on failure |
+| `deploy-production` | manual (`workflow_dispatch`) | Builds the selected `main` commit with production settings, publishes immutable SHA-tagged images to GHCR, then SSH-deploys them to the DigitalOcean production droplet and rolls back if health checks fail |
 | `deploy-website` | manual | Builds `tamamhealth.org` in CI, publishes to GHCR, and copies the image to the droplet over SSH — the DigitalOcean container registry is no longer in the path |
-| `docs`, `mobile-beta` | see the workflow files | API docs and Expo beta builds |
+| `docs` | see the workflow file | API docs |
 
 Scheduled workflows (`backups-cron`, `reminders-cron`,
 `transfers-sweep-cron`) run on their own timers
