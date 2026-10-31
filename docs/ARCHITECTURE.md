@@ -229,7 +229,7 @@ Special permission lists in `permissions.ts`:
 PouchDB ──replication──► CouchDB ──_changes──► sync-worker ──HMAC POST──► /api/sync ──► PostgreSQL
 ```
 
-- `sync-worker/index.mjs` polls each database's `_changes` feed, tracks a
+- `platform/tools/sync-worker/index.mjs` polls each database's `_changes` feed, tracks a
   per-database last-seen `seq`, and POSTs batches signed with HMAC-SHA256
   (`x-tamamhealth-signature`).
 - `/api/sync` verifies the signature and flattens JSON documents into the

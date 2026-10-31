@@ -136,4 +136,4 @@ ANC/immunization + DHIS2 reporting. Expand workflows once that's sticky.
 ---
 
 _See also: `docs/DEPLOYMENT-AND-ROLLOUT.md` (full runbook), `docs/MANUAL-SETUP-CHECKLIST.md`
-(what only you do), `country-node/` and `regional-exchange/` (the federation tiers)._
+(what only you do), `platform/tools/country-node/` and `platform/tools/regional-exchange/` (the federation tiers)._

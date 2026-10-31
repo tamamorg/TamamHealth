@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Offline-first EHR for South Sudan. Next.js 16 (App Router) + React 19 + TypeScript, port 3000. Package name `tamamhealth`. Requires Node >=20 <25, npm >=10.
 
-This is one package in a monorepo (`platform/`, `website/`, `sync-worker/`, `country-node/`, `regional-exchange/`). The local fingerprint scanner bridge lives inside this package at `tools/fingerprint-bridge/` (dependency-free Node service, run with `npm run fingerprint:bridge`; excluded from the Docker image). Each has its own `package.json` and lockfile — run npm commands from inside `platform/`, never the repo root. `README.md` here is the full developer reference.
+This is one package in a monorepo (`platform/`, `website/`). Everything else lives inside this package under `tools/`: `sync-worker/`, `country-node/`, `regional-exchange/`, and the local fingerprint scanner bridge at `fingerprint-bridge/` (dependency-free Node service, run with `npm run fingerprint:bridge`; excluded from the Docker image). Each has its own `package.json` and lockfile — run npm commands from inside `platform/`, never the repo root. `README.md` here is the full developer reference.
 
 ## Commands
 

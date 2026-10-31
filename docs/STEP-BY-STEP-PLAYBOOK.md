@@ -253,7 +253,7 @@ Add the same three A records for the country domain in your DNS host, then:
 
 ### Step B9 — Wire DHIS2 (national reporting — wins ministry buy-in)
 Provide the country's DHIS2 URL + credentials and org-unit mappings; configure
-the DHIS2 export (see the DHIS2 settings in the app / `country-node/`). This makes
+the DHIS2 export (see the DHIS2 settings in the app / `platform/tools/country-node/`). This makes
 routine visits flow into national reporting automatically.
 
 ### Step B10 — Onboard facilities & train
@@ -266,7 +266,7 @@ consult → lab/pharmacy → checkout). Start with 3 facilities, measure, expand
 # Part C — Add another country
 Repeat **Part B** on a separate node in/near that country (its own domain, its
 own encrypted disk, its own backups). Each country node is independent and keeps
-working alone. Only stand up the **regional exchange** (`regional-exchange/`)
+working alone. Only stand up the **regional exchange** (`platform/tools/regional-exchange/`)
 when you need cross-border referrals or outbreak signals, sharing minimum /
 anonymised data under an agreement.
 

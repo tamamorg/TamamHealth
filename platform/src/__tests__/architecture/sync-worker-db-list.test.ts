@@ -20,7 +20,7 @@ import path from 'node:path';
 const REPO = path.join(process.cwd(), '..');
 const ROUTE = path.join(process.cwd(), 'src/modules/analytics/api/sync-route.ts');
 const ADAPTER = path.join(process.cwd(), 'src/app/api/sync/route.ts');
-const WORKER = path.join(REPO, 'sync-worker/index.mjs');
+const WORKER = path.join(REPO, 'platform/tools/sync-worker/index.mjs');
 
 function platformKeys(): string[] {
   const src = fs.readFileSync(ROUTE, 'utf8');
@@ -32,7 +32,7 @@ function platformKeys(): string[] {
 function workerKeys(): string[] {
   const src = fs.readFileSync(WORKER, 'utf8');
   const block = src.match(/FALLBACK_DBS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
-  if (!block) throw new Error('FALLBACK_DBS not found in sync-worker/index.mjs');
+  if (!block) throw new Error('FALLBACK_DBS not found in platform/tools/sync-worker/index.mjs');
   return [...block[1].matchAll(/^\s*'(tamamhealth_[A-Za-z0-9_]+)'/gm)].map(m => m[1]);
 }
 

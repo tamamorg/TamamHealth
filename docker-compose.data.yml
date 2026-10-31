@@ -79,7 +79,7 @@ services:
   sync-worker:
     image: tamamhealth-sync-worker:${RELEASE_ID:?RELEASE_ID must be the deployed git commit SHA}
     build:
-      context: ./sync-worker
+      context: ./platform/tools/sync-worker
       dockerfile: Dockerfile
     profiles: ["analytics"]
     logging: *default-logging

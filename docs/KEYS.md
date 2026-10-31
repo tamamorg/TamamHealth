@@ -117,8 +117,8 @@ and [`DEPLOY-PRODUCTION.md`](DEPLOY-PRODUCTION.md).
 - **Purpose:** CouchDB `_changes` feed → PostgreSQL upserts, for national
   analytics only (many `tamamhealth_*` databases are deliberately excluded —
   see the coverage matrix at the top of `src/app/api/sync/route.ts`)
-- **Used by:** the `sync-worker` service (`sync-worker/index.mjs`), which
-  polls CouchDB `_changes` and posts signed batches — see `sync-worker/README.md`
+- **Used by:** the `sync-worker` service (`platform/tools/sync-worker/index.mjs`), which
+  polls CouchDB `_changes` and posts signed batches — see `platform/tools/sync-worker/README.md`
 
 ### 5. Password Hashing
 

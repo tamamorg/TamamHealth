@@ -45,7 +45,7 @@ cd platform && npm run dev    # http://localhost:3000
 ```
 
 There is no repo-level install of application code — every subproject
-(`platform/`, `website/`, `sync-worker/`)
+(`platform/`, `website/`)
 carries its own `package.json` and lockfile. The root `package.json` holds
 git-hook tooling only.
 
@@ -123,12 +123,12 @@ LEVEL 5 — NATIONAL (Teaching Hospitals + MoH)
 ```text
 TamamHealth/
 ├── platform/           EHR application (Next.js) — port 3000
-│   └── tools/fingerprint-bridge/  Localhost USB-scanner bridge for the
-│                       registration desk (Node, 127.0.0.1:7345; see its README)
+│   ├── tools/fingerprint-bridge/  Localhost USB-scanner bridge for the
+│   │                   registration desk (Node, 127.0.0.1:7345; see its README)
+│   ├── tools/sync-worker/  CouchDB → PostgreSQL national-analytics sync worker
+│   ├── tools/country-node/  Country-level aggregation node
+│   └── tools/regional-exchange/  Cross-facility / cross-border record exchange
 ├── website/            Marketing site, tamamhealth.org (Next.js) — port 3001
-├── sync-worker/        CouchDB → PostgreSQL national-analytics sync worker
-├── country-node/       Country-level aggregation node
-├── regional-exchange/  Cross-facility / cross-border record exchange
 ├── infra/              Terraform (digitalocean, digitalocean-website),
 │                       systemd units and backup config
 ├── scripts/            Setup, backup, preflight and deploy scripts

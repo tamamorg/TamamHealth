@@ -54,7 +54,7 @@ directly. We chose a separate pull-style worker because:
 | `BACKOFF_MS`              | no       | `30000`                              | Sleep duration after 3 consecutive failed ticks.                                                    |
 | `REQUEST_TIMEOUT_MS`      | no       | `15000`                              | Timeout for CouchDB and platform requests.                                                           |
 | `HEARTBEAT_FILE`          | no       | `/var/lib/sync-worker/heartbeat.json`| Container-health heartbeat written after every completed poll.                                      |
-| `PLATFORM_SYNC_ROUTE_PATH`| no       | —                                    | Extra path to try when reading the DB list off the platform's `route.ts`. `/app/platform/src/app/api/sync/route.ts` and `../platform/src/app/api/sync/route.ts` are tried anyway; if none resolve, the 44-entry hardcoded fallback is used. |
+| `PLATFORM_SYNC_ROUTE_PATH`| no       | —                                    | Extra path to try when reading the DB list off the platform's `route.ts`. `/app/platform/src/app/api/sync/route.ts` and `../../src/app/api/sync/route.ts` are tried anyway; if none resolve, the 44-entry hardcoded fallback is used. |
 
 The worker has no npm dependencies — `npm start` is `node index.mjs`, and Node
 20+ is the only requirement.
@@ -204,7 +204,7 @@ care about that timestamp.
 ## Verification (local)
 
 ```bash
-cd sync-worker
+cd platform/tools/sync-worker
 npm run check                    # node --check index.mjs — parse only
 npm test                         # node --test index.test.mjs — built-in runner, no deps
 npm start                        # with all required env unset → exits 2 with a clean error list

@@ -86,7 +86,7 @@ the aggregated store, or (b) formally retire the unused Postgres writeback and a
   (`sync/route.ts`). (`encounters` remain excluded, but coded morbidity now has a national path via records.)
 - [x] **Sync-worker fails forward.** It advanced the CouchDB `seq` even when `/api/sync` reported per-doc
   errors, so any mapping/schema mismatch = permanent, un-retried loss. FIXED 2026-07: `pollDatabase`
-  (`sync-worker/index.mjs`) now holds the checkpoint and retries a batch that reported errors; after a
+  (`platform/tools/sync-worker/index.mjs`) now holds the checkpoint and retries a batch that reported errors; after a
   bounded number of attempts it advances past and **loudly dead-letters** (logs the dropped docs) so a
   single permanently-bad doc can't stall the stream forever, and transient failures are no longer silently lost.
 - [x] **Nutrition SAM/MAM has no national path.** `nutrition_screenings` was captured but had no writeback
@@ -100,7 +100,7 @@ the aggregated store, or (b) formally retire the unused Postgres writeback and a
   Postgres. Refs: `sync/route.ts` mappers vs `db-types.ts` docs.
 - [x] **Orphans/drift:** `patient_feedback` now has an org-scoped bidirectional sync source,
   CouchDB-to-Postgres route, and complete field mapper. ~~`FALLBACK_DBS` still lists dropped `boma_visits`~~ FIXED 2026-07:
-  removed the dead `boma_visits` entry from the sync-worker `FALLBACK_DBS`. Refs: `sync-worker/index.mjs`.
+  removed the dead `boma_visits` entry from the sync-worker `FALLBACK_DBS`. Refs: `platform/tools/sync-worker/index.mjs`.
 
 ---
 

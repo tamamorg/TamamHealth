@@ -214,13 +214,13 @@ echo
 
 # ── 6. sync-worker readiness ─────────────────────────────────────────────────
 cyan "6/6 · sync-worker (CouchDB → /api/sync bridge)"
-if [ -f sync-worker/index.mjs ]; then
-  if node --check sync-worker/index.mjs >/dev/null 2>&1; then
-    ok "sync-worker/index.mjs parses"
+if [ -f platform/tools/sync-worker/index.mjs ]; then
+  if node --check platform/tools/sync-worker/index.mjs >/dev/null 2>&1; then
+    ok "platform/tools/sync-worker/index.mjs parses"
   else
-    fail "sync-worker/index.mjs has a syntax error"
+    fail "platform/tools/sync-worker/index.mjs has a syntax error"
   fi
-  if node --test sync-worker/index.test.mjs >/tmp/preflight-worker.log 2>&1; then
+  if node --test platform/tools/sync-worker/index.test.mjs >/tmp/preflight-worker.log 2>&1; then
     pass=$(grep -Eo 'tests [0-9]+' /tmp/preflight-worker.log | tail -1 || true)
     ok "sync-worker tests pass${pass:+ ($pass)}"
   else
@@ -228,7 +228,7 @@ if [ -f sync-worker/index.mjs ]; then
     tail -20 /tmp/preflight-worker.log | sed 's/^/      /'
   fi
 else
-  fail "sync-worker/ directory is missing — analytics will be empty after deploy"
+  fail "platform/tools/sync-worker/ directory is missing — analytics will be empty after deploy"
 fi
 echo
 

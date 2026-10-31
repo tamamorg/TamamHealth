@@ -59,7 +59,7 @@ head_ "2. Dependencies"
 # -----------------------------------------------------------------------------
 # Each package carries its own lockfile; there is no workspace hoisting.
 # The fingerprint bridge lives in platform/tools/ and has no dependencies.
-PKGS=(platform website sync-worker)
+PKGS=(platform website platform/tools/sync-worker)
 
 install_pkg() {
   local dir="$1"

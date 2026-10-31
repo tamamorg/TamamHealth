@@ -28,7 +28,7 @@ break both sovereignty and resilience).
 
 ## Realistic path to ship
 
-The prerequisite is not written yet either: `country-node/` is also a design
+The prerequisite is not written yet either: `platform/tools/country-node/` is also a design
 stake, so today there are zero country nodes and the facility platform is
 standing in for the national layer itself. In order:
 

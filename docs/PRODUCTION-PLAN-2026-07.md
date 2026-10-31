@@ -259,7 +259,7 @@ wired but no-ops without one), `/api/health` pointed at an uptime monitor
 
 ## 4. Explicitly out of scope for v1
 
-- **country-node** — `country-node/src/` is **empty**. **[verified]**
+- **country-node** — `platform/tools/country-node/src/` is **empty**. **[verified]**
 - **regional-exchange** — README only, no source. **[verified]**
 
 The national/DHIS2 tier is Phase 3 by design (per `docs/ARCHITECTURE.md`) and

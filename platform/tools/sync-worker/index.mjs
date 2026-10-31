@@ -134,7 +134,7 @@ async function loadDbList() {
   const candidatePaths = [
     process.env.PLATFORM_SYNC_ROUTE_PATH,
     '/app/platform/src/modules/analytics/api/sync-route.ts',
-    '../platform/src/modules/analytics/api/sync-route.ts',
+    '../../src/modules/analytics/api/sync-route.ts',
   ].filter(Boolean);
 
   for (const path of candidatePaths) {

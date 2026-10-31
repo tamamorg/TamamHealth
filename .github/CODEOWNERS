@@ -64,7 +64,7 @@
 # --- Data & sync -----------------------------------------------------------
 # Patient data, CouchDB→Postgres projection and the offline sync engine.
 # Changes here can silently corrupt or drop PHI — keep a second pair of eyes.
-/sync-worker/                    @makuachteny
+/platform/tools/sync-worker/                    @makuachteny
 /platform/src/modules/analytics/api/  @makuachteny
 /platform/src/lib/db/            @makuachteny
 /platform/src/lib/db.ts          @makuachteny
