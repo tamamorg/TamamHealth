@@ -12,6 +12,8 @@
  * without rendering the form.
  */
 
+import { countryName } from '@/lib/country/world-lists';
+
 export interface ReviewGroup {
   /** Index into SECTION_ANCHORS — what the group's Edit link jumps to. */
   section: number;
@@ -53,11 +55,13 @@ export function buildReviewGroups(
         [t('patientNew.middleName'), form.middleName],
         [t('patientNew.surname'), form.surname],
         [t('patientNew.maidenName'), form.maidenName],
+        [t('patientNew.latinName'), form.latinName],
         [t('patientNew.dateOfBirth'), form.dateOfBirth],
         [t('patientNew.estimatedAge'), form.estimatedAge],
         [t('patientNew.gender'), form.gender],
         [t('patientNew.tribe'), form.tribe],
         [t('patientNew.primaryLanguage'), form.primaryLanguage],
+        [t('patientNew.citizenship'), countryName(form.citizenship)],
       ] as [string, string][],
     },
     {
@@ -77,6 +81,7 @@ export function buildReviewGroups(
         [t('patientNew.altPhone'), form.altPhone],
         [t('patientNew.whatsapp'), form.whatsapp],
         [t('patientNew.email'), form.email],
+        [t('patientNew.residenceCountry'), countryName(form.residenceCountry)],
         [t('patientNew.state'), form.state],
         [t('patientNew.county'), form.county],
         [t('patientNew.payam'), form.payam],
@@ -86,6 +91,7 @@ export function buildReviewGroups(
         [t('patientNew.geocodeId'), geocodeId || ''],
         [t('patientNew.residentialAddress'), form.address],
         [t('patientNew.nationalId'), form.nationalId],
+        [t('patientNew.idNumber'), form.idNumber],
       ] as [string, string][],
     },
     {
@@ -95,6 +101,7 @@ export function buildReviewGroups(
         [t('patientNew.fullName'), form.nokName],
         [t('patientNew.relationship'), form.nokRelationship],
         [t('patientNew.nokPhone'), form.nokPhone],
+        [t('patientNew.nokEmail'), form.nokEmail],
         [t('patientNew.nokAddress'), form.nokAddress],
         // Extra contacts are numbered rather than labelled, so the read-back
         // grows with them instead of silently reporting only the first.

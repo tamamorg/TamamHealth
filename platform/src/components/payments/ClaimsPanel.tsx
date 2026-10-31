@@ -14,6 +14,7 @@
  * this panel for roles that hold the grant.
  */
 
+import { defaultCurrency, offeredCurrencies } from '@/lib/country/country-pack';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -68,7 +69,7 @@ interface NewClaimForm {
   amount: string;
 }
 
-const EMPTY_CLAIM: NewClaimForm = { patientId: '', policyId: '', billingId: '', amount: '', currency: 'SSP' };
+const EMPTY_CLAIM: NewClaimForm = { patientId: '', policyId: '', billingId: '', amount: '', currency: defaultCurrency() };
 
 export interface ClaimsPanelProps {
   claims: ClaimDoc[];
@@ -342,9 +343,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 </td>
                 <td>{claim.payerName}</td>
                 <td className="bl-muted">{t(PAYER_LABEL_KEYS[claim.payerType]) || claim.payerType}</td>
-                <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
-                <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
-                <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || 'SSP', decimals: 2 })}</td>
+                <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
+                <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
+                <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                 </td>
@@ -376,22 +377,22 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <div className="bl-stats" style={{ border: 'none', padding: 0 }}>
                   <div>
                     <span className="bl-stat-label">{t('claims.colBilled')}</span>
-                    <span className="bl-stat-value">{formatMoney(openClaim.totalBilled || 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}</span>
+                    <span className="bl-stat-value">{formatMoney(openClaim.totalBilled || 0, { currency: openClaim.currency || defaultCurrency(), decimals: 2 })}</span>
                   </div>
                   <div>
                     <span className="bl-stat-label">{t('claims.colAllowed')}</span>
-                    <span className="bl-stat-value">{formatMoney(openClaim.totalAllowed || 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}</span>
+                    <span className="bl-stat-value">{formatMoney(openClaim.totalAllowed || 0, { currency: openClaim.currency || defaultCurrency(), decimals: 2 })}</span>
                   </div>
                   <div>
                     <span className="bl-stat-label">{t('claims.colPaid')}</span>
                     <span className={`bl-stat-value${(openClaim.totalApproved || 0) > 0 ? ' bl-stat-value--good' : ''}`}>
-                      {formatMoney(openClaim.status === 'paid' ? openClaim.settlement?.amount ?? openClaim.totalApproved ?? 0 : 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}
+                      {formatMoney(openClaim.status === 'paid' ? openClaim.settlement?.amount ?? openClaim.totalApproved ?? 0 : 0, { currency: openClaim.currency || defaultCurrency(), decimals: 2 })}
                     </span>
                   </div>
                   {(openClaim.totalDenied || 0) > 0 && (
                     <div>
                       <span className="bl-stat-label">Denied</span>
-                      <span className="bl-stat-value bl-stat-value--danger">{formatMoney(openClaim.totalDenied || 0, { currency: openClaim.currency || 'SSP', decimals: 2 })}</span>
+                      <span className="bl-stat-value bl-stat-value--danger">{formatMoney(openClaim.totalDenied || 0, { currency: openClaim.currency || defaultCurrency(), decimals: 2 })}</span>
                     </div>
                   )}
                 </div>
@@ -582,7 +583,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
         >
           <div className="bl-root">
             <p className="bl-modal-sub">
-              Denied by {appealFor.payerName} · billed {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || 'SSP', decimals: 2 })}
+              Denied by {appealFor.payerName} · billed {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || defaultCurrency(), decimals: 2 })}
               {appealFor.denialReasons?.length ? ` · reason: ${appealFor.denialReasons.join(', ')}` : ''}
             </p>
             <div className="bl-field">
@@ -707,7 +708,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   <div className="bl-field">
                     <label htmlFor="claim-currency">{t('insuranceFlow.currency')}</label>
                     <Select id="claim-currency" value={newClaim.currency} onChange={e => setNewClaim(f => ({ ...f, currency: e.target.value }))}>
-                      {['SSP', 'USD', 'KES', 'UGX'].map(currency => <option key={currency} value={currency}>{currency}</option>)}
+                      {offeredCurrencies().map(currency => <option key={currency} value={currency}>{currency}</option>)}
                     </Select>
                     <label htmlFor="claim-amount">Claim amount</label>
                     <input

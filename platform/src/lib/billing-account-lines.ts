@@ -14,6 +14,7 @@
  * allocation stamped on the payment). Anything else pays the oldest open line
  * first, the order settleOpenBillsWithPayment settles bills in.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import type {
   ChargeDoc, LedgerEntryDoc, LedgerEntryType, PaymentDoc, RefundDoc,
 } from './db-types-payments';
@@ -98,7 +99,7 @@ function entriesFromDocs(charges: ChargeDoc[], payments: PaymentDoc[]): Entry[] 
   return [
     ...charges.map((c): Entry => ({
       _id: `charge-${c._id}`, createdAt: c.serviceDate || c.createdAt, entryType: 'charge', amount: c.billedAmount,
-      description: c.description, encounterId: c.encounterId, referenceId: c._id, referenceType: 'charge', currency: 'SSP',
+      description: c.description, encounterId: c.encounterId, referenceId: c._id, referenceType: 'charge', currency: defaultCurrency(),
     })),
     ...payments.filter(p => p.status === 'posted').map((p): Entry => ({
       _id: `payment-${p._id}`, createdAt: p.processedAt, entryType: 'payment', amount: -p.amount,
@@ -152,7 +153,7 @@ export function buildAccountLines({ entries, charges, payments, refunds, bills }
     if (!line) {
       line = {
         id: key, date: entry.createdAt, updatedAt: entry.createdAt, items: [], categories: [],
-        charged: 0, paid: 0, adjusted: 0, refunded: 0, balance: 0, currency: entry.currency || 'SSP',
+        charged: 0, paid: 0, adjusted: 0, refunded: 0, balance: 0, currency: entry.currency || defaultCurrency(),
         status: 'unpaid', updates: [], searchText: '',
       };
       lines.set(key, line);

@@ -6,6 +6,8 @@
  * counting can be tested without rendering anything.
  */
 
+import { usesAddressLists } from '@/lib/country/country-pack';
+
 /**
  * Anchor ids for the rail's jump links, in the same order as the step labels
  * and the sections on the page.
@@ -51,7 +53,7 @@ export interface SectionProgress {
 export interface RegistrationRequirementInput {
   registrationFacility: string;
   firstName: string;
-  surname: string;
+  residenceCountry?: string;
   gender: string;
   dateOfBirth: string;
   estimatedAge: string;
@@ -91,10 +93,10 @@ export function sectionRequirementProgress(
   // One entry per SECTION_ANCHORS position, in that order.
   const requirements: boolean[][] = [
     /* demographics */ [...(options.facilityRequired ? [filled(form.registrationFacility)] : []),
-      filled(form.firstName), filled(form.surname), filled(form.gender),
+      filled(form.firstName), filled(form.gender),
       filled(form.dateOfBirth) || filled(form.estimatedAge), filled(form.primaryLanguage)],
     /* biometrics   */ [],
-    /* contact      */ [filled(form.state), filled(form.county)],
+    /* contact      */ usesAddressLists(form.residenceCountry) ? [filled(form.state), filled(form.county)] : [],
     /* next of kin  */ [filled(form.nokName), filled(form.nokRelationship), filled(form.nokPhone)],
     /* coverage     */ [],
     /* review       */ [],

@@ -1,3 +1,4 @@
+import { activeCountry } from '@/lib/country/country-pack';
 /**
  * Pure helpers for composing text-message bodies. No provider, no env — safe
  * to import from the browser (import this file, not `@/lib/sms`, which loads
@@ -98,15 +99,21 @@ export function maskPhone(phone: string): string {
 /**
  * Normalise a raw phone number to E.164.
  *
- * Defaults assume South Sudan (+211) since that is the platform's primary
- * deployment. Numbers that already have a country code (start with `+` or
- * `211`) are kept as-is; a leading `0` is treated as the SS trunk prefix
- * and rewritten. Everything else is prefixed with `+` and digits only.
+ * Numbers that already have a country code (start with `+` or this country's
+ * code) are kept as-is; a leading `0` is this country's trunk prefix and is
+ * rewritten only when the rest is a local number. A record may hold a foreign
+ * number in its home format, and guessing a country for it would text a
+ * stranger, so that comes back empty and is never sent to. Everything else is
+ * prefixed with `+` and digits only.
  */
 export function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('211')) return '+' + digits;
-  if (digits.startsWith('0')) return '+211' + digits.slice(1);
-  if (raw.startsWith('+')) return raw;
+  const { dialCode, nationalNumber } = activeCountry();
+  if (dialCode && digits.startsWith(dialCode)) return '+' + digits;
+  if (raw.trim().startsWith('+')) return raw.trim();
+  if (digits.startsWith('0')) {
+    const national = digits.replace(/^0+/, '');
+    return dialCode && nationalNumber.test(national) ? `+${dialCode}${national}` : '';
+  }
   return '+' + digits;
 }

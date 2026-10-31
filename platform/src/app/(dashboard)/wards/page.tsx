@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
@@ -408,7 +409,7 @@ export default function WardsPage() {
                 </div>
                 {(dischargeFor.admissionDepositRequired ?? 0) > 0 && <div>
                   <dt>{t('ward.admissionDeposit')}</dt>
-                  <dd>{dischargeFor.admissionDepositPaid ?? 0} / {dischargeFor.admissionDepositRequired} {dischargeFor.tariffCurrency || 'SSP'} · {t(`ward.depositStatus.${dischargeFor.admissionDepositStatus || 'due'}`)}</dd>
+                  <dd>{dischargeFor.admissionDepositPaid ?? 0} / {dischargeFor.admissionDepositRequired} {dischargeFor.tariffCurrency || defaultCurrency()} · {t(`ward.depositStatus.${dischargeFor.admissionDepositStatus || 'due'}`)}</dd>
                 </div>}
               </dl>
 

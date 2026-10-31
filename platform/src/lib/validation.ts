@@ -1,6 +1,8 @@
 // Input validation for patient and medical record data
 
-import { isValidPhone, isValidNationalId } from './field-formats';
+import { isValidEmail, isValidPhone, isValidNationalId } from './field-formats';
+import { usesAddressLists } from './country/country-pack';
+import { isValidDocumentNumber } from './country/patient-identity';
 
 // File upload constraints
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -116,10 +118,10 @@ export function sanitizePayload<T extends Record<string, unknown>>(data: T): T {
 
 function validatePhone(value: unknown, fieldName: string): string | null {
   if (!value || typeof value !== 'string' || value.trim() === '') return null;
-  // Canonical South Sudan format enforced via the shared field-formats module:
-  // accepts local/international input but must normalize to +211XXXXXXXXX.
+  // Canonical format enforced via the shared field-formats module: a local
+  // number for this country, or any country's number with its code.
   if (!isValidPhone(value)) {
-    return `Invalid ${fieldName} — use a valid South Sudan number (e.g. +211 912 345 678 or 0912 345 678)`;
+    return `Invalid ${fieldName} — use 6 to 15 digits, with the country code if you know it (e.g. +254 712 345 678)`;
   }
   return null;
 }
@@ -134,10 +136,9 @@ export function validatePatientData(data: Record<string, unknown>): Record<strin
     errors.firstName = 'First name is too long';
   }
 
+  // Optional: many people have one name, and a forced surname gets a placeholder.
   const surname = sanitizeString(data.surname);
-  if (!surname || surname.length < 1) {
-    errors.surname = 'Surname is required';
-  } else if (surname.length > 100) {
+  if (surname && surname.length > 100) {
     errors.surname = 'Surname is too long';
   }
 
@@ -181,8 +182,13 @@ export function validatePatientData(data: Record<string, unknown>): Record<strin
   if (whatsappErr) errors.whatsapp = whatsappErr;
   const nokPhoneErr = validatePhone(data.nokPhone, 'next-of-kin phone number');
   if (nokPhoneErr) errors.nokPhone = nokPhoneErr;
+  if (!isValidEmail(data.email)) errors.email = 'Email address is not valid';
+  if (!isValidEmail(data.nokEmail)) errors.nokEmail = 'Next-of-kin email address is not valid';
 
-  if (!data.state || typeof data.state !== 'string') {
+  // Only an address on this country's location lists has a required state and
+  // county; a visitor's home address has neither in that form.
+  const listedAddress = usesAddressLists(data.residenceCountry as string | undefined);
+  if (listedAddress && (!data.state || typeof data.state !== 'string')) {
     errors.state = 'State is required';
   }
 
@@ -193,7 +199,7 @@ export function validatePatientData(data: Record<string, unknown>): Record<strin
     errors.primaryLanguage = 'Primary language is required';
   }
   // County is required whenever a state is provided (form couples the two).
-  if (data.state && !sanitizeString(data.county)) {
+  if (listedAddress && data.state && !sanitizeString(data.county)) {
     errors.county = 'County is required';
   }
   const nokName = sanitizeString(data.nokName);
@@ -225,6 +231,11 @@ export function validatePatientData(data: Record<string, unknown>): Record<strin
     if (!isValidNationalId(data.nationalId)) {
       errors.nationalId = 'National ID must be 3–30 letters/numbers';
     }
+  }
+
+  if (Array.isArray(data.identifiers)
+    && data.identifiers.some(item => !isValidDocumentNumber(String((item as { value?: unknown })?.value ?? '')))) {
+    errors.identifiers = 'ID number must be 3–40 characters';
   }
 
   return errors;
@@ -411,7 +422,7 @@ export function validateVitalSigns(
  * separately in docs/EMR-FIELD-AUDIT-2026-07.md §2 and needs a UI, not just an
  * enum value.
  */
-export const CANONICAL_GENDERS = ['Male', 'Female'] as const;
+export const CANONICAL_GENDERS = ['Male', 'Female', 'Other', 'Unknown'] as const;
 export type CanonicalGender = (typeof CANONICAL_GENDERS)[number];
 
 /**
@@ -424,6 +435,8 @@ export function normalizeGender(value: unknown): CanonicalGender | null {
   const v = value.trim().toLowerCase();
   if (v === 'male') return 'Male';
   if (v === 'female') return 'Female';
+  if (v === 'other') return 'Other';
+  if (v === 'unknown') return 'Unknown';
   return null;
 }
 

@@ -7,6 +7,8 @@
  * that logic isn't duplicated or destabilized here.
  */
 
+import { activeCountry } from '@/lib/country/country-pack';
+import { countryName } from '@/lib/country/world-lists';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon as DuotoneIcon } from '@/components/icons';
@@ -157,6 +159,8 @@ export default function ChartHeader({
 
   const initials = patientInitials(patient);
   const photoUrl = (patient as { photoUrl?: string }).photoUrl;
+  const foreignCountry = patient.residenceCountry && patient.residenceCountry !== activeCountry().code
+    ? countryName(patient.residenceCountry) : '';
   const genderSymbol = patient.gender === 'Male' ? '♂' : patient.gender === 'Female' ? '♀' : null;
   const genderClass = patient.gender === 'Male' ? 'male' : patient.gender === 'Female' ? 'female' : '';
   const patientIdDisplay = patient.hospitalNumber || patient.geocodeId || '—';
@@ -206,7 +210,7 @@ export default function ChartHeader({
             worth a collapse control. */}
         <div className="tamam-header-details">
           <span>Phone: <strong>{patient.phone || '—'}</strong></span>
-          <span>Location: <strong>{patient.state || '—'}{patient.county ? `, ${patient.county}` : ''}</strong></span>
+          <span>Location: <strong>{[patient.state, patient.county, foreignCountry].filter(Boolean).join(', ') || '—'}</strong></span>
         </div>
       </div>
 

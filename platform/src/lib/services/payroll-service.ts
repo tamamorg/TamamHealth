@@ -4,6 +4,7 @@
  * total per row. Detailed line items can be added later if a facility
  * needs statutory split-out.
  */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { payrollEntriesDB } from '../db';
 import type { PayrollEntryDoc, PayrollStatus } from '../db-types-hr';
 import type { DataScope } from './data-scope';
@@ -58,7 +59,7 @@ export async function createPayrollEntry(input: CreatePayrollInput): Promise<Pay
     allowances,
     deductions,
     netPay: input.baseSalary + allowances - deductions,
-    currency: input.currency || 'SSP',
+    currency: input.currency || defaultCurrency(),
     status: 'draft',
     notes: input.notes,
     orgId: input.orgId,

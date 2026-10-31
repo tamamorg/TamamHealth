@@ -1,4 +1,5 @@
 /** Payment service split: charges. Re-exported through ../payment-service. */
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { findByType } from '../db-query';
 import type { ChargeDoc, ChargeStatus } from '../../db-types-payments';
 import type { DataScope } from '../data-scope';
@@ -58,7 +59,7 @@ export async function createCharge(input: CreateChargeInput): Promise<ChargeDoc>
     description: `Charge: ${input.description} (${input.units}x $${input.billedAmount})`,
     referenceId: doc._id,
     referenceType: 'charge',
-    currency: 'SSP',
+    currency: defaultCurrency(),
     facilityId: input.facilityId,
     orgId: input.orgId,
     createdBy: input.createdBy,

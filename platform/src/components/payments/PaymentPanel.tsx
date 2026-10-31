@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect } from 'react';
 import { Banknote, Smartphone, CreditCard, Building2, Shield, CheckCircle2, Loader2, Printer, Mail } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -43,7 +44,7 @@ function defaultPaymentTab(): TabType {
 }
 
 export default function PaymentPanel({
-  patientId, patientName, hospitalNumber, encounterId, allocation, amountDue, currency = 'SSP', onSuccess, onCancel
+  patientId, patientName, hospitalNumber, encounterId, allocation, amountDue, currency = defaultCurrency(), onSuccess, onCancel
 }: PaymentPanelProps) {
   const { currentUser } = useAuth();
   const scope = useDataScope();

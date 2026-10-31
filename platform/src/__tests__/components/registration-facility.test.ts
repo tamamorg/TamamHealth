@@ -31,14 +31,14 @@ const STEPS = ['Demographics', 'Biometrics', 'Contact', 'Next of Kin', 'Coverage
 describe('registration requirement counting', () => {
   test('a clerk with their own posting is asked nothing extra', () => {
     const progress = sectionRequirementProgress(NAMED)[DEMOGRAPHICS_SECTION];
-    expect(progress).toEqual({ done: 5, total: 5 });
+    expect(progress).toEqual({ done: 4, total: 4 });
   });
 
   test('a user with no facility of their own owes one more answer', () => {
     const progress = sectionRequirementProgress(NAMED, { facilityRequired: true })[DEMOGRAPHICS_SECTION];
     // Six required now, and the section is NOT finished — which is what stops
     // the rail from unlocking Review on a form Register would refuse.
-    expect(progress).toEqual({ done: 5, total: 6 });
+    expect(progress).toEqual({ done: 4, total: 5 });
   });
 
   test('naming the facility completes the section', () => {
@@ -46,7 +46,7 @@ describe('registration requirement counting', () => {
       { ...NAMED, registrationFacility: 'hosp-001' },
       { facilityRequired: true },
     )[DEMOGRAPHICS_SECTION];
-    expect(progress).toEqual({ done: 6, total: 6 });
+    expect(progress).toEqual({ done: 5, total: 5 });
   });
 });
 

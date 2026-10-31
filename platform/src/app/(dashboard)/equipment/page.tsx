@@ -1,4 +1,5 @@
 'use client';
+import { defaultCurrency } from '@/lib/country/country-pack';
 import DepartmentInput from '@/components/DepartmentInput';
 
 import { useState, useMemo } from 'react';
@@ -70,7 +71,7 @@ export default function AssetsPage() {
     name: '', assetTag: '', serialNumber: '', category: 'medical_equipment' as AssetCategory,
     manufacturer: '', model: '', department: '', location: '',
     condition: 'good' as AssetDoc['condition'],
-    cost: 0, costCurrency: 'SSP', donor: '',
+    cost: 0, costCurrency: defaultCurrency(), donor: '',
     warrantyExpiresAt: '', serviceIntervalMonths: 12,
     notes: '',
   });
@@ -120,7 +121,7 @@ export default function AssetsPage() {
       });
       showToast(t('equipment.toastRegistered', { name: form.name }), 'success');
       setCreateOpen(false);
-      setForm({ name: '', assetTag: '', serialNumber: '', category: 'medical_equipment', manufacturer: '', model: '', department: '', location: '', condition: 'good', cost: 0, costCurrency: 'SSP', donor: '', warrantyExpiresAt: '', serviceIntervalMonths: 12, notes: '' });
+      setForm({ name: '', assetTag: '', serialNumber: '', category: 'medical_equipment', manufacturer: '', model: '', department: '', location: '', condition: 'good', cost: 0, costCurrency: defaultCurrency(), donor: '', warrantyExpiresAt: '', serviceIntervalMonths: 12, notes: '' });
     } catch (err) {
       console.error(err);
       showToast(t('equipment.toastRegisterFailed'), 'error');

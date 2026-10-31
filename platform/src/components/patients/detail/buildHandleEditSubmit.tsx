@@ -1,12 +1,14 @@
 'use client';
+import { identifiersFrom, isValidDocumentNumber } from '@/lib/country/patient-identity';
+import type { PatientEditForm } from './PatientEditModal';
 import type { PatientDoc } from '@/lib/db-types';
-import { isValidPhone, normalizePhone } from '@/lib/field-formats';
+import { isValidPhone, normalizePhone, isValidEmail, normalizeEmail } from '@/lib/field-formats';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import type { Dispatch, SetStateAction } from 'react';
 export function buildHandleEditSubmit({ patient, editForm, setEditErrors, t, setEditSubmitting, updatePatient, setShowEditModal, showToast }: {
   patient: PatientDoc | null | undefined;
-  editForm: { firstName: string; middleName: string; surname: string; phone: string; state: string; county: string; payam: string; boma: string; tribe: string; dateOfBirth: string; gender: "Male" | "Female"; };
+  editForm: PatientEditForm;
   setEditErrors: Dispatch<SetStateAction<Record<string, string>>>;
   t: (key: string, vars?: Record<string, string | number> | undefined) => string;
   setEditSubmitting: Dispatch<SetStateAction<boolean>>;
@@ -21,10 +23,18 @@ export function buildHandleEditSubmit({ patient, editForm, setEditErrors, t, set
       setEditErrors({ phone: t('validation.errPhone') });
       return;
     }
+    if (!isValidEmail(editForm.email)) {
+      setEditErrors({ email: t('validation.errEmail') });
+      return;
+    }
     // A record must keep a name and a real date of birth: these were written
     // through blank or in the future, and every list then showed "—".
-    if (!editForm.firstName.trim() || !editForm.surname.trim()) {
-      showToast(t('msg.enterFirstNameAndSurname'), 'error');
+    if (!editForm.firstName.trim()) {
+      showToast(t('msg.enterFirstName'), 'error');
+      return;
+    }
+    if (editForm.idNumber.trim() && (!editForm.idType || !isValidDocumentNumber(editForm.idNumber))) {
+      showToast(t('validation.errDocumentNumber'), 'error');
       return;
     }
     if (editForm.dateOfBirth && editForm.dateOfBirth > todayIso()) {
@@ -49,6 +59,10 @@ export function buildHandleEditSubmit({ patient, editForm, setEditErrors, t, set
         tribe: editForm.tribe.trim(),
         dateOfBirth: editForm.dateOfBirth,
         gender: editForm.gender,
+        email: normalizeEmail(editForm.email) || undefined,
+        residenceCountry: editForm.residenceCountry || undefined,
+        citizenship: editForm.citizenship || undefined,
+        identifiers: identifiersFrom(editForm.idType, editForm.idNumber, editForm.idCountry),
       });
       // null: the record was not found. Not a success, and nothing to audit.
       if (!saved) throw new Error('Change not saved. Try again.');

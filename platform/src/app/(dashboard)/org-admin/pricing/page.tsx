@@ -12,6 +12,7 @@
  * single button and cannot nest a second one.
  */
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
@@ -52,7 +53,7 @@ const CATEGORIES: { value: ChargeCategory; label: string }[] = [
 
 const emptyForm = (): FeeInput & { isActive: boolean } => ({
   facilityId: '', facilityName: '', category: 'consultation',
-  serviceCode: '', serviceName: '', unitPrice: 0, billingUnit: 'each', currency: 'SSP', isActive: true,
+  serviceCode: '', serviceName: '', unitPrice: 0, billingUnit: 'each', currency: defaultCurrency(), isActive: true,
 });
 
 /* Service · Code · Category · Price · Status */

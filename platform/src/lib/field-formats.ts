@@ -8,50 +8,67 @@
  * SAME human-friendly form. Previously phone numbers were stored inconsistently
  * (some with the +211 country code, some without, some with dashes).
  *
- * Phone canonical (stored) form: E.164 `+211XXXXXXXXX` (South Sudan +211 plus a
- * 9-digit national number beginning with 9). Display form: `+211 9XX XXX XXX`.
+ * Phone canonical (stored) form: E.164, `+211XXXXXXXXX` for South Sudan (+211
+ * plus a 9-digit national number beginning with 9), displayed `+211 9XX XXX XXX`.
+ * A number that cannot be normalized is kept as entered.
  */
 
+import { activeCountry } from '@/lib/country/country-pack';
 import { getRoleFlag } from './settings/role-settings-store';
 
 /** Default country calling code (South Sudan). */
-export const DEFAULT_COUNTRY_CODE = '211';
-
 /**
- * Normalize a raw phone string to canonical E.164 (`+211XXXXXXXXX`).
- * Accepts local (`0912 345 678`, `912345678`), international (`+211 912-345-678`,
- * `211912345678`) with arbitrary spaces/dashes/parens. Returns `null` if the
- * input cannot be normalized to a valid South Sudan number.
+ * Normalize a raw phone string to canonical E.164. Accepts this country's local
+ * form (`0912 345 678`), its international form (`+211 912-345-678`,
+ * `211912345678`), and any other country's number written with its code
+ * (`+254 712 345 678`, `00254…`), with arbitrary spaces/dashes/parens. Returns
+ * `null` for a number that fits none of those.
  */
-export function normalizePhone(raw: unknown, countryCode: string = DEFAULT_COUNTRY_CODE): string | null {
+export function normalizePhone(raw: unknown, countryCode: string = activeCountry().dialCode): string | null {
   if (raw == null) return null;
   const s = String(raw).trim();
   if (!s) return null;
   let digits = s.replace(/\D/g, '');
   if (!digits) return null;
+  const international = /^(\+|00)/.test(s);
+  if (international) digits = digits.replace(/^00/, '');
   // Strip the country code or a national trunk "0" prefix to get the NSN.
-  if (digits.startsWith(countryCode)) {
+  if (countryCode && digits.startsWith(countryCode)) {
     digits = digits.slice(countryCode.length);
+  } else if (international) {
+    // Another country's number: its length rules are that country's, so hold
+    // it to E.164 only.
+    return /^[1-9]\d{6,14}$/.test(digits) ? `+${digits}` : null;
   } else if (digits.startsWith('0')) {
     digits = digits.replace(/^0+/, '');
   }
-  // South Sudan mobile numbers: 9 digits beginning with 9.
-  if (!/^9\d{8}$/.test(digits)) return null;
+  if (!countryCode || !activeCountry().nationalNumber.test(digits)) return null;
   return `+${countryCode}${digits}`;
 }
 
-/** True when the value is empty (optional) OR a valid normalizable phone. */
-export function isValidPhone(raw: unknown, countryCode: string = DEFAULT_COUNTRY_CODE): boolean {
+/**
+ * True when empty (optional) or anything that could be someone's phone number.
+ * Deliberately loose: a visitor may only know their number in their home
+ * format, and a record with it is better than a refused one. Only what
+ * normalizes is safe to send to; see `normalizePhone` in lib/sms/text.ts.
+ */
+export function isValidPhone(raw: unknown, countryCode: string = activeCountry().dialCode): boolean {
   if (raw == null || String(raw).trim() === '') return true;
-  return normalizePhone(raw, countryCode) !== null;
+  if (normalizePhone(raw, countryCode) !== null) return true;
+  const value = String(raw).trim();
+  const digits = value.replace(/\D/g, '');
+  return /^[+\d\s().\-/]+$/.test(value) && digits.length >= 6 && digits.length <= 15;
 }
 
-/** Human display form: `+211 912 345 678`. Falls back to the raw value if it
- *  isn't a canonical SS number (so legacy/unknown values still render). */
-export function formatPhoneDisplay(raw: unknown, countryCode: string = DEFAULT_COUNTRY_CODE): string {
+/** Human display form: `+211 912 345 678`, a foreign number as entered in E.164.
+ *  Falls back to the raw value when it won't normalize, so legacy values still
+ *  render. */
+export function formatPhoneDisplay(raw: unknown, countryCode: string = activeCountry().dialCode): string {
   const e164 = normalizePhone(raw, countryCode);
   if (!e164) return raw == null ? '' : String(raw);
-  const nsn = e164.slice(1 + countryCode.length); // 9 digits
+  if (!countryCode || !e164.startsWith(`+${countryCode}`)) return e164;
+  const nsn = e164.slice(1 + countryCode.length);
+  if (nsn.length !== 9) return e164;
   return `+${countryCode} ${nsn.slice(0, 3)} ${nsn.slice(3, 6)} ${nsn.slice(6)}`;
 }
 
@@ -67,7 +84,7 @@ export function formatPhoneDisplay(raw: unknown, countryCode: string = DEFAULT_C
  * keep `formatPhoneDisplay` — masking there would hide the number from the
  * clinician who needs to dial it.
  */
-export function formatPhoneShared(raw: unknown, countryCode: string = DEFAULT_COUNTRY_CODE): string {
+export function formatPhoneShared(raw: unknown, countryCode: string = activeCountry().dialCode): string {
   const shown = formatPhoneDisplay(raw, countryCode);
   if (!shown) return '';
   if (!getRoleFlag('security.mask', false)) return shown;
@@ -113,7 +130,7 @@ export function isValidEmail(raw: unknown): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// National ID (South Sudan) — alphanumeric, 3–30 chars, stored upper-cased.
+// National ID — alphanumeric, 3–30 chars, stored upper-cased.
 // ---------------------------------------------------------------------------
 
 export function normalizeNationalId(raw: unknown): string {

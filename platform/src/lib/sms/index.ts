@@ -37,6 +37,8 @@ export function resetSmsProviderForTest(): void {
 export async function sendSms(input: SmsSendInput): Promise<SmsSendResult> {
   const provider = getSmsProvider();
   const to = normalizePhone(input.to);
+  // A number with no country code we can be sure of: never guess one.
+  if (!to) return { ok: false, providerId: provider.name, error: 'invalid_number' };
   return provider.send({ ...input, to });
 }
 

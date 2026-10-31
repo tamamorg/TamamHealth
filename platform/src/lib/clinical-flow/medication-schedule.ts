@@ -1,6 +1,6 @@
+import { activeCountry } from '@/lib/country/country-pack';
 import type { PrescriptionDoc } from '../db-types';
-
-const JUBA_OFFSET = '+02:00';
+import { clinicalInstant } from '../time-juba';
 
 export function isPrnFrequency(frequency: string): boolean {
   const value = (frequency || '').trim().toLowerCase();
@@ -12,7 +12,7 @@ function jubaClock(iso?: string): { hour: number; minute: number } {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return { hour: 0, minute: 0 };
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Juba', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    timeZone: activeCountry().timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).formatToParts(date);
   return {
     hour: Number(parts.find(part => part.type === 'hour')?.value || 0),
@@ -54,7 +54,7 @@ export function scheduleForFrequency(frequency: string, anchorIso?: string): str
 
 export function scheduledForIso(day: string, time: string): string {
   if (time === 'PRN') return new Date().toISOString();
-  return new Date(`${day}T${time}:00${JUBA_OFFSET}`).toISOString();
+  return clinicalInstant(day, time);
 }
 
 export function statedDurationDays(duration: string): number | null {
@@ -76,7 +76,7 @@ export function doseExpansionCutoff(rx: Pick<PrescriptionDoc, 'stoppedAt' | 'cre
     if (Number.isFinite(stopped)) return stopped;
   }
   const days = statedDurationDays(rx.duration);
-  const start = rx.effectiveOn ? new Date(`${rx.effectiveOn}T00:00:00${JUBA_OFFSET}`).getTime() : new Date(rx.createdAt).getTime();
+  const start = rx.effectiveOn ? new Date(clinicalInstant(rx.effectiveOn)).getTime() : new Date(rx.createdAt).getTime();
   return days !== null && Number.isFinite(start) ? start + days * 86_400_000 : null;
 }
 
@@ -85,9 +85,9 @@ export function isScheduledDoseAllowed(rx: PrescriptionDoc, scheduledFor: string
   const when = new Date(scheduledFor).getTime();
   if (!Number.isFinite(when)) return false;
   const clock = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Juba', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    timeZone: activeCountry().timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).format(new Date(when));
-  const effectiveStart = rx.effectiveOn ? new Date(`${rx.effectiveOn}T00:00:00${JUBA_OFFSET}`).getTime() : new Date(rx.createdAt).getTime();
+  const effectiveStart = rx.effectiveOn ? new Date(clinicalInstant(rx.effectiveOn)).getTime() : new Date(rx.createdAt).getTime();
   const cutoff = doseExpansionCutoff(rx);
   return scheduleForFrequency(rx.frequency, rx.createdAt).includes(clock)
     && when >= effectiveStart

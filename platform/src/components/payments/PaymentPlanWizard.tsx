@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -21,7 +22,7 @@ interface PaymentPlanWizardProps {
 }
 
 export default function PaymentPlanWizard({
-  patientId, patientName, balance: balanceProp, encounterIds, currency = 'SSP', onComplete, onCancel
+  patientId, patientName, balance: balanceProp, encounterIds, currency = defaultCurrency(), onComplete, onCancel
 }: PaymentPlanWizardProps) {
   const { currentUser } = useAuth();
   const scope = useDataScope();

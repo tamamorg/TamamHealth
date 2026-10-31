@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -135,13 +136,14 @@ export default function ReportsPage() {
       switch (reportName) {
         /* ─── Daily Patient Census ─────────────────────────── */
         case 'Daily Patient Census': {
-          const byState: Record<string, { total: number; male: number; female: number; active: number }> = {};
+          const byState: Record<string, { total: number; male: number; female: number; other: number; active: number }> = {};
           patients.forEach(p => {
             const st = p.state || 'Unknown';
-            if (!byState[st]) byState[st] = { total: 0, male: 0, female: 0, active: 0 };
+            if (!byState[st]) byState[st] = { total: 0, male: 0, female: 0, other: 0, active: 0 };
             byState[st].total++;
             if (p.gender === 'Male') byState[st].male++;
-            else byState[st].female++;
+            else if (p.gender === 'Female') byState[st].female++;
+            else byState[st].other++;
             if (p.isActive) byState[st].active++;
           });
           const rows = Object.entries(byState).map(([state, d]) => ({
@@ -149,6 +151,7 @@ export default function ReportsPage() {
             'Total Patients': d.total,
             Male: d.male,
             Female: d.female,
+            'Other or unknown': d.other,
             'Active Patients': d.active,
           }));
           rows.push({
@@ -156,6 +159,7 @@ export default function ReportsPage() {
             'Total Patients': patients.length,
             Male: patients.filter(p => p.gender === 'Male').length,
             Female: patients.filter(p => p.gender === 'Female').length,
+            'Other or unknown': patients.filter(p => p.gender !== 'Male' && p.gender !== 'Female').length,
             'Active Patients': patients.filter(p => p.isActive).length,
           });
           return { rows, title: 'Daily Patient Census' };
@@ -185,13 +189,14 @@ export default function ReportsPage() {
         /* ─── Patient Demographics Report ─────────────────── */
         case 'Patient Demographics Report': {
           const byTribe: Record<string, number> = {};
-          const byGender: Record<string, number> = { Male: 0, Female: 0 };
+          const byGender: Record<string, number> = { Male: 0, Female: 0, 'Other or unknown': 0 };
           const byBloodType: Record<string, number> = {};
           patients.forEach(p => {
             const t = p.tribe || 'Unknown';
             byTribe[t] = (byTribe[t] || 0) + 1;
             if (p.gender === 'Male') byGender.Male++;
-            else byGender.Female++;
+            else if (p.gender === 'Female') byGender.Female++;
+            else byGender['Other or unknown']++;
             const bt = p.bloodType || 'Unknown';
             byBloodType[bt] = (byBloodType[bt] || 0) + 1;
           });
@@ -496,7 +501,7 @@ export default function ReportsPage() {
             payments: number;
             currency: string;
           }> = {};
-          const ensure = (facility: string, currency = 'SSP') => {
+          const ensure = (facility: string, currency = defaultCurrency()) => {
             if (!byFacility[facility]) {
               byFacility[facility] = { charged: 0, collected: 0, outstanding: 0, waived: 0, bills: 0, payments: 0, currency };
             }
