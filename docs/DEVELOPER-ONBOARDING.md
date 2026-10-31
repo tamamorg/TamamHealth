@@ -73,9 +73,7 @@ TamamHealth/
 │           ├── role-routes.ts    # Route gating table (Edge proxy + server + client)
 │           └── observability.ts  # Sentry shim (no-ops without DSN)
 ├── website/           # Marketing site (Next.js)
-├── sync-worker/       # CouchDB _changes → /api/sync poller (analytics)
-├── country-node/      # National aggregation tier (skeleton)
-├── regional-exchange/ # Cross-border tier (skeleton)
+├── platform/tools/    # sync-worker (analytics), fingerprint-bridge, country-node, regional-exchange
 ├── infra/             # Terraform + bootstrap for DigitalOcean (production)
 ├── scripts/           # Backups, preflight, CouchDB dumps
 ├── docs/              # You are here

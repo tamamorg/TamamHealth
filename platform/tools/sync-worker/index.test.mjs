@@ -170,7 +170,7 @@ test('parseDbTableMapKeys reads the declaration, not prose mentions of the name'
 
 test('parseDbTableMapKeys on the real platform route matches FALLBACK_DBS exactly', async () => {
   const { readFileSync, existsSync } = await import('node:fs');
-  const route = new URL('../platform/src/modules/analytics/api/sync-route.ts', import.meta.url);
+  const route = new URL('../../src/modules/analytics/api/sync-route.ts', import.meta.url);
   if (!existsSync(route)) return; // worker checked out alone
   const keys = parseDbTableMapKeys(readFileSync(route, 'utf8'));
   assert.ok(keys.length > 0);

@@ -180,7 +180,7 @@ Services and default host ports:
 | `website` | `3001` (`WEBSITE_PORT`) | marketing site (`website/`) |
 | `couchdb` | `127.0.0.1:5984` (`COUCHDB_PORT`) | loopback only — reverse-proxy with TLS for external access |
 | `postgres` | `127.0.0.1:5432` (`POSTGRES_PORT`) | postgres:16-alpine, DB `safeguard_junub` |
-| `sync-worker` | — | polls CouchDB `_changes` and POSTs batches to this app's `/api/sync` for Postgres ingestion (`sync-worker/`) |
+| `sync-worker` | — | polls CouchDB `_changes` and POSTs batches to this app's `/api/sync` for Postgres ingestion (`platform/tools/sync-worker/`) |
 | `couchdb-backup` | — | nightly `dump-couchdb.sh`, 14-day retention |
 
 ### Optional: PostgreSQL (National Analytics)

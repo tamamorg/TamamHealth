@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: sync-worker
+        working-directory: platform/tools/sync-worker
     steps:
       - uses: actions/checkout@v7
 

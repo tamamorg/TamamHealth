@@ -32,7 +32,7 @@ There is no hoisting and no root-level application install. Three packages each
 carry their own `package.json` **and their own lockfile**:
 
 ```text
-platform/  website/  sync-worker/
+platform/  website/
 ```
 
 `platform/tools/fingerprint-bridge/` is a dependency-free local service that
@@ -51,7 +51,7 @@ there is published or deployed. So:
   cd platform && npx npm@10 install
   ```
 
-`country-node/` and `regional-exchange/` have no package.json yet and are not
+`platform/tools/country-node/` and `platform/tools/regional-exchange/` have no package.json yet and are not
 part of the install or CI matrix.
 
 ### Three gotchas that bite everyone
@@ -69,7 +69,7 @@ part of the install or CI matrix.
 `.nvmrc` (Node 20) is the single source of truth — every CI job reads the same
 file via `node-version-file`, so local and CI cannot drift apart. The root
 and `website/` `engines` fields pin that exact major; `platform/`,
-`sync-worker/` and `fingerprint-bridge/` declare looser floors, but everything
+`platform/tools/sync-worker/` and `platform/tools/fingerprint-bridge/` declare looser floors, but everything
 that ships is built on 20.
 
 ---

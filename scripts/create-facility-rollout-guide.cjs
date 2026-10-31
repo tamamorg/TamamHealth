@@ -461,7 +461,7 @@ b.push(table(['Evidence', 'Purpose'], [
   ['platform/src/app/api/system/offline-capabilities/route.ts', 'Live server-side readiness/capability reporting to Settings.'],
   ['platform/docs/adr/0004-facility-edge-offline-profile.md', 'Architecture decision and limitations.'],
   ['scripts/dump-couchdb.sh', 'Verified local CouchDB backup and retention.'],
-  ['country-node/README.md', 'Explicit evidence that the national receiver is not runnable.'],
+  ['platform/tools/country-node/README.md', 'Explicit evidence that the national receiver is not runnable.'],
   ['LICENSE', 'Proprietary license terms; runtime license enforcement must be implemented separately.'],
 ], [4300, 5060]));
 

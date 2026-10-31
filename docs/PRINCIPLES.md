@@ -46,7 +46,7 @@ and the analytics tier can be dropped/rebuilt without touching patient data.
   `platform/src/lib/sync/sync-config.ts`), not a Postgres table as primary
   storage.
 - Postgres writes happen only inside the `/api/sync` webhook pipeline fed by
-  `sync-worker/`.
+  `platform/tools/sync-worker/`.
 - The app must boot and function with `DATABASE_URL` unset.
 
 ## 3. No mandatory cloud dependencies

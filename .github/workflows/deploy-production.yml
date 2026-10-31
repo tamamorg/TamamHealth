@@ -185,8 +185,8 @@ jobs:
       - name: Build + push production sync-worker image
         uses: docker/build-push-action@v7
         with:
-          context: ./sync-worker
-          file: ./sync-worker/Dockerfile
+          context: ./platform/tools/sync-worker
+          file: ./platform/tools/sync-worker/Dockerfile
           push: true
           tags: |
             ${{ steps.resolve.outputs.sync_worker_image }}:${{ steps.resolve.outputs.sha }}

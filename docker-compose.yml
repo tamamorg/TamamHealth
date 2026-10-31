@@ -255,7 +255,7 @@ services:
     image: ghcr.io/${GH_OWNER:-tamamhealth}/tamamhealth-sync-worker:latest
     profiles: ["analytics"]
     build:
-      context: ./sync-worker
+      context: ./platform/tools/sync-worker
       dockerfile: Dockerfile
     env_file:
       - ./.env

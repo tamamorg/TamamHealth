@@ -239,7 +239,7 @@ demo-only.
 
 - **Errors:** Sentry is wired (`NEXT_PUBLIC_SENTRY_DSN`, `sentry.*.config.ts`).
   Point it at an in-country or self-hosted Sentry to keep telemetry local.
-- **National reporting / DHIS2:** stand up the **country node** (`country-node/`,
+- **National reporting / DHIS2:** stand up the **country node** (`platform/tools/country-node/`,
   Phase-3 scaffold) when a ministry/partner commits; the facility platform
   already emits `sync_events` and serves a metadata stand-in until then.
 - **Updates:** `git pull` → `docker compose build` (re-bakes `NEXT_PUBLIC_*`) →
@@ -271,5 +271,5 @@ demo-only.
 - `docker-compose.yml` — platform + website + CouchDB + nightly backup (+ Postgres `analytics` profile).
 - `docs/DEPLOY-SOUTH-SUDAN.md` — the single-server runbook this guide builds on.
 - `docs/operations/secrets.md`, `docs/operations/backups.md` — secrets (Doppler) and backup/DR detail.
-- `country-node/`, `sync-worker/`, `regional-exchange/` — federation/analytics tiers.
+- `platform/tools/country-node/`, `platform/tools/sync-worker/`, `platform/tools/regional-exchange/` — federation/analytics tiers.
 - `docs/RBAC-MATRIX.md` — roles and what each can do.
