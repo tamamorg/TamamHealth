@@ -35,6 +35,15 @@ function normalize(name: string): string {
   return name.toLowerCase().trim();
 }
 
+// The formulary and the rules below must spell a drug the same way or a rule
+// never fires, so other names for it are folded into the rule's spelling here.
+// Interactions only: allergy matching compares what was recorded, as recorded.
+function interactionName(name: string): string {
+  return normalize(name)
+    .replace(/\bphenobarbitone\b/g, 'phenobarbital')
+    .replace(/\biron\b/g, 'ferrous');
+}
+
 // Known drug interactions database
 // This covers the most clinically significant interactions for medications
 // commonly available in South Sudanese hospital pharmacies.
@@ -113,7 +122,7 @@ const INTERACTION_DATABASE: DrugInteraction[] = [
     clinicalAdvice: 'Standard TB treatment — monitor LFTs baseline and monthly. Stop if ALT >5x ULN.',
   },
   {
-    drug1: 'phenobarbitone',
+    drug1: 'phenobarbital',
     drug2: 'artemether-lumefantrine',
     severity: 'serious',
     description: 'Phenobarbitone induces CYP3A4, reducing lumefantrine levels and antimalarial efficacy.',
@@ -144,14 +153,14 @@ const INTERACTION_DATABASE: DrugInteraction[] = [
   },
   {
     drug1: 'ciprofloxacin',
-    drug2: 'iron folate',
+    drug2: 'ferrous',
     severity: 'moderate',
     description: 'Iron chelates ciprofloxacin, reducing its absorption and efficacy.',
     clinicalAdvice: 'Give ciprofloxacin 2 hours before or 6 hours after iron supplements.',
   },
   {
     drug1: 'doxycycline',
-    drug2: 'iron folate',
+    drug2: 'ferrous',
     severity: 'moderate',
     description: 'Iron reduces doxycycline absorption.',
     clinicalAdvice: 'Separate doses by at least 2-3 hours.',
@@ -182,35 +191,25 @@ const INTERACTION_DATABASE: DrugInteraction[] = [
 /**
  * Check for drug interactions between a list of medications.
  */
-export function checkInteractions(medications: string[]): InteractionCheckResult {
-  if (!medications || medications.length < 2) {
-    return { hasInteractions: false, interactions: [], highestSeverity: null };
-  }
-
-  const normalized = medications.map(normalize);
+function findInteractions(pairs: [string, string][]): InteractionCheckResult {
   const found: DrugInteraction[] = [];
 
-  for (let i = 0; i < normalized.length; i++) {
-    for (let j = i + 1; j < normalized.length; j++) {
-      const med1 = normalized[i];
-      const med2 = normalized[j];
+  for (const [med1, med2] of pairs) {
+    for (const interaction of INTERACTION_DATABASE) {
+      const d1 = normalize(interaction.drug1);
+      const d2 = normalize(interaction.drug2);
 
-      for (const interaction of INTERACTION_DATABASE) {
-        const d1 = normalize(interaction.drug1);
-        const d2 = normalize(interaction.drug2);
-
-        // Check both directions: (med1↔d1, med2↔d2) or (med1↔d2, med2↔d1)
-        if (
-          (med1.includes(d1) && med2.includes(d2)) ||
-          (med1.includes(d2) && med2.includes(d1)) ||
-          (d1.includes(med1) && d2.includes(med2)) ||
-          (d1.includes(med2) && d2.includes(med1))
-        ) {
-          // Avoid duplicate entries
-          const key = `${interaction.drug1}|${interaction.drug2}`;
-          if (!found.some(f => `${f.drug1}|${f.drug2}` === key)) {
-            found.push(interaction);
-          }
+      // Check both directions: (med1↔d1, med2↔d2) or (med1↔d2, med2↔d1)
+      if (
+        (med1.includes(d1) && med2.includes(d2)) ||
+        (med1.includes(d2) && med2.includes(d1)) ||
+        (d1.includes(med1) && d2.includes(med2)) ||
+        (d1.includes(med2) && d2.includes(med1))
+      ) {
+        // Avoid duplicate entries
+        const key = `${interaction.drug1}|${interaction.drug2}`;
+        if (!found.some(f => `${f.drug1}|${f.drug2}` === key)) {
+          found.push(interaction);
         }
       }
     }
@@ -231,22 +230,40 @@ export function checkInteractions(medications: string[]): InteractionCheckResult
   };
 }
 
+export function checkInteractions(medications: string[]): InteractionCheckResult {
+  if (!medications || medications.length < 2) {
+    return { hasInteractions: false, interactions: [], highestSeverity: null };
+  }
+
+  const normalized = medications.map(interactionName);
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < normalized.length; i++) {
+    for (let j = i + 1; j < normalized.length; j++) {
+      pairs.push([normalized[i], normalized[j]]);
+    }
+  }
+  return findInteractions(pairs);
+}
+
 /**
  * Check a new prescription against a patient's existing medications.
- * Returns any interactions found between the new drug and current meds.
+ * Returns only interactions between the new drug and a current one: a pair
+ * already on the chart was answered when it was ordered, and asking again on
+ * every later order for that patient teaches prescribers to ignore the stop.
  */
 export function checkNewPrescription(
   newMedication: string,
   currentMedications: string[]
 ): InteractionCheckResult {
-  return checkInteractions([newMedication, ...currentMedications]);
+  const med = interactionName(newMedication);
+  return findInteractions(currentMedications.map(current => [med, interactionName(current)]));
 }
 
 /**
  * Get all known interactions for a specific medication.
  */
 export function getInteractionsForDrug(medication: string): DrugInteraction[] {
-  const med = normalize(medication);
+  const med = interactionName(medication);
   return INTERACTION_DATABASE.filter(i =>
     normalize(i.drug1).includes(med) || normalize(i.drug2).includes(med) ||
     med.includes(normalize(i.drug1)) || med.includes(normalize(i.drug2))

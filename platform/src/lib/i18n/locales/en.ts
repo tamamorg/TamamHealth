@@ -479,7 +479,7 @@ const en: TranslationMap = {
   'prescribe.overrideMessage': '{{medication}} conflicts with the recorded {{allergy}} allergy. Record why continuing is safer than choosing an alternative.',
   'prescribe.overrideReason': 'Clinical justification',
   'prescribe.overrideTitleInteraction': 'Contraindicated interaction',
-  'prescribe.overrideMessageInteraction': '{{medication}}: contraindicated combination ({{drugs}}). Record why continuing is safer than choosing an alternative.',
+  'prescribe.overrideMessageInteraction': '{{drugs}} are contraindicated together. Record why continuing is safer than choosing an alternative.',
   'rxFlow.safetyHeading': 'Safety review',
   'rxFlow.safetyAllergy': 'Allergy: {{allergy}} ({{criticality}}){{reaction}}',
   'rxFlow.safetyInteraction': '{{drugs}} ({{severity}}): {{advice}}',

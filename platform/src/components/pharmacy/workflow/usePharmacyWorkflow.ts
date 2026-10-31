@@ -16,7 +16,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { getActiveAllergies } from '@/lib/services/allergy-service';
 import {
   checkAllergies,
-  checkInteractions,
+  checkNewPrescription,
   findDuplicateMedications,
   type InteractionCheckResult,
 } from '@/lib/services/drug-interaction-service';
@@ -124,7 +124,7 @@ export function usePharmacyWorkflow(
             .map(a => a.reason === 'class'
               ? `${a.medication} — same drug class as ${a.allergy}`
               : `${a.medication} — recorded allergy: ${a.allergy}`),
-          interactions: checkInteractions(withNew),
+          interactions: checkNewPrescription(rx.medication, activeMedications),
           duplicates: findDuplicateMedications(withNew),
           loading: false,
         });

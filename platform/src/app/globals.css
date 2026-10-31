@@ -24741,7 +24741,8 @@ table.patient-data-table.patient-data-table {
 }
 .xfer-check[data-done='true'] .xfer-check-box {
   border-color: var(--color-success);
-  background: var(--color-success);
+  /* !important: the icon-box reset strips the fill from any span holding only an svg. */
+  background: var(--color-success) !important;
   color: var(--color-white);
 }
 .xfer-check[data-done='true'] .xfer-check-box svg { stroke: var(--color-white) !important; }

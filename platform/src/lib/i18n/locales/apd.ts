@@ -489,7 +489,7 @@ const apd: TranslationMap = {
   'prescribe.overrideMessage': '{{medication}} بتعارض مع حساسية {{allergy}} المسجلة. اكتب ليه المواصلة أأمن من اختيار بديل.',
   'prescribe.overrideReason': 'التبرير السريري',
   'prescribe.overrideTitleInteraction': 'تفاعل ممنوع بين الأدوية',
-  'prescribe.overrideMessageInteraction': '{{medication}}: خلطة ممنوعة ({{drugs}}). اكتب ليه الاستمرار أأمن من اختيار بديل.',
+  'prescribe.overrideMessageInteraction': '{{drugs}} ممنوعين مع بعض. اكتب ليه الاستمرار أأمن من اختيار بديل.',
   'rxFlow.safetyHeading': 'مراجعة السلامة',
   'rxFlow.safetyAllergy': 'حساسية: {{allergy}} ({{criticality}}){{reaction}}',
   'rxFlow.safetyInteraction': '{{drugs}} ({{severity}}): {{advice}}',

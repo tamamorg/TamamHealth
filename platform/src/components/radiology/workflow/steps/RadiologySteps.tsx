@@ -115,7 +115,7 @@ export function ScheduleStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radio
               <Field label={t('imgFlow.scheduledBy')} value={study.studyScheduledBy} />
             </div>
           ) : (
-            <div className="labord-form">
+            <div className="labord-form labord-form--pairs">
               <label className="labord-field-label" htmlFor="img-accession">{t('imgFlow.accession')}</label>
               <input
                 id="img-accession"
@@ -214,7 +214,7 @@ export function SafetyStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiolo
             does not need a pregnancy answer, and asking for one trains the
             radiographer to click past the screen that matters. */}
         {isIonising(modality) && (
-          <div className="labord-form">
+          <div className="labord-form labord-form--pairs">
             <label className="labord-field-label" htmlFor="img-pregnancy">{t('imgFlow.pregnancy')}</label>
             <Select
               id="img-pregnancy"
@@ -270,7 +270,7 @@ export function SafetyStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiolo
           </label>
         </div>
 
-        <div className="labord-form" style={{ marginTop: 10 }}>
+        <div className="labord-form labord-form--pairs" style={{ marginTop: 10 }}>
           <label className="labord-field-label" htmlFor="img-safety-note">{t('imgFlow.note')}</label>
           <input
             id="img-safety-note"
@@ -317,7 +317,7 @@ export function AcquireStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
       <div className="labord-section">
         <div className="labord-section-head">{t('imgFlow.acquireHead')}</div>
         <div className="labord-section-body">
-          <div className="labord-form">
+          <div className="labord-form labord-form--pairs">
             <label className="labord-field-label" htmlFor="img-technique">{t('imgFlow.technique')}</label>
             <input
               id="img-technique"
@@ -343,7 +343,7 @@ export function AcquireStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
       <div className="labord-section">
         <div className="labord-section-head">{t('imgFlow.repeatSectionHead')}</div>
         <div className="labord-section-body">
-          <div className="labord-form">
+          <div className="labord-form labord-form--pairs">
             <label className="labord-field-label" htmlFor="img-repeat">{t('imgFlow.repeatReason')}</label>
             <Select
               id="img-repeat"
