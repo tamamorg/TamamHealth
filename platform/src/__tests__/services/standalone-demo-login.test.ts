@@ -94,10 +94,10 @@ afterAll(() => {
 describe('standalone demo sign-in', () => {
   test('a seeded staff account signs in against the seed credential', async () => {
     const { authenticateUser, passwords } = await load();
-    const user = await authenticateUser('nurse.stella', passwords['nurse.stella']);
+    const user = await authenticateUser('nurse.wau', passwords['nurse.wau']);
     expect(user).not.toBeNull();
     expect(user!.role).toBe('nurse');
-    expect(user!.hospitalId).toBe('hosp-003');
+    expect(user!.hospitalId).toBe('hosp-002');
     // No users database was consulted — there isn't one.
     expect(getCalls).toBe(0);
   });
@@ -120,12 +120,12 @@ describe('standalone demo sign-in', () => {
 
   test('a wrong password is rejected', async () => {
     const { authenticateUser } = await load();
-    expect(await authenticateUser('nurse.stella', 'not-the-password')).toBeNull();
+    expect(await authenticateUser('nurse.wau', 'not-the-password')).toBeNull();
   });
 
   test('a username outside the seeded roster is rejected', async () => {
     const { authenticateUser, passwords } = await load();
-    expect(await authenticateUser('mallory', passwords['nurse.stella'])).toBeNull();
+    expect(await authenticateUser('mallory', passwords['nurse.wau'])).toBeNull();
   });
 });
 
@@ -138,7 +138,7 @@ describe('the gate that keeps this off real deployments', () => {
       COUCHDB_ADMIN_PASSWORD: 'couch-secret',
     });
     expect(isStandaloneDemo()).toBe(false);
-    expect(await authenticateUser('nurse.stella', passwords['nurse.stella'])).toBeNull();
+    expect(await authenticateUser('nurse.wau', passwords['nurse.wau'])).toBeNull();
     // It went to the users database instead, which is the whole point.
     expect(getCalls).toBe(1);
   });
@@ -156,7 +156,7 @@ describe('the gate that keeps this off real deployments', () => {
     // every load below uses. Read it while the roster still exists: with the
     // flag off, the credential map narrows to the bootstrap accounts.
     const { passwords } = await load();
-    const seeded = passwords['nurse.stella'];
+    const seeded = passwords['nurse.wau'];
     expect(seeded).toBeTruthy();
 
     for (const flag of [undefined, 'false', 'TRUE', '1', 'yes']) {
@@ -164,7 +164,7 @@ describe('the gate that keeps this off real deployments', () => {
         NEXT_PUBLIC_DEMO_MODE: flag,
       });
       expect(isStandaloneDemo()).toBe(false);
-      expect(await authenticateUser('nurse.stella', seeded)).toBeNull();
+      expect(await authenticateUser('nurse.wau', seeded)).toBeNull();
     }
   });
 

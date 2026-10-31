@@ -11,7 +11,7 @@
 import bcrypt from 'bcryptjs';
 import { hashPassword } from '@/modules/identity/core/auth';
 import { DEMO_USER_PROFILES, getOrCreateSeedCredentials } from '@/modules/identity/core/seed-credentials';
-import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
+import { canonicalizeUserRole, isLegacyRole } from '@/lib/user-role';
 
 export interface ServerUser {
   _id: string;
@@ -101,10 +101,10 @@ async function authenticateFromUsersDb(
     if (!valid || doc.isActive === false) return { user: null, exists: true };
     // Migrate only the account document, after successful authentication.
     // Clinical records keep their historical author labels and IDs.
-    if (isLegacyNursingRole(doc.role)) {
+    if (isLegacyRole(doc.role)) {
       const migrated = {
         ...doc,
-        role: 'nurse' as const,
+        role: canonicalizeUserRole(doc.role),
         updatedAt: new Date().toISOString(),
       };
       try {
@@ -112,7 +112,7 @@ async function authenticateFromUsersDb(
         migrated._rev = response.rev;
         return { user: serverUserFromDoc(migrated), exists: true };
       } catch {
-        // A concurrent admin edit must not lock the nurse out. The returned
+        // A concurrent admin edit must not lock the user out. The returned
         // session is canonical even if persistence retries on a later login.
       }
     }

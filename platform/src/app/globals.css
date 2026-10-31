@@ -4440,7 +4440,7 @@ html:has(.mobile-shell-offline-banner) {
   flex-direction: column;
   overflow: visible;
   border: 1px solid var(--ehr-border);
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 8px 8px;
   background: var(--bg-card-solid);
   color: var(--text-primary);
   box-shadow: 0 18px 40px rgba(0, 29, 63, 0.2);
@@ -4513,26 +4513,124 @@ html:has(.mobile-shell-offline-banner) {
 }
 
 .ehr-top-actions .notifications-popover .notifications-popover-item {
+  position: relative;
   width: 100%;
   height: auto;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
+  gap: 12px;
+  padding: 12px 32px 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
   border-radius: 0;
   background: transparent;
-  color: inherit;
+  color: var(--text-primary);
+  text-align: start;
+}
+.ehr-top-actions .notifications-popover .notifications-popover-item:hover,
+.ehr-top-actions .notifications-popover .notifications-popover-item:focus-visible {
+  background: var(--overlay-subtle);
+}
+.ehr-top-actions .notifications-popover .notifications-popover-item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .ehr-top-actions .notifications-popover .notifications-popover-footer {
+  flex: none;
   width: 100%;
   height: auto;
   display: flex;
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 8px 8px;
 }
 
 .ehr-top-actions .notifications-popover button svg.lucide {
   width: 16px;
   height: 16px;
+}
+
+/* The list scrolls between the header and the footer. The gutter is reserved
+   so rows keep their width whichever way the list runs. */
+.notifications-popover-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+.notifications-popover-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16px;
+}
+
+.notifications-popover-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+  border-radius: 6px;
+}
+/* The rail paints every icon near-white and only gives it back on hover; on
+   these pale tiles that hid the icon until the pointer reached the row. */
+.ehr-top-rail .notifications-popover .notifications-popover-icon svg.lucide {
+  color: inherit !important;
+  stroke: currentColor !important;
+  opacity: 1;
+}
+
+.notifications-popover-copy { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.notifications-popover-title {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.notifications-popover-subtitle {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.notifications-popover-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+.notifications-popover-meta > :first-child { font-weight: 600; }
+.notifications-popover-item.is-read .notifications-popover-title { color: var(--text-secondary); font-weight: 400; }
+
+.notifications-popover-dot {
+  position: absolute;
+  top: 18px;
+  inset-inline-end: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
 }
 
 /* Icon quick-nav sitting next to the module dropdown (Referrals, Appointments).
@@ -24646,6 +24744,7 @@ table.patient-data-table.patient-data-table {
   background: var(--color-success);
   color: var(--color-white);
 }
+.xfer-check[data-done='true'] .xfer-check-box svg { stroke: var(--color-white) !important; }
 .xfer-check-req {
   margin-inline-start: auto;
   font-size: 9.5px;
@@ -25310,6 +25409,12 @@ table.patient-data-table.patient-data-table {
   padding: 20px 22px 22px;
   gap: 20px 30px;
 }
+
+/* In the slider: one column, stacked like every other form, on the slider's own
+   gutter. The row-expansion version keeps its tabs. */
+.appt-edit-shell.is-stacked { background: transparent; border-radius: 0; overflow: visible; }
+.appt-edit-shell.is-stacked .appt-edit-grid { grid-template-columns: minmax(0, 1fr); padding: 0; gap: 20px; }
+.appt-edit-shell.is-stacked .appt-edit-row { grid-template-columns: minmax(0, 1fr); }
 
 /* Field labels: sentence case, quiet, close to their control. */
 .appt-edit-shell label {
@@ -35941,6 +36046,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-menu--row-actions .tm-menu__group { padding: 0; }
 .tm-menu--row-actions .tm-menu__group + .tm-menu__group { border-top: 0; }
 .tm-menu--row-actions .tm-menu__item {
+  align-items: center;
   min-height: 40px;
   padding: 0 16px;
   border-radius: 0;
@@ -36402,3 +36508,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .ehr-top-search-menu button { border-radius: 0; }
 .ehr-top-search-menu button + button { border-top: 1px solid var(--color-slate-200); }
 .ehr-top-search-menu button:hover { background: var(--color-slate-100); }
+
+/* A slider takes the bottom-right corner: the messages button steps aside rather
+   than sit behind Save with its edge showing. */
+html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }

@@ -13,7 +13,7 @@ describe('appointmentAmendRefusalMessage', () => {
 
   it('names the fields in the reader\'s words, de-duplicated', () => {
     expect(appointmentAmendRefusalMessage(err, translator(en as Record<string, string>)))
-      .toBe('Only the front desk can change the date, the time, the provider of a booked appointment. Ask reception to reschedule or re-route it.');
+      .toBe('Only reception can change the date, the time, the provider of a booked appointment. Ask reception to reschedule or re-route it.');
   });
 
   it('carries no English into the Juba Arabic message', () => {

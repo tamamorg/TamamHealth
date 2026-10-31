@@ -6,12 +6,14 @@
  * each is small and they are only ever rendered by LabWorkflowPanel.
  */
 
-import { AlertTriangle, CheckCircle2, Printer } from '@/components/icons/lucide';
+import { AlertTriangle, CheckCircle2, Pencil, Printer } from '@/components/icons/lucide';
 import { formatDateTime } from '@/lib/format-utils';
+import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabResultDoc } from '@/lib/db-types';
 import { containersFor, fallbackAccessionNumber, isOutsideRequest, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types';
 import type { LabWorkflowController } from '../useLabWorkflow';
+import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { printElementById } from '@/lib/safe-html';
 import O3Form from '@/components/forms/O3Form';
 import { ObfQuestion, ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
@@ -336,7 +338,7 @@ export function ReceiveStep({ order, ctrl, rejecting = false }: { order: LabResu
 }
 
 /** The value, with the QC check attached to it. */
-export function ResultStep({ order, ctrl, onAmend }: { order: LabResultDoc; ctrl: LabWorkflowController; onAmend: () => void }) {
+export function ResultStep({ order, ctrl }: { order: LabResultDoc; ctrl: LabWorkflowController }) {
   const { t } = useTranslation();
   const filed = ctrl.doneThrough >= 4;
   const draft = ctrl.resultDraft;
@@ -346,14 +348,7 @@ export function ResultStep({ order, ctrl, onAmend }: { order: LabResultDoc; ctrl
   return (
     <div>
       <div className="obf-section">
-        <div className="obf-section-head lwf-section-head">
-          <span>{t('labFlow.resultHeading')}</span>
-          {filed && (
-            <span className="labord-pick-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-success, #0E9463)' }}>
-              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.filed')}
-            </span>
-          )}
-        </div>
+        <div className="obf-section-head lwf-section-head">{t('labFlow.resultHeading')}</div>
         <div className="lwf-section-body">
           {structuredProfile ? (
             // The same O3 form the chart's Laboratory Test Results opens, one
@@ -454,15 +449,6 @@ export function ResultStep({ order, ctrl, onAmend }: { order: LabResultDoc; ctrl
         <div className="obf-section">
           <div className="obf-section-head lwf-section-head">{t('labFlow.amendHeading')}</div>
           <div className="lwf-section-body">
-            {order.amended && (
-              <p className="labord-help" style={{ marginTop: 0, color: 'var(--color-warning, #CC6600)', fontWeight: 600 }}>
-                {t('labFlow.amendedNotice', {
-                  from: order.amendedFrom || '—',
-                  by: order.amendedBy || '—',
-                  reason: order.amendmentReason || '—',
-                })}
-              </p>
-            )}
             <ObfTextField
               id="labflow-amend-reason"
               label={t('labFlow.amendReason')}
@@ -472,15 +458,6 @@ export function ResultStep({ order, ctrl, onAmend }: { order: LabResultDoc; ctrl
               placeholder={t('labFlow.amendReasonPlaceholder')}
             />
             <p className="labord-help">{t('labFlow.amendHelp')}</p>
-            <button
-              type="button"
-              className="labord-btn"
-              onClick={onAmend}
-              // An amendment without a stated reason is just an overwrite.
-              disabled={ctrl.busy || !ctrl.amendReason.trim()}
-            >
-              {t('labFlow.actionAmend')}
-            </button>
           </div>
         </div>
       )}
@@ -490,21 +467,29 @@ export function ResultStep({ order, ctrl, onAmend }: { order: LabResultDoc; ctrl
 
 /** The report that goes back to the clinician. */
 export function ReportStep({
-  order, ctrl, readOnly = false,
+  order, ctrl, readOnly = false, onAmend,
 }: {
   order: LabResultDoc;
   ctrl: LabWorkflowController;
-  /** The viewer cannot work the bench (notify, amend); they may still read,
-   *  print and — if they are a clinician — close the result out. */
+  /** The viewer cannot work the bench; they may still read, print and — if they
+   *  are a clinician — review the result. */
   readOnly?: boolean;
+  /** Opens the correction form. Absent for a viewer who may not amend. */
+  onAmend?: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
-    <div>
+    <div className="lwf-fields">
       <div className="obf-section">
         <div className="obf-section-head lwf-section-head">
           <span>{t('labFlow.reportHeading')}</span>
+          <span className="labord-report-actions">
+          {onAmend && (
+            <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={onAmend}>
+              <Pencil className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.amendAction')}
+            </button>
+          )}
           <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={() => printElementById('lab-result-print', {
             label: t('labFlow.finalDiagnosticReport'),
             date: order.completedAt,
@@ -518,7 +503,17 @@ export function ReportStep({
           })}>
             <Printer className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.printReport')}
           </button>
+          </span>
         </div>
+        {order.amended && (
+          <p className="labord-help labord-amended">
+            {t('labFlow.amendedNotice', {
+              from: order.amendedFrom || '—',
+              by: order.amendedBy || '—',
+              reason: order.amendmentReason || '—',
+            })}
+          </p>
+        )}
         <div id="lab-result-print" className="lwf-section-body labord-print">
           {order.amended && (
             <div className="labord-print-only" style={{ border: '1px solid var(--color-warning-border)', padding: 8, marginBottom: 10 }}>
@@ -592,110 +587,86 @@ export function ReportStep({
             )}
           </div>
         </div>
-      ) : (<>
-      <div className="obf-section">
-        <div className="obf-section-head lwf-section-head">{t('labFlow.handoffHeading')}</div>
-        <div className="lwf-section-body">
-          <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.handoffHelp')}</p>
-          <div className="obf-row">
-            <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy} />
-            <Field
-              label={t('labFlow.reviewStatus')}
-              value={ctrl.stage === 'resulted' ? t('labFlow.awaitingReview') : t(`labFlow.stage_${ctrl.stage}`)}
-            />
-          </div>
-          <button type="button" className="labord-btn" style={{ marginTop: 12 }} onClick={ctrl.notifyClinician} disabled={ctrl.busy || readOnly}>
-            {t('labFlow.notifyClinician')}
-          </button>
+      ) : ctrl.canCloseOut && (
+        <div className="obf-section">
+          <div className="obf-section-head lwf-section-head">{t('labFlow.reviewHeading')}</div>
+          <div className="lwf-section-body"><ResultReview order={order} ctrl={ctrl} /></div>
         </div>
-      </div>
-
-      {/* Closing the loop. These three stages existed in the lifecycle and in
-          the queue's status labels but had no way to be entered, so every
-          reported result stayed "awaiting review" and kept escalating against
-          its SLA. One step at a time — the transition guard rejects skips. */}
-      <div className="obf-section">
-        <div className="obf-section-head lwf-section-head">{t('labFlow.closeoutHeading')}</div>
-        <div className="lwf-section-body">
-          <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutHelp')}</p>
-          {!ctrl.canCloseOut && (
-            <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutClinicianOnly')}</p>
-          )}
-          <div className="labord-numbered">
-            <CloseoutRow
-              index={1}
-              label={t('labFlow.stage_reviewed_by_clinician')}
-              by={order.reviewedBy}
-              at={order.reviewedAt}
-              actionLabel={t('labFlow.markReviewed')}
-              onAction={ctrl.markReviewed}
-              enabled={ctrl.canCloseOut && ctrl.stage === 'resulted'}
-              busy={ctrl.busy}
-            />
-            <CloseoutRow
-              index={2}
-              label={t('labFlow.stage_acted_upon')}
-              by={order.actedUponBy}
-              at={order.actedUponAt}
-              actionLabel={t('labFlow.markActedUpon')}
-              onAction={ctrl.markActedUpon}
-              enabled={ctrl.canCloseOut && ctrl.stage === 'reviewed_by_clinician'}
-              busy={ctrl.busy}
-            />
-            <CloseoutRow
-              index={3}
-              label={t('labFlow.stage_communicated_to_patient')}
-              by={order.communicatedBy}
-              at={order.communicatedAt}
-              actionLabel={t('labFlow.markCommunicated')}
-              onAction={ctrl.markCommunicated}
-              enabled={ctrl.canCloseOut && ctrl.stage === 'acted_upon'}
-              busy={ctrl.busy}
-            />
-          </div>
-        </div>
-      </div>
-      </>)}
+      )}
     </div>
   );
 }
 
-/** One rung of the close-out ladder: done (who/when) or the button to do it.
- *  The imaging Release step uses it too. */
-export function CloseoutRow({
-  index, label, by, at, actionLabel, onAction, enabled, busy,
-}: {
-  index: number;
-  label: string;
-  by?: string;
-  at?: string;
-  actionLabel: string;
-  onAction: () => void;
-  enabled: boolean;
-  busy: boolean;
-}) {
-  const done = !!at;
+/** Once filed, the record's facts the report does not already show. */
+export function FiledRecord({ order }: { order: LabResultDoc }) {
+  const { t } = useTranslation();
   return (
-    <div className="labord-numbered-row">
-      <span className="labord-num">{index}</span>
-      <span className="labord-numbered-body">
-        <strong>{label}</strong>
-        {done && (
-          <span className="labord-check-meta">
-            {by || '—'} · {new Date(at!).toLocaleString()}
+    <div className="obf-section">
+      <div className="obf-section-head lwf-section-head">{t('labFlow.recordHeading')}</div>
+      <div className="lwf-section-body">
+        <div className="obf-row">
+          <Field label={t('labFlow.collectedBy')} value={order.specimenCollectedBy} />
+          <Field label={t('labFlow.collectedAt')} value={order.specimenCollectedAt ? formatDateTime(order.specimenCollectedAt) : undefined} />
+          <Field label={t('labFlow.container')} value={order.specimenContainer} />
+          <Field label={t('labFlow.condition')} value={SPECIMEN_CONDITIONS.find(c => c.value === order.specimenCondition)?.label} />
+          <Field label={t('labFlow.receivedBy')} value={order.specimenReceivedBy} />
+          <Field label={t('labFlow.receivedAt')} value={order.specimenReceivedAt ? formatDateTime(order.specimenReceivedAt) : undefined} />
+          {order.specimenCollectedOutside && <Field label={t('labFlow.collectedOutside')} value={order.externalFacility || t('labIntake.source_walk_in')} />}
+          {order.specimenCollectionNote && <Field label={t('labFlow.collectionNote')} value={order.specimenCollectionNote} />}
+          <Field label={t('labFlow.orderedAt')} value={order.orderedAt ? formatDateTime(order.orderedAt) : undefined} />
+          {order.requestSource && <Field label={t('labIntake.source')} value={t(`labIntake.source_${order.requestSource}`)} />}
+          {order.externalReference && <Field label={t('labIntake.reference')} value={order.externalReference} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** What a result's review needs, on a lab order or an imaging study. */
+interface ReviewControls {
+  stage: LabOrderStatus;
+  busy: boolean;
+  lastError: { current: string | null };
+  markReviewed: () => Promise<boolean>;
+  markActedUpon: () => Promise<boolean>;
+  markCommunicated: () => Promise<boolean>;
+}
+
+/**
+ * The ordering clinician's side of a result: what is on record, and the one
+ * thing to do next. These stages are what release a result to the patient
+ * portal and stop it escalating, so this is for clinicians only — the bench
+ * files the result and the bell tells them it is ready.
+ */
+export function ResultReview({ order, ctrl }: { order: LabResultDoc; ctrl: ReviewControls }) {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const stages = [
+    { from: 'resulted', label: 'labFlow.stage_reviewed_by_clinician', by: order.reviewedBy, at: order.reviewedAt, action: 'labFlow.markReviewed', run: ctrl.markReviewed },
+    { from: 'reviewed_by_clinician', label: 'labFlow.stage_acted_upon', by: order.actedUponBy, at: order.actedUponAt, action: 'labFlow.markActedUpon', run: ctrl.markActedUpon },
+    { from: 'acted_upon', label: 'labFlow.stage_communicated_to_patient', by: order.communicatedBy, at: order.communicatedAt, action: 'labFlow.markCommunicated', run: ctrl.markCommunicated },
+  ];
+  const next = stages.find(stage => stage.from === ctrl.stage);
+
+  const press = async () => {
+    if (!next || await next.run()) return;
+    showToast(t(ctrl.lastError.current || 'labFlow.errGeneric'), 'error', { placement: 'corner' });
+  };
+
+  return (
+    <div className="labord-review">
+      {stages.filter(stage => stage.at).map(stage => (
+        <div key={stage.label} className="labord-review-row">
+          <CheckCircle2 className="w-4 h-4" aria-hidden />
+          <span>
+            <strong>{t(stage.label)}</strong>
+            <small>{stage.by || '—'} · {formatDateTime(stage.at!)}</small>
           </span>
-        )}
-      </span>
-      {done ? (
-        <CheckCircle2 className="w-4 h-4" aria-hidden style={{ color: 'var(--color-success, #0E9463)' }} />
-      ) : (
-        <button
-          type="button"
-          className="labord-btn labord-btn--sm"
-          onClick={onAction}
-          disabled={!enabled || busy}
-        >
-          {actionLabel}
+        </div>
+      ))}
+      {next && (
+        <button type="button" className="labord-btn labord-btn--primary" onClick={() => void press()} disabled={ctrl.busy}>
+          {t(next.action)}
         </button>
       )}
     </div>

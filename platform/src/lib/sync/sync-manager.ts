@@ -128,6 +128,9 @@ function getLockManager(): WebLockManagerLike | null {
 import { entitlementFor } from './facility-entitlements';
 import type { UserRole } from '../db-types';
 
+/** The databases holding a charge and its ledger mirror. */
+const CHARGE_DATABASES = ['tamamhealth_billing', 'tamamhealth_ledger'];
+
 export interface SyncManagerOptions {
   orgId?: string;
   /**
@@ -327,6 +330,7 @@ export class SyncManager {
 
         this.services.set(config.localName, service);
         service.startSync();
+        if (CHARGE_DATABASES.includes(config.localName)) void service.resendRecentCharges();
       }
     };
 

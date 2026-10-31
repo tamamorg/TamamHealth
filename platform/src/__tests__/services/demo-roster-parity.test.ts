@@ -15,7 +15,7 @@ describe('demo roster parity', () => {
     const shared = await import('@/lib/seed-demo-roster');
     const server = await import('@/modules/identity/core/seed-credentials');
     expect(server.DEMO_USER_PROFILES).toBe(shared.DEMO_USER_PROFILES);
-    expect(shared.DEMO_USER_PROFILES.length).toBeGreaterThan(40);
+    expect(shared.DEMO_USER_PROFILES.length).toBeGreaterThan(20);
   });
 
   test('usernames are unique', async () => {

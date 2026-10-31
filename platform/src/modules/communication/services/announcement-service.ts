@@ -6,6 +6,7 @@ import { filterByScope } from '@/lib/services/data-scope';
 import { findByType } from '@/lib/services/db-query';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from '@/lib/services/audit-service';
+import { canonicalizeUserRole } from '@/lib/user-role';
 
 /** Roles allowed to post announcements. Everyone else is read-only. */
 export const ANNOUNCEMENT_AUTHOR_ROLES: UserRole[] = [
@@ -45,7 +46,11 @@ export async function getVisibleAnnouncements(scope: DataScope, viewer: Viewer):
       // chose. createAnnouncement now rejects that shape; legacy docs stay
       // visible only to their author.
       if (a.audience === 'facility') return !!a.facilityId && a.facilityId === viewer.hospitalId;
-      if (a.audience === 'role') return (a.targetRoles || []).includes(viewer.role);
+      // Canonical on both sides: an announcement posted to a role that has
+      // since retired still reaches the people who did that job.
+      if (a.audience === 'role') {
+        return (a.targetRoles || []).map(canonicalizeUserRole).includes(canonicalizeUserRole(viewer.role));
+      }
       return true;
     })
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));

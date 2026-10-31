@@ -9,6 +9,6 @@ describe('patient PATCH care-team boundary', () => {
     );
     expect(source).toContain('PATIENT_CARE_TEAM_FIELDS.some');
     expect(source).toContain('!canAssignCareTeamRole(auth.role)');
-    expect(source).toContain('Only front desk staff can change patient care-team assignments');
+    expect(source).toContain('Only reception staff can change patient care-team assignments');
   });
 });

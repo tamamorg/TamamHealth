@@ -59,8 +59,8 @@ export default function PatientHistoryTab({ patient, patientProblems, vitalsTime
   // (?focus=) lands on All encounters, the view that can highlight it.
   const [view, setView] = useUrlView(['visits', 'all'] as const, focusId ? 'all' : 'visits');
 
-  // Reading a note stays on the chart, as on the Notes tab: it opens locked,
-  // and Edit (drafts, for those who may write notes) goes to the note drawer.
+  // Reading a note stays on the chart, as on the Notes tab. A draft opens whole
+  // there too, with its Edit and Sign, so it is read before it is signed.
   const openNote = (id: string) => setNoteViewer({ id, kind: 'clinical' });
   const openEvent = (event: TimelineEvent) => {
     if (!event.docId) return;

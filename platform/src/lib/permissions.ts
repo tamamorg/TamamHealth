@@ -51,6 +51,7 @@ import {
 } from '@/components/icons/lucide';
 import { BRAND_DARKER, BRAND_PRIMARY, BRAND_SECONDARY } from './theme-colors';
 import { isPlatformOnlyRole } from '@/modules/identity/client';
+import { canonicalizeUserRole } from './user-role';
 // Lenient shape so either lucide or our duotone wrappers type-check.
 export type NavIcon = ComponentType<
   Omit<SVGProps<SVGSVGElement>, 'color'> & {
@@ -375,7 +376,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
   },
 
   front_desk: {
-    label: 'Medical Receptionist',
+    label: 'Receptionist',
     defaultDashboard: ROLE_ROUTE_TABLE.front_desk.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.front_desk.allowed],
     navItems: [
@@ -874,9 +875,8 @@ export const CONFLICT_RESOLUTION_ROLES: UserRole[] = [
   'hrio',
 ];
 
-const WORKFLOW_ROLES: UserRole[] = ['central_registration_clerk', 'clinic_clerk', 'clinician', 'records_hmis_officer'];
-const PRIVATE_SECTOR_ROLES: UserRole[] = ['org_admin', 'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller', ...WORKFLOW_ROLES];
-const ALL_ROLES: UserRole[] = ['super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'government', 'county_health_director', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller', ...WORKFLOW_ROLES];
+const PRIVATE_SECTOR_ROLES: UserRole[] = ['org_admin', 'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller'];
+const ALL_ROLES: UserRole[] = ['super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist', 'front_desk', 'cashier', 'government', 'county_health_director', 'data_entry_clerk', 'medical_superintendent', 'hrio', 'nutritionist', 'radiologist', 'hospital_manager', 'medical_biller'];
 
 export function getAvailableRoles(orgType: 'public' | 'private', isSuperAdmin = false): UserRole[] {
   if (isSuperAdmin) return ALL_ROLES;
@@ -918,7 +918,8 @@ export function assignableRolesForOrgAdmin(
   // on submit. A public-sector org saw both.
   const allowed = getAvailableRoles(orgType ?? 'public').filter(r => !isPlatformOnlyRole(r));
   if (!enabledRoles || enabledRoles.length === 0) return allowed;
-  const enabled = new Set(enabledRoles);
+  // A roster saved before a role retired still means the job it became.
+  const enabled = new Set(enabledRoles.map(canonicalizeUserRole));
   const narrowed = allowed.filter(r => enabled.has(r));
   // An org whose list somehow intersects nothing assignable still has to leave
   // the admin a usable picker rather than the empty dropdown this function was

@@ -440,7 +440,7 @@ export default function InquiriesPage() {
 
                   <div className="appointment-card-provider">
                     <strong>{assignee || 'Unassigned'}</strong>
-                    <span>{assignee ? 'Front desk owner' : 'Needs an owner'}</span>
+                    <span>{assignee ? 'Reception owner' : 'Needs an owner'}</span>
                   </div>
 
                   {/* Triage and ownership both move from the pill: the status

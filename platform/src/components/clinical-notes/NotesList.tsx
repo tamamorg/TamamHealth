@@ -31,6 +31,8 @@ import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import { mergeNoteRows, filterNoteRows, type NoteRow } from './notes-list-model';
 import { describeError } from '@/lib/user-facing-error';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { recordSignRights } from '@/lib/clinical-roles';
+import type { UserRole } from '@/lib/db-types';
 import { useConfirm } from '@/components/ConfirmDialog';
 import './clinical-notes.css';
 import './note-viewer.css';
@@ -43,7 +45,7 @@ interface NotesListProps {
   patientName?: string;
   mrn?: string;
   patientDob?: string;
-  currentUser: { _id: string; name?: string; username?: string; hospitalId?: string; hospitalName?: string; orgId?: string } | null;
+  currentUser: { _id: string; role?: UserRole; name?: string; username?: string; hospitalId?: string; hospitalName?: string; orgId?: string } | null;
   /** Hides the create controls where the caller has its own. */
   showCreate?: boolean;
   /** Start a note in place (the chart's slider). Without it, Create note
@@ -246,6 +248,9 @@ export default function NotesList({
                       ariaLabel={t('notesList.rowActions', { type: label, date: row.date })}
                       actions={[
                         ...(openable ? [{ key: 'open', label: t('notesList.open'), onClick: () => openRow(row) }] : []),
+                        // Opens the whole note: it is read before it is signed.
+                        ...(openable && row.kind === 'clinical' && row.status === 'draft' && recordSignRights(currentUser?.role).canAuthor
+                          ? [{ key: 'sign', label: t('noteEditor.sign'), onClick: () => openRow(row) }] : []),
                         ...(ownDraft(row) ? [{ key: 'delete', label: t('notesList.deleteDraft'), tone: 'danger' as const, disabled: deletingId === row.id, onClick: () => void deleteDraft(row, label) }] : []),
                       ]}
                     />

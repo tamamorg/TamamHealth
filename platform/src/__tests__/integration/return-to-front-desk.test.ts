@@ -125,7 +125,7 @@ describe('return to front desk', () => {
 
     const desk = returnedToDeskItems([encounter], { _id: 'user-desk.amira', role: 'front_desk' }, Date.now(), 10);
     expect(desk).toHaveLength(1);
-    expect(desk[0].title).toContain('Returned to front desk');
+    expect(desk[0].title).toContain('Returned to reception');
     expect(desk[0].subtitle).toBe('Needs rebooking');
 
     expect(returnedToDeskItems([encounter], { _id: DOC, role: 'doctor' }, Date.now(), 10)).toHaveLength(0);

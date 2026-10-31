@@ -5,7 +5,7 @@ jest.mock('@/lib/clinical-notes/note-service', () => ({
 }));
 jest.mock('@/lib/hooks/useDataScope', () => ({ useDataScope: () => null }));
 
-import { findReusableDraft } from '@/lib/clinical-notes/useCreateNote';
+import { findOpenDraft, findReusableDraft } from '@/lib/clinical-notes/useCreateNote';
 import { clinicalNoteToRow } from '@/components/clinical-notes/notes-list-model';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
 
@@ -64,5 +64,22 @@ describe('clinicalNoteToRow timestamp', () => {
   it('keeps the date of service once signed', () => {
     const row = clinicalNoteToRow(note({ status: 'signed', updatedAt: '2026-10-24T09:42:00Z' }));
     expect(row).toMatchObject({ date: '2026-10-20', time: '19:00', edited: false });
+  });
+});
+
+describe('findOpenDraft', () => {
+  it('offers back the clinician\'s newest draft of this type, from any day', () => {
+    const older = note({ _id: 'old', serviceDate: '2026-10-01', updatedAt: '2026-10-01T09:00:00.000Z' });
+    const newer = note({ _id: 'new', serviceDate: '2026-10-15', updatedAt: '2026-10-15T09:00:00.000Z' });
+    expect(findOpenDraft([older, newer], { noteType: 'soap', authorId: 'dr1' })?._id).toBe('new');
+  });
+
+  it('leaves out signed notes, other types and a colleague\'s draft', () => {
+    const notes = [
+      note({ _id: 'signed', status: 'signed' }),
+      note({ _id: 'proc', noteType: 'procedure' }),
+      note({ _id: 'theirs', authorId: 'dr2' }),
+    ];
+    expect(findOpenDraft(notes, { noteType: 'soap', authorId: 'dr1' })).toBeUndefined();
   });
 });

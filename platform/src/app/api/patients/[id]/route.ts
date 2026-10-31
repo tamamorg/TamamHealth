@@ -81,7 +81,7 @@ async function patchHandler(
       !canAssignCareTeamRole(auth.role) &&
       PATIENT_CARE_TEAM_FIELDS.some(field => Object.prototype.hasOwnProperty.call(sanitized, field))
     ) {
-      return forbidden('Only front desk staff can change patient care-team assignments');
+      return forbidden('Only reception staff can change patient care-team assignments');
     }
     // A partial edit form may serialize untouched inputs as empty strings. Merging
     // those over the stored record would silently wipe existing demographics

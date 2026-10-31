@@ -32,6 +32,8 @@ import { reasonContextFromNote } from '@/components/lab/order/lab-order-reasons'
 import type { NoteSectionActionId } from '@/lib/clinical-notes/section-actions';
 import MedicationsModal from './MedicationsModal';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
+import { getDB } from '@/lib/db';
 import IncludeProblemsModal from './assessment/IncludeProblemsModal';
 import AllergiesModal from './AllergiesModal';
 import HistoryModal from './HistoryModal';
@@ -73,6 +75,8 @@ import Select from '@/components/Select';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 import { describeError } from '@/lib/user-facing-error';
+
+const assessmentsStore = () => getDB('tamamhealth_assessments');
 
 const AUTOSAVE_MS = 900;
 /** A chart read that has not answered by now is reported as failed, not left "loading". */
@@ -477,8 +481,25 @@ export default function ClinicalNoteEditor({
     }
   }, [markChart, scope]);
 
+  // Assessments are their own documents: keep the draft's list current as they
+  // are entered, while this note is open or stacked under the Care plan.
+  const syncMeasures = useCallback(async () => {
+    if (!scope || !noteId) return;
+    const { syncOutcomeMeasures } = await import('@/lib/clinical-notes/note-outcome-measures');
+    const updated = await syncOutcomeMeasures(noteId, scope).catch(() => null);
+    const section = updated?.sections.find(item => item.sectionId === 'outcome_measures');
+    if (!section) return;
+    // Only this section: the rest of the note may hold edits still being typed.
+    setNote(prev => (prev ? {
+      ...prev,
+      sections: [...prev.sections.filter(item => item.sectionId !== 'outcome_measures'), section],
+    } : prev));
+  }, [noteId, scope]);
+  usePouchLiveReload({ load: syncMeasures, database: assessmentsStore });
+
   const refreshDerived = useCallback(async (sectionId: NoteSectionId) => {
     if (!note) return;
+    if (sectionId === 'outcome_measures') { await syncMeasures(); return; }
     const snapshot = await readChart(note.patientId, [sectionId]);
     // A failed read must never overwrite what the note holds with nothing.
     if (!snapshot || snapshotLoadFailed(sectionId, snapshot)) {
@@ -706,6 +727,7 @@ export default function ClinicalNoteEditor({
     setShowSignConfirm(false);
     const updated = await persist(async () => {
       await flushPendingEdits();
+      await syncMeasures();
       return signClinicalNote(noteId, {
         signedBy: currentUser?._id || '',
         signedByName: userName,
@@ -717,6 +739,10 @@ export default function ClinicalNoteEditor({
       });
     });
     if (!updated) return;
+    if (scope) {
+      const { signNoteOutcomeMeasures } = await import('@/lib/clinical-notes/note-outcome-measures');
+      await signNoteOutcomeMeasures(updated, { userId: currentUser?._id, userName, userRole: currentUser?.role }, scope);
+    }
     showToast(
       requested ? t('noteEditor.signedAwaitingCosign', { name: requested.name }) : t('noteEditor.signed'),
       'success',

@@ -17,7 +17,7 @@ export const NUTRITION_STEPS: TourStep[] = [
     target: '.ehr-segmented-single button',
     placement: 'bottom',
     title: 'Book an appointment',
-    body: 'Book a MAM review or a feeding follow-up into your own diary; the front desk confirms it.',
+    body: 'Book a MAM review or a feeding follow-up into your own diary; reception confirms it.',
   },
   {
     id: 'worklist',

@@ -61,7 +61,8 @@ export type NoteSectionId =
   | 'admission_reason'
   | 'discharge_diagnosis'
   | 'discharge_condition'
-  | 'response_to_care';
+  | 'response_to_care'
+  | 'outcome_measures';
 
 export interface NoteSectionDef {
   id: NoteSectionId;
@@ -79,7 +80,7 @@ export interface NoteSectionDef {
    * Derived sections name the chart data they render, so the editor can fetch
    * the right thing without a switch statement per section.
    */
-  source?: 'vitals' | 'medications' | 'allergies' | 'problems' | 'history';
+  source?: 'vitals' | 'medications' | 'allergies' | 'problems' | 'history' | 'assessments';
   /**
    * A derived section that also takes free text under its snapshot.
    *
@@ -107,6 +108,8 @@ export const NOTE_SECTIONS: Readonly<Record<NoteSectionId, NoteSectionDef>> = {
   vitals: { id: 'vitals', label: 'Vitals', kind: 'derived', source: 'vitals' },
   objective: { id: 'objective', label: 'Objective', kind: 'narrative', placeholder: 'Examination findings…' },
   physical_exam: { id: 'physical_exam', label: 'Physical Exam', kind: 'narrative', placeholder: 'Physical examination…' },
+  // The patient's scored assessments of this visit: see note-outcome-measures.
+  outcome_measures: { id: 'outcome_measures', label: 'Outcome measures', kind: 'derived', source: 'assessments' },
   assessment: { id: 'assessment', label: 'Assessment', kind: 'narrative', placeholder: 'Assessment and diagnoses…' },
   // Carries the prompt Recommendations used to give (see RETIRED_SECTIONS): a
   // plan that answers a referral has to say who does each next step.
@@ -431,6 +434,7 @@ export const RETIRED_SECTIONS: Readonly<Partial<Record<NoteSectionId, NoteSectio
  * note puts it near the history rather than after the Plan.
  */
 const SECTION_RANK: Readonly<Record<NoteSectionId, number>> = {
+  outcome_measures: 99,
   cc: 0,
   reason_for_consultation: 0.4,
   admission_reason: 0.6,

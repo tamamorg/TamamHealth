@@ -22,8 +22,14 @@ import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { printElementById } from '@/lib/safe-html';
 import {
-  getClinicalNoteById, addNoteAddendum, sectionBody,
+  getClinicalNoteById, addNoteAddendum, missingRequiredSections, sectionBody, signClinicalNote,
 } from '@/lib/clinical-notes/note-service';
+import {
+  assessmentsForViewer, measuresForNote, signNoteOutcomeMeasures, syncOutcomeMeasures, withOutcomeMeasures,
+} from '@/lib/clinical-notes/note-outcome-measures';
+import { recordSignRights } from '@/lib/clinical-roles';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
 import { noteTypeLabel, sectionLabel } from '@/lib/clinical-notes/note-labels';
 import type { ClinicalNoteDoc, NoteStatus } from '@/lib/clinical-notes/types';
 import type { MedicalRecordDoc } from '@/lib/db-types';
@@ -119,6 +125,9 @@ function SectionText({ text }: { text: string }) {
 }
 
 interface ViewModel {
+  /** Required sections still blank, and held assessments it would sign. */
+  missing?: string[];
+  heldMeasures?: number;
   kind: 'clinical' | 'record';
   authorId?: string;
   assignedToId?: string;
@@ -150,6 +159,8 @@ export default function ClinicalNoteViewer({
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [vm, setVm] = useState<ViewModel | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
   const [adding, setAdding] = useState(false);
@@ -160,8 +171,12 @@ export default function ClinicalNoteViewer({
   const load = useCallback(async () => {
     try {
       if (kind === 'clinical') {
-        const n = await getClinicalNoteById(noteId, scope);
-        if (!n) { setState('missing'); return; }
+        const stored = await getClinicalNoteById(noteId, scope);
+        if (!stored) { setState('missing'); return; }
+        // A draft shows the assessments of its visit, even those entered after
+        // it was opened. In memory only: this reader may not be able to edit it.
+        const assessments = stored.status === 'draft' && scope ? await assessmentsForViewer(stored.patientId, scope) : [];
+        const n = withOutcomeMeasures(stored, assessments);
         setVm({
           kind, id: n._id,
           typeLabel: n.noteType === 'phone' ? t('notesList.phoneEncounter') : noteTypeLabel(t, n.noteType),
@@ -170,6 +185,8 @@ export default function ClinicalNoteViewer({
           authorId: n.authorId, assignedToId: n.assignedToId,
           encounterId: n.encounterId,
           sections: clinicalViewerSections(n, t),
+          missing: missingRequiredSections(n),
+          heldMeasures: measuresForNote(n, assessments).filter(a => a.documentStatus === 'held').length,
           addenda: (n.addenda || []).map(a => ({ id: a.id, text: a.text, authorName: a.authorName, createdAt: a.createdAt })),
           signedByName: n.signedByName, signedAt: n.signedAt,
           cosignedByName: n.cosignedByName, cosignedAt: n.cosignedAt,
@@ -221,6 +238,30 @@ export default function ClinicalNoteViewer({
     });
   };
 
+  async function signNote() {
+    if (!vm || !currentUser || !scope) return;
+    const ok = await confirm({
+      title: t('noteEditor.signTitle'),
+      message: vm.heldMeasures ? `${t('noteEditor.signBody')} ${t('noteViewer.signsMeasures', { count: vm.heldMeasures })}` : t('noteEditor.signBody'),
+      confirmLabel: t('noteEditor.signNote'),
+    });
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const userName = currentUser.name || currentUser.username || 'Clinician';
+      await syncOutcomeMeasures(vm.id, scope);
+      const signed = await signClinicalNote(vm.id, { signedBy: currentUser._id, signedByName: userName, signerRole: currentUser.role });
+      if (signed) await signNoteOutcomeMeasures(signed, { userId: currentUser._id, userName, userRole: currentUser.role }, scope);
+      showToast(t('noteEditor.signed'), 'success');
+      await load();
+    } catch (e) {
+      setError(describeError(e, t('noteEditor.signFailed')));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveAddendum() {
     if (!vm || !addendumText.trim() || !currentUser) return;
     setBusy(true);
@@ -238,6 +279,11 @@ export default function ClinicalNoteViewer({
   }
 
   const inSlider = presentation === 'slider';
+  // Anyone who may write this draft or attest clinical notes signs it from here.
+  const draftClinical = vm?.kind === 'clinical' && vm.status === 'draft';
+  const canSign = draftClinical && !!vm && recordSignRights(currentUser?.role).canAuthor
+    && canEditDraft({ authorId: vm.authorId ?? '', assignedToId: vm.assignedToId }, currentUser);
+  const missing = canSign ? (vm?.missing ?? []) : [];
   /** Inline the content stands alone; in the slider it takes the shell. */
   const shell = (content: ReactNode, opts: { title?: ReactNode; subtitle?: ReactNode; footer?: ReactNode } = {}) => (
     inSlider ? (
@@ -285,7 +331,8 @@ export default function ClinicalNoteViewer({
       <button type="button" className="btn btn-secondary" onClick={onClose}>{t('noteViewer.close')}</button>
       {locked && vm.kind === 'clinical' && <button type="button" className="btn btn-secondary" onClick={print}>{t('noteViewer.print')}</button>}
       {canAddAddendum && <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>{t('noteViewer.addAddendum')}</button>}
-      {canEdit && <button type="button" className="btn btn-primary" onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
+      {canEdit && <button type="button" className={canSign ? 'btn btn-secondary' : 'btn btn-primary'} onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
+      {canSign && <button type="button" className="btn btn-primary" disabled={busy || missing.length > 0} onClick={() => void signNote()}>{t('noteEditor.sign')}</button>}
     </>
   );
 
@@ -296,6 +343,12 @@ export default function ClinicalNoteViewer({
           {canEdit ? t('noteViewer.lockedHint') : null}
         </InlineBanner>
       )}
+      {missing.length > 0 && (
+        <InlineBanner compact className="no-print" title={t('noteEditor.missingTitle')}>
+          {missing.map(id => sectionLabel(t, id)).join(', ')}
+        </InlineBanner>
+      )}
+      {error && !adding && <FormError message={error} />}
       <div id={printId} className="tamam-nv-doc modal-no-headband">
         <header className="tamam-nv-head">
           <div>
@@ -380,6 +433,7 @@ export default function ClinicalNoteViewer({
 
       {!adding && !inSlider && (
         <div className="tamam-nv-actions">
+          {canSign && <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" disabled={busy || missing.length > 0} onClick={() => void signNote()}>{t('noteEditor.sign')}</button>}
           {canEdit && <button type="button" className="tamam-nv-btn tamam-nv-btn--primary" onClick={() => onEdit?.(vm.id)}>{t('noteViewer.edit')}</button>}
           {canAddAddendum && <button type="button" className="tamam-nv-btn" onClick={() => setAdding(true)}>{t('noteViewer.addAddendum')}</button>}
           {locked && vm.kind === 'clinical' && <button type="button" className="tamam-nv-btn" onClick={print}>{t('noteViewer.print')}</button>}

@@ -1,4 +1,4 @@
-import { authorizeReplicatedTransfer } from '@/lib/sync/transfer-gateway-authorization';
+import { authorizeReplicatedTransfer, writesTransferDocuments } from '@/lib/sync/transfer-gateway-authorization';
 import type { PatientDoc, PatientTransferDoc } from '@/lib/db-types';
 import type { AuthPayload } from '@/modules/identity';
 
@@ -44,5 +44,15 @@ describe('transfer replication relationship authorization', () => {
     const previous = transfer({ events: [{ id: 'event-1', kind: 'TRANSFER_REQUESTED', message: 'Requested', createdAt: '2026-01-01' }] });
     expect(authorizeReplicatedTransfer(auth, transfer({ events: [] }), previous, patient))
       .toMatch(/append-only/);
+  });
+});
+
+describe('what the gateway treats as transfer documents', () => {
+  it.each([[['_bulk_docs']], [['patient-transfer-1']]])('checks a document write: %j', path => {
+    expect(writesTransferDocuments(path)).toBe(true);
+  });
+
+  it.each([[['_revs_diff']], [['_changes']], [['_bulk_get']], [['_local', 'abc']], [[]]])('lets replication through: %j', path => {
+    expect(writesTransferDocuments(path)).toBe(false);
   });
 });

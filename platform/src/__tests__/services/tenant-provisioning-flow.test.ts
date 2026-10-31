@@ -170,7 +170,7 @@ describe('facility -> staff accounts', () => {
     ['doctor'], ['nurse'], ['front_desk'], ['lab_tech'], ['pharmacist'],
     ['cashier'], ['data_entry_clerk'], ['medical_superintendent'],
     ['hospital_manager'], ['hrio'], ['radiologist'], ['nutritionist'],
-    ['medical_biller'], ['clinical_officer'], ['clinic_clerk'],
+    ['medical_biller'], ['clinical_officer'],
   ])('%s can be created once a facility exists', async role => {
     const { org, facility } = await tenant();
     expect(roleNeedsFacility(role)).toBe(true);
@@ -188,7 +188,10 @@ describe('facility -> staff accounts', () => {
     expect(user.hospitalId).toBe(facility._id);
   });
 
-  test.each(['midwife', 'triage_nurse', 'rooming_nurse'] as const)(
+  test.each([
+    'midwife', 'triage_nurse', 'rooming_nurse', 'clinician',
+    'records_hmis_officer', 'clinic_clerk', 'central_registration_clerk',
+  ] as const)(
     'retired %s accounts cannot be created',
     async role => {
       const { org, facility } = await tenant();

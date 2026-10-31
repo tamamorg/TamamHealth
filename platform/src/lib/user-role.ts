@@ -1,24 +1,29 @@
 import type { UserRole } from './db-types';
 
 /**
- * Retired staff-account roles retained only so old documents and JWTs can be
- * read during the migration. Triage, rooming and maternity are assignments or
- * departments; the account role for all three is `nurse`.
+ * Retired staff-account roles and the role each one became, retained only so
+ * old documents and JWTs can be read during the migration. Triage, rooming and
+ * maternity are assignments or departments, so all three are `nurse`; the
+ * clerk, clinician and HMIS logins were the same jobs under a second name.
+ *
+ * A Map, not an object: a role string comes off a token or a document, and
+ * `constructor` must not resolve to anything.
  */
-export const LEGACY_NURSING_ROLES = [
-  'midwife',
-  'triage_nurse',
-  'rooming_nurse',
-] as const satisfies readonly UserRole[];
+export const LEGACY_ROLE_MAP: ReadonlyMap<UserRole, UserRole> = new Map<UserRole, UserRole>([
+  ['midwife', 'nurse'],
+  ['triage_nurse', 'nurse'],
+  ['rooming_nurse', 'nurse'],
+  ['clinician', 'doctor'],
+  ['records_hmis_officer', 'hrio'],
+  ['clinic_clerk', 'front_desk'],
+  ['central_registration_clerk', 'front_desk'],
+]);
 
-const LEGACY_NURSING_ROLE_SET = new Set<UserRole>(LEGACY_NURSING_ROLES);
-
-export function isLegacyNursingRole(role: UserRole | string): role is typeof LEGACY_NURSING_ROLES[number] {
-  return LEGACY_NURSING_ROLE_SET.has(role as UserRole);
+export function isLegacyRole(role: UserRole | string): boolean {
+  return LEGACY_ROLE_MAP.has(role as UserRole);
 }
 
 /** Normalize a stored/session role without changing historical clinical data. */
 export function canonicalizeUserRole(role: UserRole): UserRole {
-  return isLegacyNursingRole(role) ? 'nurse' : role;
+  return LEGACY_ROLE_MAP.get(role) ?? role;
 }
-

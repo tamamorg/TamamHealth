@@ -47,6 +47,26 @@ function transferAuth(user: CurrentUser) {
   };
 }
 
+/**
+ * Ask the server to apply an accepted transfer now rather than at the next sweep.
+ * The acceptance has to replicate there first, hence the second try; offline, or
+ * after both, the hourly sweep finishes it.
+ */
+async function finishOnServer(id: string): Promise<boolean> {
+  const { apiFetch } = await import('@/lib/api-fetch');
+  for (const wait of [2000, 8000]) {
+    await new Promise(resolve => setTimeout(resolve, wait));
+    try {
+      const response = await apiFetch('/api/patient-transfers', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'complete', transferId: id }),
+      });
+      if (response.ok) return true;
+    } catch { /* offline: the sweep has it */ }
+  }
+  return false;
+}
+
 function permissionError(reason?: string): Error {
   return new Error(reason || 'This transfer action is not permitted.');
 }
@@ -135,9 +155,6 @@ export function usePatientTransfers(patientId?: string) {
       if (!currentUser) throw new Error('Your session has ended. Sign in again to continue.');
       const auth = transferAuth(currentUser);
       const crossOrg = Boolean(input.to.orgId && auth.orgId && input.to.orgId !== auth.orgId);
-      if (!crossOrg && input.to.facilityId && auth.hospitalId && input.to.facilityId !== auth.hospitalId) {
-        throw new Error('An internal transfer must stay within this facility. Use an inter-facility transfer instead.');
-      }
       const permission = canRequestTransfer(auth, patient, { crossOrg });
       if (!permission.allowed) throw permissionError(permission.reason);
       const svc = await import('../services/patient-transfer-service');
@@ -152,6 +169,7 @@ export function usePatientTransfers(patientId?: string) {
           providerName: patient.assignedDoctorName,
           department: patient.assignedDepartment,
           facilityId: patient.registrationHospital,
+          facilityName: auth.hospitalId === patient.registrationHospital ? auth.hospitalName : undefined,
           orgId: patient.orgId,
         },
         to: input.to,
@@ -188,8 +206,14 @@ export function usePatientTransfers(patientId?: string) {
       const permission = canDecideTransfer(auth, transfer);
       if (!permission.allowed) throw permissionError(permission.reason);
       return svc.acceptTransfer(id, { id: auth.sub, name: auth.name, role: auth.role }, notes);
+    }).then(saved => {
+      // Accepted but not applied: this device has no copy of the chart.
+      if (saved?.status === 'accepted' && saved.effectiveAt && new Date(saved.effectiveAt).getTime() <= Date.now()) {
+        void finishOnServer(id).then(done => { if (done) void load(); });
+      }
+      return saved;
     });
-  }, [run, loadActionTarget]);
+  }, [run, loadActionTarget, load]);
 
   const reject = useCallback(async (id: string, notes: string) => {
     return run(async () => {

@@ -14,6 +14,8 @@ import {
   hasRoleRouteConfig,
   isPathAllowed,
 } from './lib/role-routes';
+import { canonicalizeUserRole } from './lib/user-role';
+import type { UserRole } from './lib/db-types';
 
 /**
  * Is this response going out over HTTPS?
@@ -459,8 +461,9 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // Role-based route enforcement
-  const role = payload.role;
+  // Role-based route enforcement. A token can outlive a role's retirement, and
+  // the rest of the app already reads the role it became.
+  const role = canonicalizeUserRole(payload.role as UserRole);
   const userId = payload.sub;
 
   // CSRF defence layer 2: HMAC-bound double-submit token. For any

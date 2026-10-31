@@ -21,7 +21,7 @@ const base = { orgId: 'org-a', hospitalId: 'h-1', facilityId: 'h-1', createdAt: 
 const patient = { ...base, _id: 'pat-1', type: 'patient', firstName: 'A', surname: 'B', registrationHospital: 'h-1' };
 const encounter = { ...base, _id: 'enc-1', type: 'clinical_encounter', patientId: 'pat-1', status: 'awaiting_labs', stageKey: 'labs', labOrderIds: [], statusHistory: [], snapshot: {} };
 const bill = { ...base, _id: 'bill-1', type: 'billing', patientId: 'pat-1', totalAmount: 1500, status: 'pending' };
-const ledger = { ...base, _id: 'led-1', type: 'ledger_entry', patientId: 'pat-1', entryType: 'charge', amount: 1500 };
+const ledger = { ...base, _id: 'led-1', type: 'ledger_entry', patientId: 'pat-1', entryType: 'charge', amount: 1500, referenceType: 'billing' };
 
 describe('lab technician intake', () => {
   it.each([['patient', patient], ['encounter', encounter], ['bill', bill], ['ledger entry', ledger]])('may create a %s', (_label, doc) => {

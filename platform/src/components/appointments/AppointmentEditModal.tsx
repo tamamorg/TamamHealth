@@ -14,7 +14,7 @@
  * and enforces who may confirm.
  */
 import { useMemo, useState } from 'react';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import AppointmentStatusSelect from '@/components/appointments/AppointmentStatusSelect';
 import AppointmentDetailFields, { type AppointmentDetailFieldValues } from '@/components/appointments/AppointmentDetailFields';
 import { staffOptionLabel, type StaffSlotContext } from '@/lib/appointment-staff';
@@ -362,14 +362,8 @@ export default function AppointmentEditModal({
   };
 
   const body = (
-      <div className={inline ? 'appt-edit-shell is-inline' : 'appt-edit-shell'}>
+      <div className={inline ? 'appt-edit-shell is-inline' : 'appt-edit-shell is-stacked'}>
       {saveError && <FormError message={saveError} />}
-      {!inline && (
-      <div className="appt-edit-head">
-        <h2>Edit appointment</h2>
-        <span>{appointment.appointmentDate} · {appointment.appointmentTime}</span>
-      </div>
-      )}
       {inline && !hideInlineTabs && (
         <div className="ehr-visit-pop-tabs" role="tablist">
           {([
@@ -512,7 +506,7 @@ export default function AppointmentEditModal({
           {headerActions}
         </div>
       )}
-      {(dirty || checkingIn) && (
+      {inline && (dirty || checkingIn) && (
       <div className="appt-edit-actions">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
@@ -524,5 +518,23 @@ export default function AppointmentEditModal({
   );
 
   if (inline) return body;
-  return <Modal variant="slider" onClose={onClose} width={1040}>{body}</Modal>;
+  // One column in the standard slider, like every other form: scroll to the
+  // field, with Cancel and Save always in view.
+  return (
+    <FormSlider
+      title="Edit appointment"
+      subtitle={`${appointment.appointmentDate} · ${appointment.appointmentTime}`}
+      className="tamam-dialog"
+      onClose={onClose}
+      busy={saving}
+      footer={<>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>{t('action.cancel')}</button>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={saving || !(dirty || checkingIn)}>
+          {saving ? 'Saving…' : checkingIn ? t('frontDesk.checkInTab') : `Save${status !== appointment.status ? ` · ${appointmentStatusLabel(status)}` : ''}`}
+        </button>
+      </>}
+    >
+      {body}
+    </FormSlider>
+  );
 }

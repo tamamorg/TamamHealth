@@ -20,6 +20,7 @@ jest.mock('@/lib/context', () => {
   return { useAuth: () => auth };
 });
 const printEl = jest.fn((_id: string) => true);
+jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
 jest.mock('@/lib/safe-html', () => ({ printElementById: (id: string) => printEl(id) }));
 
 const base = {

@@ -177,7 +177,7 @@ export function returnedToDeskItems(
       id: `visit-returned-${encounter._id}-${at}`,
       type: 'visit',
       severity: 'warning',
-      title: `${shortenPersonName(encounter.patientName) || 'Patient'} · Returned to front desk`,
+      title: `${shortenPersonName(encounter.patientName) || 'Patient'} · Returned to reception`,
       subtitle: last.reason || 'sent back by the clinical team — rebook or close the visit',
       time: at,
       href: `/patients/${encodeURIComponent(encounter.patientId)}`,

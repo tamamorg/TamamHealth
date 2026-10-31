@@ -31,6 +31,12 @@ const headers = { Authorization: `Basic ${Buffer.from(`${username}:${password}`)
 const knownLegacyIds = new Set([
   'hosp-mercy-001', 'org-mercy-hospital',
   'user-dr.mercy', 'user-nurse.mercy', 'user-desk.mercy', 'user-pharma.mercy', 'user-lab.mercy',
+  // Facilities and accounts the two-hospital demo retired (2026-10-30).
+  'hosp-003', 'hosp-004', 'hosp-005', 'hosp-006', 'hosp-007', 'hosp-008', 'hosp-009', 'hosp-010',
+  'phcu-001', 'user-nurse.stella', 'user-midwife.nyakong', 'user-dr.ochalla', 'user-co.bentiu', 'user-bhw.akol',
+  'user-clinician.peter', 'user-clinician.akech', 'user-rooming.sara', 'user-reg.clerk', 'user-clinic.clerk',
+  'user-hmis.john', 'user-dr.abuk', 'user-dr.ajang', 'user-dr.alier', 'user-dr.awut', 'user-dr.bol',
+  'user-dr.chol', 'user-dr.nyamal',
 ]);
 
 const databasesResponse = await fetch(`${base}/_all_dbs`, { headers });

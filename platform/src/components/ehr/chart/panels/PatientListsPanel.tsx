@@ -11,13 +11,15 @@
  *
  * Each row opens in place: its patients listed under it, the row's count being
  * the length of that list. A patient opens their chart. (The rows used to leave
- * for the registry, taking the clinician away to read a list.)
+ * for the registry, taking the clinician away to read a list.) Each open list
+ * has its own search, and the count stays the whole list's size.
  */
 
 import { useMemo, useState } from 'react';
-import { Users, ChevronDown, ChevronUp } from '@/components/icons/lucide';
+import { Users, ChevronDown, ChevronUp, Search } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
-import { patientDisplayName } from '@/lib/patient-utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { patientDisplayName, patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import type { ChartPanelRouter, ChartPanelUser } from './types';
 
@@ -27,9 +29,21 @@ interface PatientListsPanelProps {
   onClose: () => void;
 }
 
+/** Full name, hospital number or phone; a phone matches whatever its spacing. */
+export function matchesListSearch(patient: PatientDoc, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (patientFullName(patient).toLowerCase().includes(q)) return true;
+  if ((patient.hospitalNumber || '').toLowerCase().includes(q)) return true;
+  const digits = q.replace(/\D/g, '');
+  return digits.length > 0 && (patient.phone || '').replace(/\D/g, '').includes(digits);
+}
+
 export default function PatientListsPanel({ currentUser, router, onClose }: PatientListsPanelProps) {
+  const { t } = useTranslation();
   const { patients } = usePatients();
   const [openList, setOpenList] = useState<string | null>(null);
+  const [searches, setSearches] = useState<Record<string, string>>({});
   const myHospitalId = currentUser?.hospitalId;
   const myUserId = currentUser?._id;
 
@@ -57,6 +71,8 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
     <div className="tamam-drawer-body">
       {lists.map(list => {
         const open = openList === list.id;
+        const query = searches[list.id] ?? '';
+        const shown = open ? list.patients.filter(p => matchesListSearch(p, query)) : [];
         return (
           <div key={list.id}>
             <button type="button" className="tamam-panel-list-item" aria-expanded={open}
@@ -69,10 +85,23 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
               <span className="tamam-panel-list-count">{list.patients.length}</span>
               {open ? <ChevronUp /> : <ChevronDown />}
             </button>
-            {open && (
+            {open && (<>
+              <label className="tamam-section-search tamam-panel-search">
+                <Search aria-hidden />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={event => setSearches(prev => ({ ...prev, [list.id]: event.target.value }))}
+                  aria-label={t('patientLists.searchLabel', { list: list.name })}
+                  placeholder={t('patientLists.searchPlaceholder')}
+                />
+              </label>
               <ul className="tamam-panel-patients">
                 {list.patients.length === 0 && <li className="tamam-panel-patients-empty">No patients in this list.</li>}
-                {list.patients.map(p => (
+                {list.patients.length > 0 && shown.length === 0 && (
+                  <li className="tamam-panel-patients-empty">{t('patientLists.noMatch')}</li>
+                )}
+                {shown.map(p => (
                   <li key={p._id}>
                     <button type="button" onClick={() => openPatient(p._id)}>
                       <span>{patientDisplayName(p)}</span>
@@ -81,7 +110,7 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
                   </li>
                 ))}
               </ul>
-            )}
+            </>)}
           </div>
         );
       })}

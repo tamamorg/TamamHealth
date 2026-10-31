@@ -10,7 +10,7 @@ export const FRONT_DESK_STEPS: TourStep[] = [
     id: 'welcome',
     route: '/dashboard/front-desk',
     target: '.ehr-care-greeting',
-    title: 'Welcome to the Front Desk',
+    title: 'Welcome to Reception',
     body: 'Your desk runs the flow of the whole facility: register → check in → assign a room and provider → route → close out. Let’s walk it.',
     placement: 'bottom',
   },

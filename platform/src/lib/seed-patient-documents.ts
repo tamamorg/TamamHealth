@@ -174,9 +174,9 @@ export const seedPatientDocumentDefs: SeedDocumentDef[] = [
   },
   {
     id: 'pdoc-seed-006', patientId: 'pat-00005', category: 'referral_letter',
-    title: 'Referral letter — Bentiu State Hospital',
+    title: 'Referral letter — Wau State Hospital',
     lines: [
-      'Bentiu State Hospital — Maternity',
+      'Wau State Hospital — Maternity',
       'To: Obstetrics, Juba Teaching Hospital',
       '',
       'Referring a 28-week pregnancy with mild pre-eclampsia for specialist',
@@ -225,9 +225,9 @@ export const seedPatientDocumentDefs: SeedDocumentDef[] = [
   },
   {
     id: 'pdoc-seed-009', patientId: 'pat-00012', category: 'referral_letter',
-    title: 'Referral letter — Malakal Teaching Hospital',
+    title: 'Referral letter — Wau State Hospital',
     lines: [
-      'Malakal Teaching Hospital — Outpatient Department',
+      'Wau State Hospital — Outpatient Department',
       'To: Tuberculosis Unit, Juba Teaching Hospital',
       '',
       'Referring for initiation of TB treatment and follow-up closer to the',

@@ -37,6 +37,8 @@ interface ChartHeaderProps {
   onScripts: () => void;
   onOrders: () => void;
   onExchange: () => void;
+  /** Hand the patient to another doctor or hospital. Absent for roles that cannot. */
+  onTransfer?: () => void;
   onEdit: () => void;
   /** Open the Start a visit workspace. Absent for roles that cannot check a
    *  patient in, so the menu never offers a visit they cannot open. */
@@ -137,7 +139,7 @@ function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onS
 
 export default function ChartHeader({
   patient, pregnancyPill, patientBalance,
-  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onExchange, onEdit, onStartVisit, onAssignProvider,
+  onCollectPayment, onMessage, onPrint, onPatientEd, onVisitSummary, onExchange, onTransfer, onEdit, onStartVisit, onAssignProvider,
   onShowAllergies, onEndAssignment, onToggleDeceased,
 }: ChartHeaderProps) {
   // Secondary actions live behind one ⋯ menu — the header previously stacked
@@ -242,6 +244,11 @@ export default function ChartHeader({
                 {canManageReferrals && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onExchange(); }}>
                     <DuotoneIcon name="arrowRightLeft" size={15} /> Refer patient
+                  </button>
+                )}
+                {onTransfer && (
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onTransfer(); }}>
+                    <DuotoneIcon name="arrowRightLeft" size={15} /> Transfer patient
                   </button>
                 )}
                 {onStartVisit && (

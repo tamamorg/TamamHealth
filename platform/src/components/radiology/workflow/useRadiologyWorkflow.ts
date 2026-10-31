@@ -247,25 +247,6 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
     setStep('release');
   }), [currentUser, reportDraft, run, study, update]);
 
-  /** Send the report to the ordering clinician's inbox. */
-  const notifyClinician = useCallback(() => run(async () => {
-    const { createMessage } = await import('@/modules/communication/services/message-service');
-    await createMessage({
-      recipientType: 'staff',
-      patientId: study.patientId,
-      patientName: study.patientName,
-      patientPhone: '',
-      fromDoctorId: currentUser?._id || 'radiology',
-      fromDoctorName: currentUser?.name || 'Radiology',
-      fromHospitalName: currentUser?.hospitalName || study.hospitalName || '',
-      subject: `Report ready: ${study.testName} for ${study.patientName}`,
-      body: `${study.testName} for ${study.patientName} has been reported: ${study.impression || reportDraft.impression}.`,
-      channel: 'app',
-      sentAt: new Date().toISOString(),
-      orgId: currentUser?.orgId || study.orgId,
-    });
-  }), [currentUser, reportDraft.impression, run, study]);
-
   /**
    * Close out the tail of the lifecycle, same hops and same rule as the lab's:
    * these record a clinician's review, not reading-room work, and the patient
@@ -306,7 +287,7 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
     safetyDraft, setSafetyDraft,
     acquireDraft, setAcquireDraft,
     reportDraft, setReportDraft,
-    schedule, clearSafety, acquire, repeat, fileReport, notifyClinician,
+    schedule, clearSafety, acquire, repeat, fileReport,
     canCloseOut, markReviewed, markActedUpon, markCommunicated,
   };
 }

@@ -389,8 +389,10 @@ export default function MessagingDock() {
         onPointerCancel={handleLauncherPointerUp}
         aria-label="Open messages"
         data-tour="messaging-dock"
-        className="fixed z-[60] flex items-center justify-center rounded-full text-white shadow-lg"
+        className="messaging-dock-launcher fixed flex items-center justify-center rounded-full text-white shadow-lg"
         style={{
+          // Above the page, the right-hand column included, and below dialogs.
+          zIndex: 'var(--z-popover)',
           right: 20, bottom: 20, width: 56, height: 56, background: 'var(--accent-primary)', boxShadow: 'var(--card-shadow-lg)',
           transform: `translate3d(${dockOffset.x}px, ${dockOffset.y}px, 0)`, touchAction: 'none', cursor: 'grab',
         }}
@@ -413,8 +415,9 @@ export default function MessagingDock() {
   // ─────────────────────────── Expanded panel ───────────────────────────
   return (
     <div
-      className="fixed z-[60] flex flex-col overflow-hidden"
+      className="fixed flex flex-col overflow-hidden"
       style={{
+        zIndex: 'var(--z-popover)',
         right: 20, bottom: 20, width: 372, height: 540, maxHeight: 'calc(100vh - 40px)', maxWidth: 'calc(100vw - 40px)',
         // Flat, opaque clinical surface. The dock previously used a blurred
         // glass panel, which put whatever was behind it — often a patient

@@ -933,3 +933,12 @@
   .labord-header-actions { order: 2; }
   .labord-header-tags { order: 3; flex: 1 1 100%; justify-content: flex-start; }
 }
+
+/* Result review: what is on record, then the one thing to do next. */
+.labord-review { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.labord-review-row { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: var(--text-primary); }
+.labord-review-row svg { flex: none; margin-top: 2px; color: var(--color-success-text); }
+.labord-review-row strong { display: block; font-weight: 600; }
+.labord-review-row small { display: block; font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.labord-report-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.labord-amended { margin: 0 0 12px; color: var(--color-warning-text); font-weight: 600; }

@@ -34,7 +34,7 @@ import { describeApiError, describeError } from '@/lib/user-facing-error';
 import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
-const BILLING_ROLES = ['cashier', 'biller', 'org_admin', 'medical_superintendent', 'super_admin'];
+const BILLING_ROLES = ['cashier', 'medical_biller', 'org_admin', 'medical_superintendent', 'super_admin'];
 
 /**
  * Maps a billing line's status onto the chart's badge tones (done /

@@ -43,7 +43,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   lab_tech: 'Lab Tech',
   radiologist: 'Radiologist',
   nutritionist: 'Nutritionist',
-  front_desk: 'Medical Receptionist',
+  front_desk: 'Receptionist',
   cashier: 'Cashier',
   government: 'Government',
   county_health_director: 'County Health Director',
@@ -61,7 +61,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 
 /** Roles that count as "physician" for filtering. */
 /**
- * The name a role goes by on screen ("Medical Receptionist", not
+ * The name a role goes by on screen ("Receptionist", not
  * "front_desk"). A role newer than this build falls back to readable words.
  */
 export function roleLabel(role?: string | null): string {

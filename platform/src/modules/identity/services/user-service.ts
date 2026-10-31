@@ -5,7 +5,7 @@ import type { DataScope } from '@/lib/services/data-scope';
 import { filterByScope } from '@/lib/services/data-scope';
 import { findByType } from '@/lib/services/db-query';
 import { ROLE_LABEL } from '@/lib/role-display';
-import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
+import { canonicalizeUserRole, isLegacyRole } from '@/lib/user-role';
 import {
   roleNeedsFacility, ORG_REQUIRED_MESSAGE, FACILITY_REQUIRED_MESSAGE,
 } from '@/modules/identity/policy/user-scope-rules';
@@ -15,7 +15,7 @@ import { assertPasswordForDeployment, screenPasswordForDeployment } from '@/modu
 // Record<UserRole, …>) is a valid role. Deriving the list here means new roles
 // can never go stale/missing in user validation again.
 const VALID_ROLES: UserRole[] = (Object.keys(ROLE_LABEL) as UserRole[])
-  .filter(role => !isLegacyNursingRole(role));
+  .filter(role => !isLegacyRole(role));
 
 // The password rules live in `lib/password-policy.ts` and the deployment's
 // enforced minimum in `password-policy-server.ts`. This file used to carry its

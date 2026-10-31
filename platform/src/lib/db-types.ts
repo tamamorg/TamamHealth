@@ -3172,6 +3172,30 @@ export interface PatientTransferSummary {
   lastEncounterDate?: string;
   lastEncounterSummary?: string;
   carePlan?: string;
+  /** The last reading before the move. A receiving hospital holds no vitals of its own. */
+  latestVitals?: PatientTransferVitals;
+  /** Newest first. A receiving hospital does not hold the sender's lab records. */
+  recentResults?: PatientTransferResult[];
+}
+
+export interface PatientTransferVitals {
+  at?: string;
+  temperature?: number;
+  systolic?: number;
+  diastolic?: number;
+  pulse?: number;
+  respiratoryRate?: number;
+  oxygenSaturation?: number;
+  weight?: number;
+}
+
+export interface PatientTransferResult {
+  testName: string;
+  result: string;
+  unit?: string;
+  abnormal?: boolean;
+  critical?: boolean;
+  completedAt?: string;
 }
 
 /**

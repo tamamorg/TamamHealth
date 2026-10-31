@@ -87,7 +87,7 @@ export default function EhrTopRail() {
   // Every role reads the same two-line shape the platform operator always had
   // ("TAMAMHEALTH PLATFORM ADMIN / COMMAND CENTER"): the organization on the
   // main line, the signed-in user's workspace on the quieter line under it —
-  // "MERCY HOSPITAL GROUP / MEDICAL RECEPTIONIST". The derivation (including
+  // "MERCY HOSPITAL GROUP / RECEPTIONIST". The derivation (including
   // the facility-console and Ministry special cases) lives in ehr-navigation's
   // railCenterLabels, pure and unit-tested per role shape. The rail names the
   // PLACE — organization over facility — and each dashboard's own header names

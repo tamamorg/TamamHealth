@@ -40,6 +40,11 @@ export interface ConfirmOptions {
   /** Verb for the action itself ("Delete", "Cancel appointment"). */
   confirmLabel?: string;
   cancelLabel?: string;
+  /** A third answer beside Cancel and the action, for a question with two real
+   *  ways forward ("Continue draft" / "Start a new note"). Pressing it runs
+   *  `onAlternate`, and the dialog resolves false like Cancel. */
+  alternateLabel?: string;
+  onAlternate?: () => void;
   /** `danger` paints the action red; use it whenever data is destroyed.
    *  `warning` marks a one-way door that destroys nothing (closing a visit,
    *  resetting settings). */
@@ -221,6 +226,15 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               >
                 {pending.cancelLabel || t('common.cancel')}
               </button>
+              {pending.alternateLabel && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => { const choose = pending.onAlternate; settle(false); choose?.(); }}
+                >
+                  {pending.alternateLabel}
+                </button>
+              )}
               <button
                 type="button"
                 className={pending.tone === 'danger' ? 'btn btn-danger-solid' : 'btn btn-primary'}

@@ -29,7 +29,7 @@ describe('railCenterLabels', () => {
       role: 'front_desk',
       orgName: 'Mercy Hospital Group',
       facilityName: 'Juba Teaching Hospital',
-      roleLabel: 'Medical Receptionist',
+      roleLabel: 'Receptionist',
     })).toEqual({ centerLabel: 'Mercy Hospital Group', centerSubLabel: 'Juba Teaching Hospital' });
 
     // No posting yet: the workspace holds the line rather than leaving it blank.

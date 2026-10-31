@@ -3549,6 +3549,8 @@ html.tm-slider-open .tamam-root .tamam-drawer {
 .tebra-demo-tabbar .tebra-demo-edit { position: static; margin: 0; flex: none; }
 
 /* Patient lists: a list opened in place under its row. */
+/* `label` is display:block at full width globally, so the margins need room. */
+.tamam-panel-search { box-sizing: border-box; width: calc(100% - 32px); margin: 4px 16px 8px; }
 .tamam-panel-patients { margin: 0 0 8px; padding: 0; list-style: none; border-top: 1px solid var(--border-light); }
 .tamam-panel-patients button {
   display: flex;
@@ -3575,3 +3577,9 @@ html.tm-slider-open .tamam-root .tamam-drawer {
 .tamam-doc-retracted p { margin: 0 0 4px; font-size: 13px; }
 .tamam-doc-retracted ul { margin: 0; padding: 0; list-style: none; }
 .tamam-doc-retracted li { padding: 2px 0; }
+
+/* What a sending hospital knew, on the chart of a patient transferred here. */
+.tamam-transfer-records { margin-block-end: 12px; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); }
+.tamam-root .tamam-transfer-records h3 { margin: 0; font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: normal; text-transform: none; }
+.tamam-transfer-records p { margin: 2px 0 12px; font-size: 12px; color: var(--text-secondary); }
+.tamam-transfer-records-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }

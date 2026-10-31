@@ -9,8 +9,9 @@
  * clinician would otherwise re-enter, and re-entry is where mismatched notes
  * come from.
  *
- * If a draft already exists for the same visit, this reopens it instead of
- * starting a second one — clicking twice should not fork the record.
+ * If this clinician already has an unsigned draft of this type for the patient,
+ * they are asked: continue that one, or start a new note. A new note is a choice
+ * someone makes, never what a second click does by accident.
  */
 
 import { useCallback, useState } from 'react';
@@ -20,6 +21,10 @@ import { type NoteTypeId } from './note-catalog';
 import { useDataScope } from '../hooks/useDataScope';
 import type { ClinicalNoteDoc } from './types';
 import { toIsoDate } from '@/lib/date-utils';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { formatDate } from '@/lib/format-utils';
+import { noteTypeLabel } from './note-labels';
 
 export interface CreateNoteFromVisitInput {
   patientId: string;
@@ -94,6 +99,22 @@ export function findReusableDraft(
 }
 
 /**
+ * The draft to offer back when none belongs to this visit: this clinician's
+ * newest unsigned note of this type for the patient, from any day. Left behind
+ * drafts are how one patient collected a row of empty "Consultation" notes.
+ */
+export function findOpenDraft(
+  existingNotes: readonly ClinicalNoteDoc[],
+  keys: Pick<ReuseKeys, 'noteType' | 'authorId'>,
+): ClinicalNoteDoc | undefined {
+  const { noteType, authorId } = keys;
+  return existingNotes
+    .filter(n => n.status === 'draft' && (!noteType || n.noteType === noteType))
+    .filter(n => !authorId || n.authorId === authorId || n.assignedToId === authorId)
+    .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
+}
+
+/**
  * An explicit choice from the type dropdown always wins; SOAP is the fallback.
  */
 export function resolveNoteTypeForCreate(
@@ -136,21 +157,24 @@ export function buildCreateNoteInput(
 
 /**
  * The one way to start a note from a screen, including a list's "Create note"
- * button. Resolves the visit's encounter, reopens an existing draft for the
- * same visit instead of forking a second, then creates and (by default)
- * navigates to `/notes/<id>`.
+ * button. Resolves the visit's encounter, asks whether to continue an open draft
+ * rather than fork a second, then creates and (by default) navigates to
+ * `/notes/<id>`.
  *
  *   const { createNote, creating } = useCreateNote(currentUser);
  *   await createNote({ patientId, patientName, mrn, patientDob, noteType }, { navigate: false });
  *
  * `createNote(input: CreateNoteFromVisitInput, options?: { navigate?: boolean })`
- * resolves to the draft (new or reopened) or rejects on a write failure, so
+ * resolves to the draft (new or reopened), null if the question was dismissed, or
+ * rejects on a write failure, so
  * callers show their own error. Pass `{ navigate: false }` to open the draft in
  * an in-page drawer instead of the standalone route.
  */
 export function useCreateNote(currentUser: CurrentUserLike | null) {
   const router = useRouter();
   const scope = useDataScope();
+  const confirm = useConfirm();
+  const { t } = useTranslation();
   const [creating, setCreating] = useState(false);
 
   const createNote = useCallback(async (
@@ -165,25 +189,38 @@ export function useCreateNote(currentUser: CurrentUserLike | null) {
         const { resolveNoteEncounter } = await import('@/modules/post-consult/services/note-encounter-service');
         encounterId = await resolveNoteEncounter(input.patientId, scope, input.appointmentId);
       }
-      // Reopen rather than fork: a second draft for one visit splits the
-      // encounter across two records.
+      // Ask rather than fork: a second draft splits the encounter across two
+      // records, so a new one is only ever started on purpose.
       const createInput = buildCreateNoteInput({ ...input, encounterId }, currentUser, new Date());
       const existing = await listClinicalNotes({ patientId: input.patientId }, scope);
-      const draft = findReusableDraft(existing, {
+      const sameVisit = findReusableDraft(existing, {
         encounterId,
         appointmentId: input.appointmentId,
         noteType: createInput.noteType,
         serviceDate: createInput.serviceDate,
         authorId: createInput.authorId,
       });
+      const draft = sameVisit ?? findOpenDraft(existing, { noteType: createInput.noteType, authorId: createInput.authorId });
       if (draft) {
-        const link: Pick<ClinicalNoteDoc, 'encounterId' | 'appointmentId'> = {};
-        if (!draft.encounterId && encounterId) link.encounterId = encounterId;
-        if (!draft.appointmentId && input.appointmentId) link.appointmentId = input.appointmentId;
-        const linkedDraft = Object.keys(link).length > 0
-          ? (await updateClinicalNote(draft._id, link)) ?? draft : draft;
-        if (navigate) router.push(`/notes/${draft._id}`);
-        return linkedDraft;
+        let startNew = false;
+        const resume = await confirm({
+          title: t('noteEditor.draftExistsTitle'),
+          message: t('noteEditor.draftExistsBody', { type: noteTypeLabel(t, draft.noteType), date: formatDate(draft.updatedAt || draft.serviceDate) }),
+          confirmLabel: t('noteEditor.draftContinue'),
+          alternateLabel: t('noteEditor.draftStartNew'),
+          onAlternate: () => { startNew = true; },
+        });
+        if (!resume && !startNew) return null;
+        if (resume) {
+          // Only a draft of this visit takes its links: an older one keeps its own.
+          const link: Pick<ClinicalNoteDoc, 'encounterId' | 'appointmentId'> = {};
+          if (sameVisit && !draft.encounterId && encounterId) link.encounterId = encounterId;
+          if (sameVisit && !draft.appointmentId && input.appointmentId) link.appointmentId = input.appointmentId;
+          const linkedDraft = Object.keys(link).length > 0
+            ? (await updateClinicalNote(draft._id, link)) ?? draft : draft;
+          if (navigate) router.push(`/notes/${draft._id}`);
+          return linkedDraft;
+        }
       }
 
       const note = await createClinicalNote(createInput);
@@ -193,7 +230,7 @@ export function useCreateNote(currentUser: CurrentUserLike | null) {
     } finally {
       setCreating(false);
     }
-  }, [currentUser, router, scope]);
+  }, [confirm, currentUser, router, scope, t]);
 
   return { createNote, creating };
 }

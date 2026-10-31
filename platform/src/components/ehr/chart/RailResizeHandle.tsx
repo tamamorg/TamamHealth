@@ -2,9 +2,10 @@
 
 /**
  * Drag handle on the chart section list's inner edge: drag it (or focus it
- * and use the arrow keys) to make the list wider or narrower. Squeezed below
- * ICON_SNAP it snaps to an icon-only column, and dragging back out brings the
- * labels back. Double-click (or Home) returns to the default width.
+ * and use the arrow keys) to make the list wider or narrower. The edge follows
+ * the pointer the whole way; let go below ICON_SNAP and it settles as an
+ * icon-only column. Dragged back near DEFAULT_WIDTH it snaps to the default
+ * position and forgets the saved width, as double-click and Home do.
  *
  * It sets `--tamam-rail-w` plus `data-resized` / `data-icons` on its parent
  * (`.tamam-rail-col`), which chart-frame.css reads. The width is remembered
@@ -21,6 +22,10 @@ const ICON_WIDTH = 56;
 const ICON_SNAP = 150;
 const MAX_WIDTH = 360;
 const KEY_STEP = 24;
+/** The list's own width in chart-frame.css. */
+const DEFAULT_WIDTH = 240;
+/** How close counts as back in position. Under KEY_STEP, so arrows can pass it. */
+const DEFAULT_SNAP = 16;
 
 function readStored(): number | null {
   try {
@@ -40,9 +45,19 @@ function writeStored(value: number | null) {
   }
 }
 
-/** A dragged width, snapped: too narrow for labels means icons only. */
-function settle(value: number): number {
+/** Where the edge sits mid-drag: on the pointer, held at the default when near it. */
+export function dragRailWidth(value: number): number {
+  if (Math.abs(value - DEFAULT_WIDTH) <= DEFAULT_SNAP) return DEFAULT_WIDTH;
+  return Math.max(ICON_WIDTH, Math.min(value, MAX_WIDTH));
+}
+
+/**
+ * Where a width comes to rest. Too narrow for labels means icons only; near
+ * the default means the default itself (`null`, nothing remembered).
+ */
+export function settleRailWidth(value: number): number | null {
   if (value < ICON_SNAP) return ICON_WIDTH;
+  if (Math.abs(value - DEFAULT_WIDTH) <= DEFAULT_SNAP) return null;
   return Math.min(value, MAX_WIDTH);
 }
 
@@ -57,7 +72,7 @@ export default function RailResizeHandle() {
   useEffect(() => {
     const stored = readStored();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- storage is only readable after mount
-    setWidth(stored == null ? null : settle(stored));
+    setWidth(stored == null ? null : settleRailWidth(stored));
   }, []);
 
   useEffect(() => {
@@ -70,7 +85,7 @@ export default function RailResizeHandle() {
     } else {
       el.style.setProperty('--tamam-rail-w', `${width}px`);
       el.setAttribute('data-resized', '');
-      if (width <= ICON_WIDTH) el.setAttribute('data-icons', '');
+      if (width < ICON_SNAP) el.setAttribute('data-icons', '');
       else el.removeAttribute('data-icons');
     }
   }, [width]);
@@ -93,15 +108,15 @@ export default function RailResizeHandle() {
     setDragging(true);
     const move = (e: PointerEvent) => {
       const delta = rtl ? startX - e.clientX : e.clientX - startX;
-      latest = settle(startWidth + delta);
-      setWidth(latest);
+      latest = startWidth + delta;
+      setWidth(dragRailWidth(latest));
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
       setDragging(false);
-      writeStored(latest);
+      commit(settleRailWidth(latest));
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -118,10 +133,10 @@ export default function RailResizeHandle() {
     if (event.key === wider) {
       event.preventDefault();
       // From icons only, one step out goes straight back to a labelled list.
-      commit(settle(current <= ICON_WIDTH ? ICON_SNAP : current + KEY_STEP));
+      commit(settleRailWidth(current <= ICON_WIDTH ? ICON_SNAP : current + KEY_STEP));
     } else if (event.key === narrower) {
       event.preventDefault();
-      commit(settle(current - KEY_STEP));
+      commit(settleRailWidth(current - KEY_STEP));
     } else if (event.key === 'Home') {
       event.preventDefault();
       commit(null);

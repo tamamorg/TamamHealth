@@ -76,6 +76,27 @@ export const BILLING: readonly UserRole[] = [
   'medical_superintendent',
 ];
 /**
+ * BILLING without the front desk: the records that move money. Reception keeps
+ * insurance capture and the claim it raises, but it holds neither /payments nor
+ * `canCollectPayments`, so a bill or payment from that role was a write no
+ * screen could make and only a hand-crafted replica could.
+ */
+export const COLLECTIONS: readonly UserRole[] = BILLING.filter(role => role !== 'front_desk');
+/**
+ * Roles whose clinical work raises a charge as a side effect: a prescription,
+ * a lab order and an admission deposit each write the bill and its ledger
+ * mirror as whoever is signed in, and the pharmacy's pay-first gate reads that
+ * ledger. A create grant, so none of them can edit a bill afterwards.
+ *
+ * Never list a role here that also takes money. A create-only grant is checked
+ * first and its required values bind the role, so the superintendent (who holds
+ * COLLECTIONS) would lose every ledger entry but these.
+ */
+const CHARGE_RAISERS: readonly UserRole[] = [
+  'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
+  'triage_nurse', 'rooming_nurse', 'lab_tech',
+];
+/**
  * Roles that work inside a facility and can therefore hold a conversation.
  *
  * `county_health_director` is included because `canSendMessages` grants it the
@@ -262,23 +283,26 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   blood_bank: [...ADMIN, ...NURSING_AND_CLINICIANS, 'lab_tech'],
   biometric_template: [...REGISTRATION, ...NURSING_AND_CLINICIANS],
   emergency_plan: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
-  asset: [...ADMIN, 'hrio', 'hospital_manager', 'medical_superintendent'],
-  staff_schedule: [...ADMIN, 'hrio', 'hospital_manager', 'medical_superintendent'],
-  leave_request: [...ADMIN, 'hrio', 'hospital_manager'],
-  payroll_entry: [...ADMIN, 'hrio'],
+  // `hrio` is health records, not human resources (see role-routes.ts): it holds
+  // neither /hr nor /equipment. These rows follow the two roles that do, and
+  // the superintendent's leave and payroll screens were refused at replication.
+  asset: [...ADMIN, 'hospital_manager', 'medical_superintendent'],
+  staff_schedule: [...ADMIN, 'hospital_manager', 'medical_superintendent'],
+  leave_request: [...ADMIN, 'hospital_manager', 'medical_superintendent'],
+  payroll_entry: [...ADMIN, 'hospital_manager', 'medical_superintendent'],
   patient_feedback: [...ADMIN, 'front_desk', 'hospital_manager'],
-  billing: BILLING,
+  billing: COLLECTIONS,
   fee_schedule: [...ADMIN, 'medical_biller', 'hospital_manager'],
   insurance_policy: BILLING,
   eligibility_check: BILLING,
-  charge: [...BILLING, ...CLINICIANS],
+  charge: [...COLLECTIONS, ...CLINICIANS],
   claim: BILLING,
-  adjustment: BILLING,
-  payment: BILLING,
-  refund: BILLING,
-  saved_payment_method: BILLING,
-  payment_plan: BILLING,
-  invoice: BILLING,
+  adjustment: COLLECTIONS,
+  payment: COLLECTIONS,
+  refund: COLLECTIONS,
+  saved_payment_method: COLLECTIONS,
+  payment_plan: COLLECTIONS,
+  invoice: COLLECTIONS,
   ledger_entry: BILLING,
   visit_reason: [...ADMIN, 'front_desk', 'clinic_clerk', 'hospital_manager'],
   booking_policy: [...ADMIN, 'hospital_manager'],
@@ -289,7 +313,7 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   announcement: [...ADMIN, 'medical_superintendent', 'hospital_manager'],
   disease_alert: [
     ...NURSING_AND_CLINICIANS, 'lab_tech', 'government', 'county_health_director',
-    'data_entry_clerk', 'records_hmis_officer',
+    'data_entry_clerk', 'records_hmis_officer', 'hrio',
   ],
   // `hrio` holds `canAssessFacility` and the `/facility-assessments` route but
   // was missing from the row.
@@ -299,7 +323,7 @@ export const DOC_WRITE_ROLES: Readonly<Record<string, readonly UserRole[]>> = {
   ],
   facility_census: [
     ...ADMIN, 'government', 'county_health_director', 'data_entry_clerk',
-    'medical_superintendent', 'hospital_manager', 'records_hmis_officer',
+    'medical_superintendent', 'hospital_manager', 'records_hmis_officer', 'hrio',
   ],
   hospital: [...ADMIN, 'government', 'county_health_director', 'hospital_manager'],
   organization: ADMIN,
@@ -382,6 +406,10 @@ export const DOC_UPDATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   // test ids on it. The field list below keeps the visit's record out of reach.
   encounter: ['lab_tech'],
   clinical_encounter: ['lab_tech'],
+  // Stopping an order, or sending it to an outside pharmacy, withdraws the
+  // charge the order raised. The validator holds these roles to the two moves
+  // that makes: cancelling an unpaid bill and reversing a paid one.
+  billing: ['doctor', 'clinical_officer', 'clinician'],
 };
 
 /** Roles allowed to create a document but not receive unrestricted updates. */
@@ -417,8 +445,8 @@ export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   patient: ['lab_tech'],
   encounter: ['lab_tech'],
   clinical_encounter: ['lab_tech'],
-  billing: ['lab_tech'],
-  ledger_entry: ['lab_tech'],
+  billing: CHARGE_RAISERS,
+  ledger_entry: CHARGE_RAISERS,
 };
 
 /**
@@ -433,10 +461,20 @@ export const DOC_CREATE_ONLY_REQUIRED_VALUES: Readonly<Record<string, Readonly<R
   medical_record: {
     recordKind: ['nursing_vitals'],
   },
+  // A charge, its insurance share, or the reversal of a bill. Never a payment,
+  // a refund or a write-off, and never a free-standing credit.
+  ledger_entry: {
+    entryType: ['charge', 'insurance_payment', 'adjustment'],
+    referenceType: ['billing', 'charge'],
+  },
 };
 
 /** Fields an amend-only role may change on the existing document. */
 export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  billing: [
+    'status', 'balanceDue', 'notes', 'chargeReversedAt', 'chargeReversedBy',
+    'chargeReversalReason', 'updatedAt', 'offlineSync',
+  ],
   encounter: ['status', 'stageKey', 'statusHistory', 'labOrderIds', 'updatedAt', 'offlineSync'],
   clinical_encounter: ['status', 'stageKey', 'statusHistory', 'labOrderIds', 'updatedAt', 'offlineSync'],
   prescription: [
@@ -593,6 +631,10 @@ export const FACILITY_EXEMPT_TYPES: readonly string[] = [
   'booking_policy', 'provider_profile', 'provider_review',
   // Personal, follows the user between facilities.
   'clinical_favorite', 'consultation_template', 'text_shortcut', 'clinician_task',
+  // Two hospitals answer one transfer: it stays the sender's, and the receiver
+  // has to accept it. Who may touch it is a relationship, which the gateway
+  // checks with the patient in hand (`authorizeReplicatedTransfer`).
+  'patient_transfer',
 ];
 
 /**
@@ -1136,6 +1178,20 @@ export function buildValidateDocUpdateFn(
             if (!oldDoc.hasOwnProperty(removed) || removed === '_rev' || removed === '_revisions') continue;
             if (newDoc[removed] === undefined && oldDoc[removed] !== undefined && !contains(allowedFields, removed)) {
               throw({ forbidden: 'role ' + actingRole + ' may not remove ' + removed + ' from ' + docType });
+            }
+          }
+          // A field list cannot say which values are fair. Withdrawing a charge
+          // zeroes the balance, and only a bill with no money on it may be
+          // cancelled (the rule in cancelBill): one with money stays as it is
+          // and is reversed, so the payments stay visible for the refund.
+          if (docType === 'billing') {
+            if (newDoc.balanceDue !== oldDoc.balanceDue && newDoc.balanceDue !== 0) {
+              throw({ forbidden: 'role ' + actingRole + ' may only withdraw a charge, not change the amount due' });
+            }
+            var hasPayments = oldDoc.payments && oldDoc.payments.length > 0;
+            if (newDoc.status !== oldDoc.status
+              && (newDoc.status !== 'cancelled' || oldDoc.status === 'paid' || hasPayments)) {
+              throw({ forbidden: 'role ' + actingRole + ' may only cancel an unpaid bill' });
             }
           }
           return;

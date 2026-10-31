@@ -25,7 +25,7 @@ import {
 import TransferPatientModal from './TransferPatientModal';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import type {
-  PatientDoc, PatientTransferDoc, PatientTransferStatus,
+  PatientDoc, PatientTransferDoc, PatientTransferStatus, PatientTransferVitals,
 } from '@/lib/db-types';
 import { formatDateTime } from '@/lib/format-utils';
 import {
@@ -85,7 +85,10 @@ function TransferCard({
 }) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
-  const [expanded, setExpanded] = useState(transfer.status === 'requested');
+  // From another hospital this card is the receiver's only view of the patient's
+  // problems and medications there, so it starts open.
+  const fromAnotherHospital = Boolean(transfer.to.facilityId) && transfer.to.facilityId !== transfer.hospitalId;
+  const [expanded, setExpanded] = useState(transfer.status === 'requested' || fromAnotherHospital);
   const [rejecting, setRejecting] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -448,6 +451,54 @@ function SummaryList({ label, items }: { label: string; items: string[] }) {
         style={{ color: 'var(--text-muted)' }}>{label}</div>
       <div className="text-[12px] mt-0.5">{items.join(', ')}</div>
     </div>
+  );
+}
+
+function vitalsLine(v: PatientTransferVitals): string {
+  return [
+    v.systolic && v.diastolic ? `BP ${v.systolic}/${v.diastolic} mmHg` : '',
+    v.pulse ? `HR ${v.pulse} bpm` : '',
+    v.respiratoryRate ? `RR ${v.respiratoryRate}/min` : '',
+    v.temperature ? `${v.temperature} °C` : '',
+    v.oxygenSaturation ? `SpO2 ${v.oxygenSaturation}%` : '',
+    v.weight ? `${v.weight} kg` : '',
+  ].filter(Boolean).join(' · ');
+}
+
+/**
+ * What the sending hospital knew, on the chart tabs a receiving doctor reads
+ * first. Their records stay there, so these tabs are otherwise empty on the day
+ * a patient arrives. It is the copy made when the transfer was sent, and says so.
+ */
+export function TransferredRecords({ patient }: { patient: PatientDoc }) {
+  const { t } = useTranslation();
+  const { currentUser } = useAuth();
+  const { transfers } = usePatientTransfers(patient._id);
+  const here = currentUser?.hospitalId;
+  const latest = transfers
+    .filter(x => x.status === 'completed' && x.to.facilityId === here && x.hospitalId !== here)
+    .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
+  const summary = latest?.summary;
+  if (!summary) return null;
+
+  const hospital = latest.from.facilityName || t('transfers.sendingHospital');
+  const vitals = summary.latestVitals ? vitalsLine(summary.latestVitals) : '';
+  const results = (summary.recentResults ?? []).map(r => [
+    `${r.testName}: ${r.result}${r.unit ? ` ${r.unit}` : ''}`,
+    r.critical ? `(${t('lab.criticalLabel')})` : r.abnormal ? `(${t('lab.abnormal')})` : '',
+  ].filter(Boolean).join(' '));
+
+  return (
+    <section className="tamam-transfer-records" aria-label={t('transfers.recordsTitle', { hospital })}>
+      <h3>{t('transfers.recordsTitle', { hospital })}</h3>
+      <p>{t('transfers.recordsNote', { hospital, date: formatDateTime(latest.requestedAt || latest.createdAt) })}</p>
+      <div className="tamam-transfer-records-grid">
+        {(summary.activeProblems?.length ?? 0) > 0 && <SummaryList label={t('transfers.recordsProblems')} items={summary.activeProblems!} />}
+        {(summary.activeMedications?.length ?? 0) > 0 && <SummaryList label={t('transfers.recordsMedications')} items={summary.activeMedications!} />}
+        {vitals && <SummaryList label={t('transfers.recordsVitals')} items={[vitals]} />}
+        {results.length > 0 && <SummaryList label={t('transfers.recordsResults')} items={results} />}
+      </div>
+    </section>
   );
 }
 

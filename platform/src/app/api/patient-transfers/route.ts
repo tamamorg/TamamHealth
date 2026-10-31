@@ -162,11 +162,15 @@ async function postHandler(request: NextRequest) {
       }
       const crossOrg = Boolean(to.orgId && auth.orgId && to.orgId !== auth.orgId);
 
-      // Internal destinations must resolve to staff/facilities in the same
-      // facility. The client list is only a convenience; this is the
-      // authoritative boundary check.
-      if (!crossOrg && to.facilityId && auth.hospitalId && to.facilityId !== auth.hospitalId) {
-        return forbidden('Internal transfers must stay within the current facility.');
+      // Another hospital in this organization is a real destination, and the
+      // receiver still has to accept. It must exist and be ours: the client's
+      // list is only a convenience, so this is the authoritative check.
+      if (!crossOrg && to.facilityId && to.facilityId !== auth.hospitalId) {
+        const { getHospitalById } = await import('@/lib/services/hospital-service');
+        const destination = await getHospitalById(to.facilityId);
+        if (!destination || destination.orgId !== auth.orgId) {
+          return forbidden('The destination is not a hospital in your organization.');
+        }
       }
       if (to.providerId) {
         const { getUserById } = await import('@/modules/identity/services/user-service');

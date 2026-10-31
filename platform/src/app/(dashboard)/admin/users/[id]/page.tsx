@@ -50,12 +50,10 @@ import { describeError } from '@/lib/user-facing-error';
 import { useGoBack } from '@/lib/navigation/nav-history';
 
 const ROLE_OPTIONS: UserRole[] = [
-  'doctor', 'clinical_officer', 'nurse', 'midwife', 'lab_tech', 'pharmacist',
+  'doctor', 'clinical_officer', 'nurse', 'lab_tech', 'pharmacist',
   'radiologist', 'nutritionist', 'front_desk', 'cashier', 'medical_biller',
-  'data_entry_clerk', 'hrio', 'records_hmis_officer', 'medical_superintendent',
+  'data_entry_clerk', 'hrio', 'medical_superintendent',
   'hospital_manager', 'org_admin', 'government', 'county_health_director',
-  'central_registration_clerk', 'clinic_clerk', 'triage_nurse', 'rooming_nurse',
-  'clinician',
 ];
 
 export default function AdminUserDetailPage() {

@@ -2,15 +2,39 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Bell, BellOff, Check, ChevronRight, X } from '@/components/icons/lucide';
-import { NOTIFICATION_META, getNotificationAlertPref, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
+import { NOTIFICATION_META, getNotificationAlertPref, notificationBucket, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
 
 /**
- * The bell panel — a glance surface over the most recent notifications.
- * Deliberately capped: the full, filterable feed lives at /notifications,
+ * The bell panel — a glance surface over the most recent notifications, grouped
+ * by day. Its height is capped and the list scrolls inside it, between a header
+ * and a footer that stay put; the full, filterable feed lives at /notifications,
  * which this panel links to at the foot of the list.
  */
-const PANEL_LIMIT = 12;
+const PANEL_LIMIT = 40;
+/** Tall enough for about six rows, and never to the bottom of the screen. */
+const PANEL_MAX_HEIGHT = 560;
+const SCREEN_MARGIN = 24;
+
+const BUCKET_ORDER = ['today', 'yesterday', 'week', 'older'] as const;
+const BUCKET_LABEL_KEY: Record<(typeof BUCKET_ORDER)[number], string> = {
+  today: 'notifications.today',
+  yesterday: 'notifications.yesterday',
+  week: 'notifications.thisWeek',
+  older: 'notifications.older',
+};
+
+/** Unread first when choosing what fits; then newest first, by day. */
+export function groupForPanel<T extends { read?: boolean; time: string }>(items: readonly T[]) {
+  const chosen = [...items]
+    .sort((a, b) => Number(!!a.read) - Number(!!b.read))
+    .slice(0, PANEL_LIMIT)
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  return BUCKET_ORDER
+    .map(bucket => ({ bucket, items: chosen.filter(item => notificationBucket(item.time) === bucket) }))
+    .filter(group => group.items.length > 0);
+}
 
 export type NotificationPopoverPosition = {
   left: number;
@@ -47,6 +71,7 @@ export default function NotificationsPanel({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<NotificationPopoverPosition | null>(null);
   const { items, unreadCount, loading, markRead, markAllRead } = useNotifications();
@@ -59,7 +84,8 @@ export default function NotificationsPanel({
     setNotificationAlertPref(next);
   };
 
-  const visible = [...items].sort((a, b) => Number(!!a.read) - Number(!!b.read)).slice(0, PANEL_LIMIT);
+  const groups = groupForPanel(items);
+  const shownCount = groups.reduce((sum, group) => sum + group.items.length, 0);
 
   const openAll = () => { onClose(); router.push('/notifications'); };
 
@@ -102,7 +128,7 @@ export default function NotificationsPanel({
         left: position?.left ?? 8,
         top: position?.top ?? 0,
         width: position?.width ?? 420,
-        maxHeight: position ? `calc(100vh - ${position.top + 10}px)` : undefined,
+        maxHeight: position ? `min(${PANEL_MAX_HEIGHT}px, calc(100vh - ${position.top + SCREEN_MARGIN}px))` : undefined,
         visibility: position ? 'visible' : 'hidden',
       }}
     >
@@ -149,7 +175,7 @@ export default function NotificationsPanel({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1" style={{ overflowY: 'auto' }}>
+        <div className="notifications-popover-scroll">
           {loading ? (
             <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>
           ) : items.length === 0 ? (
@@ -157,46 +183,46 @@ export default function NotificationsPanel({
               <Bell className="w-10 h-10 mx-auto mb-2" style={{ opacity: 0.35 }} />
               <p className="text-sm">You&apos;re all caught up — no notifications.</p>
             </div>
-          ) : (
-            <div>
-              {visible.map(n => {
+          ) : groups.map(group => (
+            <section key={group.bucket} aria-label={t(BUCKET_LABEL_KEY[group.bucket])}>
+              <h3 className="notifications-popover-group">{t(BUCKET_LABEL_KEY[group.bucket])}</h3>
+              {group.items.map(n => {
                 const m = NOTIFICATION_META[n.type];
                 const Icon = m.icon;
                 return (
                   <button
                     key={n.id}
                     onClick={() => { markRead(n.id); onClose(); router.push(n.href); }}
-                    className="notifications-popover-item w-full text-start flex items-start gap-3 px-5 py-3 border-b transition-colors hover:bg-[var(--overlay-subtle)]"
-                    style={{ borderColor: 'var(--border-light)', opacity: n.read ? 0.62 : 1 }}
+                    className={`notifications-popover-item${n.read ? ' is-read' : ''}`}
                   >
-                    <span className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: m.bg, color: m.color }}>
-                      {/* The icon set hardcodes a stroke attribute, so the colour
-                          must be forced via the stroke property. */}
-                      <Icon className="w-4 h-4" style={{ stroke: m.color, color: m.color }} />
+                    <span className="notifications-popover-icon" style={{ background: m.bg, color: m.color }}>
+                      <Icon aria-hidden />
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] truncate" style={{ color: 'var(--text-primary)', fontWeight: n.read ? 500 : 700 }}>{n.title}</div>
-                      <div className="text-[12px] truncate" style={{ color: 'var(--text-muted)' }}>{n.subtitle}</div>
-                    </div>
-                    <span className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: m.bg, color: m.color }}>{m.label}</span>
-                      <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>{relativeNotificationTime(n.time)}</span>
+                    <span className="notifications-popover-copy">
+                      <span className="notifications-popover-title">{n.title}</span>
+                      {n.subtitle && <span className="notifications-popover-subtitle">{n.subtitle}</span>}
+                      <span className="notifications-popover-meta">
+                        <span style={{ color: m.color }}>{m.label}</span>
+                        <span aria-hidden>·</span>
+                        <span>{relativeNotificationTime(n.time)}</span>
+                      </span>
                     </span>
+                    {!n.read && <span className="notifications-popover-dot" title={t('notifications.unread')} />}
                   </button>
                 );
               })}
-            </div>
-          )}
+            </section>
+          ))}
         </div>
 
         {/* Always offered, not just on overflow: the page carries filters,
             search, and the full history the panel deliberately truncates. */}
         <button
           onClick={openAll}
-          className="notifications-popover-footer flex items-center justify-center gap-1 px-5 py-3 border-t text-[12px] font-bold"
+          className="notifications-popover-footer flex items-center justify-center gap-1 px-5 py-3 border-t text-[13px] font-semibold"
           style={{ borderColor: 'var(--border-light)', color: 'var(--accent-primary)', background: 'var(--bg-card-solid)' }}
         >
-          {items.length > visible.length ? `View all ${items.length} notifications` : 'View all notifications'}
+          {items.length > shownCount ? `View all ${items.length} notifications` : 'View all notifications'}
           <ChevronRight className="w-3.5 h-3.5" style={{ stroke: 'currentColor' }} />
         </button>
       </div>

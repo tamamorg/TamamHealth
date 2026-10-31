@@ -104,7 +104,7 @@ alias('organization administrator', 'org_admin');
 alias('organisation administrator', 'org_admin');
 alias('administrator', 'org_admin');
 alias('health records officer', 'hrio');
-alias('records officer', 'records_hmis_officer');
+alias('records officer', 'hrio');
 
 export function resolveRole(raw: string): UserRole | '' {
   return ROLE_ALIASES.get(raw.trim().toLowerCase()) ?? '';

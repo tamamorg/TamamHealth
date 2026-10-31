@@ -52,7 +52,7 @@ describe('sync refusals', () => {
 
 describe('role names', () => {
   it('use the on-screen name, not the stored code', () => {
-    expect(roleLabel('front_desk')).toBe('Medical Receptionist');
+    expect(roleLabel('front_desk')).toBe('Receptionist');
     expect(roleLabel('lab_tech')).not.toMatch(/_/);
     expect(humanizeRole('clinical_officer')).toBe('Clinical Officer');
     expect(roleLabel('some_future_role')).toBe('Some future role');

@@ -328,6 +328,12 @@ describe('org-scoped validate_doc_update', () => {
       expect(reasonFor(at('hosp-malakal'), null, roving)).toMatch(/facility mismatch/);
     });
 
+    it('lets a receiving hospital answer a transfer the sender owns', () => {
+      const wauDoctor: UserCtx = { name: 'n-3', roles: ['org:org-a', 'facility:hosp-wau', 'role:doctor'] };
+      const sent = { _id: 'x-1', _rev: '1-a', type: 'patient_transfer', orgId: 'org-a', hospitalId: 'hosp-juba', toHospitalId: 'hosp-wau', status: 'requested' };
+      expect(reasonFor({ ...sent, status: 'accepted' }, sent, wauDoctor)).toBeNull();
+    });
+
     it('refuses to delete another facility’s record', () => {
       const theirs = at('hosp-wau');
       expect(reasonFor({ _id: 't-1', _rev: '2-x', _deleted: true }, theirs, jubaNurse))

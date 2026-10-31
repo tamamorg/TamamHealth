@@ -56,8 +56,8 @@ export async function getAuthPayload(request: NextRequest): Promise<AuthPayload 
   const payload = await verifyToken(token);
   if (!payload) return null;
   const rawAuth = payload as unknown as AuthPayload;
-  // Existing unexpired tokens may predate the nursing-role consolidation.
-  // Normalize them immediately so every API permission sees one nurse role.
+  // Existing unexpired tokens may carry a retired role. Normalize them
+  // immediately so every API permission sees the role it became.
   const auth: AuthPayload = {
     ...rawAuth,
     role: canonicalizeUserRole(rawAuth.role),

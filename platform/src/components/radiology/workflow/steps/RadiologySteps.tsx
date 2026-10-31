@@ -22,7 +22,7 @@ import {
 } from '../radiology-workflow-types';
 import type { RadiologyWorkflowController } from '../useRadiologyWorkflow';
 import StudyImageWorkspace from '../StudyImageWorkspace';
-import { CloseoutRow } from '@/components/lab/workflow/steps/LabSteps';
+import { ResultReview } from '@/components/lab/workflow/steps/LabSteps';
 
 export function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -461,50 +461,12 @@ export function ReleaseStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
         </div>
       </div>
 
-      {/* Closing the loop, one hop at a time, as on a lab result — the three
-          actions existed on the workflow with no way to press them, so a
-          reported study sat at "awaiting review" for good. */}
-      <div className="labord-section">
-        <div className="labord-section-head">{t('labFlow.closeoutHeading')}</div>
-        <div className="labord-section-body">
-          <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutHelp')}</p>
-          {!ctrl.canCloseOut && (
-            <p className="labord-help" style={{ marginTop: 0 }}>{t('labFlow.closeoutClinicianOnly')}</p>
-          )}
-          <div className="labord-numbered">
-            <CloseoutRow
-              index={1}
-              label={t('labFlow.stage_reviewed_by_clinician')}
-              by={study.reviewedBy}
-              at={study.reviewedAt}
-              actionLabel={t('labFlow.markReviewed')}
-              onAction={ctrl.markReviewed}
-              enabled={ctrl.canCloseOut && ctrl.stage === 'resulted'}
-              busy={ctrl.busy}
-            />
-            <CloseoutRow
-              index={2}
-              label={t('labFlow.stage_acted_upon')}
-              by={study.actedUponBy}
-              at={study.actedUponAt}
-              actionLabel={t('labFlow.markActedUpon')}
-              onAction={ctrl.markActedUpon}
-              enabled={ctrl.canCloseOut && ctrl.stage === 'reviewed_by_clinician'}
-              busy={ctrl.busy}
-            />
-            <CloseoutRow
-              index={3}
-              label={t('labFlow.stage_communicated_to_patient')}
-              by={study.communicatedBy}
-              at={study.communicatedAt}
-              actionLabel={t('labFlow.markCommunicated')}
-              onAction={ctrl.markCommunicated}
-              enabled={ctrl.canCloseOut && ctrl.stage === 'acted_upon'}
-              busy={ctrl.busy}
-            />
-          </div>
+      {ctrl.canCloseOut && (
+        <div className="labord-section">
+          <div className="labord-section-head">{t('labFlow.reviewHeading')}</div>
+          <div className="labord-section-body"><ResultReview order={study} ctrl={ctrl} /></div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

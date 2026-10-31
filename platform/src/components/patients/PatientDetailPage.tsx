@@ -33,7 +33,6 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTriage } from '@/lib/hooks/useTriage';
 
 import { buildChartLatestVitals } from '@/lib/chart-latest-vitals';
-import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
@@ -41,7 +40,7 @@ import { usePatientHandoff } from '@/lib/hooks/usePatientHandoff';
 
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
-import { TransferBanner } from '@/components/patients/TransferHistoryPanel';
+import { TransferBanner, TransferredRecords } from '@/components/patients/TransferHistoryPanel';
 import CareAlertsBanner from '@/components/patients/CareAlertsBanner';
 import { useProblems } from '@/lib/hooks/useProblems';
 import type { MedicalRecordDoc, PatientDoc } from '@/lib/db-types';
@@ -49,6 +48,7 @@ import type { MedicalRecordDoc, PatientDoc } from '@/lib/db-types';
 import { useAuth } from '@/lib/context';
 import TamamChartShell from '@/components/ehr/chart/TamamChartShell';
 import ChartHeader from '@/components/ehr/chart/ChartHeader';
+import { hasTransferCapability } from '@/lib/services/patient-transfer-permissions';
 import ChartVitalsBand from '@/components/ehr/chart/ChartVitalsBand';
 import type { AssignDoctorTarget } from '@/components/AssignDoctorModal';
 
@@ -486,32 +486,27 @@ export default function PatientDetailPage() {
   }, [patientIdForNotes, notesRefreshToken, scope]);
 
   // ── "+ Note" → the clinical-notes module, edited in the chart's drawer. ──
-  // Reopen today's unsigned draft when one exists (a second click must not
-  // fork the record — the same rule useCreateNote applies per appointment),
-  // otherwise start a SOAP draft. Documentation happens beside the chart; the
-  // /notes/[id] route stays for the cross-patient queue.
+  // An open draft is offered back first (useCreateNote asks); otherwise a SOAP
+  // draft is started. Documentation happens beside the chart; the /notes/[id]
+  // route stays for the cross-patient queue.
   const { createNote: createClinicalNoteDraft } = useCreateNote(currentUser ?? null);
   const openClinicalNoteDrawer = useCallback(async () => {
     if (!patient) return;
     try {
-      const { listClinicalNotes } = await import('@/lib/clinical-notes/note-service');
-      const today = toIsoDate(new Date());
-      const drafts = await listClinicalNotes({ patientId: patient._id, display: 'unsigned' }, scope);
-      // A colleague's draft is theirs to finish: this clinician gets their own.
-      const note = drafts.find(n => n.serviceDate === today && canEditDraft(n, currentUser))
-        ?? await createClinicalNoteDraft({
-          patientId: patient._id,
-          patientName: patientFullName(patient),
-          mrn: patient.hospitalNumber,
-          patientDob: patient.dateOfBirth,
-        }, { navigate: false });
-      if (note) setChartPanelRequest(`clinical-note:${note._id}`);
+      const note = await createClinicalNoteDraft({
+        patientId: patient._id,
+        patientName: patientFullName(patient),
+        mrn: patient.hospitalNumber,
+        patientDob: patient.dateOfBirth,
+      }, { navigate: false });
+      // Started or continued on purpose, so it opens ready to type in.
+      if (note) setChartPanelRequest(`clinical-note:${note._id}:edit`);
     } catch {
       // The drawer could not be readied — land on the Notes tab so the click
       // still goes somewhere useful.
       selectTab('notes');
     }
-  }, [patient, createClinicalNoteDraft, scope, selectTab, currentUser]);
+  }, [patient, createClinicalNoteDraft, selectTab]);
 
   // Edit form state — initialised when modal opens
   const [editForm, setEditForm] = useState({
@@ -997,6 +992,9 @@ export default function PatientDetailPage() {
                 onScripts={() => (canPrescribe ? openDrugOrder() : selectTab('prescriptions'))}
                 onOrders={() => (canOrderLabs ? openLabOrder() : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
+                onTransfer={currentUser && hasTransferCapability(currentUser.role, 'patient.transfer.request')
+                  ? () => router.push(`/transfers/new?patient=${encodeURIComponent(patient._id)}`)
+                  : undefined}
                 onEdit={openEditModal}
                 onStartVisit={canCheckInAppointments ? () => { setShowStartVisit(true); bringPageWorkspace('startVisit'); } : undefined}
                 // Only a link for roles that can open the section — for the
@@ -1058,6 +1056,9 @@ export default function PatientDetailPage() {
           {canViewClinical && patient && (
             <CareAlertsBanner patient={patient} hideAddButton />
           )}
+          {canViewClinical && patient && ['overview', 'prescriptions', 'vitals', 'labs'].includes(activeTab) && (
+            <TransferredRecords patient={patient} />
+          )}
 
 
           {activeTab === 'overview' && <PatientOverviewTab patient={patient} latestVitals={latestVitals} vitalsReady={vitalsReady} latestPatientTriage={latestPatientTriage} patientProblems={patientProblems} allPrescriptions={allPrescriptions} allLabResults={allLabResults} allImmunizations={allImmunizations} canViewClinical={canViewClinical} selectTab={selectTab} facesheetActions={facesheetActions} facesheetPanels={facesheetPanels} showCustomizeView={showCustomizeView} setShowCustomizeView={setShowCustomizeView} toggleFacesheetPanel={toggleFacesheetPanel} setFacesheetPanels={setFacesheetPanels} />}
@@ -1087,7 +1088,7 @@ export default function PatientDetailPage() {
 
           {activeTab === 'documents' && patient && <PatientDocumentsTab patient={patient} patientReferrals={patientReferrals} canViewClinical={canViewClinical} focusId={focusId} setMessageSubject={setMessageSubject} setMessageIsEducation={setMessageIsEducation} setShowMessageModal={setShowMessageModal} router={router} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} onReferralsChanged={reloadReferrals} />}
 
-          {activeTab === 'history' && patient && <PatientHistoryTab patient={patient} patientProblems={patientProblems || []} vitalsTimeline={vitalsTimeline} facilityName={currentUser?.hospital?.name || currentUser?.hospitalName || regHospital?.name} records={records} clinicalNotes={clinicalNotes} allLabResults={allLabResults} allPrescriptions={allPrescriptions} allImmunizations={allImmunizations} patientReferrals={patientReferrals} patientANC={patientANC} patientAppointments={patientAppointments} patientTriages={patientTriages} canViewClinical={canViewClinical} canConsult={canConsult} focusId={focusId} onOpenRecord={openRecordPanel} noteViewer={noteViewer} setNoteViewer={setNoteViewer} setChartPanelRequest={setChartPanelRequest} />}
+          {activeTab === 'history' && patient && <PatientHistoryTab patient={patient} patientProblems={patientProblems || []} vitalsTimeline={vitalsTimeline} facilityName={currentUser?.hospital?.name || currentUser?.hospitalName || regHospital?.name} records={records} clinicalNotes={clinicalNotes} allLabResults={allLabResults} allPrescriptions={allPrescriptions} allImmunizations={allImmunizations} patientReferrals={patientReferrals} patientANC={patientANC} patientAppointments={patientAppointments} patientTriages={patientTriages} canViewClinical={canViewClinical} canConsult={canConsult} focusId={focusId} onOpenRecord={openRecordPanel} noteViewer={noteViewer} setNoteViewer={viewer => { setNoteViewer(viewer); if (!viewer) setNotesRefreshToken(token => token + 1); }} setChartPanelRequest={setChartPanelRequest} />}
 
           {/* Labs Tab — results list, and the bench workflow for one order. */}
           {activeTab === 'labs' && (

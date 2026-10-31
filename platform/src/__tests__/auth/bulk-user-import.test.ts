@@ -45,11 +45,10 @@ describe('roles as a person writes them', () => {
   });
 
   it('resolves a shared label to the role a person means', () => {
-    // `doctor` and `clinician` both display as "Doctor". Resolving to
-    // `clinician` would silently give every physician in the file a different
-    // role, with a different dashboard, than the one the list asked for.
+    // `clinician` is retired and displays as "Doctor", so both spellings land
+    // on the one account role a physician can still hold.
     expect(resolveRole('Doctor')).toBe('doctor');
-    expect(resolveRole('clinician')).toBe('clinician');
+    expect(resolveRole('clinician')).toBe('doctor');
   });
 
   it('returns nothing for a job title this platform does not have', () => {

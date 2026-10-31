@@ -407,25 +407,6 @@ export function useLabWorkflow(
     reportReleasedBy: currentUser?.name || 'Lab',
   })), [currentUser, order._id, run, update]);
 
-  /** Send the report to the ordering clinician's inbox. */
-  const notifyClinician = useCallback(() => run(async () => {
-    const { createMessage } = await import('@/modules/communication/services/message-service');
-    await createMessage({
-      recipientType: 'staff',
-      patientId: order.patientId,
-      patientName: order.patientName,
-      patientPhone: '',
-      fromDoctorId: currentUser?._id || 'lab',
-      fromDoctorName: currentUser?.name || 'Laboratory',
-      fromHospitalName: currentUser?.hospitalName || order.hospitalName || '',
-      subject: `Result ready: ${order.testName} for ${order.patientName}`,
-      body: `${order.testName} for ${order.patientName} has been reported: ${order.result || resultDraft.result}${order.unit ? ` ${order.unit}` : ''}${order.referenceRange ? ` (reference range: ${order.referenceRange})` : ''}.`,
-      channel: 'app',
-      sentAt: new Date().toISOString(),
-      orgId: currentUser?.orgId || order.orgId,
-    });
-  }), [currentUser, order, resultDraft.result, run]);
-
   return {
     order,
     stage,
@@ -437,7 +418,7 @@ export function useLabWorkflow(
     receiveDraft, setReceiveDraft,
     resultDraft, setResultDraft, setResultValue, setObservationValue, criticalVerdict,
     amendReason, setAmendReason,
-    collect, reject, fileResult, hasResultEntry, amendResult, notifyClinician, releaseReport,
+    collect, reject, fileResult, hasResultEntry, amendResult, releaseReport,
     markReviewed, markActedUpon, markCommunicated,
     canCloseOut,
   };

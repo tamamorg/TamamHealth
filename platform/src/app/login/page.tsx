@@ -21,7 +21,7 @@ import { resolveLandingPage } from '@/lib/user-prefs';
 import { canRedirectAfterSignIn, resolveNextPath } from '@/lib/navigation/login-redirect';
 import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { ROLE_LABEL } from '@/lib/role-display';
-import { canonicalizeUserRole, isLegacyNursingRole } from '@/lib/user-role';
+import { canonicalizeUserRole, isLegacyRole } from '@/lib/user-role';
 import type { UserRole } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Corners } from '@/components/login/login-chrome';
@@ -45,7 +45,7 @@ import { FormError } from '@/components/overlay/FormNotices';
 // suffix, which is the only case it was ever for.
 const ROLE_OPTIONS = (() => {
   const roles = (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
-    .filter(role => !isLegacyNursingRole(role));
+    .filter(role => !isLegacyRole(role));
   const workspaceOf = (value: UserRole) =>
     `${ROLE_ROUTE_TABLE[value].defaultDashboard}|${[...ROLE_ROUTE_TABLE[value].allowed].sort().join(',')}`;
 
@@ -94,7 +94,6 @@ interface DemoAccount {
  *  for when it has none (org admins, the ministry, the platform operator). */
 function demoGroupName(account: DemoAccount): string {
   if (account.facility) return account.facility;
-  if (account.orgId === 'org-mercy-hospital') return 'Mercy Hospital Group';
   if (account.orgId === 'org-moh-ss') return 'Ministry of Health';
   return 'Platform';
 }

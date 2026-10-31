@@ -9,6 +9,38 @@ each role gets only the features its real job justifies. Clinicians don't handle
 non-clinicians don't author clinical/vital records, and oversight roles see aggregates rather
 than individual patient records.
 
+## Retired account roles
+
+Seven roles are retired and no longer offered for new accounts. `lib/user-role.ts` maps each
+one to the role it became, so old tokens, stored accounts and organization rosters resolve
+straight away, and an account is rewritten when it next signs in. `npm run db:migrate:retired-roles`
+converts accounts that have not signed in. The roles stay in `UserRole` until that has run in
+production, so references to them below describe what those accounts could do before retirement.
+
+| Retired role | Now |
+|---|---|
+| `midwife`, `triage_nurse`, `rooming_nurse` | `nurse` |
+| `clinician` | `doctor` |
+| `records_hmis_officer` | `hrio` |
+| `clinic_clerk`, `central_registration_clerk` | `front_desk` |
+
+Triage and rooming remain workflow stations in `clinical-flow/roles.ts`. Clinical records and
+audit rows keep the role written at the time.
+
+## Charges raised by clinical work
+
+Prescribing, ordering a lab test and admitting a patient write a bill and its ledger entry as
+the signed-in user. Clinical roles and `lab_tech` may **create** those records, and only a
+`charge`, `insurance_payment` or `adjustment` entry tied to a bill. They cannot post a payment,
+refund or write-off. Prescribers (`doctor`, `clinical_officer`) may also withdraw a charge when
+an order is stopped or sent to an outside pharmacy: the validator allows cancelling an unpaid
+bill or reversing a paid one, and nothing else on the document. Reception holds insurance
+records but none that move money (`COLLECTIONS` in `write-permissions.ts`).
+
+Charges raised before these grants were dropped by the push filter and never reached the server.
+Each device resends its last 30 days once, on the first sync after upgrading; older ones stay on
+the device (`resendRecentCharges` in `sync-service.ts`).
+
 ## Roles at a glance (25 total)
 
 Every role below exists in the `UserRole` union in `platform/src/lib/db-types.ts`.

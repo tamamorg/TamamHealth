@@ -9,6 +9,17 @@ import {
 } from '../services/patient-transfer-permissions';
 
 /**
+ * Whether a request to the transfers database carries documents. Replication
+ * also posts `_revs_diff`, `_changes` and `_bulk_get`, and writes `_local`
+ * checkpoints; treating those as documents refused every one, so a transfer
+ * never left the device that made it.
+ */
+export function writesTransferDocuments(pathAfterDatabase: readonly string[]): boolean {
+  const [first] = pathAfterDatabase;
+  return first === '_bulk_docs' || (Boolean(first) && !first.startsWith('_'));
+}
+
+/**
  * Relationship-aware authorization for replicated transfer documents.
  * CouchDB's validate_doc_update can enforce roles and document types but cannot
  * load the related patient. The same-origin gateway can, so facility-edge mode

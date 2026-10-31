@@ -15,7 +15,7 @@ import { isAppendOnlyDatabase } from '@/lib/sync/write-permissions';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import type { PatientDoc, PatientTransferDoc } from '@/lib/db-types';
 import { tenantDatabaseName } from '@/lib/sync/tenant-database';
-import { authorizeReplicatedTransfer } from '@/lib/sync/transfer-gateway-authorization';
+import { authorizeReplicatedTransfer, writesTransferDocuments } from '@/lib/sync/transfer-gateway-authorization';
 import {
   CONVERSATIONS_DATABASE,
   authorizeConversationWrite,
@@ -123,6 +123,7 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
         return NextResponse.json({ error: validationError }, { status });
       }
       if (config.localName === 'tamamhealth_patient_transfers'
+          && writesTransferDocuments(pathAfterDatabase)
           && process.env.OFFLINE_GATEWAY_RELATIONSHIP_AUTHORIZATION !== 'false') {
         const transferError = await validateTransferRelationships(
           parsed,

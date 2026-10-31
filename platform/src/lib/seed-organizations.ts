@@ -21,7 +21,6 @@ import type { OrganizationDoc } from './db-types';
 import { BRAND_PRIMARY, BRAND_SECONDARY } from './theme-colors';
 
 export const PUBLIC_ORG_ID = 'org-moh-ss';
-export const PRIVATE_ORG_ID = 'org-mercy-hospital';
 
 export const DEFAULT_ORGANIZATIONS: Omit<OrganizationDoc, '_rev'>[] = [
   {
@@ -43,28 +42,5 @@ export const DEFAULT_ORGANIZATIONS: Omit<OrganizationDoc, '_rev'>[] = [
     isActive: true,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    _id: PRIVATE_ORG_ID,
-    type: 'organization',
-    name: 'Mercy Hospital Group',
-    slug: 'mercy-hospital',
-    // Default brand palette — orgs only carry a custom color when an admin
-    // deliberately rebrands (see branding.ts, which also rejects non-hex
-    // values so buttons never lose the default action blue).
-    primaryColor: BRAND_PRIMARY,
-    secondaryColor: BRAND_SECONDARY,
-    accentColor: BRAND_PRIMARY,
-    subscriptionStatus: 'active',
-    subscriptionPlan: 'professional',
-    maxUsers: 50,
-    maxHospitals: 5,
-    featureFlags: { epidemicIntelligence: false, mchAnalytics: true, dhis2Export: false, communityHealth: false, facilityAssessments: false },
-    orgType: 'private',
-    contactEmail: 'support.tamam@gmail.com',
-    country: 'South Sudan',
-    isActive: true,
-    createdAt: '2026-01-15T00:00:00Z',
-    updatedAt: '2026-01-15T00:00:00Z',
   },
 ];

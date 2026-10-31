@@ -445,7 +445,7 @@ export default function BookAppointmentModal({
 
   if (!canBookAppointments) {
     const deniedTitle = 'Booking not available for your role';
-    const deniedBody = 'Clinical and front desk staff book appointments; the front desk then edits and confirms them. Your role can view visits already assigned to you.';
+    const deniedBody = 'Clinical and reception staff book appointments; reception then edits and confirms them. Your role can view visits already assigned to you.';
     if (presentation === 'page') {
       return (
         <div className="modal-panel" role="alert" style={{ padding: 24, width: '100%' }}>

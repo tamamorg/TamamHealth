@@ -23,7 +23,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   patientTransfersDB, patientsDB, problemsDB, prescriptionsDB, clinicianTasksDB, getDB,
-  medicalRecordsDB,
+  medicalRecordsDB, triageDB,
 } from '../db';
 import type {
   PatientTransferDoc,
@@ -40,6 +40,7 @@ import type {
   PrescriptionDoc,
   ClinicianTaskDoc,
   MedicalRecordDoc,
+  TriageDoc,
   CareTeamMember,
   UserRole,
   PatientTransferPhysicalStatus,
@@ -55,6 +56,7 @@ import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import { mergeVitalsTimeline } from '../clinical/vitals';
 
 // ── Acknowledgement SLA ──────────────────────────────────────────────────
 //
@@ -376,7 +378,8 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
       problemsDB(), 'problem', { patientId }, { indexFields: ['type', 'patientId'] },
     );
     summary.activeProblems = problems
-      .filter(p => p.status === 'active')
+      // Chronic conditions are the ones a new doctor most needs to know about.
+      .filter(p => p.status === 'active' || p.status === 'chronic')
       .map(p => p.name)
       .slice(0, 20);
   } catch { /* snapshot stays partial rather than blocking the transfer */ }
@@ -409,6 +412,32 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
       summary.lastEncounterDate = latest.visitDate;
       summary.lastEncounterSummary = latest.chiefComplaint;
     }
+    const triages = await findByType<TriageDoc>(
+      triageDB(), 'triage', { patientId }, { indexFields: ['type', 'patientId'] },
+    );
+    const vitals = mergeVitalsTimeline(records, triages)[0];
+    if (vitals) {
+      summary.latestVitals = {
+        at: vitals.at, temperature: vitals.temperature, systolic: vitals.systolic, diastolic: vitals.diastolic,
+        pulse: vitals.pulse, respiratoryRate: vitals.respiratoryRate,
+        oxygenSaturation: vitals.oxygenSaturation, weight: vitals.weight,
+      };
+    }
+  } catch { /* ignore */ }
+
+  try {
+    // Like every read here, whatever this device holds: the sender is on the care
+    // team, and the snapshot is what the receiver cannot read for themselves.
+    const { getLabResultsByPatient } = await import('./lab-service');
+    const results = await getLabResultsByPatient(patientId);
+    summary.recentResults = results
+      .filter(r => r.result && r.completedAt)
+      .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))
+      .slice(0, 10)
+      .map(r => ({
+        testName: r.testName, result: r.result, unit: r.unit,
+        abnormal: r.abnormal, critical: r.critical, completedAt: r.completedAt,
+      }));
   } catch { /* ignore */ }
 
   try {
@@ -738,7 +767,25 @@ export async function acceptTransfer(
   );
 
   const dueNow = !saved.effectiveAt || new Date(saved.effectiveAt).getTime() <= Date.now();
-  return dueNow ? (await completeTransfer(saved._id, actor)) ?? saved : saved;
+  if (!dueNow) return saved;
+
+  // A receiving hospital's device holds no chart from another hospital until the
+  // transfer lands, so it can accept but cannot apply. The acceptance stands;
+  // dating it now hands the move to the server's sweep, which has the chart.
+  if (!await isPatientOnDevice(saved.patientId)) {
+    saved.effectiveAt = saved.effectiveAt ?? now;
+    return persist(saved, 'TRANSFER_ACCEPTED', `Transfer ${saved._id} waits for the server to apply it`, actor);
+  }
+  return (await completeTransfer(saved._id, actor)) ?? saved;
+}
+
+async function isPatientOnDevice(patientId: string): Promise<boolean> {
+  try {
+    await patientsDB().get(patientId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function rejectTransfer(
@@ -992,6 +1039,15 @@ async function applyAssignment(t: PatientTransferDoc): Promise<void> {
   const { mutatePatient } = await import('./patient-service');
   const now = new Date().toISOString();
 
+  // A hospital sees a patient by where they registered or were last seen, so a
+  // move between hospitals has to say so or the receiving doctor owns a chart
+  // they cannot open. The sending hospital keeps its record through
+  // `registrationHospital`.
+  const sendingFacility = t.hospitalId ?? t.from.facilityId;
+  const arrival = t.to.facilityId && t.to.facilityId !== sendingFacility
+    ? { lastVisitHospital: t.to.facilityId }
+    : {};
+
   const updated = await mutatePatient(t.patientId, (patient) => {
     // Drop lapsed grants on every write — an expired entry that lingers reads
     // as live access to anything that forgets to check the date.
@@ -1013,6 +1069,7 @@ async function applyAssignment(t: PatientTransferDoc): Promise<void> {
         careTeam: team,
         assignmentSource: 'transfer',
         assignmentTransferId: t._id,
+        ...arrival,
       };
     }
 
@@ -1040,6 +1097,7 @@ async function applyAssignment(t: PatientTransferDoc): Promise<void> {
       careTeam: team,
       assignmentSource: 'transfer',
       assignmentTransferId: t._id,
+      ...arrival,
     };
   });
 
@@ -1300,6 +1358,12 @@ async function expireTransfer(
       m => m.transferId === t._id && m.role === 'previous_owner',
     );
     const team = (patient.careTeam ?? []).filter(m => m.transferId !== t._id);
+    // The grant is over, so the hospital it opened the chart to loses sight of it.
+    // A visit there since then has moved this on, and that access is its own.
+    const withdrawn = t.to.facilityId && t.to.facilityId !== t.hospitalId
+      && patient.lastVisitHospital === t.to.facilityId
+      ? { lastVisitHospital: t.hospitalId ?? patient.registrationHospital }
+      : {};
 
     // Only hand back if the temporary holder is still the owner. If ownership
     // has since moved on to someone else, reverting would silently undo a
@@ -1313,12 +1377,14 @@ async function expireTransfer(
         careTeam: team,
         assignmentSource: 'transfer',
         assignmentTransferId: t._id,
+        ...withdrawn,
       };
     }
     return {
       careTeam: team,
       assignmentSource: 'transfer',
       assignmentTransferId: t._id,
+      ...withdrawn,
     };
   });
 

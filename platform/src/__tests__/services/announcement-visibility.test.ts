@@ -102,6 +102,18 @@ describe('role-targeted announcements', () => {
     expect(doctor).toHaveLength(0);
   });
 
+  it('a post to a retired role still reaches the job it became', async () => {
+    seed({ _id: 'ann-r', audience: 'role', targetRoles: ['clinic_clerk'] });
+    const desk = await getVisibleAnnouncements(scopeFor('front_desk', 'hosp-1'), {
+      userId: 'u1', role: 'front_desk', hospitalId: 'hosp-1',
+    });
+    const cashier = await getVisibleAnnouncements(scopeFor('cashier', 'hosp-1'), {
+      userId: 'u2', role: 'cashier', hospitalId: 'hosp-1',
+    });
+    expect(desk.map(a => a._id)).toEqual(['ann-r']);
+    expect(cashier).toHaveLength(0);
+  });
+
   it('an empty target list shows to nobody but the author', async () => {
     seed({ _id: 'ann-e', audience: 'role', targetRoles: [] });
     const nurse = await getVisibleAnnouncements(scopeFor('nurse', 'hosp-1'), {

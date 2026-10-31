@@ -71,7 +71,7 @@ const KIND_RELEVANT_ROLES: Record<NotificationKind, readonly UserRole[] | 'all'>
   // Clinical hand-offs between facilities, plus the records/management roles
   // that steward them.
   referral: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
-    'front_desk', 'records_hmis_officer', 'medical_superintendent', 'hospital_manager'],
+    'front_desk', 'hrio', 'records_hmis_officer', 'medical_superintendent', 'hospital_manager'],
   // Results reach the people who order and review them, and the bench that
   // produced them.
   lab: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',

@@ -4,8 +4,9 @@
  * One lab order as a single form, in the dashboard's slider (LabBenchSlider) and
  * the patient chart. There are no steps to walk: the form opens on what the test
  * needs. A new test asks for the specimen; a specimen in hand asks for the result;
- * a filed result shows its report. Save does that one thing; the lifecycle's own
- * hops happen behind it (see `fileResult` in useLabWorkflow).
+ * a filed result shows its report, and amending it swaps the report for the form.
+ * Save does that one thing; the lifecycle's own hops happen behind it (see
+ * `fileResult` in useLabWorkflow).
  */
 
 import { useState } from 'react';
@@ -14,7 +15,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabResultDoc } from '@/lib/db-types';
 import { fallbackAccessionNumber } from './lab-workflow-types';
 import { useLabWorkflow } from './useLabWorkflow';
-import { CollectStep, OrderContext, OrderStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
+import { CollectStep, FiledRecord, OrderContext, OrderStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
 import FormNotices from '@/components/overlay/FormNotices';
 import '@/components/forms/o3-form.css';
 import '@/components/ehr/chart/panels/order-basket/order-basket.css';
@@ -46,6 +47,7 @@ export default function LabWorkflowPanel({
   const ctrl = useLabWorkflow(orderFromList, seedResult, canWork);
   const { order } = ctrl;
   const [rejecting, setRejecting] = useState(intent === 'reject');
+  const [amending, setAmending] = useState(false);
 
   const needsSpecimen = ctrl.stage === 'ordered' || ctrl.stage === 'rejected_needs_recollection';
   const filed = ctrl.doneThrough >= 4;
@@ -55,11 +57,20 @@ export default function LabWorkflowPanel({
     // An outcome of the form, not its validation: it goes to the corner.
     showToast(ok ? t(successKey) : t(ctrl.lastError.current || 'labFlow.errGeneric'), ok ? 'success' : 'error', { placement: 'corner' });
     if (ok && closes) onClose();
+    return ok;
   };
 
   /** The form's one Save — or nothing, once the result is filed. */
   const primaryAction = (): { run: () => void; blocked?: boolean } | null => {
-    if (!canWork || filed) return null;
+    if (!canWork) return null;
+    if (amending) {
+      return {
+        run: () => void runAction(ctrl.amendResult, 'labFlow.okAmended').then(ok => { if (ok) setAmending(false); }),
+        // An amendment without a stated reason is just an overwrite.
+        blocked: !ctrl.amendReason.trim(),
+      };
+    }
+    if (filed) return null;
     if (rejecting) {
       return {
         run: () => { void runAction(ctrl.reject, 'labFlow.okRejected', true); setRejecting(false); },
@@ -104,22 +115,23 @@ export default function LabWorkflowPanel({
                 but that report is theirs to read and print — so it sits outside
                 the fieldset and guards its own write controls. A disabled
                 fieldset disables every button inside it, Print included. */}
-            {filed && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} />}
+            {filed && !amending && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} onAmend={canWork ? () => setAmending(true) : undefined} />}
             <fieldset className="lwf-fields" disabled={!canWork}>
               {/* What this form is open to do comes first; the clinician's notes
                   stay above it, and what is already on record follows. */}
               <OrderContext order={order} />
               {needsSpecimen && <CollectStep order={order} ctrl={ctrl} />}
-              {!needsSpecimen && !rejecting && <ResultStep order={order} ctrl={ctrl} onAmend={() => runAction(ctrl.amendResult, 'labFlow.okAmended')} />}
-              {!needsSpecimen && <ReceiveStep order={order} ctrl={ctrl} rejecting={rejecting} />}
-              {!needsSpecimen && <CollectStep order={order} ctrl={ctrl} />}
-              <OrderStep order={order} />
+              {!needsSpecimen && !rejecting && (!filed || amending) && <ResultStep order={order} ctrl={ctrl} />}
+              {!needsSpecimen && !filed && <ReceiveStep order={order} ctrl={ctrl} rejecting={rejecting} />}
+              {!needsSpecimen && !filed && <CollectStep order={order} ctrl={ctrl} />}
+              {!filed && <OrderStep order={order} />}
+              {filed && !amending && <FiledRecord order={order} />}
             </fieldset>
           </div>
         </div>
         <FormNotices />
         <div className="obk-footer">
-          <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={ctrl.busy} onClick={onClose}>
+          <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={ctrl.busy} onClick={amending ? () => { setAmending(false); ctrl.setAmendReason(''); } : onClose}>
             {t(action ? 'action.cancel' : 'action.close')}
           </button>
           {action && (

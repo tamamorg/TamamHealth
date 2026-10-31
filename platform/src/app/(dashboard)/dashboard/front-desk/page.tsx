@@ -331,7 +331,7 @@ export default function FrontDeskDashboardPage() {
     try {
       const { recordLeftWithoutBeingSeen } = await import('@/lib/services/encounter-service');
       await recordLeftWithoutBeingSeen(encounter._id, {
-        actorId: currentUser?._id, reason: 'Day-end close-out at the front desk',
+        actorId: currentUser?._id, reason: 'Day-end close-out at reception',
       });
       try {
         const { getTriageByEncounter } = await import('@/lib/services/triage-service');
@@ -1785,7 +1785,7 @@ export default function FrontDeskDashboardPage() {
 
   const centerCopy = useMemo(() => {
     if (boardLoading) {
-      return { title: dateLabel, emptyTitle: 'Loading the front desk…', emptyActionLabel: '' };
+      return { title: dateLabel, emptyTitle: 'Loading reception…', emptyActionLabel: '' };
     }
     if (panelView === 'appointments') {
       return {
@@ -1832,7 +1832,7 @@ export default function FrontDeskDashboardPage() {
         <EhrCareDashboard
           visitStatusPicker={false}
           title=""
-          greetingName={currentUser.name || 'front desk'}
+          greetingName={currentUser.name || 'reception'}
           dateLabel={dateLabel}
           tabs={tabs}
           activeTab={queueFilter}

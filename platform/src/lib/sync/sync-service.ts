@@ -254,6 +254,13 @@ export function buildPushFilter(
   };
 }
 
+/**
+ * How far back `resendRecentCharges` reaches. Older charges stay on the device:
+ * a bill nobody has seen for months would otherwise appear overnight and stop
+ * the patient at the pharmacy's pay-first gate.
+ */
+const CHARGE_RESEND_WINDOW_MS = 30 * 24 * 60 * 60_000;
+
 const RETRY_DELAYS = [1000, 2000, 5000, 10000, 30000]; // escalating backoff
 
 /** Minimum spacing between stale-metadata repair passes (see the push
@@ -298,6 +305,7 @@ export class SyncService {
   private deniedDocs: DeniedDoc[] = [];
   private readonly appendOnly: boolean;
   private pullClean = false;
+  private readonly writableRole?: string;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private _status: SyncStatus = {
     state: 'idle',
@@ -334,6 +342,7 @@ export class SyncService {
     // key `isAppendOnlyDatabase` is stated in — the remote may be a tenant
     // database (`…--org-x`), the local one never is.
     this.appendOnly = isAppendOnlyDatabase((opts.localDB as { name?: string }).name ?? '');
+    this.writableRole = opts.writableRole;
     this.pushFilter = buildPushFilter(
       opts.writableRole,
       entitlement,
@@ -499,6 +508,39 @@ export class SyncService {
       selector: this.selector ? { $and: [this.selector, selector] } : selector,
     });
     return result.docs_written || 0;
+  }
+
+  /**
+   * One-off push of recent charges that never left this device.
+   *
+   * Until clinical roles could write bills, the push filter dropped the ones
+   * they raised, and the checkpoint moved on past them, so the live push will
+   * never look at them again. This walks the feed under its own checkpoint
+   * (PouchDB keys it on the filter's source), so the first run sends them and
+   * later runs find nothing. Same ids, so a charge already on the server is
+   * skipped rather than duplicated.
+   *
+   * A role that may not push bills must not run it: the checkpoint would pass
+   * these documents and the next signed-in doctor could never send them.
+   */
+  async resendRecentCharges(now = Date.now()): Promise<number> {
+    if (this.direction === 'pull' || !this.writableRole) return 0;
+    if (!roleMayPush(this.writableRole, { type: 'billing' })) return 0;
+    const since = new Date(now - CHARGE_RESEND_WINDOW_MS).toISOString();
+    const pushFilter = this.pushFilter;
+    try {
+      const result = await this.runOneShot('push', {
+        batch_size: 100,
+        filter: ((doc: { createdAt?: unknown }) => pushFilter(doc)
+          && typeof doc.createdAt === 'string' && doc.createdAt >= since) as unknown as (doc: object) => boolean,
+      });
+      return result.docs_written || 0;
+    } catch (err) {
+      // Offline, or the session lapsed: the checkpoint did not finish, so the
+      // next start picks it up.
+      console.warn('[sync] could not resend recent charges:', err);
+      return 0;
+    }
   }
 
   /** Ask the server for specific documents by id, without replicating them. */

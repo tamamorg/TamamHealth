@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/context';
 import type { AnnouncementDoc, AnnouncementAudience, AnnouncementPriority, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import { ROLE_PERMISSIONS } from '@/lib/permissions';
+import { isLegacyRole } from '@/lib/user-role';
 import { Megaphone, X, Loader2, Send, Plus, Check } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
@@ -19,7 +20,7 @@ import { FormError } from '@/components/overlay/FormNotices';
 /** Roles an announcement can target. National oversight roles are excluded —
  *  they are not an org's staff, so an org announcement can't reach them. */
 const TARGETABLE_ROLES = (Object.keys(ROLE_PERMISSIONS) as UserRole[])
-  .filter(r => r !== 'super_admin' && r !== 'government' && r !== 'county_health_director');
+  .filter(r => r !== 'super_admin' && r !== 'government' && r !== 'county_health_director' && !isLegacyRole(r));
 
 const PRIORITY_STYLE: Record<AnnouncementPriority, { color: string; bg: string; label: string }> = {
   normal: { color: 'var(--text-secondary)', bg: 'var(--overlay-medium)', label: 'Normal' },

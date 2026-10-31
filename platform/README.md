@@ -145,19 +145,16 @@ Seeded usernames include:
 |----------|------|
 | `superadmin` | Platform Super Admin |
 | `admin` | Government (Ministry of Health) |
-| `dr.wani` / `dr.achol` / `dr.ochalla` | Doctor |
-| `co.deng` | Clinical Officer |
-| `nurse.stella` / `nurse.wau` | Nurse |
-| `triage.mary` / `rooming.sara` | Triage / Rooming Nurse |
-| `midwife.nyakong` | Midwife |
-| `lab.gatluak` | Lab Technician |
-| `pharma.rose` | Pharmacist |
-| `desk.amira` | Front Desk |
-| `cashier.deng` / `biller.nyandeng` | Cashier / Medical Biller |
-| `supt.lado` / `manager.aluel` | Medical Superintendent / Hospital Manager |
+| `org.admin` | Organization Admin |
 | `county.lopez` | County Health Director |
-| `bhw.akol` | Community Health Worker (nurse-scoped) |
-| `org.admin` / `dr.mercy` / `nurse.mercy` | Private-org accounts (Mercy General Hospital) |
+| `dr.wani` / `dr.achol` / `dr.wau` | Doctor (Juba / Juba / Wau) |
+| `co.deng` | Clinical Officer (Wau) |
+| `triage.mary` / `nurse.wau` | Nurse (Juba / Wau) |
+| `lab.gatluak` / `lab.wau` | Lab Technician (Juba / Wau) |
+| `pharma.rose` / `pharma.wau` | Pharmacist (Juba / Wau) |
+| `desk.amira` / `desk.wau` | Receptionist (Juba / Wau) |
+| `cashier.deng` / `biller.nyandeng` | Cashier / Medical Biller (Juba) |
+| `supt.lado` / `manager.aluel` | Medical Superintendent / Hospital Manager (Juba) |
 
 The full roster lives in `DEMO_USER_PROFILES` in
 [`src/modules/identity/core/seed-credentials.ts`](src/modules/identity/core/seed-credentials.ts).

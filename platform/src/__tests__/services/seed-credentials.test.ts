@@ -50,7 +50,7 @@ describe('superadmin initial password', () => {
 
   test('other users still get deterministic per-user passwords', async () => {
     const creds = await loadCredentials({ NEXT_PUBLIC_DEMO_MODE: 'true', SUPERADMIN_INITIAL_PASSWORD: undefined });
-    expect(creds.passwords['nurse.stella']).toBeTruthy();
-    expect(creds.passwords['nurse.stella']).not.toBe(creds.passwords['lab.gatluak']);
+    expect(creds.passwords['nurse.wau']).toBeTruthy();
+    expect(creds.passwords['nurse.wau']).not.toBe(creds.passwords['lab.gatluak']);
   });
 });

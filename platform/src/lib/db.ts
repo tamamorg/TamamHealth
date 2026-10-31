@@ -500,7 +500,10 @@ export const specialtyCareDB = () => getDB('tamamhealth_specialty_care');
 // holding a locally seeded corpus drop it (dirty-checked, so unsynced work is
 // kept) and receive the server's copy by replication. Standalone demos still
 // seed in the browser, and reseed because of this bump.
-export const SEED_VERSION = 79;
+// Bumped to 80: the demo is two hospitals (Juba, Wau) in one organization, one
+// account per job, with transfers both ways. Standalone demos reseed; devices on
+// a sync-enabled stack clear their cache (dirty-checked) and replicate again.
+export const SEED_VERSION = 80;
 
 /**
  * Delete local PouchDB databases whose IndexedDB backing is corrupt.

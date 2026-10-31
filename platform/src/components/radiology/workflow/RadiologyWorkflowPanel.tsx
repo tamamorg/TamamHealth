@@ -63,10 +63,6 @@ export default function RadiologyWorkflowPanel({
         return { label: t('imgFlow.actionAcquire'), run: () => runAction(ctrl.acquire, 'imgFlow.okAcquired') };
       case 'report':
         return { label: t('imgFlow.actionReport'), run: () => runAction(ctrl.fileReport, 'imgFlow.okReported') };
-      case 'release':
-        return ctrl.stage === 'resulted'
-          ? { label: t('imgFlow.actionNotify'), run: () => runAction(ctrl.notifyClinician, 'imgFlow.okNotified') }
-          : null;
       default:
         return null;
     }
