@@ -196,8 +196,35 @@ async function main() {
   console.log(`${DRY_RUN ? '[dry run] ' : ''}${dbs.length} database(s)`);
 
   let total = 0;
+  let refused = 0;
   for (const db of dbs) {
     const path = `/${encodeURIComponent(db)}`;
+    // A record the app saves while this runs is refused as a conflict: re-read
+    // its newest revision and seal that, so the count is only what landed.
+    const writeWithRetry = async docs => {
+      let written = 0;
+      for (let attempt = 0; docs.length; attempt++) {
+        const results = await couch(`${path}/_bulk_docs`, { method: 'POST', body: JSON.stringify({ docs }) });
+        written += results.filter(r => r.ok).length;
+        const failed = results.filter(r => r.error);
+        const conflicts = failed.filter(r => r.error === 'conflict').map(r => r.id);
+        for (const r of failed) {
+          if (r.error !== 'conflict' || attempt === 2) {
+            refused += 1;
+            console.warn(`    ! ${db}/${r.id}: ${r.error} ${r.reason || ''}`);
+          }
+        }
+        if (attempt === 2 || conflicts.length === 0) break;
+        const { rows } = await couch(`${path}/_all_docs?include_docs=true`, { method: 'POST', body: JSON.stringify({ keys: conflicts }) });
+        docs = [];
+        for (const row of rows) {
+          if (!row.doc) continue;
+          const { doc, changed } = await sealDocument(SECRET, row.doc);
+          if (changed) docs.push(doc);
+        }
+      }
+      return written;
+    };
     let updates = 0;
     let startkey;
     // Page through, so a 50k-patient database never sits in memory at once.
@@ -211,11 +238,8 @@ async function main() {
         const { doc, changed } = await sealDocument(SECRET, row.doc);
         if (changed) batch.push(doc);
       }
-      updates += batch.length;
-      if (!DRY_RUN && batch.length) {
-        const results = await couch(`${path}/_bulk_docs`, { method: 'POST', body: JSON.stringify({ docs: batch }) });
-        for (const r of results.filter(x => x.error)) console.warn(`    ! ${db}/${r.id}: ${r.error} ${r.reason || ''}`);
-      }
+      if (DRY_RUN) updates += batch.length;
+      else if (batch.length) updates += await writeWithRetry(batch);
       startkey = rows[rows.length - 1].id;
       if (rows.length < 500) break;
     }
@@ -226,6 +250,7 @@ async function main() {
   console.log(DRY_RUN
     ? `${total} record(s) would be sealed. Re-run with DRY_RUN=false to apply.`
     : `${total} record(s) sealed; compaction started on every changed database.`);
+  if (refused) console.log(`${refused} record(s) still refused: re-run to retry them.`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
