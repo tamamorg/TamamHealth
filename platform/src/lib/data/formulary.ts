@@ -105,6 +105,7 @@ export const FORMULARY: FormularyDrug[] = [
   { name: 'Methyldopa', category: 'Antihypertensive', atc: 'C02AB01', form: 'Tablet' },
   { name: 'Atorvastatin', category: 'Lipid-lowering', atc: 'C10AA05', form: 'Tablet' },
   { name: 'Digoxin', category: 'Cardiac glycoside', atc: 'C01AA05', form: 'Tablet' },
+  { name: 'Warfarin', category: 'Anticoagulant', atc: 'B01AA03', form: 'Tablet' },
 
   // ── Endocrine / diabetes ──
   { name: 'Metformin', category: 'Antidiabetic', atc: 'A10BA02', form: 'Tablet' },
@@ -146,6 +147,9 @@ export const FORMULARY: FormularyDrug[] = [
   { name: 'Fluoxetine', category: 'Antidepressant', atc: 'N06AB03', form: 'Capsule' },
   { name: 'Haloperidol', category: 'Antipsychotic', atc: 'N05AD01', form: 'Tablet / Injection' },
   { name: 'Chlorpromazine', category: 'Antipsychotic', atc: 'N05AA01', form: 'Tablet / Injection' },
+
+  // ── Antineoplastic / immunosuppressant ──
+  { name: 'Methotrexate', category: 'Antineoplastic', atc: 'L01BA01', form: 'Tablet / Injection' },
 
   // ── Emergency / anaesthesia ──
   { name: 'Adrenaline (epinephrine)', category: 'Emergency', atc: 'C01CA24', form: 'Injection' },

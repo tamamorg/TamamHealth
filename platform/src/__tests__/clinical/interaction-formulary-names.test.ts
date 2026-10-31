@@ -12,8 +12,9 @@ const ruleDrugs = [...new Set(
   [...source.matchAll(/drug[12]: '([^']+)'/g)].map(match => match[1]),
 )];
 
-// Not prescribable from the formulary: these rules wait for a drug to be added.
-const NOT_ON_FORMULARY = ['contrast dye', 'methotrexate', 'simvastatin', 'tizanidine', 'warfarin'];
+// Not prescribable from the formulary. Simvastatin and tizanidine are not on
+// the South Sudan Essential Medicines List 2018; contrast dye is not a medicine.
+const NOT_ON_FORMULARY = ['contrast dye', 'simvastatin', 'tizanidine'];
 
 describe('interaction rule names', () => {
   it('reads the rules from the source', () => {
@@ -41,6 +42,15 @@ describe('interaction rule names', () => {
       expect(checkInteractions(['Doxycycline', name]).hasInteractions).toBe(true);
     },
   );
+
+  it.each([
+    ['Warfarin', 'Metronidazole'],
+    ['Methotrexate', 'Cotrimoxazole (Sulfamethoxazole-Trimethoprim)'],
+    ['Artemether-Lumefantrine (Coartem)', 'Quinine'],
+  ])('stops %s with %s from the formulary names', (first, second) => {
+    for (const name of [first, second]) expect(FORMULARY.some(item => item.name === name)).toBe(true);
+    expect(checkNewPrescription(second, [first]).highestSeverity).toBe('contraindicated');
+  });
 
   it('leaves medicines with no rule alone', () => {
     expect(checkInteractions(['Paracetamol', 'Ferrous sulfate']).hasInteractions).toBe(false);
