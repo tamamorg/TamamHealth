@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
-  ShoppingCart, Stethoscope, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
+  ShoppingCart, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
   Utensils, ScanLine, FlaskConical, Pill, Activity, HeartPulse, BedDouble, ClipboardList,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';

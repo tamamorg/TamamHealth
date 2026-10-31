@@ -138,7 +138,7 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
     } finally {
       setBusy(false);
     }
-  }, [t]);
+  }, [setError, t]);
 
   /** Book the modality slot and stamp the accession. */
   const schedule = useCallback(() => run(async () => {
@@ -258,7 +258,7 @@ export function useRadiologyWorkflow(study: LabResultDoc) {
       return false;
     }
     return run(fn);
-  }, [canCloseOut, run, t]);
+  }, [canCloseOut, run, setError, t]);
 
   const markReviewed = useCallback(() => closeOut(
     () => advance(study._id, 'reviewed_by_clinician', { reviewedBy: currentUser?.name, reviewedAt: new Date().toISOString() }),

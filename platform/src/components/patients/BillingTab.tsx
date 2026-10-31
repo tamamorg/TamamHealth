@@ -14,7 +14,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
-import { formatDate, formatMoney, humanizeStatus } from '@/lib/format-utils';
+import { formatDate, formatMoney } from '@/lib/format-utils';
 import { summariseLedger, type LedgerSummary } from '@/lib/ledger-summary';
 import { buildAccountLines, type AccountLine } from '@/lib/billing-account-lines';
 import BillingLinePanel, { accountLineTitle } from '@/components/patients/BillingLinePanel';

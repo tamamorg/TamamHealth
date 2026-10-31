@@ -82,24 +82,6 @@ const ACTIVITY_OPTIONS: FilterOption[] = [
   { value: '90', label: 'Last 90 days' },
 ];
 
-/**
- * What an account's Status chip should say. The queue used to answer this with
- * one boolean — balance > 0 → "Outstanding", else "Paid" — which called an
- * account that had paid most of its charges exactly the same thing as one that
- * has paid nothing, and labelled a patient who was never charged "Paid". The
- * three states match the bill chips (`STATUS_CHIP` in billing-utils) so a row
- * and the invoices inside its popup use one vocabulary.
- */
-function accountStatus(line: PatientLine): { label: string; chip: string } {
-  if (line.outstanding <= 0) {
-    if (line.totalCollected > 0) return { label: 'Paid', chip: 'bl-chip--paid' };
-    // Nothing owed and nothing taken — a registered account with no activity.
-    return { label: 'No charges', chip: 'bl-chip--waived' };
-  }
-  if (line.totalCollected > 0) return { label: 'Partial', chip: 'bl-chip--partial' };
-  return { label: 'Unpaid', chip: 'bl-chip--unpaid' };
-}
-
 /** The stores this screen aggregates; a change in any of them redraws it. */
 const billingFeeds = () => [paymentsDB(), billingDB(), claimsDB(), paymentPlansDB()];
 
