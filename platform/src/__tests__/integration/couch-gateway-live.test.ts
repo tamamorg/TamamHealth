@@ -95,6 +95,8 @@ live('sync gateway against a real CouchDB', () => {
     process.env.NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED = 'true';
     process.env.COUCHDB_URL = IT_URL;
     delete process.env.DEMO_MODE;
+    // A fresh single-node CouchDB has no system databases until they are made.
+    await couch('_users', { method: 'PUT' });
     for (const userId of [ANA, BEN, CAT]) {
       await couch(`_users/org.couchdb.user:${userId}`, { method: 'PUT', body: {
         name: userId, password: 'it-password', type: 'user', roles: [`org:${ORG}`, 'role:doctor', `user:${userId}`],
