@@ -5,6 +5,7 @@
  * organizations. Both are one idempotent re-run away, so pin the behaviour.
  */
 import {
+  closedMembers,
   databasePolicy,
   resolveMemberRoles,
   READ_ONLY_DATABASES,
@@ -180,5 +181,26 @@ describe('CouchDB database policy', () => {
   it('defaults to no aggregate membership when no organizations are configured', () => {
     const policy = databasePolicy('tamamhealth_patients', { tenantDatabasesEnabled: false });
     expect(policy.memberRoles).toEqual([]);
+  });
+});
+
+describe('closedMembers', () => {
+  test('never stores an empty member list, which CouchDB reads as public', () => {
+    expect(closedMembers([])).toEqual({ names: [], roles: ['_admin'] });
+  });
+
+  test('every policy answer with no members still closes the database', () => {
+    const policies = [
+      databasePolicy('tamamhealth_patients', { tenantDatabasesEnabled: true }),
+      databasePolicy('tamamhealth_users', { tenantDatabasesEnabled: true }),
+    ];
+    for (const policy of policies) {
+      expect(closedMembers(resolveMemberRoles(policy, []).roles).roles).toEqual(['_admin']);
+    }
+  });
+
+  test('real members and named accounts are left as they are', () => {
+    expect(closedMembers(['org:org-a'])).toEqual({ names: [], roles: ['org:org-a'] });
+    expect(closedMembers([], ['operator'])).toEqual({ names: ['operator'], roles: [] });
   });
 });
