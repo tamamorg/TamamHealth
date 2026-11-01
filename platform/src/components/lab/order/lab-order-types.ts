@@ -154,4 +154,8 @@ export interface LabOrderReceipt {
   createdIds: string[];
   encounterId?: string;
   placedAt: string;
+  /** True when every test in the order is on a bill. False means the tests were ordered but at least one is unbilled. */
+  billed: boolean;
+  /** Names of the tests that are on no bill (no catalogued price, or billing failed). */
+  unbilledTests: string[];
 }

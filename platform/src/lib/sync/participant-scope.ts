@@ -158,7 +158,11 @@ export function filterScopedReadResponse(
       denied += 1;
       return options.dropRows ? [] : [{ key: row.key ?? row.id, ...FORBIDDEN }];
     });
-    return { payload: { ...body, rows }, denied };
+    // CouchDB's `total_rows` counts the whole database, so left alone it hands
+    // a narrowed reader the org-wide document count beside an empty listing.
+    // Report what is returned instead; PouchDB only needs the field present.
+    const narrowed = typeof body.total_rows === 'number' ? { total_rows: rows.length } : {};
+    return { payload: { ...body, ...narrowed, rows }, denied };
   }
   if (Array.isArray(body.docs)) {
     // POST /db/_find — the selector is already merged; this is the backstop.

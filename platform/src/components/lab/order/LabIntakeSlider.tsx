@@ -13,6 +13,7 @@ import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField } from '@/compone
 import FormNotices from '@/components/overlay/FormNotices';
 import FormSlider from '@/components/overlay/FormSlider';
 import { FormError } from '@/components/overlay/FormNotices';
+import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -40,6 +41,7 @@ export default function LabIntakeSlider({ presetPatientId, onClose, onPlaced }: 
   onPlaced: (firstOrderId: string, patientName: string) => void;
 }) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { patients } = usePatients();
@@ -86,6 +88,8 @@ export default function LabIntakeSlider({ presetPatientId, onClose, onPlaced }: 
         source, facility, requester, reference, tests, priority,
         arrivedCollected: specimenState === 'arrived', collectedAt, collectedBy, notes,
       }, currentUser, scope);
+      // The slider closes on success, so the warning goes to the corner where it outlives it.
+      if (!receipt.billed) showToast(t('lab.orderNotBilled', { tests: receipt.unbilledTests.join(', ') }), 'warning', { placement: 'corner' });
       onPlaced(receipt.createdIds[0], `${patient.firstName} ${patient.surname}`);
     } catch (err) {
       console.error('[lab-intake]', err);

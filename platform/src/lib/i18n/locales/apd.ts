@@ -3465,6 +3465,7 @@ const apd: TranslationMap = {
   'lab.confirmCriticalResultDesc': 'النتايج الحرجة بترسل تنبيه عالي الأولوية للدكتور الطالب. راجع القيم تحت قبل التأكيد.',
   'lab.countToday': '{{count}} اليوم',
   'lab.createOrderFailed': 'ما قدر يعمل طلب مختبر. جرّب تاني.',
+  'lab.orderNotBilled': 'فاتورة المختبر ما اتعملت لـ {{tests}}. حُط السعر في جدول الرسوم أو قول للحسابات.',
   'lab.creating': 'بعمل…',
   'lab.critical': 'حرج',
   'lab.criticalLabel': 'خطير',
