@@ -65,6 +65,11 @@ ARG NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=false
 ARG NEXT_PUBLIC_BUILD_ID=
 ARG NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE=device
 ENV NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID}
+# Boot validation reads these on the server, and `deploy-production` ships the
+# image but never the compose file, so a default set only in docker-compose.yml
+# does not reach the droplet. An env file or compose value still overrides them.
+ENV NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED}
+ENV TOKEN_BLACKLIST_FILE=/app/data/token-blacklist.json
 LABEL org.tamamhealth.demo-mode="${NEXT_PUBLIC_DEMO_MODE}"
 LABEL org.tamamhealth.tenant-databases="${NEXT_PUBLIC_COUCHDB_TENANT_DATABASES_ENABLED}"
 LABEL org.tamamhealth.sync-gateway="${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED}"

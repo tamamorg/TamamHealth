@@ -160,40 +160,52 @@ export async function placeLabOrder({
     }
   }
 
-  // Bill the tests against that encounter. Price-driven and best-effort:
-  // lines with no catalogued price are skipped and no bill is created when
-  // the org hasn't priced anything — the same contract the consultation
-  // path uses.
-  if (deskEncounterId) {
-    try {
-      const { chargeForServices } = await import('@/lib/services/fee-schedule-service');
-      await chargeForServices(
-        {
-          patientId: patient._id,
-          patientName,
-          hospitalNumber: patient.hospitalNumber,
-          facilityId: hospitalId,
-          facilityName: currentUser?.hospitalName || '',
-          facilityLevel: 'clinic',
-          state: patient.state || '',
-          county: patient.county,
-          orgId: currentUser?.orgId,
-          encounterId: deskEncounterId,
-          generatedBy: currentUser?._id || 'system',
-          generatedByName: currentUser?.name || 'Lab desk',
-          scope: { orgId: currentUser?.orgId, hospitalId, role: currentUser?.role || 'lab_tech' },
-        },
-        draft.tests.map((test, i) => ({
-          category: 'laboratory' as const,
-          serviceCode: test.name,
-          description: test.name,
-          referenceId: createdIds[i],
-          referenceType: 'lab_result',
-        })),
-      );
-    } catch (err) {
-      console.warn('[lab-order] could not bill desk lab order (tests were ordered):', err);
+  // Bill the tests. Price-driven: a line with no catalogued price is skipped
+  // and no bill is created when nothing is priced, the same contract the
+  // consultation path uses. A bill does not need a visit (encounterId is
+  // optional on it, as it is for prescriptions), so an order whose desk
+  // encounter could not be opened is still billed; skipping it here left the
+  // test unbilled with nothing in the console. What cannot be billed is
+  // reported on the receipt so the caller can say so.
+  const tests = draft.tests;
+  let billedIds = new Set<string>();
+  try {
+    const { chargeForServices } = await import('@/lib/services/fee-schedule-service');
+    const bill = await chargeForServices(
+      {
+        patientId: patient._id,
+        patientName,
+        hospitalNumber: patient.hospitalNumber,
+        facilityId: hospitalId || '',
+        facilityName: currentUser?.hospitalName || '',
+        facilityLevel: 'clinic',
+        state: patient.state || '',
+        county: patient.county,
+        orgId: currentUser?.orgId,
+        encounterId: deskEncounterId,
+        generatedBy: currentUser?._id || 'system',
+        generatedByName: currentUser?.name || 'Lab desk',
+        scope: { orgId: currentUser?.orgId, hospitalId, role: currentUser?.role || 'lab_tech' },
+      },
+      tests.map((test, i) => ({
+        category: 'laboratory' as const,
+        serviceCode: test.name,
+        description: test.name,
+        referenceId: createdIds[i],
+        referenceType: 'lab_result',
+      })),
+    );
+    if (bill) {
+      billedIds = new Set(bill.items.map(item => item.referenceId).filter((id): id is string => !!id));
+    } else {
+      console.warn('[lab-order] no bill raised: no price is catalogued for these tests and no laboratory fee is set for this facility.');
     }
+  } catch (err) {
+    console.warn('[lab-order] could not bill the lab order (tests were ordered):', err);
+  }
+  const unbilledTests = tests.filter((_, i) => !billedIds.has(createdIds[i])).map(test => test.name);
+  if (billedIds.size > 0 && unbilledTests.length) {
+    console.warn('[lab-order] some tests have no catalogued price and were not billed:', unbilledTests);
   }
 
   // Anything attached to the requisition is filed on the chart, tagged with
@@ -228,6 +240,10 @@ export async function placeLabOrder({
     `Ordered ${draft.tests.length} test(s) for patient ${draft.patientId}`,
   ).catch(() => {});
 
-  const done: LabOrderReceipt = { orderGroupId, accessionNumbers, createdIds, encounterId: deskEncounterId, placedAt };
+  const done: LabOrderReceipt = {
+    orderGroupId, accessionNumbers, createdIds, encounterId: deskEncounterId, placedAt,
+    billed: unbilledTests.length === 0,
+    unbilledTests,
+  };
   return done;
 }

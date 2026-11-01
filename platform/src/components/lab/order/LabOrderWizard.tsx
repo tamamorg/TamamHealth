@@ -65,10 +65,11 @@ export default function LabOrderWizard({
     }
     if (step === 'review') {
       try {
-        await submit();
+        const placed = await submit();
         onPlaced();
         setStep('complete');
         showToast(t('lab.ordersCreated', { count: draft.tests.length }), 'success');
+        if (!placed.billed) showToast(t('lab.orderNotBilled', { tests: placed.unbilledTests.join(', ') }), 'warning', { placement: 'corner' });
       } catch (err) {
         console.error(err);
         showToast(t('lab.createOrderFailed'), 'error');

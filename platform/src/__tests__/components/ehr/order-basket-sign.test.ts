@@ -128,6 +128,14 @@ describe('signOrders', () => {
     expect(outcome.signed).toEqual([cbc.id, malaria.id, glucose.id]);
   });
 
+  test('a requisition that raised no bill is signed, with a warning naming the unbilled tests', async () => {
+    placeLabOrder.mockResolvedValueOnce({ orderGroupId: 'req-1', accessionNumbers: [], createdIds: ['lab-1'], placedAt: '', billed: false, unbilledTests: ['Malaria RDT'] });
+    const malaria = newTestOrder({ name: 'Malaria RDT', specimen: 'Blood', tier: 'basic' });
+    const outcome = await sign([malaria]);
+    expect(outcome.signed).toEqual([malaria.id]);
+    expect(outcome.warnings).toEqual([expect.stringContaining('lab.orderNotBilled')]);
+  });
+
   test('an order that fails to write stays in the basket; the others are signed', async () => {
     createPrescription.mockRejectedValueOnce(new Error('disk full'));
     const first = filled();

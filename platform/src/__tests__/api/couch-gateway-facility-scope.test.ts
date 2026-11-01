@@ -76,7 +76,7 @@ beforeEach(() => {
     if (endpoint === '_all_docs') {
       const keys = (body?.keys as string[] | undefined) ?? docs.map(d => d._id);
       const withDocs = url.searchParams.get('include_docs') === 'true';
-      return Response.json({ rows: keys.map(key => {
+      return Response.json({ total_rows: docs.length, offset: 0, rows: keys.map(key => {
         const doc = docs.find(d => d._id === key);
         if (!doc) return { key, error: 'not_found' };
         return { id: key, key, value: { rev: doc._rev }, ...(withDocs ? { doc: doc._deleted ? null : doc } : {}) };
@@ -152,6 +152,22 @@ describe('document reads are filtered', () => {
     expect(ids(body.rows)).toEqual(['p-mine', 'p-shared', 'p-gone']);
     // A listing the client did not key never echoes the ids it refuses.
     expect(JSON.stringify(body)).not.toMatch(/p-theirs|p-org-b/);
+  });
+
+  test('_all_docs total_rows reports the rows returned, not the database size', async () => {
+    const response = await call(PATIENTS, ['_all_docs'], { query: '?include_docs=true' });
+    const body = await response.json() as { total_rows: number; offset: number; rows: unknown[] };
+    expect(body.rows).toHaveLength(3);
+    expect(body.total_rows).toBe(3);
+    expect(body.offset).toBe(0);
+    expect(store[PATIENTS]).toHaveLength(5);
+  });
+
+  test('a bare listing for a reader at another facility never reports the org-wide count', async () => {
+    actor.hospitalId = 'hosp-none';
+    const body = await (await call(PATIENTS, ['_all_docs'])).json() as { total_rows: number; rows: unknown[] };
+    expect(body.total_rows).toBe(body.rows.length);
+    expect(body.total_rows).toBeLessThan(store[PATIENTS].length);
   });
 
   test('a bare id listing is judged on the documents, and comes back without bodies', async () => {

@@ -142,7 +142,7 @@ export async function signOrders({
   for (const group of groups.values()) {
     const first = group[0];
     try {
-      await placeLabOrder({
+      const placed = await placeLabOrder({
         patient,
         // ChartPanelUser keeps role as a plain string; it is the signed-in
         // user's role, which the bill's scope needs.
@@ -157,6 +157,7 @@ export async function signOrders({
         },
       });
       outcome.signed.push(...group.map(o => o.id));
+      if (placed && placed.billed === false) outcome.warnings.push(t('lab.orderNotBilled', { tests: placed.unbilledTests.join(', ') }));
     } catch (err) {
       for (const o of group) outcome.kept.push({ id: o.id, reason: 'failed', message: err instanceof Error ? err.message : undefined });
     }
