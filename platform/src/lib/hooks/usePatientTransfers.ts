@@ -12,7 +12,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type {
   PatientTransferDoc,
-  PatientTransferChecklistItem,
   PatientTransferType,
   PatientTransferUrgency,
   PatientDoc,
@@ -54,7 +53,7 @@ function transferAuth(user: CurrentUser) {
  */
 async function finishOnServer(id: string): Promise<boolean> {
   const { apiFetch } = await import('@/lib/api-fetch');
-  for (const wait of [3000, 7000, 15000, 30000, 45000]) {
+  for (const wait of [3000, 7000, 15000, 30000, 45000, 60000, 120000]) {
     await new Promise(resolve => setTimeout(resolve, wait));
     try {
       const response = await apiFetch('/api/patient-transfers', {
@@ -84,7 +83,6 @@ export interface TransferDraftInput {
   transferType?: PatientTransferType;
   urgency?: PatientTransferUrgency;
   handoffNotes?: string;
-  checklist?: PatientTransferChecklistItem[];
   effectiveAt?: string;
   expiresAt?: string;
   asDraft?: boolean;
@@ -168,14 +166,14 @@ export function usePatientTransfers(patientId?: string) {
           providerId: patient.assignedDoctor,
           providerName: patient.assignedDoctorName,
           department: patient.assignedDepartment,
-          facilityId: patient.registrationHospital,
-          facilityName: auth.hospitalId === patient.registrationHospital ? auth.hospitalName : undefined,
+          // Who is sending, which after an earlier transfer is not where they registered.
+          facilityId: auth.hospitalId ?? patient.registrationHospital,
+          facilityName: auth.hospitalId ? auth.hospitalName : undefined,
           orgId: patient.orgId,
         },
         to: input.to,
         reason: input.reason,
         handoffNotes: input.handoffNotes,
-        checklist: input.checklist,
         effectiveAt: input.effectiveAt,
         expiresAt: input.expiresAt,
         destination: input.destination,

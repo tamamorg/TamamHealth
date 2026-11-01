@@ -30,7 +30,6 @@ import type {
   PatientTransferEvent,
   PatientTransferEventKind,
   PatientTransferAssignment,
-  PatientTransferChecklistItem,
   PatientTransferStatus,
   PatientTransferSummary,
   PatientTransferType,
@@ -95,59 +94,6 @@ export function isTransferOverdue(t: PatientTransferDoc, now: Date = new Date())
   return new Date(transferDeadline(t.urgency, t.requestedAt)).getTime() < now.getTime();
 }
 
-// ── Hand-off checklist ───────────────────────────────────────────────────
-
-/**
- * The default pre-transfer checklist. `required` items block sending, so the
- * clinician has to have actually looked at the medication list and the open
- * tasks before handing the patient on — the two things most often dropped at a
- * hand-off. Attachments/care-plan review are prompted but not blocking.
- */
-export const DEFAULT_TRANSFER_CHECKLIST: ReadonlyArray<Omit<PatientTransferChecklistItem, 'done'>> = [
-  { key: 'care_plan_reviewed', label: 'Care plan reviewed', required: false },
-  { key: 'medications_reviewed', label: 'Medications reviewed', required: true },
-  { key: 'open_tasks_reviewed', label: 'Open tasks reviewed', required: true },
-  { key: 'recent_notes_reviewed', label: 'Recent notes reviewed', required: false },
-  { key: 'reason_documented', label: 'Reason for transfer documented', required: true },
-];
-
-export function defaultChecklist(): PatientTransferChecklistItem[] {
-  return DEFAULT_TRANSFER_CHECKLIST.map(item => ({ ...item, done: false }));
-}
-
-/**
- * Rebuild a caller-supplied checklist against the canonical list.
- *
- * Only the `done` flags are taken from the caller; every key, label and
- * `required` flag comes from `DEFAULT_TRANSFER_CHECKLIST`. Without this the
- * gate is trivially defeated — a client can post a checklist with the required
- * items deleted (or relabelled as optional) and `outstandingChecklistItems`
- * finds nothing to complain about. The checklist is meant to be evidence that
- * the medication list and open tasks were reviewed, so the set of things that
- * must be reviewed cannot be up to the caller.
- */
-export function normalizeChecklist(
-  supplied: PatientTransferChecklistItem[] | undefined,
-): PatientTransferChecklistItem[] {
-  const byKey = new Map((supplied ?? []).map(i => [i.key, i]));
-  return DEFAULT_TRANSFER_CHECKLIST.map(canonical => {
-    const match = byKey.get(canonical.key);
-    return {
-      ...canonical,
-      done: match?.done === true,
-      completedAt: match?.done === true ? match.completedAt : undefined,
-      completedById: match?.done === true ? match.completedById : undefined,
-    };
-  });
-}
-
-/** Required checklist keys that are still outstanding. */
-export function outstandingChecklistItems(
-  checklist: PatientTransferChecklistItem[] | undefined,
-): PatientTransferChecklistItem[] {
-  return (checklist ?? []).filter(i => i.required && !i.done);
-}
-
 // ── Actors + events ──────────────────────────────────────────────────────
 
 export interface TransferActor {
@@ -178,6 +124,36 @@ export function describeAssignment(a: PatientTransferAssignment | undefined): st
   if (!a) return 'unassigned';
   const parts = [a.providerName, a.department, a.facilityName].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'unassigned';
+}
+
+/** One side of a transfer, leaving out the hospital the reader is already in. */
+export function describeTransferSide(
+  a: PatientTransferAssignment | undefined,
+  hereFacilityId?: string,
+): string {
+  if (!a) return 'unassigned';
+  return describeAssignment(a.facilityId && a.facilityId === hereFacilityId ? { ...a, facilityName: undefined } : a);
+}
+
+/**
+ * Where a transfer goes as its reader sees it: "To ..." for whoever is sending,
+ * "From ..." for whoever is receiving, never both sides. Within one hospital
+ * the name is dropped altogether. With no viewer it reads from the sender's
+ * side, which is what the transfer's own trail records.
+ */
+export function describeTransferRoute(
+  transfer: Pick<PatientTransferDoc, 'from' | 'to' | 'hospitalId'>,
+  viewer: { id?: string; hospitalId?: string } = {},
+  words: { to: string; from: string } = { to: 'To', from: 'From' },
+): string {
+  const fromFacility = transfer.from?.facilityId || transfer.hospitalId;
+  const toFacility = transfer.to?.facilityId || fromFacility;
+  const internal = fromFacility === toFacility;
+  const incoming = internal
+    ? Boolean(viewer.id) && viewer.id === transfer.to?.providerId
+    : Boolean(viewer.hospitalId) && viewer.hospitalId === toFacility;
+  const here = internal ? fromFacility : viewer.hospitalId || fromFacility;
+  return `${incoming ? words.from : words.to} ${describeTransferSide(incoming ? transfer.from : transfer.to, here)}`;
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────
@@ -370,7 +346,31 @@ export function activeCareTeam(
  * a clinically urgent transfer: a partial snapshot is recoverable, a transfer
  * that cannot be raised is not.
  */
+/** The databases a transfer summary reads. */
+const SUMMARY_DATABASES = [
+  'tamamhealth_problems', 'tamamhealth_prescriptions', 'tamamhealth_medical_records',
+  'tamamhealth_lab_results', 'tamamhealth_triage',
+];
+
+/**
+ * True when this device has not yet pulled what the summary reads. A fresh
+ * device has no chart documents, which looks exactly like a patient with none.
+ * No sync manager means no server to wait for.
+ */
+async function senderStillSyncing(): Promise<boolean> {
+  try {
+    const { getSyncManager } = await import('../sync/sync-manager');
+    const databases = getSyncManager()?.getStatus().databases;
+    return Boolean(databases) && SUMMARY_DATABASES.some(name => !databases?.[name]?.lastSync);
+  } catch {
+    return false;
+  }
+}
+
 export async function buildTransferSummary(patientId: string): Promise<PatientTransferSummary> {
+  // A section that could not be read is named, so the receiver can tell "none"
+  // from "not known". An empty medication list reads as no medications.
+  const unavailable: NonNullable<PatientTransferSummary['unavailable']> = [];
   const summary: PatientTransferSummary = {};
 
   try {
@@ -382,7 +382,7 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
       .filter(p => p.status === 'active' || p.status === 'chronic')
       .map(p => p.name)
       .slice(0, 20);
-  } catch { /* snapshot stays partial rather than blocking the transfer */ }
+  } catch { unavailable.push('problems'); }
 
   try {
     const scripts = await findByType<PrescriptionDoc>(
@@ -392,7 +392,7 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
       .filter(p => p.status !== 'discontinued' && !p.stoppedAt)
       .map(p => p.medication))]
       .slice(0, 30);
-  } catch { /* ignore */ }
+  } catch { unavailable.push('medications'); }
 
   try {
     const tasks = await findByType<ClinicianTaskDoc>(
@@ -423,7 +423,7 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
         oxygenSaturation: vitals.oxygenSaturation, weight: vitals.weight,
       };
     }
-  } catch { /* ignore */ }
+  } catch { unavailable.push('vitals'); }
 
   try {
     // Like every read here, whatever this device holds: the sender is on the care
@@ -438,7 +438,7 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
         testName: r.testName, result: r.result, unit: r.unit,
         abnormal: r.abnormal, critical: r.critical, completedAt: r.completedAt,
       }));
-  } catch { /* ignore */ }
+  } catch { unavailable.push('results'); }
 
   try {
     const patient = await patientsDB().get(patientId) as PatientDoc;
@@ -452,6 +452,8 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
       .slice(0, 10);
   } catch { /* ignore */ }
 
+  if (unavailable.length) summary.unavailable = unavailable;
+  if (await senderStillSyncing()) summary.senderStillSyncing = true;
   return summary;
 }
 
@@ -492,7 +494,6 @@ export interface CreateTransferInput {
   to: PatientTransferAssignment;
   reason: string;
   handoffNotes?: string;
-  checklist?: PatientTransferChecklistItem[];
   effectiveAt?: string;
   expiresAt?: string;
   autoCompleteOnEffectiveDate?: boolean;
@@ -579,18 +580,6 @@ export async function createTransferRequest(
 
   const now = new Date().toISOString();
   const asDraft = input.asDraft === true;
-  // Never trust the caller's checklist shape — see `normalizeChecklist`.
-  const checklist = normalizeChecklist(input.checklist);
-
-  if (!asDraft) {
-    const outstanding = outstandingChecklistItems(checklist);
-    if (outstanding.length > 0) {
-      throw new TransferValidationError(
-        `Complete the handoff checklist before sending: ${outstanding.map(i => i.label).join(', ')}.`,
-      );
-    }
-  }
-
   // Snapshot the chart as it stands now. Built at request time, not read at
   // accept time, so the history shows what the receiver was actually shown.
   const summary = await buildTransferSummary(input.patientId);
@@ -609,7 +598,6 @@ export async function createTransferRequest(
     reason: input.reason.trim(),
     handoffNotes: input.handoffNotes,
     summary,
-    checklist,
     requestedById: input.actor?.id,
     requestedByName: input.actor?.name,
     requestedByRole: input.actor?.role,
@@ -647,7 +635,7 @@ export async function createTransferRequest(
     asDraft ? 'TRANSFER_DRAFTED' : 'TRANSFER_REQUESTED',
     asDraft
       ? 'Transfer drafted'
-      : `Transfer requested: ${describeAssignment(doc.from)} → ${describeAssignment(doc.to)}`,
+      : `Transfer requested: ${describeTransferRoute(doc)}`,
     input.actor,
     {
       toStatus: doc.status,
@@ -691,7 +679,7 @@ export async function createTransferRequest(
   return saved;
 }
 
-/** Send a draft. Runs the same checklist gate as a direct send. */
+/** Send a draft. */
 export async function sendDraftTransfer(
   id: string,
   actor?: TransferActor,
@@ -701,18 +689,12 @@ export async function sendDraftTransfer(
   if (doc.status !== 'draft') {
     throw new TransferValidationError('Only a draft transfer can be sent.');
   }
-  const outstanding = outstandingChecklistItems(doc.checklist);
-  if (outstanding.length > 0) {
-    throw new TransferValidationError(
-      `Complete the handoff checklist before sending: ${outstanding.map(i => i.label).join(', ')}.`,
-    );
-  }
   const now = new Date().toISOString();
   doc.status = 'requested';
   doc.requestedAt = now;
   doc.events.push(makeEvent(
     'TRANSFER_REQUESTED',
-    `Transfer requested: ${describeAssignment(doc.from)} → ${describeAssignment(doc.to)}`,
+    `Transfer requested: ${describeTransferRoute(doc)}`,
     actor,
     { fromStatus: 'draft', toStatus: 'requested', fromAssignment: doc.from, toAssignment: doc.to },
   ));
@@ -985,41 +967,6 @@ export async function closeTransfer(
   return persist(doc, 'TRANSFER_CLOSED', `Closed transfer ${doc._id}`, actor);
 }
 
-/** Tick or untick hand-off checklist items on an unsent/pending transfer. */
-export async function updateTransferChecklist(
-  id: string,
-  updates: Array<{ key: string; done: boolean }>,
-  actor?: TransferActor,
-): Promise<PatientTransferDoc | null> {
-  const doc = await getTransferById(id);
-  if (!doc) return null;
-  if (DECIDED_STATUSES.has(doc.status)) {
-    throw new TransferValidationError(
-      `This transfer is ${doc.status}. Its checklist is part of the record and can no longer be changed.`,
-    );
-  }
-  const now = new Date().toISOString();
-  const byKey = new Map(updates.map(u => [u.key, u.done]));
-  doc.checklist = (doc.checklist ?? defaultChecklist()).map(item => {
-    if (!byKey.has(item.key)) return item;
-    const done = byKey.get(item.key)!;
-    return {
-      ...item,
-      done,
-      completedAt: done ? now : undefined,
-      completedById: done ? actor?.id : undefined,
-    };
-  });
-  const doneCount = doc.checklist.filter(i => i.done).length;
-  doc.events.push(makeEvent(
-    'TRANSFER_CHECKLIST_UPDATED',
-    `Hand-off checklist updated (${doneCount}/${doc.checklist.length} complete)`,
-    actor,
-    { metadata: { done: doneCount, total: doc.checklist.length } },
-  ));
-  return persist(doc, 'TRANSFER_CHECKLIST_UPDATED', `Checklist updated on transfer ${doc._id}`, actor);
-}
-
 // ── Applying ownership ───────────────────────────────────────────────────
 
 /**
@@ -1044,11 +991,21 @@ async function applyAssignment(t: PatientTransferDoc): Promise<void> {
   // they cannot open. The sending hospital keeps its record through
   // `registrationHospital`.
   const sendingFacility = t.hospitalId ?? t.from.facilityId;
-  const arrival = t.to.facilityId && t.to.facilityId !== sendingFacility
-    ? { lastVisitHospital: t.to.facilityId }
-    : {};
 
   const updated = await mutatePatient(t.patientId, (patient) => {
+    // Each hospital that has cared for them keeps the chart, so a third hospital
+    // does not push out the second. One field could only ever hold the latest.
+    const arrival = t.to.facilityId && t.to.facilityId !== sendingFacility
+      ? {
+          lastVisitHospital: t.to.facilityId,
+          transferFacilityIds: [...new Set([
+            ...(patient.transferFacilityIds ?? []),
+            ...(sendingFacility ? [sendingFacility] : []),
+            t.to.facilityId,
+          ])],
+        }
+      : {};
+
     // Drop lapsed grants on every write — an expired entry that lingers reads
     // as live access to anything that forgets to check the date.
     const team = activeCareTeam(patient).filter(m => m.transferId !== t._id);
@@ -1231,10 +1188,7 @@ export async function forceTransfer(
 ): Promise<PatientTransferDoc> {
   const created = await createTransferRequest({
     ...input,
-    // The force path skips the acceptance gate, not the reason requirement;
-    // the checklist gate is skipped because there is no sending clinician
-    // working through it — an admin reassignment is not a bedside hand-off.
-    checklist: input.checklist ?? defaultChecklist().map(i => ({ ...i, done: true })),
+    // The force path skips the acceptance gate, not the reason requirement.
     // A forced transfer is applied immediately by definition, so it can never
     // be a draft — honouring `asDraft` here would produce a "completed" doc
     // with no `requestedAt`, i.e. a hole in the very trail this path most needs.
@@ -1360,9 +1314,14 @@ async function expireTransfer(
     const team = (patient.careTeam ?? []).filter(m => m.transferId !== t._id);
     // The grant is over, so the hospital it opened the chart to loses sight of it.
     // A visit there since then has moved this on, and that access is its own.
-    const withdrawn = t.to.facilityId && t.to.facilityId !== t.hospitalId
-      && patient.lastVisitHospital === t.to.facilityId
-      ? { lastVisitHospital: t.hospitalId ?? patient.registrationHospital }
+    const crossedHospitals = t.to.facilityId && t.to.facilityId !== t.hospitalId;
+    const withdrawn = crossedHospitals
+      ? {
+          transferFacilityIds: (patient.transferFacilityIds ?? []).filter(id => id !== t.to.facilityId),
+          ...(patient.lastVisitHospital === t.to.facilityId
+            ? { lastVisitHospital: t.hospitalId ?? patient.registrationHospital }
+            : {}),
+        }
       : {};
 
     // Only hand back if the temporary holder is still the owner. If ownership

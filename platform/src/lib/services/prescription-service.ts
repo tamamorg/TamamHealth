@@ -1,4 +1,6 @@
-import { SAFETY_REASON_MIN_LENGTH, hasSafetyStop } from '../pharmacy/rx-safety';
+import {
+  SAFETY_REASON_MIN_LENGTH, hasSafetyStop, needsWeeklyReview, unreviewedAllergyConflicts, unreviewedInteractionConflicts,
+} from '../pharmacy/rx-safety';
 import { prescriptionsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
 import type { PrescriptionDoc, PrescriptionPatientCopy, UserRole, HospitalDoc } from '../db-types';
@@ -300,6 +302,8 @@ export interface PrescriptionCreateResult {
 
 export interface PrescriptionSafetyAssessment {
   interactionWarnings: InteractionCheckResult | null;
+  /** A weekly medicine ordered more often: see needsWeeklyReview. */
+  weeklyOnly?: boolean;
   allergyWarnings: StructuredAllergyAlert[] | null;
   duplicateWarnings: string[] | null;
   /**
@@ -354,6 +358,27 @@ export const UNREADABLE_COURSE_LOOKBACK_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 
+/**
+ * What stands between an order and the pharmacist's hand: severe allergy
+ * matches and contraindicated pairs nobody has answered. The screen and the
+ * dispense both read this, so what it shows is what it enforces.
+ */
+export async function findDispenseConflicts(
+  rx: PrescriptionDoc,
+  scope: DataScope,
+): Promise<{ allergies: StructuredAllergyAlert[]; interactions: string[] }> {
+  const { getActiveAllergies } = await import('./allergy-service');
+  const [allergies, medications, orders] = await Promise.all([
+    getActiveAllergies(rx.patientId, scope),
+    getCurrentMedicationNames(rx.patientId, scope),
+    getPrescriptionsByPatient(rx.patientId, scope),
+  ]);
+  return {
+    allergies: unreviewedAllergyConflicts(rx, allergies),
+    interactions: unreviewedInteractionConflicts(rx, medications, orders.filter(order => order._id !== rx._id)),
+  };
+}
+
 /** Days named in a duration note ("5 days", "2 weeks", "1 month"); null when none is readable. */
 function courseLengthDays(duration: string | undefined): number | null {
   // The number beside a unit, not the first number: "1 tablet for 10 days".
@@ -376,8 +401,13 @@ function courseLengthDays(duration: string | undefined): number | null {
  * - Dispensed: only while its course is still running, counted from the
  *   dispense date (or the order date) plus the days in `duration`. A course with
  *   no readable length counts for UNREADABLE_COURSE_LOOKBACK_DAYS.
+ * - Dispensed with no end, like "ongoing": for ONGOING_COURSE_LOOKBACK_DAYS. Long
+ *   enough to span refills, bounded because these are rarely marked discontinued.
  * - Discontinued: no.
  */
+const ONGOING_COURSE = /\b(ongoing|long[- ]term|life-?long|continuous|continuing|chronic|indefinite)/i;
+export const ONGOING_COURSE_LOOKBACK_DAYS = 180;
+
 export function isMedicationCurrent(
   rx: Pick<PrescriptionDoc, 'status'> & Partial<Pick<PrescriptionDoc, 'duration' | 'dispensedAt' | 'createdAt'>>,
   now: number = Date.now(),
@@ -386,7 +416,8 @@ export function isMedicationCurrent(
   if (rx.status !== 'dispensed') return false;
   const started = Date.parse(rx.dispensedAt || rx.createdAt || '');
   if (!Number.isFinite(started)) return false;
-  const days = courseLengthDays(rx.duration) ?? UNREADABLE_COURSE_LOOKBACK_DAYS;
+  const days = courseLengthDays(rx.duration)
+    ?? (ONGOING_COURSE.test(rx.duration || '') ? ONGOING_COURSE_LOOKBACK_DAYS : UNREADABLE_COURSE_LOOKBACK_DAYS);
   return now <= started + days * DAY_MS;
 }
 
@@ -527,6 +558,7 @@ export async function assessPrescriptionSafety(
   return {
     interactionWarnings, allergyWarnings, duplicateWarnings, doseWarnings,
     allergyCheckUnavailable, interactionCheckUnavailable,
+    weeklyOnly: needsWeeklyReview(medication, order?.frequency),
   };
 }
 
@@ -712,7 +744,9 @@ export async function createPrescription(
   }
 
   const acknowledgementReason = data.medicationSafetyAcknowledgement?.reason.trim() || '';
-  const stopped = hasSafetyStop({ allergyWarnings, interactionWarnings });
+  const stopped = hasSafetyStop({
+    allergyWarnings, interactionWarnings, weeklyOnly: needsWeeklyReview(data.medication, data.frequency),
+  });
   if (stopped && acknowledgementReason.length < SAFETY_REASON_MIN_LENGTH) {
     throw new ValidationError({
       medicationSafetyAcknowledgement: 'A clinical justification of at least 10 characters is required to continue past a severe allergy or contraindicated interaction warning.',

@@ -50,6 +50,8 @@ const FACILITY_FIELDS = [
   'fromHospitalId',
   'toHospitalId',
   'recipientHospitalId',
+  // A list, because a patient can be cared for at more hospitals than one field holds.
+  'transferFacilityIds',
 ] as const;
 
 type ReplicationDocument = {

@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import MedicationsSection from '@/components/ehr/chart/sections/MedicationsSection';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { isMedicationCurrent } from '@/lib/services/prescription-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ArrowLeft } from '@/components/icons/lucide';
 import PharmacyWorkflowPanel from './PharmacyWorkflowPanel';
@@ -61,7 +62,7 @@ export default function PharmacyWorkspace({
    */
   const activeMedications = useMemo(
     () => (prescriptions || [])
-      .filter(rx => rx.patientId === patientId && rx._id !== selectedId && rx.status !== 'discontinued')
+      .filter(rx => rx.patientId === patientId && rx._id !== selectedId && isMedicationCurrent(rx))
       .map(rx => rx.medication)
       .filter(Boolean),
     [prescriptions, patientId, selectedId],

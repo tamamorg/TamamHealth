@@ -66,8 +66,8 @@ describe('which medicines count as current', () => {
   it('uses a bounded look-back when the course length is unreadable', () => {
     const inside = ago(UNREADABLE_COURSE_LOOKBACK_DAYS - 2);
     const outside = ago(UNREADABLE_COURSE_LOOKBACK_DAYS + 2);
-    expect(isMedicationCurrent({ status: 'dispensed', duration: 'ongoing', dispensedAt: inside }, now)).toBe(true);
-    expect(isMedicationCurrent({ status: 'dispensed', duration: 'ongoing', dispensedAt: outside }, now)).toBe(false);
+    expect(isMedicationCurrent({ status: 'dispensed', duration: 'as directed', dispensedAt: inside }, now)).toBe(true);
+    expect(isMedicationCurrent({ status: 'dispensed', duration: 'as directed', dispensedAt: outside }, now)).toBe(false);
     expect(isMedicationCurrent({ status: 'dispensed', dispensedAt: outside }, now)).toBe(false);
   });
 });

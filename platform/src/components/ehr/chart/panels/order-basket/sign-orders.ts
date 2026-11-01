@@ -13,7 +13,7 @@
  * basket, the rest are written.
  */
 
-import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop, needsWeeklyReview, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import type { PatientDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
@@ -69,9 +69,10 @@ export async function signOrders({
         if (safety.interactionCheckUnavailable) outcome.warnings.push(t('prescribe.interactionCheckUnavailable'));
         for (const w of safety.doseWarnings || []) outcome.warnings.push(doseWarningText(t, w));
         let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
-        if (hasSafetyStop(safety)) {
+        const stops = { ...safety, weeklyOnly: needsWeeklyReview(order.drug.name, frequencyText(order)) };
+        if (hasSafetyStop(stops)) {
           const reason = await confirmPrompt({
-            ...safetyStopPrompt(t, order.drug.name, safety),
+            ...safetyStopPrompt(t, order.drug.name, stops),
             inputLabel: t('prescribe.overrideReason'),
             confirmLabel: t('prescribe.overrideConfirm'),
             inputRequired: true,

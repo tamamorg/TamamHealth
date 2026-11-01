@@ -17,7 +17,7 @@ import { useAuth } from '@/lib/context';
 import { usePatientTransfers } from '@/lib/hooks/usePatientTransfers';
 import { useWards } from '@/lib/hooks/useWards';
 import {
-  describeAssignment, isTransferOverdue,
+  describeTransferRoute, isTransferOverdue,
 } from '@/lib/services/patient-transfer-service';
 import {
   canDecideTransfer, canCancelTransfer, canContributeTransfer,
@@ -36,27 +36,38 @@ import { describeError } from '@/lib/user-facing-error';
 import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 
 const STATUS_STYLE: Record<PatientTransferStatus, { label: string; bg: string; fg: string }> = {
-  draft: { label: 'Draft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  requested: { label: 'Awaiting acceptance', bg: 'var(--gold-100, #FFFAE9)', fg: 'var(--gold-800, #a65300)' },
-  accepted: { label: 'Accepted', bg: 'var(--iris-100, #c9f4ff)', fg: 'var(--iris-800, #015697)' },
-  rejected: { label: 'Rejected', bg: 'var(--rose-100, #fae6e4)', fg: 'var(--rose-800, #a65300)' },
-  cancelled: { label: 'Withdrawn', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  completed: { label: 'Completed', bg: 'var(--green-100, #ecf6f3)', fg: 'var(--green-800, #0A6E4A)' },
-  expired: { label: 'Lapsed', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
+  draft: { label: 'transfers.statusDraft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
+  requested: { label: 'transfers.statusRequested', bg: 'var(--gold-100, #FFFAE9)', fg: 'var(--gold-800, #a65300)' },
+  accepted: { label: 'transfers.statusAccepted', bg: 'var(--iris-100, #c9f4ff)', fg: 'var(--iris-800, #015697)' },
+  rejected: { label: 'transfers.statusRejected', bg: 'var(--rose-100, #fae6e4)', fg: 'var(--rose-800, #a65300)' },
+  cancelled: { label: 'transfers.statusWithdrawn', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
+  completed: { label: 'transfers.statusCompleted', bg: 'var(--green-100, #ecf6f3)', fg: 'var(--green-800, #0A6E4A)' },
+  expired: { label: 'transfers.statusLapsed', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
 };
 
 const TYPE_LABEL: Record<string, string> = {
-  permanent: 'Permanent',
-  temporary: 'Temporary',
-  shared_care: 'Shared care',
+  permanent: 'transfers.typePermanent',
+  temporary: 'transfers.typeTemporary',
+  shared_care: 'transfers.typeSharedCare',
+};
+
+const PHYSICAL_LABEL: Record<string, string> = {
+  not_scheduled: 'transfers.physNotScheduled',
+  bed_reserved: 'transfers.physBedReserved',
+  ready_for_transport: 'transfers.physReady',
+  departed: 'transfers.physDeparted',
+  in_transit: 'transfers.physInTransit',
+  arrived: 'transfers.physArrived',
+  closed: 'transfers.physClosed',
 };
 
 function StatusChip({ status }: { status: PatientTransferStatus }) {
+  const { t } = useTranslation();
   const s = STATUS_STYLE[status];
   return (
     <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
       style={{ background: s.bg, color: s.fg }}>
-      {s.label}
+      {t(s.label)}
     </span>
   );
 }
@@ -137,24 +148,24 @@ function TransferCard({
               <StatusChip status={transfer.status} />
               <span className="text-[10px] px-1.5 py-0.5 rounded"
                 style={{ background: 'var(--border-light)', color: 'var(--text-muted)' }}>
-                {TYPE_LABEL[transfer.transferType] ?? transfer.transferType}
+                {TYPE_LABEL[transfer.transferType] ? t(TYPE_LABEL[transfer.transferType]) : transfer.transferType}
               </span>
               {transfer.forced && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                   style={{ background: 'var(--rose-100, #fae6e4)', color: 'var(--rose-800, #a65300)' }}
-                  title="Applied by an administrator without the receiving team accepting">
-                  Forced
+                  title={t('transfers.forcedTitle')}>
+                  {t('transfers.forced')}
                 </span>
               )}
               {overdue && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold inline-flex items-center gap-1"
                   style={{ background: 'var(--rose-100, #fae6e4)', color: 'var(--rose-800, #a65300)' }}>
-                  <Clock className="w-3 h-3" /> Overdue
+                  <Clock className="w-3 h-3" /> {t('transfers.overdue')}
                 </span>
               )}
             </div>
             <div className="text-[13px] font-semibold mt-1.5 truncate">
-              {describeAssignment(transfer.from)} → {describeAssignment(transfer.to)}
+              {describeTransferRoute(transfer, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}
             </div>
             {showClinicalDetail && (
               <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -162,15 +173,15 @@ function TransferCard({
               </div>
             )}
             <div className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
-              Requested by {transfer.requestedByName || 'unknown'}
+              {t('transfers.requestedBy', { name: transfer.requestedByName || t('transfers.unknown') })}
               {transfer.requestedAt ? ` · ${formatDateTime(transfer.requestedAt)}` : ''}
-              {transfer.expiresAt ? ` · ends ${formatDateTime(transfer.expiresAt)}` : ''}
+              {transfer.expiresAt ? ` · ${t('transfers.ends', { date: formatDateTime(transfer.expiresAt) })}` : ''}
             </div>
           </div>
           <button
             className="p-1 rounded hover:bg-black/5 shrink-0"
             onClick={() => setExpanded(v => !v)}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
+            aria-label={expanded ? t('transfers.collapse') : t('transfers.expand')}
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -186,14 +197,14 @@ function TransferCard({
                   disabled={busy}
                   onClick={() => act(() => onAccept(transfer._id))}
                 >
-                  <Check className="w-3.5 h-3.5" /> Accept
+                  <Check className="w-3.5 h-3.5" /> {t('transfers.accept')}
                 </button>
                 <button
                   className="btn btn-secondary text-[12px] inline-flex items-center gap-1"
                   disabled={busy}
                   onClick={() => setRejecting(true)}
                 >
-                  <X className="w-3.5 h-3.5" /> Reject
+                  <X className="w-3.5 h-3.5" /> {t('transfers.reject')}
                 </button>
               </>
             )}
@@ -203,7 +214,7 @@ function TransferCard({
                 disabled={busy}
                 onClick={() => act(() => onCancel(transfer._id, 'Withdrawn by sender'))}
               >
-                Withdraw
+                {t('transfers.withdraw')}
               </button>
             )}
           </div>
@@ -212,7 +223,7 @@ function TransferCard({
         {rejecting && (
           <FormSlider
             title={t('transfers.rejectTitle')}
-            subtitle={`${describeAssignment(transfer.from)} → ${describeAssignment(transfer.to)}`}
+            subtitle={describeTransferRoute(transfer, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}
             className="tamam-dialog"
             onClose={() => { setRejecting(false); setRejectNote(''); }}
             busy={busy}
@@ -233,7 +244,7 @@ function TransferCard({
             disabled={busy}
             onClick={() => act(() => onComplete(transfer._id))}
           >
-            Confirm patient has arrived
+            {t('transfers.confirmArrived')}
           </button>
         )}
 
@@ -247,7 +258,7 @@ function TransferCard({
           {showClinicalDetail && transfer.handoffNotes && (
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: 'var(--text-muted)' }}>Hand-off notes</div>
+                style={{ color: 'var(--text-muted)' }}>{t('transfers.handoffNotes')}</div>
               <p className="text-[12px] mt-0.5 whitespace-pre-wrap">{transfer.handoffNotes}</p>
             </div>
           )}
@@ -256,44 +267,24 @@ function TransferCard({
           {showClinicalDetail && transfer.summary && (
             <div className="grid gap-2 sm:grid-cols-2">
               {(transfer.summary.activeProblems?.length ?? 0) > 0 && (
-                <SummaryList label="Active problems" items={transfer.summary.activeProblems!} />
+                <SummaryList label={t('transfers.activeProblems')} items={transfer.summary.activeProblems!} />
               )}
               {(transfer.summary.activeMedications?.length ?? 0) > 0 && (
-                <SummaryList label="Active medications" items={transfer.summary.activeMedications!} />
+                <SummaryList label={t('transfers.activeMedications')} items={transfer.summary.activeMedications!} />
               )}
               {(transfer.summary.allergies?.length ?? 0) > 0 && (
-                <SummaryList label="Allergies" items={transfer.summary.allergies!} />
+                <SummaryList label={t('transfers.allergies')} items={transfer.summary.allergies!} />
               )}
               {(transfer.summary.riskFlags?.length ?? 0) > 0 && (
-                <SummaryList label="Risk flags" items={transfer.summary.riskFlags!} />
+                <SummaryList label={t('transfers.riskFlags')} items={transfer.summary.riskFlags!} />
               )}
               {typeof transfer.summary.openTaskCount === 'number' && (
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: 'var(--text-muted)' }}>Open tasks at hand-off</div>
+                    style={{ color: 'var(--text-muted)' }}>{t('transfers.openTasks')}</div>
                   <div className="text-[12px] mt-0.5">{transfer.summary.openTaskCount}</div>
                 </div>
               )}
-            </div>
-          )}
-
-          {(transfer.checklist?.length ?? 0) > 0 && (
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide mb-1"
-                style={{ color: 'var(--text-muted)' }}>Hand-off checklist</div>
-              <div className="flex flex-wrap gap-1.5">
-                {transfer.checklist!.map(item => (
-                  <span key={item.key}
-                    className="text-[11px] px-1.5 py-0.5 rounded inline-flex items-center gap-1"
-                    style={{
-                      background: item.done ? 'var(--green-100, #ecf6f3)' : 'var(--border-light)',
-                      color: item.done ? 'var(--green-800, #0A6E4A)' : 'var(--text-muted)',
-                    }}>
-                    {item.done ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                    {item.label}
-                  </span>
-                ))}
-              </div>
             </div>
           )}
 
@@ -311,7 +302,7 @@ function TransferCard({
 
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wide mb-1"
-              style={{ color: 'var(--text-muted)' }}>Audit trail</div>
+              style={{ color: 'var(--text-muted)' }}>{t('transfers.auditTrail')}</div>
             <ol className="space-y-1.5">
               {transfer.events.map(ev => (
                 <li key={ev.id} className="text-[11px] flex gap-2">
@@ -344,6 +335,7 @@ function TransferOperations({
   onClose: (id: string) => Promise<unknown>;
   onError: (message: string) => void;
 }) {
+  const { t } = useTranslation();
   const [wardName, setWardName] = useState(transfer.destination?.wardName || '');
   const [bedNumber, setBedNumber] = useState(transfer.destination?.bedNumber || '');
   const [wardId, setWardId] = useState(transfer.destination?.wardId || '');
@@ -360,7 +352,7 @@ function TransferOperations({
         physicalStatus: wardName || bedNumber ? 'bed_reserved' : physical,
         destination: { wardId: wardId || undefined, wardName: wardName.trim() || undefined, bedId: bedId || undefined, bedNumber: bedNumber.trim() || undefined },
       });
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not save destination'); }
+    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errSaveDestination')); }
   };
   const markReady = async () => {
     try {
@@ -376,7 +368,7 @@ function TransferOperations({
         },
         transport: { ...(transfer.transport || { status: 'not_requested' }), status: 'ready' },
       });
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not mark ready'); }
+    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errMarkReady')); }
   };
   const saveCommunication = async () => {
     try {
@@ -390,7 +382,7 @@ function TransferOperations({
           familyContactMethod: familyContacted ? familyMethod : undefined,
         },
       });
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not save communication status'); }
+    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errSaveCommunication')); }
   };
   const markArrived = async () => {
     try {
@@ -398,47 +390,47 @@ function TransferOperations({
         receiverAssessedAt: new Date().toISOString(),
         receiverAssessmentNotes: 'Receiving assessment completed from transfer panel',
       });
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not confirm arrival'); }
+    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errConfirmArrival')); }
   };
   return (
     <section className="rounded border p-3 space-y-2" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-subtle, rgba(0,0,0,.02))' }}>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Transfer progress</div>
-          <div className="text-[12px] font-semibold mt-1 capitalize">{physical.replace(/_/g, ' ')}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{t('transfers.transferProgress')}</div>
+          <div className="text-[12px] font-semibold mt-1 capitalize">{PHYSICAL_LABEL[physical] ? t(PHYSICAL_LABEL[physical]) : physical.replace(/_/g, ' ')}</div>
         </div>
         <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          {transfer.arrivedAt ? `Arrived ${formatDateTime(transfer.arrivedAt)}` : 'Arrival not confirmed'}
+          {transfer.arrivedAt ? t('transfers.arrivedAt', { date: formatDateTime(transfer.arrivedAt) }) : t('transfers.arrivalNotConfirmed')}
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label className="text-[11px]">Destination ward
-          {wards.length > 0 ? <Select className="form-input w-full mt-1 text-[12px]" value={wardId} disabled={!canEdit || busy} onChange={e => { const next = wards.find(w => w._id === e.target.value); setWardId(e.target.value); setWardName(next?.name || ''); setBedId(''); setBedNumber(''); }}><option value="">Select ward</option>{wards.map(w => <option key={w._id} value={w._id}>{w.name} ({w.availableBeds} available)</option>)}</Select> : <input className="form-input w-full mt-1 text-[12px]" value={wardName} disabled={!canEdit || busy} onChange={e => setWardName(e.target.value)} placeholder="Ward or unit" />}
+        <label className="text-[11px]">{t('transfers.destinationWard')}
+          {wards.length > 0 ? <Select className="form-input w-full mt-1 text-[12px]" value={wardId} disabled={!canEdit || busy} onChange={e => { const next = wards.find(w => w._id === e.target.value); setWardId(e.target.value); setWardName(next?.name || ''); setBedId(''); setBedNumber(''); }}><option value="">{t('transfers.selectWard')}</option>{wards.map(w => <option key={w._id} value={w._id}>{t('transfers.wardAvailable', { name: w.name, count: w.availableBeds })}</option>)}</Select> : <input className="form-input w-full mt-1 text-[12px]" value={wardName} disabled={!canEdit || busy} onChange={e => setWardName(e.target.value)} placeholder={t('transfers.wardPlaceholder')} />}
         </label>
-        <label className="text-[11px]">Room / bed
-          {selectedWardBeds.length > 0 ? <Select className="form-input w-full mt-1 text-[12px]" value={bedId} disabled={!canEdit || busy} onChange={e => { const next = selectedWardBeds.find(b => b._id === e.target.value); setBedId(e.target.value); setBedNumber(next?.bedNumber || ''); }}><option value="">Select available bed</option>{selectedWardBeds.map(b => <option key={b._id} value={b._id}>{b.bedNumber}</option>)}</Select> : <input className="form-input w-full mt-1 text-[12px]" value={bedNumber} disabled={!canEdit || busy} onChange={e => setBedNumber(e.target.value)} placeholder="Room or bed number" />}
+        <label className="text-[11px]">{t('transfers.roomBed')}
+          {selectedWardBeds.length > 0 ? <Select className="form-input w-full mt-1 text-[12px]" value={bedId} disabled={!canEdit || busy} onChange={e => { const next = selectedWardBeds.find(b => b._id === e.target.value); setBedId(e.target.value); setBedNumber(next?.bedNumber || ''); }}><option value="">{t('transfers.selectBed')}</option>{selectedWardBeds.map(b => <option key={b._id} value={b._id}>{b.bedNumber}</option>)}</Select> : <input className="form-input w-full mt-1 text-[12px]" value={bedNumber} disabled={!canEdit || busy} onChange={e => setBedNumber(e.target.value)} placeholder={t('transfers.bedPlaceholder')} />}
         </label>
       </div>
       <div className="rounded border p-2 space-y-2" style={{ borderColor: 'var(--border-light)' }}>
-        <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Patient and family communication</div>
+        <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{t('transfers.communication')}</div>
         <div className="flex flex-wrap items-center gap-3 text-[11px]">
-          <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={patientInformed} disabled={!canEdit || busy} onChange={e => setPatientInformed(e.target.checked)} /> Patient informed</label>
-          <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={familyContacted} disabled={!canEdit || busy} onChange={e => setFamilyContacted(e.target.checked)} /> Family contacted</label>
-          {familyContacted && <Select className="form-input text-[11px]" value={familyMethod} disabled={!canEdit || busy} onChange={e => setFamilyMethod(e.target.value as typeof familyMethod)}><option value="phone">Phone</option><option value="in_person">In person</option><option value="portal">Portal</option><option value="not_available">Not available</option></Select>}
-          {canEdit && <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={saveCommunication}>Save communication</button>}
+          <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={patientInformed} disabled={!canEdit || busy} onChange={e => setPatientInformed(e.target.checked)} /> {t('transfers.patientInformed')}</label>
+          <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={familyContacted} disabled={!canEdit || busy} onChange={e => setFamilyContacted(e.target.checked)} /> {t('transfers.familyContacted')}</label>
+          {familyContacted && <Select className="form-input text-[11px]" value={familyMethod} disabled={!canEdit || busy} onChange={e => setFamilyMethod(e.target.value as typeof familyMethod)}><option value="phone">{t('transfers.contactPhone')}</option><option value="in_person">{t('transfers.contactInPerson')}</option><option value="portal">{t('transfers.contactPortal')}</option><option value="not_available">{t('transfers.contactNotAvailable')}</option></Select>}
+          {canEdit && <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={saveCommunication}>{t('transfers.saveCommunication')}</button>}
         </div>
       </div>
       {canEdit && (
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-secondary text-[11px]" disabled={busy || (!wardName.trim() && !bedNumber.trim())} onClick={saveDestination}>Reserve destination</button>
-          <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={markReady}>Mark ready for transport</button>
-          {physical !== 'closed' && <button className="btn btn-primary text-[11px]" disabled={busy} onClick={markArrived}>Confirm arrival and assessment</button>}
-          {physical === 'arrived' && <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={() => onClose(transfer._id)}>Close transfer</button>}
+          <button className="btn btn-secondary text-[11px]" disabled={busy || (!wardName.trim() && !bedNumber.trim())} onClick={saveDestination}>{t('transfers.reserveDestination')}</button>
+          <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={markReady}>{t('transfers.markReady')}</button>
+          {physical !== 'closed' && <button className="btn btn-primary text-[11px]" disabled={busy} onClick={markArrived}>{t('transfers.confirmArrival')}</button>}
+          {physical === 'arrived' && <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={() => onClose(transfer._id)}>{t('transfers.closeTransfer')}</button>}
         </div>
       )}
       <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
         {['bed_reserved', 'ready_for_transport', 'departed', 'in_transit', 'arrived', 'closed'].map(step => (
-          <span key={step} className="px-1.5 py-0.5 rounded" style={{ background: step === physical ? 'var(--green-100, #ecf6f3)' : 'var(--border-light)' }}>{step.replace(/_/g, ' ')}</span>
+          <span key={step} className="px-1.5 py-0.5 rounded" style={{ background: step === physical ? 'var(--green-100, #ecf6f3)' : 'var(--border-light)' }}>{PHYSICAL_LABEL[step] ? t(PHYSICAL_LABEL[step]) : step.replace(/_/g, ' ')}</span>
         ))}
       </div>
     </section>
@@ -488,19 +480,39 @@ export function TransferredRecords({ patient }: { patient: PatientDoc }) {
     `${r.testName}: ${resultWithUnit(r.result, r.unit)}`,
     r.critical ? `(${t('lab.criticalLabel')})` : r.abnormal ? `(${t('lab.abnormal')})` : '',
   ].filter(Boolean).join(' '));
+  // Never a blank: an empty medication list would read as "takes nothing".
+  const section = (name: NonNullable<typeof summary.unavailable>[number], items: string[]) => {
+    if (summary.unavailable?.includes(name)) return [t('transfers.recordsUnreadable', { hospital })];
+    return items.length ? items : [t('transfers.recordsNoneListed', { hospital })];
+  };
 
   return (
     <section className="tamam-transfer-records" aria-label={t('transfers.recordsTitle', { hospital })}>
       <h3>{t('transfers.recordsTitle', { hospital })}</h3>
       <p>{t('transfers.recordsNote', { hospital, date: formatDateTime(latest.requestedAt || latest.createdAt) })}</p>
+      {summary.senderStillSyncing && <p role="alert" className="tamam-transfer-records-warn">{t('transfers.recordsMayBeIncomplete', { hospital })}</p>}
       <div className="tamam-transfer-records-grid">
-        {(summary.activeProblems?.length ?? 0) > 0 && <SummaryList label={t('transfers.recordsProblems')} items={summary.activeProblems!} />}
-        {(summary.activeMedications?.length ?? 0) > 0 && <SummaryList label={t('transfers.recordsMedications')} items={summary.activeMedications!} />}
-        {vitals && <SummaryList label={t('transfers.recordsVitals')} items={[vitals]} />}
-        {results.length > 0 && <SummaryList label={t('transfers.recordsResults')} items={results} />}
+        <SummaryList label={t('transfers.recordsProblems')} items={section('problems', summary.activeProblems ?? [])} />
+        <SummaryList label={t('transfers.recordsMedications')} items={section('medications', summary.activeMedications ?? [])} />
+        <SummaryList label={t('transfers.recordsVitals')} items={section('vitals', vitals ? [vitals] : [])} />
+        <SummaryList label={t('transfers.recordsResults')} items={section('results', results)} />
       </div>
     </section>
   );
+}
+
+/**
+ * Shown in place of "Patient not found" once this hospital has accepted the
+ * patient. Their chart reaches this device after the server applies the move,
+ * and until then the doctor who just accepted them has a chart that seems lost.
+ */
+export function TransferArriving({ patientId, fallback }: { patientId: string; fallback: string }) {
+  const { t } = useTranslation();
+  const { currentUser } = useAuth();
+  const { transfers } = usePatientTransfers(patientId);
+  const arriving = transfers.find(x => x.to.facilityId === currentUser?.hospitalId
+    && (x.status === 'accepted' || x.status === 'completed'));
+  return <>{arriving ? t('transfers.chartArriving', { name: arriving.patientName || t('transfers.thisPatient') }) : fallback}</>;
 }
 
 export default function TransferHistoryPanel({
@@ -527,25 +539,25 @@ export default function TransferHistoryPanel({
     <>
     <ChartSection
       title={t('chartRows.careCoordination')}
-      addLabel="Transfer patient"
+      addLabel={t('transfers.title')}
       onAdd={canViewClinical ? () => setShowModal(true) : undefined}
     >
       {loading && (
-        <p className="tamam-cell-sub" style={{ padding: '12px 0' }}>Loading transfers…</p>
+        <p className="tamam-cell-sub" style={{ padding: '12px 0' }}>{t('transfers.loading')}</p>
       )}
       {!loading && transfers.length === 0 && (
         <OmrsEmptyState
-          itemLabel="transfers"
-          actionLabel="Transfer patient"
+          itemLabel={t('transfers.itemLabel')}
+          actionLabel={t('transfers.title')}
           onAction={canViewClinical ? () => setShowModal(true) : undefined}
         />
       )}
       {transfers.length > 0 && (
         <div className="space-y-3" style={{ paddingTop: 4 }}>
-          {transfers.map(t => (
+          {transfers.map(tr => (
             <TransferCard
-              key={t._id}
-              transfer={t}
+              key={tr._id}
+              transfer={tr}
               showClinicalDetail={canViewClinical}
               onAccept={accept}
               onReject={reject}
@@ -579,12 +591,14 @@ export function TransferBanner({
   patient: PatientDoc;
   onOpenHistory?: () => void;
 }) {
+  const { t } = useTranslation();
   const { activeTransfer } = usePatientTransfers(patient._id);
+  const { currentUser } = useAuth();
   if (!activeTransfer) return null;
 
-  const t = activeTransfer;
-  const pending = t.status === 'requested';
-  const overdue = isTransferOverdue(t);
+  const tr = activeTransfer;
+  const pending = tr.status === 'requested';
+  const overdue = isTransferOverdue(tr);
 
   return (
     <div
@@ -600,15 +614,15 @@ export function TransferBanner({
       <div className="min-w-0">
         <strong>
           {pending
-            ? `Transfer awaiting acceptance${overdue ? ' — overdue' : ''}`
-            : t.status === 'accepted'
-              ? 'Transfer accepted, not yet in effect'
-              : `${TYPE_LABEL[t.transferType]} access in force`}
+            ? (overdue ? t('transfers.bannerAwaitingOverdue') : t('transfers.bannerAwaiting'))
+            : tr.status === 'accepted'
+              ? t('transfers.bannerAccepted')
+              : t('transfers.bannerAccessInForce', { type: TYPE_LABEL[tr.transferType] ? t(TYPE_LABEL[tr.transferType]) : tr.transferType })}
         </strong>
-        <span> · {describeAssignment(t.from)} → {describeAssignment(t.to)}</span>
-        {t.expiresAt && <span> · ends {formatDateTime(t.expiresAt)}</span>}
+        <span> · {describeTransferRoute(tr, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}</span>
+        {tr.expiresAt && <span> · {t('transfers.ends', { date: formatDateTime(tr.expiresAt) })}</span>}
         {onOpenHistory && (
-          <button className="ms-2 underline" onClick={onOpenHistory}>View</button>
+          <button className="ms-2 underline" onClick={onOpenHistory}>{t('transfers.view')}</button>
         )}
       </div>
     </div>

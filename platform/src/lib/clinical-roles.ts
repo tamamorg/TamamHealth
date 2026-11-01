@@ -49,6 +49,9 @@ export const NO_ALLERGY_SENTINELS = ['none', 'none known', 'nkda', 'no known', '
 
 /** True when an allergy substance string is really a "no known allergies" marker. */
 export function isNoAllergySentinel(substance?: string): boolean {
-  const n = (substance || '').trim().toLowerCase();
-  return n.length === 0 || NO_ALLERGY_SENTINELS.some((s) => n === s || n.startsWith(s));
+  const n = (substance || '').trim().toLowerCase().replace(/[.\s]+$/, '');
+  // Whole values, plus phrases that can only mean none ("no known allergies").
+  // A prefix test on the list read Naproxen ("na") and Nilotinib ("nil") as "no
+  // allergies" and dropped them.
+  return n.length === 0 || NO_ALLERGY_SENTINELS.includes(n) || /^(no known|none known|nkda)\b/.test(n);
 }

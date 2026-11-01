@@ -11,7 +11,7 @@ jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { createDBMock, teardownTestDBs } from '../helpers/test-db';
-import { acceptTransfer, applyDueTransfers, getTransferById, buildTransferSummary, createTransferRequest, DEFAULT_TRANSFER_CHECKLIST, rejectTransfer } from '@/lib/services/patient-transfer-service';
+import { acceptTransfer, applyDueTransfers, getTransferById, buildTransferSummary, createTransferRequest, rejectTransfer } from '@/lib/services/patient-transfer-service';
 import { filterByScope, type DataScope } from '@/lib/services/data-scope';
 import type { PatientDoc } from '@/lib/db-types';
 
@@ -39,7 +39,6 @@ const request = (patientId: string, from: typeof JUBA, to: typeof JUBA, actor: t
   patientId, patientName: 'Akech Deng', hospitalNumber: `T-${patientId}`, transferType: 'permanent', urgency: 'urgent',
   reason: 'Continue care closer to home', from: { ...from, providerId: actor.id, providerName: actor.name }, to,
   hospitalId: from.facilityId, orgId: ORG, actor,
-  checklist: DEFAULT_TRANSFER_CHECKLIST.map(item => ({ ...item, done: true })),
 });
 
 afterEach(async () => {
@@ -122,7 +121,6 @@ test('a temporary transfer that ends withdraws the other hospital\'s access', as
     patientId: 'pat-t6', patientName: 'Akech Deng', hospitalNumber: 'T-pat-t6', transferType: 'temporary', urgency: 'urgent',
     reason: 'Weekend cover', from: { ...JUBA, providerId: juba.id, providerName: juba.name }, to: WAU,
     hospitalId: 'hosp-001', orgId: ORG, actor: juba, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    checklist: DEFAULT_TRANSFER_CHECKLIST.map(item => ({ ...item, done: true })),
   });
   await acceptTransfer(sent._id, wau);
   expect(filterByScope([await readPatient('pat-t6')], scopeAt('hosp-002'))).toHaveLength(1);
@@ -149,4 +147,67 @@ test('the snapshot carries the last vitals and results, which the receiver canno
   const summary = await buildTransferSummary('pat-t7');
   expect(summary.latestVitals).toMatchObject({ systolic: 120, diastolic: 80, pulse: 88 });
   expect(summary.recentResults).toEqual([expect.objectContaining({ testName: 'Hemoglobin', result: '4.2', critical: true })]);
+});
+
+test('a patient returned to their registering hospital stays visible to the sender', async () => {
+  await seedPatient('pat-t8', 'hosp-001', wau.id);
+  await patientsDB().put({ ...(await readPatient('pat-t8')), lastVisitHospital: 'hosp-002' } as never);
+
+  const sent = await request('pat-t8', WAU, JUBA, wau);
+  await acceptTransfer(sent._id, juba);
+
+  const back = await readPatient('pat-t8');
+  expect(back.assignedDoctor).toBe(juba.id);
+  expect(filterByScope([back], scopeAt('hosp-001'))).toHaveLength(1);
+  expect(filterByScope([back], scopeAt('hosp-002'))).toHaveLength(1);
+});
+
+test('a section the sender could not read is named, so it never reads as none', async () => {
+  const dbs = createDBMock() as unknown as Record<string, () => PouchDB.Database>;
+  const prescriptions = jest.spyOn(dbs.prescriptionsDB(), 'find').mockRejectedValue(new Error('unavailable'));
+  await seedPatient('pat-t9', 'hosp-001', juba.id);
+  const summary = await buildTransferSummary('pat-t9');
+  prescriptions.mockRestore();
+  expect(summary.unavailable).toContain('medications');
+  expect(summary.unavailable).not.toContain('problems');
+});
+
+test('a summary that read everything claims nothing is missing', async () => {
+  await seedPatient('pat-t10', 'hosp-001', juba.id);
+  expect((await buildTransferSummary('pat-t10')).unavailable).toBeUndefined();
+});
+
+test('a third hospital does not push out the second', async () => {
+  const third = { facilityId: 'hosp-003', facilityName: 'Third Hospital', orgId: ORG };
+  const doctor = { id: 'user-dr.third', name: 'Dr. Third', role: 'doctor' as const };
+  await seedPatient('pat-t11', 'hosp-001', juba.id);
+  await acceptTransfer((await request('pat-t11', JUBA, WAU, juba))._id, wau);
+  await acceptTransfer((await request('pat-t11', WAU, third, wau))._id, doctor);
+
+  const patient = await readPatient('pat-t11');
+  expect(patient.assignedDoctor).toBe(doctor.id);
+  for (const hospital of ['hosp-001', 'hosp-002', 'hosp-003']) {
+    expect(filterByScope([patient], scopeAt(hospital))).toHaveLength(1);
+  }
+  expect(filterByScope([patient], scopeAt('hosp-004'))).toHaveLength(0);
+});
+
+test('ending a temporary transfer withdraws that hospital and no other', async () => {
+  await seedPatient('pat-t12', 'hosp-001', juba.id);
+  await patientsDB().put({ ...(await readPatient('pat-t12')), transferFacilityIds: ['hosp-003'] } as never);
+  const sent = await createTransferRequest({
+    patientId: 'pat-t12', patientName: 'Akech Deng', hospitalNumber: 'T-pat-t12', transferType: 'temporary', urgency: 'urgent',
+    reason: 'Weekend cover', from: { ...JUBA, providerId: juba.id, providerName: juba.name }, to: WAU,
+    hospitalId: 'hosp-001', orgId: ORG, actor: juba, expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  });
+  await acceptTransfer(sent._id, wau);
+  await applyDueTransfers(new Date(Date.now() + 120_000));
+  const back = await readPatient('pat-t12');
+  expect(filterByScope([back], scopeAt('hosp-002'))).toHaveLength(0);
+  expect(filterByScope([back], scopeAt('hosp-003'))).toHaveLength(1);
+});
+
+test('only a patient can use the list to reach a hospital', () => {
+  const lab = { type: 'lab_result', orgId: ORG, hospitalId: 'hosp-001', transferFacilityIds: ['hosp-002'] };
+  expect(filterByScope([lab], scopeAt('hosp-002'))).toHaveLength(0);
 });

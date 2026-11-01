@@ -20,10 +20,11 @@ import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { usePatientTransfers, useTransferQueue } from '@/lib/hooks/usePatientTransfers';
 import {
-  describeAssignment, isTransferOverdue,
+  describeAssignment, describeTransferSide, isTransferOverdue,
 } from '@/lib/services/patient-transfer-service';
 import { canDecideTransfer } from '@/lib/services/patient-transfer-permissions';
 import type { PatientTransferDoc } from '@/lib/db-types';
@@ -57,12 +58,37 @@ const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
   expired: { bg: 'var(--overlay-subtle)', fg: 'var(--text-muted)' },
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'transfers.statusDraft',
+  requested: 'transfers.statusRequested',
+  accepted: 'transfers.statusAccepted',
+  rejected: 'transfers.statusRejected',
+  cancelled: 'transfers.statusWithdrawn',
+  withdrawn: 'transfers.statusWithdrawn',
+  completed: 'transfers.statusCompleted',
+  expired: 'transfers.statusLapsed',
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  permanent: 'transfers.typePermanent',
+  temporary: 'transfers.typeTemporary',
+  shared_care: 'transfers.typeSharedCare',
+};
+
+const URGENCY_LABEL: Record<string, string> = {
+  routine: 'transfers.urgencyRoutine',
+  urgent: 'transfers.urgencyUrgent',
+  emergency: 'transfers.urgencyEmergency',
+};
+
 export default function TransfersPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
+  const hereFacilityId = currentUser?.hospitalId;
   const { incoming, outgoing, loading, reload } = useTransferQueue();
   const { accept: acceptLocal } = usePatientTransfers();
+  const { showToast } = useToast();
   // In the URL (?view=) so Back returns to the tab the user was on.
   const [tab, setTab] = useUrlView<Tab>(['incoming', 'outgoing'], 'incoming');
   const [search, setSearch] = useState('');
@@ -82,8 +108,9 @@ export default function TransfersPage() {
     setBusyId(transfer._id);
     setError(null);
     try {
-      await acceptLocal(transfer._id);
+      const saved = await acceptLocal(transfer._id);
       await reload();
+      if (saved?.status === 'accepted') showToast(t('transfers.acceptedWaiting'), 'success', { placement: 'corner' });
     } catch (e) {
       setError(describeError(e, t('msg.transferNotAcceptedTryAgain')));
     } finally {
@@ -127,12 +154,12 @@ export default function TransfersPage() {
         {/* ── Toolbar: title, counts, tabs, search ── */}
         <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-end justify-between gap-3 mb-3 flex-wrap">
-            <EhrPageTitle>Patient transfers</EhrPageTitle>
+            <EhrPageTitle>{t('transfers.pageTitle')}</EhrPageTitle>
             <div className="flex items-center gap-3 flex-wrap justify-end pb-0.5">
               {[
-                { label: 'Awaiting you', value: incoming.length, color: 'var(--color-warning-text)' },
-                { label: 'Overdue', value: overdueCount, color: 'var(--color-danger-500)' },
-                { label: 'Sent and open', value: outgoing.length, color: 'var(--accent-primary)' },
+                { label: t('transfers.awaitingYou'), value: incoming.length, color: 'var(--color-warning-text)' },
+                { label: t('transfers.overdue'), value: overdueCount, color: 'var(--color-danger-500)' },
+                { label: t('transfers.sentAndOpen'), value: outgoing.length, color: 'var(--accent-primary)' },
               ].map(s => (
                 <span key={s.label} className="inline-flex items-center gap-1 text-[12px]" style={{ color: 'var(--text-muted)' }}>
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
@@ -146,10 +173,10 @@ export default function TransfersPage() {
             {/* Direction is a property of the queue, not a filter on one list —
                 the two sides answer different questions ("what must I decide?"
                 vs "what am I still waiting on?"), so they get tabs. */}
-            <div role="tablist" aria-label="Transfer direction" style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            <div role="tablist" aria-label={t('transfers.direction')} style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
               {([
-                ['incoming', 'Awaiting you', incoming.length],
-                ['outgoing', 'Sent by you', outgoing.length],
+                ['incoming', t('transfers.awaitingYou'), incoming.length],
+                ['outgoing', t('transfers.sentByYou'), outgoing.length],
               ] as const).map(([key, label, count]) => (
                 <button
                   key={key}
@@ -174,7 +201,7 @@ export default function TransfersPage() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search by patient, reason, or ward…"
+                placeholder={t('transfers.searchPlaceholder')}
                 style={{
                   padding: '9px 18px', height: 38, borderRadius: 999,
                   border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)',
@@ -196,39 +223,39 @@ export default function TransfersPage() {
                 rows happen to be loaded — it stays put when a search matches
                 nothing, so the list never collapses into a bare message. */}
             <div className="appointment-card-head" aria-hidden="true">
-              <span>Patient</span>
-              <span>Requested</span>
-              <span>{tab === 'incoming' ? 'From' : 'To'}</span>
-              <span>Reason</span>
-              <span>Status</span>
+              <span>{t('transfers.colPatient')}</span>
+              <span>{t('transfers.colRequested')}</span>
+              <span>{tab === 'incoming' ? t('transfers.routeFrom') : t('transfers.routeTo')}</span>
+              <span>{t('transfers.colReason')}</span>
+              <span>{t('transfers.colStatus')}</span>
             </div>
 
             {rows.length === 0 && (
               <div className="appointment-card-empty">
                 {loading
-                  ? 'Loading transfers…'
+                  ? t('transfers.loading')
                   : search.trim()
-                    ? 'No transfers match your search'
+                    ? t('transfers.noMatch')
                     : tab === 'incoming'
-                      ? 'No transfers are waiting on your decision'
-                      : 'You have no open transfer requests'}
+                      ? t('transfers.noneIncoming')
+                      : t('transfers.noneOutgoing')}
               </div>
             )}
 
-            {rows.map(t => {
-              const overdue = isTransferOverdue(t);
-              const decide = auth ? canDecideTransfer(auth, t) : { allowed: false };
-              const tone = STATUS_TONE[t.status] || STATUS_TONE.withdrawn;
-              const counterparty = tab === 'incoming' ? t.from : t.to;
+            {rows.map(transfer => {
+              const overdue = isTransferOverdue(transfer);
+              const decide = auth ? canDecideTransfer(auth, transfer) : { allowed: false };
+              const tone = STATUS_TONE[transfer.status] || STATUS_TONE.withdrawn;
+              const counterparty = tab === 'incoming' ? transfer.from : transfer.to;
               return (
                 <div
-                  key={t._id}
+                  key={transfer._id}
                   className={`ehr-appointment-row appointment-card-row${overdue ? ' data-row--warning' : ''}`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => openChart(t)}
+                  onClick={() => openChart(transfer)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChart(t); }
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChart(transfer); }
                   }}
                 >
                   <div className="ehr-appointment-identity">
@@ -242,34 +269,34 @@ export default function TransfersPage() {
                         fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
                       }}
                     >
-                      {initials(t.patientName)}
+                      {initials(transfer.patientName)}
                     </span>
                     <div className="ehr-appointment-main appointment-card-patient">
                       <Link
-                        href={`/patients/${t.patientId}?tab=referrals`}
+                        href={`/patients/${transfer.patientId}?tab=referrals`}
                         {...stopsClickPropagation}
                       >
-                        {t.patientName || 'Patient'}
+                        {transfer.patientName || t('transfers.patientFallback')}
                       </Link>
-                      <p>{t.hospitalNumber || 'No hospital number'}</p>
+                      <p>{transfer.hospitalNumber || t('transfers.noHospitalNumber')}</p>
                     </div>
                   </div>
 
                   <div className="ehr-appointment-time">
-                    <strong>{formatWhen(t.requestedAt)}</strong>
+                    <strong>{formatWhen(transfer.requestedAt)}</strong>
                     <span style={overdue ? { color: 'var(--color-danger-500)' } : undefined}>
-                      {overdue ? 'Overdue' : t.urgency ? `${t.urgency} priority` : 'Routine'}
+                      {overdue ? t('transfers.overdue') : transfer.urgency ? t('transfers.priority', { urgency: URGENCY_LABEL[transfer.urgency] ? t(URGENCY_LABEL[transfer.urgency]) : transfer.urgency }) : t('transfers.urgencyRoutine')}
                     </span>
                   </div>
 
                   <div className="ehr-appointment-time">
-                    <strong>{describeAssignment(counterparty)}</strong>
-                    <span>{tab === 'incoming' ? 'Sending team' : 'Receiving team'}</span>
+                    <strong>{tab === 'incoming' ? t('transfers.routeFrom') : t('transfers.routeTo')} {describeTransferSide(counterparty, hereFacilityId)}</strong>
+                    <span>{tab === 'incoming' ? t('transfers.sendingTeam') : t('transfers.receivingTeam')}</span>
                   </div>
 
                   <div className="ehr-appointment-time">
-                    <strong style={{ fontWeight: 600 }}>{t.reason || 'No reason given'}</strong>
-                    <span>{t.transferType ? String(t.transferType).replace(/_/g, ' ') : 'Transfer'}</span>
+                    <strong style={{ fontWeight: 600 }}>{transfer.reason || t('transfers.noReason')}</strong>
+                    <span>{transfer.transferType ? (TYPE_LABEL[transfer.transferType] ? t(TYPE_LABEL[transfer.transferType]) : String(transfer.transferType).replace(/_/g, ' ')) : t('transfers.transferFallback')}</span>
                   </div>
 
                   <div className="flex items-center gap-2 justify-end">
@@ -277,19 +304,19 @@ export default function TransfersPage() {
                       <button
                         type="button"
                         className="btn btn-primary text-[11px] inline-flex items-center gap-1 flex-shrink-0"
-                        disabled={busyId === t._id}
-                        onClick={e => { e.stopPropagation(); accept(t); }}
-                        title="Take responsibility for this patient"
+                        disabled={busyId === transfer._id}
+                        onClick={e => { e.stopPropagation(); accept(transfer); }}
+                        title={t('transfers.takeResponsibility')}
                       >
                         <Check className="w-3 h-3" />
-                        {busyId === t._id ? 'Accepting…' : 'Accept'}
+                        {busyId === transfer._id ? t('transfers.accepting') : t('transfers.accept')}
                       </button>
                     ) : (
                       <span
                         className="px-2 py-0.5 rounded-full text-[11px] font-bold"
                         style={{ background: tone.bg, color: tone.fg, textTransform: 'capitalize' }}
                       >
-                        {t.status}
+                        {STATUS_LABEL[transfer.status] ? t(STATUS_LABEL[transfer.status]) : transfer.status}
                       </span>
                     )}
                     {overdue
@@ -309,13 +336,13 @@ export default function TransfersPage() {
           style={{ borderTop: '1px solid var(--border-light)', color: 'var(--text-muted)' }}
         >
           <ArrowRightLeft className="w-3.5 h-3.5" />
-          <span>Decided and expired transfers stay on each patient&apos;s chart.</span>
+          <span>{t('transfers.footerNote')}</span>
           <button
             type="button"
             className="underline ms-auto"
             onClick={() => router.push('/notifications?type=transfer')}
           >
-            View all transfer alerts
+            {t('transfers.viewAllAlerts')}
           </button>
         </div>
       </div>

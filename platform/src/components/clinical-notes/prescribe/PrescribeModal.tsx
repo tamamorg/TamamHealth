@@ -14,7 +14,7 @@
  * form is its own presentational component.
  */
 
-import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
+import { doseWarningText, hasSafetyStop, needsWeeklyReview, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Maximize2, X } from '@/components/icons/lucide';
 import { useRouter } from 'next/navigation';
@@ -273,9 +273,10 @@ export default function PrescribeModal({
       try {
         const { assessPrescriptionSafety } = await import('@/lib/services/prescription-service');
         const safety = await assessPrescriptionSafety(patientId, drug.name, scope);
-        stops = { allergyWarnings: [...severeAllergyWarnings, ...(safety.allergyWarnings || [])], interactionWarnings: safety.interactionWarnings };
+        stops = { allergyWarnings: [...severeAllergyWarnings, ...(safety.allergyWarnings || [])], interactionWarnings: safety.interactionWarnings, weeklyOnly: safety.weeklyOnly };
       } catch { /* the save re-runs the assessment */ }
     }
+    if (needsWeeklyReview(drug.name, draft.instructions)) stops = { ...stops, weeklyOnly: true };
     if (hasSafetyStop(stops)) {
       const reason = await confirmPrompt({
         ...safetyStopPrompt(t, drug.name, stops),
