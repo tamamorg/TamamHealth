@@ -332,23 +332,20 @@ export default function PatientDetailPage() {
 
   const scopedPatient = patients.find(p => p._id === id);
 
-  // The patients list is scoped to the viewer's facility, so a patient who was
-  // registered at another facility in the same organisation (referred in, an
-  // appointment booked here, a shared record) isn't in it — the chart would
-  // wrongly show "Patient not found". Fetch such a patient directly by id, but
-  // gate it through the canonical `getPatientById(id, scope)` so tenant
-  // isolation still holds (no cross-org PHI) using the SAME `filterByScope`
-  // every other read path uses, rather than a bespoke check.
+  // The patients list is scoped to the viewer's facility AND leaves out records
+  // linked as duplicates, so a record opened by its URL can be absent from it:
+  // a duplicate someone still has bookmarked, or a patient the list otherwise
+  // misses. Fetch such a patient directly by id, but gate it through the
+  // canonical `getPatientById(id, scope)` so the SAME `filterByScope` every
+  // other read path uses decides who may see it.
   //
-  // The scope passed here is deliberately org + role only, with `hospitalId`
-  // dropped — this is what preserves the "referred-in / cross-facility"
-  // lookup this fallback exists for. `filterByScope` only engages its
-  // facility narrowing when `scope.hospitalId` is set, so omitting it here
-  // limits enforcement to the org boundary, exactly like before, while now
-  // also correctly rejecting a doc with no `orgId` at all (the old check
-  // treated a missing `orgId` as an automatic pass for every viewer) and
-  // routing super_admin/government through `filterByScope`'s own bypass
-  // instead of a second, separately-maintained "isNational" check.
+  // The scope is the viewer's full real one (org, home facility, extra
+  // facilities, role, user). `filterByScope` narrows to the entitled facilities
+  // whenever the role is facility-bound, and `entitlementFor` returns an EMPTY
+  // list for a facility-bound account that is handed no facility, so a scope
+  // stripped of `hospitalId` does not skip narrowing: it drops every record,
+  // which is what showed "Patient not found" for a same-facility duplicate.
+  // A patient outside the viewer's facilities therefore stays not found.
   const [fallbackPatient, setFallbackPatient] = useState<PatientDoc | null>(null);
   const [fallbackChecked, setFallbackChecked] = useState(false);
   useEffect(() => {
@@ -356,18 +353,16 @@ export default function PatientDetailPage() {
     setFallbackPatient(null);
     setFallbackChecked(false);
     if (!id || loading || scopedPatient) { setFallbackChecked(true); return; }
-    const role = currentUser?.role;
-    if (!role) { setFallbackChecked(true); return; }
-    const orgId = currentUser?.orgId;
+    if (!scope) { setFallbackChecked(true); return; }
     (async () => {
       const { getPatientById } = await import('@/lib/services/patient-service');
-      const doc = await getPatientById(id, { orgId, role });
+      const doc = await getPatientById(id, scope);
       if (cancelled) return;
       setFallbackPatient(doc);
       setFallbackChecked(true);
     })();
     return () => { cancelled = true; };
-  }, [id, loading, scopedPatient, currentUser?.orgId, currentUser?.role]);
+  }, [id, loading, scopedPatient, scope]);
 
   const patient = scopedPatient ?? (fallbackPatient?._id === id ? fallbackPatient : undefined);
   const { records, loading: recordsLoading, reload: reloadRecords } = useMedicalRecords(patient?._id);

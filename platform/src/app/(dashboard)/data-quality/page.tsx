@@ -7,6 +7,8 @@ import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Wifi, Users, TrendingUp, AlertTriangle } from '@/components/icons/lucide';
 import { FilterTabs } from '@/components/filters';
+import DuplicateReviewPanel from '@/components/patients/DuplicateReviewPanel';
+import { useDuplicateReview } from '@/components/patients/useDuplicateReview';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import type { DataCompletenessEntry } from '@/lib/services/data-quality-service';
 
@@ -52,6 +54,10 @@ export default function DataQualityPage() {
   const searchParams = useSearchParams();
   const { data, loading } = useDataQuality();
   const { alerts, loading: alertsLoading } = useSurveillance();
+  // Duplicate review runs on the viewer's own DataScope, so an organisation or
+  // facility role reviews the records it actually holds. Called before the
+  // early return below to keep the hook order stable.
+  const duplicateReview = useDuplicateReview();
 
   const viewParam = searchParams?.get('view');
   const view: View = (viewParam === 'timeliness' || viewParam === 'outliers' || viewParam === 'scores') ? viewParam : 'completeness';
@@ -318,6 +324,12 @@ export default function DataQualityPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Duplicate patient records: the review that used to live only on the
+            platform operator's /admin/data, which holds no records. */}
+        <div className="mt-6" data-tour="dq-duplicate-review">
+          <DuplicateReviewPanel review={duplicateReview} standalone />
         </div>
     </main>
   );

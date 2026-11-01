@@ -93,9 +93,12 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       '/org-admin/branding', '/org-admin/settings', '/org-admin/pricing',
       '/org-admin/analytics',
       '/facility-settings',
-      // No IT/system console: `/it`, `/system-admin`, `/data-quality` and the
-      // conflict queue were removed 2026-08-22. Running a tenant is not
-      // operating the platform — those screens edit apps, extensions,
+      // No IT/system console: `/it`, `/system-admin` and the conflict queue
+      // were removed 2026-08-22. (`/data-quality` is the exception, restored
+      // for the duplicate-record review: this role is in
+      // PATIENT_DUPLICATE_ROLES, and `/admin/data`, where that review used to
+      // live, is the platform operator's console and holds no records.)
+      // Running a tenant is not operating the platform. The removed screens edit apps, extensions,
       // privileges, metadata and global properties, which are the platform
       // operator's job, and an org admin who opened them could change
       // behaviour for every tenant. Removing the route is what also empties
@@ -118,6 +121,7 @@ export const ROLE_ROUTE_TABLE: Readonly<Record<UserRole, RoleRouteConfig>> = {
       // going on in those hospitals" without handing the role a station's
       // controls.
       '/facility-overview', '/lab',
+      '/data-quality',
       '/transfers',
     ],
     // Org admins land on the Facility Operations dashboard — the single home

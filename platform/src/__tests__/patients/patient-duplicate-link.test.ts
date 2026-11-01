@@ -193,3 +193,31 @@ describe('PHI catalog', () => {
     expect(fields).not.toContain('duplicateOf');
   });
 });
+
+
+describe('a duplicate opened by its URL (chart fallback read)', () => {
+  // PatientDetailPage falls back to getPatientById when the scoped list does
+  // not hold the id, and a linked duplicate is never in that list. It must pass
+  // the viewer's FULL scope: with hospitalId dropped, entitlementFor gives a
+  // facility-bound doctor an empty facility list and filterByScope drops the
+  // record, so a same-facility duplicate read "Patient not found".
+  const DOCTOR: DataScope = { orgId: ORG, hospitalId: 'h-1', facilityIds: undefined, role: 'doctor', userId: 'doc-1' };
+
+  beforeEach(async () => {
+    await seed('keep');
+    await seed('dupe', { duplicateOf: 'keep', duplicateMarkedAt: '2026-02-01T00:00:00.000Z' } as Partial<PatientDoc>);
+    await seed('elsewhere', { registrationHospital: 'h-2', hospitalNumber: 'JTH-x' });
+  });
+
+  it('opens a same-facility duplicate for a facility-bound doctor', async () => {
+    expect((await getPatientById('dupe', DOCTOR))?._id).toBe('dupe');
+  });
+
+  it('does not open a patient registered at another facility', async () => {
+    expect(await getPatientById('elsewhere', DOCTOR)).toBeNull();
+  });
+
+  it('the old org+role-only scope found nothing, which is the bug', async () => {
+    expect(await getPatientById('dupe', { orgId: ORG, role: 'doctor' })).toBeNull();
+  });
+});

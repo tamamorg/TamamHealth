@@ -198,6 +198,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
       { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'CLINICAL SERVICES' },
       { href: '/reports', label: 'Reports', icon: ClipboardCheck, section: 'INTELLIGENCE & REPORTING' },
       { href: '/org-admin/analytics', label: 'Usage Analytics', icon: Activity, section: 'INTELLIGENCE & REPORTING' },
+      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'INTELLIGENCE & REPORTING' },
       { href: '/equipment', label: 'Assets', icon: Package, section: 'RISK, ASSETS & PREPAREDNESS' },
       { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'RISK, ASSETS & PREPAREDNESS' },
       // The six station workspaces that sat here from 2026-08-19 (Front Desk,

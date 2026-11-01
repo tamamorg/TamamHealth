@@ -3468,6 +3468,7 @@ const en: TranslationMap = {
   'lab.confirmCriticalResultDesc': 'Critical results send a high-priority alert to the ordering doctor. Check the values below before confirming.',
   'lab.countToday': '{{count}} today',
   'lab.createOrderFailed': 'Lab order not created. Try again.',
+  'lab.orderNotBilled': 'Lab bill not raised for {{tests}}. Set the price in the fee schedule or tell billing.',
   'lab.creating': 'Creating…',
   'lab.critical': 'CRITICAL',
   'lab.criticalLabel': 'Critical',

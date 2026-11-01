@@ -15,81 +15,29 @@ import {
 import { SaTable } from '@/components/admin/sa-ui';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { apiFetch } from '@/lib/api-fetch';
-import {
-  getAllPatients, isMarkedDuplicate, markPatientDuplicate, clearPatientDuplicate,
-} from '@/lib/services/patient-service';
-import { PATIENT_DUPLICATE_ROLES } from '@/lib/sync/write-permissions';
-import type { PatientDoc } from '@/lib/db-types';
-import Modal from '@/components/Modal';
-import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
-import FormField from '@/components/overlay/FormField';
-import { FormError } from '@/components/overlay/FormNotices';
-import { useToast } from '@/components/Toast';
-import { useAuth } from '@/lib/context';
-import { useTranslation } from '@/lib/i18n/useTranslation';
-import { describeError } from '@/lib/user-facing-error';
-import { formatDateTime } from '@/lib/format-utils';
+import DuplicateReviewPanel from '@/components/patients/DuplicateReviewPanel';
+import { useDuplicateReview } from '@/components/patients/useDuplicateReview';
 import { ArrowRight, Copy, BarChart3, AlertTriangle, GitCompareArrows } from '@/components/icons/lucide';
 import { useNow } from '@/lib/hooks/useNow';
-import { useDataScope } from '@/lib/hooks/useDataScope';
 
 const ROW_CAP = 50;
-
-function patientName(p: PatientDoc): string {
-  const name = [p.firstName, p.surname].filter(Boolean).join(' ').trim();
-  return name || p.hospitalNumber || p._id;
-}
-
-function normPhone(phone?: string): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/[^\d]/g, '');
-  return digits.length >= 7 ? digits : null;
-}
-
-interface DupPair {
-  a: PatientDoc;
-  b: PatientDoc;
-  basis: string;
-}
 
 export default function AdminDataGovernancePage() {
   const router = useRouter();
   const { hospitals, loading: hospitalsLoading } = useHospitals();
-  const scope = useDataScope();
-
-  const { t } = useTranslation();
-  const { currentUser } = useAuth();
-  const { showToast } = useToast();
-  // Every record in scope, duplicates included; `patients` below is the set the
-  // scans run on, so a linked duplicate stops being a candidate or a count.
-  const [allPatients, setAllPatients] = useState<PatientDoc[]>([]);
-  const patients = useMemo(() => allPatients.filter(p => !isMarkedDuplicate(p)), [allPatients]);
-  const linked = useMemo(() => allPatients.filter(isMarkedDuplicate), [allPatients]);
-  const canMark = !!currentUser && PATIENT_DUPLICATE_ROLES.includes(currentUser.role);
-  const [marking, setMarking] = useState<DupPair | null>(null);
-  const [keepId, setKeepId] = useState('');
-  const [reason, setReason] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [markError, setMarkError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // The duplicate review itself lives in DuplicateReviewPanel, shared with
+  // /data-quality (the page every org-level records role can open). This page
+  // keeps the review for the platform operator and reads the same scan for the
+  // other sections.
+  const review = useDuplicateReview();
+  const { patients } = review;
+  const loading = review.loading;
   const [pendingConflicts, setPendingConflicts] = useState<number | null>(null);
   const [conflictsError, setConflictsError] = useState(false);
 
   // Section switching is now URL-backed (?tab=) so every section is
   // deep-linkable, replacing the old page-local saside rail.
   const [activeSection, setActiveSection] = useSadbTab('duplicates');
-
-  const loadPatients = useCallback(async () => {
-    if (!scope) return;
-    try {
-      const all = await getAllPatients(scope, { includeDuplicates: true });
-      setAllPatients(all);
-    } catch (err) {
-      console.error('Failed to load patients for data governance', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [scope]);
 
   const loadConflicts = useCallback(async () => {
     try {
@@ -103,65 +51,7 @@ export default function AdminDataGovernancePage() {
     }
   }, []);
 
-  useEffect(() => { loadPatients(); }, [loadPatients]);
   useEffect(() => { loadConflicts(); }, [loadConflicts]);
-
-  const hospitalName = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const h of hospitals) map.set(h._id, h.name);
-    return map;
-  }, [hospitals]);
-
-  // ── Duplicate candidates: group by (surname+firstName+dob) OR identical phone ──
-  // Known scale limit: this expands each match group pairwise (O(n²) within a
-  // group), which is fine for the small groups a name/DOB or phone collision
-  // produces but would not scale to a facility uploading a large duplicate
-  // batch at once. Flagged, not fixed, here.
-  const duplicates = useMemo<DupPair[]>(() => {
-    const pairKeys = new Set<string>();
-    const pairs: DupPair[] = [];
-
-    const addGroupPairs = (group: PatientDoc[], basis: string) => {
-      for (let i = 0; i < group.length; i++) {
-        for (let j = i + 1; j < group.length; j++) {
-          const key = [group[i]._id, group[j]._id].sort().join('|');
-          if (pairKeys.has(key)) continue;
-          pairKeys.add(key);
-          pairs.push({ a: group[i], b: group[j], basis });
-        }
-      }
-    };
-
-    const byNameDob = new Map<string, PatientDoc[]>();
-    const byPhone = new Map<string, PatientDoc[]>();
-
-    for (const p of patients) {
-      const surname = (p.surname || '').trim().toLowerCase();
-      const first = (p.firstName || '').trim().toLowerCase();
-      const dob = (p.dateOfBirth || '').trim();
-      if (surname && first && dob) {
-        const key = `${surname}|${first}|${dob}`;
-        const arr = byNameDob.get(key) || [];
-        arr.push(p);
-        byNameDob.set(key, arr);
-      }
-      const phone = normPhone(p.phone);
-      if (phone) {
-        const arr = byPhone.get(phone) || [];
-        arr.push(p);
-        byPhone.set(phone, arr);
-      }
-    }
-
-    for (const group of byNameDob.values()) {
-      if (group.length > 1) addGroupPairs(group, 'Name + DOB match');
-    }
-    for (const group of byPhone.values()) {
-      if (group.length > 1) addGroupPairs(group, 'Same phone number');
-    }
-
-    return pairs;
-  }, [patients]);
 
   // ── Missing / invalid value scan ──
   // The clock is an input, not something read mid-render: see useNow.
@@ -190,7 +80,7 @@ export default function AdminDataGovernancePage() {
 
   // ── Completeness by facility ──
   const completeness = useMemo(() => {
-    const byHospital = new Map<string, PatientDoc[]>();
+    const byHospital = new Map<string, typeof patients>();
     for (const p of patients) {
       const hid = p.registrationHospital;
       if (!hid) continue;
@@ -215,42 +105,10 @@ export default function AdminDataGovernancePage() {
 
   const busy = loading || hospitalsLoading;
 
-  const openMark = (pair: DupPair) => { setMarking(pair); setKeepId(pair.a._id); setReason(''); setMarkError(null); };
-  const closeMark = () => { if (!saving) setMarking(null); };
-  const actor = () => ({ id: currentUser?._id, name: currentUser?.name || currentUser?.username, role: currentUser!.role });
-
-  const confirmMark = async () => {
-    if (!marking || !scope || !currentUser) return;
-    const duplicate = keepId === marking.a._id ? marking.b : marking.a;
-    setSaving(true);
-    setMarkError(null);
-    try {
-      await markPatientDuplicate(duplicate._id, keepId, reason, actor(), scope);
-      showToast(t('dup.marked', { name: patientName(duplicate) }), 'success');
-      setMarking(null);
-      await loadPatients();
-    } catch (err) {
-      setMarkError(describeError(err, t('msg.changeNotSavedTryAgain')));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const undoLink = async (p: PatientDoc) => {
-    if (!scope || !currentUser) return;
-    try {
-      await clearPatientDuplicate(p._id, actor(), scope);
-      showToast(t('dup.undone', { name: patientName(p) }), 'success');
-      await loadPatients();
-    } catch (err) {
-      showToast(describeError(err, t('dup.notUndone')), 'error');
-    }
-  };
-
   const railGroups = [{
     title: 'Data Governance',
     items: [
-      { id: 'duplicates', label: 'Duplicate review', icon: Copy, count: busy ? '…' : duplicates.length },
+      { id: 'duplicates', label: 'Duplicate review', icon: Copy, count: busy ? '…' : review.candidates.length },
       { id: 'completeness', label: 'Completeness', icon: BarChart3, count: busy ? '…' : completeness.rows.length },
       { id: 'invalid', label: 'Invalid values', icon: AlertTriangle, count: validity.missingAny },
       { id: 'reconciliation', label: 'Reconciliation', icon: GitCompareArrows, count: conflictsError ? 0 : pendingConflicts ?? '…' },
@@ -262,139 +120,7 @@ export default function AdminDataGovernancePage() {
       <SadbShell groups={railGroups} active={activeSection} onSelect={setActiveSection}>
         {activeSection === 'duplicates' && (
           <>
-            <SadbPanelHeader
-              title={t('dup.panelTitle')}
-              note={t('dup.panelNote')}
-              tag={busy ? undefined : (duplicates.length > 0 ? `${duplicates.length} candidate pair${duplicates.length === 1 ? '' : 's'}` : 'No duplicates')}
-              tagTone={busy ? undefined : (duplicates.length > 0 ? 'yellow' : 'green')}
-            />
-            <SadbCard meta={busy ? undefined : `${patients.length.toLocaleString()} patients scanned`}>
-              <SaTable
-                columns={[
-                  { label: 'Patient A', w: 1.3 }, { label: 'Patient B', w: 1.3 },
-                  { label: 'Match basis', w: 1.6 }, { label: 'Facility', w: 1.2 },
-                  ...(canMark ? [{ label: '', w: 1 }] : []),
-                ]}
-                empty={busy ? 'Loading…' : 'No duplicate candidates detected.'}
-                minWidth={680}
-              >
-                {duplicates.slice(0, ROW_CAP).map((pair) => {
-                  const { a, b, basis } = pair;
-                  const facA = (a.registrationHospital && hospitalName.get(a.registrationHospital)) || a.registrationHospital || '—';
-                  const facB = (b.registrationHospital && hospitalName.get(b.registrationHospital)) || b.registrationHospital || '—';
-                  return (
-                    <tr key={`${a._id}|${b._id}`}>
-                      <td><strong>{patientName(a)}</strong> <span style={{ color: 'var(--text-muted)' }}>{a.hospitalNumber}</span></td>
-                      <td><strong>{patientName(b)}</strong> <span style={{ color: 'var(--text-muted)' }}>{b.hospitalNumber}</span></td>
-                      <td>{basis}</td>
-                      <td>{facA === facB ? facA : `${facA} / ${facB}`}</td>
-                      {canMark && (
-                        <td>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => openMark(pair)}>
-                            {t('dup.mark')}
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </SaTable>
-              {!busy && duplicates.length > ROW_CAP && (
-                <p className="sadb-card-meta" style={{ padding: '10px 14px', margin: 0, borderTop: '1px solid var(--border-light)' }}>
-                  Showing first {ROW_CAP} of {duplicates.length}.
-                </p>
-              )}
-            </SadbCard>
-
-            <SadbCard title={t('dup.linkedTitle')} meta={busy ? undefined : t('dup.linkedMeta', { count: linked.length })}>
-              <SaTable
-                columns={[
-                  { label: t('dup.colDuplicate'), w: 1.3 }, { label: t('dup.colKept'), w: 1.3 },
-                  { label: t('dup.colReason'), w: 1.6 }, { label: t('dup.colMarked'), w: 1.2 },
-                  ...(canMark ? [{ label: '', w: 0.8 }] : []),
-                ]}
-                empty={busy ? 'Loading…' : t('dup.noneLinked')}
-                minWidth={680}
-              >
-                {linked.map(p => {
-                  const kept = allPatients.find(x => x._id === p.duplicateOf);
-                  return (
-                    <tr key={p._id}>
-                      <td><strong>{patientName(p)}</strong> <span style={{ color: 'var(--text-muted)' }}>{p.hospitalNumber}</span></td>
-                      <td>
-                        {kept
-                          ? <><strong>{patientName(kept)}</strong> <span style={{ color: 'var(--text-muted)' }}>{kept.hospitalNumber}</span></>
-                          : <span style={{ color: 'var(--text-muted)' }}>{p.duplicateOf}</span>}
-                      </td>
-                      <td>{p.duplicateReason || '—'}</td>
-                      <td>
-                        {p.duplicateMarkedAt ? formatDateTime(p.duplicateMarkedAt) : '—'}
-                        {p.duplicateMarkedByName ? <span style={{ color: 'var(--text-muted)' }}> {p.duplicateMarkedByName}</span> : null}
-                      </td>
-                      {canMark && (
-                        <td>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => undoLink(p)}>
-                            {t('dup.undo')}
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </SaTable>
-            </SadbCard>
-
-            {marking && (
-              <Modal onClose={closeMark} size="sm" labelledBy="dup-mark-title" describedBy="dup-mark-desc">
-                <DialogFrame busy={saving}>
-                  <DialogHeader titleId="dup-mark-title" title={t('dup.dialogTitle')} onClose={closeMark} />
-                  <DialogBody tight>
-                    <p id="dup-mark-desc">{t('dup.dialogIntro')}</p>
-                    <fieldset style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
-                      <legend style={{ fontWeight: 600, marginBottom: 6 }}>{t('dup.keepLabel')}</legend>
-                      {[marking.a, marking.b].map(p => (
-                        <label key={p._id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', textTransform: 'none' }}>
-                          <input
-                            type="radio"
-                            name="dup-keep"
-                            checked={keepId === p._id}
-                            onChange={() => setKeepId(p._id)}
-                          />
-                          <span>{t('dup.keepOption', { name: patientName(p), number: p.hospitalNumber || '—' })}</span>
-                        </label>
-                      ))}
-                    </fieldset>
-                    <FormField id="dup-mark-reason" label={t('dup.reasonLabel')} required className="mt-3">
-                      {control => (
-                        <input
-                          {...control}
-                          data-modal-initial-focus
-                          className="fs-input"
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                          placeholder={t('dup.reasonPlaceholder')}
-                        />
-                      )}
-                    </FormField>
-                    <p className="mt-3" style={{ color: 'var(--text-muted)' }}>{t('dup.notMoved')}</p>
-                    {markError && <FormError message={markError} />}
-                  </DialogBody>
-                  <DialogFooter>
-                    <button type="button" className="btn btn-secondary" disabled={saving} onClick={closeMark}>
-                      {t('dup.cancel')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={saving || reason.trim().length === 0}
-                      onClick={confirmMark}
-                    >
-                      {saving ? t('dup.saving') : t('dup.confirm')}
-                    </button>
-                  </DialogFooter>
-                </DialogFrame>
-              </Modal>
-            )}
+            <DuplicateReviewPanel review={review} />
           </>
         )}
 
