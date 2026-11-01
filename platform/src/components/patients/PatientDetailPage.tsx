@@ -41,7 +41,8 @@ import { usePatientHandoff } from '@/lib/hooks/usePatientHandoff';
 
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
-import { TransferBanner, TransferredRecords } from '@/components/patients/TransferHistoryPanel';
+import { TransferArriving, TransferBanner, TransferredRecords } from '@/components/patients/TransferHistoryPanel';
+import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import CareAlertsBanner from '@/components/patients/CareAlertsBanner';
 import DuplicateRecordBanner from '@/components/patients/DuplicateRecordBanner';
 import { useProblems } from '@/lib/hooks/useProblems';
@@ -218,6 +219,7 @@ export default function PatientDetailPage() {
     contentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
   }, [activeTab]);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [messageSubject, setMessageSubject] = useState('Follow-up from your care team');
   const [messageBody, setMessageBody] = useState('');
   const [messageChannel, setMessageChannel] = useState<'app' | 'sms' | 'both'>('app');
@@ -654,7 +656,7 @@ export default function PatientDetailPage() {
       <>
         <main className="page-container flex items-center justify-center">
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {stillResolving ? t('status.loading') : t('patient.notFound')}
+            {stillResolving ? t('status.loading') : <TransferArriving patientId={id ?? ''} fallback={t('patient.notFound')} />}
           </p>
         </main>
       </>
@@ -1007,7 +1009,7 @@ export default function PatientDetailPage() {
                 onOrders={() => (canOrderLabs ? openLabOrder() : selectTab('labs'))}
                 onExchange={() => (canManageReferrals ? setShowReferModal(true) : selectTab('referrals'))}
                 onTransfer={currentUser && hasTransferCapability(currentUser.role, 'patient.transfer.request')
-                  ? () => router.push(`/transfers/new?patient=${encodeURIComponent(patient._id)}`)
+                  ? () => setShowTransfer(true)
                   : undefined}
                 onEdit={openEditModal}
                 onStartVisit={canCheckInAppointments ? () => { setShowStartVisit(true); bringPageWorkspace('startVisit'); } : undefined}
@@ -1243,6 +1245,7 @@ export default function PatientDetailPage() {
       {showDeceasedModal && patient && <PatientDeceasedModal deceasedSubmitting={deceasedSubmitting} setShowDeceasedModal={setShowDeceasedModal} patient={patient} deceasedDateInput={deceasedDateInput} setDeceasedDateInput={setDeceasedDateInput} handleToggleDeceased={handleToggleDeceased} />}
 
       {/* Header action modals — open in place, pre-filled with this patient. */}
+      {showTransfer && <TransferPatientModal patient={patient} onClose={() => setShowTransfer(false)} />}
       {showOrderLabModal && (
         <LabOrderModal
           onClose={() => setShowOrderLabModal(false)}

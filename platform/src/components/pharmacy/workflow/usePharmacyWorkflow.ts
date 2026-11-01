@@ -55,6 +55,8 @@ export interface SafetyReport {
   interactions: InteractionCheckResult | null;
   duplicates: string[];
   loading: boolean;
+  /** The check itself failed, so an empty list here means nothing. */
+  failed?: boolean;
 }
 
 export function usePharmacyWorkflow(
@@ -130,7 +132,7 @@ export function usePharmacyWorkflow(
         });
       } catch (err) {
         console.error('[pharmacy-workflow] safety check failed; review by hand', err);
-        if (!cancelled) setSafety(s => ({ ...s, loading: false }));
+        if (!cancelled) setSafety(s => ({ ...s, loading: false, failed: true }));
       }
     })();
     return () => { cancelled = true; };
@@ -140,7 +142,8 @@ export function usePharmacyWorkflow(
 
   /** Anything the pharmacist must look at before clearing. */
   const hasSafetySignal = useMemo(
-    () => safety.allergyAlerts.length > 0
+    () => Boolean(safety.failed)
+      || safety.allergyAlerts.length > 0
       || safety.duplicates.length > 0
       || (safety.interactions?.interactions?.length ?? 0) > 0,
     [safety],

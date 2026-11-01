@@ -619,6 +619,8 @@ export const PATIENT_CARE_TEAM_FIELDS = [
   'assignmentAcceptedByName', 'assignmentSource', 'assignmentTransferId',
   'assignedNurse', 'assignedNurseName',
   'assignedNurseAt', 'assignedNurseBy', 'assignedNurseByName', 'careTeam',
+  // Who may read the chart: only a completed transfer may widen it.
+  'transferFacilityIds',
   // Lab / pharmacy / radiology / nutrition routing — reception's, like the rest.
   'stationAssignments',
 ] as const;

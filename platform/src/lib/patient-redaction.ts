@@ -46,7 +46,7 @@ export const PATIENT_ROUTE_PROTECTED_FIELDS = [
   'orgId', 'countryId', 'registrationHospital', 'geocodeId',
   // Sibling routing fields filterByScope reads for facility matching; a
   // patient document must not be able to steer its own visibility.
-  'toHospitalId', 'fromHospitalId', 'recipientHospitalId', 'facilityId',
+  'toHospitalId', 'fromHospitalId', 'recipientHospitalId', 'facilityId', 'transferFacilityIds',
 ] as const;
 
 type Rec = Record<string, unknown>;

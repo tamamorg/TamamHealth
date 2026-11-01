@@ -41,13 +41,87 @@ function normalize(name: string): string {
 function interactionName(name: string): string {
   return normalize(name)
     .replace(/\bphenobarbitone\b/g, 'phenobarbital')
-    .replace(/\biron\b/g, 'ferrous');
+    .replace(/\biron\b/g, 'ferrous')
+    .replace(/\bsulphate\b/g, 'sulfate')
+    .replace(/\b(co-trimoxazole|septrin|bactrim|sulfamethoxazole[-/ +]+trimethoprim|trimethoprim[-/ +]+sulfamethoxazole)\b/g, 'cotrimoxazole')
+    .replace(/\b(coartem|artemether[-/ +]+lumefantrine)\b/g, 'artemether-lumefantrine')
+    .replace(/\b(co-amoxiclav|augmentin)\b/g, 'amoxicillin');
 }
 
 // Known drug interactions database
 // This covers the most clinically significant interactions for medications
 // commonly available in South Sudanese hospital pharmacies.
 const INTERACTION_DATABASE: DrugInteraction[] = [
+  {
+    drug1: 'warfarin',
+    drug2: 'cotrimoxazole',
+    severity: 'serious',
+    description: 'Cotrimoxazole markedly raises warfarin levels, risking haemorrhage.',
+    clinicalAdvice: 'Avoid if possible. If essential, reduce the warfarin dose and check INR within 3 days.',
+  },
+  {
+    drug1: 'warfarin',
+    drug2: 'ciprofloxacin',
+    severity: 'serious',
+    description: 'Ciprofloxacin can raise warfarin levels and INR.',
+    clinicalAdvice: 'Check INR within 3 days of starting and after stopping.',
+  },
+  {
+    drug1: 'warfarin',
+    drug2: 'fluconazole',
+    severity: 'serious',
+    description: 'Fluconazole inhibits warfarin metabolism, raising INR.',
+    clinicalAdvice: 'Check INR within 3 days and reduce the warfarin dose if needed.',
+  },
+  {
+    drug1: 'warfarin',
+    drug2: 'rifampicin',
+    severity: 'serious',
+    description: 'Rifampicin strongly reduces warfarin levels, risking clots.',
+    clinicalAdvice: 'Monitor INR closely and adjust the dose during and after treatment.',
+  },
+  {
+    drug1: 'warfarin',
+    drug2: 'aspirin',
+    severity: 'serious',
+    description: 'Combined antiplatelet and anticoagulant effect raises bleeding risk.',
+    clinicalAdvice: 'Give together only with a clear indication, and monitor for bleeding.',
+  },
+  {
+    drug1: 'warfarin',
+    drug2: 'ibuprofen',
+    severity: 'serious',
+    description: 'NSAIDs raise bleeding risk with warfarin, especially from the stomach.',
+    clinicalAdvice: 'Avoid. Paracetamol is the safer analgesic.',
+  },
+  {
+    drug1: 'warfarin',
+    drug2: 'diclofenac',
+    severity: 'serious',
+    description: 'NSAIDs raise bleeding risk with warfarin, especially from the stomach.',
+    clinicalAdvice: 'Avoid. Paracetamol is the safer analgesic.',
+  },
+  {
+    drug1: 'methotrexate',
+    drug2: 'ibuprofen',
+    severity: 'serious',
+    description: 'NSAIDs reduce methotrexate clearance, risking toxicity.',
+    clinicalAdvice: 'Avoid with high doses. With low weekly doses, monitor blood count and renal function.',
+  },
+  {
+    drug1: 'methotrexate',
+    drug2: 'diclofenac',
+    severity: 'serious',
+    description: 'NSAIDs reduce methotrexate clearance, risking toxicity.',
+    clinicalAdvice: 'Avoid with high doses. With low weekly doses, monitor blood count and renal function.',
+  },
+  {
+    drug1: 'methotrexate',
+    drug2: 'aspirin',
+    severity: 'serious',
+    description: 'Aspirin reduces methotrexate clearance, risking toxicity.',
+    clinicalAdvice: 'Avoid with high doses. With low weekly doses, monitor blood count and renal function.',
+  },
   // === CONTRAINDICATED ===
   {
     drug1: 'methotrexate',
@@ -342,8 +416,6 @@ function medicationForAllergy(medication: string, allergy: string): string {
   return med.replace(/\bsul(f|ph)ates?\b/g, '').trim() || med;
 }
 
-const NO_ALLERGY_SENTINELS = ['none', 'nkda', 'no known', 'nil', 'n/a', 'na'];
-
 /**
  * Cross-check a list of medications against a patient's recorded allergies.
  * Class-aware (penicillin allergy flags amoxicillin, etc.).
@@ -353,7 +425,7 @@ export function checkAllergies(medications: string[], allergies: string[]): Alle
   const meds = (medications || []).filter(Boolean);
   const allgs = (allergies || [])
     .filter(Boolean)
-    .filter(a => !NO_ALLERGY_SENTINELS.some(s => normalize(a) === s || normalize(a).startsWith(s)));
+    .filter(a => !isNoAllergySentinel(a));
   for (const allergy of allgs) {
     const targets = allergyTargets(allergy);
     for (const med of meds) {

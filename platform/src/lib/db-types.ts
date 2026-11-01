@@ -3163,9 +3163,8 @@ export interface PatientTransferAssignment {
 }
 
 /**
- * The safety checklist the sender works through before a transfer can be sent.
- * Items are recorded individually (not as one "I confirm" tick) so the record
- * shows exactly what was reviewed. `required` items block sending.
+ * A hand-off checklist item. The checklist was removed on 2026-10-31; this
+ * only describes what older transfer records still hold.
  */
 export interface PatientTransferChecklistItem {
   key: string;
@@ -3198,6 +3197,10 @@ export interface PatientTransferSummary {
   latestVitals?: PatientTransferVitals;
   /** Newest first. A receiving hospital does not hold the sender's lab records. */
   recentResults?: PatientTransferResult[];
+  /** The sending device had not finished its first sync, so "none" may mean "not here yet". */
+  senderStillSyncing?: boolean;
+  /** Sections the sending device could not read: not known, as opposed to none. */
+  unavailable?: ('problems' | 'medications' | 'vitals' | 'results')[];
 }
 
 export interface PatientTransferVitals {
@@ -3247,6 +3250,7 @@ export interface PatientTransferDoc extends BaseDoc {
   handoffNotes?: string;
   /** Clinical snapshot captured at request time (see PatientTransferSummary). */
   summary?: PatientTransferSummary;
+  /** Retired: present on older records only, no longer written or shown. */
   checklist?: PatientTransferChecklistItem[];
 
   // ── Actors ──

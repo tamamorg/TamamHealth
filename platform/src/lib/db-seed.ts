@@ -50,7 +50,7 @@ import {
   DEFAULT_ORGANIZATIONS,
   PUBLIC_ORG_ID as SEED_PUBLIC_ORG_ID,
 } from './seed-organizations';
-import { DEFAULT_TRANSFER_CHECKLIST, describeAssignment } from './services/patient-transfer-service';
+import { describeTransferRoute } from './services/patient-transfer-service';
 import { DEMO_HOSPITALS, DEMO_USER_PROFILES, type SeedUserRole, type SeedUserProfile } from './seed-demo-roster';
 
 // Default org IDs + the organizations themselves now live in
@@ -2351,13 +2351,12 @@ async function seedDatabaseExclusive(): Promise<void> {
         _id: x.id, type: 'patient_transfer', patientId: x.patientId, patientName: x.patientName,
         hospitalNumber: x.hospitalNumber, transferType: 'permanent', status: 'requested', urgency: x.urgency,
         from, to, reason: x.reason, summary: x.summary,
-        checklist: DEFAULT_TRANSFER_CHECKLIST.map(item => ({ ...item, done: true })),
         requestedById: x.requester.id, requestedByName: x.requester.name, requestedByRole: x.requester.role,
         requestedAt: now, autoCompleteOnEffectiveDate: true, physicalStatus: 'not_scheduled',
         transport: { status: 'not_requested' },
         events: [{
           id: `${x.id}-requested`, kind: 'TRANSFER_REQUESTED',
-          message: `Transfer requested: ${describeAssignment(from)} → ${describeAssignment(to)}`,
+          message: `Transfer requested: ${describeTransferRoute({ from, to, hospitalId: from.facilityId })}`,
           actorId: x.requester.id, actorName: x.requester.name, actorRole: x.requester.role,
           createdAt: now, toStatus: 'requested', fromAssignment: from, toAssignment: to, reason: x.reason,
         }],

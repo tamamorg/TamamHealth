@@ -76,8 +76,11 @@ export const SPECIMEN_REJECTION_REASONS = [
 export function resultWithUnit(result?: string | number, unit?: string): string {
   const value = String(result ?? '').trim();
   const suffix = (unit || '').trim();
-  if (!value || !suffix || value.toLowerCase().endsWith(suffix.toLowerCase())) return value;
-  return `${value} ${suffix}`;
+  if (!value || !suffix) return value;
+  // Only a whole unit counts: "5 mg" does not already carry "g".
+  const end = value.toLowerCase().lastIndexOf(suffix.toLowerCase());
+  const carried = end >= 0 && end + suffix.length === value.length && /[\s\d]/.test(value[end - 1] ?? ' ');
+  return carried ? value : `${value} ${suffix}`;
 }
 
 /** Accession fallback for orders placed before accessions were stamped. */

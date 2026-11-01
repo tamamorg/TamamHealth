@@ -376,8 +376,13 @@ function courseLengthDays(duration: string | undefined): number | null {
  * - Dispensed: only while its course is still running, counted from the
  *   dispense date (or the order date) plus the days in `duration`. A course with
  *   no readable length counts for UNREADABLE_COURSE_LOOKBACK_DAYS.
+ * - Dispensed with no end, like "ongoing": for ONGOING_COURSE_LOOKBACK_DAYS. Long
+ *   enough to span refills, bounded because these are rarely marked discontinued.
  * - Discontinued: no.
  */
+const ONGOING_COURSE = /\b(ongoing|long[- ]term|life-?long|continuous|continuing|chronic|indefinite)/i;
+export const ONGOING_COURSE_LOOKBACK_DAYS = 180;
+
 export function isMedicationCurrent(
   rx: Pick<PrescriptionDoc, 'status'> & Partial<Pick<PrescriptionDoc, 'duration' | 'dispensedAt' | 'createdAt'>>,
   now: number = Date.now(),
@@ -386,7 +391,8 @@ export function isMedicationCurrent(
   if (rx.status !== 'dispensed') return false;
   const started = Date.parse(rx.dispensedAt || rx.createdAt || '');
   if (!Number.isFinite(started)) return false;
-  const days = courseLengthDays(rx.duration) ?? UNREADABLE_COURSE_LOOKBACK_DAYS;
+  const days = courseLengthDays(rx.duration)
+    ?? (ONGOING_COURSE.test(rx.duration || '') ? ONGOING_COURSE_LOOKBACK_DAYS : UNREADABLE_COURSE_LOOKBACK_DAYS);
   return now <= started + days * DAY_MS;
 }
 

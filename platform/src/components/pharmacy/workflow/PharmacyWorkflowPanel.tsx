@@ -14,6 +14,7 @@
 import { CheckCircle2, AlertTriangle, ShieldAlert } from '@/components/icons/lucide';
 import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
 import FormNotices from '@/components/overlay/FormNotices';
+import InlineBanner from '@/components/overlay/InlineBanner';
 import RxSafetyNotice, { useUnreviewedAllergies } from '@/components/pharmacy/RxSafetyNotice';
 import { useToast } from '@/components/Toast';
 import { formatDateTime } from '@/lib/format-utils';
@@ -32,6 +33,7 @@ function SafetyLines({ ctrl }: { ctrl: PharmacyWorkflowController }) {
   const { t } = useTranslation();
   const { safety } = ctrl;
   if (safety.loading) return <p className="labord-help">{t('rxFlow.safetyChecking')}</p>;
+  if (safety.failed) return <InlineBanner tone="warning">{t('rxFlow.safetyUnavailable')}</InlineBanner>;
   if (!ctrl.hasSafetySignal) {
     return <p className="labord-help rx-line"><CheckCircle2 className="w-4 h-4" aria-hidden /> {t('rxFlow.safetyClear')}</p>;
   }

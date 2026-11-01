@@ -9,7 +9,7 @@
  *      (no params)             every transfer in scope
  *
  * POST { action, … } — request | send | accept | reject | cancel | complete
- *                    | force | note | checklist
+ *                    | force | note
  *
  * Two guards run on every write, and both are load-bearing:
  *   1. **Scope.** The patient must be visible to the caller under
@@ -195,7 +195,8 @@ async function postHandler(request: NextRequest) {
         providerId: patient.assignedDoctor,
         providerName: patient.assignedDoctorName,
         department: patient.assignedDepartment,
-        facilityId: patient.registrationHospital,
+        facilityId: auth.hospitalId ?? patient.registrationHospital,
+        facilityName: auth.hospitalId ? auth.hospitalName : undefined,
         orgId: patient.orgId,
       };
 
@@ -216,7 +217,6 @@ async function postHandler(request: NextRequest) {
         },
         reason: str('reason') ?? '',
         handoffNotes: str('handoffNotes'),
-        checklist: body.checklist as Parameters<typeof svc.createTransferRequest>[0]['checklist'],
         effectiveAt: str('effectiveAt'),
         expiresAt: str('expiresAt'),
           autoCompleteOnEffectiveDate: body.autoCompleteOnEffectiveDate as boolean | undefined,
@@ -299,18 +299,6 @@ async function postHandler(request: NextRequest) {
           const updated = await svc.addTransferNote(transferId, note, actor);
           return NextResponse.json({ ok: true, transfer: updated });
         }
-        case 'checklist': {
-          const check = perms.canContributeTransfer(auth, transfer);
-          if (!check.allowed) return forbidden(check.reason);
-          const updates = Array.isArray(body.updates)
-            ? (body.updates as Array<{ key: string; done: boolean }>)
-            : [];
-          if (updates.length === 0) {
-            return NextResponse.json({ error: 'updates array is required' }, { status: 400 });
-          }
-          const updated = await svc.updateTransferChecklist(transferId, updates, actor);
-          return NextResponse.json({ ok: true, transfer: updated });
-        }
         case 'logistics':
         case 'arrive':
         case 'close': {
@@ -337,7 +325,7 @@ async function postHandler(request: NextRequest) {
           return NextResponse.json(
             {
               error: `Unsupported action "${action}". Supported: request, send, accept, `
-                + 'reject, cancel, complete, force, note, checklist.',
+                + 'reject, cancel, complete, force, note.',
             },
             { status: 400 },
           );

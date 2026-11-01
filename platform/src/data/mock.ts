@@ -419,6 +419,8 @@ export interface Patient {
    * — see `activeCareTeam()` in patient-transfer-service.
    */
   careTeam?: CareTeamMember[];
+  /** Hospitals a transfer gave care of this patient, on top of where they registered. */
+  transferFacilityIds?: string[];
   isActive: boolean;
   /** Set when patient death is recorded within the platform. */
   deceasedAt?: string;

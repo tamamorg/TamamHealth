@@ -18,7 +18,7 @@ import { useFollowUpsDue } from '@/lib/hooks/useFollowUpsDue';
 import { patientFullName, patientDisplayName, shortenPersonName, patientAge } from '@/lib/patient-utils';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import { useTransferQueue } from '@/lib/hooks/usePatientTransfers';
-import { describeAssignment, isTransferOverdue } from '@/lib/services/patient-transfer-service';
+import { describeTransferSide, isTransferOverdue } from '@/lib/services/patient-transfer-service';
 import type {
   AppointmentDoc,
   AssessmentDoc,
@@ -421,7 +421,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
     return {
       id: t._id,
       title: t.patientName || 'Patient',
-      subtitle: `${describeAssignment(t.from)} → you · ${t.reason}`,
+      subtitle: `From ${describeTransferSide(t.from, t.to?.facilityId)} · ${t.reason}`,
       meta: overdue ? 'Overdue' : shortDate(t.requestedAt || t.createdAt),
       // An unanswered transfer past its acknowledgement window is a patient
       // nobody has taken responsibility for, so it outranks ordinary warnings.

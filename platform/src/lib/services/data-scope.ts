@@ -134,7 +134,10 @@ export function filterByScope<T extends Record<string, any>>(
         allowedFacilityIds.has(d.fromHospitalId) ||
         allowedFacilityIds.has(d.toHospitalId) ||
         allowedFacilityIds.has(d.recipientHospitalId) ||
-        allowedFacilityIds.has(d.facilityId);
+        allowedFacilityIds.has(d.facilityId) ||
+        // Only a patient carries this, so a transfer's other documents stay put.
+        (d.type === 'patient' && Array.isArray(d.transferFacilityIds)
+          && d.transferFacilityIds.some((id: string) => allowedFacilityIds.has(id)));
       if (matches) return true;
 
       // No-hospital docs: tightened to close the cross-facility leak where ANY
