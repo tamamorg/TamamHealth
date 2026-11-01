@@ -51,7 +51,7 @@ function transferAuth(user: CurrentUser) {
  * The acceptance has to replicate there first, hence the retries; offline, or
  * after the last of them, the hourly sweep finishes it.
  */
-async function finishOnServer(id: string): Promise<boolean> {
+export async function finishOnServer(id: string): Promise<boolean> {
   const { apiFetch } = await import('@/lib/api-fetch');
   for (const wait of [3000, 7000, 15000, 30000, 45000, 60000, 120000]) {
     await new Promise(resolve => setTimeout(resolve, wait));

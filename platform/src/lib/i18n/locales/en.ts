@@ -516,6 +516,7 @@ const en: TranslationMap = {
   'transfers.footerNote': "Decided and expired transfers stay on each patient's chart.",
   'transfers.viewAllAlerts': "View all transfer alerts",
   'transfers.recordsMayBeIncomplete': "This was sent before the device finished syncing, so it may be incomplete. Confirm with {{hospital}}.",
+  'transfers.allergiesUnreadable': "Could not be read when this was sent. Check with the patient and the sending hospital.",
   'transfers.rejectTitle': "Reject transfer",
   'transfers.rejectReason': "Why are you rejecting this transfer?",
   'transfers.rejectHint': "The sending clinician gets the patient back, so tell them what to fix.",

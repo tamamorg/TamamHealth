@@ -450,7 +450,7 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
       .map(a => a.message || a.category)
       .filter((v): v is string => Boolean(v))
       .slice(0, 10);
-  } catch { /* ignore */ }
+  } catch { unavailable.push('allergies'); }
 
   if (unavailable.length) summary.unavailable = unavailable;
   if (await senderStillSyncing()) summary.senderStillSyncing = true;
