@@ -211,3 +211,9 @@ test('only a patient can use the list to reach a hospital', () => {
   const lab = { type: 'lab_result', orgId: ORG, hospitalId: 'hosp-001', transferFacilityIds: ['hosp-002'] };
   expect(filterByScope([lab], scopeAt('hosp-002'))).toHaveLength(0);
 });
+
+test('allergies that could not be read are named, not left looking like none', async () => {
+  const summary = await buildTransferSummary('pat-not-on-this-device');
+  expect(summary.unavailable).toContain('allergies');
+  expect(summary.allergies).toBeUndefined();
+});

@@ -9,12 +9,14 @@
  * expired reads as `expired` today, but the fact that Dr A held the patient for
  * a fortnight in March is only visible in the events).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import FormField from '@/components/overlay/FormField';
 import FormSlider from '@/components/overlay/FormSlider';
 import { useAuth } from '@/lib/context';
-import { usePatientTransfers } from '@/lib/hooks/usePatientTransfers';
+import { finishOnServer, usePatientTransfers } from '@/lib/hooks/usePatientTransfers';
+import { useDataScope } from '@/lib/hooks/useDataScope';
+import { getPatientById } from '@/lib/services/patient-service';
 import { useWards } from '@/lib/hooks/useWards';
 import {
   describeTransferRoute, isTransferOverdue,
@@ -272,6 +274,9 @@ function TransferCard({
               {(transfer.summary.activeMedications?.length ?? 0) > 0 && (
                 <SummaryList label={t('transfers.activeMedications')} items={transfer.summary.activeMedications!} />
               )}
+              {transfer.summary.unavailable?.includes('allergies') && (
+                <SummaryList label={t('transfers.allergies')} items={[t('transfers.allergiesUnreadable')]} />
+              )}
               {(transfer.summary.allergies?.length ?? 0) > 0 && (
                 <SummaryList label={t('transfers.allergies')} items={transfer.summary.allergies!} />
               )}
@@ -510,8 +515,29 @@ export function TransferArriving({ patientId, fallback }: { patientId: string; f
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { transfers } = usePatientTransfers(patientId);
+  const scope = useDataScope();
   const arriving = transfers.find(x => x.to.facilityId === currentUser?.hospitalId
     && (x.status === 'accepted' || x.status === 'completed'));
+  const arrivingId = arriving?._id;
+  const stillAccepted = arriving?.status === 'accepted';
+
+  // A reload ends the retries started on accepting, so pick them up here.
+  useEffect(() => {
+    if (arrivingId && stillAccepted) void finishOnServer(arrivingId);
+  }, [arrivingId, stillAccepted]);
+
+  // This page holds no live feed on a patient it cannot see, so watch for the
+  // chart and open it, as the message promises.
+  useEffect(() => {
+    if (!arrivingId || !scope) return;
+    const timer = setInterval(() => {
+      void getPatientById(patientId, scope).then(patient => {
+        if (patient) window.location.reload();
+      }, () => { /* still on its way */ });
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [arrivingId, patientId, scope]);
+
   return <>{arriving ? t('transfers.chartArriving', { name: arriving.patientName || t('transfers.thisPatient') }) : fallback}</>;
 }
 

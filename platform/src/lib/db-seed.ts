@@ -1924,7 +1924,9 @@ async function migrateOrgBrandingColors(): Promise<void> {
  * one the desk made first, and the later row is the accident. Note this uses
  * duration-aware `isTimeOverlap`, matching the service — the seed's own
  * de-collision pass only compares exact start times, so a 09:00×60min against a
- * 09:30×30min is a clash the seed leaves behind and this removes.
+ * 09:30×30min is a clash the seed leaves behind and this removes. The named
+ * showcase visits go first: they are what the demo is built around, and
+ * bookings generated around the clock could otherwise take their slot.
  *
  * Closed rows (completed / cancelled / no-show / rescheduled) have released
  * their slot and are never deleted or counted as blockers.
@@ -1964,8 +1966,10 @@ async function migrateRemoveOverlappingAppointments(): Promise<void> {
     let removed = 0;
     for (const bucket of byDay.values()) {
       if (bucket.length < 2) continue;
-      // Oldest booking first, so the keeper is deterministic.
-      bucket.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '') || a._id.localeCompare(b._id));
+      // Showcase visits, then oldest booking first, so the keeper is deterministic.
+      const generated = (row: Row) => (row._id.startsWith('appointment-wf-') ? 0 : 1);
+      bucket.sort((a, b) => generated(a) - generated(b)
+        || (a.createdAt || '').localeCompare(b.createdAt || '') || a._id.localeCompare(b._id));
       const kept: Row[] = [];
       for (const row of bucket) {
         const clash = kept.some(k => isTimeOverlap(

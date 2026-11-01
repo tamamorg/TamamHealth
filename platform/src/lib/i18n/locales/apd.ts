@@ -526,6 +526,7 @@ const apd: TranslationMap = {
   'transfers.footerNote': "التحويلات المقرّرة والمنتهية بتفضل في ملف كل عيان.",
   'transfers.viewAllAlerts': "شوف كل تنبيهات التحويل",
   'transfers.recordsMayBeIncomplete': "ده اترسل قبل الجهاز يكمل المزامنة، عشان كده ممكن يكون ناقص. اتأكد مع {{hospital}}.",
+  'transfers.allergiesUnreadable': "ما قدرنا نقراها لما ده اترسل. اتأكد من العيان والمستشفى المرسل.",
   'transfers.rejectTitle': "ارفض التحويل",
   'transfers.rejectReason': "ليه رافض التحويل ده؟",
   'transfers.rejectHint': "الطبيب المحوِّل بيرجع ليهو العيان، فقول ليهو يصلّح شنو.",

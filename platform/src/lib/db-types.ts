@@ -3202,7 +3202,7 @@ export interface PatientTransferSummary {
   /** The sending device had not finished its first sync, so "none" may mean "not here yet". */
   senderStillSyncing?: boolean;
   /** Sections the sending device could not read: not known, as opposed to none. */
-  unavailable?: ('problems' | 'medications' | 'vitals' | 'results')[];
+  unavailable?: ('problems' | 'medications' | 'vitals' | 'results' | 'allergies')[];
 }
 
 export interface PatientTransferVitals {

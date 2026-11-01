@@ -25,6 +25,8 @@ import {
   type NoteTypeId, type NoteSectionId,
 } from './note-catalog';
 import { stripTemplateMarkers } from './section-templates';
+import { noteTextFromTriage, unlinkedTriageForNote } from './triage-prefill';
+import type { TriageDoc } from '../db-types';
 import type {
   ClinicalNoteDoc, NoteSectionContent, NoteListFilters, NoteAddendum, NotePlanAction,
 } from './types';
@@ -272,32 +274,37 @@ export interface CreateNoteInput {
   orgId?: string;
   /** Pre-filled sections, e.g. derived snapshots taken at creation. */
   sections?: NoteSectionContent[];
+  /** Leave the visit's triage out: the sections are a copy of another note. */
+  withoutTriage?: boolean;
   /** A structured form's answers (Covid 19, PHQ, …), kept beside the body. */
   formData?: Record<string, string>;
   amendsNoteId?: string;
 }
 
 /**
- * The chief complaint triage recorded for this visit, or '' when there is none.
- *
- * Keyed by the note's own encounter, never the patient's latest triage, so a
- * past visit's complaint cannot land on today's note. Best effort: a failed
- * read costs the prefill, never the note.
+ * The triage behind this note, or null when the patient was not triaged. Keyed
+ * by the note's own encounter first, so a past visit's triage cannot land on
+ * today's note. Best effort: a failed read costs the prefill, never the note.
  */
-async function triageChiefComplaint(encounterId: string): Promise<string> {
+async function triageForNote(input: CreateNoteInput): Promise<TriageDoc | null> {
   try {
-    const { getTriageByEncounter } = await import('../services/triage-service');
-    return ((await getTriageByEncounter(encounterId))?.chiefComplaint || '').trim();
+    const { getTriageByEncounter, getTriageByPatient } = await import('../services/triage-service');
+    const linked = input.encounterId ? await getTriageByEncounter(input.encounterId) : null;
+    // The encounter link alone is not proof: a wrong link must not put another
+    // patient's triage on this note.
+    if (linked?.patientId === input.patientId && linked.status !== 'lwbs') return linked;
+    if (!input.orgId) return null;
+    const triages = await getTriageByPatient(input.patientId, orgOnlyScope(input.orgId));
+    return unlinkedTriageForNote(triages, input.hospitalId, input.serviceDate, new Date());
   } catch {
-    return '';
+    return null;
   }
 }
 
 /**
  * Start a note. Sections are seeded empty from the type's catalog so the editor
- * has a stable shape to render and autosave into from the first keystroke —
- * except CC, which starts from the visit's triage complaint when there is one,
- * so the clinician edits what the nurse heard rather than asking again.
+ * has a stable shape to render and autosave into from the first keystroke,
+ * except the ones triage already answered: see `noteTextFromTriage`.
  */
 export async function createClinicalNote(input: CreateNoteInput): Promise<ClinicalNoteDoc> {
   const db = clinicalNotesDB();
@@ -307,11 +314,14 @@ export async function createClinicalNote(input: CreateNoteInput): Promise<Clinic
 
   const provided = new Map((input.sections || []).map(s => [s.sectionId, s]));
   const sectionIds = resolveSections(type);
-  // An amendment carries the original's wording; a caller-supplied CC wins.
-  if (input.encounterId && !input.amendsNoteId && sectionIds.includes('cc')
-      && !(provided.get('cc')?.text || '').trim()) {
-    const complaint = await triageChiefComplaint(input.encounterId);
-    if (complaint) provided.set('cc', { ...provided.get('cc'), sectionId: 'cc', text: complaint });
+  // An amendment or a copy carries its source's wording, a structured form is
+  // its own record, and whatever the caller supplied wins.
+  if (!input.amendsNoteId && !input.formData && !input.withoutTriage) {
+    const triage = await triageForNote(input);
+    const texts = triage ? noteTextFromTriage(triage, sectionIds) : {};
+    for (const [id, text] of Object.entries(texts) as [NoteSectionId, string][]) {
+      if (!(provided.get(id)?.text || '').trim()) provided.set(id, { ...provided.get(id), sectionId: id, text });
+    }
   }
   const sections: NoteSectionContent[] = sectionIds.map(
     id => provided.get(id) ?? { sectionId: id, text: '' },
@@ -1006,7 +1016,7 @@ export async function copyNoteForward(
       templateSelection: s.templateSelection,
     }));
 
-  const created = await createClinicalNote({ ...input, noteType, sections: carried });
+  const created = await createClinicalNote({ ...input, withoutTriage: true, noteType, sections: carried });
   const addedSections = carried
     .map(s => s.sectionId)
     .filter(sid => !getNoteType(noteType).sections.includes(sid));

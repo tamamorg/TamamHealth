@@ -335,16 +335,6 @@ export default function TamamChartShell({
     setStack([]);
   };
 
-  // A `?tab=` link inside the note editor (e.g. "go to Vitals") switches
-  // tabs but leaves the editor mounted underneath — the drawer then covers
-  // the tab it just navigated to. Leaving the note drawer is the one thing a
-  // tab switch should always do; it autosaves, so nothing is lost by closing.
-  useEffect(() => {
-    if (openPanel === CLINICAL_NOTE_PANEL.id) closeDrawer();
-    // Only the tab switch itself should trigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
   // The drawer is a workspace docked beside the chart, not a dialog over it
   // (OpenMRS O3's workspace model): the chart narrows to make room and stays
   // usable, so there is no backdrop and Tab is not confined — a clinician can
@@ -401,7 +391,6 @@ export default function TamamChartShell({
     // Appointments — pointing there landed the task-list "recall" link on an
     // empty tab.
     setActiveTab('careChecklist');
-    closeDrawer();
   };
 
   const renderPanelBody = (id: string) => {
@@ -477,10 +466,9 @@ export default function TamamChartShell({
                 hospitalName: currentUser.hospitalName,
               } : null}
               onClose={closeDrawer}
-              // The chart is already on screen: switch its section and close
-              // the drawer. The tab-change effect above only closes it when
-              // the section actually changes, so close it here as well.
-              onOpenChartTab={(tabId) => { setActiveTab(tabId); closeDrawer(); }}
+              // A workspace stays open while the chart moves behind it: only
+              // its own controls close it, so work can go on beside any tab.
+              onOpenChartTab={setActiveTab}
               // Prescribe / Order labs from the note go to the order basket on
               // top of it, carrying the note's visit; closing the basket
               // brings the note back.
