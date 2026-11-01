@@ -26,6 +26,7 @@ import databasePolicyModule from '../src/lib/sync/couch-database-policy.ts';
 const { DATABASE_SYNC_CONFIGS } = syncConfigModule;
 const { ORG_SCOPED_VALIDATE_FN } = writePermissionsModule;
 const {
+  closedMembers,
   databasePolicy,
   resolveMemberRoles,
   ORG_SCOPE_DESIGN_DOC_ID,
@@ -198,7 +199,8 @@ export async function applySecurity(baseUrl, authHeader, dbName, roles, existing
       // Named members are an operator's manual grant to a single account; this
       // script has no opinion on them, so it carries them through rather than
       // dropping them on every run.
-      members: { names: existing?.members?.names ?? [], roles },
+      // Never empty: CouchDB reads that as public (see closedMembers).
+      members: closedMembers(roles, existing?.members?.names ?? []),
     }),
   });
   if (res.status === 200 || res.status === 201) return { ok: true };
@@ -212,6 +214,16 @@ export async function applySecurity(baseUrl, authHeader, dbName, roles, existing
     // ignore — non-JSON error body
   }
   return { ok: false, reason };
+}
+
+/** Databases that answer with no credentials. Any at all fails the install. */
+export async function anonymouslyReadable(baseUrl, dbNames) {
+  const open = [];
+  for (const db of dbNames) {
+    const res = await fetch(`${baseUrl}/${db}/_all_docs?limit=0`, { headers: { Accept: 'application/json' } });
+    if (res.status === 200) open.push(db);
+  }
+  return open;
 }
 
 async function main() {
@@ -307,6 +319,13 @@ async function main() {
     `members preserved=${preservedCount} · ` +
     `aggregate members=[${options.tenantDatabasesEnabled ? '' : options.memberOrgIds.join(', ')}]`,
   );
+
+  const open = await anonymouslyReadable(baseUrl.replace(/\/\/[^@]*@/, '//'), allDbs);
+  if (open.length) {
+    console.log(`[error] ${open.length} database(s) still answer with no credentials: ${open.slice(0, 20).join(', ')}`);
+    process.exit(1);
+  }
+  console.log(`[install-validate-doc-updates] anonymous access refused on all ${allDbs.length} databases`);
 
   if (errCount > 0 || secErr > 0) process.exit(1);
 }

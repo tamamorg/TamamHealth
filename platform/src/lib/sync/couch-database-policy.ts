@@ -165,6 +165,23 @@ export function databasePolicy(
   };
 }
 
+/**
+ * The `members` object to store. CouchDB reads an empty `members` as PUBLIC: any
+ * caller, signed in or not, may read the database. So "no members" has to be
+ * written as admins only, or every database this policy means to close is left
+ * open to the internet. That is how production's aggregates were found on
+ * 2026-10-31, answering anonymous reads through couch.tamamhealth.org.
+ */
+export function closedMembers(
+  roles: readonly string[],
+  names: readonly string[] = [],
+): { names: string[]; roles: string[] } {
+  return {
+    names: [...names],
+    roles: roles.length === 0 && names.length === 0 ? ['_admin'] : [...roles],
+  };
+}
+
 export interface ResolvedMembers {
   /** The `members.roles` to write. */
   roles: string[];
