@@ -101,18 +101,23 @@ What the workflow does, in order:
 4. Builds and pushes three images tagged with the 7-character SHA:
    `tamamhealth-platform` (built with `NEXT_PUBLIC_DEMO_MODE=false`),
    `tamamhealth-website`, `tamamhealth-sync-worker`.
-5. Over SSH, records the currently running image of each service in
-   `.tamamhealth-rollback-stack-<sha>`, then runs
+5. Over SSH, records the currently running image of each service and the host
+   commit in `.tamamhealth-rollback-stack-<sha>`, then moves the host checkout to
+   the released commit so the compose files match the images, and runs
    `docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml pull` and `up -d`
-   with `IMAGE_TAG=<sha>`.
+   with `IMAGE_TAG=<sha>`. A hand edit to a file this release also changes stops
+   the checkout, and the deploy fails with nothing replaced. A hand edit to any
+   other tracked file stays in place and the deploy continues. The host must be
+   able to fetch from github.com.
 6. Waits (up to 30 x 10 s) until `platform`, `website` and `sync-worker` run the
    expected image tag and report healthy.
 7. Installs the role-aware CouchDB validators from the running immutable image:
    `docker exec <platform container> npm run setup:couchdb:validators`.
 8. Checks the website URL, then polls the platform health URL until it returns
    200 with `release` equal to the deployed SHA.
-9. On failure after the deploy step, rolls the three services back to the images
-   recorded in step 5 and waits for them to recover. On success it removes the
+9. On failure after the deploy step, returns the host checkout to the recorded
+   commit, rolls the three services back to the images recorded in step 5 and
+   waits for them to recover. On success it removes the
    rollback record and runs `docker image prune -f`.
 10. Raises or clears a failure-alarm issue (`.github/actions/alert-failure`).
 
@@ -162,8 +167,8 @@ reachable by browsers only through the `/api/couch` gateway.
 - **Tenant migration** (`db:migrate:couchdb-tenants`,
   `db:verify:couchdb-tenants` in `platform/package.json`) is only needed when
   moving existing shared-aggregate data into tenant databases. These scripts are
-  not copied into the production image (only `install-validate-doc-updates.mjs`
-  is), so run them from a repository checkout with `cd platform && npm ci`,
+  not copied into the production image, so run them from a repository checkout
+  with `cd platform && npm ci`,
   pointing `COUCHDB_URL` at the host-local CouchDB (`http://127.0.0.1:5984`) with
   `COUCHDB_ADMIN_USER`, `COUCHDB_ADMIN_PASSWORD` and
   `COUCHDB_TENANT_ORG_IDS` (ids must match `org-[a-z0-9-]`):
@@ -222,13 +227,37 @@ and records a checkpoint.
 
 | Situation | What happens / what to do |
 |---|---|
-| Release goes unhealthy during deploy | The workflow rolls platform, website and sync-worker back to the images recorded before the deploy. |
+| Release goes unhealthy during deploy | The workflow returns the host checkout to the recorded commit and rolls platform, website and sync-worker back to the images recorded before the deploy. |
+| Compose validation or `pull` fails | Nothing was replaced, and the checkout returns to the previous commit. Fix the cause and dispatch again. |
+| `up -d` fails | No automatic rollback, and services may be half replaced. On the host, read `.tamamhealth-rollback-stack-<sha>`: image ids on lines 1 to 3, commit on line 4. Return the checkout to that commit, then run `GH_OWNER=tamamorg IMAGE_TAG=<sha of the last good release> docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml up -d platform website sync-worker`. Always set `IMAGE_TAG`: the `production` tag is no longer published and is months old. |
 | Bad release that passed the health gate | Dispatch deploy-production again with the `sha` of the last good main commit (its images are rebuilt from that commit). |
 | Stack was already down before the deploy | No previous release exists; the workflow prints container state and logs. Restore by hand on the host with the compose commands above. |
 | Data loss | Restore from backup; see [operations/backups.md](operations/backups.md). |
 
 Rollback is always a redeploy or a configuration change; no deploy step deletes
-a database.
+a database. A commit before `98503199` cannot be redeployed through the workflow,
+because it builds `sync-worker` from a path those commits do not have, and one
+before `fa75d7b3` would reopen anonymous CouchDB reads. Restore those by image
+tag on the host, as above.
+
+## One-off data jobs
+
+These ship in the platform image, so they always match the running release. Each
+previews by default and writes nothing until `DRY_RUN=false`, which must go
+through `docker exec -e`: set in front of `docker exec`, it never reaches the
+container. Run them in this order, after every device has updated and synced,
+and take a droplet snapshot before each one. A dump cannot undo a single document.
+
+| Job | Preview | Finished when a preview says |
+|---|---|---|
+| Seal patient data | `docker exec tamamhealth-platform node scripts/encrypt-phi-at-rest.mjs` | `0 record(s) would be sealed` |
+| Move retired roles | `docker exec tamamhealth-platform npm run db:migrate:retired-roles` | `No document holds a retired role.` |
+| Rebuild lost charges | `docker exec -e SINCE=<go-live date> -e UNTIL=2026-10-31T05:12:00Z tamamhealth-platform npm run db:rebuild:charges` | `0 draft bill(s)` |
+
+To apply one, add `-e DRY_RUN=false` to the same command. Sealing cannot be undone,
+and a device on an older build can quietly undo it, which is why devices come
+first. Rebuilt charges are drafts: a cashier finalizes or deletes each one under
+**To review** on `/billing`.
 
 ---
 

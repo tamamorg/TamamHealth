@@ -103,18 +103,24 @@ FAILED=0
 
 # Fail when $1 (an ISO-8601 LastModified from S3) is older than the limit.
 check_freshness() {
-  label=$1; modified=$2
+  label=$1; modified=$2; stale_cause=${3:-}
   [ -n "$modified" ] && [ "$modified" != "None" ] || { fail "$label: no LastModified on the newest object"; return; }
   # GNU date and BSD date disagree on parsing flags; try GNU first (the CI
   # runner), then BSD (a macOS operator running the drill by hand).
   epoch=$(date -u -d "$modified" +%s 2>/dev/null \
           || date -u -j -f '%Y-%m-%dT%H:%M:%S' "${modified%%.*}" +%s 2>/dev/null \
           || echo '')
-  [ -n "$epoch" ] || { log "  $label: could not parse LastModified '$modified' — skipping age check"; return; }
+  [ -n "$epoch" ] || {
+    # The upload's age is a warning sign. The restored snapshot's age is the
+    # recovery point itself, so a date we cannot read must not pass.
+    if [ -n "$stale_cause" ]; then fail "$label: could not parse its date '$modified'"
+    else log "  $label: could not parse LastModified '$modified' — skipping age check"; fi
+    return
+  }
   age_hours=$(( ( $(date -u +%s) - epoch ) / 3600 ))
   log "  $label age: ${age_hours}h (limit ${BACKUP_MAX_AGE_HOURS}h)"
   if [ "$age_hours" -gt "$BACKUP_MAX_AGE_HOURS" ]; then
-    fail "$label is ${age_hours}h old — older than ${BACKUP_MAX_AGE_HOURS}h. The backup pipeline has stopped uploading; the newest recoverable snapshot is from $modified."
+    fail "$label is ${age_hours}h old — older than ${BACKUP_MAX_AGE_HOURS}h. ${stale_cause:-The backup pipeline has stopped uploading; the newest recoverable snapshot is from $modified.}"
   fi
 }
 
@@ -150,12 +156,21 @@ else
         # procedure that silently restored nothing.
         if [ -n "${DRILL_RESTORE_COUCHDB_URL:-}" ]; then
           mkdir -p "${WORK}/couchdb-restore"
+          # The tarball holds the whole backup volume, up to 14 days of
+          # snapshots, and a second snapshot cannot restore over the first.
           if tar xzf "${WORK}/couchdb.tar.gz" -C "${WORK}/couchdb-restore" \
+             && SNAPSHOT_DIR=$("$(dirname "$0")/latest-couchdb-snapshot.sh" "${WORK}/couchdb-restore") \
+             && log "  restoring snapshot $(basename "$SNAPSHOT_DIR")" \
              && RESTORE_COUCHDB_URL="$DRILL_RESTORE_COUCHDB_URL" \
                 RESTORE_COUCHDB_USER="${DRILL_RESTORE_COUCHDB_USER:-admin}" \
                 RESTORE_COUCHDB_PASSWORD="${DRILL_RESTORE_COUCHDB_PASSWORD:?DRILL_RESTORE_COUCHDB_PASSWORD required with DRILL_RESTORE_COUCHDB_URL}" \
-                "$(dirname "$0")/restore-couchdb-dump.sh" "${WORK}/couchdb-restore"; then
+                "$(dirname "$0")/restore-couchdb-dump.sh" "$SNAPSHOT_DIR"; then
             log "  couchdb restore-and-count PASS"
+            # The offsite object is uploaded nightly whatever it holds, so its
+            # age says nothing about the snapshot that actually restored.
+            SNAPSHOT=$(basename "$SNAPSHOT_DIR")
+            check_freshness "restored snapshot" "${SNAPSHOT:0:4}-${SNAPSHOT:4:2}-${SNAPSHOT:6:2}T${SNAPSHOT:9:2}:${SNAPSHOT:11:2}:${SNAPSHOT:13:2}" \
+              "Uploads are running, but no recent complete dump is inside them: check the couchdb-backup container."
           else
             fail "couchdb snapshot did not restore cleanly into the drill database"
           fi

@@ -53,7 +53,7 @@ doctl compute droplet-action password-reset 591879204
 ☐ **Get the repo + env in place** (cloud-init makes `/opt/tamamhealth` but does
 not clone the repo or start the stack):
 ```bash
-cd /opt/tamamhealth && git clone <repo> . 2>/dev/null || git pull
+cd /opt/tamamhealth && git clone <repo> . 2>/dev/null || { git fetch --depth 1 origin main && git checkout --detach FETCH_HEAD; }
 cp infra/digitalocean/data-plane.env.example /opt/tamamhealth/.env   # NOTE: .env, not .env.data —
                                                                      # `docker compose` auto-loads .env
 ```
