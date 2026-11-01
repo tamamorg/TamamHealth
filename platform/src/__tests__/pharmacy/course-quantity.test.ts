@@ -71,6 +71,13 @@ describe('course days', () => {
 });
 
 describe('units per dose', () => {
+  test('a milligram figure left on a count unit is not a count', () => {
+    expect(unitsPerDose('Paracetamol', '500 Tablet')).toBe(1);
+    expect(unitsPerDose('Paracetamol', '20 Tablet')).toBe(20);
+    expect(unitsPerDose('Paracetamol', '21 Tablet')).toBe(1);
+    expect(estimateCourseQuantity({ medication: 'Paracetamol', dose: '500 Tablet', frequency: 'BD', duration: '5 days' })).toBe(10);
+  });
+
   test('reads a dose written as a count', () => {
     expect(unitsPerDose('Artemether-Lumefantrine (Coartem)', '4 Tablet')).toBe(4);
     expect(unitsPerDose('Paracetamol 500mg', '2 tablets')).toBe(2);
