@@ -1,7 +1,8 @@
 /**
- * The deploy ships images, not compose files, so whatever boot validation needs
- * has to be in the image. A default set only in docker-compose.yml never reached
- * the droplet, and release a1fbe8f refused to boot and rolled back.
+ * Whatever boot validation needs has to be in the image. A default set only in
+ * docker-compose.yml never reached the droplet, and release a1fbe8f refused to
+ * boot and rolled back. Deploys now ship the compose files too, but a release
+ * must not depend on them to start.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

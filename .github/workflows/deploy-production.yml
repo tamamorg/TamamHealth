@@ -5,7 +5,7 @@ name: deploy-production
 # list in the repo settings; GitHub will block the job until an approver
 # clicks "Approve and deploy". While staging is paused, this workflow builds
 # the exact selected main commit with production settings, publishes immutable
-# SHA tags plus the production tags, and then deploys those images.
+# SHA tags, and then deploys those images.
 
 on:
   workflow_dispatch:
@@ -32,6 +32,7 @@ jobs:
     environment: production
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
+      full_sha: ${{ steps.resolve.outputs.full_sha }}
     steps:
       # `workflow_dispatch` lets the operator choose the ref, and with `sha`
       # left blank the promotion silently targets THAT ref's HEAD — so running
@@ -243,6 +244,17 @@ jobs:
       # is how the 2026-09-08 outage hid: the run showed only ssh-keyscan lines
       # and "exit code 1"). The rollback record notes `absent` so the rollback
       # step can say plainly that there is nothing to roll back to.
+      #
+      # The host checkout moves to the released commit first, because `up -d`
+      # reads compose files from it and a release can need settings or volumes
+      # only they carry: a1fbe8f refused to boot on a stale copy. `checkout`
+      # will not overwrite a hand edit to a file this release changes, so that
+      # host stops here with nothing replaced; a hand edit elsewhere stays in
+      # place. The record also keeps the commit to return to, so rollback
+      # restores the compose files with the images. A re-run finds the host
+      # already on this release and keeps the first record, which is the one
+      # that names the true previous state, so it also stays on the release if
+      # it fails: an earlier run may have replaced services already.
       - name: Pull + restart stack
         id: deploy
         env:
@@ -250,6 +262,8 @@ jobs:
           USER: ${{ secrets.PROD_SSH_USER }}
           APP_DIR: ${{ secrets.PROD_APP_DIR || '/opt/tamamhealth' }}
           SHA: ${{ needs.build-production-images.outputs.sha }}
+          FULL_SHA: ${{ needs.build-production-images.outputs.full_sha }}
+          REPO_URL: https://github.com/${{ github.repository }}.git
           GH_OWNER: ${{ github.repository_owner }}
         run: |
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
@@ -262,10 +276,23 @@ jobs:
              if [ -n \"\$platform_container\" ]; then previous_platform=\$(docker inspect \"\$platform_container\" --format '{{.Image}}'); else previous_platform=absent; echo '::warning title=Production stack was already down::No platform container is running on the host, so this deploy is a fresh start and there is no previous platform release to roll back to.'; fi; \
              if [ -n \"\$website_container\" ]; then previous_website=\$(docker inspect \"\$website_container\" --format '{{.Image}}'); else previous_website=absent; echo '::warning title=Website was already down::No website container is running on the host; deploying it fresh.'; fi; \
              if [ -n \"\$worker_container\" ]; then previous_worker=\$(docker inspect \"\$worker_container\" --format '{{.Image}}'); else previous_worker=absent; fi; \
-             printf '%s\n%s\n%s\n' \"\$previous_platform\" \"\$previous_website\" \"\$previous_worker\" > '.tamamhealth-rollback-stack-$SHA' && \
-             export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA' && \
-             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml pull && \
-             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml up -d && \
+             host_git() { git -c safe.directory='$APP_DIR' \"\$@\"; }; \
+             rerun=false; replaced='Nothing was replaced.'; \
+             restore_compose() { [ \"\$rerun\" = false ] || return 0; host_git checkout --quiet --detach \"\$previous_commit\" || echo '::warning title=Compose files not restored::The host checkout stayed at $SHA. Nothing was replaced, but check it before the next deploy.'; }; \
+             previous_commit=\$(host_git rev-parse HEAD) || { echo '::error title=Host is not a git checkout::$APP_DIR has no readable git history, so the compose files for this release cannot be shipped. Nothing was replaced.'; exit 1; }; \
+             if [ \"\$previous_commit\" = '$FULL_SHA' ] && [ -s '.tamamhealth-rollback-stack-$SHA' ]; then \
+               previous_commit=\$(sed -n '4p' '.tamamhealth-rollback-stack-$SHA'); \
+               rerun=true; replaced='An earlier run of this release may have replaced services: see .tamamhealth-rollback-stack-$SHA.'; \
+             else \
+               printf '%s\n%s\n%s\n%s\n' \"\$previous_platform\" \"\$previous_website\" \"\$previous_worker\" \"\$previous_commit\" > '.tamamhealth-rollback-stack-$SHA'; \
+               [ \"\$previous_commit\" != '$FULL_SHA' ] || echo '::warning title=Host already on this release::The checkout was at $SHA before this deploy, so a rollback restores images only, not compose files.'; \
+             fi; \
+             host_git fetch --quiet --depth 1 '$REPO_URL' '$FULL_SHA' || { echo '::error title=Release commit not fetched::The host could not fetch $FULL_SHA. The git error above names the cause: network, repository access, or ownership of .git. Nothing was replaced.'; exit 1; }; \
+             host_git checkout --quiet --detach '$FULL_SHA' || { echo '::error title=Compose files not updated::The host checkout could not move to $FULL_SHA. Run git status in $APP_DIR: a hand edit to a file this release changes stops the checkout, so commit that change to the repository or remove it. Nothing was replaced.'; exit 1; }; \
+             export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA'; \
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml config --quiet || { echo \"::error title=Compose files invalid::The compose files at $SHA do not resolve with this host env. \$replaced\"; restore_compose; exit 1; }; \
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml pull || { echo \"::error title=Image pull failed::The images for $SHA did not pull. \$replaced\"; restore_compose; exit 1; }; \
+             docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml up -d || { echo '::error title=Stack did not start::up -d failed for $SHA, so some services may already be replaced. Automatic rollback does not run for this failure, and the host stays on the compose files of $SHA. The images and commit to return to are in .tamamhealth-rollback-stack-$SHA.'; exit 1; }; \
              echo 'Deployed immutable tag=$SHA'"
 
       # The stack can come up and still be broken (bad env refuses boot with a
@@ -361,11 +388,13 @@ jobs:
              previous_platform=\$(sed -n '1p' '.tamamhealth-rollback-stack-$SHA'); \
              previous_website=\$(sed -n '2p' '.tamamhealth-rollback-stack-$SHA'); \
              previous_worker=\$(sed -n '3p' '.tamamhealth-rollback-stack-$SHA'); \
+             previous_commit=\$(sed -n '4p' '.tamamhealth-rollback-stack-$SHA'); \
              test -n \"\$previous_platform\"; test -n \"\$previous_website\"; test -n \"\$previous_worker\"; \
              if [ \"\$previous_platform\" = absent ] || [ \"\$previous_website\" = absent ]; then echo '::error title=Nothing to roll back to::Production had no running platform/website container before this deploy, so the unhealthy release cannot be swapped for a previous one. Inspect the host output below and restore it by hand.'; docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml ps -a; docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml logs --tail 300 platform website sync-worker; df -h; free -m; exit 1; fi; \
              printf 'services:\n  platform:\n    image: %s\n  website:\n    image: %s\n' \"\$previous_platform\" \"\$previous_website\" > '.tamamhealth-rollback-$SHA.yml'; \
              rollback_services='platform website'; \
              if [ \"\$previous_worker\" != absent ]; then printf '  sync-worker:\n    image: %s\n' \"\$previous_worker\" >> '.tamamhealth-rollback-$SHA.yml'; rollback_services='platform website sync-worker'; fi; \
+             git -c safe.directory='$APP_DIR' checkout --quiet --detach \"\$previous_commit\" || echo '::warning title=Compose files not restored::The previous images are going back on the compose files of $SHA.'; \
              export GH_OWNER='$GH_OWNER' IMAGE_TAG='$SHA'; \
              docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml -f '.tamamhealth-rollback-$SHA.yml' up -d --no-deps --force-recreate \$rollback_services; \
              if [ \"\$previous_worker\" = absent ]; then docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml stop sync-worker || true; docker compose --profile analytics -f docker-compose.yml -f docker-compose.ghcr.yml rm -f sync-worker || true; fi; \

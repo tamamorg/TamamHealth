@@ -65,9 +65,9 @@ ARG NEXT_PUBLIC_CLEAR_SEEDED_DATA_ONCE=false
 ARG NEXT_PUBLIC_BUILD_ID=
 ARG NEXT_PUBLIC_OFFLINE_DEPLOYMENT_MODE=device
 ENV NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID}
-# Boot validation reads these on the server, and `deploy-production` ships the
-# image but never the compose file, so a default set only in docker-compose.yml
-# does not reach the droplet. An env file or compose value still overrides them.
+# Boot validation reads these on the server. docker-compose.yml sets them too,
+# but a release must still boot on a host whose compose file lags behind it, as
+# a1fbe8f did not. A compose value still overrides them.
 ENV NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED=${NEXT_PUBLIC_COUCHDB_GATEWAY_ENABLED}
 ENV TOKEN_BLACKLIST_FILE=/app/data/token-blacklist.json
 LABEL org.tamamhealth.demo-mode="${NEXT_PUBLIC_DEMO_MODE}"
@@ -97,6 +97,14 @@ COPY --from=builder /app/src/lib/services/patient-transfer-permissions.ts ./src/
 COPY --from=builder /app/src/lib/care-team-permissions.ts ./src/lib/care-team-permissions.ts
 COPY --from=builder /app/src/lib/appointment-status.ts ./src/lib/appointment-status.ts
 COPY --from=builder /app/src/lib/db-types.ts ./src/lib/db-types.ts
+# One-off data jobs run by hand after a release (docs/DEPLOY-PRODUCTION.md). They
+# ship here for the same reason as the installer: what runs against production
+# data must match the running release, not whatever the host checkout holds.
+COPY --from=builder /app/scripts/encrypt-phi-at-rest.mjs ./scripts/encrypt-phi-at-rest.mjs
+COPY --from=builder /app/scripts/migrate-retired-roles.mjs ./scripts/migrate-retired-roles.mjs
+COPY --from=builder /app/scripts/rebuild-lost-charges.mjs ./scripts/rebuild-lost-charges.mjs
+COPY --from=builder /app/src/lib/phi-field-catalog.json ./src/lib/phi-field-catalog.json
+COPY --from=builder /app/src/lib/user-role.ts ./src/lib/user-role.ts
 # Drop privileges. The `node` user (UID 1000) is shipped by node:20-alpine.
 # Required for the writable scratch dirs Next.js needs (.next/cache during
 # revalidation) so we chown those before switching.

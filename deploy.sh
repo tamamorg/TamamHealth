@@ -68,7 +68,8 @@ elif [ ! -d "$APP_DIR/.git" ]; then
   git clone "$REPO_URL" "$APP_DIR"
 else
   say "Repo exists; pulling latest"
-  (cd "$APP_DIR" && git pull)
+  # Deploys leave the checkout on a detached commit, where a plain pull fails.
+  (cd "$APP_DIR" && git fetch --quiet --depth 1 origin main && git checkout --quiet --detach FETCH_HEAD)
 fi
 
 cd "$APP_DIR"

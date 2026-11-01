@@ -254,7 +254,6 @@ notification arrives at the start of the operator's day.)
    export AWS_ENDPOINT_URL=https://fra1.digitaloceanspaces.com
    LATEST=$(aws s3api list-objects-v2 \
      --bucket tamamhealth-backups-prod \
-     --prefix "$(date -u +%Y/%m)" \
      --query 'reverse(sort_by(Contents,&LastModified))[?contains(Key,`couchdb-`)].Key | [0]' \
      --output text)
    aws s3 cp "s3://tamamhealth-backups-prod/${LATEST}" ./snapshot.tar.gz.gpg
@@ -265,6 +264,7 @@ notification arrives at the start of the operator's day.)
    ```bash
    gpg --import backup-privkey.asc
    gpg --output snapshot.tar.gz --decrypt snapshot.tar.gz.gpg
+   mkdir -p ./restore
    tar xzf snapshot.tar.gz -C ./restore/
    ```
 
@@ -274,10 +274,12 @@ notification arrives at the start of the operator's day.)
    ```bash
    RESTORE_COUCHDB_URL=http://localhost:5984 \
    RESTORE_COUCHDB_USER="$COUCHDB_USER" RESTORE_COUCHDB_PASSWORD="$COUCHDB_PASSWORD" \
-     ./scripts/restore-couchdb-dump.sh ./restore/
+     ./scripts/restore-couchdb-dump.sh "$(./scripts/latest-couchdb-snapshot.sh ./restore/)"
    ```
 
-   It creates each database, replays the documents at their original
+   The tarball holds every snapshot on the volume, and a second one cannot
+   restore over the first, so name the newest complete one. It creates each
+   database, replays the documents at their original
    revisions, then counts what the target holds against what the dump
    contains and exits non-zero on any gap. It refuses to write into a database
    that already has documents.

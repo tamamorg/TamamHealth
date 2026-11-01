@@ -99,7 +99,7 @@ On **each** droplet before first CI deploy:
 
 ```bash
 cd /opt/tamamhealth
-git pull
+git fetch --depth 1 origin main && git checkout --detach FETCH_HEAD
 cat infra/digitalocean/staging.env.append >> .env    # or production.env.append
 docker login ghcr.io -u YOUR_GITHUB_USER
 # PAT needs read:packages if GHCR images are private
