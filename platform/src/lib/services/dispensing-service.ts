@@ -39,7 +39,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaDate } from '../time-juba';
 import { orgOnlyScope } from './data-scope';
-import { SAFETY_REASON_MIN_LENGTH, unreviewedAllergyConflicts } from '../pharmacy/rx-safety';
+import { SAFETY_REASON_MIN_LENGTH } from '../pharmacy/rx-safety';
 import { getUserById } from '@/modules/identity/services/user-service';
 import { v4 as uuidv4 } from 'uuid';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
@@ -743,24 +743,33 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     );
   }
 
-  // The allergy list may have changed since the order was written. Refuses
+  // The chart may have changed since the order was written. Refuses
   // only until the pharmacist writes a reason, so urgent care is never stopped;
   // an unreadable chart proceeds and leaves a reviewable audit entry.
   let allergyReview: PrescriptionDoc['dispenseAllergyReview'];
   try {
-    const { getActiveAllergies } = await import('./allergy-service');
-    const conflicts = unreviewedAllergyConflicts(rx, await getActiveAllergies(rx.patientId, orgOnlyScope(input.orgId || rx.orgId)));
-    if (conflicts.length) {
+    const { findDispenseConflicts } = await import('./prescription-service');
+    const conflicts = await findDispenseConflicts(rx, orgOnlyScope(input.orgId || rx.orgId));
+    if (conflicts.allergies.length || conflicts.interactions.length) {
       const reason = input.allergyReview?.trim() || '';
-      const allergies = conflicts.map(c => c.allergy);
+      const allergies = conflicts.allergies.map(c => c.allergy);
       if (reason.length < SAFETY_REASON_MIN_LENGTH) {
+        const what = [
+          allergies.length ? `conflicts with the recorded ${allergies.join(', ')} allergy` : '',
+          conflicts.interactions.length ? `is contraindicated as ${conflicts.interactions.join(', ')}` : '',
+        ].filter(Boolean).join(' and ');
         throw new DispenseError(
-          `${rx.medication} conflicts with the recorded ${allergies.join(', ')} allergy. `
-          + 'Contact the prescriber, then record why it is safe to dispense.',
+          `${rx.medication} ${what}. Contact the prescriber, then record why it is safe to dispense.`,
           'ALLERGY_REVIEW_REQUIRED',
         );
       }
-      allergyReview = { allergies, reviewedBy: input.dispenserName, reviewedAt: new Date().toISOString(), reason };
+      allergyReview = {
+        allergies,
+        ...(conflicts.interactions.length ? { interactions: conflicts.interactions } : {}),
+        reviewedBy: input.dispenserName,
+        reviewedAt: new Date().toISOString(),
+        reason,
+      };
     }
   } catch (err) {
     if (err instanceof DispenseError) throw err;

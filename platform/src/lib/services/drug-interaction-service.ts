@@ -309,7 +309,7 @@ export function checkInteractions(medications: string[]): InteractionCheckResult
     return { hasInteractions: false, interactions: [], highestSeverity: null };
   }
 
-  const normalized = medications.map(interactionName);
+  const normalized = medications.map(interactionName).filter(Boolean);
   const pairs: [string, string][] = [];
   for (let i = 0; i < normalized.length; i++) {
     for (let j = i + 1; j < normalized.length; j++) {
@@ -330,7 +330,10 @@ export function checkNewPrescription(
   currentMedications: string[]
 ): InteractionCheckResult {
   const med = interactionName(newMedication);
-  return findInteractions(currentMedications.map(current => [med, interactionName(current)]));
+  if (!med) return findInteractions([]);
+  return findInteractions(
+    currentMedications.map(interactionName).filter(Boolean).map(current => [med, current]),
+  );
 }
 
 /**
@@ -350,15 +353,18 @@ export function getInteractionsForDrug(medication: string): DrugInteraction[] {
 // flag. Both directions are substring-matched so "penicillin allergy" trips on
 // "Amoxicillin 500mg" and a recorded "amoxicillin" allergy trips on the same.
 // ─────────────────────────────────────────────────────────────────────────
+const SULFONAMIDES = ['cotrimoxazole', 'co-trimoxazole', 'septrin', 'bactrim', 'sulfamethoxazole', 'sulfadoxine', 'sulfasalazine'];
+
 const ALLERGY_CLASS_MEMBERS: Record<string, string[]> = {
-  penicillin: ['penicillin', 'amoxicillin', 'ampicillin', 'flucloxacillin', 'cloxacillin', 'co-amoxiclav', 'amoxiclav', 'benzylpenicillin', 'piperacillin'],
-  sulfa: ['cotrimoxazole', 'co-trimoxazole', 'sulfamethoxazole', 'sulfadoxine', 'sulfasalazine'],
-  sulfonamide: ['cotrimoxazole', 'co-trimoxazole', 'sulfamethoxazole', 'sulfadoxine', 'sulfasalazine'],
-  nsaid: ['ibuprofen', 'diclofenac', 'aspirin', 'naproxen', 'indomethacin'],
+  penicillin: ['penicillin', 'amoxicillin', 'ampicillin', 'flucloxacillin', 'cloxacillin', 'co-amoxiclav', 'amoxiclav', 'benzylpenicillin', 'piperacillin', 'augmentin', 'tazocin', 'benzathine', 'phenoxymethylpenicillin'],
+  sulfa: SULFONAMIDES,
+  sulpha: SULFONAMIDES,
+  sulfonamide: SULFONAMIDES,
+  nsaid: ['ibuprofen', 'diclofenac', 'aspirin', 'naproxen', 'indomethacin', 'ketorolac', 'mefenamic', 'piroxicam', 'meloxicam', 'ketoprofen', 'celecoxib'],
   aspirin: ['aspirin', 'acetylsalicylic'],
-  cephalosporin: ['ceftriaxone', 'cefixime', 'cefuroxime', 'cephalexin', 'cefotaxime'],
+  cephalosporin: ['ceftriaxone', 'cefixime', 'cefuroxime', 'cephalexin', 'cefalexin', 'cefotaxime', 'cefazolin', 'ceftazidime', 'cefpodoxime', 'cefaclor', 'cefepime'],
   quinine: ['quinine', 'quinidine'],
-  sulphonamide: ['cotrimoxazole', 'co-trimoxazole', 'sulfamethoxazole', 'sulfadoxine'],
+  sulphonamide: SULFONAMIDES,
 };
 
 export interface AllergyAlert {
@@ -422,7 +428,7 @@ function medicationForAllergy(medication: string, allergy: string): string {
  */
 export function checkAllergies(medications: string[], allergies: string[]): AllergyAlert[] {
   const alerts: AllergyAlert[] = [];
-  const meds = (medications || []).filter(Boolean);
+  const meds = (medications || []).filter(m => m?.trim());
   const allgs = (allergies || [])
     .filter(Boolean)
     .filter(a => !isNoAllergySentinel(a));
@@ -454,7 +460,7 @@ export function checkAllergiesStructured(
   allergies: AllergyLike[],
 ): StructuredAllergyAlert[] {
   const alerts: StructuredAllergyAlert[] = [];
-  const meds = (medications || []).filter(Boolean);
+  const meds = (medications || []).filter(m => m?.trim());
   const allgs = (allergies || [])
     .filter((a) => a && a.substance && (a.status === undefined || a.status === 'active'))
     .filter((a) => !isNoAllergySentinel(a.substance));

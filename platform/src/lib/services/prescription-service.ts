@@ -1,4 +1,6 @@
-import { SAFETY_REASON_MIN_LENGTH, hasSafetyStop } from '../pharmacy/rx-safety';
+import {
+  SAFETY_REASON_MIN_LENGTH, hasSafetyStop, needsWeeklyReview, unreviewedAllergyConflicts, unreviewedInteractionConflicts,
+} from '../pharmacy/rx-safety';
 import { prescriptionsDB, hospitalsDB } from '../db';
 import { findByType } from './db-query';
 import type { PrescriptionDoc, PrescriptionPatientCopy, UserRole, HospitalDoc } from '../db-types';
@@ -300,6 +302,8 @@ export interface PrescriptionCreateResult {
 
 export interface PrescriptionSafetyAssessment {
   interactionWarnings: InteractionCheckResult | null;
+  /** A weekly medicine ordered more often: see needsWeeklyReview. */
+  weeklyOnly?: boolean;
   allergyWarnings: StructuredAllergyAlert[] | null;
   duplicateWarnings: string[] | null;
   /**
@@ -353,6 +357,27 @@ async function inferOrgIdFromHospital(hospitalId?: string): Promise<string | und
 export const UNREADABLE_COURSE_LOOKBACK_DAYS = 30;
 
 const DAY_MS = 86_400_000;
+
+/**
+ * What stands between an order and the pharmacist's hand: severe allergy
+ * matches and contraindicated pairs nobody has answered. The screen and the
+ * dispense both read this, so what it shows is what it enforces.
+ */
+export async function findDispenseConflicts(
+  rx: PrescriptionDoc,
+  scope: DataScope,
+): Promise<{ allergies: StructuredAllergyAlert[]; interactions: string[] }> {
+  const { getActiveAllergies } = await import('./allergy-service');
+  const [allergies, medications, orders] = await Promise.all([
+    getActiveAllergies(rx.patientId, scope),
+    getCurrentMedicationNames(rx.patientId, scope),
+    getPrescriptionsByPatient(rx.patientId, scope),
+  ]);
+  return {
+    allergies: unreviewedAllergyConflicts(rx, allergies),
+    interactions: unreviewedInteractionConflicts(rx, medications, orders.filter(order => order._id !== rx._id)),
+  };
+}
 
 /** Days named in a duration note ("5 days", "2 weeks", "1 month"); null when none is readable. */
 function courseLengthDays(duration: string | undefined): number | null {
@@ -533,6 +558,7 @@ export async function assessPrescriptionSafety(
   return {
     interactionWarnings, allergyWarnings, duplicateWarnings, doseWarnings,
     allergyCheckUnavailable, interactionCheckUnavailable,
+    weeklyOnly: needsWeeklyReview(medication, order?.frequency),
   };
 }
 
@@ -718,7 +744,9 @@ export async function createPrescription(
   }
 
   const acknowledgementReason = data.medicationSafetyAcknowledgement?.reason.trim() || '';
-  const stopped = hasSafetyStop({ allergyWarnings, interactionWarnings });
+  const stopped = hasSafetyStop({
+    allergyWarnings, interactionWarnings, weeklyOnly: needsWeeklyReview(data.medication, data.frequency),
+  });
   if (stopped && acknowledgementReason.length < SAFETY_REASON_MIN_LENGTH) {
     throw new ValidationError({
       medicationSafetyAcknowledgement: 'A clinical justification of at least 10 characters is required to continue past a severe allergy or contraindicated interaction warning.',

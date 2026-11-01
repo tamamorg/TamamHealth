@@ -6,6 +6,7 @@ import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import {
   checkAllergies, checkAllergiesStructured, checkNewPrescription,
 } from '@/lib/services/drug-interaction-service';
+import { hasSafetyStop, needsWeeklyReview, unreviewedInteractionConflicts } from '@/lib/pharmacy/rx-safety';
 import { isMedicationCurrent, ONGOING_COURSE_LOOKBACK_DAYS } from '@/lib/services/prescription-service';
 
 describe('no-allergy markers', () => {
@@ -72,5 +73,66 @@ describe('isMedicationCurrent', () => {
 
   it('never keeps a discontinued medicine', () => {
     expect(isMedicationCurrent({ status: 'discontinued', duration: 'ongoing', dispensedAt: longAgo })).toBe(false);
+  });
+});
+
+describe('allergy classes', () => {
+  it.each([
+    ['NSAID', 'Ketorolac'], ['NSAID', 'Mefenamic acid'], ['NSAID', 'Celecoxib'],
+    ['Cephalosporin', 'Cefazolin'], ['Cephalosporin', 'Ceftazidime'],
+    ['Penicillin', 'Augmentin'], ['Penicillin', 'Tazocin'], ['Sulfa', 'Septrin'], ['Sulpha', 'Bactrim'],
+  ])('%s allergy flags %s', (allergy, drug) => {
+    expect(checkAllergies([drug], [allergy])).toHaveLength(1);
+  });
+
+  it('ignores a blank medicine rather than flagging every allergy', () => {
+    expect(checkAllergies(['   '], ['Penicillin'])).toEqual([]);
+    expect(checkNewPrescription('   ', ['Warfarin']).hasInteractions).toBe(false);
+    expect(checkNewPrescription('Warfarin', ['   ']).hasInteractions).toBe(false);
+  });
+});
+
+describe('methotrexate frequency', () => {
+  it.each(['OD', 'BD', 'daily', 'once daily'])('stops %s', frequency => {
+    expect(needsWeeklyReview('Methotrexate', frequency)).toBe(true);
+    expect(hasSafetyStop({ weeklyOnly: needsWeeklyReview('Methotrexate', frequency) })).toBe(true);
+  });
+
+  it.each(['Weekly', 'once weekly', 'once a week', '1/7'])('accepts %s', frequency => {
+    expect(needsWeeklyReview('Methotrexate', frequency)).toBe(false);
+  });
+
+  it('leaves other medicines and an unset frequency alone', () => {
+    expect(needsWeeklyReview('Metformin', 'BD')).toBe(false);
+    expect(needsWeeklyReview('Methotrexate', '')).toBe(false);
+  });
+});
+
+describe('unreviewedInteractionConflicts', () => {
+  const warning = { drug1: 'warfarin', drug2: 'metronidazole', severity: 'contraindicated' as const, description: '', clinicalAdvice: '' };
+  const safety = { assessedAt: '', allergyWarnings: [], interactionWarnings: [warning], duplicateWarnings: [] };
+  const acknowledgement = { reviewedBy: 'Dr. A', reviewedAt: '', reason: 'No alternative available today' };
+  const metronidazole = { medication: 'Metronidazole' };
+
+  it('stops a pair nobody answered', () => {
+    expect(unreviewedInteractionConflicts(metronidazole, ['Warfarin'])).toEqual(['warfarin + metronidazole']);
+  });
+
+  it('accepts the prescriber answering it on this order or on the other half', () => {
+    expect(unreviewedInteractionConflicts({ ...metronidazole, medicationSafety: { ...safety, acknowledgement } }, ['Warfarin'])).toEqual([]);
+    expect(unreviewedInteractionConflicts(metronidazole, ['Warfarin'], [{ medicationSafety: { ...safety, acknowledgement } }])).toEqual([]);
+  });
+
+  it('does not count a warning nobody justified', () => {
+    expect(unreviewedInteractionConflicts(metronidazole, ['Warfarin'], [{ medicationSafety: safety }])).toHaveLength(1);
+  });
+
+  it('accepts an earlier fill answering it', () => {
+    const review = { allergies: [], interactions: ['warfarin + metronidazole'], reviewedBy: 'P', reviewedAt: '', reason: 'Confirmed by phone' };
+    expect(unreviewedInteractionConflicts({ ...metronidazole, dispenseAllergyReview: review }, ['Warfarin'])).toEqual([]);
+  });
+
+  it('ignores anything below contraindicated', () => {
+    expect(unreviewedInteractionConflicts({ medication: 'Ibuprofen' }, ['Warfarin'])).toEqual([]);
   });
 });

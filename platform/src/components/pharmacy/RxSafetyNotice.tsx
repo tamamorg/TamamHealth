@@ -10,30 +10,34 @@ import { useEffect, useState } from 'react';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { unreviewedAllergyConflicts } from '@/lib/pharmacy/rx-safety';
 import type { StructuredAllergyAlert } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 
-/** Allergy conflicts on this order that still need the pharmacist's review. */
-export function useUnreviewedAllergies(rx: PrescriptionDoc): StructuredAllergyAlert[] {
+interface DispenseConflicts { allergies: StructuredAllergyAlert[]; interactions: string[] }
+const NO_CONFLICTS: DispenseConflicts = { allergies: [], interactions: [] };
+
+/** Conflicts on this order that still need the pharmacist's review. */
+export function useUnreviewedConflicts(rx: PrescriptionDoc): DispenseConflicts {
   const scope = useDataScope();
-  const [conflicts, setConflicts] = useState<StructuredAllergyAlert[]>([]);
+  const [conflicts, setConflicts] = useState<DispenseConflicts>(NO_CONFLICTS);
   useEffect(() => {
     if (!scope || !rx.patientId) return;
     let live = true;
     void (async () => {
-      const { getActiveAllergies } = await import('@/lib/services/allergy-service');
-      const active = await getActiveAllergies(rx.patientId, scope).catch(() => []);
-      if (live) setConflicts(unreviewedAllergyConflicts(rx, active));
+      const { findDispenseConflicts } = await import('@/lib/services/prescription-service');
+      const found = await findDispenseConflicts(rx, scope).catch(() => NO_CONFLICTS);
+      if (live) setConflicts(found);
     })();
     return () => { live = false; };
   }, [rx, scope]);
   return conflicts;
 }
 
-export default function RxSafetyNotice({ rx, conflicts = [], review, onReview }: {
+export default function RxSafetyNotice({ rx, conflicts = [], interactionConflicts = [], review, onReview }: {
   rx: PrescriptionDoc;
   conflicts?: StructuredAllergyAlert[];
+  /** Contraindicated pairs nobody has answered. */
+  interactionConflicts?: string[];
   /** With `onReview`, shows the field for a written review of `conflicts`. */
   review?: string;
   onReview?: (value: string) => void;
@@ -42,6 +46,7 @@ export default function RxSafetyNotice({ rx, conflicts = [], review, onReview }:
   const safety = rx.medicationSafety;
   const lines = [
     ...conflicts.map(c => t('rxFlow.newAllergyConflict', { allergy: c.allergy })),
+    ...interactionConflicts.map(drugs => t('rxFlow.newInteractionConflict', { drugs })),
     ...(safety?.allergyWarnings || []).map(w => t('rxFlow.safetyAllergy', {
       allergy: w.allergy, criticality: w.criticality, reaction: w.reaction ? `, ${w.reaction}` : '',
     })),
@@ -55,12 +60,12 @@ export default function RxSafetyNotice({ rx, conflicts = [], review, onReview }:
   if (!lines.length) return null;
   return (
     <div className="rx-safety-notice" style={{ marginBottom: 12 }}>
-      <InlineBanner tone={conflicts.length ? 'danger' : 'warning'} title={t('rxFlow.safetyHeading')}>
+      <InlineBanner tone={conflicts.length + interactionConflicts.length ? 'danger' : 'warning'} title={t('rxFlow.safetyHeading')}>
         <ul style={{ margin: 0, paddingInlineStart: 18 }}>
           {lines.map((line, index) => <li key={index}>{line}</li>)}
         </ul>
       </InlineBanner>
-      {conflicts.length > 0 && onReview && (
+      {conflicts.length + interactionConflicts.length > 0 && onReview && (
         <div className="labord-form" style={{ marginTop: 10 }}>
           <label className="labord-field-label" htmlFor={`rx-allergy-review-${rx._id}`}>{t('rxFlow.allergyReviewLabel')}</label>
           <textarea

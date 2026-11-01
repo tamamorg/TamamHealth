@@ -725,6 +725,8 @@ export interface PrescriptionDoc extends BaseDoc {
    *  answered at prescribing, usually one recorded after the order. */
   dispenseAllergyReview?: {
     allergies: string[];
+    /** Contraindicated pairs answered in the same review. */
+    interactions?: string[];
     reviewedBy: string;
     reviewedAt: string;
     reason: string;

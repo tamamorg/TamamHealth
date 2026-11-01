@@ -15,7 +15,7 @@ import { CheckCircle2, AlertTriangle, ShieldAlert } from '@/components/icons/luc
 import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
 import FormNotices from '@/components/overlay/FormNotices';
 import InlineBanner from '@/components/overlay/InlineBanner';
-import RxSafetyNotice, { useUnreviewedAllergies } from '@/components/pharmacy/RxSafetyNotice';
+import RxSafetyNotice, { useUnreviewedConflicts } from '@/components/pharmacy/RxSafetyNotice';
 import { useToast } from '@/components/Toast';
 import { formatDateTime } from '@/lib/format-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -84,7 +84,7 @@ export default function PharmacyWorkflowPanel({
   const { showToast } = useToast();
   const ctrl = usePharmacyWorkflow(rxFromList, activeMedications);
   const { rx, dispenseDraft: draft, setDispenseDraft: setDraft } = ctrl;
-  const conflicts = useUnreviewedAllergies(rx);
+  const conflicts = useUnreviewedConflicts(rx);
   const filled = isFilled(ctrl.stage);
 
   const finish = async (fn: () => Promise<boolean>, successKey: string, closes = true) => {
@@ -101,7 +101,8 @@ export default function PharmacyWorkflowPanel({
       <>
         <RxSafetyNotice
           rx={rx}
-          conflicts={conflicts}
+          conflicts={conflicts.allergies}
+          interactionConflicts={conflicts.interactions}
           review={!filled && !intent ? draft.allergyReview : undefined}
           onReview={!filled && !intent ? allergyReview => setDraft({ ...draft, allergyReview }) : undefined}
         />

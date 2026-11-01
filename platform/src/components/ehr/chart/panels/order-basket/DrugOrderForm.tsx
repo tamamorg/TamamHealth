@@ -17,10 +17,11 @@ import StockNotice from '@/components/clinical-notes/prescribe/StockNotice';
 import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
 import type { StockPosition } from '@/lib/pharmacy-stock-position';
 import type { PatientDoc } from '@/lib/db-types';
+import { needsWeeklyReview } from '@/lib/pharmacy/rx-safety';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import FormNotices from '@/components/overlay/FormNotices';
 import {
-  DOSE_UNITS, FREQUENCIES, ROUTES, drugOrderGaps, quantityFor,
+  DOSE_UNITS, FREQUENCIES, ROUTES, drugOrderGaps, frequencyText, quantityFor,
   type DrugOrderDraft, type DurationUnit,
 } from './basket-types';
 import PatientBanner from './PatientBanner';
@@ -88,6 +89,7 @@ export default function DrugOrderForm({
     return () => { cancelled = true; };
   }, [order.drug.name, activeMedications]);
 
+  const weeklyConcern = needsWeeklyReview(order.drug.name, frequencyText(order));
   const quantity = quantityFor(order);
   const stock = stockFor(order.drug.name, Math.max(1, quantity));
   const drugName = (
@@ -111,7 +113,7 @@ export default function DrugOrderForm({
           <h2 className="obf-form-title">{t('basket.orderFormTitle')}</h2>
           <h3 ref={heading} className="obf-drug">{drugName}</h3>
 
-          {(allergyHits.length > 0 || interactions.length > 0) && (
+          {(allergyHits.length > 0 || interactions.length > 0 || weeklyConcern) && (
             <div className="obf-alerts" role="alert">
               {allergyHits.map(hit => (
                 <p key={hit.allergy} className="obf-alert obf-alert--danger">
@@ -120,6 +122,11 @@ export default function DrugOrderForm({
                   {hit.reaction ? ` (${hit.reaction})` : ''}
                 </p>
               ))}
+              {weeklyConcern && (
+                <p className="obf-alert obf-alert--danger">
+                  <AlertTriangle aria-hidden /> {t('prescribe.overrideMessageWeekly', { medication: order.drug.name })}
+                </p>
+              )}
               {interactions.map(i => (
                 <p key={i.text} className={i.severity === 'contraindicated' || i.severity === 'serious' ? 'obf-alert obf-alert--danger' : 'obf-alert'}>
                   <AlertTriangle aria-hidden /> {i.text}
