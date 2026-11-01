@@ -72,6 +72,14 @@ export const SPECIMEN_REJECTION_REASONS = [
   'Other',
 ];
 
+/** A result with its unit, once: a value can be keyed as "4.2 g/dL" with the unit also filled in. */
+export function resultWithUnit(result?: string | number, unit?: string): string {
+  const value = String(result ?? '').trim();
+  const suffix = (unit || '').trim();
+  if (!value || !suffix || value.toLowerCase().endsWith(suffix.toLowerCase())) return value;
+  return `${value} ${suffix}`;
+}
+
 /** Accession fallback for orders placed before accessions were stamped. */
 export function fallbackAccessionNumber(order: { _id: string; accessionNumber?: string; orderedAt?: string }): string {
   if (order.accessionNumber) return order.accessionNumber;

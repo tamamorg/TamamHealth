@@ -11,7 +11,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabResultDoc } from '@/lib/db-types';
-import { containersFor, fallbackAccessionNumber, isOutsideRequest, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types';
+import { containersFor, fallbackAccessionNumber, isOutsideRequest, resultWithUnit, SPECIMEN_REJECTION_REASONS } from '../lab-workflow-types';
 import type { LabWorkflowController } from '../useLabWorkflow';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { printElementById } from '@/lib/safe-html';
@@ -491,14 +491,13 @@ export function ReportStep({
             </button>
           )}
           <button type="button" className="labord-btn" style={{ padding: '4px 10px' }} onClick={() => printElementById('lab-result-print', {
-            label: t('labFlow.finalDiagnosticReport'),
+            label: t('print.labReport'),
             date: order.completedAt,
             fieldsTitle: t('print.patientInformation'),
             fields: [
               { label: t('print.patientName'), value: order.patientName },
               { label: t('print.patientId'), value: order.hospitalNumber },
-              { label: t('lab.specimen'), value: order.specimen },
-              { label: t('labFlow.accession'), value: order.accessionNumber },
+              { label: t('labFlow.accession'), value: fallbackAccessionNumber(order) },
             ],
           })}>
             <Printer className="w-3.5 h-3.5" aria-hidden /> {t('labFlow.printReport')}
@@ -536,7 +535,7 @@ export function ReportStep({
               </table>
               <div className="obf-row lab-result-report-meta">
                 <Field label={t('labFlow.test')} value={order.testName} />
-                <Field label={t('labFlow.accession')} value={order.accessionNumber} />
+                <Field label={t('labFlow.accession')} value={fallbackAccessionNumber(order)} />
                 <Field label={t('labFlow.reportedAt')} value={order.completedAt ? formatDateTime(order.completedAt) : undefined} />
                 <Field label={t('lab.specimen')} value={order.specimen || '—'} />
                 <Field label={t('labOrder.orderingProviderLabel')} value={order.orderedBy || '—'} />
@@ -549,12 +548,12 @@ export function ReportStep({
           ) : (
           <div className="obf-row">
             <Field label={t('labFlow.test')} value={order.testName} />
-            <Field label={t('labFlow.accession')} value={order.accessionNumber} />
+            <Field label={t('labFlow.accession')} value={fallbackAccessionNumber(order)} />
             <Field
               label={t('labFlow.value')}
               value={
                 <span style={{ color: order.critical ? 'var(--color-danger, #D92B20)' : order.abnormal ? 'var(--color-warning, #CC6600)' : undefined }}>
-                  {order.result || '—'} {order.unit}
+                  {resultWithUnit(order.result, order.unit) || '—'}
                 </span>
               }
             />

@@ -134,6 +134,14 @@
   [data-print-active] :is(.tamam-nv-head, .ehr-handoff-head, .labord-req-facility) { display: none !important; }
   #executive-briefing-print > .dash-card:first-of-type { display: none !important; }
 
+  /* The MAR grid and requisition set their capitals inline or in lab-order.css. */
+  #mar-print-record th,
+  #lab-requisition-print :is(th, .labord-field-label, [class*="label"]) {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+  }
+  #mar-print-record th { background: color-mix(in srgb, black 5%, white) !important; color: black !important; }
+
   [data-print-active] table { width: 100%; border-collapse: collapse; font-size: 9pt; }
   [data-print-active] thead { display: table-header-group; }
 

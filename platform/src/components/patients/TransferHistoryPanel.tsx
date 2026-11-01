@@ -33,6 +33,7 @@ import {
 } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 
 const STATUS_STYLE: Record<PatientTransferStatus, { label: string; bg: string; fg: string }> = {
   draft: { label: 'Draft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
@@ -484,7 +485,7 @@ export function TransferredRecords({ patient }: { patient: PatientDoc }) {
   const hospital = latest.from.facilityName || t('transfers.sendingHospital');
   const vitals = summary.latestVitals ? vitalsLine(summary.latestVitals) : '';
   const results = (summary.recentResults ?? []).map(r => [
-    `${r.testName}: ${r.result}${r.unit ? ` ${r.unit}` : ''}`,
+    `${r.testName}: ${resultWithUnit(r.result, r.unit)}`,
     r.critical ? `(${t('lab.criticalLabel')})` : r.abnormal ? `(${t('lab.abnormal')})` : '',
   ].filter(Boolean).join(' '));
 

@@ -56,6 +56,8 @@ export function openIsolatedHtmlWindow(html: string, features = '', autoPrint = 
 }
 
 export interface PrintHeading {
+  /** Who issues a document that does not belong to one facility. */
+  issuer?: string;
   /** What the document is ("Lab Report"), at the top right of the sheet. */
   label: string;
   /** Its own date; today when not given. */
@@ -68,7 +70,7 @@ export interface PrintHeading {
 
 /** The sheet's heading for a document printed from the screen: the facility at
  *  the left, the document and its date at the right, as on a generated one. */
-function printHeadingElement({ label, date, fieldsTitle, fields = [] }: PrintHeading): HTMLElement {
+function printHeadingElement({ label, date, issuer, fieldsTitle, fields = [] }: PrintHeading): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'print-doc-top';
   const head = document.createElement('header');
@@ -79,7 +81,7 @@ function printHeadingElement({ label, date, fieldsTitle, fields = [] }: PrintHea
   logo.src = '/assets/tamam-icon.svg';
   logo.alt = '';
   const facility = document.createElement('strong');
-  facility.textContent = getPrintIdentity()?.facilityName || 'TamamHealth Health Facility';
+  facility.textContent = issuer || getPrintIdentity()?.facilityName || 'TamamHealth Health Facility';
   brand.append(logo, facility);
   const identity = document.createElement('div');
   identity.className = 'print-doc-identity';

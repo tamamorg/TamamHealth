@@ -25,6 +25,7 @@ import type { LabResultDoc } from '@/lib/db-types';
 import {
   completedThrough,
   fallbackAccessionNumber,
+  resultWithUnit,
 } from './lab-workflow-types';
 import {
   buildLabObservations,
@@ -355,7 +356,7 @@ export function useLabWorkflow(
     const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
     if (!result) throw new Error('labFlow.errResultValue');
     if (!reason.trim()) throw new Error('labFlow.errAmendReason');
-    const previous = `${order.result || '—'}${order.unit ? ` ${order.unit}` : ''}`;
+    const previous = resultWithUnit(order.result, order.unit) || '—';
     await update(order._id, {
       result,
       unit: profile ? '' : resultDraft.unit.trim(),

@@ -97,12 +97,12 @@ export default function ExecutiveBriefingPage() {
 
   return (
     <main id="executive-briefing-print" className="page-container page-enter">
-      <div data-tour="gov-briefing-header" className="dash-card mb-3">
+      <div data-tour="gov-briefing-header" className="dash-card mb-3 no-print">
         <EhrListHeader
           title="Executive briefing"
           stats={[{ label: 'As of', value: `${today} · National` }]}
           actions={
-            <button onClick={() => printElementById('executive-briefing-print', { label: 'Executive Briefing' })} className="btn btn-secondary print-visible" style={{ height: 36 }}>
+            <button onClick={() => printElementById('executive-briefing-print', { label: 'Executive Briefing', issuer: 'Ministry of Health', fieldsTitle: 'Report Scope', fields: [{ label: 'Coverage', value: 'National' }] })} className="btn btn-secondary print-visible" style={{ height: 36 }}>
               <Printer className="w-4 h-4" /> Print briefing
             </button>
           }

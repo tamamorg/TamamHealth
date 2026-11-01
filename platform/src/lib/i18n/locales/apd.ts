@@ -3633,6 +3633,7 @@ const apd: TranslationMap = {
   'print.weight': 'الوزن',
   'print.respiratoryRate': 'معدل التنفس',
   'print.spo2': 'SpO₂',
+  'print.labReport': 'تقرير المعمل',
   'print.mar': 'سجل إعطاء الدواء',
   'mar.wardBed': 'العنبر / السرير',
   'mar.attendingLabel': 'الدكتور المسؤول',

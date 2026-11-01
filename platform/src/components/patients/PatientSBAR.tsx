@@ -35,6 +35,7 @@ import { printDate } from '@/lib/print-identity';
 import { printElementById } from '@/lib/safe-html';
 import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '@/lib/clinical/iitt';
 import { extractManualPriorityRaise } from '@/components/nurse/triage-intake-notes';
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import './sbar-form.css';
 
 const IITT_RED_LABELS = new Map<string, string>(IITT_RED_CRITERIA);
@@ -418,7 +419,7 @@ export default function PatientSBAR({
                 {recentCriticalLabs.map(l => (
                   <li key={l._id}>
                     <span className="sbar-row-main">{l.testName}<span className="sbar-muted"> · {t('sbar.refRange')} {l.referenceRange} · {formatDateTime(l.completedAt)}</span></span>
-                    <span className="sbar-critical">{l.result} {l.unit}</span>
+                    <span className="sbar-critical">{resultWithUnit(l.result, l.unit)}</span>
                   </li>
                 ))}
               </ul>

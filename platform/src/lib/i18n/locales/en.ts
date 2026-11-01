@@ -3626,6 +3626,7 @@ const en: TranslationMap = {
   'labFlow.orderedAt': 'Ordered at',
   'labFlow.printReport': 'Print report',
   'print.patientInformation': 'Patient Information',
+  'print.labReport': 'Lab Report',
   'print.patientName': 'Patient Name',
   'print.patientId': 'Patient ID',
   'print.sbar': 'SBAR Handoff',
