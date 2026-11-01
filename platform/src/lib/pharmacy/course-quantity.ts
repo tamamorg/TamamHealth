@@ -82,10 +82,21 @@ function parseAmount(text: string | undefined): { value: number; unit: string } 
 /** "4 Tablet", "2 caps", "1.5 tablets": a dose already counted in units. */
 const COUNTED_DOSE = /^\s*(\d+(?:\.\d+)?)\s*(?:x\s*)?(?:tab(?:let)?s?|cap(?:sule)?s?|sachets?|suppositor(?:y|ies)|pessar(?:y|ies)|puffs?|drops?|vials?|ampoules?|amps?)\b/i;
 
+/**
+ * The most units one dose can plausibly be. The dose unit can stay on "Tablet"
+ * while a clinician types 500 meaning milligrams; read as a count, that is a
+ * 5,000-tablet course, a bill in the millions and the shelf emptied. A figure
+ * above this is not a count, so it takes the same fallback as any unreadable dose.
+ */
+const MAX_UNITS_PER_DOSE = 20;
+
 /** Units per single dose: the count written, or dose amount over the strength in the name. */
 export function unitsPerDose(medication: string | undefined, dose: string | undefined): number {
   const counted = dose?.match(COUNTED_DOSE);
-  if (counted) return Math.max(1, Math.ceil(Number(counted[1])));
+  if (counted) {
+    const units = Math.max(1, Math.ceil(Number(counted[1])));
+    return units <= MAX_UNITS_PER_DOSE ? units : 1;
+  }
   const doseAmt = parseAmount(dose);
   const strength = parseAmount(medication);
   if (!doseAmt || !strength || doseAmt.unit !== strength.unit) return 1;
