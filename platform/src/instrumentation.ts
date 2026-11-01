@@ -51,7 +51,9 @@ function assertProductionConfig(): void {
     for (const e of errors) console.error(`  • ${e}`);
     console.error('  ============================================================');
     console.error('');
-    throw new Error('Invalid production configuration — see errors above.');
+    // Named here too: the thrown message is the one line a deploy log is sure to
+    // keep. These strings name settings and never carry their values.
+    throw new Error(`Invalid production configuration: ${errors.join(' | ')}`);
   }
 
   // Printed, not thrown: these do not make the deployment unsafe, they make it
