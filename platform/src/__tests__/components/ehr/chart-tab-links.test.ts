@@ -17,6 +17,7 @@ describe('resolveChartTab label aliases', () => {
     ['visits', 'history'],
     ['careplan', 'careChecklist'],
     ['medications', 'prescriptions'],
+    ['sbar', 'notes'],
   ])('%s opens %s', (alias, tab) => {
     expect(resolveChartTab(alias)).toBe(tab);
   });

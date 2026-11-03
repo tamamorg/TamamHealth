@@ -18,6 +18,7 @@ import {
   type StructuredAllergyAlert,
 } from './drug-interaction-service';
 import { checkDoseAdvisory, WEIGHT_MAX_AGE_DAYS, type DoseAdvisory } from '../pharmacy/dose-check';
+import { findFormularyDrug } from '../data/formulary';
 import { prescription as rxLifecycle, type PrescriptionStatus } from '../clinical-flow/order-lifecycles';
 import { resolvePrescriptionTier } from '../clinical-flow/medication-tiers';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
@@ -164,6 +165,19 @@ export async function getAllPrescriptions(scope?: DataScope): Promise<Prescripti
   /* istanbul ignore next -- defensive null-safety in sort */
   all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   return scope ? filterByScope(all, scope) : all;
+}
+
+/**
+ * A patient's prescriptions across every facility in the viewer's organization,
+ * for the deliberate network view in a note. A facility-bound scope with its
+ * hospital removed fails closed in `filterByScope`, which left that view, and
+ * the list built from it, empty for every doctor; so the tenant check is made
+ * here instead, on rows this device already holds.
+ */
+export async function getOrgPrescriptionsByPatient(patientId: string, scope: DataScope): Promise<PrescriptionDoc[]> {
+  const rows = await getPrescriptionsByPatient(patientId);
+  if (scope.role === 'super_admin' || scope.role === 'government') return rows;
+  return scope.orgId ? rows.filter(row => row.orgId === scope.orgId) : [];
 }
 
 export async function getPrescriptionsByPatient(patientId: string, scope?: DataScope): Promise<PrescriptionDoc[]> {
@@ -804,6 +818,7 @@ export async function createPrescription(
     // with what the prescriber saw. A later formulary edit reclassifying a
     // drug must not silently retier orders already sitting in the queue.
     criticalityTier: resolvePrescriptionTier(data.medication, data.criticalityTier),
+    ...(findFormularyDrug(data.medication) ? {} : { offFormulary: true }),
     admissionId,
     orgId,
     ...((allergyWarnings?.length || interactionWarnings?.hasInteractions || duplicateWarnings?.length || doseWarnings?.length) ? {

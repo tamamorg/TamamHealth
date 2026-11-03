@@ -159,4 +159,7 @@ export const DEFAULT_CRITICAL_VALUES: CriticalValueRule[] = [
   { testName: 'Calcium (mmol/L)',            criticalLow: 1.5,  criticalHigh: 3.5,  rationale: 'Tetany / arrhythmia' },
   { testName: 'INR',                         criticalHigh: 5,                       rationale: 'Bleeding risk on anticoagulants' },
   { testName: 'Creatinine (µmol/L)',         criticalHigh: 600,                     rationale: 'Acute kidney injury' },
+  { testName: 'Lactate (mmol/L)',            criticalHigh: 4,                       rationale: 'Severe sepsis / shock' },
+  { testName: 'Lithium (mmol/L)',            criticalHigh: 1.5,                     rationale: 'Lithium toxicity' },
+  { testName: 'Digoxin (ng/mL)',             criticalHigh: 2.5,                     rationale: 'Digoxin toxicity' },
 ];

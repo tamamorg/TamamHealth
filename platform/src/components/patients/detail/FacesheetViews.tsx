@@ -10,6 +10,7 @@ import { formatDateTime, formatDate, formatClockTime, formatRxSig, humanizeStatu
 import { isScreeningOverdue } from '@/lib/services/screening-service';
 import { patientFullName, patientInitials, patientAgeLabel } from '@/lib/patient-utils';
 import { priorityBadge, priorityLabel } from '@/lib/clinical/triage-display';
+import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS, iittCodeLabels } from '@/lib/clinical/iitt';
 import type { AppointmentDoc, ImmunizationDoc, LabResultDoc, PatientDoc, PrescriptionDoc, ProblemDoc, TriageDoc } from '@/lib/db-types';
 import { formatPhoneDisplay } from '@/lib/field-formats';
 import { clickable } from '@/lib/a11y';
@@ -210,6 +211,16 @@ export function PatientFacesheetView({
                 {[latestTriage.destinationClinic, latestTriage.assignedProviderName, latestTriage.handoffNote].filter(Boolean).join(' · ')}
               </p>
             )}
+            {/* A patient waiting for their first note has no other place in the
+                chart to read what set this priority. */}
+            {latestTriage.isolationRequired && <p className="tebra-triage-snapshot__sign is-red"><strong>{t('ptDetail.triageIsolation')}</strong></p>}
+            {([
+              ['ptDetail.triageDangerSigns', iittCodeLabels(latestTriage.redCriteria, IITT_RED_CRITERIA), 'is-red'],
+              ['ptDetail.triageUrgentSigns', iittCodeLabels(latestTriage.yellowCriteria, IITT_YELLOW_CRITERIA), 'is-yellow'],
+              ['ptDetail.triageInfectionRisk', iittCodeLabels(latestTriage.infectionRiskSigns, INFECTION_RISK_SIGNS), ''],
+            ] as const).map(([label, signs, tone]) => signs.length > 0 && (
+              <p key={label} className={`tebra-triage-snapshot__sign ${tone}`}><strong>{t(label)}:</strong> {signs.join('; ')}</p>
+            ))}
           </div>
         )}
         {/* The latest BP / pulse / temperature / SpO2 are the vitals band's job,

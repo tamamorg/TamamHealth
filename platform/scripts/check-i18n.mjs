@@ -200,7 +200,6 @@ const UNTRANSLATED_BASELINE = new Map(Object.entries({
   'src/components/mobile/patients/tabs/MobileVitalsTab.tsx': 1,
   'src/components/patients/AddAllergyModal.tsx': 1,
   'src/components/patients/CareAlertFields.tsx': 1,
-  'src/components/patients/PatientSBAR.tsx': 1,
   'src/components/payments/BillingWorkspace.tsx': 1,
   'src/components/settings/FacilitySyncPanel.tsx': 1,
   'src/components/settings/SystemAdminSections.tsx': 1,

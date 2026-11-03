@@ -21,7 +21,7 @@ describe('focused triage completion', () => {
 
   test('a repeat triage saved over the open record becomes the latest assessment', () => {
     // A patient whose triage is still open is re-triaged in place (the form
-    // loads the record for edit). The chart's SBAR reads the newest triage by
+    // loads the record for edit). The chart reads the newest triage by
     // `triagedAt`, so the save must restamp when and by whom — or the handoff
     // keeps the first assessment's time and nurse — and drop the provider's
     // acknowledgement of the handoff it replaces.

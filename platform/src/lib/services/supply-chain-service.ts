@@ -29,16 +29,18 @@ const ESSENTIAL_MEDICINES = [
   // Analgesics
   'Paracetamol', 'Ibuprofen', 'Diclofenac', 'Tramadol', 'Morphine',
   // ORS & IV Fluids
-  'Oral Rehydration Salts', 'Ringer Lactate', 'Normal Saline', 'Dextrose 5%',
+  'Oral Rehydration Salts', "Ringer's Lactate", 'Normal Saline', 'Dextrose 5%',
   // Maternal & Child
-  'Oxytocin', 'Misoprostol', 'Magnesium Sulfate', 'Iron Folate', 'Zinc Sulfate',
+  'Oxytocin', 'Misoprostol', 'Magnesium Sulfate', 'Ferrous + Folic acid', 'Zinc Sulfate',
+  'Ergometrine', 'Tranexamic acid',
   'Vitamin A',
   // HIV/TB
   'Nevirapine', 'Zidovudine', 'Tenofovir', 'Isoniazid', 'Rifampicin',
   // Vaccines
   'BCG', 'OPV', 'Pentavalent', 'Measles', 'Yellow Fever',
   // Other essentials
-  'Adrenaline', 'Diazepam', 'Phenobarbitone', 'Salbutamol', 'Hydrocortisone',
+  'Adrenaline', 'Diazepam', 'Phenobarbital', 'Salbutamol', 'Hydrocortisone',
+  'Antivenom', 'Sodium stibogluconate', 'Paromomycin',
   'Chlorhexidine', 'Insulin', 'Metformin', 'Amlodipine', 'Enalapril',
 ];
 
@@ -85,9 +87,23 @@ export interface FacilityStockSummary {
   stockHealthPercent: number; // 0-100
 }
 
+// Older and shelf spellings of a list entry, so a stock line still counts.
+const ESSENTIAL_ALIASES: Record<string, string[]> = {
+  "Ringer's Lactate": ['ringer lactate', 'hartmann'],
+  'Ferrous + Folic acid': ['iron folate', 'folic acid'],
+  'Phenobarbital': ['phenobarbitone'],
+  'Tenofovir': ['tdf'],
+  'Zinc Sulfate': ['zinc sulphate'],
+  'Magnesium Sulfate': ['magnesium sulphate'],
+};
+
+function namesEssential(stockName: string, essential: string): boolean {
+  const lower = stockName.toLowerCase();
+  return [essential, ...(ESSENTIAL_ALIASES[essential] || [])].some(name => lower.includes(name.toLowerCase()));
+}
+
 function isEssentialMedicine(name: string): boolean {
-  const lower = name.toLowerCase();
-  return ESSENTIAL_MEDICINES.some(em => lower.includes(em.toLowerCase()));
+  return ESSENTIAL_MEDICINES.some(em => namesEssential(name, em));
 }
 
 function daysUntil(dateStr: string): number {
@@ -296,7 +312,7 @@ export async function getSupplyChainSummary(facilityId?: string, scope?: DataSco
 
   // Essential medicine gap analysis
   const essentialMedicineGaps = ESSENTIAL_MEDICINES.filter(
-    em => !Array.from(availableMeds).some(am => am.includes(em.toLowerCase()))
+    em => !Array.from(availableMeds).some(am => namesEssential(am, em))
   );
 
   const alerts = await getStockAlerts(facilityId, scope);

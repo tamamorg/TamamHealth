@@ -22,8 +22,8 @@ const SECTION_BY_SPECIMEN: Record<string, string> = {
   Imaging: 'Imaging',
 };
 
-export const sectionFor = (test: { specimen: string }): string =>
-  SECTION_BY_SPECIMEN[test.specimen] || 'Other';
+export const sectionFor = (test: { specimen: string; section?: string }): string =>
+  test.section || SECTION_BY_SPECIMEN[test.specimen] || 'Other';
 
 /** The catalogue entries offered for one order type. */
 export function catalogFor(catalog: LabTestDef[], kind: LabOrderKind): LabTestDef[] {
@@ -42,6 +42,7 @@ export function searchCatalog(entries: LabTestDef[], query: string): LabTestDef[
   return entries.filter(e =>
     e.name.toLowerCase().includes(q) ||
     e.specimen.toLowerCase().includes(q) ||
+    (e.section || '').toLowerCase().includes(q) ||
     (e.loinc || '').toLowerCase().includes(q)
   );
 }

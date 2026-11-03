@@ -328,12 +328,17 @@ export default function ClinicalNoteEditor({
   // Iterates the PENDING edits, not the timers: with auto-save switched off
   // (`consult.autosave`) there is no timer for a section, and keying off the
   // timers would then throw the very edits this flush exists to rescue.
+  // Read at unmount: a refresh of these must not re-run the flush below mid-typing.
+  const announceLostEdit = useRef(() => {});
+  useEffect(() => {
+    announceLostEdit.current = () => showToast(t('noteEditor.saveFailed'), 'error', { placement: 'corner' });
+  });
   useEffect(() => {
     return () => {
       for (const sectionId of Object.keys(pendingSaves.current)) {
         clearTimeout(timers.current[sectionId]);
         const toSave = pendingSaves.current[sectionId];
-        if (toSave) void saveNoteSection(noteId, sectionId as NoteSectionId, toSave).catch(() => undefined);
+        if (toSave) void saveNoteSection(noteId, sectionId as NoteSectionId, toSave).catch(() => announceLostEdit.current());
       }
       timers.current = {};
       pendingSaves.current = {};

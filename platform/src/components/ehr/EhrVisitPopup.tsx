@@ -26,8 +26,7 @@ const IITT_YELLOW_LABELS = new Map<string, string>(IITT_YELLOW_CRITERIA);
  * Compact "why this priority" summary for the worklist row popup — a doctor
  * scanning the queue sees which structured danger signs, isolation flag, or
  * nurse override actually produced a RED/YELLOW badge without opening the
- * full chart. Mirrors the fuller `TriagePriorityExplain` block on the chart's
- * own SBAR tab (`PatientSBAR.tsx`) at worklist-row scale.
+ * full chart.
  */
 function TriageFindingsSummary({ triage }: { triage: TriageDoc }) {
   const redLabels = (triage.redCriteria || []).map(code => IITT_RED_LABELS.get(code) || code);

@@ -57,7 +57,7 @@
   --font-platform-mono: var(--font-jetbrains-mono), 'JetBrains Mono', system-ui, sans-serif;
   --font-mono: var(--font-platform-mono);
   /* The registration-style forms (`.tamam-reg`: patient registration,
-     triage, SBAR handoff) read in the platform's own face, so they match the
+     triage) read in the platform's own face, so they match the
      chart and lists around them. They were set in IBM Plex Sans (Carbon's
      face), the one place the chart changed typeface between tabs. */
   --font-omrs: var(--font-platform);
@@ -12995,8 +12995,8 @@ span:has(> svg:only-child) {
   }
   /* Must OUT-RANK the hide rule above, not merely follow it. `:has()` takes
      the specificity of its argument, so the hide rule is (0,1,1); a bare
-     `[data-print-active] *` is (0,1,0) and lost — every targeted print (SBAR,
-     shift handoff, MAR, lab requisition, lab report, briefing) came out as a
+     `[data-print-active] *` is (0,1,0) and lost — every targeted print (shift
+     handoff, MAR, lab requisition, lab report, briefing) came out as a
      blank sheet. Repeating the `body:has()` prefix makes this (0,2,1). */
   body:has([data-print-active]) [data-print-active],
   body:has([data-print-active]) [data-print-active] * {
@@ -13004,7 +13004,7 @@ span:has(> svg:only-child) {
   }
   /* Hiding is not enough. The app shell is a fixed-height, overflow-clipped
      frame, and a document sitting inside it prints only as much as that frame
-     shows: one page, however long the record (a patient's SBAR printed its
+     shows: one page, however long the record (a shift handoff printed its
      first section and stopped). So everything that is neither the document
      nor an ancestor of it leaves the flow altogether… */
   body:has([data-print-active]) *:not(:has([data-print-active])):not([data-print-active]):not([data-print-active] *) {
@@ -35239,6 +35239,12 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 }
 
 .modal-portal-backdrop--slider > .tm-slider { margin-inline-start: auto; }
+
+/* One size on the patient chart, whatever a form asked for: the docked drawer
+   and every slider. Room for two columns of fields; full screen is the way to
+   more. */
+:root { --chart-slider-w: 560px; }
+html.tm-chart-open .tm-slider { width: min(var(--chart-slider-w), 100vw) !important; }
 
 .tm-slider > :is(.modal-panel, .modal-content, .card-elevated, div) {
   flex: 1 1 auto;

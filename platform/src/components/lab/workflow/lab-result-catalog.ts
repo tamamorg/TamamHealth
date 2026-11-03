@@ -171,6 +171,8 @@ export function resolveLabResultProfile(testName: string, specimen?: string): La
   const name = testName.trim().toLowerCase();
   if (/^(full|complete) blood count$|^fbc$|^cbc$/.test(name)) return HEMATOLOGY_PROFILE;
   if (/urinalysis|urine (exam|test|microscopy)/.test(name)) return URINE_PROFILE;
+  // Single-answer stool tests take a plain result, not the microscopy panel.
+  if (/cholera|h\. pylori|rotavirus|occult|kato-katz/.test(name)) return null;
   if (/stool/.test(name) || specimen?.toLowerCase() === 'stool') return STOOL_PROFILE;
   if (/^(chemistry|chemistry panel|comprehensive metabolic panel)$/.test(name)) return CHEMISTRY_PROFILE;
   if (/liver function/.test(name)) return sectionSubset(CHEMISTRY_PROFILE, ['liver-proteins']);

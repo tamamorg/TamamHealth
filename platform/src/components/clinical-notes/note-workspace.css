@@ -323,3 +323,29 @@
    the pulled-in rows (problems, medications, allergies, vitals), the
    signature line and the save stamp read at 14px too. */
 .omf-root :is(.cn-derived-row, .cn-signature-note, .omf-saved) { font-size: 14px; line-height: 1.45; }
+
+/* The section list stays on the left in the 560px drawer, as a slim column:
+   labels wrap rather than take the form's width. Full screen keeps the wide one. */
+@container chart-drawer (max-width: 720px) {
+  .omf-body { grid-template-columns: 148px minmax(0, 1fr); }
+  .omf-nav { border-inline-end: 1px solid var(--border-light); background: var(--bg-app); }
+  .omf-nav-item {
+    padding: 10px 12px;
+    border-inline-start: 3px solid transparent;
+    font-size: 13px;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .omf-nav-item:hover { background: var(--border-light); }
+  .omf-nav-item.is-active {
+    border-inline-start-color: var(--accent-primary);
+    background: var(--ehr-panel, var(--bg-card-solid));
+    font-weight: 600;
+  }
+  .omf-nav-add { justify-content: flex-start; margin: 8px 12px 0; font-size: 13px; text-align: start; }
+  .omf-nav-more { margin: 8px 12px 12px; font-size: 13px; }
+  .omf-nav-more button { font-size: 13px; text-align: start; }
+  .omf-nav-actions { margin: 12px 0 0; padding: 12px; background: var(--bg-app); }
+  .omf-group-body { margin-inline-end: 0; }
+}

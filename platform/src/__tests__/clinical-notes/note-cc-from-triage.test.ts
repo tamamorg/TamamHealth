@@ -105,6 +105,27 @@ describe('createClinicalNote — the rest of triage', () => {
     expect(text(n, 'objective')).toContain('Treatment at triage: Oxygen given');
   });
 
+  it('carries what the removed SBAR tab was the only place to read', async () => {
+    await put({
+      isolationRequired: true,
+      vitalUrgencyWarnings: [{ field: 'spo2', code: 'low', urgency: 'RED', message: 'SpO2 below 90%' }],
+      destinationClinic: 'Emergency',
+      assignedProviderName: 'Dr. Wani',
+      handoffNote: 'Needs oxygen',
+    });
+    const objective = text(await note({ encounterId: 'enc-1' }), 'objective');
+    expect(objective).toContain('Isolation required');
+    expect(objective).toContain('Vital sign warnings: SpO2 below 90%');
+    expect(objective).toContain('Sent to: Emergency');
+    expect(objective).toContain('Receiving provider: Dr. Wani');
+    expect(objective).toContain('Handoff note: Needs oxygen');
+  });
+
+  it('names the disposition when no clinic was chosen', async () => {
+    await put({ disposition: 'general_clinic' });
+    expect(text(await note({ encounterId: 'enc-1' }), 'objective')).toContain('Sent to: General clinic');
+  });
+
   it('never presents an unexamined finding', async () => {
     await put({});
     expect(text(await note({ encounterId: 'enc-1' }), 'objective')).not.toContain('Circulation');

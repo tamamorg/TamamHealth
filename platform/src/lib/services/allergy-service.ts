@@ -4,7 +4,7 @@
  * Allergies live ON the patient document (`structuredAllergies`) rather than in
  * a separate database, so they ride the patient's existing sync + scoping and
  * are instantly available everywhere the patient is loaded (chart, consultation
- * prescribing screen, MAR, SBAR, referrals). The legacy `allergies: string[]`
+ * prescribing screen, MAR, referrals). The legacy `allergies: string[]`
  * field is kept as a denormalised mirror of the *active* substance names so the
  * many read sites that consume it keep working unchanged.
  *

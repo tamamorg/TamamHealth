@@ -10,12 +10,20 @@ describe('patient chart note workspace', () => {
     expect(chartShell).toContain('showContextSidebar={false}');
   });
 
-  it('opens wide; the header arrow closes every panel, the ✕ steps back one', () => {
-    expect(chartShell).toContain('onClick={closeAllWorkspaces}');
-    expect(chartShell).toContain("activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) || isWideRoleForm(activePanel.id) ? 'is-note-editor' : ''");
-    // Docked beside the chart (it narrows the chart rather than covering it),
-    // so the note gets a wide column, not the viewport.
-    expect(chartCss).toMatch(/\.tamam-drawer\.is-note-editor\s*{[\s\S]*?width:\s*clamp\(480px, 50vw, 860px\)/);
+  it('takes the one chart slider size; ✕ closes completely, Back only when something is underneath', () => {
+    expect(chartShell).toContain('onClick={closeAllWorkspaces}><X />');
+    expect(chartShell).toContain('className="tamam-drawer-back"');
+    expect(chartShell).not.toContain('tamam-drawer-leave');
+    // Docked beside the chart (it narrows the chart rather than covering it).
+    expect(chartCss).toMatch(/\.tamam-drawer\s*{[\s\S]*?width:\s*min\(var\(--chart-slider-w\), 100vw\)/);
+    expect(chartShell).not.toContain('DrawerResizeHandle');
+  });
+
+  it('asks before a half-filled order is lost, whichever way the drawer closes', () => {
+    for (const leaving of ['togglePanel', 'closeDrawer', 'closeAllWorkspaces']) {
+      expect(chartShell).toMatch(new RegExp(`const ${leaving} = async [\\s\\S]*?if \\(!await leaveOrderForm\\(\\)\\) return;`));
+    }
+    expect(chartShell).toContain('formEditedRef={orderFormEditedRef}');
   });
 
   it('notes have no page of their own: expand stays in the chart, /notes/[id] opens the chart', () => {

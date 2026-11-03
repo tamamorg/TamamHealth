@@ -2,7 +2,7 @@
  * Longitudinal Problem List service.
  *
  * Each problem is anchored to a patient (not an encounter) and persists
- * across visits. The Storyboard sidebar and SBAR handoff both read from
+ * across visits. The Storyboard sidebar reads from
  * here so a clinician sees the same active list everywhere in the app.
  */
 import { problemsDB, hospitalsDB } from '../db';

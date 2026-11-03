@@ -524,7 +524,7 @@ Decision support runs entirely in the browser with no network dependency:
 
 - **Vital-sign thresholds** — `lib/clinical-guidelines.ts` bands temperature, blood pressure, pulse, respiratory rate, SpO2, BMI, and glucose into `normal | warning | danger`, sourced from WHO IMAI, the PIH Clinical Handbook, and the South Sudan MoH triage protocol. The bands tint tiles and badges across the EHR.
 - **Drug interactions** — `lib/services/drug-interaction-service.ts` (and `/api/drug-interactions`) checks contraindicated / serious / moderate drug-drug pairs, based on WHO Essential Medicines interactions and BNF/BNFC, scoped to medicines common in South Sudanese hospitals.
-- **Allergy checking** — `lib/services/allergy-service.ts` keeps structured allergies on the patient document so they ride the patient's own sync and scoping, and surface in the chart, prescribing screen, MAR, SBAR, and referrals.
+- **Allergy checking** — `lib/services/allergy-service.ts` keeps structured allergies on the patient document so they ride the patient's own sync and scoping, and surface in the chart, prescribing screen, MAR, and referrals.
 - **Care alerts** — `lib/services/care-alert-service.ts` raises follow-up and safety alerts on the worklists.
 - **Assessment instruments & symptom templates** — `lib/clinical/` holds the ETAT triage display, scored assessment instruments, vitals maths, and diagnosis validation.
 - **ICD-11 coding** — `lib/icd11-codes.ts` plus the terminology API back cause-of-death and diagnosis coding.

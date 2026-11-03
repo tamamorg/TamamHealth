@@ -79,6 +79,22 @@ export const OPEN_TRANSFER_STATUSES = new Set<PatientTransferStatus>([
   'draft', 'requested', 'accepted',
 ]);
 
+/** The order a patient moves through. Progress only ever goes forward along it. */
+export const TRANSFER_PROGRESS_ORDER: PatientTransferPhysicalStatus[] = [
+  'not_scheduled', 'bed_reserved', 'ready_for_transport', 'departed', 'in_transit',
+  'arrived', 'receiving_assessment', 'closed',
+];
+
+export const transferProgressRank = (step: PatientTransferPhysicalStatus) => TRANSFER_PROGRESS_ORDER.indexOf(step);
+
+/** Where the patient is. A confirmed arrival outranks anything recorded since. */
+export function transferProgress(
+  transfer: Pick<PatientTransferDoc, 'physicalStatus' | 'arrivedAt'>,
+): PatientTransferPhysicalStatus {
+  const recorded = transfer.physicalStatus ?? 'not_scheduled';
+  return transfer.arrivedAt && transferProgressRank(recorded) < transferProgressRank('arrived') ? 'arrived' : recorded;
+}
+
 export function transferDeadline(urgency: PatientTransferUrgency, fromIso: string): string {
   const hours = TRANSFER_SLA_HOURS[urgency] ?? TRANSFER_SLA_HOURS.routine;
   return new Date(new Date(fromIso).getTime() + hours * 3600_000).toISOString();
@@ -877,7 +893,10 @@ export async function updateTransferLogistics(
     const response = await wardDb.put(reserved);
     await emitSyncEvent({ resourceType: 'bed', resourceId: bed._id, operation: 'update', resourceVersion: response.rev, hospitalId: bed.facilityId });
   }
-  doc.physicalStatus = patch.physicalStatus ?? doc.physicalStatus ?? 'not_scheduled';
+  const before = transferProgress(doc);
+  doc.physicalStatus = patch.physicalStatus && transferProgressRank(patch.physicalStatus) > transferProgressRank(before)
+    ? patch.physicalStatus
+    : before;
   doc.destination = patch.destination ? { ...doc.destination, ...patch.destination } : doc.destination;
   doc.transport = patch.transport ? { ...doc.transport, ...patch.transport } : doc.transport;
   doc.clinicalReadiness = patch.clinicalReadiness
@@ -888,7 +907,9 @@ export async function updateTransferLogistics(
     : doc.communication;
   doc.events.push(makeEvent(
     'TRANSFER_LOGISTICS_UPDATED',
-    `Transfer logistics updated${doc.physicalStatus ? `: ${doc.physicalStatus.replace(/_/g, ' ')}` : ''}`,
+    doc.physicalStatus !== before
+      ? `Transfer progress: ${doc.physicalStatus.replace(/_/g, ' ')}`
+      : 'Transfer details updated',
     actor,
     { metadata: { physicalStatus: doc.physicalStatus } },
   ));
@@ -906,6 +927,8 @@ export async function markTransferArrived(
   if (doc.status !== 'completed' && doc.status !== 'accepted') {
     throw new TransferValidationError('Arrival can only be recorded for an accepted or completed transfer.');
   }
+  // Arrival happens once. Pressing it again must not add to the record.
+  if (doc.arrivedAt) return doc;
   const now = new Date().toISOString();
   doc.physicalStatus = 'arrived';
   doc.arrivedAt = now;

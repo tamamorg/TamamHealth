@@ -345,7 +345,7 @@ export default function HandoffWorkflow({
                       ) : (
                         <button
                           type="button"
-                          onClick={() => router.push(`/patients/${p._id}?tab=sbar`)}
+                          onClick={() => router.push(`/patients/${p._id}`)}
                           className="ehr-handoff-name"
                           title={t('nurse.viewPatientRecord')}
                         >

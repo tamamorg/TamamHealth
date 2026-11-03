@@ -107,6 +107,9 @@ export default function PharmacyWorkflowPanel({
           onReview={!filled && !intent ? allergyReview => setDraft({ ...draft, allergyReview }) : undefined}
         />
         <ObfValue label={t('rxFlow.medication')} value={rx.medication} />
+        {rx.offFormulary && (
+          <InlineBanner tone="warning">{t('rxFlow.offList', { reason: rx.offFormularyReason || t('rxFlow.offListNoReason') })}</InlineBanner>
+        )}
         <ObfValue label={t('rxFlow.sig')} value={sigLine(rx)} />
         <ObfValue label={t('rxFlow.prescriber')} value={rx.prescribedBy} />
         <ObfValue label={t('rxFlow.quantity')} value={courseQuantity(rx)} />

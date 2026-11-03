@@ -61,13 +61,13 @@ export function chartLandingTab(allowedIds: string[] | null): string {
 }
 
 // Tab ids that a `?tab=` deep-link is allowed to open. Mirrors `allTabs` (in the
-// component) plus the other reachable `activeTab` targets (`referrals`, `sbar`).
+// component) plus the other reachable `activeTab` targets (`referrals`).
 // Clinical-permission gating still runs in the effect below, so a non-clinical
 // user deep-linked to a clinical tab is bounced back to overview.
 const DEEP_LINK_TAB_IDS = new Set([
     'overview', 'appointments', 'history', 'problems', 'prescriptions', 'immunizations',
   'allergies', 'vitals', 'notes', 'labs', 'demographics', 'billing', 'careChecklist',
-    'documents', 'recall', 'referrals', 'sbar', 'transfers',
+    'documents', 'recall', 'referrals', 'transfers',
     'orders', 'procedures', 'programs', 'anc', 'medicalHistory', 'messages',
 ]);
 
@@ -76,6 +76,8 @@ const DEEP_LINK_TAB_IDS = new Set([
 const TAB_ALIASES: Record<string, string> = {
   transfers: 'referrals',
   recall: 'appointments',
+  // The SBAR tab is gone; what triage found opens the visit's note.
+  sbar: 'notes',
   // The Medications section's id is `prescriptions`. The prescribe page and the
   // progress feed both link `?tab=medications`, which resolved to nothing and
   // dropped the prescriber on the summary instead of the list they just changed.

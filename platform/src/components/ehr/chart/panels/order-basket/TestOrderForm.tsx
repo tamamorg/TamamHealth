@@ -6,7 +6,7 @@
  * the basket; the lab sees nothing until the basket is signed.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import type { LabOrderPriority } from '@/components/lab/order/lab-order-types';
@@ -16,14 +16,17 @@ import type { TestOrderDraft } from './basket-types';
 
 const INSTRUCTIONS_MAX = 500;
 
-export default function TestOrderForm({ initial, onSave, onDiscard, onBack }: {
+export default function TestOrderForm({ initial, onSave, onDiscard, onBack, onEdited }: {
   initial: TestOrderDraft;
   onSave: (order: TestOrderDraft) => void;
   onDiscard: () => void;
   onBack: () => void;
+  /** Tells the host once the form differs from what it opened with. */
+  onEdited?: (edited: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [order, setOrder] = useState<TestOrderDraft>(initial);
+  useEffect(() => { onEdited?.(order !== initial); }, [order, initial, onEdited]);
   const patch = (p: Partial<TestOrderDraft>) => setOrder(prev => ({ ...prev, ...p }));
 
   return (

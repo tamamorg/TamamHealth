@@ -9,17 +9,20 @@
  * expired reads as `expired` today, but the fact that Dr A held the patient for
  * a fortnight in March is only visible in the events).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import FormField from '@/components/overlay/FormField';
+import FormNotices from '@/components/overlay/FormNotices';
 import FormSlider from '@/components/overlay/FormSlider';
+import { ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
+import '@/components/lab/order/lab-order.css';
+import '@/components/lab/workflow/lab-workflow.css';
 import { useAuth } from '@/lib/context';
 import { finishOnServer, usePatientTransfers } from '@/lib/hooks/usePatientTransfers';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { getPatientById } from '@/lib/services/patient-service';
 import { useWards } from '@/lib/hooks/useWards';
 import {
-  describeTransferRoute, isTransferOverdue,
+  TRANSFER_PROGRESS_ORDER, describeTransferRoute, isTransferOverdue, transferProgress, transferProgressRank,
 } from '@/lib/services/patient-transfer-service';
 import {
   canDecideTransfer, canCancelTransfer, canContributeTransfer,
@@ -27,24 +30,27 @@ import {
 import TransferPatientModal from './TransferPatientModal';
 import ChartSection, { OmrsEmptyState } from '@/components/ehr/chart/ChartSection';
 import type {
-  PatientDoc, PatientTransferDoc, PatientTransferStatus, PatientTransferVitals,
+  PatientDoc, PatientTransferDoc, PatientTransferPhysicalStatus, PatientTransferStatus, PatientTransferVitals,
 } from '@/lib/db-types';
 import { formatDateTime } from '@/lib/format-utils';
 import {
-  ArrowRightLeft, Check, X, Clock, AlertTriangle, ChevronDown, ChevronUp,
+  ArrowRightLeft, Clock, AlertTriangle,
 } from '@/components/icons/lucide';
-import Select from '@/components/Select';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { useToast } from '@/components/Toast';
+import { clickable } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
 import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 
-const STATUS_STYLE: Record<PatientTransferStatus, { label: string; bg: string; fg: string }> = {
-  draft: { label: 'transfers.statusDraft', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  requested: { label: 'transfers.statusRequested', bg: 'var(--gold-100, #FFFAE9)', fg: 'var(--gold-800, #a65300)' },
-  accepted: { label: 'transfers.statusAccepted', bg: 'var(--iris-100, #c9f4ff)', fg: 'var(--iris-800, #015697)' },
-  rejected: { label: 'transfers.statusRejected', bg: 'var(--rose-100, #fae6e4)', fg: 'var(--rose-800, #a65300)' },
-  cancelled: { label: 'transfers.statusWithdrawn', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
-  completed: { label: 'transfers.statusCompleted', bg: 'var(--green-100, #ecf6f3)', fg: 'var(--green-800, #0A6E4A)' },
-  expired: { label: 'transfers.statusLapsed', bg: 'var(--border-light)', fg: 'var(--text-muted)' },
+// The same pills as the referrals table beside it.
+const STATUS_STYLE: Record<PatientTransferStatus, { label: string; badge: string }> = {
+  draft: { label: 'transfers.statusDraft', badge: 'ref-cancelled' },
+  requested: { label: 'transfers.statusRequested', badge: 'ref-received' },
+  accepted: { label: 'transfers.statusAccepted', badge: 'ref-sent' },
+  rejected: { label: 'transfers.statusRejected', badge: 'ref-cancelled' },
+  cancelled: { label: 'transfers.statusWithdrawn', badge: 'ref-cancelled' },
+  completed: { label: 'transfers.statusCompleted', badge: 'ref-completed' },
+  expired: { label: 'transfers.statusLapsed', badge: 'ref-cancelled' },
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -63,382 +69,268 @@ const PHYSICAL_LABEL: Record<string, string> = {
   closed: 'transfers.physClosed',
 };
 
+const PROGRESS_STEPS = TRANSFER_PROGRESS_ORDER.filter(step => step in PHYSICAL_LABEL);
+
 function StatusChip({ status }: { status: PatientTransferStatus }) {
   const { t } = useTranslation();
   const s = STATUS_STYLE[status];
+  return <span className={`badge ${s.badge}`}>{t(s.label)}</span>;
+}
+
+/** The history as a reader takes it: an entry repeated in a row shows once. */
+function collapseRepeats(events: PatientTransferDoc['events']) {
+  const rows: { event: PatientTransferDoc['events'][number]; count: number }[] = [];
+  for (const event of events) {
+    const last = rows[rows.length - 1];
+    if (last && last.event.message === event.message && last.event.actorId === event.actorId) last.count += 1;
+    else rows.push({ event, count: 1 });
+  }
+  return rows;
+}
+
+/** The frame every station form shares: scrolling body, pinned footer. */
+function TransferForm({ children, footer }: { children: ReactNode; footer: ReactNode }) {
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-      style={{ background: s.bg, color: s.fg }}>
-      {t(s.label)}
-    </span>
+    <div className="station-form-slider obk-root lwf">
+      <div className="obf-form">
+        <div className="obf-form-body"><div className="obf-pad">{children}</div></div>
+        <FormNotices />
+        <div className="obk-footer">{footer}</div>
+      </div>
+    </div>
   );
 }
 
-function TransferCard({
-  transfer,
-  showClinicalDetail,
-  onAccept,
-  onReject,
-  onCancel,
-  onComplete,
-  onLogistics,
-  onArrive,
-  onClose,
+function TransferSection({ title, stacked = false, children }: { title?: string; stacked?: boolean; children: ReactNode }) {
+  return (
+    <div className="obf-section">
+      {title && <div className="obf-section-head lwf-section-head">{title}</div>}
+      <div className="lwf-section-body">{stacked ? children : <div className="obf-row">{children}</div>}</div>
+    </div>
+  );
+}
+
+function TransferDetailSlider({
+  transfer, showClinicalDetail, canUpdate, onClose, onUpdate, actions,
 }: {
   transfer: PatientTransferDoc;
-  /** False for non-clinical roles: they may see WHO is accountable and when it
-   *  changed, but not the clinical picture that motivated the move. */
+  /** False for non-clinical roles: they see who is accountable and when it
+   *  changed, not the clinical picture that motivated the move. */
   showClinicalDetail: boolean;
-  onAccept: (id: string, notes?: string) => Promise<unknown>;
-  onReject: (id: string, notes: string) => Promise<unknown>;
-  onCancel: (id: string, reason?: string) => Promise<unknown>;
-  onComplete: (id: string) => Promise<unknown>;
-  onLogistics: (id: string, patch: Record<string, unknown>) => Promise<unknown>;
-  onArrive: (id: string, assessment?: Record<string, unknown>) => Promise<unknown>;
-  onClose: (id: string) => Promise<unknown>;
+  canUpdate: boolean;
+  onClose: () => void;
+  onUpdate: () => void;
+  actions: ReactNode;
 }) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
-  // From another hospital this card is the receiver's only view of the patient's
-  // problems and medications there, so it starts open.
-  const fromAnotherHospital = Boolean(transfer.to.facilityId) && transfer.to.facilityId !== transfer.hospitalId;
-  const [expanded, setExpanded] = useState(transfer.status === 'requested' || fromAnotherHospital);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectNote, setRejectNote] = useState('');
+  const progress = transferProgress(transfer);
+  const summary = transfer.summary;
+  const route = describeTransferRoute(transfer, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') });
+  const place = [transfer.destination?.wardName, transfer.destination?.bedNumber].filter(Boolean).join(' · ');
+  const communication = transfer.communication;
+  const list = (items: string[]) => items.join(', ');
+
+  return (
+    <FormSlider title={t('transfers.detailsTitle')} subtitle={route} className="tamam-dialog" width={560} flush onClose={onClose}>
+      <TransferForm footer={<>
+        <button type="button" className="obk-footer-btn obk-footer-btn--secondary" onClick={onClose}>{t('action.close')}</button>
+        {actions}
+        {canUpdate && <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={onUpdate}>{t('transfers.update')}</button>}
+      </>}>
+        <TransferSection>
+          <ObfValue label={t('transfers.colStatus')} value={<StatusChip status={transfer.status} />} />
+          <ObfValue label={t('transfers.colType')} value={TYPE_LABEL[transfer.transferType] ? t(TYPE_LABEL[transfer.transferType]) : transfer.transferType} />
+          <ObfValue label={t('transfers.colRequested')} value={`${transfer.requestedByName || t('transfers.unknown')}${transfer.requestedAt ? ` · ${formatDateTime(transfer.requestedAt)}` : ''}`} />
+          {transfer.expiresAt && <ObfValue label={t('transfers.endsLabel')} value={formatDateTime(transfer.expiresAt)} />}
+          {transfer.forced && <ObfValue label={t('transfers.forced')} value={t('transfers.forcedTitle')} />}
+          {isTransferOverdue(transfer) && <ObfValue label={t('transfers.overdue')} value={<Clock className="w-3 h-3" />} />}
+          {showClinicalDetail && <ObfValue label={t('transfers.reason')} value={transfer.reason} />}
+          {showClinicalDetail && transfer.handoffNotes && <ObfValue label={t('transfers.handoffNotes')} value={transfer.handoffNotes} />}
+        </TransferSection>
+
+        {showClinicalDetail && (transfer.status === 'accepted' || transfer.status === 'completed') && (
+          <TransferSection title={t('transfers.transferProgress')}>
+            <ObfValue label={t('transfers.colProgress')} value={t(PHYSICAL_LABEL[progress] ?? 'transfers.physNotScheduled')} />
+            <ObfValue label={t('transfers.arrival')} value={transfer.arrivedAt ? formatDateTime(transfer.arrivedAt) : t('transfers.arrivalNotConfirmed')} />
+            <ObfValue label={t('transfers.destinationWard')} value={place} />
+            <ObfValue label={t('transfers.patientInformed')} value={communication?.patientInformedAt && formatDateTime(communication.patientInformedAt)} />
+            <ObfValue label={t('transfers.familyContacted')} value={communication?.familyContactedAt && formatDateTime(communication.familyContactedAt)} />
+          </TransferSection>
+        )}
+
+        {/* The snapshot the receiver decided on, kept as evidence. */}
+        {showClinicalDetail && summary && (
+          <TransferSection title={t('transfers.summaryTitle')}>
+            {(summary.activeProblems?.length ?? 0) > 0 && <ObfValue label={t('transfers.activeProblems')} value={list(summary.activeProblems!)} />}
+            {(summary.activeMedications?.length ?? 0) > 0 && <ObfValue label={t('transfers.activeMedications')} value={list(summary.activeMedications!)} />}
+            {summary.unavailable?.includes('allergies') && <ObfValue label={t('transfers.allergies')} value={t('transfers.allergiesUnreadable')} />}
+            {(summary.allergies?.length ?? 0) > 0 && <ObfValue label={t('transfers.allergies')} value={list(summary.allergies!)} />}
+            {(summary.riskFlags?.length ?? 0) > 0 && <ObfValue label={t('transfers.riskFlags')} value={list(summary.riskFlags!)} />}
+            {typeof summary.openTaskCount === 'number' && <ObfValue label={t('transfers.openTasks')} value={String(summary.openTaskCount)} />}
+          </TransferSection>
+        )}
+
+        <TransferSection title={t('transfers.auditTrail')} stacked>
+          {collapseRepeats(transfer.events).map(({ event, count }) => (
+            <ObfValue
+              key={event.id}
+              label={formatDateTime(event.createdAt)}
+              value={[event.message, event.actorName, count > 1 ? `(${t('transfers.timesRepeated', { count })})` : '', showClinicalDetail && event.notes ? `(${event.notes})` : ''].filter(Boolean).join(' · ')}
+            />
+          ))}
+        </TransferSection>
+      </TransferForm>
+    </FormSlider>
+  );
+}
+
+/** Everything that changes as a patient moves, on one form with one Save. */
+function TransferUpdateSlider({
+  transfer, onClose, onLogistics, onArrive, onCloseTransfer,
+}: {
+  transfer: PatientTransferDoc;
+  onClose: () => void;
+  onLogistics: (id: string, patch: Record<string, unknown>) => Promise<unknown>;
+  onArrive: (id: string, assessment?: Record<string, unknown>) => Promise<unknown>;
+  onCloseTransfer: (id: string) => Promise<unknown>;
+}) {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const { currentUser } = useAuth();
+  const current = transferProgress(transfer);
+  const [progress, setProgress] = useState<PatientTransferPhysicalStatus>(current);
+  const [wardName, setWardName] = useState(transfer.destination?.wardName || '');
+  const [bedNumber, setBedNumber] = useState(transfer.destination?.bedNumber || '');
+  const [wardId, setWardId] = useState(transfer.destination?.wardId || '');
+  const [bedId, setBedId] = useState(transfer.destination?.bedId || '');
+  const { wards, beds } = useWards();
+  const wardBeds = beds.filter(b => b.wardId === wardId && (b.status === 'available' || b._id === bedId));
+  const [patientInformed, setPatientInformed] = useState(Boolean(transfer.communication?.patientInformedAt));
+  const [familyContacted, setFamilyContacted] = useState(Boolean(transfer.communication?.familyContactedAt));
+  const [familyMethod, setFamilyMethod] = useState(transfer.communication?.familyContactMethod || 'phone');
+  const [medsReconciled, setMedsReconciled] = useState(Boolean(transfer.clinicalReadiness?.medicationsReconciled));
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const betweenHospitals = Boolean(transfer.to.facilityId) && transfer.to.facilityId !== transfer.hospitalId;
 
-  const auth = currentUser ? {
-    sub: currentUser._id,
-    username: currentUser.username,
-    role: currentUser.role,
-    name: currentUser.name || currentUser.username,
-    hospitalId: currentUser.hospitalId,
-    orgId: currentUser.orgId,
-  } : null;
+  // Only forward, and closing only once the transfer has completed.
+  const steps = PROGRESS_STEPS.filter(step => transferProgressRank(step) >= transferProgressRank(current)
+    && (step !== 'closed' || transfer.status === 'completed')
+    && (step !== 'not_scheduled' || current === 'not_scheduled'));
 
-  const decide = auth ? canDecideTransfer(auth, transfer) : { allowed: false };
-  const withdraw = auth ? canCancelTransfer(auth, transfer) : { allowed: false };
-  const contribute = auth ? canContributeTransfer(auth, transfer) : { allowed: false };
-  const overdue = isTransferOverdue(transfer);
-
-  // A future-dated transfer that has been accepted but whose date has arrived
-  // can be confirmed by hand when auto-complete is off.
-  const awaitingConfirm = transfer.status === 'accepted'
-    && transfer.autoCompleteOnEffectiveDate === false;
-
-  const act = async (fn: () => Promise<unknown>) => {
+  const save = async () => {
     setBusy(true);
-    setError(null);
     try {
-      await fn();
-      setRejecting(false);
-      setRejectNote('');
+      const now = new Date().toISOString();
+      const beforeArrival = transferProgressRank(progress) < transferProgressRank('arrived');
+      const reserved = progress === 'not_scheduled' && Boolean(wardName.trim() || bedNumber.trim());
+      const moving = progress === 'ready_for_transport' || progress === 'departed' || progress === 'in_transit';
+      await onLogistics(transfer._id, {
+        ...(beforeArrival ? { physicalStatus: reserved ? 'bed_reserved' : progress } : {}),
+        destination: { wardId: wardId || undefined, wardName: wardName.trim() || undefined, bedId: bedId || undefined, bedNumber: bedNumber.trim() || undefined },
+        clinicalReadiness: { medicationsReconciled: medsReconciled },
+        communication: {
+          patientInformedAt: patientInformed ? (transfer.communication?.patientInformedAt || now) : undefined,
+          patientInformedById: patientInformed ? (transfer.communication?.patientInformedById || currentUser?._id) : undefined,
+          familyContactedAt: familyContacted ? (transfer.communication?.familyContactedAt || now) : undefined,
+          familyContactedById: familyContacted ? (transfer.communication?.familyContactedById || currentUser?._id) : undefined,
+          familyContactMethod: familyContacted ? familyMethod : undefined,
+        },
+        ...(moving ? { transport: {
+          ...(transfer.transport || { status: 'not_requested' }),
+          status: progress === 'ready_for_transport' ? 'ready' : 'departed',
+          ...(progress === 'ready_for_transport' ? {} : { departedAt: transfer.transport?.departedAt || now }),
+        } } : {}),
+      });
+      if (!beforeArrival && !transfer.arrivedAt) {
+        // Stored as written, like the rest of the transfer's record.
+        await onArrive(transfer._id, { receiverAssessedAt: now, receiverAssessmentNotes: 'Receiving assessment completed from transfer panel' });
+      }
+      if (progress === 'closed') await onCloseTransfer(transfer._id);
+      showToast(t('transfers.updated'), 'success', { placement: 'corner' });
+      onClose();
     } catch (e) {
-      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
+      showToast(describeError(e, t('msg.changeNotSavedTryAgain')), 'error', { placement: 'corner' });
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="rounded border" style={{ borderColor: 'var(--border-light)' }}>
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <StatusChip status={transfer.status} />
-              <span className="text-[10px] px-1.5 py-0.5 rounded"
-                style={{ background: 'var(--border-light)', color: 'var(--text-muted)' }}>
-                {TYPE_LABEL[transfer.transferType] ? t(TYPE_LABEL[transfer.transferType]) : transfer.transferType}
-              </span>
-              {transfer.forced && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                  style={{ background: 'var(--rose-100, #fae6e4)', color: 'var(--rose-800, #a65300)' }}
-                  title={t('transfers.forcedTitle')}>
-                  {t('transfers.forced')}
-                </span>
-              )}
-              {overdue && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold inline-flex items-center gap-1"
-                  style={{ background: 'var(--rose-100, #fae6e4)', color: 'var(--rose-800, #a65300)' }}>
-                  <Clock className="w-3 h-3" /> {t('transfers.overdue')}
-                </span>
-              )}
-            </div>
-            <div className="text-[13px] font-semibold mt-1.5 truncate">
-              {describeTransferRoute(transfer, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}
-            </div>
-            {showClinicalDetail && (
-              <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                {transfer.reason}
-              </div>
-            )}
-            <div className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
-              {t('transfers.requestedBy', { name: transfer.requestedByName || t('transfers.unknown') })}
-              {transfer.requestedAt ? ` · ${formatDateTime(transfer.requestedAt)}` : ''}
-              {transfer.expiresAt ? ` · ${t('transfers.ends', { date: formatDateTime(transfer.expiresAt) })}` : ''}
-            </div>
-          </div>
-          <button
-            className="p-1 rounded hover:bg-black/5 shrink-0"
-            onClick={() => setExpanded(v => !v)}
-            aria-label={expanded ? t('transfers.collapse') : t('transfers.expand')}
-          >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        </div>
+    <FormSlider
+      title={t('transfers.update')}
+      subtitle={describeTransferRoute(transfer, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}
+      className="tamam-dialog"
+      width={560}
+      flush
+      onClose={onClose}
+    >
+      <TransferForm footer={<>
+        <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={busy} onClick={onClose}>{t('action.cancel')}</button>
+        <button type="button" className="obk-footer-btn obk-footer-btn--primary" disabled={busy} onClick={() => void save()}>{t('action.save')}</button>
+      </>}>
+        <TransferSection title={t('transfers.transferProgress')}>
+          <ObfSelectField
+            id="transfer-progress"
+            label={t('transfers.colProgress')}
+            value={progress}
+            placeholder={null}
+            options={steps.map(step => ({ value: step, label: t(PHYSICAL_LABEL[step]) }))}
+            onChange={value => setProgress(value as PatientTransferPhysicalStatus)}
+          />
+        </TransferSection>
 
-        {/* Decision controls, only where the viewer actually has standing. */}
-        {transfer.status === 'requested' && (decide.allowed || withdraw.allowed) && (
-          <div className="flex flex-wrap items-center gap-2 mt-3">
-            {decide.allowed && !rejecting && (
-              <>
-                <button
-                  className="btn btn-primary text-[12px] inline-flex items-center gap-1"
-                  disabled={busy}
-                  onClick={() => act(() => onAccept(transfer._id))}
-                >
-                  <Check className="w-3.5 h-3.5" /> {t('transfers.accept')}
-                </button>
-                <button
-                  className="btn btn-secondary text-[12px] inline-flex items-center gap-1"
-                  disabled={busy}
-                  onClick={() => setRejecting(true)}
-                >
-                  <X className="w-3.5 h-3.5" /> {t('transfers.reject')}
-                </button>
-              </>
-            )}
-            {withdraw.allowed && !rejecting && (
-              <button
-                className="btn btn-secondary text-[12px]"
-                disabled={busy}
-                onClick={() => act(() => onCancel(transfer._id, 'Withdrawn by sender'))}
-              >
-                {t('transfers.withdraw')}
-              </button>
-            )}
-          </div>
-        )}
+        <TransferSection title={t('transfers.destination')}>
+          {wards.length > 0
+            ? (
+              <ObfSelectField
+                id="transfer-ward"
+                label={t('transfers.destinationWard')}
+                value={wardId}
+                placeholder={t('transfers.selectWard')}
+                options={wards.map(w => ({ value: w._id, label: t('transfers.wardAvailable', { name: w.name, count: w.availableBeds }) }))}
+                onChange={value => { setWardId(value); setWardName(wards.find(w => w._id === value)?.name || ''); setBedId(''); setBedNumber(''); }}
+              />
+            )
+            : <ObfTextField id="transfer-ward" label={t('transfers.destinationWard')} value={wardName} onChange={setWardName} placeholder={t('transfers.wardPlaceholder')} />}
+          {wardBeds.length > 0
+            ? (
+              <ObfSelectField
+                id="transfer-bed"
+                label={t('transfers.roomBed')}
+                value={bedId}
+                placeholder={t('transfers.selectBed')}
+                options={wardBeds.map(b => ({ value: b._id, label: b.bedNumber }))}
+                onChange={value => { setBedId(value); setBedNumber(wardBeds.find(b => b._id === value)?.bedNumber || ''); }}
+              />
+            )
+            : <ObfTextField id="transfer-bed" label={t('transfers.roomBed')} value={bedNumber} onChange={setBedNumber} placeholder={t('transfers.bedPlaceholder')} />}
+        </TransferSection>
 
-        {rejecting && (
-          <FormSlider
-            title={t('transfers.rejectTitle')}
-            subtitle={describeTransferRoute(transfer, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}
-            className="tamam-dialog"
-            onClose={() => { setRejecting(false); setRejectNote(''); }}
-            busy={busy}
-            footer={<>
-              <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setRejecting(false); setRejectNote(''); }}>{t('action.cancel')}</button>
-              <button type="button" className="btn btn-primary" disabled={busy || !rejectNote.trim()} onClick={() => act(() => onReject(transfer._id, rejectNote.trim()))}>{t('transfers.confirmReject')}</button>
-            </>}
-          >
-            <FormField label={t('transfers.rejectReason')} required hint={t('transfers.rejectHint')}>
-              {control => <textarea {...control} rows={4} value={rejectNote} onChange={e => setRejectNote(e.target.value)} />}
-            </FormField>
-          </FormSlider>
-        )}
-
-        {awaitingConfirm && decide.allowed && (
-          <button
-            className="btn btn-primary text-[12px] mt-3"
-            disabled={busy}
-            onClick={() => act(() => onComplete(transfer._id))}
-          >
-            {t('transfers.confirmArrived')}
-          </button>
-        )}
-
-        {error && (
-          <p className="text-[11px] mt-2" style={{ color: 'var(--rose-700, #b4180f)' }}>{error}</p>
-        )}
-      </div>
-
-      {expanded && (
-        <div className="border-t px-3 py-2.5 space-y-3" style={{ borderColor: 'var(--border-light)' }}>
-          {showClinicalDetail && transfer.handoffNotes && (
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: 'var(--text-muted)' }}>{t('transfers.handoffNotes')}</div>
-              <p className="text-[12px] mt-0.5 whitespace-pre-wrap">{transfer.handoffNotes}</p>
-            </div>
-          )}
-
-          {/* The snapshot the receiver decided on, kept as evidence. */}
-          {showClinicalDetail && transfer.summary && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {(transfer.summary.activeProblems?.length ?? 0) > 0 && (
-                <SummaryList label={t('transfers.activeProblems')} items={transfer.summary.activeProblems!} />
-              )}
-              {(transfer.summary.activeMedications?.length ?? 0) > 0 && (
-                <SummaryList label={t('transfers.activeMedications')} items={transfer.summary.activeMedications!} />
-              )}
-              {transfer.summary.unavailable?.includes('allergies') && (
-                <SummaryList label={t('transfers.allergies')} items={[t('transfers.allergiesUnreadable')]} />
-              )}
-              {(transfer.summary.allergies?.length ?? 0) > 0 && (
-                <SummaryList label={t('transfers.allergies')} items={transfer.summary.allergies!} />
-              )}
-              {(transfer.summary.riskFlags?.length ?? 0) > 0 && (
-                <SummaryList label={t('transfers.riskFlags')} items={transfer.summary.riskFlags!} />
-              )}
-              {typeof transfer.summary.openTaskCount === 'number' && (
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: 'var(--text-muted)' }}>{t('transfers.openTasks')}</div>
-                  <div className="text-[12px] mt-0.5">{transfer.summary.openTaskCount}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {showClinicalDetail && (transfer.status === 'accepted' || transfer.status === 'completed') && (
-            <TransferOperations
-              transfer={transfer}
-              canEdit={contribute.allowed}
-              busy={busy}
-              onLogistics={onLogistics}
-              onArrive={onArrive}
-              onClose={onClose}
-              onError={setError}
+        <TransferSection title={t('transfers.communication')}>
+          <label className="obf-check"><input type="checkbox" checked={patientInformed} onChange={e => setPatientInformed(e.target.checked)} /> {t('transfers.patientInformed')}</label>
+          <label className="obf-check"><input type="checkbox" checked={familyContacted} onChange={e => setFamilyContacted(e.target.checked)} /> {t('transfers.familyContacted')}</label>
+          {familyContacted && (
+            <ObfSelectField
+              id="transfer-family-method"
+              label={t('transfers.contactMethod')}
+              value={familyMethod}
+              placeholder={null}
+              options={[
+                { value: 'phone', label: t('transfers.contactPhone') },
+                { value: 'in_person', label: t('transfers.contactInPerson') },
+                { value: 'portal', label: t('transfers.contactPortal') },
+                { value: 'not_available', label: t('transfers.contactNotAvailable') },
+              ]}
+              onChange={value => setFamilyMethod(value as typeof familyMethod)}
             />
           )}
-
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wide mb-1"
-              style={{ color: 'var(--text-muted)' }}>{t('transfers.auditTrail')}</div>
-            <ol className="space-y-1.5">
-              {transfer.events.map(ev => (
-                <li key={ev.id} className="text-[11px] flex gap-2">
-                  <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>
-                    {formatDateTime(ev.createdAt)}
-                  </span>
-                  <span>
-                    {ev.message}
-                    {ev.actorName ? ` — ${ev.actorName}` : ''}
-                    {showClinicalDetail && ev.notes ? ` (${ev.notes})` : ''}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TransferOperations({
-  transfer, canEdit, busy, onLogistics, onArrive, onClose, onError,
-}: {
-  transfer: PatientTransferDoc;
-  canEdit: boolean;
-  busy: boolean;
-  onLogistics: (id: string, patch: Record<string, unknown>) => Promise<unknown>;
-  onArrive: (id: string, assessment?: Record<string, unknown>) => Promise<unknown>;
-  onClose: (id: string) => Promise<unknown>;
-  onError: (message: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [wardName, setWardName] = useState(transfer.destination?.wardName || '');
-  const [bedNumber, setBedNumber] = useState(transfer.destination?.bedNumber || '');
-  const [wardId, setWardId] = useState(transfer.destination?.wardId || '');
-  const [bedId, setBedId] = useState(transfer.destination?.bedId || '');
-  const { wards, beds } = useWards();
-  const selectedWardBeds = beds.filter(b => b.wardId === wardId && (b.status === 'available' || b._id === bedId));
-  const [patientInformed, setPatientInformed] = useState(Boolean(transfer.communication?.patientInformedAt));
-  const [familyContacted, setFamilyContacted] = useState(Boolean(transfer.communication?.familyContactedAt));
-  const [familyMethod, setFamilyMethod] = useState(transfer.communication?.familyContactMethod || 'phone');
-  const physical = transfer.physicalStatus || 'not_scheduled';
-  const saveDestination = async () => {
-    try {
-      await onLogistics(transfer._id, {
-        physicalStatus: wardName || bedNumber ? 'bed_reserved' : physical,
-        destination: { wardId: wardId || undefined, wardName: wardName.trim() || undefined, bedId: bedId || undefined, bedNumber: bedNumber.trim() || undefined },
-      });
-    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errSaveDestination')); }
-  };
-  const markReady = async () => {
-    try {
-      await onLogistics(transfer._id, {
-        physicalStatus: 'ready_for_transport',
-        clinicalReadiness: {
-          vitalsReviewed: true,
-          medicationsReconciled: true,
-          linesTubesDrainsReviewed: true,
-          oxygenAndMonitoringReviewed: true,
-          precautionsReviewed: true,
-          equipmentReady: true,
-        },
-        transport: { ...(transfer.transport || { status: 'not_requested' }), status: 'ready' },
-      });
-    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errMarkReady')); }
-  };
-  const saveCommunication = async () => {
-    try {
-      const now = new Date().toISOString();
-      await onLogistics(transfer._id, {
-        communication: {
-          patientInformedAt: patientInformed ? (transfer.communication?.patientInformedAt || now) : undefined,
-          patientInformedById: patientInformed ? transfer.communication?.patientInformedById : undefined,
-          familyContactedAt: familyContacted ? (transfer.communication?.familyContactedAt || now) : undefined,
-          familyContactedById: familyContacted ? transfer.communication?.familyContactedById : undefined,
-          familyContactMethod: familyContacted ? familyMethod : undefined,
-        },
-      });
-    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errSaveCommunication')); }
-  };
-  const markArrived = async () => {
-    try {
-      await onArrive(transfer._id, {
-        receiverAssessedAt: new Date().toISOString(),
-        receiverAssessmentNotes: 'Receiving assessment completed from transfer panel',
-      });
-    } catch (e) { onError(e instanceof Error ? e.message : t('transfers.errConfirmArrival')); }
-  };
-  return (
-    <section className="rounded border p-3 space-y-2" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-subtle, rgba(0,0,0,.02))' }}>
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{t('transfers.transferProgress')}</div>
-          <div className="text-[12px] font-semibold mt-1 capitalize">{PHYSICAL_LABEL[physical] ? t(PHYSICAL_LABEL[physical]) : physical.replace(/_/g, ' ')}</div>
-        </div>
-        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          {transfer.arrivedAt ? t('transfers.arrivedAt', { date: formatDateTime(transfer.arrivedAt) }) : t('transfers.arrivalNotConfirmed')}
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label className="text-[11px]">{t('transfers.destinationWard')}
-          {wards.length > 0 ? <Select className="form-input w-full mt-1 text-[12px]" value={wardId} disabled={!canEdit || busy} onChange={e => { const next = wards.find(w => w._id === e.target.value); setWardId(e.target.value); setWardName(next?.name || ''); setBedId(''); setBedNumber(''); }}><option value="">{t('transfers.selectWard')}</option>{wards.map(w => <option key={w._id} value={w._id}>{t('transfers.wardAvailable', { name: w.name, count: w.availableBeds })}</option>)}</Select> : <input className="form-input w-full mt-1 text-[12px]" value={wardName} disabled={!canEdit || busy} onChange={e => setWardName(e.target.value)} placeholder={t('transfers.wardPlaceholder')} />}
-        </label>
-        <label className="text-[11px]">{t('transfers.roomBed')}
-          {selectedWardBeds.length > 0 ? <Select className="form-input w-full mt-1 text-[12px]" value={bedId} disabled={!canEdit || busy} onChange={e => { const next = selectedWardBeds.find(b => b._id === e.target.value); setBedId(e.target.value); setBedNumber(next?.bedNumber || ''); }}><option value="">{t('transfers.selectBed')}</option>{selectedWardBeds.map(b => <option key={b._id} value={b._id}>{b.bedNumber}</option>)}</Select> : <input className="form-input w-full mt-1 text-[12px]" value={bedNumber} disabled={!canEdit || busy} onChange={e => setBedNumber(e.target.value)} placeholder={t('transfers.bedPlaceholder')} />}
-        </label>
-      </div>
-      <div className="rounded border p-2 space-y-2" style={{ borderColor: 'var(--border-light)' }}>
-        <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{t('transfers.communication')}</div>
-        <div className="flex flex-wrap items-center gap-3 text-[11px]">
-          <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={patientInformed} disabled={!canEdit || busy} onChange={e => setPatientInformed(e.target.checked)} /> {t('transfers.patientInformed')}</label>
-          <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={familyContacted} disabled={!canEdit || busy} onChange={e => setFamilyContacted(e.target.checked)} /> {t('transfers.familyContacted')}</label>
-          {familyContacted && <Select className="form-input text-[11px]" value={familyMethod} disabled={!canEdit || busy} onChange={e => setFamilyMethod(e.target.value as typeof familyMethod)}><option value="phone">{t('transfers.contactPhone')}</option><option value="in_person">{t('transfers.contactInPerson')}</option><option value="portal">{t('transfers.contactPortal')}</option><option value="not_available">{t('transfers.contactNotAvailable')}</option></Select>}
-          {canEdit && <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={saveCommunication}>{t('transfers.saveCommunication')}</button>}
-        </div>
-      </div>
-      {canEdit && (
-        <div className="flex flex-wrap gap-2">
-          <button className="btn btn-secondary text-[11px]" disabled={busy || (!wardName.trim() && !bedNumber.trim())} onClick={saveDestination}>{t('transfers.reserveDestination')}</button>
-          <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={markReady}>{t('transfers.markReady')}</button>
-          {physical !== 'closed' && <button className="btn btn-primary text-[11px]" disabled={busy} onClick={markArrived}>{t('transfers.confirmArrival')}</button>}
-          {physical === 'arrived' && <button className="btn btn-secondary text-[11px]" disabled={busy} onClick={() => onClose(transfer._id)}>{t('transfers.closeTransfer')}</button>}
-        </div>
-      )}
-      <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        {['bed_reserved', 'ready_for_transport', 'departed', 'in_transit', 'arrived', 'closed'].map(step => (
-          <span key={step} className="px-1.5 py-0.5 rounded" style={{ background: step === physical ? 'var(--green-100, #ecf6f3)' : 'var(--border-light)' }}>{PHYSICAL_LABEL[step] ? t(PHYSICAL_LABEL[step]) : step.replace(/_/g, ' ')}</span>
-        ))}
-      </div>
-    </section>
+          {betweenHospitals && (
+            <label className="obf-check"><input type="checkbox" checked={medsReconciled} onChange={e => setMedsReconciled(e.target.checked)} /> {t('transfers.medsReconciled')}</label>
+          )}
+        </TransferSection>
+      </TransferForm>
+    </FormSlider>
   );
 }
 
@@ -557,7 +449,66 @@ export default function TransferHistoryPanel({
 }) {
   const { t } = useTranslation();
   const { transfers, loading, accept, reject, cancel, complete, updateLogistics, arrive, close } = usePatientTransfers(patient._id);
+  const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const [showModal, setShowModal] = useState(false);
+  const [open, setOpen] = useState<{ id: string; view: 'details' | 'update' | 'reject' } | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const auth = currentUser ? {
+    sub: currentUser._id,
+    username: currentUser.username,
+    role: currentUser.role,
+    name: currentUser.name || currentUser.username,
+    hospitalId: currentUser.hospitalId,
+    orgId: currentUser.orgId,
+  } : null;
+  const viewer = { id: currentUser?._id, hospitalId: currentUser?.hospitalId };
+  const words = { to: t('transfers.routeTo'), from: t('transfers.routeFrom') };
+  const selected = open ? transfers.find(tr => tr._id === open.id) : undefined;
+
+  const decideAllowed = (tr: PatientTransferDoc) => tr.status === 'requested' && Boolean(auth && canDecideTransfer(auth, tr).allowed);
+  const withdrawAllowed = (tr: PatientTransferDoc) => tr.status === 'requested' && Boolean(auth && canCancelTransfer(auth, tr).allowed);
+  // A future-dated transfer past its date can be confirmed by hand when auto-complete is off.
+  const confirmAllowed = (tr: PatientTransferDoc) => tr.status === 'accepted' && tr.autoCompleteOnEffectiveDate === false && Boolean(auth && canDecideTransfer(auth, tr).allowed);
+  const updateAllowed = (tr: PatientTransferDoc) => canViewClinical && (tr.status === 'accepted' || tr.status === 'completed')
+    && transferProgress(tr) !== 'closed' && Boolean(auth && canContributeTransfer(auth, tr).allowed);
+
+  const act = async (fn: () => Promise<unknown>, done?: () => void) => {
+    setBusy(true);
+    try {
+      await fn();
+      done?.();
+    } catch (e) {
+      showToast(describeError(e, t('msg.changeNotSavedTryAgain')), 'error', { placement: 'corner' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const backToDetails = () => {
+    if (selected) setOpen({ id: selected._id, view: 'details' });
+    setRejectNote('');
+  };
+
+  const decisionButtons = (tr: PatientTransferDoc) => <>
+    {withdrawAllowed(tr) && <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={busy} onClick={() => void act(() => cancel(tr._id, 'Withdrawn by sender'), () => setOpen(null))}>{t('transfers.withdraw')}</button>}
+    {decideAllowed(tr) && <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={busy} onClick={() => setOpen({ id: tr._id, view: 'reject' })}>{t('transfers.reject')}</button>}
+    {decideAllowed(tr) && <button type="button" className="obk-footer-btn obk-footer-btn--primary" disabled={busy} onClick={() => void act(() => accept(tr._id))}>{t('transfers.accept')}</button>}
+    {confirmAllowed(tr) && <button type="button" className="obk-footer-btn obk-footer-btn--primary" disabled={busy} onClick={() => void act(() => complete(tr._id))}>{t('transfers.confirmArrived')}</button>}
+  </>;
+
+  const rowActions = (tr: PatientTransferDoc) => [
+    { key: 'details', label: t('transfers.viewDetails'), onClick: () => setOpen({ id: tr._id, view: 'details' }) },
+    ...(updateAllowed(tr) ? [{ key: 'update', label: t('transfers.update'), onClick: () => setOpen({ id: tr._id, view: 'update' as const }) }] : []),
+    ...(decideAllowed(tr) ? [
+      { key: 'accept', label: t('transfers.accept'), tone: 'success' as const, onClick: () => void act(() => accept(tr._id)) },
+      { key: 'reject', label: t('transfers.reject'), tone: 'danger' as const, onClick: () => setOpen({ id: tr._id, view: 'reject' as const }) },
+    ] : []),
+    ...(confirmAllowed(tr) ? [{ key: 'confirm', label: t('transfers.confirmArrived'), onClick: () => void act(() => complete(tr._id)) }] : []),
+    ...(withdrawAllowed(tr) ? [{ key: 'withdraw', label: t('transfers.withdraw'), tone: 'danger' as const, onClick: () => void act(() => cancel(tr._id, 'Withdrawn by sender')) }] : []),
+  ];
 
   // The chart's own section — the same title, underline and Add as every
   // other tab — not a card with a header of its own.
@@ -579,24 +530,74 @@ export default function TransferHistoryPanel({
         />
       )}
       {transfers.length > 0 && (
-        <div className="space-y-3" style={{ paddingTop: 4 }}>
-          {transfers.map(tr => (
-            <TransferCard
-              key={tr._id}
-              transfer={tr}
-              showClinicalDetail={canViewClinical}
-              onAccept={accept}
-              onReject={reject}
-              onCancel={cancel}
-              onComplete={complete}
-              onLogistics={updateLogistics}
-              onArrive={arrive}
-              onClose={close}
-            />
-          ))}
-        </div>
+        <table className="tamam-table tamam-transfer-table">
+          <thead>
+            <tr>
+              <th>{t('transfers.colTransfer')}</th>
+              <th>{t('transfers.colType')}</th>
+              <th>{t('transfers.colRequested')}</th>
+              <th>{t('transfers.colProgress')}</th>
+              <th>{t('transfers.colStatus')}</th>
+              <th className="tamam-col-actions">{t('chart.actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transfers.map(tr => {
+              const progress = transferProgress(tr);
+              return (
+                <tr key={tr._id} {...clickable(() => setOpen({ id: tr._id, view: 'details' }))}>
+                  <td>
+                    <span className="tamam-cell-strong">{describeTransferRoute(tr, viewer, words)}</span>
+                    {canViewClinical && tr.reason && <span className="tamam-cell-sub">{tr.reason}</span>}
+                  </td>
+                  <td>{TYPE_LABEL[tr.transferType] ? t(TYPE_LABEL[tr.transferType]) : tr.transferType}</td>
+                  <td>{tr.requestedAt ? formatDateTime(tr.requestedAt) : '—'}</td>
+                  <td>{t(PHYSICAL_LABEL[progress] ?? 'transfers.physNotScheduled')}</td>
+                  <td><StatusChip status={tr.status} /></td>
+                  <td onClick={e => e.stopPropagation()}>
+                    <RowActionsMenu ariaLabel={t('chart.actions')} actions={rowActions(tr)} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </ChartSection>
+
+      {selected && open?.view === 'details' && (
+        <TransferDetailSlider
+          transfer={selected}
+          showClinicalDetail={canViewClinical}
+          canUpdate={updateAllowed(selected)}
+          onClose={() => setOpen(null)}
+          onUpdate={() => setOpen({ id: selected._id, view: 'update' })}
+          actions={decisionButtons(selected)}
+        />
+      )}
+      {selected && open?.view === 'update' && (
+        <TransferUpdateSlider
+          key={selected._id}
+          transfer={selected}
+          onClose={() => setOpen({ id: selected._id, view: 'details' })}
+          onLogistics={updateLogistics}
+          onArrive={arrive}
+          onCloseTransfer={close}
+        />
+      )}
+      {selected && open?.view === 'reject' && (
+        <FormSlider title={t('transfers.rejectTitle')} subtitle={describeTransferRoute(selected, viewer, words)} className="tamam-dialog" width={560} flush onClose={backToDetails}>
+          <TransferForm footer={<>
+            <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={busy} onClick={backToDetails}>{t('action.cancel')}</button>
+            <button type="button" className="obk-footer-btn obk-footer-btn--primary" disabled={busy || !rejectNote.trim()} onClick={() => void act(() => reject(selected._id, rejectNote.trim()), () => { setOpen(null); setRejectNote(''); })}>{t('transfers.confirmReject')}</button>
+          </>}>
+            <TransferSection title={t('transfers.rejectTitle')}>
+              <ObfTextField id="transfer-reject-reason" label={t('transfers.rejectReason')} required multiline value={rejectNote} onChange={setRejectNote} />
+              <p className="labord-help">{t('transfers.rejectHint')}</p>
+            </TransferSection>
+          </TransferForm>
+        </FormSlider>
+      )}
 
       {showModal && canViewClinical && (
         <TransferPatientModal patient={patient} onClose={() => setShowModal(false)} />

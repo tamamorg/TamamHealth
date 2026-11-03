@@ -785,6 +785,11 @@ export interface PrescriptionDoc extends BaseDoc {
    * Drives pharmacy queue priority and the Tier-1 checkout safety flag.
    */
   criticalityTier?: CriticalityTier;
+  /** True when the medicine is not on the formulary, so class-based checks did
+   *  not cover it. Stamped at write time, like the tier. */
+  offFormulary?: boolean;
+  /** Why the prescriber chose a medicine that is not on the formulary. */
+  offFormularyReason?: string;
   /** Granular pharmacy dispensing lifecycle (Stage 8): prescribed →
    *  received_in_pharmacy_queue → under_review → cleared_for_dispensing →
    *  dispensed → counseled → complete, plus stockout/held/recalled branches.
