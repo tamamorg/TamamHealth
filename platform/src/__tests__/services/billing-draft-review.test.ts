@@ -79,3 +79,38 @@ describe('a bill for an exempt patient', () => {
     expect(await getPatientBalance('p2', scope)).toBe(300);
   });
 });
+
+describe('a bill charged to a non-paying visit', () => {
+  const lines = [{ category: 'laboratory' as const, description: 'Malaria RDT', quantity: 1, unitPrice: 200 }];
+  const ctx = (encounterId: string) => ({
+    patientId: 'p3', patientName: 'Mother', facilityId: 'h-a', facilityName: 'Juba', facilityLevel: 'clinic', state: '',
+    generatedBy: 'dr', generatedByName: 'Dr', orgId: 'org-a', encounterId, scope,
+  }) as never;
+  const visit = (id: string, patientId: string, visitBilling: object) => putDoc(getDB('tamamhealth_encounters'), {
+    _id: id, type: 'clinical_encounter', orgId: 'org-a', hospitalId: 'h-a', patientId, visitBilling,
+  } as never);
+
+  beforeEach(async () => {
+    await putDoc(getDB('tamamhealth_patients'), {
+      _id: 'p3', type: 'patient', orgId: 'org-a', hospitalId: 'h-a', payorInfo: { coverageType: 'out_of_pocket' },
+    } as never);
+  });
+
+  test('is created waived with the visit\'s exemption, though the patient pays at registration', async () => {
+    await visit('enc-free', 'p3', { payment: 'non_paying', exemption: 'maternal' });
+    expect(await chargeForServices(ctx('enc-free'), lines)).toMatchObject({ status: 'waived', balanceDue: 0, discountReason: 'Exempt visit: Pregnant or ANC' });
+    expect(await getPatientBalance('p3', scope)).toBe(0);
+  });
+
+  test('records the stated reason for an "other" exemption', async () => {
+    await visit('enc-other', 'p3', { payment: 'non_paying', exemption: 'other', exemptionReason: 'Ministry outreach day' });
+    expect(await chargeForServices(ctx('enc-other'), lines)).toMatchObject({ status: 'waived', discountReason: 'Exempt visit: Ministry outreach day' });
+  });
+
+  test('a paying visit, or another patient\'s visit, is billed as usual', async () => {
+    await visit('enc-paying', 'p3', { payment: 'paying', method: 'cash' });
+    await visit('enc-someone-else', 'p9', { payment: 'non_paying', exemption: 'staff' });
+    expect(await chargeForServices(ctx('enc-paying'), lines)).toMatchObject({ status: 'pending', balanceDue: 200 });
+    expect(await chargeForServices(ctx('enc-someone-else'), lines)).toMatchObject({ status: 'pending', balanceDue: 200 });
+  });
+});

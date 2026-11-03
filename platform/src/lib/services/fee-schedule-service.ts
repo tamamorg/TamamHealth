@@ -13,6 +13,7 @@ import { getDB } from '../db';
 import { getSettings } from '../settings/settings-store';
 import type { FeeScheduleDoc, ChargeCategory, BillLineItem, BillingDoc, BillingUnit } from '../db-types-billing';
 import type { DataScope } from './data-scope';
+import type { VisitExemption } from '../visits/visit-details';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
@@ -255,14 +256,36 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
   return createBill(input);
 }
 
+const VISIT_EXEMPTION_LABELS: Record<VisitExemption, string> = {
+  under_five: 'Child under five',
+  maternal: 'Pregnant or ANC',
+  emergency: 'Emergency',
+  staff: 'Staff',
+  indigent: 'Cannot pay (waiver)',
+  other: 'Other',
+};
+
 /**
- * Why a patient registered as exempt owes nothing, or undefined. The service
- * still happened, so the bill stands as a record, created waived. Otherwise a
- * child under five is held at the pharmacy's pay-first gate. Best-effort: a
- * failed lookup leaves an ordinary bill a cashier can waive.
+ * Why this charge is owed by nobody, or undefined. A visit started as non
+ * paying exempts what is charged to it; otherwise a patient registered as
+ * exempt does. The service still happened, so the bill stands as a record,
+ * created waived. Otherwise a child under five is held at the pharmacy's
+ * pay-first gate. Best-effort: a failed lookup leaves an ordinary bill a
+ * cashier can waive.
  */
 async function exemptionReason(ctx: ChargeContext): Promise<string | undefined> {
   try {
+    if (ctx.encounterId) {
+      const { getEncounter } = await import('./encounter-service');
+      const encounter = await getEncounter(ctx.encounterId);
+      const billing = encounter?.patientId === ctx.patientId ? encounter.visitBilling : undefined;
+      if (billing?.payment === 'non_paying') {
+        const why = billing.exemption === 'other' && billing.exemptionReason
+          ? billing.exemptionReason
+          : (billing.exemption && VISIT_EXEMPTION_LABELS[billing.exemption]) || 'reason not recorded';
+        return `Exempt visit: ${why}`;
+      }
+    }
     const { getPatientById } = await import('./patient-service');
     const patient = await getPatientById(ctx.patientId, ctx.scope) as { payorInfo?: { coverageType?: string; exemptionReason?: string } } | null;
     if (patient?.payorInfo?.coverageType !== 'exemption') return undefined;
