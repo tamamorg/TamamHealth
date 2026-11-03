@@ -19,8 +19,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Hospital, ChevronDown, Check } from '@/components/icons/lucide';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
 import { FormError } from '@/components/overlay/FormNotices';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -187,18 +186,8 @@ export default function FacilityFormModal({
     router.push(`/admin/facilities/new?${query.toString()}`);
   };
 
-  const content = (
-      <div className={`sadb-modal${presentation === 'page' ? ' sadb-modal--page' : ''}`}>
-        {presentation === 'modal' && (
-          <PopupHeader
-            titleId="facility-form-title"
-            title={isEdit ? t('orgHospitals.editTitle') : t('orgHospitals.modalTitle')}
-            subtitle={isEdit ? t('orgHospitals.editSubtitle') : t('orgHospitals.modalSubtitle')}
-            onExpand={expandToPage}
-            onClose={onClose}
-          />
-        )}
-
+  const fields = (
+    <>
         {error && (
           <FormError message={error} className="mb-3" />
         )}
@@ -330,12 +319,12 @@ export default function FacilityFormModal({
               </div>
 
               {groupHeading(t('orgHospitals.groupCapacity'))}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {BED_FIELDS.filter(f => f.key !== 'totalBeds').map(f => numberField(f.key, f.label))}
               </div>
 
               {groupHeading(t('orgHospitals.groupStaffing'))}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {STAFF_FIELDS.map(f => numberField(f.key, f.label))}
               </div>
 
@@ -406,29 +395,47 @@ export default function FacilityFormModal({
             </div>
           )}
         </div>
-
-        <div className="sadb-modal-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose} disabled={saving}>
-            {t('action.cancel')}
-          </button>
-          <button
-            type="button" className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}
-            style={brandColor === 'var(--accent-primary)' ? undefined : { background: brandColor, borderColor: brandColor }}
-            data-action={isEdit ? 'save-facility' : 'create-facility'}
-          >
-            {saving
-              ? t('orgHospitals.creating')
-              : <><Hospital className="w-4 h-4" /> {isEdit ? t('action.save') : t('orgHospitals.createFacility')}</>}
-          </button>
-        </div>
-      </div>
+    </>
   );
 
-  if (presentation === 'page') return content;
+  const sm = presentation === 'page' ? ' btn-sm' : '';
+  const actions = (
+    <>
+      <button type="button" className={`btn btn-secondary${sm}`} onClick={onClose} disabled={saving}>
+        {t('action.cancel')}
+      </button>
+      <button
+        type="button" className={`btn btn-primary${sm}`} onClick={handleSave} disabled={saving}
+        style={brandColor === 'var(--accent-primary)' ? undefined : { background: brandColor, borderColor: brandColor }}
+        data-action={isEdit ? 'save-facility' : 'create-facility'}
+      >
+        {saving
+          ? t('orgHospitals.creating')
+          : <><Hospital className="w-4 h-4" /> {isEdit ? t('action.save') : t('orgHospitals.createFacility')}</>}
+      </button>
+    </>
+  );
+
+  if (presentation === 'page') {
+    return (
+      <div className="sadb-modal sadb-modal--page">
+        {fields}
+        <div className="sadb-modal-actions">{actions}</div>
+      </div>
+    );
+  }
 
   return (
-    <Modal variant="slider" onClose={onClose} width={520} labelledBy="facility-form-title">
-      {content}
-    </Modal>
+    <FormSlider
+      width={520}
+      title={isEdit ? t('orgHospitals.editTitle') : t('orgHospitals.modalTitle')}
+      subtitle={isEdit ? t('orgHospitals.editSubtitle') : t('orgHospitals.modalSubtitle')}
+      onExpand={expandToPage}
+      onClose={onClose}
+      busy={saving}
+      footer={actions}
+    >
+      {fields}
+    </FormSlider>
   );
 }

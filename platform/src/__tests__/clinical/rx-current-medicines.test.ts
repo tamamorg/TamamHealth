@@ -76,7 +76,7 @@ describe('interaction and duplicate checks', () => {
   it('see a dispensed medicine that is still inside its course', async () => {
     await seedRx('rx-w', 'Warfarin 5mg', { status: 'dispensed', duration: '30 days', dispensedAt: ago(2) });
     const safety = await assessPrescriptionSafety('pat-1', 'Metronidazole 400mg', SCOPE);
-    expect(safety.interactionWarnings?.highestSeverity).toBe('contraindicated');
+    expect(safety.interactionWarnings?.highestSeverity).toBe('serious');
     expect(safety.interactionCheckUnavailable).toBe(false);
     const again = await assessPrescriptionSafety('pat-1', 'Warfarin 5mg', SCOPE);
     expect(again.duplicateWarnings).toEqual(['Warfarin 5mg']);
@@ -95,7 +95,7 @@ describe('interaction and duplicate checks', () => {
       status: 'active', orgId: ORG, hospitalId: HOSP, createdAt: ago(1), updatedAt: ago(1),
     } as never);
     expect((await assessPrescriptionSafety('pat-1', 'Metronidazole 400mg', SCOPE)).interactionWarnings?.highestSeverity)
-      .toBe('contraindicated');
+      .toBe('serious');
     const current = await historyEntriesDB().get('h1');
     await historyEntriesDB().put({
       ...current, status: 'entered_in_error', _id: 'h1', type: 'history_entry', patientId: 'pat-1', domain: 'medication', title: 'Warfarin 5mg', orgId: ORG, hospitalId: HOSP, createdAt: ago(1), updatedAt: ago(1),
@@ -123,14 +123,15 @@ describe('the advisory dose check', () => {
     expect(checkDoseAdvisory({ medication: 'Paracetamol 500mg', dose: '1000 mg', frequency: 'every 4 hours' }))
       .toMatchObject({ drug: 'paracetamol', dailyMg: 6000, limitMg: 4000, basis: 'adult_max' });
     // Two 400 mg tablets four times a day: 3200 mg.
-    expect(checkDoseAdvisory({ medication: 'Ibuprofen 400mg', dose: '2', frequency: 'QDS' }))
-      .toMatchObject({ drug: 'ibuprofen', dailyMg: 3200, limitMg: 2400 });
-    expect(checkDoseAdvisory({ medication: 'Ibuprofen 400mg', dose: '2', frequency: 'TDS' })).toBeNull();
+    // The US label ceiling is 3200 mg a day: eight 400 mg tablets is the limit itself.
+    expect(checkDoseAdvisory({ medication: 'Ibuprofen 400mg', dose: '2', frequency: 'every 4 hours' }))
+      .toMatchObject({ drug: 'ibuprofen', dailyMg: 4800, limitMg: 3200 });
+    expect(checkDoseAdvisory({ medication: 'Ibuprofen 400mg', dose: '2', frequency: 'QDS' })).toBeNull();
   });
 
   it('uses the per-kg ceiling for a light patient', () => {
     expect(checkDoseAdvisory({ medication: 'Paracetamol 500mg', dose: '500 mg', frequency: 'QDS', weightKg: 20 }))
-      .toMatchObject({ dailyMg: 2000, limitMg: 1200, basis: 'per_kg', weightKg: 20 });
+      .toMatchObject({ dailyMg: 2000, limitMg: 1500, basis: 'per_kg', weightKg: 20 });
     expect(checkDoseAdvisory({ medication: 'Paracetamol 500mg', dose: '500 mg', frequency: 'QDS', weightKg: 70 })).toBeNull();
   });
 
@@ -144,7 +145,7 @@ describe('the advisory dose check', () => {
   it('is plain to read', () => {
     const t = (key: string, p?: Record<string, string>) => `${key}|${p?.daily}|${p?.limit}|${p?.weight}`;
     const warn = checkDoseAdvisory({ medication: 'Paracetamol 500mg', dose: '500 mg', frequency: 'QDS', weightKg: 20 })!;
-    expect(doseWarningText(t, warn)).toBe('prescribe.doseAboveMaxWeight|2000|1200|20');
+    expect(doseWarningText(t, warn)).toBe('prescribe.doseAboveMaxWeight|2000|1500|20');
   });
 
   it('flows through assessment with the patient weight from triage, and never blocks the order', async () => {
@@ -153,14 +154,14 @@ describe('the advisory dose check', () => {
       hospitalId: HOSP, orgId: ORG,
     } as never);
     const safety = await assessPrescriptionSafety('pat-1', 'Paracetamol 500mg', SCOPE, { dose: '500 mg', frequency: 'QDS' });
-    expect(safety.doseWarnings?.[0]).toMatchObject({ basis: 'per_kg', weightKg: 20, limitMg: 1200 });
+    expect(safety.doseWarnings?.[0]).toMatchObject({ basis: 'per_kg', weightKg: 20, limitMg: 1500 });
 
     const { prescription } = await createPrescription({
       patientId: 'pat-1', patientName: 'Nyakuma Deng', medication: 'Paracetamol 500mg', dose: '500 mg', route: 'oral',
       frequency: 'QDS', duration: '3 days', prescribedBy: 'Dr. Wani', status: 'pending', hospitalId: HOSP, orgId: ORG,
       quantityToDispense: 12,
     } as never, SCOPE);
-    expect(prescription.medicationSafety?.doseWarnings?.[0]).toMatchObject({ dailyMg: 2000, limitMg: 1200 });
+    expect(prescription.medicationSafety?.doseWarnings?.[0]).toMatchObject({ dailyMg: 2000, limitMg: 1500 });
     expect(prescription.medicationSafety?.acknowledgement).toBeUndefined();
   });
 

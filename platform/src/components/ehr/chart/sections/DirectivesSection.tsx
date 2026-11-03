@@ -324,7 +324,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
 
       {/* ── Revoke ── */}
       {revoking && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setRevoking(null)} width={440} labelledBy="revoke-dir-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setRevoking(null)} width={560} labelledBy="revoke-dir-title">
           <DialogFrame busy={busy}>
             <DialogHeader titleId="revoke-dir-title" title="Revoke directive" onClose={() => !busy && setRevoking(null)} />
             <DialogBody className="space-y-4">

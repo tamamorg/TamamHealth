@@ -1,0 +1,23 @@
+/* The clinical-note sliders at the one global slider width (560px).
+   clinical-notes.css already stacks the medication panels under
+   `html.tm-chart-open`; these rules do the same wherever the slider opens
+   (the consultation page, the note's own route), and fit the tables and
+   embedded sections the sliders host. Only the sliders in this folder load it. */
+
+.tm-slider .cn-meds-shell { display: flex; flex-direction: column; overflow: hidden; }
+.tm-slider .cn-meds-shell > .cn-meds-body { flex: 1 1 auto; }
+.tm-slider .cn-meds-body { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; }
+.tm-slider .cn-meds-left { overflow: visible; border-inline-end: 0; }
+.tm-slider .cn-meds-right { overflow: visible; border-top: 1px solid var(--border-light); }
+.tm-slider .cn-meds-controlrow { flex-wrap: wrap; gap: 8px; }
+
+/* Patient history: the chart's own table, held inside the panel. */
+.tm-slider .cn-history-body { max-height: none; overflow: visible; padding: 0; }
+.tm-slider .cn-history-body .tamam-table { table-layout: fixed; width: 100%; min-width: 0; }
+.tm-slider .cn-history-body .tamam-table th,
+.tm-slider .cn-history-body .tamam-table td { overflow-wrap: anywhere; padding-inline: 8px; }
+/* chart-tables.css keeps a 560px floor under a section's table and lets the
+   section scroll sideways; the panel itself is that wide, so drop the floor. */
+.tm-slider .cn-history-body .tamam-section-body > .tamam-table { min-width: 0; }
+/* The record's name is the column that earns the width. */
+.tm-slider .cn-history-body .tamam-table--history th:first-child { width: 34%; }

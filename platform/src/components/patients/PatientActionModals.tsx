@@ -17,8 +17,8 @@
 
 import { doseWarningText, hasSafetyStop } from '@/lib/pharmacy/rx-safety';
 import { useState } from 'react';
-import Modal from '@/components/Modal';
-import { Pill, ArrowRightLeft, X, AlertTriangle } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
+import { AlertTriangle } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -31,7 +31,6 @@ import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
-import { stopsClickPropagation } from '@/lib/a11y';
 import {
   assessPrescriptionSafety,
   type PrescriptionSafetyAssessment,
@@ -71,31 +70,9 @@ const frequencyOptions = [
   'QDS (Four times daily)', 'PRN (As needed)', 'STAT (Immediately)', 'Nocte (At night)',
 ];
 
-// Shared header showing the pre-filled (read-only) patient.
-function ModalHeader({
-  icon, title, patient, onClose,
-}: { icon: React.ReactNode; title: string; patient: PatientDoc; onClose: () => void }) {
-  return (
-    <>
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'transparent' }}>
-            {icon}
-          </div>
-          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-        </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }} aria-label="Close">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="mb-4 p-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-          <span className="font-medium">{patientFullName(patient)}</span>
-          <span className="text-xs ms-2 font-mono" style={{ color: 'var(--text-muted)' }}>{patient.hospitalNumber || patient._id}</span>
-        </span>
-      </div>
-    </>
-  );
+// The pre-filled (read-only) patient, shown as the slider's subtitle.
+function patientLine(patient: PatientDoc) {
+  return `${patientFullName(patient)} · ${patient.hospitalNumber || patient._id}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -232,14 +209,30 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
   if (!isOpen) return null;
 
   return (
-    <Modal variant="slider" onClose={close} width={560}>
-      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
-        <ModalHeader
-          icon={<Pill className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
-          title={t('tab.prescriptions')}
-          patient={patient}
-          onClose={close}
-        />
+    <FormSlider
+      title={t('tab.prescriptions')}
+      width={560}
+      subtitle={patientLine(patient)}
+      busy={submitting}
+      onClose={close}
+      footer={<>
+        <button type="button" onClick={close} className="btn btn-secondary" disabled={submitting}>{t('action.cancel')}</button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="btn btn-primary"
+          disabled={submitting || !canSubmit || hasSevereAllergy || (hasAdvisory && !safetyAcknowledged)}
+        >
+          {submitting
+            ? (!reviewedMedication ? t('prescribe.checkingSafety') : t('referrals.saving'))
+            : !reviewedMedication
+              ? t('prescribe.checkAndContinue')
+              : hasSevereAllergy
+                ? t('prescribe.blocked')
+                : t('action.prescribe')}
+        </button>
+      </>}
+    >
         <div className="space-y-3">
           <div>
             <label>Medication</label>
@@ -346,24 +339,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
             </div>
           )}
         </div>
-        <div className="flex gap-2 mt-5">
-          <button onClick={close} className="btn btn-secondary flex-1" disabled={submitting}>{t('action.cancel')}</button>
-          <button
-            onClick={handleSubmit}
-            className="btn btn-primary flex-1"
-            disabled={submitting || !canSubmit || hasSevereAllergy || (hasAdvisory && !safetyAcknowledged)}
-          >
-            {submitting
-              ? (!reviewedMedication ? t('prescribe.checkingSafety') : t('referrals.saving'))
-              : !reviewedMedication
-                ? t('prescribe.checkAndContinue')
-                : hasSevereAllergy
-                  ? t('prescribe.blocked')
-                  : t('action.prescribe')}
-          </button>
-        </div>
-      </div>
-    </Modal>
+    </FormSlider>
   );
 }
 
@@ -431,15 +407,20 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
   if (!isOpen) return null;
 
   return (
-    <Modal variant="slider" onClose={close} width={600}>
-      <div className="modal-content card-elevated p-6 w-full" {...stopsClickPropagation}>
-        <ModalHeader
-          icon={<ArrowRightLeft className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
-          title={t('referrals.createNew')}
-          patient={patient}
-          onClose={close}
-        />
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+    <FormSlider
+      title={t('referrals.createNew')}
+      width={600}
+      subtitle={patientLine(patient)}
+      busy={submitting}
+      onClose={close}
+      footer={<>
+        <button type="button" onClick={close} className="btn btn-secondary" disabled={submitting}>{t('action.cancel')}</button>
+        <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={!canSubmit || submitting}>
+          {submitting ? t('referrals.saving') : t('referrals.newReferral')}
+        </button>
+      </>}
+    >
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4">
           <div>
             <label>{t('referrals.destinationHospital')}</label>
             <Select value={toHospital} onChange={e => setToHospital(e.target.value)}>
@@ -487,13 +468,6 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder={t('referrals.notesPlaceholder')} />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-5 pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
-          <button onClick={close} className="btn btn-secondary" disabled={submitting}>{t('action.cancel')}</button>
-          <button onClick={handleSubmit} className="btn btn-primary" disabled={!canSubmit || submitting}>
-            {submitting ? t('referrals.saving') : t('referrals.newReferral')}
-          </button>
-        </div>
-      </div>
-    </Modal>
+    </FormSlider>
   );
 }

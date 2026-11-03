@@ -22,7 +22,7 @@ export default function PatientPrintModal({ setShowPrintModal, setPrintSections,
     setPrintSigned(true);
   };
   return (
-    <Modal className="tamam-dialog" onClose={close} size="lg" labelledBy="print-sign-title" describedBy="print-sign-desc">
+    <Modal variant="slider" className="tamam-dialog" onClose={close} size="lg" labelledBy="print-sign-title" describedBy="print-sign-desc">
       <DialogFrame>
         <DialogHeader
           titleId="print-sign-title"

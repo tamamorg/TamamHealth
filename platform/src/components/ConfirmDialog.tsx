@@ -55,6 +55,11 @@ export interface ConfirmOptions {
    * A click can be a slip; a typed name cannot.
    */
   typeToConfirm?: string;
+  /** `slider` opens the question from the right like the chart's other
+   *  workspaces. Normally left unset: the patient chart sets it for every
+   *  question asked inside it (`ConfirmLayoutProvider`). An exit guard that
+   *  sits over a slider passes `dialog` to stay centred. */
+  layout?: 'dialog' | 'slider';
 }
 
 /** `useConfirmPrompt` — a confirm that also collects WHY. For the audited
@@ -77,6 +82,13 @@ const ConfirmContext = createContext<{
   confirm: (options: ConfirmOptions) => Promise<boolean>;
   confirmPrompt: (options: ConfirmPromptOptions) => Promise<string | null>;
 } | null>(null);
+
+const ConfirmLayoutContext = createContext<'dialog' | 'slider'>('dialog');
+
+/** Every question asked below this opens with `layout` unless it names its own. */
+export function ConfirmLayoutProvider({ layout, children }: { layout: 'dialog' | 'slider'; children: ReactNode }) {
+  return <ConfirmLayoutContext.Provider value={layout}>{children}</ConfirmLayoutContext.Provider>;
+}
 
 /**
  * Mounted once by the app shell. Any component below it can call `useConfirm()`
@@ -144,6 +156,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
   const tone = pending?.tone === 'danger' ? 'danger' : pending?.tone === 'warning' ? 'warning' : 'plain';
   const hasBody = !!pending && (!!pending.message || pending.kind === 'prompt' || !!pending.typeToConfirm);
+  const asSlider = pending?.layout === 'slider';
 
   return (
     <ConfirmContext.Provider value={contextValue}>
@@ -151,10 +164,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {pending && (
         <Modal
           onClose={() => settle(false)}
-          width={480}
+          variant={asSlider ? 'slider' : 'dialog'}
+          width={asSlider ? 560 : 480}
           labelledBy="confirm-dialog-title"
           describedBy={pending.message ? 'confirm-dialog-desc' : undefined}
-          className="confirm-dialog"
+          className={asSlider ? 'confirm-dialog confirm-dialog--slider tamam-dialog' : 'confirm-dialog'}
         >
           <DialogFrame>
             <DialogHeader
@@ -181,7 +195,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                       <textarea
                         {...control}
                         className="fs-input"
-                        rows={2}
+                        rows={asSlider ? 4 : 2}
                         value={reason}
                         onChange={e => setReason(e.target.value)}
                         placeholder={pending.inputPlaceholder}
@@ -259,9 +273,12 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
  * without being asked about.
  */
 export function useConfirm(): (options: ConfirmOptions) => Promise<boolean> {
-  const ctx = useContext(ConfirmContext);
-  const fallback = useMemo(() => async () => false, []);
-  return ctx?.confirm ?? fallback;
+  const confirm = useContext(ConfirmContext)?.confirm;
+  const layout = useContext(ConfirmLayoutContext);
+  return useCallback(
+    (options: ConfirmOptions) => (confirm ? confirm({ layout, ...options }) : Promise.resolve(false)),
+    [confirm, layout],
+  );
 }
 
 /**
@@ -271,7 +288,10 @@ export function useConfirm(): (options: ConfirmOptions) => Promise<boolean> {
  * provider it resolves null for the same fail-closed rationale as above.
  */
 export function useConfirmPrompt(): (options: ConfirmPromptOptions) => Promise<string | null> {
-  const ctx = useContext(ConfirmContext);
-  const fallback = useMemo(() => async () => null, []);
-  return ctx?.confirmPrompt ?? fallback;
+  const confirmPrompt = useContext(ConfirmContext)?.confirmPrompt;
+  const layout = useContext(ConfirmLayoutContext);
+  return useCallback(
+    (options: ConfirmPromptOptions) => (confirmPrompt ? confirmPrompt({ layout, ...options }) : Promise.resolve(null)),
+    [confirmPrompt, layout],
+  );
 }

@@ -167,9 +167,9 @@ export default function AssessmentsPanel({ patient, focusId }: {
       {adding && (
         <FormSlider
           title={t('assessments.newTitle')}
+          size="lg"
           subtitle={patientFullName(patient)}
           className="tamam-dialog"
-          size="lg"
           onClose={closeForm}
           busy={busy}
           footerNote={(
@@ -218,9 +218,9 @@ export default function AssessmentsPanel({ patient, focusId }: {
       {reviewing && (
         <FormSlider
           title={reviewing.instrumentName}
+          size="lg"
           subtitle={patientFullName(patient)}
           className="tamam-dialog"
-          size="lg"
           onClose={closeForm}
           busy={busy}
           footer={<>

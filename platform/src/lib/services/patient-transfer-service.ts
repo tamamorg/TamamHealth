@@ -20,6 +20,7 @@
  *     one that failed, so the audit write is part of the transition, not a
  *     side-effect a caller can forget.
  */
+import { chartCareAlerts } from '../care-alert-rules';
 import { v4 as uuidv4 } from 'uuid';
 import {
   patientTransfersDB, patientsDB, problemsDB, prescriptionsDB, clinicianTasksDB, getDB,
@@ -461,8 +462,7 @@ export async function buildTransferSummary(patientId: string): Promise<PatientTr
     summary.allergies = (patient.allergies ?? []).slice(0, 20);
     // Risk flags come from chart-permanent care alerts, which is exactly the
     // information a receiving clinician must not have to go looking for.
-    summary.riskFlags = (patient.careAlerts ?? [])
-      .filter(a => a.status === 'active')
+    summary.riskFlags = chartCareAlerts(patient.careAlerts)
       .map(a => a.message || a.category)
       .filter((v): v is string => Boolean(v))
       .slice(0, 10);

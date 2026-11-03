@@ -11,7 +11,7 @@
  * what the patient already takes — `ReportedMedications`, a history entry that
  * reaches no pharmacy queue. A role holding both gets a small menu.
  *
- * Row actions (Renew / Discontinue) call the prescription service directly,
+ * Row actions (Renew / Discontinue) ask first, then call the prescription service directly,
  * the same way MedicationsModal's row actions do — `usePrescriptions`'s live
  * PouchDB subscription picks up the write and refreshes this list without an
  * explicit reload here.
@@ -27,9 +27,10 @@ import { useToast } from '@/components/Toast';
 import { FileText, Pill } from '@/components/icons/lucide';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { hasDispensingRecord } from '@/components/reports/clinical-reports';
 import PrescriptionCopyDialog from '@/components/patient-handover/PrescriptionCopyDialog';
 import { isScriptable } from '@/lib/prescription-script';
-import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
@@ -99,15 +100,18 @@ interface MedicationsSectionProps {
    *  workflow for that prescription. Unset elsewhere, so the list stays a
    *  plain read for screens that only display medicines. */
   onSelect?: (prescriptionId: string) => void;
+  /** Opens a dispensed prescription as its dispensing record (PharmacyWorkspace). */
+  onViewReport?: (prescriptionId: string) => void;
 }
 
 export default function MedicationsSection({
-  patientId, patientName, canPrescribe, canRecordMedications = false, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId, onSelect,
+  patientId, patientName, canPrescribe, canRecordMedications = false, onAdd, noKnownMedications, reconciliation, reconciledAt, currentUser, focusId, onSelect, onViewReport,
 }: MedicationsSectionProps) {
   const { prescriptions } = usePrescriptions(patientId);
   const scope = useDataScope();
   const { showToast } = useToast();
   const confirmPrompt = useConfirmPrompt();
+  const confirm = useConfirm();
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [tableSearch, setTableSearch] = useState('');
@@ -195,6 +199,12 @@ export default function MedicationsSection({
   };
 
   const handleRenew = async (rx: PrescriptionDoc) => {
+    const renew = await confirm({
+      title: t('chart.medicationRenewTitle', { medication: rx.medication }),
+      message: t('chart.medicationRenewMessage', { sig: formatRxSig(rx) }),
+      confirmLabel: t('chart.medicationRenew'),
+    });
+    if (!renew) return;
     setBusyId(rx._id);
     try {
       const { assessPrescriptionSafety, createPrescription } = await import('@/lib/services/prescription-service');
@@ -331,6 +341,9 @@ export default function MedicationsSection({
                   <RowActionsMenu
                     ariaLabel={t('chart.medicationRowActions', { name: rx.medication })}
                     actions={[
+                      ...(onViewReport && hasDispensingRecord(rx) ? [
+                        { key: 'report', label: t('chart.viewReport'), onClick: () => onViewReport(rx._id) },
+                      ] : []),
                       ...(onSelect && rx.fulfilment !== 'external' ? [
                         { key: 'workflow', label: t('chart.medicationOpenWorkflow'), onClick: () => onSelect(rx._id) },
                       ] : []),

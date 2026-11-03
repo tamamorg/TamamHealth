@@ -35047,6 +35047,10 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   font-size: 14px;
   line-height: 1.5;
 }
+/* `flush`: a body whose content rules its own edges (a table, a lab kit form).
+   The rule above came later at the same weight and quietly put the gutter
+   back on every flush slider. */
+.tm-dialog__body.tm-dialog__body--flush { padding: 0; }
 
 .tm-dialog__foot {
   padding: 0;
@@ -35230,8 +35234,15 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
    (`.modal-panel`, `.modal-content`, `.card-elevated`) as a full-height square
    panel, and their first row — the title and the close button — as the O3
    grey header band. */
+/* One size for every slider in the app, and for the patient chart's docked
+   drawer: 560px wide, from under the top bar to the bottom of the window.
+   Dashboards are the exception: there a slider docks over the right panel
+   (see "Sliders on a dashboard dock" below), its own size and style.
+   A form fits the panel (two columns of fields at most); full screen is the
+   way to more room. Forms with a left navigation keep it, narrowed. */
+:root { --slider-std-w: 560px; --chart-slider-w: var(--slider-std-w); }
 .tm-slider {
-  width: min(var(--slider-w, 640px), 100vw) !important;
+  width: min(var(--slider-std-w), 100vw) !important;
   max-width: 100vw !important;
   border-radius: 0 !important;
   border-inline-start: 1px solid var(--border-light);
@@ -35240,11 +35251,6 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 
 .modal-portal-backdrop--slider > .tm-slider { margin-inline-start: auto; }
 
-/* One size on the patient chart, whatever a form asked for: the docked drawer
-   and every slider. Room for two columns of fields; full screen is the way to
-   more. */
-:root { --chart-slider-w: 560px; }
-html.tm-chart-open .tm-slider { width: min(var(--chart-slider-w), 100vw) !important; }
 
 .tm-slider > :is(.modal-panel, .modal-content, .card-elevated, div) {
   flex: 1 1 auto;
@@ -35258,6 +35264,13 @@ html.tm-chart-open .tm-slider { width: min(var(--chart-slider-w), 100vw) !import
   box-shadow: none !important;
   overflow-y: auto;
 }
+
+/* A slider never scrolls as a whole: its header and action bar stay put and
+   only the content between them scrolls (`.tm-dialog__body`, or a form's own
+   scrolling body such as the lab kit's `.obf-form-body`). The rule above
+   would otherwise let the whole frame scroll, header and all. */
+.tm-slider > .tm-dialog { overflow: hidden !important; }
+.tm-slider > .tm-dialog > :is(.tm-dialog__head, .tm-dialog__foot) { flex: none; }
 
 /* The form's title row becomes the header band, flush to the panel edges. */
 .tm-slider > div > :is(div, header):first-child:has(> :is(h2, h3, div)):has(> button) {
@@ -35604,6 +35617,89 @@ html.tm-chart-open .tm-slider { width: min(var(--chart-slider-w), 100vw) !import
   html.tm-slider-open:has(.tamam-right-rail) #main-content { padding-inline-end: 0; }
   html.tm-slider-open .tamam-root .tamam-right-rail { margin-inline-start: var(--slider-open-w, 0px); }
   html.tm-slider-open:has(.tamam-right-rail) .modal-portal-backdrop--slider { padding-inline-end: 56px !important; }
+  /* A newer chart workspace is on top: the sliders under it step aside, so
+     the chart stops making room for them (lib/overlay-order.ts). */
+  html.tm-drawer-over.tm-slider-open .tamam-root .tamam-right-rail { margin-inline-start: 0; }
+}
+
+/* A slider under a newer chart workspace: hidden, not closed (overlay-order.ts). */
+.modal-portal-backdrop--slider.is-buried { visibility: hidden; }
+
+/* ── Widening a slider or the chart drawer (SliderResizeHandle) ──────────
+   A grip on the panel's inner edge: a blue line shows on hover, focus and
+   while dragging. Dragged back near the standard width it snaps onto it.
+   Not on a docked dashboard slider (it is the right panel's size) or a phone. */
+.tm-slider { position: relative; }
+.tm-resize-handle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -4px;
+  z-index: 6;
+  display: block;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.tm-resize-handle::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+.tm-resize-handle:is(:hover, :focus-visible, .is-dragging)::after { background: var(--accent-primary); }
+.tm-resize-handle:focus-visible { outline: none; }
+@media (max-width: 899px) { .tm-resize-handle { display: none; } }
+@media (min-width: 900px) { html.tm-dash-rail .tm-slider > .tm-resize-handle { display: none; } }
+
+/* ── Read-only facts in a slider or the chart drawer ──────────────────────
+   A record shown to be read (the prescription, a lab report, a transfer) is
+   a list: one fact per row, the label on the left in the quiet ink, the
+   value on the right in the reading ink, a hairline between rows. Stacked
+   label-over-value in a two-column grid made every fact two lines and the
+   eye zig-zag. Rows that hold a field to fill (input, select) are untouched.
+   Docked dashboard sliders are too narrow for this and keep the stack. */
+:is(.tm-slider, .tamam-drawer) .obf-row:not(:has(input, select, textarea, button)) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+:is(.tm-slider, .tamam-drawer) .obf-field:has(> .obf-value),
+:is(.tm-slider, .tamam-drawer) div:has(> .labord-field-label + .labord-field-value) {
+  display: grid;
+  grid-template-columns: minmax(112px, 38%) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+/* Consecutive facts sit flush: the section's own gap would split the list. */
+:is(.tm-slider, .tamam-drawer) :not(.obf-row) > .obf-field:has(> .obf-value) + .obf-field:has(> .obf-value) { margin-top: -16px; }
+:is(.tm-slider, .tamam-drawer) .obf-field:has(> .obf-value) > .obf-label,
+:is(.tm-slider, .tamam-drawer) .labord-field-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+:is(.tm-slider, .tamam-drawer) .obf-field:has(> .obf-value) > .obf-value,
+:is(.tm-slider, .tamam-drawer) .labord-field-value {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+/* A chart table shown in a slider or the drawer fits the panel: the chart
+   page's 560px table floor (chart-tables.css) is wider than a 560 panel's body. */
+:is(.tm-slider, .tamam-drawer) .tamam-section-body > .tamam-table.tamam-table { min-width: 0; }
+/* A section's heading reads as the start of its list. */
+:is(.tm-slider, .tamam-drawer) .obf-section-head:has(+ :is(.obf-field, .obf-row, .lwf-section-body)) {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-medium, var(--border-light));
 }
 
 /* ── Sliders on a dashboard dock over the right panel ────────────────────
@@ -35646,6 +35742,8 @@ html.tm-chart-open .tm-slider { width: min(var(--chart-slider-w), 100vw) !import
   }
 
   /* Narrow (panel-width) sliders only. */
+  /* Too narrow for label | value rows: the facts stack, as before. */
+  html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .obf-field:has(> .obf-value) { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }
   /* The close control sits in the head band rather than on a white tile. */
   html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__ctl { background: transparent; border-inline-start: 0; }
   html.tm-dash-rail .tm-slider:not(.tm-slider--wide) .tm-dialog__body { padding: 4px 16px 20px; }

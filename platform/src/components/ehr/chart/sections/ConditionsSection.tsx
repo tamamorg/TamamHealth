@@ -283,7 +283,7 @@ export default function ConditionsSection({
       </ChartSection>
 
       {onsetTarget && (
-        <Modal className="tamam-dialog" onClose={() => !correcting && closeOnset()} width={420} labelledBy="condition-onset-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !correcting && closeOnset()} width={560} labelledBy="condition-onset-title">
           <DialogFrame>
             <DialogHeader titleId="condition-onset-title" title={<>{t('chart.conditionCorrectOnset')} · {onsetTarget.name}</>} onClose={() => !correcting && closeOnset()} />
             <DialogBody className="space-y-4">

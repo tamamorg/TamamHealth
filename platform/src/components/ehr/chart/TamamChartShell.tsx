@@ -17,11 +17,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import SliderResizeHandle from '@/components/overlay/SliderResizeHandle';
+import { closeDrawerLayer, raiseDrawerLayer } from '@/lib/overlay-order';
+import { DrawerBackContext } from './drawer-back';
+import Tooltip from '@/components/overlay/Tooltip';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
-  ShoppingCart, Pencil, ClipboardCheck, FileText, Users, X, ArrowLeft, Maximize2, Minimize2,
+  ShoppingCart, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
   Utensils, ScanLine, FlaskConical, Pill, Activity, HeartPulse, BedDouble, ClipboardList,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
@@ -207,6 +211,18 @@ export default function TamamChartShell({
   const confirm = useConfirm();
   const [stack, setStack] = useState<WorkspaceEntry[]>([]);
   const top = stack[stack.length - 1];
+  // A workspace opened (or a new panel stacked) is the newest right-hand panel:
+  // any older slider steps aside under it (lib/overlay-order.ts). Going back
+  // down the stack is not a new panel, so it does not.
+  const topKey = !top ? '' : top.kind === 'rail' ? `rail:${top.id}` : 'page';
+  const layerDepth = useRef(0);
+  useEffect(() => {
+    const depth = stack.length;
+    if (depth === 0) closeDrawerLayer();
+    else if (depth >= layerDepth.current) raiseDrawerLayer();
+    layerDepth.current = depth;
+  }, [topKey, stack.length]);
+  useEffect(() => () => closeDrawerLayer(), []);
   const openPanel = top?.kind === 'rail' ? top.id : null;
   // Note being edited by the clinical-note panel, and the form name it was
   // opened as from Clinical forms ("Consultation"), shown as the title.
@@ -328,6 +344,8 @@ export default function TamamChartShell({
       message: t('basket.leaveMessage'),
       confirmLabel: t('basket.leaveConfirm'),
       cancelLabel: t('basket.keepEditing'),
+      // Asked over the open drawer, so it stays a centred question.
+      layout: 'dialog',
     });
     if (leave) orderFormEditedRef.current = false;
     return leave;
@@ -343,6 +361,18 @@ export default function TamamChartShell({
   };
   // Close the top workspace only. A page workspace is closed by the page
   // (the effect above then drops it); a rail panel is popped here.
+  // → (Hide): back one step — out of a panel's own step first (an order form in
+  // the basket, one picked order), else down to the panel underneath.
+  const [innerBack, setInnerBack] = useState<(() => void) | null>(null);
+  const registerInnerBack = useCallback((back: (() => void) | null) => setInnerBack(() => back), []);
+  const hideTop = async () => {
+    if (innerBack) {
+      if (!await leaveOrderForm()) return;
+      innerBack();
+      return;
+    }
+    await closeDrawer();
+  };
   const closeDrawer = async () => {
     if (!await leaveOrderForm()) return;
     if (top?.kind === 'page') { workspace?.onClose(); return; }
@@ -391,7 +421,7 @@ export default function TamamChartShell({
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       // A popup open over the workspace (prescribe, lab order, a confirm)
       // takes Escape itself; closing it must not also close the panel.
-      if (isAnyModalOpen() || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      if (isAnyModalOpen() || document.querySelector('.modal-portal-backdrop:not(.is-buried) [role="dialog"][aria-modal="true"]')) return;
       closeDrawerRef.current();
     };
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -641,28 +671,37 @@ export default function TamamChartShell({
             aria-modal="false"
             aria-label={activePanel.title}
           >
+            {/* Widen from the inner edge; it settles back on the standard width. */}
+            {!drawerMaximized && <SliderResizeHandle />}
             <div className="tamam-drawer-header">
-              {/* ✕ always closes completely. Back is here only when something is
-                  open underneath to go back to, on the title's side of the bar. A
-                  basket order form has its own "Back to order basket" instead. */}
-              {stack.length > 1 && !(activePanel.id === 'order-basket' && basketTitle) && (
-                <button type="button" className="tamam-drawer-back" title="Back" aria-label="Back to the previous panel" onClick={closeDrawer}><ArrowLeft /></button>
-              )}
               <span className="tamam-drawer-title">{activePanel.title}</span>
+              {/* Right side only. × closes completely; → (Hide) is there only when
+                  there is somewhere to go back to: a step inside this panel or a
+                  panel underneath. A single panel shows just ×. */}
               <div className="tamam-drawer-controls">
-                <button
-                  type="button"
-                  title={drawerMaximized ? 'Exit full screen' : 'Full screen'}
-                  aria-label={drawerMaximized ? 'Exit full screen' : 'Full screen'}
-                  aria-pressed={drawerMaximized}
-                  onClick={() => setDrawerMaximized(v => !v)}
-                >
-                  {drawerMaximized ? <Minimize2 /> : <Maximize2 />}
-                </button>
-                <button type="button" title="Close" aria-label="Close" onClick={closeAllWorkspaces}><X /></button>
+                <Tooltip content={drawerMaximized ? t('overlay.exitFullScreen') : t('overlay.fullScreen')}>
+                  <button
+                    type="button"
+                    aria-label={drawerMaximized ? t('overlay.exitFullScreen') : t('overlay.fullScreen')}
+                    aria-pressed={drawerMaximized}
+                    onClick={() => setDrawerMaximized(v => !v)}
+                  >
+                    {drawerMaximized ? <Minimize2 /> : <Maximize2 />}
+                  </button>
+                </Tooltip>
+                {(innerBack || stack.length > 1) && (
+                  <Tooltip content={t('overlay.hide')}>
+                    <button type="button" aria-label={t('overlay.hide')} onClick={() => void hideTop()}><ArrowRight /></button>
+                  </Tooltip>
+                )}
+                <Tooltip content={t('overlay.close')}>
+                  <button type="button" aria-label={t('overlay.close')} onClick={closeAllWorkspaces}><X /></button>
+                </Tooltip>
               </div>
             </div>
-            {renderPanelBody(activePanel.id)}
+            <DrawerBackContext.Provider value={registerInnerBack}>
+              {renderPanelBody(activePanel.id)}
+            </DrawerBackContext.Provider>
           </div>
         </>
       )}

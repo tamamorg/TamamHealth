@@ -96,15 +96,12 @@ describe('recordUnfilled', () => {
   });
 });
 
-// ── 2. Referral outcome notifies the sender ─────────────────────────────
+// ── 2. Referral outcome is recorded for the sender ──────────────────────
+// The sender learns from the notification bell, which reads the referral's
+// status, and from the referral row; nothing is written onto the chart.
 describe('completeReferralWithOutcome', () => {
-  it('writes a care alert on the patient mentioning the completion', async () => {
+  it('records the outcome on the referral and leaves the chart alone', async () => {
     await putDoc(hospitalsDB(), { _id: 'hosp-from', type: 'hospital', name: 'Bor PHCC', orgId: ORG } as never);
-    // completeReferralWithOutcome's notification writes through mutatePatient,
-    // which validates the whole patient doc (not just the patched field) — a
-    // minimal stub patient fails that validation and the care alert silently
-    // never lands. Seed a doc that passes validatePatientData, matching the
-    // shape care-journey.test.ts registers patients with.
     await putDoc(patientsDB(), {
       _id: 'pat-00002', type: 'patient', firstName: 'Deng', surname: 'Malual',
       gender: 'Male', dateOfBirth: '1990-01-01', state: 'Jonglei', county: 'Bor',
@@ -121,23 +118,20 @@ describe('completeReferralWithOutcome', () => {
       orgId: ORG,
     } as never);
 
-    await completeReferralWithOutcome(referral._id, {
+    const done = await completeReferralWithOutcome(referral._id, {
       disposition: 'treated_discharged',
-      summary: 'Appendectomy performed, recovering well.',
-      recordedBy: 'Dr. Wani',
+      summary: 'Appendectomy, uncomplicated',
+      recordedBy: 'Dr. Lado',
       recordedAt: new Date().toISOString(),
-    });
+    } as never);
 
+    expect(done?.status).toBe('completed');
+    expect(done?.statusHistory?.at(-1)?.status).toBe('completed');
     const patient = await getPatientById('pat-00002', TEST_SCOPE);
-    const alerts = patient?.careAlerts ?? [];
-    expect(alerts.length).toBeGreaterThan(0);
-    const closingAlert = alerts.find(a => a.message.toLowerCase().includes('completed'));
-    expect(closingAlert).toBeTruthy();
-    expect(closingAlert!.message.toLowerCase()).toContain('treated discharged');
+    expect(patient?.careAlerts ?? []).toHaveLength(0);
   });
 });
 
-// ── 3. Admit closes the visit ───────────────────────────────────────────
 describe('admitPatient', () => {
   it('stamps encounterId and closes the OPD encounter (with_clinician -> admitted)', async () => {
     const enc = await createEncounter({

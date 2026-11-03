@@ -14,7 +14,8 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Plus } from '@/components/icons/lucide';
+import { useDrawerBack } from '../drawer-back';
+import { Plus } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useLabResults } from '@/lib/hooks/useLabResults';
@@ -40,14 +41,6 @@ interface StationOrdersPanelProps {
 
 const LAB_STAGE_RANK: Record<string, number> = { in_progress: 0, pending: 1, completed: 2 };
 
-function BackToList({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button type="button" className="labord-btn labord-btn--ghost" style={{ marginBottom: 10 }} onClick={onClick}>
-      <ArrowLeft className="w-4 h-4" aria-hidden /> {label}
-    </button>
-  );
-}
-
 export function LabOrdersPanel({ patient, focusId }: StationOrdersPanelProps) {
   const { t } = useTranslation();
   const { canEnterLabResults } = usePermissions();
@@ -66,12 +59,13 @@ export function LabOrdersPanel({ patient, focusId }: StationOrdersPanelProps) {
   // the order the link named, or the patient's only open test.
   const selectedId = picked !== undefined ? picked : (focusId || (open.length === 1 ? open[0]._id : null));
   const selected = selectedId ? tests.find(r => r._id === selectedId) : undefined;
+  // The drawer's → goes back to the list from one order (drawer-back.ts).
+  useDrawerBack(!!selected && tests.length > 1, () => setPicked(null));
 
   if (selected) {
     return (
       <div className="tamam-drawer-workspace station-orders">
         <div className="station-orders__body">
-          {tests.length > 1 && <BackToList label={t('labFlow.backToResults')} onClick={() => setPicked(null)} />}
           <LabWorkflowPanel order={selected} canWork={canEnterLabResults} onClose={() => setPicked(null)} />
         </div>
       </div>
@@ -132,6 +126,7 @@ export function DispensePanel({ patient, focusId }: StationOrdersPanelProps) {
   const [picked, setPicked] = useState<string | null | undefined>(undefined);
   const selectedId = picked !== undefined ? picked : (focusId || (open.length === 1 ? open[0]._id : null));
   const selected = selectedId ? scripts.find(rx => rx._id === selectedId) : undefined;
+  useDrawerBack(!!selected && scripts.length > 1, () => setPicked(null));
   // What the safety review checks the script against: the patient's other
   // active medicines, never the script itself.
   const activeMedications = useMemo(
@@ -143,7 +138,6 @@ export function DispensePanel({ patient, focusId }: StationOrdersPanelProps) {
     return (
       <div className="tamam-drawer-workspace station-orders">
         <div className="station-orders__body">
-          {scripts.length > 1 && <BackToList label={t('rxFlow.backToMedications')} onClick={() => setPicked(null)} />}
           <PharmacyWorkflowPanel rx={selected} canWork={canDispense} activeMedications={activeMedications} onClose={() => setPicked(null)} />
         </div>
       </div>

@@ -122,52 +122,17 @@ export async function getOverdueReferrals(
 }
 
 /**
- * Tell the sending facility their referral has been picked up (KAN-43).
+ * One step in a referral's progress, kept on the referral itself so Care
+ * coordination can say when it was received, accepted and completed (KAN-43).
  *
- * Written as a care alert on the patient's own record rather than a message to
- * a named user: the referring clinician may be off shift, and the next person
- * to open that patient's chart at the sending facility is the one who needs to
- * know. It travels with the patient, which a direct message would not.
- *
- * Best-effort — a failure here must not roll back the status change. The
- * receiving facility has done the right thing by acknowledging; losing the
- * notification is a lesser harm than rejecting their update.
+ * This used to be announced by writing a care alert onto the patient's chart
+ * at the sending facility. Care alerts are for risks, and the notices sat
+ * there as red banners until someone resolved them. The sender now learns from
+ * the notification bell (useNotifications reads this status) and the referral
+ * row, so nothing lands on the chart.
  */
-async function notifySendingFacility(
-  referral: ReferralDoc,
-  status: 'received' | 'seen' | 'completed',
-  outcome?: ReferralOutcome,
-): Promise<void> {
-  try {
-    const { addCareAlert } = await import('./care-alert-service');
-    let message: string;
-    if (status === 'completed') {
-      // The loop's closing moment: tell the sender what actually happened,
-      // not just that the status flipped — a disposition on its own
-      // ("treated discharged") is a fact the sending clinician has to be
-      // able to read without opening the referral.
-      const dispositionLabel = outcome?.disposition.replace(/_/g, ' ') ?? 'completed';
-      message = `Referral to ${referral.toHospital} (${referral.department}, ${referral.urgency}) has been completed`
-        + ` — ${dispositionLabel}${outcome?.summary ? `: ${outcome.summary}` : ''}.`;
-    } else {
-      // Same words as the status pills: Received, then Accepted.
-      const verb = status === 'received' ? 'received' : 'accepted';
-      message = `Referral to ${referral.toHospital} (${referral.department}, ${referral.urgency}) has been ${verb} by the receiving facility.`;
-    }
-    // The alert lands on the SENDING facility's patient record, which may be a
-    // different org from the receiving staff member who triggered this, so the
-    // scope is the referral's own (sending) org, not the caller's.
-    await addCareAlert(referral.patientId, orgOnlyScope(referral.orgId), {
-      category: 'administrative',
-      // Emergency and urgent referrals are the ones a sending clinician is
-      // actively waiting on, so they surface at high priority.
-      priority: referral.urgency === 'routine' ? 'normal' : 'high',
-      message,
-      recordedByName: referral.toHospital,
-    });
-  } catch (err) {
-    console.warn('[referral] could not notify the sending facility (status change was saved):', err);
-  }
+function withStatusStep(referral: ReferralDoc, status: ReferralDoc['status'], at: string): NonNullable<ReferralDoc['statusHistory']> {
+  return [...(referral.statusHistory ?? []), { status, at }];
 }
 
 export async function createReferral(
@@ -275,16 +240,11 @@ export async function updateReferralStatus(
   const db = referralsDB();
   try {
     const existing = await db.get(id) as ReferralDoc;
-    const updated = withPendingOfflineSync({ ...existing, status, updatedAt: new Date().toISOString() });
+    const now = new Date().toISOString();
+    const updated = withPendingOfflineSync({ ...existing, status, statusHistory: withStatusStep(existing, status, now), updatedAt: now });
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('UPDATE_REFERRAL', undefined, undefined, `Referral ${id} status changed to ${status}`);
-    // Close the loop back to the sending facility (KAN-43). The referring
-    // clinician previously had no way to learn their patient had been picked
-    // up short of opening the referral and looking.
-    if (status === 'received' || status === 'seen') {
-      await notifySendingFacility(existing, status);
-    }
     emitSyncEvent({
       resourceType: 'referral',
       resourceId: updated._id,
@@ -317,21 +277,18 @@ export async function completeReferralWithOutcome(
     const noteLine =
       `[${outcome.recordedAt.slice(0, 10)} ${outcome.recordedBy}] OUTCOME (${dispositionLabel}): ${outcome.summary}`
       + (outcome.followUp ? ` | Follow-up: ${outcome.followUp}` : '');
+    const now = new Date().toISOString();
     const updated: ReferralDoc = withPendingOfflineSync({
       ...existing,
       status: 'completed',
+      statusHistory: withStatusStep(existing, 'completed', outcome.recordedAt || now),
       outcome,
       notes: existing.notes ? `${existing.notes}\n\n${noteLine}` : noteLine,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     } as ReferralDoc);
     const resp = await db.put(updated);
     updated._rev = resp.rev;
     await logAuditSafe('UPDATE_REFERRAL', undefined, undefined, `Referral ${id} completed with outcome (${outcome.disposition})`);
-    // Close the loop back to the sending facility (KAN-43) — this is the
-    // loop's closing moment, and previously nothing told the referring
-    // clinician what happened to their patient short of reopening the
-    // referral to look. Best-effort: the outcome is already durably written.
-    await notifySendingFacility(existing, 'completed', outcome);
     emitSyncEvent({
       resourceType: 'referral',
       resourceId: updated._id,

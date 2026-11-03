@@ -402,7 +402,7 @@ export default function HistorySection({ patientId, patientName, onOpenTab, sour
       })}
 
       {onsetTarget && (
-        <Modal className="tamam-dialog" onClose={() => !savingProblem && setOnsetTarget(null)} width={420} labelledBy="history-onset-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !savingProblem && setOnsetTarget(null)} width={560} labelledBy="history-onset-title">
           <DialogFrame>
             <DialogHeader titleId="history-onset-title" title={<>{t('chart.conditionCorrectOnset')} · {onsetTarget.name}</>} onClose={() => !savingProblem && setOnsetTarget(null)} />
             <DialogBody className="space-y-4">

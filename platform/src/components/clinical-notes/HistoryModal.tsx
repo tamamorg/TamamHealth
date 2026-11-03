@@ -17,6 +17,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 // load with the chart shell — and the note editor also runs on its own route.
 import '@/components/ehr/chart/tamam-chart.css';
 import './clinical-notes.css';
+import './slider-fit.css';
 
 interface HistoryModalProps {
   patientId: string;

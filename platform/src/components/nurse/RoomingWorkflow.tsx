@@ -341,8 +341,8 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
       {vitalsEntry && (
         <FormSlider
           title="Record vitals"
-          subtitle={<>{vitalsEntry.encounter.patientName} · {vitalsEntry.encounter.hospitalNumber || 'No ID'}</>}
           width={620}
+          subtitle={<>{vitalsEntry.encounter.patientName} · {vitalsEntry.encounter.hospitalNumber || 'No ID'}</>}
           onClose={() => { if (!vitalsSaving) setVitalsEntry(null); }}
           footer={<>
               <button type="button" onClick={() => setVitalsEntry(null)} disabled={vitalsSaving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Cancel</button>

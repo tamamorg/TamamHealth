@@ -9,9 +9,10 @@ import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.
 import type { ReferralDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import RowActionsMenu from '@/components/RowActionsMenu';
-import { formatDate } from '@/lib/format-utils';
+import { formatDate, formatDateTime } from '@/lib/format-utils';
+import { useEffect } from 'react';
 import { useReferralActions } from '@/components/referrals/useReferralActions';
-export default function PatientCoordinationTab({ patient, canViewClinical, canManageReferrals, setShowReferModal, router, patientReferrals, onReferralsChanged }: {
+export default function PatientCoordinationTab({ patient, canViewClinical, canManageReferrals, setShowReferModal, router, patientReferrals, onReferralsChanged, focusId }: {
   patient: PatientDoc;
   canViewClinical: boolean;
   canManageReferrals: boolean;
@@ -20,10 +21,30 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
   patientReferrals: ReferralDoc[];
   /** Re-read the list after a row action writes. */
   onReferralsChanged?: () => void;
+  /** A referral a notification opened (`?focus=`): scrolled to and marked. */
+  focusId?: string;
 }) {
   const { t } = useTranslation();
   const openReferrals = () => router.push(`/referrals?patient=${encodeURIComponent(patient._id)}`);
   const { actionsFor, slider } = useReferralActions({ canViewClinical, onChanged: onReferralsChanged, onOpenAll: openReferrals });
+  useEffect(() => {
+    if (!focusId || !patientReferrals.some(r => r._id === focusId)) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`referral-row-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusId, patientReferrals]);
+
+  // When the referral reached its current status. Progress is shown here and
+  // in the notification bell, not as an alert on the chart; referrals from
+  // before the history existed fall back to their last update.
+  const statusSince = (ref: ReferralDoc): string | null => {
+    if (ref.status === 'sent') return null;
+    const at = [...(ref.statusHistory ?? [])].reverse().find(step => step.status === ref.status)?.at
+      || (ref.status === 'completed' ? ref.outcome?.recordedAt : undefined)
+      || ref.updatedAt;
+    return at ? formatDateTime(at) : null;
+  };
 
   return (
             <div className="space-y-3">
@@ -78,7 +99,11 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
                           tp && 'data package',
                         ].filter(Boolean).join(' · ');
                         return (
-                          <tr key={ref._id}>
+                          <tr
+                            key={ref._id}
+                            id={`referral-row-${ref._id}`}
+                            style={ref._id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
+                          >
                             <td className="tamam-num">{formatDate(ref.referralDate)}</td>
                             <td>
                               {/* Where the referral came from — the chart
@@ -115,6 +140,10 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
                               <span className={`badge ${ref.status === 'sent' ? 'ref-sent' : ref.status === 'received' ? 'ref-received' : ref.status === 'seen' ? 'ref-seen' : ref.status === 'completed' ? 'ref-completed' : 'ref-cancelled'} text-[10px]`}>
                                 {t(`referral.${ref.status}`)}
                               </span>
+                              {statusSince(ref) && <div className="tamam-cell-sub">{t('referral.statusSince', { time: statusSince(ref)! })}</div>}
+                              {ref.status === 'completed' && ref.outcome && (
+                                <div className="tamam-cell-sub">{t('referral.outcomeLine', { disposition: ref.outcome.disposition.replace(/_/g, ' ') })}</div>
+                              )}
                             </td>
                             <td>
                               <RowActionsMenu ariaLabel={t('chart.referralRowActions', { name: ref.toHospital })} actions={actionsFor(ref)} />

@@ -20,7 +20,7 @@ export default function PatientDeceasedModal({ deceasedSubmitting, setShowDeceas
   const descId = useId();
   const close = () => { if (!deceasedSubmitting) setShowDeceasedModal(false); };
   return (
-    <Modal className="tamam-dialog" onClose={close} size="sm" labelledBy={titleId} describedBy={descId}>
+    <Modal variant="slider" className="tamam-dialog" onClose={close} size="md" labelledBy={titleId} describedBy={descId}>
       <DialogFrame busy={deceasedSubmitting}>
         <DialogHeader
           titleId={titleId}

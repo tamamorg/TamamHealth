@@ -21,6 +21,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import { CLARIFICATION_REASONS, courseQuantity, isFilled, sigLine, UNFILLED_REASONS } from './pharmacy-workflow-types';
+import UnlabelledDrugNotice from '@/components/clinical-notes/prescribe/UnlabelledDrugNotice';
 import { usePharmacyWorkflow, type PharmacyWorkflowController } from './usePharmacyWorkflow';
 import '@/components/lab/order/lab-order.css';
 import '@/components/lab/workflow/lab-workflow.css';
@@ -110,6 +111,7 @@ export default function PharmacyWorkflowPanel({
         {rx.offFormulary && (
           <InlineBanner tone="warning">{t('rxFlow.offList', { reason: rx.offFormularyReason || t('rxFlow.offListNoReason') })}</InlineBanner>
         )}
+        {!rx.offFormulary && <UnlabelledDrugNotice medication={rx.medication} />}
         <ObfValue label={t('rxFlow.sig')} value={sigLine(rx)} />
         <ObfValue label={t('rxFlow.prescriber')} value={rx.prescribedBy} />
         <ObfValue label={t('rxFlow.quantity')} value={courseQuantity(rx)} />

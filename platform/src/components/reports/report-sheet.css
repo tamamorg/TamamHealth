@@ -1,0 +1,162 @@
+/* ── A report as a document ────────────────────────────────────────────────
+   A sheet on a desk, laid out as it prints (facility and document at the top,
+   Patient Information, a ruled results table, the details as a ruled field
+   grid), so the screen reads like the paper the patient takes away. One look
+   for every report: lab, imaging, dispensing. */
+.rs-desk {
+  --rs-line: var(--ehr-border, #D5DCE5);
+  --rs-ink: var(--ehr-text, #113055);
+  --rs-muted: var(--ehr-muted, #5D728B);
+  --rs-tint: color-mix(in srgb, var(--accent-primary, #015697) 5%, var(--bg-card-solid, #fff));
+  container-type: inline-size;
+  padding: 24px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-primary, #015697) 6%, var(--bg-card-solid, #fff));
+}
+
+.rs-sheet {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 36px 28px;
+  border: 1px solid var(--rs-line);
+  border-radius: 2px;
+  background: var(--bg-card-solid, #fff);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 10px 28px rgba(16, 24, 40, 0.07);
+  color: var(--rs-ink);
+  font-size: 13px;
+}
+
+.rs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--rs-ink);
+}
+.rs-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rs-brand img { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.rs-brand strong { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.rs-identity { display: grid; justify-items: end; gap: 2px; text-align: end; }
+.rs-identity strong { font-size: 15px; font-weight: 700; }
+.rs-identity span { color: var(--rs-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rs-identity em { color: var(--color-danger, #D92B20); font-size: 12px; font-style: normal; font-weight: 700; }
+
+.rs-notice {
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-warning-border, #F5C27A);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-warning, #CC6600) 8%, var(--bg-card-solid, #fff));
+  font-size: 12px;
+}
+
+.rs-block { margin-top: 22px; }
+.rs-title {
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rs-line);
+  color: var(--accent-primary, #015697);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.rs-text { margin: 0; font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Field grid: hairlines between cells, drawn by the gap over a line-coloured
+   ground so every cell, including a short last row, is ruled the same. */
+.rs-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--rs-line);
+  background: var(--rs-line);
+}
+.rs-field { min-width: 0; padding: 9px 12px; background: var(--bg-card-solid, #fff); }
+.rs-field span { display: block; margin-bottom: 3px; color: var(--rs-muted); font-size: 11.5px; font-weight: 500; }
+.rs-field strong { display: block; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+
+/* The chart restyles every plain table inside it (rounded tinted rows, the
+   condensed micro-label th, padding and borders with !important). A document
+   is ruled, flat and set in the body face, so the sheet takes its cells back. */
+.rs-sheet table.rs-table {
+  width: 100%;
+  border: 1px solid var(--rs-line);
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  font-size: 13px;
+}
+.rs-sheet .rs-table :is(thead th, tbody th, tbody td) {
+  padding: 9px 12px !important;
+  border: 1px solid var(--rs-line) !important;
+  border-radius: 0 !important;
+  font-family: inherit;
+  letter-spacing: 0;
+  text-align: start;
+  text-transform: none;
+  vertical-align: top;
+}
+.rs-sheet .rs-table thead th {
+  height: auto;
+  background: color-mix(in srgb, var(--accent-primary, #015697) 8%, var(--bg-card-solid, #fff)) !important;
+  color: var(--rs-ink) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+.rs-sheet .rs-table thead th:first-child { width: 40%; }
+.rs-sheet .rs-table tbody td { background: var(--bg-card-solid, #fff); }
+.rs-sheet .rs-group th {
+  padding-block: 6px !important;
+  background: var(--rs-tint) !important;
+  color: var(--rs-muted) !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+.rs-name { font-weight: 600; }
+.rs-sheet .rs-table td.rs-name.is-in-group { padding-inline-start: 24px !important; }
+.rs-value { font-variant-numeric: tabular-nums; font-weight: 700; }
+.rs-sheet .rs-table td.rs-value.is-critical { color: var(--color-danger, #D92B20) !important; }
+.rs-sheet .rs-table td.rs-value.is-abnormal { color: var(--color-warning, #CC6600) !important; }
+
+.rs-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--rs-line);
+  border-top: 0;
+  background: var(--rs-tint);
+}
+.rs-summary span { color: var(--rs-muted); font-size: 12px; font-weight: 600; }
+.rs-summary strong { font-size: 13px; font-weight: 700; }
+.rs-summary.is-critical strong { color: var(--color-danger, #D92B20); }
+.rs-summary.is-abnormal strong { color: var(--color-warning, #CC6600); }
+.rs-summary.is-normal strong { color: var(--color-success, #12805C); }
+
+/* The view a sheet opens in: Back, the document's actions, then the desk. */
+.rs-view-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.rs-view-actions { display: flex; align-items: center; gap: 8px; }
+
+/* A narrow column (a slider, a split screen): same order, two fields a row. */
+@container (max-width: 640px) {
+  .rs-sheet { padding: 20px 18px; }
+  .rs-head { flex-wrap: wrap; align-items: flex-start; }
+  .rs-identity { justify-items: start; text-align: start; }
+  .rs-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rs-sheet table.rs-table { table-layout: fixed; }
+  .rs-sheet .rs-table :is(thead th, tbody th, tbody td) { padding: 7px 8px !important; overflow-wrap: anywhere; }
+}
+
+@media print {
+  /* printElementById draws the shared heading on paper. */
+  .rs-sheet .rs-head { display: none !important; }
+  .rs-desk { padding: 0 !important; background: none !important; }
+  .rs-sheet { max-width: none; padding: 0; border: 0; box-shadow: none; }
+  .rs-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .rs-sheet .rs-table :is(th, td) { border: 0.5pt solid color-mix(in srgb, black 18%, white) !important; }
+  .rs-view-bar { display: none !important; }
+}

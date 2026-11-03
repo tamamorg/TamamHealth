@@ -23,7 +23,7 @@ export default function PatientChartPrintStyles() {
             color: #001d3f !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif !important;
+            font-family: Arial, Helvetica, sans-serif !important;
             font-size: 9pt;
             line-height: 1.45;
           }
@@ -74,7 +74,7 @@ export default function PatientChartPrintStyles() {
 
           /* Reset everything inside the doc */
           .print-doc-root * {
-            font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif !important;
+            font-family: Arial, Helvetica, sans-serif !important;
             box-sizing: border-box;
             animation: none !important;
             transition: none !important;
@@ -190,6 +190,17 @@ export default function PatientChartPrintStyles() {
           .rx-sig-line { border-bottom: 1pt solid #333 !important; margin-bottom: 4pt; height: 1pt; }
           .rx-sig-name { font-size: 8.5pt; color: #001d3f !important; font-weight: 600; }
           .rx-sig-role { font-size: 7.5pt; color: #666 !important; }
+
+          /* ── Lab results table: the same ruled table as every other
+             printout — grey head row, hairline rows, no tinted rows or
+             coloured values (inline styles in the document, hence !important). */
+          .print-doc-root table { font-size: 9pt !important; }
+          .print-doc-root thead tr { background: #f1f3f5 !important; }
+          body .print-doc-root table thead tr th { font-family: Arial, Helvetica, sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 7.5pt !important; color: #3c5574 !important; padding: 1.8mm 2mm !important; }
+          .print-doc-root td { padding: 1.8mm 2mm !important; color: #001d3f !important; }
+          .print-doc-root tbody tr { background: none !important; }
+          .print-doc-root .rx-allergy-sev.severe { color: #001d3f !important; }
+          .print-doc-root .rx-dx-code { background: none !important; padding: 0 !important; }
 
           /* ── Footer ── */
           /* The page footer (facility, printed by, time, page n of N, system

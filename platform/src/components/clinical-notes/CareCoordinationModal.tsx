@@ -189,17 +189,16 @@ export default function CareCoordinationModal({
       width={780}
       onClose={onClose}
       footer={<>
-          <button type="button" className="cn-btn" onClick={handlePrint}>
+          <button type="button" className="btn btn-secondary" onClick={handlePrint}>
             <Printer size={14} /> Preview/Print
           </button>
-          <button type="button" className="cn-btn" onClick={handleDownload}>
+          <button type="button" className="btn btn-secondary" onClick={handleDownload}>
             <Download size={14} /> Download
           </button>
-          <div className="cn-footer-spacer" />
-          <button type="button" className="cn-btn" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
           <button
             type="button"
-            className="cn-btn cn-btn-primary"
+            className="btn btn-primary"
             onClick={handleSend}
             disabled={sending}
           >

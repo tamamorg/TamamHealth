@@ -8,7 +8,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/Modal';
-import { X, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from '@/components/icons/lucide';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import { ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatClockTime } from '@/lib/format-utils';
 import { readPatientPortalSession } from '@/lib/patient-portal-session';
@@ -222,18 +223,18 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
   const stepNo = step === 'reason' ? 1 : step === 'slots' ? 2 : step === 'confirm' ? 3 : 3;
 
   return (
-    <Modal variant="slider" onClose={onClose}>
-      <div className="modal-panel modal-panel--md pp-bk">
-        <div className="pp-bk-head">
-          <div className="pp-bk-title">
-            {(step === 'slots' || step === 'confirm') && (
-              <button type="button" className="pp-bk-icon-btn pp-bk-back" onClick={back} aria-label={t('action.back')}><ChevronLeft size={20} /></button>
-            )}
-            <h3>{t('patientPortal.requestAppointment')}</h3>
-          </div>
-          <button type="button" className="pp-bk-icon-btn pp-bk-close" onClick={onClose} aria-label={t('action.close')}><X size={18} /></button>
-        </div>
-        {facility && <p className="pp-bk-facility">{t('patientPortal.bookingAt', { facility })}</p>}
+    <Modal variant="slider" onClose={onClose} labelledBy="pp-bk-title">
+      <DialogFrame>
+        <DialogHeader
+          titleId="pp-bk-title"
+          title={t('patientPortal.requestAppointment')}
+          description={facility ? t('patientPortal.bookingAt', { facility }) : undefined}
+          onBack={step === 'slots' || step === 'confirm' ? back : undefined}
+          closeLabel={t('action.close')}
+          onClose={onClose}
+        />
+        <DialogBody>
+      <div>
         {step !== 'done' && (
           <div className="pp-bk-steps" aria-hidden>
             {[1, 2, 3].map(n => <i key={n} className={n <= stepNo ? 'on' : ''} />)}
@@ -351,6 +352,8 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
           </div>
         )}
       </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import type { InsurancePolicyDoc, PayerType } from '@/lib/db-types-payments';
@@ -126,12 +125,8 @@ export default function InsurancePolicyModal({
     setSaving(false);
   };
 
-  const body = (
-    <>
-      <div
-        className="space-y-3"
-        style={presentation === 'page' ? undefined : { maxHeight: '60vh', overflowY: 'auto', paddingInlineEnd: 4 }}
-      >
+  const fields = (
+      <div className="space-y-3">
         <div>
           <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
             {t('billing.payerType') || 'Payer type'}
@@ -241,37 +236,43 @@ export default function InsurancePolicyModal({
           {t('billing.setAsPrimaryPolicy') || 'Set as primary policy'}
         </label>
       </div>
+  );
 
+  const actions = (
+    <>
+      <button type="button" onClick={onClose} className="btn btn-secondary">{t('common.cancel') || 'Cancel'}</button>
+      <button type="button" onClick={handleSubmit} disabled={saving} className="btn btn-primary">
+        {saving ? (t('common.saving') || 'Saving…') : (t('common.save') || 'Save')}
+      </button>
+    </>
+  );
+
+  const body = (
+    <>
+      {fields}
       <hr className="section-divider" />
-      <div className="flex gap-2 mt-2">
-        <button onClick={onClose} className="btn btn-secondary flex-1">{t('common.cancel') || 'Cancel'}</button>
-        <button onClick={handleSubmit} disabled={saving} className="btn btn-primary flex-1">
-          {saving ? (t('common.saving') || 'Saving…') : (t('common.save') || 'Save')}
-        </button>
-      </div>
+      <div className="flex gap-2 mt-2">{actions}</div>
     </>
   );
 
   if (presentation === 'page') return body;
 
   return (
-    <Modal variant="slider" onClose={onClose} width={560} labelledBy="insurance-policy-title">
-      <div className="modal-panel ehr-finance-dialog ehr-finance-dialog--padded">
-        <PopupHeader
-          surface="panel"
-          titleId="insurance-policy-title"
-          title={isEdit
-            ? (t('billing.editInsurance') || 'Edit insurance policy')
-            : (t('billing.addInsurance') || 'Add insurance policy')}
-          onExpand={() => {
-            onClose();
-            const query = policy?._id ? `?policy=${encodeURIComponent(policy._id)}` : '';
-            router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/insurance/new${query}`));
-          }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+    <FormSlider
+      title={isEdit
+        ? (t('billing.editInsurance') || 'Edit insurance policy')
+        : (t('billing.addInsurance') || 'Add insurance policy')}
+      width={560}
+      onClose={onClose}
+      busy={saving}
+      onExpand={() => {
+        onClose();
+        const query = policy?._id ? `?policy=${encodeURIComponent(policy._id)}` : '';
+        router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/insurance/new${query}`));
+      }}
+      footer={actions}
+    >
+      {fields}
+    </FormSlider>
   );
 }

@@ -174,7 +174,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
 
       {/* Remove confirmation modal */}
       {removingEntry && (
-        <Modal onClose={() => setRemovingEntry(null)} width={440} labelledBy="remove-allergy-title">
+        <Modal variant="slider" onClose={() => setRemovingEntry(null)} width={560} labelledBy="remove-allergy-title">
           <DialogFrame>
             <DialogHeader titleId="remove-allergy-title" title="Remove Allergy" onClose={() => setRemovingEntry(null)} />
             <DialogBody className="space-y-4">

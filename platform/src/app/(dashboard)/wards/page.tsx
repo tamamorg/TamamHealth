@@ -3,10 +3,10 @@
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import PatientName from '@/components/PatientName';
 import PatientAvatar from '@/components/patients/PatientAvatar';
-import { Plus, X, CheckCircle2, Pill, ArrowRightLeft, ClipboardList } from '@/components/icons/lucide';
+import { Plus, CheckCircle2, Pill, ArrowRightLeft, ClipboardList } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import WardAdmitForm from '@/components/wards/WardAdmitForm';
@@ -363,32 +363,31 @@ export default function WardsPage() {
              box. Labels stay real labels — the scope just takes the cascade
              back off them. */}
         {dischargeFor && (
-          <Modal variant="slider" onClose={() => setDischargeFor(null)} width={640} labelledBy="ward-discharge-title">
-            <div className="modal-content card-elevated wdis">
-              <header className="wdis-head">
-                <div className="wdis-id">
-                  <PatientAvatar
-                    patient={patients.find(p => p._id === dischargeFor.patientId) ?? avatarNameOf(dischargeFor.patientName)}
-                    size={38}
-                  />
-                  <div className="min-w-0">
-                    <h3 id="ward-discharge-title">{dischargeFor.patientName}</h3>
-                    <p>
-                      {dischargeFor.wardName}
-                      {dischargeFor.bedNumber ? ` · ${t('ward.bedShort', { bed: dischargeFor.bedNumber })}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="wdis-close"
-                  onClick={() => setDischargeFor(null)}
-                  aria-label={t('action.close')}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </header>
-
+          <FormSlider
+            title={dischargeFor.patientName}
+            width={640}
+            subtitle={<>
+              {dischargeFor.wardName}
+              {dischargeFor.bedNumber ? ` · ${t('ward.bedShort', { bed: dischargeFor.bedNumber })}` : ''}
+            </>}
+            onClose={() => setDischargeFor(null)}
+            flush
+            footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setDischargeFor(null)}>{t('action.cancel')}</button>
+              {canDischarge && <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleDischarge}
+                disabled={
+                  !dischargeForm.dischargeDiagnosis.trim()
+                  || !dischargeForm.dischargeSummary.trim()
+                  || !dischargeForm.medicationReconciled
+                  || (dischargeForm.followUpRequired && (!dischargeForm.followUpDate || !dischargeForm.followUpInstructions.trim()))
+                }
+              >{t('ward.discharge')}</button>}
+            </>}
+          >
+            <div className="wdis">
               {/* The admission, before the form that ends it. */}
               <dl className="wdis-facts">
                 <div>
@@ -543,29 +542,17 @@ export default function WardsPage() {
                 )}
               </div>}
 
-              <footer className="wdis-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => router.push(`/patients/${dischargeFor.patientId}?tab=overview`)}>
-                  {t('ward.openChart')}
-                </button>
-                <span className="wdis-actions-end">
+              <div className="wdis-body">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => router.push(`/patients/${dischargeFor.patientId}?tab=overview`)}>
+                    {t('ward.openChart')}
+                  </button>
                   {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => setTransferFor(dischargeFor)}>{t('ward.startTransfer')}</button>}
                   {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => router.push(`/deaths?patientId=${encodeURIComponent(dischargeFor.patientId)}${dischargeFor.encounterId ? `&encounterId=${encodeURIComponent(dischargeFor.encounterId)}` : ''}`)}>{t('ward.recordDeath')}</button>}
-                  <button type="button" className="btn btn-secondary" onClick={() => setDischargeFor(null)}>{t('action.cancel')}</button>
-                  {canDischarge && <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleDischarge}
-                    disabled={
-                      !dischargeForm.dischargeDiagnosis.trim()
-                      || !dischargeForm.dischargeSummary.trim()
-                      || !dischargeForm.medicationReconciled
-                      || (dischargeForm.followUpRequired && (!dischargeForm.followUpDate || !dischargeForm.followUpInstructions.trim()))
-                    }
-                  >{t('ward.discharge')}</button>}
-                </span>
-              </footer>
+                </div>
+              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
         {transferFor && (() => {
           const patient = patients.find(candidate => candidate._id === transferFor.patientId);

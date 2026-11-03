@@ -31,7 +31,7 @@ describe('interaction rule names', () => {
 
   it('fires the phenobarbital rule from the formulary name and the older spelling', () => {
     for (const name of ['Phenobarbital', 'Phenobarbitone']) {
-      expect(checkInteractions([name, 'Artemether-Lumefantrine (Coartem)']).highestSeverity).toBe('serious');
+      expect(checkInteractions([name, 'Artemether-Lumefantrine (Coartem)']).highestSeverity).toBe('contraindicated');
     }
   });
 
@@ -44,9 +44,9 @@ describe('interaction rule names', () => {
   );
 
   it.each([
-    ['Warfarin', 'Metronidazole'],
-    ['Methotrexate', 'Cotrimoxazole (Sulfamethoxazole-Trimethoprim)'],
-    ['Artemether-Lumefantrine (Coartem)', 'Quinine'],
+    ['Lopinavir + ritonavir', 'Rifampicin'],
+    ['Ritonavir', 'Ergotamine'],
+    ['Fluoxetine', 'Linezolid'],
   ])('stops %s with %s from the formulary names', (first, second) => {
     for (const name of [first, second]) expect(FORMULARY.some(item => item.name === name)).toBe(true);
     expect(checkNewPrescription(second, [first]).highestSeverity).toBe('contraindicated');
@@ -58,7 +58,7 @@ describe('interaction rule names', () => {
 });
 
 describe('checkNewPrescription', () => {
-  const onChart = ['Artemether-Lumefantrine (Coartem)', 'Quinine'];
+  const onChart = ['Ritonavir', 'Ergotamine'];
 
   it('does not raise a pair already on the chart against an unrelated new drug', () => {
     expect(checkInteractions(onChart).highestSeverity).toBe('contraindicated');
@@ -66,7 +66,7 @@ describe('checkNewPrescription', () => {
   });
 
   it('raises the pair when the new drug is one half of it', () => {
-    expect(checkNewPrescription('Quinine', ['Artemether-Lumefantrine (Coartem)']).highestSeverity).toBe('contraindicated');
+    expect(checkNewPrescription('Ergotamine', ['Ritonavir']).highestSeverity).toBe('contraindicated');
   });
 
   it('keeps what the new drug does with each current medicine', () => {

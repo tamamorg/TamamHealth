@@ -1120,7 +1120,7 @@ export default function PatientDetailPage() {
 
           {/* Care coordination: internal transfers and external referrals share
               one ownership and follow-up destination. */}
-          {activeTab === 'referrals' && <PatientCoordinationTab patient={patient} canViewClinical={canViewClinical} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} router={router} patientReferrals={patientReferrals} onReferralsChanged={reloadReferrals} />}
+          {activeTab === 'referrals' && <PatientCoordinationTab focusId={focusId} patient={patient} canViewClinical={canViewClinical} canManageReferrals={canManageReferrals} setShowReferModal={setShowReferModal} router={router} patientReferrals={patientReferrals} onReferralsChanged={reloadReferrals} />}
 
           {/* Sliders opened by a chart button over whichever tab is showing. */}
           {addingConditionInPlace && patient && (

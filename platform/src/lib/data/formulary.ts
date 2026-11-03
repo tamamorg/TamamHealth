@@ -574,6 +574,90 @@ export function findFormularyDrug(name: string): FormularyDrug | undefined {
   });
 }
 
+/**
+ * Formulary medicines with no US prescribing label on file. The safety checks
+ * take US labels as their standard, so for these the interaction and dose
+ * rules lean on WHO and national guidance and may be incomplete. Built from the
+ * openFDA and DailyMed search of 2026-11-03; a medicine sold in the US only as
+ * separate parts (TLD, the TB fixed-dose tablets) counts as labelled through
+ * them. Some here do have a US label those indexes did not return, which is
+ * why prescribers can flag any of them for review.
+ */
+const WITHOUT_US_LABEL = new Set<string>([
+  "Artesunate (injection)",
+  "Artesunate-Amodiaquine",
+  "Sulfadoxine-Pyrimethamine",
+  "Cloxacillin",
+  "Oral Rehydration Salts (ORS)",
+  "Ferrous + Folic acid",
+  "Vitamin B complex",
+  "Halothane",
+  "Thiopental",
+  "Pancuronium",
+  "Antivenom, snake polyvalent (SAIMR)",
+  "Antivenom, snake polyvalent (EchiTAb-Plus-ICP)",
+  "Antiscorpion serum",
+  "Tetanus antitoxin (antitetanus serum)",
+  "Tetanus toxoid",
+  "Tetanus + diphtheria (Td)",
+  "Poliomyelitis vaccine, inactivated (IPV)",
+  "Meningococcal conjugate vaccine",
+  "Oral cholera vaccine",
+  "Flucloxacillin",
+  "Ampicillin + Cloxacillin",
+  "Procaine benzylpenicillin",
+  "Capreomycin",
+  "Ethionamide",
+  "Kanamycin",
+  "p-Aminosalicylic acid",
+  "Daclatasvir",
+  "Simeprevir",
+  "Sodium stibogluconate",
+  "Suramin",
+  "Melarsoprol",
+  "Artemether (injection)",
+  "Artesunate (suppository)",
+  "Dihydroartemisinin + piperaquine",
+  "Niclosamide",
+  "Diethylcarbamazine",
+  "Darrow's solution",
+  "Bendroflumethiazide",
+  "Ergometrine",
+  "Carbetocin",
+  "Lynestrenol",
+  "Condom, male",
+  "Condom, female",
+  "Biphasic isophane insulin",
+  "Insulin zinc suspension",
+  "Gliclazide",
+  "Carbimazole",
+  "Biperiden",
+  "Magnesium trisilicate",
+  "Calcium lactate",
+  "Pyridoxine (vitamin B6)",
+  "Therapeutic milk F-75",
+  "Therapeutic milk F-100",
+  "Ready-to-use therapeutic food (RUTF)",
+  "Lipid-based nutrient supplement (RUSF)",
+  "Fortified blended food (CSB++)",
+  "ReSoMal",
+  "Stilboestrol",
+  "Sulphur + salicylic acid",
+  "Potassium permanganate",
+  "Benzyl benzoate",
+  "Glutaraldehyde",
+  "Water purification tablet (NaDCC)",
+  "Hydrocortisone + oxytetracycline + polymyxin B eye drops",
+  "Peritoneal dialysis solution",
+  "Haemodialysis concentrate",
+]);
+
+/** Whether the US label standard covers this medicine. A typed medicine not on the list never is. */
+export function hasUsLabel(name: string): boolean {
+  const drug = findFormularyDrug(name);
+  return !!drug && drug.category !== OFF_FORMULARY_CATEGORY && !WITHOUT_US_LABEL.has(drug.name);
+}
+
 /** ATC class code for a medication name. */
 export function atcForMedication(name: string): string | undefined {
   return findFormularyDrug(name)?.atc || undefined;

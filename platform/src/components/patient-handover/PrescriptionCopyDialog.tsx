@@ -194,7 +194,7 @@ export default function PrescriptionCopyDialog({
 
   return (
     <>
-      <Modal onClose={() => { if (!busy) onClose(); }} size="md" labelledBy={titleId} describedBy={descId}>
+      <Modal variant="slider" onClose={() => { if (!busy) onClose(); }} size="md" labelledBy={titleId} describedBy={descId}>
         <DialogFrame busy={busy}>
           <DialogHeader
             titleId={titleId}

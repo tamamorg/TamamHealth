@@ -47,6 +47,7 @@ export default function PatientMedicationsTab({ patient, canPrescribe, canRecord
                 reconciledAt={patient.medReconciliationAt}
                 currentUser={currentUser}
                 focusId={focusId}
+                hospitalNumber={patient.hospitalNumber}
               />
             </div>
   );

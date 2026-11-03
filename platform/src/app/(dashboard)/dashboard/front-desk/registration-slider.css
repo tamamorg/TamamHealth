@@ -1,0 +1,23 @@
+/* The registration form inside the 560px slider. The form's own layout is a
+   244px rail beside a 3-column field grid, sized for the full page. In the
+   slider the contents list stays on the LEFT as a slim 148px column (labels
+   wrap) and the fields drop to two columns, so nothing runs off the panel.
+   Scoped to .fd-reg-slider: the full-page registration is untouched. */
+.fd-reg-slider .patient-registration-page--embedded { padding: 12px; }
+.fd-reg-slider .tamam-reg {
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 16px;
+  --reg-cols-three: 2;
+  --reg-cols-two: 2;
+}
+.fd-reg-slider .tamam-reg-rail { position: sticky !important; top: 12px; min-width: 0; }
+/* The slider header already says "Register New Patient". */
+.fd-reg-slider .tamam-reg-title { display: none; }
+.fd-reg-slider .tamam-reg-fields { padding: 16px 12px 20px; min-width: 0; }
+.fd-reg-slider .tamam-reg-form { min-width: 0; }
+.fd-reg-slider .tamam-reg-rail a,
+.fd-reg-slider .tamam-reg-rail button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
